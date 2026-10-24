@@ -258,7 +258,7 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
 // 1h. 旧サイトのアンカー(#case-01 等)で来た人を新URLへ送る
 {
   const map = JSON.parse(fs.readFileSync(REPO + 'cases.json', 'utf8'))
-    .reduce((a, c, i) => (a['case-' + String(i + 1).padStart(2, '0')] = '/cases/' + c.key + '/', a), {});
+    .reduce((a, c) => (a[c.id] = '/cases/' + c.key + '/', a), {});   // 旧 #case-NN は各事例の id で対応（並び順に依存しない）
   const script = `<script>
 /* 旧サイトのアンカーで来た訪問者を対応するページへ送る（フラグメントはサーバに届かないためJSで処理） */
 (function () {

@@ -1,813 +1,963 @@
 {
-  "_": "事例の英語版。cases.json と同じ並び・同じ構造（sections / spec は順序で対応）。headings と spec keys は共通訳（cases-append.js 内）。",
-  "tochigi-sports-flow": {
-    "title": "Tochigi Prefecture Sports Commission: prefecture-wide travel from mobility data",
-    "eyebrow": "xBUILD / Mobility analytics & digital twin / Sports & regions",
-    "tags": "Sports & regions",
-    "lead": "YELLOW has joined the Tochigi Prefecture Sports Commission's programme to promote prefecture-wide travel using mobility data (October 2026). We analyse and visualise the demographics and routes of fans attending home games of the Utsunomiya Brex, Tochigi SC and Tochigi Honda Heat, and feed the findings into measures that turn match days into trips around the prefecture.",
-    "alts": [
-      "Tochigi tourism intelligence | Prefecture-wide digital twin: attractions and transport",
-      "Brex Arena Utsunomiya digital twin | Inside the arena on an Utsunomiya Brex home game",
-      "Green Stadium digital twin | Site footfall and OD analysis on a Tochigi Honda Heat home game",
-      "Kanseki Stadium Tochigi digital twin | Site footfall on a Tochigi SC home game",
-      "Tochigi tourism intelligence | Regional access routes and model itineraries"
+ "_": "事例の英語版。cases.json と同じ並び・同じ構造（sections / spec は順序で対応）。headings と spec keys は共通訳（cases-append.js 内）。",
+ "tochigi-sports-flow": {
+  "title": "Tochigi Prefecture Sports Commission: prefecture-wide travel from mobility data",
+  "eyebrow": "xBUILD / Mobility analytics & digital twin / Sports & regions",
+  "tags": "Sports & regions",
+  "lead": "YELLOW has joined the Tochigi Prefecture Sports Commission's programme to promote prefecture-wide travel using mobility data (October 2026). We analyse and visualise the demographics and routes of fans attending home games of the Utsunomiya Brex, Tochigi SC and Tochigi Honda Heat, and feed the findings into measures that turn match days into trips around the prefecture.",
+  "alts": [
+   "Tochigi tourism intelligence | Prefecture-wide digital twin: attractions and transport",
+   "Brex Arena Utsunomiya digital twin | Inside the arena on an Utsunomiya Brex home game",
+   "Green Stadium digital twin | Site footfall and OD analysis on a Tochigi Honda Heat home game",
+   "Kanseki Stadium Tochigi digital twin | Site footfall on a Tochigi SC home game",
+   "Tochigi tourism intelligence | Regional access routes and model itineraries"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Professional sport generates more than a match: eating, shopping and sightseeing around the venue. To design measures that spread that activity across a region, you first need to know where spectators go before and after the game and how they move.",
+     "In this programme we use mobility data to analyse and visualise the demographics and routes of fans attending home games of the prefecture's professional teams. The findings feed into measures that connect match days with local retail and tourism, aiming to increase travel within the prefecture, the exchange population and regional economic activity."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Professional sport generates more than a match: eating, shopping and sightseeing around the venue. To design measures that spread that activity across a region, you first need to know where spectators go before and after the game and how they move.",
-          "In this programme we use mobility data to analyse and visualise the demographics and routes of fans attending home games of the prefecture's professional teams. The findings feed into measures that connect match days with local retail and tourism, aiming to increase travel within the prefecture, the exchange population and regional economic activity."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Analysis of spectator demographics (gender, age band, estimated home area) and movement patterns from mobility data",
-          "Visualisation of spectator routes and behaviour within the region",
-          "Evidence-based design of measures to promote travel within the prefecture",
-          "Exploring links between match attendance and local retail and tourism assets",
-          "A prefecture-wide digital twin built from real terrain, transport and attraction data, with visitor counts, overnight stays, spend and catchment areas analysed in one place, and progress against strategic KPIs tracked on a single screen"
-        ]
-      },
-      {
-        "paras": [
-          "Travel-promotion planning by local governments and sports commissions, linking home games with local retail and tourism, and a shared data platform for government, teams and businesses."
-        ],
-        "items": []
-      }
-    ],
-    "spec": [
-      "Tochigi Prefecture Sports Commission / home games of the Utsunomiya Brex, Tochigi SC and Tochigi Honda Heat",
-      "Location data collected with user consent and statistically processed (no personally identifiable information), public statistics, GSI terrain and transport data",
-      "Spectator demographics, catchment, routes, visitor counts, overnight stays, spend, strategic KPIs",
-      "Prefecture-wide digital twin, site footfall and OD analysis around the stadiums, seat mapping inside the arena, KPI dashboard",
-      "Understanding spectator behaviour on match days and designing travel-promotion measures (matches and timing to be agreed with the parties involved)",
-      "Mobility-data analysis and visualisation, support for designing measures"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Analysis of spectator demographics (gender, age band, estimated home area) and movement patterns from mobility data",
+     "Visualisation of spectator routes and behaviour within the region",
+     "Evidence-based design of measures to promote travel within the prefecture",
+     "Exploring links between match attendance and local retail and tourism assets",
+     "A prefecture-wide digital twin built from real terrain, transport and attraction data, with visitor counts, overnight stays, spend and catchment areas analysed in one place, and progress against strategic KPIs tracked on a single screen"
     ]
-  },
-  "factory-relocation": {
-    "title": "Factory relocation simulation",
-    "eyebrow": "xBUILD / 3D twin / Manufacturing",
-    "tags": "Manufacturing",
-    "lead": "A 3D twin of an entire factory site where buildings, warehouses, and tanks can be repositioned by drag. Transport distance, flow-line crossings, and logistics labour are recalculated instantly, so layout and relocation plans can be compared quantitatively.",
-    "alts": [
-      "Factory relocation simulation | Oblique view: transport flows and congestion",
-      "Factory relocation simulation | Oblique view: full-site layout",
-      "Factory relocation simulation | Top-down view: flow-line layout",
-      "Factory relocation simulation | Top-down view: building volumes",
-      "Factory relocation simulation | Inside a building: equipment placement and work flows by process"
+   },
+   {
+    "paras": [
+     "Travel-promotion planning by local governments and sports commissions, linking home games with local retail and tourism, and a shared data platform for government, teams and businesses."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built to quantify, by actually moving buildings around, how building placement affects logistics efficiency in factory layout and relocation planning."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Drag buildings, warehouses, and tanks in 3D to edit the layout",
-          "Instantly recalculate transport distance, flow-line crossings, and logistics labour when the layout changes",
-          "Replay operations combining forklift and on-foot movement"
-        ]
-      },
-      {
-        "paras": [
-          "Factory layout planning, pre-studies for relocation and extension, improvement of logistics flow lines."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Tochigi Prefecture Sports Commission / home games of the Utsunomiya Brex, Tochigi SC and Tochigi Honda Heat",
+   "Location data collected with user consent and statistically processed (no personally identifiable information), public statistics, GSI terrain and transport data",
+   "Spectator demographics, catchment, routes, visitor counts, overnight stays, spend, strategic KPIs",
+   "Prefecture-wide digital twin, site footfall and OD analysis around the stadiums, seat mapping inside the arena, KPI dashboard",
+   "Understanding spectator behaviour on match days and designing travel-promotion measures (matches and timing to be agreed with the parties involved)",
+   "Mobility-data analysis and visualisation, support for designing measures"
+  ]
+ },
+ "factory-relocation": {
+  "title": "Factory relocation simulation",
+  "eyebrow": "xBUILD / 3D twin / Manufacturing",
+  "tags": "Manufacturing",
+  "lead": "A 3D twin of an entire factory site where buildings, warehouses, and tanks can be repositioned by drag. Transport distance, flow-line crossings, and logistics labour are recalculated instantly, so layout and relocation plans can be compared quantitatively.",
+  "alts": [
+   "Factory relocation simulation | Oblique view: transport flows and congestion",
+   "Factory relocation simulation | Oblique view: full-site layout",
+   "Factory relocation simulation | Top-down view: flow-line layout",
+   "Factory relocation simulation | Top-down view: building volumes",
+   "Factory relocation simulation | Inside a building: equipment placement and work flows by process"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built to quantify, by actually moving buildings around, how building placement affects logistics efficiency in factory layout and relocation planning."
     ],
-    "spec": [
-      "Factory site",
-      "Site and building placement data",
-      "Transport distance, flow-line crossings, longest flow line, logistics labour (—)",
-      "Layout editing, congestion display, baseline comparison, operation replay",
-      "Comparison of layout / relocation options",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Drag buildings, warehouses, and tanks in 3D to edit the layout",
+     "Instantly recalculate transport distance, flow-line crossings, and logistics labour when the layout changes",
+     "Replay operations combining forklift and on-foot movement"
     ]
-  },
-  "new-station-retail": {
-    "title": "Commercial facility modelling for a new station development",
-    "eyebrow": "xBUILD / 3D twin / Retail",
-    "tags": "Real estate, Public sector, Retail",
-    "lead": "A demo that models the commercial facilities tied to a new station development in 3D and visualises the plan.",
-    "alts": [
-      "New station development | Minami-Rokugo Station (provisional) × station-linked retail twin, facility view",
-      "New station development | Morning-rush pedestrian flows by time of day",
-      "New station development | Wide-area view with station KPI estimates",
-      "New station development | Floor zones and tenant category swapping",
-      "New station development | 1F Daily Marché zone layout"
+   },
+   {
+    "paras": [
+     "Factory layout planning, pre-studies for relocation and extension, improvement of logistics flow lines."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built to test the integrated development of a station and its directly connected commercial facility, using pedestrian flows and KPIs, for a new-station concept between Kamata and Kawasaki on the Keihin-Tohoku Line."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Display the station, station plaza, and commercial facility as a single 3D twin (three views: overall / facility / floor)",
-          "Click floor zones to swap tenant categories and re-aggregate the category mix by floor area",
-          "Replay pedestrian flows by time of day to check station use, mall visits, and shopping-street circulation hour by hour",
-          "Edit fixtures individually (move, rotate, duplicate, delete)"
-        ]
-      },
-      {
-        "paras": [
-          "Business concepts for new stations and station-linked retail, tenant planning, explanatory material for authorities and operators."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Factory site",
+   "Site and building placement data",
+   "Transport distance, flow-line crossings, longest flow line, logistics labour (—)",
+   "Layout editing, congestion display, baseline comparison, operation replay",
+   "Comparison of layout / relocation options",
+   "Web demo (browser)"
+  ]
+ },
+ "new-station-retail": {
+  "title": "Commercial facility modelling for a new station development",
+  "eyebrow": "xBUILD / 3D twin / Retail",
+  "tags": "Real estate, Public sector, Retail",
+  "lead": "A demo that models the commercial facilities tied to a new station development in 3D and visualises the plan.",
+  "alts": [
+   "New station development | Minami-Rokugo Station (provisional) × station-linked retail twin, facility view",
+   "New station development | Morning-rush pedestrian flows by time of day",
+   "New station development | Wide-area view with station KPI estimates",
+   "New station development | Floor zones and tenant category swapping",
+   "New station development | 1F Daily Marché zone layout"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built to test the integrated development of a station and its directly connected commercial facility, using pedestrian flows and KPIs, for a new-station concept between Kamata and Kawasaki on the Keihin-Tohoku Line."
     ],
-    "spec": [
-      "Minami-Rokugo Station (provisional) / station-linked commercial facility (RF–1F)",
-      "Pedestrian-flow data by time of day",
-      "Catchment population, forecast passenger numbers, gross leasable area, estimated annual sales, projected visitors, number of tenant units",
-      "Overall / facility / floor views, tenant-swap palette, time-of-day flow replay",
-      "Concept model (all figures are hypothetical estimates)",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Display the station, station plaza, and commercial facility as a single 3D twin (three views: overall / facility / floor)",
+     "Click floor zones to swap tenant categories and re-aggregate the category mix by floor area",
+     "Replay pedestrian flows by time of day to check station use, mall visits, and shopping-street circulation hour by hour",
+     "Edit fixtures individually (move, rotate, duplicate, delete)"
     ]
-  },
-  "building-builder": {
-    "title": "Building Builder",
-    "eyebrow": "xBUILD / 3D / Editor",
-    "tags": "Construction, Real estate",
-    "lead": "An editor for assembling and editing buildings in 3D.",
-    "alts": [
-      "Building Builder | Floor-by-floor editing (dimension and angle snapping)",
-      "Building Builder | A tower rising in a point-cloud district",
-      "Building Builder | Full editor (outliner and building model)",
-      "Building Builder | City model with point-cloud district",
-      "Building Builder | Floor-plate zoning"
+   },
+   {
+    "paras": [
+     "Business concepts for new stations and station-linked retail, tenant planning, explanatory material for authorities and operators."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built as an editor for editing buildings floor by floor within city data, so they can be studied together with the surrounding district."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Load city building models and point-cloud data and display them by district",
-          "Click a building in the city to view its attributes, then raise its LOD and convert it into an editable node",
-          "Select floors 1F–30F and edit slabs, exterior walls, windows, and fixtures in the outliner",
-          "Switch between stacked / exploded / single views; specify dimensions and angles with grids, zones, and snapping",
-          "Load and export edit results"
-        ]
-      },
-      {
-        "paras": [
-          "Early-stage building planning, floor zoning, checking the relationship with the surrounding district."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Minami-Rokugo Station (provisional) / station-linked commercial facility (RF–1F)",
+   "Pedestrian-flow data by time of day",
+   "Catchment population, forecast passenger numbers, gross leasable area, estimated annual sales, projected visitors, number of tenant units",
+   "Overall / facility / floor views, tenant-swap palette, time-of-day flow replay",
+   "Concept model (all figures are hypothetical estimates)",
+   "Web demo (browser)"
+  ]
+ },
+ "building-builder": {
+  "title": "Building Builder",
+  "eyebrow": "xBUILD / 3D / Editor",
+  "tags": "Construction, Real estate",
+  "lead": "An editor for assembling and editing buildings in 3D.",
+  "alts": [
+   "Building Builder | Floor-by-floor editing (dimension and angle snapping)",
+   "Building Builder | A tower rising in a point-cloud district",
+   "Building Builder | Full editor (outliner and building model)",
+   "Building Builder | City model with point-cloud district",
+   "Building Builder | Floor-plate zoning"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built as an editor for editing buildings floor by floor within city data, so they can be studied together with the surrounding district."
     ],
-    "spec": [
-      "High-rise building (30 storeys) / Minato and Shinagawa wards, Tokyo (Takanawa Gateway–Shinagawa)",
-      "City building models (LOD2, 1,644 buildings, of which 605 LOD2 meshes), ward point-cloud data (586k points)",
-      "Building count, point count, node count",
-      "Stacked / exploded / single, 3D / plan, grids, zones, fittings, snapping, LOD switching, load and export",
-      "Floor-by-floor editing of the XBUILD Tower (hypothetical model)",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Load city building models and point-cloud data and display them by district",
+     "Click a building in the city to view its attributes, then raise its LOD and convert it into an editable node",
+     "Select floors 1F–30F and edit slabs, exterior walls, windows, and fixtures in the outliner",
+     "Switch between stacked / exploded / single views; specify dimensions and angles with grids, zones, and snapping",
+     "Load and export edit results"
     ]
-  },
-  "tunnel-lighting": {
-    "title": "3D modelling of lighting components for tunnel construction",
-    "eyebrow": "xBUILD / 3D modelling / Cost estimation",
-    "tags": "Manufacturing, Construction",
-    "lead": "Imports CAD drawings of lighting components and runs end to end from automatic component recognition through 2D sections and 3D assembly views to a rough cost estimate.",
-    "alts": [
-      "3D modelling of lighting components | 3D assembly, front view",
-      "3D modelling of lighting components | 3D assembly, exploded components",
-      "3D modelling of lighting components | Switching components / layers",
-      "3D modelling of lighting components | CAD import (PDF, DXF, IFC, DWG, JWW)",
-      "3D modelling of lighting components | Component section drawing with specifications and machining instructions",
-      "3D modelling of lighting components | Rough cost estimate"
+   },
+   {
+    "paras": [
+     "Early-stage building planning, floor zoning, checking the relationship with the surrounding district."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built to streamline the design and estimation of tunnel lighting components by structuring component information from CAD and linking take-off to estimation."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Import CAD drawings and recognise components automatically",
-          "Check components in 2D section drawings and 3D assembly",
-          "Organise plate thickness, material, machining instructions, and quantities to produce a rough estimate"
-        ]
-      },
-      {
-        "paras": [
-          "Design review of lighting components, more efficient estimation and take-off, faster quotation."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "High-rise building (30 storeys) / Minato and Shinagawa wards, Tokyo (Takanawa Gateway–Shinagawa)",
+   "City building models (LOD2, 1,644 buildings, of which 605 LOD2 meshes), ward point-cloud data (586k points)",
+   "Building count, point count, node count",
+   "Stacked / exploded / single, 3D / plan, grids, zones, fittings, snapping, LOD switching, load and export",
+   "Floor-by-floor editing of the XBUILD Tower (hypothetical model)",
+   "Web demo (browser)"
+  ]
+ },
+ "tunnel-lighting": {
+  "title": "3D modelling of lighting components for tunnel construction",
+  "eyebrow": "xBUILD / 3D modelling / Cost estimation",
+  "tags": "Manufacturing, Construction",
+  "lead": "Imports CAD drawings of lighting components and runs end to end from automatic component recognition through 2D sections and 3D assembly views to a rough cost estimate.",
+  "alts": [
+   "3D modelling of lighting components | 3D assembly, front view",
+   "3D modelling of lighting components | 3D assembly, exploded components",
+   "3D modelling of lighting components | Switching components / layers",
+   "3D modelling of lighting components | CAD import (PDF, DXF, IFC, DWG, JWW)",
+   "3D modelling of lighting components | Component section drawing with specifications and machining instructions",
+   "3D modelling of lighting components | Rough cost estimate"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built to streamline the design and estimation of tunnel lighting components by structuring component information from CAD and linking take-off to estimation."
     ],
-    "spec": [
-      "Tunnel lighting components",
-      "CAD drawings",
-      "Component count, quantities, rough estimate (—)",
-      "CAD import, component recognition, 2D sections, 3D assembly, rough estimate",
-      "Changes to component configuration",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Import CAD drawings and recognise components automatically",
+     "Check components in 2D section drawings and 3D assembly",
+     "Organise plate thickness, material, machining instructions, and quantities to produce a rough estimate"
     ]
-  },
-  "member-analysis": {
-    "title": "Structural member analysis",
-    "eyebrow": "xBUILD / 3D modelling / Cost estimation",
-    "tags": "Manufacturing, Construction",
-    "lead": "A tool that analyses structural members and extracts the information needed for design and cost estimation.",
-    "alts": [
-      "Structural member analysis | 3D assembly with the selected member highlighted",
-      "Structural member analysis | 3D assembly, overall view",
-      "Structural member analysis | Member section drawing with specifications and machining instructions (post L-50×50×5.0)",
-      "Structural member analysis | CAD import (PDF, DXF, IFC, DWG, JWW)",
-      "Structural member analysis | Rough cost estimate"
+   },
+   {
+    "paras": [
+     "Design review of lighting components, more efficient estimation and take-off, faster quotation."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built to automate the take-off of members from drawings and connect it through to a rough estimate."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Import hand-drawn PDF, PDF, DXF, IFC, DWG, and JWW drawings and recognise members",
-          "Generate a 2D section drawing (dimensions, machining instructions) and a 3D assembly for each member",
-          "Show detection evidence and confidence per member to narrow down what needs checking",
-          "Automatically calculate steel, machining, surface-treatment, and transport costs and output a rough estimate"
-        ]
-      },
-      {
-        "paras": [
-          "Fabrication estimates for steel frames and pipe supports, reduced take-off effort, drawing validation."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Tunnel lighting components",
+   "CAD drawings",
+   "Component count, quantities, rough estimate (—)",
+   "CAD import, component recognition, 2D sections, 3D assembly, rough estimate",
+   "Changes to component configuration",
+   "Web demo (browser)"
+  ]
+ },
+ "member-analysis": {
+  "title": "Structural member analysis",
+  "eyebrow": "xBUILD / 3D modelling / Cost estimation",
+  "tags": "Manufacturing, Construction",
+  "lead": "A tool that analyses structural members and extracts the information needed for design and cost estimation.",
+  "alts": [
+   "Structural member analysis | 3D assembly with the selected member highlighted",
+   "Structural member analysis | 3D assembly, overall view",
+   "Structural member analysis | Member section drawing with specifications and machining instructions (post L-50×50×5.0)",
+   "Structural member analysis | CAD import (PDF, DXF, IFC, DWG, JWW)",
+   "Structural member analysis | Rough cost estimate"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built to automate the take-off of members from drawings and connect it through to a rough estimate."
     ],
-    "spec": [
-      "Fabricated steel items (posts, beams, base plates, pipe-support hardware, etc.)",
-      "Hand-drawn PDF / PDF / DXF / IFC / DWG / JWW",
-      "Member count, unit weight, total weight, detection confidence",
-      "CAD import / load and analyse / member selection / member details / rough estimate",
-      "Estimates for pipe-shaft riser supports and pipe anchoring frames",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Import hand-drawn PDF, PDF, DXF, IFC, DWG, and JWW drawings and recognise members",
+     "Generate a 2D section drawing (dimensions, machining instructions) and a 3D assembly for each member",
+     "Show detection evidence and confidence per member to narrow down what needs checking",
+     "Automatically calculate steel, machining, surface-treatment, and transport costs and output a rough estimate"
     ]
-  },
-  "blueprint-frame": {
-    "title": "Automatic structural frame generation and member editing (Blueprint)",
-    "eyebrow": "xBUILD / Structure / Parametric",
-    "tags": "Manufacturing, Construction",
-    "lead": "A browser tool that regenerates a structural frame instantly when you change the number of storeys or spans, and covers everything from moving and adding individual members to checking against drawings.",
-    "alts": [
-      "Automatic frame generation | Elevation view with member-editing panel (grid lines, FL lines / 2 change-log entries)",
-      "Automatic frame generation | Interior view (click to select a member, drag to move)",
-      "Automatic frame generation | Top-down view with drawing sheets (plan and elevation) overlaid",
-      "Automatic frame generation | Elevation frame (girders, beams, and bracing)",
-      "Automatic frame generation | Columns, bracing, and stairs only (layer switching)",
-      "Automatic frame generation | Comparison view, top-down (deviations from drawings shown as pink double lines)",
-      "Automatic frame generation | Comparison view, front"
+   },
+   {
+    "paras": [
+     "Fabrication estimates for steel frames and pipe supports, reduced take-off effort, drawing validation."
     ],
-    "sections": [
-      {
-        "paras": [
-          "In early architectural and structural studies, every change to the number of storeys or the span layout means rebuilding the 3D model and the drawings. Built so the skeleton can be regenerated with parameters alone, and changes checked against the drawings."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Regenerate the structural frame instantly with sliders for storeys, X spans, and Y spans (toggle atrium, grand stair, and skylight)",
-          "Switch columns, girders, beams, bracing, slabs, stairs, handrails, cladding, glazing, services, and core on and off by layer (member counts shown)",
-          "Click to select members and move them in plan or vertically in 0.1 m / 0.5 m / 1.0 m steps, or delete them",
-          "Add outdoor units, switchgear cubicles, ducts, columns, beams, and handrails at a specified level",
-          "Overlay grid lines, FL lines, and drawing sheets (plan, elevation), and show changes as pink double lines in the comparison view",
-          "Switch between top-down, plan, elevation, section, and orbit views; reset everything to the original design"
-        ]
-      },
-      {
-        "paras": [
-          "Volume comparison in early planning, clash checks for services and members, checking discrepancies between design changes and drawings."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Fabricated steel items (posts, beams, base plates, pipe-support hardware, etc.)",
+   "Hand-drawn PDF / PDF / DXF / IFC / DWG / JWW",
+   "Member count, unit weight, total weight, detection confidence",
+   "CAD import / load and analyse / member selection / member details / rough estimate",
+   "Estimates for pipe-shaft riser supports and pipe anchoring frames",
+   "Web demo (browser)"
+  ]
+ },
+ "blueprint-frame": {
+  "title": "Automatic structural frame generation and member editing (Blueprint)",
+  "eyebrow": "xBUILD / Structure / Parametric",
+  "tags": "Manufacturing, Construction",
+  "lead": "A browser tool that regenerates a structural frame instantly when you change the number of storeys or spans, and covers everything from moving and adding individual members to checking against drawings.",
+  "alts": [
+   "Automatic frame generation | Elevation view with member-editing panel (grid lines, FL lines / 2 change-log entries)",
+   "Automatic frame generation | Interior view (click to select a member, drag to move)",
+   "Automatic frame generation | Top-down view with drawing sheets (plan and elevation) overlaid",
+   "Automatic frame generation | Elevation frame (girders, beams, and bracing)",
+   "Automatic frame generation | Columns, bracing, and stairs only (layer switching)",
+   "Automatic frame generation | Comparison view, top-down (deviations from drawings shown as pink double lines)",
+   "Automatic frame generation | Comparison view, front"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "In early architectural and structural studies, every change to the number of storeys or the span layout means rebuilding the 3D model and the drawings. Built so the skeleton can be regenerated with parameters alone, and changes checked against the drawings."
     ],
-    "spec": [
-      "Hypothetical mid-rise steel-frame model (6 storeys, 1,288 structural members)",
-      "Parametric generation (base span X 8.0 m × Y 7.5 m / plan 48.0 × 30.0 m, height 34.4 m)",
-      "Structural member count, plan dimensions and height, member count per layer, change-log entries",
-      "Columns / girders / beams / bracing / slabs / stairs / handrails / cladding / glazing / services / core, grid and FL lines, drawing sheets, comparison view",
-      "Demo with a hypothetical model (no design data from real projects used)",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Regenerate the structural frame instantly with sliders for storeys, X spans, and Y spans (toggle atrium, grand stair, and skylight)",
+     "Switch columns, girders, beams, bracing, slabs, stairs, handrails, cladding, glazing, services, and core on and off by layer (member counts shown)",
+     "Click to select members and move them in plan or vertically in 0.1 m / 0.5 m / 1.0 m steps, or delete them",
+     "Add outdoor units, switchgear cubicles, ducts, columns, beams, and handrails at a specified level",
+     "Overlay grid lines, FL lines, and drawing sheets (plan, elevation), and show changes as pink double lines in the comparison view",
+     "Switch between top-down, plan, elevation, section, and orbit views; reset everything to the original design"
     ]
-  },
-  "craft-furniture": {
-    "title": "3D modelling of craft pieces and craft fixtures",
-    "eyebrow": "xBUILD / 3D modelling",
-    "tags": "Manufacturing, Retail",
-    "lead": "A demo that models craft pieces and craft fixtures in 3D so they can be checked digitally.",
-    "alts": [
-      "3D modelling of craft fixtures | Checking in 3D: round-table top",
-      "3D modelling of craft fixtures | Verifying delivery routes and split joints",
-      "3D modelling of craft fixtures | STEP 4 Fix the specification (items needing a decision highlighted)",
-      "3D modelling of craft fixtures | STEP 3 Reading components from design drawings",
-      "3D modelling of craft fixtures | Quotation (full set of interior fixtures)"
+   },
+   {
+    "paras": [
+     "Volume comparison in early planning, clash checks for services and members, checking discrepancies between design changes and drawings."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built so that, when estimating interior fixtures, specifications not written in the design drawings are filled in by inference, leaving only the items that need human judgement."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Automatically extract components from design and fixture detail drawings and sort them into confirmed / to check / needs decision",
-          "Determine the number of splits and the delivery route from paint-bath dimensions and lift openings",
-          "Check fixtures in 3D, switching between split joints, mirror finishes, and delivery routes",
-          "Drop the confirmed specification straight into a bill of items and output a quotation"
-        ]
-      },
-      {
-        "paras": [
-          "Estimates for interior fixtures, finding gaps in drawings, confirming specifications with clients and designers."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Hypothetical mid-rise steel-frame model (6 storeys, 1,288 structural members)",
+   "Parametric generation (base span X 8.0 m × Y 7.5 m / plan 48.0 × 30.0 m, height 34.4 m)",
+   "Structural member count, plan dimensions and height, member count per layer, change-log entries",
+   "Columns / girders / beams / bracing / slabs / stairs / handrails / cladding / glazing / services / core, grid and FL lines, drawing sheets, comparison view",
+   "Demo with a hypothetical model (no design data from real projects used)",
+   "Web demo (browser)"
+  ]
+ },
+ "craft-furniture": {
+  "title": "3D modelling of craft pieces and craft fixtures",
+  "eyebrow": "xBUILD / 3D modelling",
+  "tags": "Manufacturing, Retail",
+  "lead": "A demo that models craft pieces and craft fixtures in 3D so they can be checked digitally.",
+  "alts": [
+   "3D modelling of craft fixtures | Checking in 3D: round-table top",
+   "3D modelling of craft fixtures | Verifying delivery routes and split joints",
+   "3D modelling of craft fixtures | STEP 4 Fix the specification (items needing a decision highlighted)",
+   "3D modelling of craft fixtures | STEP 3 Reading components from design drawings",
+   "3D modelling of craft fixtures | Quotation (full set of interior fixtures)"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built so that, when estimating interior fixtures, specifications not written in the design drawings are filled in by inference, leaving only the items that need human judgement."
     ],
-    "spec": [
-      "Full set of hotel interior fixtures (wall panels, round-table top, counter top, door facings, sign panels, etc.)",
-      "Interior design drawings and fixture detail drawings (PDF)",
-      "Component count, total area, number of splits, items to check / needing decision, confidence (%)",
-      "Component extraction / specification confirmation / 3D verification / quotation output",
-      "(Provisional) Kyoto Okazaki Hotel: lobby and dining-room fixtures",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Automatically extract components from design and fixture detail drawings and sort them into confirmed / to check / needs decision",
+     "Determine the number of splits and the delivery route from paint-bath dimensions and lift openings",
+     "Check fixtures in 3D, switching between split joints, mirror finishes, and delivery routes",
+     "Drop the confirmed specification straight into a bill of items and output a quotation"
     ]
-  },
-  "people-flow-db": {
-    "title": "Prefectural priority project / Pedestrian-flow visualisation database",
-    "eyebrow": "xBUILD / Pedestrian flow / Data",
-    "tags": "Public sector, Retail",
-    "lead": "As a prefectural priority project, pedestrian flows, circulation, and accommodation demand around an arena are visualised in a 3D digital twin. It estimates the difference in activity between match days and ordinary days, and the contribution to the local economy.",
-    "alts": [
-      "Pedestrian-flow visualisation DB | L2 Inside the arena: seat marketing",
-      "Pedestrian-flow visualisation DB | L1 Entrance plaza: vendor-stall simulation",
-      "Pedestrian-flow visualisation DB | Post-match circulation and spill-over to accommodation and dining",
-      "Pedestrian-flow visualisation DB | Wide-area point-cloud view",
-      "Pedestrian-flow visualisation DB | L0 Site pedestrian flows: arena and surroundings",
-      "Pedestrian-flow visualisation DB | Cross-analysis board (regional tourism × arena events)"
+   },
+   {
+    "paras": [
+     "Estimates for interior fixtures, finding gaps in drawings, confirming specifications with clients and designers."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built as a prefectural priority project to visualise the relationship between arena events and surrounding tourism and commerce with pedestrian-flow data, providing evidence for policy."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Switch between three levels: wide-area flows → entrance plaza → inside the arena",
-          "Visualise sales rate, price, and sponsor exposure per seating block to study price optimisation",
-          "Add vendor stalls to the entrance plaza and test the balance between sales and queues",
-          "Load measured CSV data to overwrite sales rates, replacing synthetic values with measured ones",
-          "Cross-analyse tourist arrivals × events to check seasonal offsets and correlation with accommodation demand"
-        ]
-      },
-      {
-        "paras": [
-          "Seat and price design, circulation initiatives, business planning for tourism × sports."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Full set of hotel interior fixtures (wall panels, round-table top, counter top, door facings, sign panels, etc.)",
+   "Interior design drawings and fixture detail drawings (PDF)",
+   "Component count, total area, number of splits, items to check / needing decision, confidence (%)",
+   "Component extraction / specification confirmation / 3D verification / quotation output",
+   "(Provisional) Kyoto Okazaki Hotel: lobby and dining-room fixtures",
+   "Web demo (browser)"
+  ]
+ },
+ "people-flow-db": {
+  "title": "Prefectural priority project / Pedestrian-flow visualisation database",
+  "eyebrow": "xBUILD / Pedestrian flow / Data",
+  "tags": "Public sector, Retail",
+  "lead": "As a prefectural priority project, pedestrian flows, circulation, and accommodation demand around an arena are visualised in a 3D digital twin. It estimates the difference in activity between match days and ordinary days, and the contribution to the local economy.",
+  "alts": [
+   "Pedestrian-flow visualisation DB | L2 Inside the arena: seat marketing",
+   "Pedestrian-flow visualisation DB | L1 Entrance plaza: vendor-stall simulation",
+   "Pedestrian-flow visualisation DB | Post-match circulation and spill-over to accommodation and dining",
+   "Pedestrian-flow visualisation DB | Wide-area point-cloud view",
+   "Pedestrian-flow visualisation DB | L0 Site pedestrian flows: arena and surroundings",
+   "Pedestrian-flow visualisation DB | Cross-analysis board (regional tourism × arena events)"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built as a prefectural priority project to visualise the relationship between arena events and surrounding tourism and commerce with pedestrian-flow data, providing evidence for policy."
     ],
-    "spec": [
-      "Arena in a regional city / its urban area (5.4 km east–west)",
-      "Real OSM data (28 accommodation facilities, etc.) / measured CSV import. Cross-analysis uses dummy data (switches to measured values when connected to real flow and event data)",
-      "Cumulative attendance, sales rate, projected ticket revenue, sponsor exposure, in-venue F&B sales, accommodation demand",
-      "L0 wide area / L1 entrance / L2 inside the arena, point-cloud view, VPS, OD analysis, cross-analysis, tourist routes",
-      "Time series for a home-game day (15:00–22:00)",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Switch between three levels: wide-area flows → entrance plaza → inside the arena",
+     "Visualise sales rate, price, and sponsor exposure per seating block to study price optimisation",
+     "Add vendor stalls to the entrance plaza and test the balance between sales and queues",
+     "Load measured CSV data to overwrite sales rates, replacing synthetic values with measured ones",
+     "Cross-analyse tourist arrivals × events to check seasonal offsets and correlation with accommodation demand"
     ]
-  },
-  "pointcloud-oimachi": {
-    "title": "Point-cloud data modelling (Oimachi)",
-    "eyebrow": "xBUILD / Point cloud / 3D",
-    "tags": "Construction, Real estate, Public sector",
-    "lead": "A modelling demo that visualises a facility and its surroundings in 3D.",
-    "alts": [
-      "Point-cloud modelling (Oimachi) | Real OSM point cloud of the Oimachi area with OIMACHI X",
-      "Point-cloud modelling (Oimachi) | OIMACHI X point-cloud view",
-      "Point-cloud modelling (Oimachi) | Tenant placement and circulation flows",
-      "Point-cloud modelling (Oimachi) | 1F station-linked marché & café: floor KPIs",
-      "Point-cloud modelling (Oimachi) | 6F cinema & night-time: floor KPIs"
+   },
+   {
+    "paras": [
+     "Seat and price design, circulation initiatives, business planning for tourism × sports."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Places a facility model in a district built from measured point clouds, and tests how floor composition and tenant placement affect circulation and sales."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Reproduce the Oimachi area with a point cloud from real OSM data and place the facility model within it",
-          "Place, rotate, and duplicate tenants per floor and swap categories",
-          "Instantly recalculate reach rate, average circulation distance, flow-line crossings, and projected sales per floor",
-          "Replay visitors arriving from the station and circulating through the building, checked with a circulation heat map",
-          "Export layouts and save them as options, overlaying them on the baseline for comparison"
-        ]
-      },
-      {
-        "paras": [
-          "Floor-composition studies for station-front retail, tenant-mix comparison, verifying spill-over to upper and lower floors (the “shower effect”)."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Arena in a regional city / its urban area (5.4 km east–west)",
+   "Real OSM data (28 accommodation facilities, etc.) / measured CSV import. Cross-analysis uses dummy data (switches to measured values when connected to real flow and event data)",
+   "Cumulative attendance, sales rate, projected ticket revenue, sponsor exposure, in-venue F&B sales, accommodation demand",
+   "L0 wide area / L1 entrance / L2 inside the arena, point-cloud view, VPS, OD analysis, cross-analysis, tourist routes",
+   "Time series for a home-game day (15:00–22:00)",
+   "Web demo (browser)"
+  ]
+ },
+ "pointcloud-oimachi": {
+  "title": "Point-cloud data modelling (Oimachi)",
+  "eyebrow": "xBUILD / Point cloud / 3D",
+  "tags": "Construction, Real estate, Public sector",
+  "lead": "A modelling demo that visualises a facility and its surroundings in 3D.",
+  "alts": [
+   "Point-cloud modelling (Oimachi) | Real OSM point cloud of the Oimachi area with OIMACHI X",
+   "Point-cloud modelling (Oimachi) | OIMACHI X point-cloud view",
+   "Point-cloud modelling (Oimachi) | Tenant placement and circulation flows",
+   "Point-cloud modelling (Oimachi) | 1F station-linked marché & café: floor KPIs",
+   "Point-cloud modelling (Oimachi) | 6F cinema & night-time: floor KPIs"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Places a facility model in a district built from measured point clouds, and tests how floor composition and tenant placement affect circulation and sales."
     ],
-    "spec": [
-      "Station-linked commercial facility (6 storeys) / Oimachi area",
-      "Point cloud from real OSM data",
-      "Projected visitors, projected daily sales, top-floor reach rate, average circulation distance, flow-line crossings",
-      "Top-down / oblique / eye-level views, circulation heat map, baseline recording and overlay, automatic flow-line optimisation (β), layout export and import",
-      "Comparison of floor compositions and tenant placements",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Reproduce the Oimachi area with a point cloud from real OSM data and place the facility model within it",
+     "Place, rotate, and duplicate tenants per floor and swap categories",
+     "Instantly recalculate reach rate, average circulation distance, flow-line crossings, and projected sales per floor",
+     "Replay visitors arriving from the station and circulating through the building, checked with a circulation heat map",
+     "Export layouts and save them as options, overlaying them on the baseline for comparison"
     ]
-  },
-  "pointcloud-building": {
-    "title": "Point-cloud data modelling (buildings)",
-    "eyebrow": "xBUILD / Point cloud / 3D",
-    "tags": "Construction, Real estate",
-    "lead": "A demo that turns point-cloud data into 3D models of the target space.",
-    "alts": [
-      "Point-cloud modelling (buildings) | Point-cloud district generator",
-      "Point-cloud modelling (buildings) | Changing building count, density, and section parameters",
-      "Point-cloud modelling (buildings) | Adjusting the signature tower's storeys and width",
-      "Point-cloud modelling (buildings) | Batch generation of multiple buildings"
+   },
+   {
+    "paras": [
+     "Floor-composition studies for station-front retail, tenant-mix comparison, verifying spill-over to upper and lower floors (the “shower effect”)."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built so that in early redevelopment studies, district volume studies can be iterated quickly while staying in point-cloud form."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Change building count, density, and section with sliders to generate the district point cloud instantly",
-          "Adjust the signature tower's storeys, width, fins, and interior individually",
-          "Regenerate the whole district, including podium, greenery, and rail transport, from a specified seed",
-          "Assemble the generated district and replay it rising up"
-        ]
-      },
-      {
-        "paras": [
-          "Redevelopment volume studies, townscape studies, proposal visuals."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Station-linked commercial facility (6 storeys) / Oimachi area",
+   "Point cloud from real OSM data",
+   "Projected visitors, projected daily sales, top-floor reach rate, average circulation distance, flow-line crossings",
+   "Top-down / oblique / eye-level views, circulation heat map, baseline recording and overlay, automatic flow-line optimisation (β), layout export and import",
+   "Comparison of floor compositions and tenant placements",
+   "Web demo (browser)"
+  ]
+ },
+ "pointcloud-building": {
+  "title": "Point-cloud data modelling (buildings)",
+  "eyebrow": "xBUILD / Point cloud / 3D",
+  "tags": "Construction, Real estate",
+  "lead": "A demo that turns point-cloud data into 3D models of the target space.",
+  "alts": [
+   "Point-cloud modelling (buildings) | Point-cloud district generator",
+   "Point-cloud modelling (buildings) | Changing building count, density, and section parameters",
+   "Point-cloud modelling (buildings) | Adjusting the signature tower's storeys and width",
+   "Point-cloud modelling (buildings) | Batch generation of multiple buildings"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built so that in early redevelopment studies, district volume studies can be iterated quickly while staying in point-cloud form."
     ],
-    "spec": [
-      "District from rail yard to skyline",
-      "Parametric generation (seeded)",
-      "Point count, building count, maximum height",
-      "District / signature tower / podium, rail, and greenery parameters, regeneration, assembly",
-      "District study of the Oimachi area",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Change building count, density, and section with sliders to generate the district point cloud instantly",
+     "Adjust the signature tower's storeys, width, fins, and interior individually",
+     "Regenerate the whole district, including podium, greenery, and rail transport, from a specified seed",
+     "Assemble the generated district and replay it rising up"
     ]
-  },
-  "shinjuku-indoor": {
-    "title": "3D modelling of Shinjuku Station interior",
-    "eyebrow": "xBUILD / Indoor map / 3D",
-    "tags": "Construction, Real estate, Public sector, Retail",
-    "lead": "Reconstructs the station interior in 3D from published indoor-map data and stacks it from basement level 3 to the 4th floor. Route search and time-of-day pedestrian-flow simulation run on the pedestrian network, and step-free (lift-priority) routes can be compared.",
-    "alts": [
-      "Shinjuku Station interior 3D | Stacked view of all floors, morning flows",
-      "Shinjuku Station interior 3D | Floor explosion (×1.85) separating the levels",
-      "Shinjuku Station interior 3D | Plan mode (top-down floor-plan display)",
-      "Shinjuku Station interior 3D | Route-search mode: B1 corridors / concourse",
-      "Shinjuku Station interior 3D | 3F single-floor view with room-level highlighting"
+   },
+   {
+    "paras": [
+     "Redevelopment volume studies, townscape studies, proposal visuals."
     ],
-    "sections": [
-      {
-        "paras": [
-          "In a large station, corridors run by several operators cross in three dimensions, and flat station maps make it hard to grasp routes that include vertical movement. Built by converting published indoor-map data into 3D so that cross-floor routes and congestion can be examined on one screen."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Switch the eight floors from B3 to 4F individually and separate the levels with a floor-explosion slider to see the three-dimensional crossings",
-          "Search routes between two points on the pedestrian network, colour-coding stairs, escalators, lifts, platforms, and toilets by type",
-          "Compare step-free (lift-priority) routes with the shortest routes",
-          "Switch pedestrian-flow simulation between morning, midday, evening, and night to visualise dwelling and through-traffic by time of day",
-          "Switch to plan mode for a top-down floor-plan display and compare with existing station maps",
-          "Overlay surrounding buildings, roads, and rail lines to show connections beyond the station"
-        ]
-      },
-      {
-        "paras": [
-          "Route studies for station improvement and refurbishment, prioritising accessibility works, circulation design for in-station and station-front retail, early-stage evacuation planning for congestion and disasters."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "District from rail yard to skyline",
+   "Parametric generation (seeded)",
+   "Point count, building count, maximum height",
+   "District / signature tower / podium, rail, and greenery parameters, regeneration, assembly",
+   "District study of the Oimachi area",
+   "Web demo (browser)"
+  ]
+ },
+ "shinjuku-indoor": {
+  "title": "3D modelling of Shinjuku Station interior",
+  "eyebrow": "xBUILD / Indoor map / 3D",
+  "tags": "Construction, Real estate, Public sector, Retail",
+  "lead": "Reconstructs the station interior in 3D from published indoor-map data and stacks it from basement level 3 to the 4th floor. Route search and time-of-day pedestrian-flow simulation run on the pedestrian network, and step-free (lift-priority) routes can be compared.",
+  "alts": [
+   "Shinjuku Station interior 3D | Stacked view of all floors, morning flows",
+   "Shinjuku Station interior 3D | Floor explosion (×1.85) separating the levels",
+   "Shinjuku Station interior 3D | Plan mode (top-down floor-plan display)",
+   "Shinjuku Station interior 3D | Route-search mode: B1 corridors / concourse",
+   "Shinjuku Station interior 3D | 3F single-floor view with room-level highlighting"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "In a large station, corridors run by several operators cross in three dimensions, and flat station maps make it hard to grasp routes that include vertical movement. Built by converting published indoor-map data into 3D so that cross-floor routes and congestion can be examined on one screen."
     ],
-    "spec": [
-      "Shinjuku Station interior (8 floors, B3–4F) / surrounding district",
-      "Produced by processing the MLIT “Shinjuku Station Area Indoor Map Data”; surrounding buildings and rail lines © OpenStreetMap contributors",
-      "Dwelling and through-traffic per floor, route distance and number of level changes, difference from step-free routes",
-      "Per-floor display, floor explosion, pedestrian network, route search (step-free), pedestrian-flow simulation (morning / midday / evening / night), plan mode, surrounding buildings and rail lines",
-      "Hypothetical model from public open data (no design data or measured flows from real projects used)",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Switch the eight floors from B3 to 4F individually and separate the levels with a floor-explosion slider to see the three-dimensional crossings",
+     "Search routes between two points on the pedestrian network, colour-coding stairs, escalators, lifts, platforms, and toilets by type",
+     "Compare step-free (lift-priority) routes with the shortest routes",
+     "Switch pedestrian-flow simulation between morning, midday, evening, and night to visualise dwelling and through-traffic by time of day",
+     "Switch to plan mode for a top-down floor-plan display and compare with existing station maps",
+     "Overlay surrounding buildings, roads, and rail lines to show connections beyond the station"
     ]
-  },
-  "shibuya-indoor": {
-    "title": "3D modelling of Shibuya Station interior",
-    "eyebrow": "xBUILD / Indoor map / 3D",
-    "tags": "Construction, Real estate, Public sector, Retail",
-    "lead": "Reconstructs the Shibuya Station area in 3D from published pedestrian-space network data and stacks nine levels from basement level 5 to the 4th floor. Corridors that cross in three dimensions are separated by level, and route search, step-free routing, and time-of-day pedestrian flows can be compared on one screen.",
-    "alts": [
-      "Shibuya Station interior 3D | Stacked view of all floors, morning flows",
-      "Shibuya Station interior 3D | Plan mode (top-down floor-plan display)",
-      "Shibuya Station interior 3D | Three-dimensional crossings in the basement levels (B4, B5) with the pedestrian network",
-      "Shibuya Station interior 3D | 1F corridors / concourse with room-level highlighting"
+   },
+   {
+    "paras": [
+     "Route studies for station improvement and refurbishment, prioritising accessibility works, circulation design for in-station and station-front retail, early-stage evacuation planning for congestion and disasters."
     ],
-    "sections": [
-      {
-        "paras": [
-          "At Shibuya Station, lines run by several operators are layered vertically, and corridors cross in three dimensions from B5 to 4F. Because flat station maps make it hard to follow routes with vertical movement, published pedestrian-space network data was converted into 3D so that cross-level routes and congestion can be examined on one screen."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Switch the nine levels from B5 to 4F individually and separate them with a floor-explosion slider to see the three-dimensional crossings",
-          "Search routes between two points on the pedestrian network, colour-coding stairs, escalators, lifts, platforms, and toilets by type",
-          "Compare step-free (lift-priority) routes with the shortest routes",
-          "Switch pedestrian-flow simulation between morning, midday, evening, and night to visualise dwelling and through-traffic by time of day",
-          "Switch to plan mode for a top-down floor-plan display and compare with existing station maps",
-          "Overlay surrounding buildings, roads, and rail lines to show connections beyond the station",
-          "Auto-rotate and reset the view to show the three-dimensional structure from any direction"
-        ]
-      },
-      {
-        "paras": [
-          "Route studies for station improvement and redevelopment, prioritising accessibility works, circulation design for in-station and station-front retail, early-stage evacuation planning for congestion and disasters."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Shinjuku Station interior (8 floors, B3–4F) / surrounding district",
+   "Produced by processing the MLIT “Shinjuku Station Area Indoor Map Data”; surrounding buildings and rail lines © OpenStreetMap contributors",
+   "Dwelling and through-traffic per floor, route distance and number of level changes, difference from step-free routes",
+   "Per-floor display, floor explosion, pedestrian network, route search (step-free), pedestrian-flow simulation (morning / midday / evening / night), plan mode, surrounding buildings and rail lines",
+   "Hypothetical model from public open data (no design data or measured flows from real projects used)",
+   "Web demo (browser)"
+  ]
+ },
+ "shibuya-indoor": {
+  "title": "3D modelling of Shibuya Station interior",
+  "eyebrow": "xBUILD / Indoor map / 3D",
+  "tags": "Construction, Real estate, Public sector, Retail",
+  "lead": "Reconstructs the Shibuya Station area in 3D from published pedestrian-space network data and stacks nine levels from basement level 5 to the 4th floor. Corridors that cross in three dimensions are separated by level, and route search, step-free routing, and time-of-day pedestrian flows can be compared on one screen.",
+  "alts": [
+   "Shibuya Station interior 3D | Stacked view of all floors, morning flows",
+   "Shibuya Station interior 3D | Plan mode (top-down floor-plan display)",
+   "Shibuya Station interior 3D | Three-dimensional crossings in the basement levels (B4, B5) with the pedestrian network",
+   "Shibuya Station interior 3D | 1F corridors / concourse with room-level highlighting"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "At Shibuya Station, lines run by several operators are layered vertically, and corridors cross in three dimensions from B5 to 4F. Because flat station maps make it hard to follow routes with vertical movement, published pedestrian-space network data was converted into 3D so that cross-level routes and congestion can be examined on one screen."
     ],
-    "spec": [
-      "Shibuya Station interior (9 levels, B5–4F) / surrounding district",
-      "Produced by processing the MLIT “Pedestrian Space Network Data (Tokyo, southern Shibuya)”; surrounding buildings, roads, and rail lines © OpenStreetMap contributors",
-      "Dwelling and through-traffic per floor, route distance and number of level changes, difference from step-free routes",
-      "Per-floor display, floor explosion, pedestrian network, roads, floor-plate fill, surrounding buildings, rail lines, route search (step-free), pedestrian-flow simulation (morning / midday / evening / night), plan mode, auto-rotate",
-      "Hypothetical model from public open data (no design data or measured flows from real projects used)",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Switch the nine levels from B5 to 4F individually and separate them with a floor-explosion slider to see the three-dimensional crossings",
+     "Search routes between two points on the pedestrian network, colour-coding stairs, escalators, lifts, platforms, and toilets by type",
+     "Compare step-free (lift-priority) routes with the shortest routes",
+     "Switch pedestrian-flow simulation between morning, midday, evening, and night to visualise dwelling and through-traffic by time of day",
+     "Switch to plan mode for a top-down floor-plan display and compare with existing station maps",
+     "Overlay surrounding buildings, roads, and rail lines to show connections beyond the station",
+     "Auto-rotate and reset the view to show the three-dimensional structure from any direction"
     ]
-  },
-  "indoor-scan-mobile": {
-    "title": "3D structuring of building interiors from smartphone capture",
-    "eyebrow": "xBUILD / Scanning / 3D",
-    "tags": "Construction, Real estate",
-    "lead": "A demo that structures a building interior in 3D simply by walking through it with a smartphone camera.",
-    "alts": [
-      "Interior 3D structuring | Point cloud generated from a depth sequence (stadium)",
-      "Interior 3D structuring | xVIEW: camera trajectory and point-cloud parameters",
-      "Interior 3D structuring | Point cloud growing as frames accumulate",
-      "Interior 3D structuring | Point cloud inside a concourse",
-      "Interior 3D structuring | Interior structuring from hand-held walking capture"
+   },
+   {
+    "paras": [
+     "Route studies for station improvement and redevelopment, prioritising accessibility works, circulation design for in-station and station-front retail, early-stage evacuation planning for congestion and disasters."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built to raise a building interior as a point cloud from hand-held depth sequences, without dedicated equipment."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Load a sequence of depth frames and generate a point cloud with the camera trajectory",
-          "Switch the camera between Orbit, Fly, and Follow, and compare current-frame, past, and all-frame point clouds",
-          "Switch colouring between RGB, depth, height, and frame",
-          "Clean up noise from depth discontinuities with near / far clipping and edge removal"
-        ]
-      },
-      {
-        "paras": [
-          "Capturing the as-is condition of interiors, surveys before refurbishment, pre-checks for point-cloud capture."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Shibuya Station interior (9 levels, B5–4F) / surrounding district",
+   "Produced by processing the MLIT “Pedestrian Space Network Data (Tokyo, southern Shibuya)”; surrounding buildings, roads, and rail lines © OpenStreetMap contributors",
+   "Dwelling and through-traffic per floor, route distance and number of level changes, difference from step-free routes",
+   "Per-floor display, floor explosion, pedestrian network, roads, floor-plate fill, surrounding buildings, rail lines, route search (step-free), pedestrian-flow simulation (morning / midday / evening / night), plan mode, auto-rotate",
+   "Hypothetical model from public open data (no design data or measured flows from real projects used)",
+   "Web demo (browser)"
+  ]
+ },
+ "indoor-scan-mobile": {
+  "title": "3D structuring of building interiors from smartphone capture",
+  "eyebrow": "xBUILD / Scanning / 3D",
+  "tags": "Construction, Real estate",
+  "lead": "A demo that structures a building interior in 3D simply by walking through it with a smartphone camera.",
+  "alts": [
+   "Interior 3D structuring | Point cloud generated from a depth sequence (stadium)",
+   "Interior 3D structuring | xVIEW: camera trajectory and point-cloud parameters",
+   "Interior 3D structuring | Point cloud growing as frames accumulate",
+   "Interior 3D structuring | Point cloud inside a concourse",
+   "Interior 3D structuring | Interior structuring from hand-held walking capture"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built to raise a building interior as a point cloud from hand-held depth sequences, without dedicated equipment."
     ],
-    "spec": [
-      "Building interiors such as stadiums and concourses",
-      "Depth sequence (36 frames, 160×120, depth scale 200, HFOV 62°)",
-      "Point count, rendered points, processing time, fps",
-      "Scene switching / camera modes / point display and colouring / clipping and edge removal",
-      "Three scenes: drone orbit capture, low-altitude flight, hand-held walking capture",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Load a sequence of depth frames and generate a point cloud with the camera trajectory",
+     "Switch the camera between Orbit, Fly, and Follow, and compare current-frame, past, and all-frame point clouds",
+     "Switch colouring between RGB, depth, height, and frame",
+     "Clean up noise from depth discontinuities with near / far clipping and edge removal"
     ]
-  },
-  "lidar-imu-localization": {
-    "title": "Localisation in GPS-denied environments (LiDAR + IMU)",
-    "eyebrow": "xBUILD / Positioning / LiDAR",
-    "tags": "Construction, Public sector",
-    "lead": "A simulation that estimates position using only LiDAR and an IMU where GPS cannot reach.",
-    "alts": [
-      "GPS-denied localisation | SE(3)-LIO verification viewer (error profile and scene comparison)",
-      "GPS-denied localisation | Deviation over a 38 m straight run along a rack aisle",
-      "GPS-denied localisation | Deployment decision table (dominant conditions and measurements by site)"
+   },
+   {
+    "paras": [
+     "Capturing the as-is condition of interiors, surveys before refurbishment, pre-checks for point-cloud capture."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built to determine, for each set of site conditions, how much positioning accuracy LiDAR and an IMU alone can achieve indoors and in tunnels where GPS cannot reach."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Switch scenes (baseline / glass walls / mirror floor / pedestrians / rack aisles, etc.) and replay the deviation between the estimated trajectory and ground truth",
-          "Compare ATE, rotation error, and drift rate by scene and check the error profile over time",
-          "Sweep range noise, dropouts, and geometric conditions to see where the practical limits lie",
-          "Present dominant conditions and measured values per site as a deployment decision table"
-        ]
-      },
-      {
-        "paras": [
-          "Go / no-go decisions for indoor positioning, pre-checks of site conditions, narrowing down equipment specifications."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Building interiors such as stadiums and concourses",
+   "Depth sequence (36 frames, 160×120, depth scale 200, HFOV 62°)",
+   "Point count, rendered points, processing time, fps",
+   "Scene switching / camera modes / point display and colouring / clipping and edge removal",
+   "Three scenes: drone orbit capture, low-altitude flight, hand-held walking capture",
+   "Web demo (browser)"
+  ]
+ },
+ "lidar-imu-localization": {
+  "title": "Localisation in GPS-denied environments (LiDAR + IMU)",
+  "eyebrow": "xBUILD / Positioning / LiDAR",
+  "tags": "Construction, Public sector",
+  "lead": "A simulation that estimates position using only LiDAR and an IMU where GPS cannot reach.",
+  "alts": [
+   "GPS-denied localisation | SE(3)-LIO verification viewer (error profile and scene comparison)",
+   "GPS-denied localisation | Deviation over a 38 m straight run along a rack aisle",
+   "GPS-denied localisation | Deployment decision table (dominant conditions and measurements by site)"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built to determine, for each set of site conditions, how much positioning accuracy LiDAR and an IMU alone can achieve indoors and in tunnels where GPS cannot reach."
     ],
-    "spec": [
-      "Factory hall, arena concourse, rack aisle, long corridor / tunnel, outdoor plaza (9 sites)",
-      "LiDAR + IMU (industrial MEMS is sufficient; 32 channels suffice)",
-      "ATE (mm), rotation (°), drift (%)",
-      "Scene switching / error profile / limit map (σr, beams, dropouts, geometry) / scene comparison / deployment decision table",
-      "Representative factory model and other sites with differing dominant conditions",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Switch scenes (baseline / glass walls / mirror floor / pedestrians / rack aisles, etc.) and replay the deviation between the estimated trajectory and ground truth",
+     "Compare ATE, rotation error, and drift rate by scene and check the error profile over time",
+     "Sweep range noise, dropouts, and geometric conditions to see where the practical limits lie",
+     "Present dominant conditions and measured values per site as a deployment decision table"
     ]
-  },
-  "rubber-anomaly": {
-    "title": "Anomaly detection for a rubber extrusion process",
-    "eyebrow": "xBUILD / Manufacturing AI / Anomaly detection",
-    "tags": "Manufacturing",
-    "lead": "A system that detects anomalies in a rubber extrusion process from camera images.",
-    "alts": [
-      "Rubber extrusion anomaly detection | Work-verification live view (hand detection and process classification)",
-      "Rubber extrusion anomaly detection | Detecting assembly motions and judging verification complete",
-      "Rubber extrusion anomaly detection | Automatic process-sheet updates (start, completion, confidence)"
+   },
+   {
+    "paras": [
+     "Go / no-go decisions for indoor positioning, pre-checks of site conditions, narrowing down equipment specifications."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built to automatically judge missed or out-of-sequence steps in a manual assembly process from camera footage."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Detect hand skeletons in video and automatically classify the steps: part pick-up → assembly motion → fixing and position check → final verification",
-          "Record start and completion times and confidence per step, and update the process sheet automatically",
-          "Toggle detection boxes and hand detection; change playback speed (0.5–2×)",
-          "Judge work verification complete once all steps have been passed"
-        ]
-      },
-      {
-        "paras": [
-          "Verification of manual work, detecting missed steps, measuring standard times."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Factory hall, arena concourse, rack aisle, long corridor / tunnel, outdoor plaza (9 sites)",
+   "LiDAR + IMU (industrial MEMS is sufficient; 32 channels suffice)",
+   "ATE (mm), rotation (°), drift (%)",
+   "Scene switching / error profile / limit map (σr, beams, dropouts, geometry) / scene comparison / deployment decision table",
+   "Representative factory model and other sites with differing dominant conditions",
+   "Web demo (browser)"
+  ]
+ },
+ "rubber-anomaly": {
+  "title": "Anomaly detection for a rubber extrusion process",
+  "eyebrow": "xBUILD / Manufacturing AI / Anomaly detection",
+  "tags": "Manufacturing",
+  "lead": "A system that detects anomalies in a rubber extrusion process from camera images.",
+  "alts": [
+   "Rubber extrusion anomaly detection | Work-verification live view (hand detection and process classification)",
+   "Rubber extrusion anomaly detection | Detecting assembly motions and judging verification complete",
+   "Rubber extrusion anomaly detection | Automatic process-sheet updates (start, completion, confidence)"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built to automatically judge missed or out-of-sequence steps in a manual assembly process from camera footage."
     ],
-    "spec": [
-      "Assembly process for rubber (EPDM) components",
-      "In-house footage (1280×720 / 30 fps)",
-      "Start and completion time per step, confidence, OK / NG judgement",
-      "Hand detection, step classification, automatic process-sheet updates, playback-speed control",
-      "Per-cycle work verification",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Detect hand skeletons in video and automatically classify the steps: part pick-up → assembly motion → fixing and position check → final verification",
+     "Record start and completion times and confidence per step, and update the process sheet automatically",
+     "Toggle detection boxes and hand detection; change playback speed (0.5–2×)",
+     "Judge work verification complete once all steps have been passed"
     ]
-  },
-  "ad-analytics": {
-    "title": "Performance-advertising analytics tool",
-    "eyebrow": "xBUILD / Data / Advertising",
-    "tags": "Other",
-    "lead": "A tool that analyses performance-advertising data and visualises results.",
-    "alts": [
-      "Performance-advertising analytics | Geo-lift experiment design and incremental lift measurement",
-      "Performance-advertising analytics | xAD",
-      "Performance-advertising analytics | Industry dashboards",
-      "Performance-advertising analytics | Effect analysis and improvement-proposal report",
-      "Performance-advertising analytics | What the data shows (observations)",
-      "Performance-advertising analytics | Calibration and verification view (disclosing estimate accuracy)",
-      "Performance-advertising analytics | Store-level performance and O2O funnel",
-      "Performance-advertising analytics | Breaking down results and the next move",
-      "Performance-advertising analytics | Promotion board (budget pacing and result breakdown)"
+   },
+   {
+    "paras": [
+     "Verification of manual work, detecting missed steps, measuring standard times."
     ],
-    "sections": [
-      {
-        "paras": [
-          "Built to show the results of performance advertising as causation rather than correlation, and to go straight on to proposing the next move."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Design geo-lift experiments that split areas into treatment / control / excluded, and measure incremental lift and iROAS",
-          "Break total sales down into advertising increment, store environment, and seasonal factors, to evaluate only advertising's true contribution",
-          "Calculate a per-store γ (how much pedestrian flow amplifies advertising effect) and indicate where to reallocate budget",
-          "Disclose estimate accuracy with a calibration and verification view that reconciles model estimates against measurements (POS, geo-lift)",
-          "Generate effect-analysis and improvement-proposal reports to share with clients"
-        ]
-      },
-      {
-        "paras": [
-          "Verifying the effect of performance advertising, revising budget allocation, improvement proposals to clients."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Assembly process for rubber (EPDM) components",
+   "In-house footage (1280×720 / 30 fps)",
+   "Start and completion time per step, confidence, OK / NG judgement",
+   "Hand detection, step classification, automatic process-sheet updates, playback-speed control",
+   "Per-cycle work verification",
+   "Web demo (browser)"
+  ]
+ },
+ "ad-analytics": {
+  "title": "Performance-advertising analytics tool",
+  "eyebrow": "xBUILD / Data / Advertising",
+  "tags": "Other",
+  "lead": "A tool that analyses performance-advertising data and visualises results.",
+  "alts": [
+   "Performance-advertising analytics | Geo-lift experiment design and incremental lift measurement",
+   "Performance-advertising analytics | xAD",
+   "Performance-advertising analytics | Industry dashboards",
+   "Performance-advertising analytics | Effect analysis and improvement-proposal report",
+   "Performance-advertising analytics | What the data shows (observations)",
+   "Performance-advertising analytics | Calibration and verification view (disclosing estimate accuracy)",
+   "Performance-advertising analytics | Store-level performance and O2O funnel",
+   "Performance-advertising analytics | Breaking down results and the next move",
+   "Performance-advertising analytics | Promotion board (budget pacing and result breakdown)"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Built to show the results of performance advertising as causation rather than correlation, and to go straight on to proposing the next move."
     ],
-    "spec": [
-      "Promotional (O2O) advertising / multi-store retail, pharmacies, etc.",
-      "Store master, pedestrian flow, POS sales (Excel / CSV), Meta and Google ads",
-      "Incremental lift, iROAS, incremental visits, per-store γ, MAPE, budget pacing",
-      "Area selection / statistical power / experiment monitor, result breakdown, calibration and verification, industry dashboards (13 types), report output",
-      "Demo with sample data (company names and figures are dummy)",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Design geo-lift experiments that split areas into treatment / control / excluded, and measure incremental lift and iROAS",
+     "Break total sales down into advertising increment, store environment, and seasonal factors, to evaluate only advertising's true contribution",
+     "Calculate a per-store γ (how much pedestrian flow amplifies advertising effect) and indicate where to reallocate budget",
+     "Disclose estimate accuracy with a calibration and verification view that reconciles model estimates against measurements (POS, geo-lift)",
+     "Generate effect-analysis and improvement-proposal reports to share with clients"
     ]
-  },
-  "retail-promo-sim": {
-    "title": "In-store promotion simulation",
-    "eyebrow": "xBUILD / In-store promotion / Simulation",
-    "tags": "Retail, Other",
-    "lead": "A simulator that reproduces a store in 3D and tests how combinations of digital advertising, in-store signage, giveaways, and shelf layout work from store visit through to purchase. Online ad exposure and offline in-store behaviour are linked in a single model.",
-    "alts": [
-      "In-store promotion simulation | 3D view of a convenience-store floor with per-shelf gaze heat",
-      "In-store promotion simulation | Eye-level in-store view with department labels",
-      "In-store promotion simulation | Signage and giveaway fixtures from the shopper's viewpoint",
-      "In-store promotion simulation | 3D view of a department-store food hall",
-      "In-store promotion simulation | Shelf-layout simulator (factor breakdown by shelf level, facings, and POP)",
-      "In-store promotion simulation | Area experiments and budget allocation (geo-lift design and marginal-iROAS equalisation)",
-      "In-store promotion simulation | Automatic generation of promotional creative with A/B variants",
-      "In-store promotion simulation | Analysis board (result breakdown and O2O funnel)"
+   },
+   {
+    "paras": [
+     "Verifying the effect of performance advertising, revising budget allocation, improvement proposals to clients."
     ],
-    "sections": [
-      {
-        "paras": [
-          "In-store promotion tends to end with “it felt like it worked”. Built to link digital ad exposure to in-store circulation, gaze, and purchase in one model, so that combinations of fixtures, signage, giveaways, and shelf layouts can be compared before rollout."
-        ],
-        "items": []
-      },
-      {
-        "paras": [],
-        "items": [
-          "Reproduce convenience-store and department-store floors in 3D, overlaying per-shelf gaze heat, floor circulation heat maps, and flow-line trails",
-          "Toggle ad budget, in-store signage, promotional fixtures, giveaway distribution (randomised), weather, and nearby competitor sales to estimate visit and sales outcomes",
-          "Use the shelf-layout simulator to change shelf level, horizontal position, facings, POP type, and attachments, and check the funnel from shelf pass-by → gaze → pick-up → purchase with factor breakdown",
-          "Design geo-lift experiments that split areas into treatment / control / excluded, and calculate the budget allocation that equalises marginal iROAS plus per-store regional adjustments",
-          "Generate promotional creative automatically from templates, derive A/B variants, and apply them to shelf POP",
-          "Break total sales down on the analysis board into organic, digital advertising, signage, giveaways, and pedestrian flow, reconciled with the O2O funnel"
-        ]
-      },
-      {
-        "paras": [
-          "New-product launch planning, investment decisions on promotional fixtures and POP, area-level ad budget allocation, joint initiatives between retailers and advertisers."
-        ],
-        "items": []
-      }
+    "items": []
+   }
+  ],
+  "spec": [
+   "Promotional (O2O) advertising / multi-store retail, pharmacies, etc.",
+   "Store master, pedestrian flow, POS sales (Excel / CSV), Meta and Google ads",
+   "Incremental lift, iROAS, incremental visits, per-store γ, MAPE, budget pacing",
+   "Area selection / statistical power / experiment monitor, result breakdown, calibration and verification, industry dashboards (13 types), report output",
+   "Demo with sample data (company names and figures are dummy)",
+   "Web demo (browser)"
+  ]
+ },
+ "retail-promo-sim": {
+  "title": "In-store promotion simulation",
+  "eyebrow": "xBUILD / In-store promotion / Simulation",
+  "tags": "Retail, Other",
+  "lead": "A simulator that reproduces a store in 3D and tests how combinations of digital advertising, in-store signage, giveaways, and shelf layout work from store visit through to purchase. Online ad exposure and offline in-store behaviour are linked in a single model.",
+  "alts": [
+   "In-store promotion simulation | 3D view of a convenience-store floor with per-shelf gaze heat",
+   "In-store promotion simulation | Eye-level in-store view with department labels",
+   "In-store promotion simulation | Signage and giveaway fixtures from the shopper's viewpoint",
+   "In-store promotion simulation | 3D view of a department-store food hall",
+   "In-store promotion simulation | Shelf-layout simulator (factor breakdown by shelf level, facings, and POP)",
+   "In-store promotion simulation | Area experiments and budget allocation (geo-lift design and marginal-iROAS equalisation)",
+   "In-store promotion simulation | Automatic generation of promotional creative with A/B variants",
+   "In-store promotion simulation | Analysis board (result breakdown and O2O funnel)"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "In-store promotion tends to end with “it felt like it worked”. Built to link digital ad exposure to in-store circulation, gaze, and purchase in one model, so that combinations of fixtures, signage, giveaways, and shelf layouts can be compared before rollout."
     ],
-    "spec": [
-      "In-store retail promotion (convenience store / department-store food hall)",
-      "Store layouts and shelf masters, in-store behaviour logs from AI cameras / beacons, POS sales, digital ad delivery records",
-      "Visitors, ad-incremental visits, shelf gaze-capture rate, stop-to-purchase conversion, iROAS, RCT lift, per-store regional adjustment factor",
-      "3D view (gaze heat / circulation heat map / gaze cones / flow-line trails / department labels), shelf-layout simulator, area experiments and budget allocation, automatic creative generation, analysis board",
-      "Demo with sample data (store names and figures are dummy; randomised giveaway assignment is a simulation setting, not a measurement)",
-      "Web demo (browser)"
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Reproduce convenience-store and department-store floors in 3D, overlaying per-shelf gaze heat, floor circulation heat maps, and flow-line trails",
+     "Toggle ad budget, in-store signage, promotional fixtures, giveaway distribution (randomised), weather, and nearby competitor sales to estimate visit and sales outcomes",
+     "Use the shelf-layout simulator to change shelf level, horizontal position, facings, POP type, and attachments, and check the funnel from shelf pass-by → gaze → pick-up → purchase with factor breakdown",
+     "Design geo-lift experiments that split areas into treatment / control / excluded, and calculate the budget allocation that equalises marginal iROAS plus per-store regional adjustments",
+     "Generate promotional creative automatically from templates, derive A/B variants, and apply them to shelf POP",
+     "Break total sales down on the analysis board into organic, digital advertising, signage, giveaways, and pedestrian flow, reconciled with the O2O funnel"
     ]
-  }
+   },
+   {
+    "paras": [
+     "New-product launch planning, investment decisions on promotional fixtures and POP, area-level ad budget allocation, joint initiatives between retailers and advertisers."
+    ],
+    "items": []
+   }
+  ],
+  "spec": [
+   "In-store retail promotion (convenience store / department-store food hall)",
+   "Store layouts and shelf masters, in-store behaviour logs from AI cameras / beacons, POS sales, digital ad delivery records",
+   "Visitors, ad-incremental visits, shelf gaze-capture rate, stop-to-purchase conversion, iROAS, RCT lift, per-store regional adjustment factor",
+   "3D view (gaze heat / circulation heat map / gaze cones / flow-line trails / department labels), shelf-layout simulator, area experiments and budget allocation, automatic creative generation, analysis board",
+   "Demo with sample data (store names and figures are dummy; randomised giveaway assignment is a simulation setting, not a measurement)",
+   "Web demo (browser)"
+  ]
+ },
+ "wellnexus-kamakura-2026": {
+  "title": "WELLNEXUS Kamakura 2026: selected as a finalist",
+  "eyebrow": "Record / Open innovation / 2026.03",
+  "tags": "Open innovation",
+  "lead": "YELLOW was named one of seven finalists in WELLNEXUS Kamakura 2026, the open-innovation contest hosted by Spic and Kamakura International FC (March 2026). We presented at the final judging session on how YELLOW works from a sports club outwards into its region.",
+  "alts": [
+   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "WELLNEXUS Kamakura is a Kamakura-based contest for business ideas around wellness and the future of the region. It aims to connect the flow of people and community ties that a sports club holds with the technology of companies.",
+     "YELLOW applied with a proposal to use mobility analytics and 3D visualisation for match-day experiences and travel around the region, and presented it as a finalist."
+    ],
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Analysis of how spectators travel to and linger around a club's home games",
+     "Design of measures that link match days with local retail and tourism",
+     "3D visualisation of the findings and dashboards shared across stakeholders"
+    ]
+   },
+   {
+    "paras": [
+     "Joint programmes between sports clubs, local governments and businesses; planning of hometown travel and event design."
+    ],
+    "items": []
+   }
+  ],
+  "spec": [
+   "WELLNEXUS Kamakura 2026 (hosted by Spic and Kamakura International FC)",
+   "Business proposals in regional travel and wellness, starting from a sports club",
+   "Presentation at the final judging session (one of seven finalists)"
+  ]
+ },
+ "btor-association": {
+  "title": "Joining the BtoR association",
+  "eyebrow": "Record / Participation / 2025.12",
+  "tags": "Partnership",
+  "lead": "YELLOW joined BtoR, the general incorporated association founded by the Tohoku Life Science Instruments Cluster (TOLIC), as a corporate member (December 2025). BtoR supports grant applications and manages awarded programmes.",
+  "alts": [
+   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "Research-driven businesses face specialist procedures from applying for public grants through to managing awarded programmes. BtoR was founded so that TOLIC member companies and research institutions can support each other in this work.",
+     "As a company whose business is the social implementation of research seeds, YELLOW advances grant-funded development and trials within this framework."
+    ],
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Support for building plans for grant applications and managing programmes once awarded",
+     "Joint proposals with TOLIC member instrument makers and research institutions",
+     "Visualising the results of awarded programmes and carrying them into implementation"
+    ]
+   },
+   {
+    "paras": [
+     "Funding and programme management when moving university or institute technology into products and businesses; joint development with member companies."
+    ],
+    "items": []
+   }
+  ],
+  "spec": [
+   "BtoR general incorporated association (founded by TOLIC)",
+   "Planning and management of grant-funded R&D and demonstration projects",
+   "Participation as a corporate member"
+  ]
+ },
+ "soip-iwaki-fc": {
+  "title": "Japan Sports Agency SOIP × Iwaki FC",
+  "eyebrow": "Record / Public programme / 2025.08",
+  "tags": "Sports & regions",
+  "lead": "Selected for the Japan Sports Agency's Sports Open Innovation Platform (SOIP) in August 2025. Together with Iwaki FC, we work on improving stadium access and creating regional value from sport, using mobility data analysis.",
+  "alts": [
+   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "SOIP is a programme run by the Japan Sports Agency to create new businesses and regional value through co-creation between sports organisations and companies.",
+     "Where home-game visitors come from, how they travel and which routes they take to the stadium are essential inputs for improving access and planning activity around the venue. In this programme we analyse and visualise this from mobility data and feed it into measures for the club and the region."
+    ],
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Analysis of match-day visitor demographics, catchment, modes of access and routes",
+     "Visualisation of congestion and dwell around the stadium",
+     "Access improvements and regional measures that link the venue with nearby retail and tourism"
+    ]
+   },
+   {
+    "paras": [
+     "Improving the visitor experience at sports clubs, match-day transport planning with local governments and operators, and promoting travel around the hometown."
+    ],
+    "items": []
+   }
+  ],
+  "spec": [
+   "Visitors to Iwaki FC home games",
+   "Location data collected with user consent and statistically processed (no personally identifiable information)",
+   "Visitor demographics, catchment, mode of access, routes and dwell",
+   "Improving stadium access and creating regional value from sport",
+   "Mobility data analysis, visualisation and support for planning measures (a programme selected under the Japan Sports Agency SOIP)"
+  ]
+ },
+ "tolic-membership": {
+  "title": "Membership of the Tohoku Life Science Instruments Cluster (TOLIC)",
+  "eyebrow": "Record / Membership / 2025",
+  "tags": "Partnership",
+  "lead": "YELLOW joined the Tohoku Life Science Instruments Cluster (TOLIC) as a corporate member in 2025. The cluster is one of Japan's leading hubs for research-instrument development and manufacturing, and gives us a direct route to instrument makers and research institutions.",
+  "alts": [
+   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
+  ],
+  "sections": [
+   {
+    "paras": [
+     "TOLIC brings together companies and research institutions working on instruments for the life sciences. Knowledge close to the research floor accumulates there, from instrument development and manufacturing to the use of measurement data.",
+     "YELLOW joined to connect with this concentration as a company that brings university and institute technology into society."
+    ],
+    "items": []
+   },
+   {
+    "paras": [],
+    "items": [
+     "Joint development and trials with member instrument makers and research institutions",
+     "Turning measurement and analysis data into products through visualisation and digital twins",
+     "Finding research seeds through the cluster network and exploring how to commercialise them"
+    ]
+   },
+   {
+    "paras": [
+     "Launching new businesses from research instruments and measurement data; forming industry–academia projects."
+    ],
+    "items": []
+   }
+  ],
+  "spec": [
+   "Tohoku Life Science Instruments Cluster (TOLIC)",
+   "Joint development and commercialisation starting from research instruments and measurement data",
+   "Membership as a corporate member"
+  ]
+ }
 }
