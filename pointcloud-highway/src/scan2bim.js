@@ -8,7 +8,7 @@
 import { Raster, resample, framePath, pathLength, samplePath, polygonArea } from './geom.js';
 import { DECK_T, GIRDER_D, RAIL_T, RAIL_H } from './structure.js';
 
-const NO_ELEM = 65535;
+const UNASSIGNED = 65535;
 const C = { ground: 2, building: 6, deck: 17, marking: 20, railing: 21, column: 22, girder: 23, road: 11 };
 
 // ---------------------------------------------------------------- raster helpers
@@ -344,7 +344,7 @@ export function extractBuildings(cloud, { res = 2, log = () => {} } = {}) {
  */
 export function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true } = {}) {
   const { n, pos, cls, elem, dev } = cloud;
-  elem.fill(NO_ELEM); dev.fill(128);
+  elem.fill(UNASSIGNED); dev.fill(128);
   if (refineWidths) refineDeckWidths(cloud, elements, log);
   // spatial hash of deck path samples (cell 6 m) → nearest corridor lookup
   const CELL = 6, hash = new Map();

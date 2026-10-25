@@ -5,6 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import os from 'node:os';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -55,6 +57,16 @@ window.__S2B_SRC__ = document.getElementById('s2b-src').textContent;
 ${safe(bundle)}
 </script>`);
 html = html.replace('<title>LiDAR × BIM 都市高速</title>', '<title>LiDAR × BIM 都市高速（単体ファイル版）</title>');
+// syntax-check every embedded script (a duplicate top-level const between modules would break the whole page)
+const checks = { 'bundle.mjs': [...importSet].join('\n') + '\n' + bundle, 'worker.js': workerSrc, 'las.js': read('src/las.js').replace(/^export\s+(?=(const|let|function|class|async))/gm, ''), 's2b.js': ['geom', 'structure', 'scan2bim'].map((n) => flatten(read(`src/${n}.js`), { keepThree: false }).src).join('\n') };
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pch-'));
+for (const [name, src] of Object.entries(checks)) {
+  const f = path.join(tmp, name);
+  fs.writeFileSync(f, src);
+  const r = spawnSync(process.execPath, ['--check', f], { encoding: 'utf8' });
+  if (r.status !== 0) { console.error(`syntax error in embedded ${name}:\n${r.stderr}`); process.exit(1); }
+}
+fs.rmSync(tmp, { recursive: true, force: true });
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 const out = path.join(root, 'dist', 'lidar-bim-highway.html');
 fs.writeFileSync(out, html);
