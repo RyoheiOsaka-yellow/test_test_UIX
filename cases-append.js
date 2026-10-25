@@ -44,6 +44,7 @@ const CSS = `/* ═════════════════════�
 .case__demo{display:inline-block;font-size:11px;letter-spacing:var(--ls-ui);text-transform:uppercase;
   border:1px solid var(--line);padding:14px 28px;transition:.3s var(--ease);}
 .case__demo:hover{background:var(--white);color:var(--black);}
+.case__links{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 8px;}
 .case__shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin:44px 0;}
 .case__shots figure{margin:0;background:#111;}
 .case__shots img{width:100%;height:auto;display:block;}
@@ -125,6 +126,8 @@ function dictFor(c, i) {
     put('sk' + ri, k, SPEC_EN[ki]); put('sv' + ri, v, e.spec[ri]);
   });
   if (c.imgs.length !== e.alts.length) throw new Error(c.key + ': 画像の数と alts の数が違います');
+  // 関連リンク（任意）: links: [{href, ja, en}]
+  (c.links || []).forEach((l, li) => put('l' + li, l.ja, l.en));
   return { ja, en, p, e };
 }
 
@@ -153,6 +156,7 @@ function casePageHtml(c, prod, d) {
       <p class="case__lead" data-i18n="${p}lead">${esc(e.lead)}</p>
       ${c.demo ? `<p><a class="case__demo" href="${esc(c.demo)}" target="_blank" rel="noopener" data-i18n="cs_open_demo">${COMMON.cs_open_demo[1]}</a></p>` : ''}
       ${c.press ? `<p><a class="case__demo" href="${esc(c.press)}" target="_blank" rel="noopener" data-i18n="cs_open_press">${COMMON.cs_open_press[1]}</a></p>` : ''}
+      ${(c.links || []).length ? `<p class="case__links">` + c.links.map((l, li) => `<a class="case__demo" href="${esc(l.href)}" target="_blank" rel="noopener" data-i18n="${p}l${li}">${esc(l.en)}</a>`).join('') + `</p>` : ''}
 
       <div class="case__shots">
 ${shots}

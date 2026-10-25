@@ -811,40 +811,43 @@
   ]
  },
  "wellnexus-kamakura-2026": {
-  "title": "WELLNEXUS Kamakura 2026: selected as a finalist",
+  "title": "On stage at the WELLNEXUS Kamakura final: KAMAKURA WELLNESS FLOW",
   "eyebrow": "Record / Open innovation / 2026.03",
   "tags": "Open innovation",
-  "lead": "YELLOW was named one of seven finalists in WELLNEXUS Kamakura 2026, the open-innovation contest hosted by Spic and Kamakura International FC (March 2026). We presented at the final judging session on how YELLOW works from a sports club outwards into its region.",
+  "lead": "YELLOW Inc. (representative director Ryohei Osaka), together with location-analytics company LocationMind Inc., presented at the first final round of the open-innovation business contest WELLNEXUS Kamakura (16 March 2026, Kirara Kamakura). The presentation theme was \"KAMAKURA WELLNESS FLOW: a wellness-city model built from mobility data and sport\".",
   "alts": [
-   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
+   "Awards ceremony at the first WELLNEXUS Kamakura final round (group photo of presenters and judges)"
   ],
   "sections": [
    {
     "paras": [
-     "WELLNEXUS Kamakura is a Kamakura-based contest for business ideas around wellness and the future of the region. It aims to connect the flow of people and community ties that a sports club holds with the technology of companies.",
-     "YELLOW applied with a proposal to use mobility analytics and 3D visualisation for match-day experiences and travel around the region, and presented it as a finalist."
+     "WELLNEXUS Kamakura is an open-innovation contest and pilot programme co-hosted by Kamakura City, Kamakura International and Spic. Built on the concept of creating a \"nexus\" of wellness in the town, it aims to solve Kamakura's regional issues and open up new possibilities.",
+     "The first final round was held on 16 March 2026 at Kirara Kamakura (the city's lifelong-learning centre), where seven finalists presented to an audience of about 100. YELLOW took the stage with a joint proposal developed with LocationMind Inc."
     ],
     "items": []
    },
    {
-    "paras": [],
+    "paras": [
+     "Under the theme \"KAMAKURA WELLNESS FLOW: a wellness-city model built from mobility data and sport\", we proposed a data-driven model of town planning that uses location and mobility analytics to visualise all movement of people within Kamakura. Three effects are expected."
+    ],
     "items": [
-     "Analysis of how spectators travel to and linger around a club's home games",
-     "Design of measures that link match days with local retail and tourism",
-     "3D visualisation of the findings and dashboards shared across stakeholders"
+     "Optimised tourism",
+     "Better health for residents",
+     "Stronger disaster-prevention infrastructure"
     ]
    },
    {
     "paras": [
-     "Joint programmes between sports clubs, local governments and businesses; planning of hometown travel and event design."
+     "Data-driven town planning by local governments, sports clubs and local businesses working together: designing tourist flows, health measures for residents, and the use of mobility data in disaster planning."
     ],
     "items": []
    }
   ],
   "spec": [
-   "WELLNEXUS Kamakura 2026 (hosted by Spic and Kamakura International FC)",
-   "Business proposals in regional travel and wellness, starting from a sports club",
-   "Presentation at the final judging session (one of seven finalists)"
+   "First WELLNEXUS Kamakura final round (co-hosted by Kamakura City, Kamakura International and Spic)",
+   "Location and mobility data (in collaboration with LocationMind Inc.)",
+   "Data-driven town planning through visualisation of movement within Kamakura",
+   "Presentation at the final round (16 March 2026, Kirara Kamakura)"
   ]
  },
  "btor-association": {
