@@ -75,8 +75,10 @@ export function buildStructure(data) {
     const phase = phaseOf(road.id);
     const seqBase = hashStr(road.id) % 1000; // construction order along network
 
-    // as-built deviation injection (施工誤差・経年変形の疑似再現)
-    const settle = hashStr('settle' + road.id) % 23 === 5 ? -0.042 : 0;
+    // as-built deviation injection (施工誤差・経年変形の疑似再現): a local span settlement
+    // (raised-cosine bump ~44 m long at a hashed position) rather than a whole-way offset
+    const settle = hashStr('settle' + road.id) % 9 === 5 ? -0.042 : 0;
+    const settleAt = 0.15 + ((hashStr('where' + road.id) % 70) / 100); // 0.15–0.85 of the length
 
     const w = road.width;
     const girderWTop = Math.max(3, w - 1.0), girderWBot = Math.max(2.5, w - 3.2);
@@ -84,22 +86,23 @@ export function buildStructure(data) {
       type: 'deck', tag: `D-${road.id.slice(-4)}`, path, width: w, thick: DECK_T, route, level, phase,
       family: 'RC床版', typeName: `t=${(DECK_T * 1000) | 0} W=${(w * 1000) | 0}`,
       material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase,
-      asBuilt: { dx: 0, dy: settle, dz: 0 },
+      asBuilt: { dx: 0, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L) },
     });
     add({
       type: 'girder', tag: `G-${road.id.slice(-4)}`, path, wTop: girderWTop, wBot: girderWBot, depth: GIRDER_D,
       route, level, phase, family: isExpress ? '鋼製箱桁' : 'PC箱桁',
       typeName: `W${(girderWTop * 1000) | 0}×D${(GIRDER_D * 1000) | 0}`,
       material: isExpress ? 'SM490Y 鋼材' : 'PC コンクリート 50N/mm²', road, length: L, seq: seqBase, parent: deck.id,
-      asBuilt: { dx: 0, dy: settle, dz: 0 },
+      asBuilt: { dx: 0, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L) },
     });
     for (const side of [-1, 1]) {
-      const bow = hashStr('bow' + road.id + side) % 11 === 2 ? 0.032 * side : 0;
+      const bow = hashStr('bow' + road.id + side) % 5 === 2 ? 0.032 * side : 0; // local bulge (~30 m) of the parapet
+      const bowAt = 0.2 + ((hashStr('bowat' + road.id + side) % 60) / 100);
       add({
         type: 'railing', tag: `R-${road.id.slice(-4)}${side < 0 ? 'L' : 'R'}`, path, side, offset: side * (w / 2 - RAIL_T / 2),
         h: RAIL_H, t: RAIL_T, route, level, phase, family: '壁高欄', typeName: `H${(RAIL_H * 1000) | 0} 剛性防護柵`,
         material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase, parent: deck.id,
-        asBuilt: { dx: bow, dy: settle, dz: 0 },
+        asBuilt: { dx: bow, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L), bowAt, bowSpan: Math.min(0.9, 30 / L) },
       });
     }
 
@@ -121,7 +124,7 @@ export function buildStructure(data) {
       const capBottom = p.y - DECK_T - GIRDER_D - CAP_H;
       const round = site.round != null ? site.round : road.kind !== 'expressway';
       const colW = site.colW || (round ? 2.5 : 2.6), colL = site.colL || (round ? 2.5 : 3.6);
-      const lean = hashStr('lean' + tag) % 17 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
+      const lean = hashStr('lean' + tag) % 7 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
       const pierPhase = phaseOf(tag);
       const col = add({
         type: 'column', tag, x: p.x, z: p.z, tx: p.tx, tz: p.tz, yBot: 0, yTop: capBottom, round, colW, colL,

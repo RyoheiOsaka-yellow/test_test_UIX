@@ -61,11 +61,13 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
   const cnt = (n) => Math.floor(n) + (rnd() < n - Math.floor(n) ? 1 : 0);
 
   // deviation (mm) of an element at a given point, signed
+  const bump = (u, at, span) => { const t = (u - at) / (span || 1); return Math.abs(t) < 0.5 ? 0.5 + 0.5 * Math.cos(2 * Math.PI * t) : 0; };
   const devAt = (e, x, y, z, u = 0) => {
     const a = e.asBuilt;
     let dx = a.dx, dy = a.dy, dz = a.dz;
     if (e.type === 'column') { const f = (y - e.yBot) / Math.max(1, e.yTop - e.yBot); dx *= f; dz *= f; }
-    if (e.type === 'railing') { const f = Math.sin(Math.PI * u); dx *= f; }
+    if (a.at != null) dy *= bump(u, a.at, a.span);
+    if (e.type === 'railing') { dx *= bump(u, a.bowAt, a.bowSpan); }
     const mag = dy !== 0 ? dy : Math.hypot(dx, dz) * (e.type === 'railing' ? Math.sign(e.asBuilt.dx) : 1);
     return { dx, dy, dz, mm: mag * 1000 + gauss(rnd) * 2.5 };
   };

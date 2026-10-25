@@ -12,6 +12,7 @@ import { Measure } from './measure.js';
 import { buildLevels, buildGridBubbles, SectionBox } from './annotations.js';
 import { LAS_WORKER_BODY, writeLas } from './las.js';
 import { buildLod } from './lod.js';
+import { describeEpsg, tmForward, tmInverse, guessZone, formatDms } from './crs.js';
 
 const $ = (id) => document.getElementById(id);
 const NO_ELEM = 65535;
@@ -86,6 +87,7 @@ async function loadSite(key) {
   const [cw, ch] = data.site.cropM;
   sectionBox.min.set(-cw / 2, -3, -ch / 2); sectionBox.max.set(cw / 2, 60, ch / 2); sectionBox.update();
   syncSectionSliders();
+  renderCrs();
   overlay.classList.add('hidden');
 }
 
@@ -144,7 +146,41 @@ async function workerSource(embeddedKey, modules, body) {
   }
   return src.replace(/^export\s+(?=(const|let|function|class|async))/gm, '') + '\n' + body;
 }
-const lasWorkerSource = () => workerSource('__LAS_SRC__', ['las'], LAS_WORKER_BODY);
+const lasWorkerSource = () => workerSource('__LAS_SRC__', ['crs', 'fit', 'las'], LAS_WORKER_BODY);
+const SITE_EPSG = { hakozaki: 6677, ohashi: 6677 }; // 平面直角座標系 第IX系 (JGD2011)
+
+// ---------------------------------------------------------------- coordinate reference system
+function currentCrs() {
+  if (state.las) { const epsg = state.las.epsgOverride || (state.las.header.crs && state.las.header.crs.epsg); return { epsg, desc: describeEpsg(epsg), origin: [state.las.local.cx, state.las.local.cy, state.las.local.z0], source: state.las.epsgOverride ? '手動指定' : state.las.header.crs ? state.las.header.crs.source : null }; }
+  const epsg = SITE_EPSG[state.site], desc = describeEpsg(epsg);
+  const c = data ? tmForward(data.site.center[0], data.site.center[1], desc.tm) : { e: 0, n: 0 };
+  return { epsg, desc, origin: [c.e, c.n, 0], source: 'OSM 中心座標から投影' };
+}
+/** viewer local (x east, y up, z south) → projected E/N/H and lat/lon */
+function toWorld(x, y, z) {
+  const crs = currentCrs();
+  const E = crs.origin[0] + x, N = crs.origin[1] - z, H = crs.origin[2] + y;
+  const ll = crs.desc && crs.desc.tm ? tmInverse(E, N, crs.desc.tm) : null;
+  return { E, N, H, ll, crs };
+}
+function renderCrs() {
+  const crs = currentCrs();
+  const el = $('crs-info');
+  const o = crs.origin;
+  let html = `<div class="kv"><span>座標系</span><b>${crs.desc ? crs.desc.name : '不明（ファイルに CRS 情報なし）'}</b></div>`;
+  if (crs.epsg) html += `<div class="kv"><span>EPSG</span><b>${crs.epsg}${crs.source ? `（${crs.source}）` : ''}</b></div>`;
+  html += `<div class="kv"><span>ローカル原点</span><b>E ${o[0].toFixed(3)} / N ${o[1].toFixed(3)} / H ${o[2].toFixed(3)} m</b></div>`;
+  if (crs.desc && crs.desc.tm) { const ll = tmInverse(o[0], o[1], crs.desc.tm); html += `<div class="kv"><span>原点の経緯度</span><b>${formatDms(ll.lat, 'lat')} ${formatDms(ll.lon, 'lon')}</b></div>`; }
+  else if (state.las) { const g = guessZone(o[0], o[1]); if (g) html += `<div class="kv hint">${g.hint}</div>`; }
+  if (crs.desc && crs.desc.merc) html += `<div class="kv hint">${crs.desc.name}</div>`;
+  el.innerHTML = html;
+  $('crs-select-row').style.display = state.las && !(state.las.header.crs && state.las.header.crs.epsg) ? '' : 'none';
+}
+function showCoord(p) {
+  const w = toWorld(p.x, p.y, p.z);
+  $('coord-readout').innerHTML = `<b>E</b> ${w.E.toFixed(3)} <b>N</b> ${w.N.toFixed(3)} <b>H</b> ${w.H.toFixed(3)} m` + (w.ll ? `<br>${formatDms(w.ll.lat, 'lat')} ${formatDms(w.ll.lon, 'lon')}` : '') + `<br><span class="muted">ローカル x ${p.x.toFixed(2)} y ${p.y.toFixed(2)} z ${p.z.toFixed(2)}</span>`;
+}
+$('crs-select').addEventListener('change', (e) => { if (state.las) { state.las.epsgOverride = +e.target.value || null; renderCrs(); } });
 const S2B_BODY = `
 self.onmessage = (ev) => {
   const cloud = ev.data;
@@ -161,7 +197,7 @@ async function runScanToBim() {
   if (!cloud) return;
   overlay.classList.remove('hidden');
   setProgress(0.05, 'Scan-to-BIM: 高架の線形・橋脚・建物を点群から抽出中…');
-  const url = URL.createObjectURL(new Blob([await workerSource('__S2B_SRC__', ['geom', 'structure', 'scan2bim'], S2B_BODY)], { type: 'text/javascript' }));
+  const url = URL.createObjectURL(new Blob([await workerSource('__S2B_SRC__', ['geom', 'structure', 'fit', 'scan2bim'], S2B_BODY)], { type: 'text/javascript' }));
   const worker = new Worker(url);
   const payload = { n: cloud.n, pos: cloud.pos.slice(), cls: cloud.cls.slice(), nrm: cloud.nrm.slice(), elem: new Uint16Array(cloud.n), dev: new Uint8Array(cloud.n) };
   const res = await new Promise((resolve, reject) => {
@@ -206,7 +242,7 @@ async function loadLasFile(file) {
     worker.postMessage({ buf, isLaz, maxPoints: 16e6 }, [buf]);
   }).finally(() => { worker.terminate(); URL.revokeObjectURL(url); });
   // switch the viewer into "real scan" mode: no structural model, cloud only
-  state.las = { name: file.name, header: m.header, spacing: m.spacing, cell: m.cell, stride: m.stride, local: m.local };
+  state.las = { name: file.name, header: m.header, spacing: m.spacing, cell: m.cell, stride: m.stride, local: m.local, epsgOverride: null };
   state.isolateRoute = null; clearSelection(); measure.clear();
   elements = [];
   if (bim) { scene.remove(bim.group); bim.faceGeo.dispose(); bim.edgeGeo.dispose(); bim = null; }
@@ -230,6 +266,7 @@ async function loadLasFile(file) {
   sectionBox.min.set(c.x - r, c.y - r, c.z - r); sectionBox.max.set(c.x + r, c.y + r, c.z + r); sectionBox.update();
   const cfg = [['sx0', c.x - r, c.x + r, c.x - r], ['sx1', c.x - r, c.x + r, c.x + r], ['sy0', c.y - r, c.y + r, c.y - r], ['sy1', c.y - r, c.y + r, c.y + r], ['sz0', c.z - r, c.z + r, c.z - r], ['sz1', c.z - r, c.z + r, c.z + r]];
   for (const [id, lo, hi, v] of cfg) { const sl = $(id); sl.min = lo; sl.max = hi; sl.value = v; }
+  renderCrs();
   overlay.classList.add('hidden');
   const clsSet = new Set(m.cls);
   toast(`${m.n.toLocaleString()} 点を読み込みました（分類 ${clsSet.size} 種、平均点間隔 ${m.spacing.toFixed(2)} m）`, 5000);
@@ -247,12 +284,13 @@ function exportLas() {
     const k = (row * 256 + Math.min(255, Math.max(0, Math.round(t * 255)))) * 4;
     rgb[i * 3] = lutData[k]; rgb[i * 3 + 1] = lutData[k + 1]; rgb[i * 3 + 2] = lutData[k + 2];
   }
-  const buf = writeLas({ n, pos: cloud.pos, inten: cloud.inten, cls: cloud.cls, rgb }, { offset: state.las ? [state.las.local.cx, state.las.local.cy, state.las.local.z0] : [0, 0, 0] });
+  const crs = currentCrs();
+  const buf = writeLas({ n, pos: cloud.pos, inten: cloud.inten, cls: cloud.cls, rgb }, { offset: crs.origin, epsg: crs.desc && crs.desc.tm ? crs.epsg : null });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
   a.download = (state.las ? state.las.name.replace(/\.la[sz]$/i, '') : `${state.site}-synth`) + '.las';
   document.body.appendChild(a); a.click(); a.remove();
-  toast(`LAS 1.2 (PF2) を書き出しました: ${(buf.byteLength / 1e6).toFixed(0)} MB、${n.toLocaleString()} 点`, 5000);
+  toast(`LAS 1.2 (PF2) を書き出しました: ${(buf.byteLength / 1e6).toFixed(0)} MB、${n.toLocaleString()} 点${crs.epsg ? `、EPSG:${crs.epsg}` : ''}`, 5000);
 }
 $('las-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) loadLasFile(f).catch((err) => { overlay.classList.add('hidden'); toast(`読み込み失敗: ${err.message}`, 6000); }); e.target.value = ''; });
 $('las-export').addEventListener('click', exportLas);
@@ -402,7 +440,7 @@ canvas.addEventListener('pointerup', (e) => {
   raycaster.setFromCamera(pointer, camera);
   if (state.measuring) {
     const hit = lod && points.visible ? raycaster.intersectObjects(lod.objects, false)[0] : null;
-    if (hit) { measure.addPoint(hit.point); toast(measure.pending ? '2 点目をクリック' : `計測: ${(measure.items.at(-1).d).toFixed(3)} m`); }
+    if (hit) { showCoord(hit.point); measure.addPoint(hit.point); toast(measure.pending ? '2 点目をクリック' : `計測: ${(measure.items.at(-1).d).toFixed(3)} m`); }
     return;
   }
   let id = -1;
@@ -410,9 +448,9 @@ canvas.addEventListener('pointerup', (e) => {
     const hit = raycaster.intersectObject(bim.faces, false)[0];
     if (hit) id = elementAtFace(bim.ranges, hit.faceIndex);
   }
-  if (id < 0 && lod && points.visible) {
+  if (lod && points.visible) {
     const hit = raycaster.intersectObjects(lod.objects, false)[0];
-    if (hit) { const el = cloud.elem[hit.object.userData.cell.offset + hit.index]; if (el !== NO_ELEM) id = el; }
+    if (hit) { showCoord(hit.point); if (id < 0) { const el = cloud.elem[hit.object.userData.cell.offset + hit.index]; if (el !== NO_ELEM) id = el; } }
   }
   if (id >= 0) select(id); else clearSelection();
 });
@@ -428,7 +466,9 @@ function select(id) {
   let count = 0, sum = 0, maxAbs = 0;
   if (cloud) for (let i = 0; i < cloud.n; i++) if (cloud.elem[i] === id) { count++; const d = cloud.dev[i] - 128; sum += d; if (Math.abs(d) > maxAbs) maxAbs = Math.abs(d); }
   const expected = expectedPoints(e) * state.density;
-  const extra = { count, meanDev: count ? sum / count : null, maxDev: count ? maxAbs : null, coverage: expected > 0 ? Math.min(100, (count / expected) * 100) : null };
+  const extra = { count, meanDev: count ? sum / count : null, maxDev: count ? maxAbs : null, coverage: state.las ? null : expected > 0 ? Math.min(100, (count / expected) * 100) : null };
+  if (e.fit) extra.note = `RANSAC 当てはめ: ${e.round ? `半径 ${(e.fit.r * 1000).toFixed(0)} mm` : '矩形断面'}、残差 RMS ${(e.fit.rms * 1000).toFixed(0)} mm、天端の傾き ${(Math.hypot(e.fit.lean[0], e.fit.lean[1]) * 1000).toFixed(0)} mm`;
+  if (e.settled && e.settled.length) extra.note = `沈下疑い: ${e.settled.map((sp) => `${sp.s.toFixed(0)} m 付近 ${sp.mm} mm`).slice(0, 4).join('、')}`;
   if (e.type === 'footing') extra.note = '地中部材：スキャン未取得（BIM のみ）';
   renderProperties(e, extra);
 }

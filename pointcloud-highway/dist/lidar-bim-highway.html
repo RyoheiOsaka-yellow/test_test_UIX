@@ -47,6 +47,11 @@
   .presets button small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
   .sub { margin-left: 22px; }
   .small { font-size: 11px; line-height: 1.5; margin: 6px 0; }
+  .mono { font-family: var(--mono); }
+  .kv { display: flex; gap: 8px; justify-content: space-between; border-top: 1px solid var(--panel-border); padding: 3px 0; }
+  .kv span { color: var(--muted); flex: none; }
+  .kv b { font-weight: 500; font-family: var(--mono); font-size: 10.5px; text-align: right; }
+  .kv.hint { display: block; color: var(--accent2); }
   .filebtn { display: block; text-align: center; background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
   .filebtn:hover { background: #242a39; }
   body.no-bim #sec-bim, body.no-bim #sec-4d, body.no-bim #drive, body.no-bim .presets [data-preset=bim], body.no-bim .presets [data-preset=scan2bim] { display: none; }
@@ -229,7 +234,21 @@
     <button id="s2b-run" class="las-only" style="width:100%; margin-top:4px">🏗 点群から構造モデルを自動生成（Scan-to-BIM）</button>
     <p class="muted small las-only">高架床版の線形・幅員・高さ（高さ帯ごとのラスタ→細線化）、橋脚（鉛直クラスタ、円形／矩形断面を当てはめ）、建物（外接矩形）を抽出し、各点を最寄り部材に対応付けて設計面との偏差を mm で計算します。</p>
     <pre id="s2b-log" class="muted small" style="white-space:pre-wrap; max-height:120px; overflow:auto; margin:0"></pre>
-    <button id="las-export" style="width:100%; margin-top:6px">⬇ 表示中の点群を LAS で書き出す</button>
+    <h2 style="margin-top:10px">座標系（CRS）</h2>
+    <div id="crs-info" class="small"></div>
+    <div id="crs-select-row" class="row" style="display:none"><label>系を指定</label>
+      <select id="crs-select" style="width:150px">
+        <option value="">（未指定）</option>
+        <optgroup label="JGD2011 平面直角座標系">
+          <option value="6669">第I系</option><option value="6670">第II系</option><option value="6671">第III系</option><option value="6672">第IV系</option><option value="6673">第V系</option><option value="6674">第VI系</option><option value="6675">第VII系</option><option value="6676">第VIII系</option><option value="6677">第IX系（東京）</option><option value="6678">第X系</option><option value="6679">第XI系</option><option value="6680">第XII系</option><option value="6681">第XIII系</option><option value="6682">第XIV系</option><option value="6683">第XV系</option><option value="6684">第XVI系</option><option value="6685">第XVII系</option><option value="6686">第XVIII系</option><option value="6687">第XIX系</option>
+        </optgroup>
+        <optgroup label="UTM (JGD2011)"><option value="6688">zone 51N</option><option value="6689">zone 52N</option><option value="6690">zone 53N</option><option value="6691">zone 54N</option></optgroup>
+        <optgroup label="UTM (WGS84)"><option value="32651">zone 51N</option><option value="32652">zone 52N</option><option value="32653">zone 53N</option><option value="32654">zone 54N</option></optgroup>
+      </select>
+    </div>
+    <div class="row"><label>クリック点の座標</label></div>
+    <div id="coord-readout" class="small mono">—（点群をクリック）</div>
+    <button id="las-export" style="width:100%; margin-top:6px">⬇ 表示中の点群を LAS で書き出す（CRS 付き）</button>
     <p class="muted small">LAS 1.2 / PF2（XYZ・強度・分類・現在の配色 RGB）。CloudCompare や Autodesk ReCap で開けます。</p>
   </div>
 </aside>
@@ -518,8 +537,10 @@ function buildStructure(data) {
     const phase = phaseOf(road.id);
     const seqBase = hashStr(road.id) % 1000; // construction order along network
 
-    // as-built deviation injection (施工誤差・経年変形の疑似再現)
-    const settle = hashStr('settle' + road.id) % 23 === 5 ? -0.042 : 0;
+    // as-built deviation injection (施工誤差・経年変形の疑似再現): a local span settlement
+    // (raised-cosine bump ~44 m long at a hashed position) rather than a whole-way offset
+    const settle = hashStr('settle' + road.id) % 9 === 5 ? -0.042 : 0;
+    const settleAt = 0.15 + ((hashStr('where' + road.id) % 70) / 100); // 0.15–0.85 of the length
 
     const w = road.width;
     const girderWTop = Math.max(3, w - 1.0), girderWBot = Math.max(2.5, w - 3.2);
@@ -527,22 +548,23 @@ function buildStructure(data) {
       type: 'deck', tag: `D-${road.id.slice(-4)}`, path, width: w, thick: DECK_T, route, level, phase,
       family: 'RC床版', typeName: `t=${(DECK_T * 1000) | 0} W=${(w * 1000) | 0}`,
       material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase,
-      asBuilt: { dx: 0, dy: settle, dz: 0 },
+      asBuilt: { dx: 0, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L) },
     });
     add({
       type: 'girder', tag: `G-${road.id.slice(-4)}`, path, wTop: girderWTop, wBot: girderWBot, depth: GIRDER_D,
       route, level, phase, family: isExpress ? '鋼製箱桁' : 'PC箱桁',
       typeName: `W${(girderWTop * 1000) | 0}×D${(GIRDER_D * 1000) | 0}`,
       material: isExpress ? 'SM490Y 鋼材' : 'PC コンクリート 50N/mm²', road, length: L, seq: seqBase, parent: deck.id,
-      asBuilt: { dx: 0, dy: settle, dz: 0 },
+      asBuilt: { dx: 0, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L) },
     });
     for (const side of [-1, 1]) {
-      const bow = hashStr('bow' + road.id + side) % 11 === 2 ? 0.032 * side : 0;
+      const bow = hashStr('bow' + road.id + side) % 5 === 2 ? 0.032 * side : 0; // local bulge (~30 m) of the parapet
+      const bowAt = 0.2 + ((hashStr('bowat' + road.id + side) % 60) / 100);
       add({
         type: 'railing', tag: `R-${road.id.slice(-4)}${side < 0 ? 'L' : 'R'}`, path, side, offset: side * (w / 2 - RAIL_T / 2),
         h: RAIL_H, t: RAIL_T, route, level, phase, family: '壁高欄', typeName: `H${(RAIL_H * 1000) | 0} 剛性防護柵`,
         material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase, parent: deck.id,
-        asBuilt: { dx: bow, dy: settle, dz: 0 },
+        asBuilt: { dx: bow, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L), bowAt, bowSpan: Math.min(0.9, 30 / L) },
       });
     }
 
@@ -564,7 +586,7 @@ function buildStructure(data) {
       const capBottom = p.y - DECK_T - GIRDER_D - CAP_H;
       const round = site.round != null ? site.round : road.kind !== 'expressway';
       const colW = site.colW || (round ? 2.5 : 2.6), colL = site.colL || (round ? 2.5 : 3.6);
-      const lean = hashStr('lean' + tag) % 17 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
+      const lean = hashStr('lean' + tag) % 7 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
       const pierPhase = phaseOf(tag);
       const col = add({
         type: 'column', tag, x: p.x, z: p.z, tx: p.tx, tz: p.tz, yBot: 0, yTop: capBottom, round, colW, colL,
@@ -762,11 +784,13 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   const cnt = (n) => Math.floor(n) + (rnd() < n - Math.floor(n) ? 1 : 0);
 
   // deviation (mm) of an element at a given point, signed
+  const bump = (u, at, span) => { const t = (u - at) / (span || 1); return Math.abs(t) < 0.5 ? 0.5 + 0.5 * Math.cos(2 * Math.PI * t) : 0; };
   const devAt = (e, x, y, z, u = 0) => {
     const a = e.asBuilt;
     let dx = a.dx, dy = a.dy, dz = a.dz;
     if (e.type === 'column') { const f = (y - e.yBot) / Math.max(1, e.yTop - e.yBot); dx *= f; dz *= f; }
-    if (e.type === 'railing') { const f = Math.sin(Math.PI * u); dx *= f; }
+    if (a.at != null) dy *= bump(u, a.at, a.span);
+    if (e.type === 'railing') { dx *= bump(u, a.bowAt, a.bowSpan); }
     const mag = dy !== 0 ? dy : Math.hypot(dx, dz) * (e.type === 'railing' ? Math.sign(e.asBuilt.dx) : 1);
     return { dx, dy, dz, mm: mag * 1000 + gauss(rnd) * 2.5 };
   };
@@ -1355,12 +1379,274 @@ self.onmessage = (ev) => {
   self.postMessage({ type: 'done', ms: performance.now() - t0, ...out }, [out.pos.buffer, out.inten.buffer, out.cls.buffer, out.dev.buffer, out.elem.buffer, out.nrm.buffer]);
 };
 </script>
-<script type="text/plain" id="las-src">// LAS / LAZ reader and LAS writer (plain script: no imports, so it can also run inside a classic
+<script type="text/plain" id="las-src">// Coordinate reference systems for LAS files: VLR parsing (GeoTIFF keys / WKT), EPSG lookup for the
+// systems common in Japan, and Transverse Mercator forward/inverse (Krüger series) so a scan can be
+// placed on the globe. No imports.
+
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const GRS80 = { a: 6378137, f: 1 / 298.257222101 };
+const WGS84 = { a: 6378137, f: 1 / 298.257223563 };
+
+// 平面直角座標系 I–XIX 系原点（JGD2011: EPSG 6669–6687, JGD2000: 2443–2461）
+const ZONES = [
+  [33, 129.5], [33, 131], [36, 132 + 10 / 60], [33, 133.5], [36, 134 + 20 / 60], [36, 136], [36, 137 + 10 / 60], [36, 138.5], [36, 139 + 50 / 60],
+  [40, 140 + 50 / 60], [44, 140.25], [44, 142.25], [44, 144.25], [26, 142], [26, 127.5], [26, 124], [26, 131], [20, 136], [26, 154],
+];
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX'];
+
+/** Describe an EPSG code: { name, tm: { lat0, lon0, k0, fe, fn, ell } } or geographic/other. */
+function describeEpsg(code) {
+  if (!code) return null;
+  if (code >= 6669 && code <= 6687) { const z = code - 6669; return { epsg: code, name: `JGD2011 / 平面直角座標系 第${ROMAN[z]}系`, tm: { lat0: ZONES[z][0], lon0: ZONES[z][1], k0: 0.9999, fe: 0, fn: 0, ell: GRS80 }, datum: 'JGD2011' }; }
+  if (code >= 2443 && code <= 2461) { const z = code - 2443; return { epsg: code, name: `JGD2000 / 平面直角座標系 第${ROMAN[z]}系`, tm: { lat0: ZONES[z][0], lon0: ZONES[z][1], k0: 0.9999, fe: 0, fn: 0, ell: GRS80 }, datum: 'JGD2000' }; }
+  if (code >= 6688 && code <= 6691) { const zone = 51 + (code - 6688); return { epsg: code, name: `JGD2011 / UTM zone ${zone}N`, tm: { lat0: 0, lon0: zone * 6 - 183, k0: 0.9996, fe: 500000, fn: 0, ell: GRS80 }, datum: 'JGD2011' }; }
+  if (code >= 3097 && code <= 3100) { const zone = 51 + (code - 3097); return { epsg: code, name: `JGD2000 / UTM zone ${zone}N`, tm: { lat0: 0, lon0: zone * 6 - 183, k0: 0.9996, fe: 500000, fn: 0, ell: GRS80 }, datum: 'JGD2000' }; }
+  if (code >= 32601 && code <= 32660) { const zone = code - 32600; return { epsg: code, name: `WGS 84 / UTM zone ${zone}N`, tm: { lat0: 0, lon0: zone * 6 - 183, k0: 0.9996, fe: 500000, fn: 0, ell: WGS84 }, datum: 'WGS84' }; }
+  if (code >= 32701 && code <= 32760) { const zone = code - 32700; return { epsg: code, name: `WGS 84 / UTM zone ${zone}S`, tm: { lat0: 0, lon0: zone * 6 - 183, k0: 0.9996, fe: 500000, fn: 10000000, ell: WGS84 }, datum: 'WGS84' }; }
+  if (code === 3857) return { epsg: code, name: 'WGS 84 / Pseudo-Mercator（Web メルカトル：縮尺が緯度で変わるため寸法計測には不向き）', merc: true, datum: 'WGS84' };
+  if (code === 4326 || code === 6668 || code === 4612) return { epsg: code, name: code === 4326 ? 'WGS 84（経緯度）' : `JGD${code === 6668 ? '2011' : '2000'}（経緯度）`, geographic: true };
+  return { epsg: code, name: `EPSG:${code}` };
+}
+
+/** Parse LAS VLRs for a CRS. Returns { epsg, wkt, source } or null. */
+function readLasCrs(buf, header) {
+  const dv = new DataView(buf);
+  const nVlr = dv.getUint32(100, true);
+  let off = header.headerSize;
+  let geoKeys = null, wkt = null;
+  for (let i = 0; i < nVlr && off + 54 <= buf.byteLength; i++) {
+    const userId = ascii(buf, off + 2, 16), recId = dv.getUint16(off + 18, true), len = dv.getUint16(off + 20, true);
+    const data = off + 54;
+    if (userId === 'LASF_Projection' && recId === 34735) geoKeys = parseGeoKeys(dv, data, len);
+    if (userId === 'LASF_Projection' && recId === 2112) wkt = ascii(buf, data, len).replace(/\0+$/, '');
+    off = data + len;
+  }
+  if (geoKeys && geoKeys.epsg) return { epsg: geoKeys.epsg, wkt, source: 'GeoTIFF キー (VLR 34735)', vertical: geoKeys.vertical };
+  if (wkt) { const m = /AUTHORITY\["EPSG",\s*"?(\d+)"?\]\s*\]?\s*$/i.exec(wkt) || /ID\["EPSG",\s*(\d+)\]\s*\]?\s*$/i.exec(wkt); return { epsg: m ? +m[1] : null, wkt, source: 'WKT (VLR 2112)' }; }
+  return null;
+}
+function ascii(buf, off, len) { const u = new Uint8Array(buf, off, Math.min(len, buf.byteLength - off)); let s = ''; for (let i = 0; i < u.length && u[i]; i++) s += String.fromCharCode(u[i]); return s; }
+function parseGeoKeys(dv, off, len) {
+  if (len < 8) return null;
+  const nKeys = dv.getUint16(off + 6, true);
+  let epsg = null, vertical = null, model = null;
+  for (let k = 0; k < nKeys && off + 8 + k * 8 + 8 <= off + len; k++) {
+    const id = dv.getUint16(off + 8 + k * 8, true), loc = dv.getUint16(off + 10 + k * 8, true), val = dv.getUint16(off + 14 + k * 8, true);
+    if (loc !== 0) continue;
+    if (id === 3072) epsg = val;            // ProjectedCSTypeGeoKey
+    if (id === 2048 && !epsg) model = val;  // GeographicTypeGeoKey
+    if (id === 4096) vertical = val;        // VerticalCSTypeGeoKey
+  }
+  return { epsg: epsg || model, vertical };
+}
+
+/** Build the GeoKeyDirectory VLR bytes for a projected EPSG code (for the LAS writer). */
+function geoKeyVlr(epsg) {
+  const keys = [[1024, 0, 1, 1], [3072, 0, 1, epsg], [3076, 0, 1, 9001]]; // ModelType=Projected, ProjectedCSType, LinearUnits=metre
+  const body = new ArrayBuffer(8 + keys.length * 8), dv = new DataView(body);
+  dv.setUint16(0, 1, true); dv.setUint16(2, 1, true); dv.setUint16(4, 0, true); dv.setUint16(6, keys.length, true);
+  keys.forEach((k, i) => k.forEach((v, j) => dv.setUint16(8 + i * 8 + j * 2, v, true)));
+  const vlr = new ArrayBuffer(54 + body.byteLength), u = new Uint8Array(vlr), d2 = new DataView(vlr);
+  u.set(new TextEncoder().encode('LASF_Projection'), 2); d2.setUint16(18, 34735, true); d2.setUint16(20, body.byteLength, true);
+  u.set(new TextEncoder().encode('GeoTIFF GeoKeyDirectoryTag'), 22);
+  u.set(new Uint8Array(body), 54);
+  return vlr;
+}
+
+// ---------------------------------------------------------------- Transverse Mercator (Krüger series, as in GSI / Karney)
+function tmConstants(ell) {
+  const { a, f } = ell, n = f / (2 - f);
+  const A = (a / (1 + n)) * (1 + n * n / 4 + n ** 4 / 64);
+  const alpha = [0, n / 2 - 2 * n * n / 3 + 5 * n ** 3 / 16, 13 * n * n / 48 - 3 * n ** 3 / 5, 61 * n ** 3 / 240];
+  const beta = [0, n / 2 - 2 * n * n / 3 + 37 * n ** 3 / 96, n * n / 48 + n ** 3 / 15, 17 * n ** 3 / 480];
+  const delta = [0, 2 * n - 2 * n * n / 3 - 2 * n ** 3, 7 * n * n / 3 - 8 * n ** 3 / 5, 56 * n ** 3 / 15];
+  return { n, A, alpha, beta, delta };
+}
+function meridianArc(lat0, ell) {
+  const { A, alpha } = tmConstants(ell); const { f } = ell; const n = f / (2 - f);
+  const e2 = f * (2 - f);
+  const t = Math.sinh(Math.atanh(Math.sin(lat0)) - (2 * Math.sqrt(n) / (1 + n)) * Math.atanh((2 * Math.sqrt(n) / (1 + n)) * Math.sin(lat0)));
+  const xi = Math.atan(t / Math.cos(0)); // lon diff 0
+  let s = xi; for (let j = 1; j <= 3; j++) s += alpha[j] * Math.sin(2 * j * xi);
+  return A * s;
+}
+/** lat/lon (deg) → { e, n } metres in the given TM definition. */
+function tmForward(lat, lon, tm) {
+  const { A, alpha } = tmConstants(tm.ell), f = tm.ell.f, n = f / (2 - f);
+  const phi = lat * D2R, lam = (lon - tm.lon0) * D2R;
+  const k = (2 * Math.sqrt(n)) / (1 + n);
+  const t = Math.sinh(Math.atanh(Math.sin(phi)) - k * Math.atanh(k * Math.sin(phi)));
+  const xi = Math.atan2(t, Math.cos(lam)), eta = Math.atanh(Math.sin(lam) / Math.sqrt(1 + t * t));
+  let E = eta, N = xi;
+  for (let j = 1; j <= 3; j++) { E += alpha[j] * Math.cos(2 * j * xi) * Math.sinh(2 * j * eta); N += alpha[j] * Math.sin(2 * j * xi) * Math.cosh(2 * j * eta); }
+  const S0 = meridianArc(tm.lat0 * D2R, tm.ell);
+  return { e: tm.k0 * A * E + tm.fe, n: tm.k0 * (A * N - S0) + tm.fn };
+}
+/** { e, n } metres → { lat, lon } degrees. */
+function tmInverse(e, n, tm) {
+  const { A, beta, delta } = tmConstants(tm.ell), f = tm.ell.f, nn = f / (2 - f);
+  const S0 = meridianArc(tm.lat0 * D2R, tm.ell);
+  const xi = ((n - tm.fn) / tm.k0 + S0) / A, eta = (e - tm.fe) / (tm.k0 * A);
+  let xi2 = xi, eta2 = eta;
+  for (let j = 1; j <= 3; j++) { xi2 -= beta[j] * Math.sin(2 * j * xi) * Math.cosh(2 * j * eta); eta2 -= beta[j] * Math.cos(2 * j * xi) * Math.sinh(2 * j * eta); }
+  const chi = Math.asin(Math.sin(xi2) / Math.cosh(eta2));
+  let phi = chi; for (let j = 1; j <= 3; j++) phi += delta[j] * Math.sin(2 * j * chi);
+  const lam = Math.atan2(Math.sinh(eta2), Math.cos(xi2));
+  return { lat: phi * R2D, lon: tm.lon0 + lam * R2D };
+}
+/** Guess a Japanese plane-rectangular zone from projected coordinates (metres) when the file has no CRS. */
+function guessZone(e, n) {
+  // plane rectangular coordinates are within ±~300 km of the zone origin; UTM eastings are 100k–900k
+  if (Math.abs(e) < 400000 && Math.abs(n) < 500000) return { hint: '平面直角座標系の可能性（原点からの距離が小さい）。系番号はファイルに記録されていません。' };
+  if (e > 100000 && e < 900000 && n > 2000000 && n < 5500000) return { hint: 'UTM 北半球の可能性（例: 東京は zone 54N, EPSG:6691 / 32654）' };
+  return null;
+}
+function formatDms(deg, latlon) {
+  const h = latlon === 'lat' ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+  const a = Math.abs(deg), d = Math.floor(a), m = Math.floor((a - d) * 60), s = ((a - d) * 60 - m) * 60;
+  return `${d}°${String(m).padStart(2, '0')}′${s.toFixed(2).padStart(5, '0')}″${h}`;
+}
+
+// Robust primitive fitting (RANSAC + least-squares refinement). Pure functions, no imports, so
+// the file can also be concatenated into the scan-to-BIM worker.
+
+function lcg(seed) { let s = seed >>> 0 || 1; return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296; }
+
+/** Plane through 3D points: returns { n:[a,b,c] (unit), d, inliers:Uint8Array, rms } with a·x+b·y+c·z+d=0. */
+function ransacPlane(xs, ys, zs, { thresh = 0.04, iters = 60, seed = 1 } = {}) {
+  const n = xs.length;
+  if (n < 3) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0, k = (rnd() * n) | 0;
+    if (i === j || j === k || i === k) continue;
+    const ux = xs[j] - xs[i], uy = ys[j] - ys[i], uz = zs[j] - zs[i], vx = xs[k] - xs[i], vy = ys[k] - ys[i], vz = zs[k] - zs[i];
+    let a = uy * vz - uz * vy, b = uz * vx - ux * vz, c = ux * vy - uy * vx;
+    const L = Math.hypot(a, b, c); if (L < 1e-9) continue;
+    a /= L; b /= L; c /= L;
+    const d = -(a * xs[i] + b * ys[i] + c * zs[i]);
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(a * xs[q] + b * ys[q] + c * zs[q] + d) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = [a, b, c, d]; }
+  }
+  if (!best) return null;
+  // refine: PCA plane through the inliers
+  const inl = new Uint8Array(n); let m = 0, mx = 0, my = 0, mz = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(best[0] * xs[q] + best[1] * ys[q] + best[2] * zs[q] + best[3]) < thresh) { inl[q] = 1; m++; mx += xs[q]; my += ys[q]; mz += zs[q]; }
+  if (m < 3) return null;
+  mx /= m; my /= m; mz /= m;
+  let a = 0, b = 0, d = 0, e = 0, f = 0, g = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const x = xs[q] - mx, y = ys[q] - my, z = zs[q] - mz; a += x * x; b += x * y; d += x * z; e += y * y; f += y * z; g += z * z; }
+  const nv = smallestEigenvector(a, b, d, e, f, g);
+  const dd = -(nv[0] * mx + nv[1] * my + nv[2] * mz);
+  let rms = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const r = nv[0] * xs[q] + nv[1] * ys[q] + nv[2] * zs[q] + dd; rms += r * r; }
+  return { n: nv, d: dd, inliers: inl, count: m, rms: Math.sqrt(rms / m), centroid: [mx, my, mz] };
+}
+
+/** Circle in 2D (u,v): RANSAC on 3-point circles, then Kåsa least-squares on the inliers. */
+function ransacCircle(us, vs, { thresh = 0.05, iters = 80, seed = 1, rMin = 0.3, rMax = 6 } = {}) {
+  const n = us.length;
+  if (n < 6) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0, k = (rnd() * n) | 0;
+    if (i === j || j === k || i === k) continue;
+    const c = circle3(us[i], vs[i], us[j], vs[j], us[k], vs[k]);
+    if (!c || c[2] < rMin || c[2] > rMax) continue;
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(Math.hypot(us[q] - c[0], vs[q] - c[1]) - c[2]) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = c; }
+  }
+  if (!best) return null;
+  const inl = new Uint8Array(n); let m = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(Math.hypot(us[q] - best[0], vs[q] - best[1]) - best[2]) < thresh) { inl[q] = 1; m++; }
+  if (m < 6) return null;
+  // Kåsa fit: minimise Σ (u²+v² + D u + E v + F)²
+  let suu = 0, suv = 0, svv = 0, su = 0, sv = 0, suuu = 0, suvv = 0, svvv = 0, svuu = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const u = us[q], v = vs[q]; suu += u * u; suv += u * v; svv += v * v; su += u; sv += v; suuu += u * u * u; suvv += u * v * v; svvv += v * v * v; svuu += v * u * u; }
+  const A = [[suu, suv, su], [suv, svv, sv], [su, sv, m]], B = [-(suuu + suvv), -(svuu + svvv), -(suu + svv)];
+  const sol = solve3(A, B);
+  if (!sol) return { cu: best[0], cv: best[1], r: best[2], inliers: inl, count: m, rms: thresh };
+  const cu = -sol[0] / 2, cv = -sol[1] / 2, r = Math.sqrt(Math.max(0, cu * cu + cv * cv - sol[2]));
+  let rms = 0; for (let q = 0; q < n; q++) if (inl[q]) { const e = Math.hypot(us[q] - cu, vs[q] - cv) - r; rms += e * e; }
+  return { cu, cv, r, inliers: inl, count: m, rms: Math.sqrt(rms / m) };
+}
+
+/** Line in 2D: RANSAC on 2-point lines, PCA refinement. Returns { p:[u,v] point, d:[du,dv] unit direction, n:[nu,nv] normal }. */
+function ransacLine(us, vs, { thresh = 0.04, iters = 60, seed = 1 } = {}) {
+  const n = us.length;
+  if (n < 2) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0;
+    if (i === j) continue;
+    let du = us[j] - us[i], dv = vs[j] - vs[i]; const L = Math.hypot(du, dv); if (L < 1e-6) continue;
+    du /= L; dv /= L; const nu = -dv, nv = du, c = -(nu * us[i] + nv * vs[i]);
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(nu * us[q] + nv * vs[q] + c) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = [nu, nv, c]; }
+  }
+  if (!best) return null;
+  const inl = new Uint8Array(n); let m = 0, mu = 0, mv = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(best[0] * us[q] + best[1] * vs[q] + best[2]) < thresh) { inl[q] = 1; m++; mu += us[q]; mv += vs[q]; }
+  if (m < 2) return null;
+  mu /= m; mv /= m;
+  let a = 0, b = 0, c = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const x = us[q] - mu, y = vs[q] - mv; a += x * x; b += x * y; c += y * y; }
+  const th = 0.5 * Math.atan2(2 * b, a - c);
+  const d = [Math.cos(th), Math.sin(th)], nn = [-d[1], d[0]];
+  let rms = 0; for (let q = 0; q < n; q++) if (inl[q]) { const e = nn[0] * (us[q] - mu) + nn[1] * (vs[q] - mv); rms += e * e; }
+  return { p: [mu, mv], d, n: nn, inliers: inl, count: m, rms: Math.sqrt(rms / m) };
+}
+
+function circle3(x1, y1, x2, y2, x3, y3) {
+  const a = x1 - x2, b = y1 - y2, c = x1 - x3, d = y1 - y3;
+  const e = ((x1 * x1 - x2 * x2) + (y1 * y1 - y2 * y2)) / 2, f = ((x1 * x1 - x3 * x3) + (y1 * y1 - y3 * y3)) / 2;
+  const det = a * d - b * c;
+  if (Math.abs(det) < 1e-9) return null;
+  const cx = (d * e - b * f) / det, cy = (a * f - c * e) / det;
+  return [cx, cy, Math.hypot(x1 - cx, y1 - cy)];
+}
+function solve3(A, B) {
+  const M = A.map((r, i) => [...r, B[i]]);
+  for (let c = 0; c < 3; c++) {
+    let p = c; for (let r = c + 1; r < 3; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-12) return null;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < 3; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k < 4; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return [M[0][3] / M[0][0], M[1][3] / M[1][1], M[2][3] / M[2][2]];
+}
+function smallestEigenvector(a, b, d, e, f, g) {
+  let A = [[a, b, d], [b, e, f], [d, f, g]];
+  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  for (let sweep = 0; sweep < 8; sweep++) for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
+    if (Math.abs(A[p][q]) < 1e-12) continue;
+    const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+    const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+    const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+    for (let k = 0; k < 3; k++) { const akp = A[k][p], akq = A[k][q]; A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq; }
+    for (let k = 0; k < 3; k++) { const apk = A[p][k], aqk = A[q][k]; A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk; }
+    for (let k = 0; k < 3; k++) { const vkp = V[k][p], vkq = V[k][q]; V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq; }
+  }
+  let mi = 0; for (let i = 1; i < 3; i++) if (A[i][i] < A[mi][mi]) mi = i;
+  const v = [V[0][mi], V[1][mi], V[2][mi]], L = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / L, v[1] / L, v[2] / L];
+}
+function median(arr) { if (!arr.length) return null; const a = Float64Array.from(arr).sort(); return a[a.length >> 1]; }
+
+// LAS / LAZ reader and LAS writer (plain script: no imports, so it can also run inside a classic
 // worker that loads laz-perf via importScripts). Produces the same attribute set as the synthesiser:
 // positions (y-up, local metres), intensity, classification, deviation (=0), element id (none), normals.
+
+
 const LAZPERF_URL = 'https://cdn.jsdelivr.net/npm/laz-perf@0.0.6/lib/web/';
 
-export function readLasHeader(buf) {
+function readLasHeader(buf) {
   const dv = new DataView(buf);
   const sig = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
   if (sig !== 'LASF') throw new Error('LAS ファイルではありません（署名 LASF がありません）');
@@ -1384,7 +1670,7 @@ export function readLasHeader(buf) {
 }
 
 /** Byte offsets of fields inside a point record for each point data format. */
-export function recordLayout(format) {
+function recordLayout(format) {
   const f = format;
   if (f <= 5) return { cls: 15, clsMask: 0x1f, rgb: f === 2 ? 20 : f === 3 || f === 5 ? 28 : -1 };
   return { cls: 16, clsMask: 0xff, rgb: f === 7 || f === 8 || f === 10 ? 30 : -1 };
@@ -1398,7 +1684,7 @@ const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13:
  * Decode point records into viewer arrays.
  * getRecord(i, dv) must return the byte offset of record i inside the DataView dv.
  */
-export function decodeRecords(header, dv, getRecord, { maxPoints = 16e6, progress = () => {} } = {}) {
+function decodeRecords(header, dv, getRecord, { maxPoints = 16e6, progress = () => {} } = {}) {
   const n = header.count, stride = Math.max(1, Math.ceil(n / maxPoints));
   const m = Math.floor(n / stride);
   const lay = recordLayout(header.format);
@@ -1434,8 +1720,9 @@ export function decodeRecords(header, dv, getRecord, { maxPoints = 16e6, progres
 }
 
 /** Parse an uncompressed LAS buffer. */
-export function parseLas(buf, opts) {
+function parseLas(buf, opts) {
   const header = readLasHeader(buf);
+  header.crs = safeCrs(buf, header);
   if (header.compressed) throw new Error('LAZ 圧縮ファイルです: parseLaz を使用してください');
   const dv = new DataView(buf);
   const base = header.offsetToPoints, len = header.recordLength;
@@ -1444,8 +1731,9 @@ export function parseLas(buf, opts) {
 }
 
 /** Decode a LAZ buffer with laz-perf (must be loaded: `createLazPerf` global or passed module). */
-export async function parseLaz(buf, opts = {}) {
+async function parseLaz(buf, opts = {}) {
   const header = readLasHeader(buf);
+  header.crs = safeCrs(buf, header);
   const create = opts.createLazPerf || (typeof createLazPerf !== 'undefined' ? createLazPerf : null);
   if (!create) throw new Error('laz-perf が読み込まれていません');
   const LazPerf = await create({ locateFile: (f) => LAZPERF_URL + f });
@@ -1476,7 +1764,7 @@ export async function parseLaz(buf, opts = {}) {
  * covariance of each cell gives its normal (smallest eigenvector), assigned to all points in it.
  * Sign is irrelevant for surfel rendering. Returns Int8 normals (x127).
  */
-export function estimateNormals(pos, n, { targetPerCell = 24 } = {}) {
+function estimateNormals(pos, n, { targetPerCell = 24 } = {}) {
   let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
   for (let i = 0; i < n; i++) {
     const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
@@ -1516,7 +1804,7 @@ export function estimateNormals(pos, n, { targetPerCell = 24 } = {}) {
  * k-nearest-neighbour PCA normals (hash grid, radius-limited). Much sharper on walls and edges
  * than the cell PCA above; used when the cloud is small enough (see LAS_WORKER_BODY).
  */
-export function estimateNormalsKnn(pos, n, { k = 14, progress = () => {} } = {}) {
+function estimateNormalsKnn(pos, n, { k = 14, progress = () => {} } = {}) {
   let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
   for (let i = 0; i < n; i++) {
     const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
@@ -1570,49 +1858,23 @@ export function estimateNormalsKnn(pos, n, { k = 14, progress = () => {} } = {})
   return { normals: out, spacing, cell };
 }
 
-// smallest eigenvector of the symmetric 3x3 matrix [[a,b,d],[b,e,f],[d,f,g]] via a few Jacobi sweeps
-function smallestEigenvector(a, b, d, e, f, g) {
-  let A = [[a, b, d], [b, e, f], [d, f, g]];
-  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-  for (let sweep = 0; sweep < 8; sweep++) {
-    for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
-      if (Math.abs(A[p][q]) < 1e-12) continue;
-      const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
-      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
-      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
-      for (let k = 0; k < 3; k++) {
-        const akp = A[k][p], akq = A[k][q];
-        A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq;
-      }
-      for (let k = 0; k < 3; k++) {
-        const apk = A[p][k], aqk = A[q][k];
-        A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk;
-      }
-      for (let k = 0; k < 3; k++) {
-        const vkp = V[k][p], vkq = V[k][q];
-        V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq;
-      }
-    }
-  }
-  let mi = 0;
-  for (let i = 1; i < 3; i++) if (A[i][i] < A[mi][mi]) mi = i;
-  const v = [V[0][mi], V[1][mi], V[2][mi]];
-  const L = Math.hypot(v[0], v[1], v[2]) || 1;
-  return [v[0] / L, v[1] / L, v[2] / L];
-}
+function safeCrs(buf, header) { try { return readLasCrs(buf, header); } catch (e) { return null; } }
 
 /** Write a LAS 1.2 point-format-2 file (XYZ, intensity, classification, RGB) from viewer arrays. */
-export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
+function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0], epsg = null } = {}) {
   // standard ASPRS codes where they exist, this viewer's extended codes (20–31) otherwise
   const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 9: 9, 11: 11, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
   const headerSize = 227, recLen = 26;
-  const buf = new ArrayBuffer(headerSize + n * recLen);
+  const vlr = epsg ? geoKeyVlr(epsg) : null;
+  const vlrLen = vlr ? vlr.byteLength : 0;
+  const buf = new ArrayBuffer(headerSize + vlrLen + n * recLen);
   const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  if (vlr) u8.set(new Uint8Array(vlr), headerSize);
   u8.set([76, 65, 83, 70], 0); // LASF
   dv.setUint8(24, 1); dv.setUint8(25, 2);
   u8.set(new TextEncoder().encode('LiDAR x BIM synth'.padEnd(32, '\0')), 26);
   u8.set(new TextEncoder().encode('pointcloud-highway'.padEnd(32, '\0')), 58);
-  dv.setUint16(94, headerSize, true); dv.setUint32(96, headerSize, true); dv.setUint32(100, 0, true);
+  dv.setUint16(94, headerSize, true); dv.setUint32(96, headerSize + vlrLen, true); dv.setUint32(100, vlr ? 1 : 0, true);
   dv.setUint8(104, 2); dv.setUint16(105, recLen, true); dv.setUint32(107, n, true);
   const sc = 0.001;
   dv.setFloat64(131, sc, true); dv.setFloat64(139, sc, true); dv.setFloat64(147, sc, true);
@@ -1620,7 +1882,7 @@ export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {
   let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
   for (let i = 0; i < n; i++) {
     const X = pos[i * 3], Y = -pos[i * 3 + 2], Z = pos[i * 3 + 1]; // viewer y-up → LAS z-up
-    const o = headerSize + i * recLen;
+    const o = headerSize + vlrLen + i * recLen;
     dv.setInt32(o, Math.round(X / sc), true); dv.setInt32(o + 4, Math.round(Y / sc), true); dv.setInt32(o + 8, Math.round(Z / sc), true);
     dv.setUint16(o + 12, inten[i] * 257, true);
     dv.setUint8(o + 14, 0x11); // return 1 of 1
@@ -1635,7 +1897,7 @@ export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {
 }
 
 /** Body of the classic worker that decodes a file (LAS or LAZ) and estimates normals. */
-export const LAS_WORKER_BODY = `
+const LAS_WORKER_BODY = `
 self.onmessage = async (ev) => {
   const { buf, isLaz, maxPoints } = ev.data;
   try {
@@ -1912,8 +2174,10 @@ function buildStructure(data) {
     const phase = phaseOf(road.id);
     const seqBase = hashStr(road.id) % 1000; // construction order along network
 
-    // as-built deviation injection (施工誤差・経年変形の疑似再現)
-    const settle = hashStr('settle' + road.id) % 23 === 5 ? -0.042 : 0;
+    // as-built deviation injection (施工誤差・経年変形の疑似再現): a local span settlement
+    // (raised-cosine bump ~44 m long at a hashed position) rather than a whole-way offset
+    const settle = hashStr('settle' + road.id) % 9 === 5 ? -0.042 : 0;
+    const settleAt = 0.15 + ((hashStr('where' + road.id) % 70) / 100); // 0.15–0.85 of the length
 
     const w = road.width;
     const girderWTop = Math.max(3, w - 1.0), girderWBot = Math.max(2.5, w - 3.2);
@@ -1921,22 +2185,23 @@ function buildStructure(data) {
       type: 'deck', tag: `D-${road.id.slice(-4)}`, path, width: w, thick: DECK_T, route, level, phase,
       family: 'RC床版', typeName: `t=${(DECK_T * 1000) | 0} W=${(w * 1000) | 0}`,
       material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase,
-      asBuilt: { dx: 0, dy: settle, dz: 0 },
+      asBuilt: { dx: 0, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L) },
     });
     add({
       type: 'girder', tag: `G-${road.id.slice(-4)}`, path, wTop: girderWTop, wBot: girderWBot, depth: GIRDER_D,
       route, level, phase, family: isExpress ? '鋼製箱桁' : 'PC箱桁',
       typeName: `W${(girderWTop * 1000) | 0}×D${(GIRDER_D * 1000) | 0}`,
       material: isExpress ? 'SM490Y 鋼材' : 'PC コンクリート 50N/mm²', road, length: L, seq: seqBase, parent: deck.id,
-      asBuilt: { dx: 0, dy: settle, dz: 0 },
+      asBuilt: { dx: 0, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L) },
     });
     for (const side of [-1, 1]) {
-      const bow = hashStr('bow' + road.id + side) % 11 === 2 ? 0.032 * side : 0;
+      const bow = hashStr('bow' + road.id + side) % 5 === 2 ? 0.032 * side : 0; // local bulge (~30 m) of the parapet
+      const bowAt = 0.2 + ((hashStr('bowat' + road.id + side) % 60) / 100);
       add({
         type: 'railing', tag: `R-${road.id.slice(-4)}${side < 0 ? 'L' : 'R'}`, path, side, offset: side * (w / 2 - RAIL_T / 2),
         h: RAIL_H, t: RAIL_T, route, level, phase, family: '壁高欄', typeName: `H${(RAIL_H * 1000) | 0} 剛性防護柵`,
         material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase, parent: deck.id,
-        asBuilt: { dx: bow, dy: settle, dz: 0 },
+        asBuilt: { dx: bow, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L), bowAt, bowSpan: Math.min(0.9, 30 / L) },
       });
     }
 
@@ -1958,7 +2223,7 @@ function buildStructure(data) {
       const capBottom = p.y - DECK_T - GIRDER_D - CAP_H;
       const round = site.round != null ? site.round : road.kind !== 'expressway';
       const colW = site.colW || (round ? 2.5 : 2.6), colL = site.colL || (round ? 2.5 : 3.6);
-      const lean = hashStr('lean' + tag) % 17 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
+      const lean = hashStr('lean' + tag) % 7 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
       const pierPhase = phaseOf(tag);
       const col = add({
         type: 'column', tag, x: p.x, z: p.z, tx: p.tx, tz: p.tz, yBot: 0, yTop: capBottom, round, colW, colL,
@@ -2094,6 +2359,138 @@ function elementProperties(e, extra = {}) {
   ];
 }
 
+// Robust primitive fitting (RANSAC + least-squares refinement). Pure functions, no imports, so
+// the file can also be concatenated into the scan-to-BIM worker.
+
+function lcg(seed) { let s = seed >>> 0 || 1; return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296; }
+
+/** Plane through 3D points: returns { n:[a,b,c] (unit), d, inliers:Uint8Array, rms } with a·x+b·y+c·z+d=0. */
+function ransacPlane(xs, ys, zs, { thresh = 0.04, iters = 60, seed = 1 } = {}) {
+  const n = xs.length;
+  if (n < 3) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0, k = (rnd() * n) | 0;
+    if (i === j || j === k || i === k) continue;
+    const ux = xs[j] - xs[i], uy = ys[j] - ys[i], uz = zs[j] - zs[i], vx = xs[k] - xs[i], vy = ys[k] - ys[i], vz = zs[k] - zs[i];
+    let a = uy * vz - uz * vy, b = uz * vx - ux * vz, c = ux * vy - uy * vx;
+    const L = Math.hypot(a, b, c); if (L < 1e-9) continue;
+    a /= L; b /= L; c /= L;
+    const d = -(a * xs[i] + b * ys[i] + c * zs[i]);
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(a * xs[q] + b * ys[q] + c * zs[q] + d) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = [a, b, c, d]; }
+  }
+  if (!best) return null;
+  // refine: PCA plane through the inliers
+  const inl = new Uint8Array(n); let m = 0, mx = 0, my = 0, mz = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(best[0] * xs[q] + best[1] * ys[q] + best[2] * zs[q] + best[3]) < thresh) { inl[q] = 1; m++; mx += xs[q]; my += ys[q]; mz += zs[q]; }
+  if (m < 3) return null;
+  mx /= m; my /= m; mz /= m;
+  let a = 0, b = 0, d = 0, e = 0, f = 0, g = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const x = xs[q] - mx, y = ys[q] - my, z = zs[q] - mz; a += x * x; b += x * y; d += x * z; e += y * y; f += y * z; g += z * z; }
+  const nv = smallestEigenvector(a, b, d, e, f, g);
+  const dd = -(nv[0] * mx + nv[1] * my + nv[2] * mz);
+  let rms = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const r = nv[0] * xs[q] + nv[1] * ys[q] + nv[2] * zs[q] + dd; rms += r * r; }
+  return { n: nv, d: dd, inliers: inl, count: m, rms: Math.sqrt(rms / m), centroid: [mx, my, mz] };
+}
+
+/** Circle in 2D (u,v): RANSAC on 3-point circles, then Kåsa least-squares on the inliers. */
+function ransacCircle(us, vs, { thresh = 0.05, iters = 80, seed = 1, rMin = 0.3, rMax = 6 } = {}) {
+  const n = us.length;
+  if (n < 6) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0, k = (rnd() * n) | 0;
+    if (i === j || j === k || i === k) continue;
+    const c = circle3(us[i], vs[i], us[j], vs[j], us[k], vs[k]);
+    if (!c || c[2] < rMin || c[2] > rMax) continue;
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(Math.hypot(us[q] - c[0], vs[q] - c[1]) - c[2]) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = c; }
+  }
+  if (!best) return null;
+  const inl = new Uint8Array(n); let m = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(Math.hypot(us[q] - best[0], vs[q] - best[1]) - best[2]) < thresh) { inl[q] = 1; m++; }
+  if (m < 6) return null;
+  // Kåsa fit: minimise Σ (u²+v² + D u + E v + F)²
+  let suu = 0, suv = 0, svv = 0, su = 0, sv = 0, suuu = 0, suvv = 0, svvv = 0, svuu = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const u = us[q], v = vs[q]; suu += u * u; suv += u * v; svv += v * v; su += u; sv += v; suuu += u * u * u; suvv += u * v * v; svvv += v * v * v; svuu += v * u * u; }
+  const A = [[suu, suv, su], [suv, svv, sv], [su, sv, m]], B = [-(suuu + suvv), -(svuu + svvv), -(suu + svv)];
+  const sol = solve3(A, B);
+  if (!sol) return { cu: best[0], cv: best[1], r: best[2], inliers: inl, count: m, rms: thresh };
+  const cu = -sol[0] / 2, cv = -sol[1] / 2, r = Math.sqrt(Math.max(0, cu * cu + cv * cv - sol[2]));
+  let rms = 0; for (let q = 0; q < n; q++) if (inl[q]) { const e = Math.hypot(us[q] - cu, vs[q] - cv) - r; rms += e * e; }
+  return { cu, cv, r, inliers: inl, count: m, rms: Math.sqrt(rms / m) };
+}
+
+/** Line in 2D: RANSAC on 2-point lines, PCA refinement. Returns { p:[u,v] point, d:[du,dv] unit direction, n:[nu,nv] normal }. */
+function ransacLine(us, vs, { thresh = 0.04, iters = 60, seed = 1 } = {}) {
+  const n = us.length;
+  if (n < 2) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0;
+    if (i === j) continue;
+    let du = us[j] - us[i], dv = vs[j] - vs[i]; const L = Math.hypot(du, dv); if (L < 1e-6) continue;
+    du /= L; dv /= L; const nu = -dv, nv = du, c = -(nu * us[i] + nv * vs[i]);
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(nu * us[q] + nv * vs[q] + c) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = [nu, nv, c]; }
+  }
+  if (!best) return null;
+  const inl = new Uint8Array(n); let m = 0, mu = 0, mv = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(best[0] * us[q] + best[1] * vs[q] + best[2]) < thresh) { inl[q] = 1; m++; mu += us[q]; mv += vs[q]; }
+  if (m < 2) return null;
+  mu /= m; mv /= m;
+  let a = 0, b = 0, c = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const x = us[q] - mu, y = vs[q] - mv; a += x * x; b += x * y; c += y * y; }
+  const th = 0.5 * Math.atan2(2 * b, a - c);
+  const d = [Math.cos(th), Math.sin(th)], nn = [-d[1], d[0]];
+  let rms = 0; for (let q = 0; q < n; q++) if (inl[q]) { const e = nn[0] * (us[q] - mu) + nn[1] * (vs[q] - mv); rms += e * e; }
+  return { p: [mu, mv], d, n: nn, inliers: inl, count: m, rms: Math.sqrt(rms / m) };
+}
+
+function circle3(x1, y1, x2, y2, x3, y3) {
+  const a = x1 - x2, b = y1 - y2, c = x1 - x3, d = y1 - y3;
+  const e = ((x1 * x1 - x2 * x2) + (y1 * y1 - y2 * y2)) / 2, f = ((x1 * x1 - x3 * x3) + (y1 * y1 - y3 * y3)) / 2;
+  const det = a * d - b * c;
+  if (Math.abs(det) < 1e-9) return null;
+  const cx = (d * e - b * f) / det, cy = (a * f - c * e) / det;
+  return [cx, cy, Math.hypot(x1 - cx, y1 - cy)];
+}
+function solve3(A, B) {
+  const M = A.map((r, i) => [...r, B[i]]);
+  for (let c = 0; c < 3; c++) {
+    let p = c; for (let r = c + 1; r < 3; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-12) return null;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < 3; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k < 4; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return [M[0][3] / M[0][0], M[1][3] / M[1][1], M[2][3] / M[2][2]];
+}
+function smallestEigenvector(a, b, d, e, f, g) {
+  let A = [[a, b, d], [b, e, f], [d, f, g]];
+  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  for (let sweep = 0; sweep < 8; sweep++) for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
+    if (Math.abs(A[p][q]) < 1e-12) continue;
+    const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+    const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+    const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+    for (let k = 0; k < 3; k++) { const akp = A[k][p], akq = A[k][q]; A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq; }
+    for (let k = 0; k < 3; k++) { const apk = A[p][k], aqk = A[q][k]; A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk; }
+    for (let k = 0; k < 3; k++) { const vkp = V[k][p], vkq = V[k][q]; V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq; }
+  }
+  let mi = 0; for (let i = 1; i < 3; i++) if (A[i][i] < A[mi][mi]) mi = i;
+  const v = [V[0][mi], V[1][mi], V[2][mi]], L = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / L, v[1] / L, v[2] / L];
+}
+function median(arr) { if (!arr.length) return null; const a = Float64Array.from(arr).sort(); return a[a.length >> 1]; }
+
 // Scan-to-BIM: derive a structural model from a point cloud alone (no survey data needed).
 //   1. elevated deck surfaces → 2D rasters per height band → thinning → centreline polylines
 //      with width (distance transform) and height (mean z) → "roads" for buildStructure
@@ -2101,6 +2498,7 @@ function elementProperties(e, extra = {}) {
 //   3. buildings → oriented bounding rectangles of building-classified components
 //   4. every point is assigned to the nearest fitted element and its signed distance to the
 //      design surface is stored as deviation (mm) → real Scan-to-BIM heat map + per-element stats
+
 
 
 const UNASSIGNED = 65535;
@@ -2206,7 +2604,7 @@ function tracePolylines(sk, w, h) {
 }
 
 // ---------------------------------------------------------------- 1. decks
-function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.5, maxHeight = 45, log = () => {} } = {}) {
+function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 2.0, maxHeight = 45, log = () => {} } = {}) {
   const { n, pos, cls, nrm } = cloud;
   const classified = cls.some((c) => c === C.deck);
   let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity, maxy = 0;
@@ -2253,8 +2651,8 @@ function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.
     const sub = new Uint8Array(sw * sh);
     for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) sub[j * sw + i] = mask[(j + j0) * g.w + i + i0];
     const closed = erode(dilate(dilate(sub, sw, sh), sw, sh), sw, sh);
-    const dist = distanceTransform(closed, sw, sh);
     const m = erode(closed, sw, sh);
+    const dist = distanceTransform(m, sw, sh);
     const sk = thin(m, sw, sh);
     const lines = tracePolylines(sk, sw, sh);
     for (const line of lines) {
@@ -2267,22 +2665,31 @@ function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.
         for (const bb of [b, b + 1]) { const c = bands[bb] && bands[bb].get(k); if (c) { sy += c[1]; sc += c[0]; } }
         if (!sc) continue;
         pts.push([g.x(i), sy / sc, g.z(j)]);
-        widths.push(dist[kk] * 2 * res);
+        widths.push(Math.max(res, (dist[kk] * 2 - 1) * res));
       }
       if (pts.length < 4) continue;
       // smooth heights and positions (moving average), width = median of the central 60 %
       const sm = pts.map((p, i) => { let sx = 0, sy = 0, sz = 0, c = 0; for (let q = -3; q <= 3; q++) { const pp = pts[i + q]; if (pp) { sx += pp[0]; sy += pp[1]; sz += pp[2]; c++; } } return [sx / c, sy / c, sz / c]; });
-      const ws = widths.slice().sort((a, b) => a - b);
-      const width = Math.max(4, Math.min(32, ws[Math.floor(ws.length * 0.5)] + res * 0.5));
-      segments.push({ pts: sm, width, band: b });
+      const wsm = widths.map((w, i) => { const win = []; for (let q = -4; q <= 4; q++) if (widths[i + q] != null) win.push(widths[i + q]); win.sort((a, b2) => a - b2); return win[win.length >> 1]; });
+      // split where the local width changes class (a ramp running into a junction blob, a merge nose)
+      let start = 0;
+      for (let i = 1; i <= wsm.length; i++) {
+        const cur = wsm.slice(start, i); const curMed = cur.slice().sort((a, b2) => a - b2)[cur.length >> 1];
+        const jump = i < wsm.length && Math.abs(wsm[i] - curMed) > Math.max(3, curMed * 0.45) && (i + 4 >= wsm.length || Math.abs(wsm[i + 4] - curMed) > Math.max(3, curMed * 0.45));
+        if (i === wsm.length || jump) {
+          if (i - start >= 3) segments.push({ pts: sm.slice(start, i), width: Math.max(4, Math.min(32, curMed)), band: b });
+          start = i;
+        }
+      }
     }
   }
   // merge segments whose ends meet (same corridor split by band edges or junction nodes)
-  const near = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]) < 4.5 && Math.abs(a[1] - b[1]) < 2.5;
+  const near = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]) < 8 && Math.abs(a[1] - b[1]) < 3;
+  const similar = (A, B) => Math.abs(A.width - B.width) <= Math.max(2.5, 0.35 * Math.max(A.width, B.width));
   const dirAt = (pts, atEnd) => { const n = Math.min(4, pts.length - 1); const a = atEnd ? pts[pts.length - 1 - n] : pts[n], b = atEnd ? pts[pts.length - 1] : pts[0]; const dx = b[0] - a[0], dz = b[2] - a[2], L = Math.hypot(dx, dz) || 1; return [dx / L, dz / L]; };
   let merged = true;
-  const endHash = () => { const h = new Map(); segments.forEach((sg, j) => { for (const p of [sg.pts[0], sg.pts[sg.pts.length - 1]]) { const k = `${Math.floor(p[0] / 5)},${Math.floor(p[2] / 5)}`; if (!h.has(k)) h.set(k, new Set()); h.get(k).add(j); } }); return h; };
-  const candidatesNear = (h, p) => { const out = new Set(); for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = h.get(`${Math.floor(p[0] / 5) + di},${Math.floor(p[2] / 5) + dj}`); if (l) for (const j of l) out.add(j); } return out; };
+  const endHash = () => { const h = new Map(); segments.forEach((sg, j) => { for (const p of [sg.pts[0], sg.pts[sg.pts.length - 1]]) { const k = `${Math.floor(p[0] / 8)},${Math.floor(p[2] / 8)}`; if (!h.has(k)) h.set(k, new Set()); h.get(k).add(j); } }); return h; };
+  const candidatesNear = (h, p) => { const out = new Set(); for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = h.get(`${Math.floor(p[0] / 8) + di},${Math.floor(p[2] / 8) + dj}`); if (l) for (const j of l) out.add(j); } return out; };
   while (merged) {
     merged = false;
     const h = endHash();
@@ -2293,6 +2700,7 @@ function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.
       for (const j of cand) {
         if (i === j) continue;
         const B = segments[j];
+        if (!similar(A, B)) continue;
         const a0 = A.pts[0], a1 = A.pts[A.pts.length - 1], b0 = B.pts[0], b1 = B.pts[B.pts.length - 1];
         const cands = [];
         if (near(a1, b0)) cands.push([dirAt(A.pts, true), dirAt(B.pts, false), () => A.pts.concat(B.pts.slice(1))]);
@@ -2318,12 +2726,228 @@ function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.
     for (const p of s.pts) if (isCovered(p)) covered++;
     if (covered / s.pts.length < 0.6) { kept.push(s); for (const p of s.pts) { const k = okey(p); if (!occ.has(k)) occ.set(k, []); occ.get(k).push(p); } }
   }
-  log(`decks: ${kept.length} corridors, ${kept.reduce((a, s) => a + s.pts.length, 0)} m total`);
+  log(`decks: ${kept.length} corridors (${segments.length} after merging), ${kept.reduce((a, s) => a + s.pts.length * res, 0).toFixed(0)} m total`);
   return kept.map((s, i) => ({
     id: `scan${i}`, hw: s.width > 9 ? 'motorway' : 'motorway_link', kind: s.width > 9 ? 'expressway' : 'ramp', elevated: true,
     layer: Math.max(1, Math.round(s.pts.reduce((a, p) => a + p[1], 0) / s.pts.length / 5.6)), width: Math.round(s.width * 10) / 10,
     lanes: Math.max(1, Math.round((s.width - 1.5) / 3.4)), oneway: true, name: '', ref: '', pts: resample(s.pts, 4).map((p) => [p[0], p[1], p[2]]),
   }));
+}
+
+// ---------------------------------------------------------------- 1a. decks from parapet pairs (classified scans)
+/**
+ * Parapets are thin, continuous lines; two parallel ones at the same height 4–22 m apart bound a
+ * deck. This resolves adjacent decks that the occupancy raster merges into one blob.
+ */
+function extractDecksFromParapets(cloud, { res = 1, bandH = 2.0, minLen = 12, minHeight = 2.0, maxHeight = 45, log = () => {} } = {}) {
+  const { n, pos, cls } = cloud;
+  if (!cls.some((c) => c === C.railing)) return [];
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity, maxy = 0;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2], y = pos[i * 3 + 1]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; if (y > maxy) maxy = y; }
+  const g = new Grid(minx, minz, maxx - minx, maxz - minz, res);
+  const nb = Math.ceil(Math.min(maxy, maxHeight) / bandH) + 1;
+  const bands = Array.from({ length: nb }, () => new Map()); // cell → [count, maxY]
+  for (let i = 0; i < n; i++) {
+    if (cls[i] !== C.railing) continue;
+    const y = pos[i * 3 + 1]; if (y < minHeight || y > maxHeight) continue;
+    const b = Math.floor(y / bandH), k = g.iz(pos[i * 3 + 2]) * g.w + g.ix(pos[i * 3]);
+    const m = bands[b]; let cell = m.get(k); if (!cell) { cell = [0, -1e9]; m.set(k, cell); }
+    cell[0]++; if (y > cell[1]) cell[1] = y;
+  }
+  // parapet lines per band (lines are thin: no closing, light pruning by count)
+  const lines = []; // { pts:[[x,top,z]...] }
+  for (let b = 0; b < nb; b++) {
+    const mask = new Uint8Array(g.w * g.h); let any = 0;
+    for (const [k, c] of bands[b]) if (c[0] >= 2) { mask[k] = 1; any++; }
+    if (b + 1 < nb) for (const [k, c] of bands[b + 1]) if (c[0] >= 2) mask[k] = 1;
+    if (any < 10) continue;
+    let i0 = g.w, i1 = 0, j0 = g.h, j1 = 0;
+    for (let k = 0; k < mask.length; k++) if (mask[k]) { const i = k % g.w, j = (k / g.w) | 0; if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; }
+    i0 = Math.max(0, i0 - 3); j0 = Math.max(0, j0 - 3); i1 = Math.min(g.w - 1, i1 + 3); j1 = Math.min(g.h - 1, j1 + 3);
+    const sw = i1 - i0 + 1, sh = j1 - j0 + 1, sub = new Uint8Array(sw * sh);
+    for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) sub[j * sw + i] = mask[(j + j0) * g.w + i + i0];
+    const closed = erode(dilate(sub, sw, sh), sw, sh); // bridge 1-cell gaps only
+    const sk = thin(closed, sw, sh);
+    for (const line of tracePolylines(sk, sw, sh)) {
+      if (line.length * res < minLen) continue;
+      const pts = [];
+      for (const kk of line) {
+        const i = (kk % sw) + i0, j = ((kk / sw) | 0) + j0, k = j * g.w + i;
+        let top = -1e9; for (const bb of [b, b + 1]) { const c = bands[bb] && bands[bb].get(k); if (c && c[1] > top) top = c[1]; }
+        if (top < -1e8) { // skeleton cell outside raw cells (closing): take neighbours
+          for (let dj = -1; dj <= 1 && top < -1e8; dj++) for (let di = -1; di <= 1; di++) { const c = bands[b].get((j + dj) * g.w + i + di) || (bands[b + 1] && bands[b + 1].get((j + dj) * g.w + i + di)); if (c && c[1] > top) top = c[1]; }
+        }
+        if (top < -1e8) continue;
+        pts.push([g.x(i), top, g.z(j)]);
+      }
+      if (pts.length >= 4) lines.push({ pts: pts.map((p, i) => { let sx = 0, sy = 0, sz = 0, c = 0; for (let q = -2; q <= 2; q++) { const pp = pts[i + q]; if (pp) { sx += pp[0]; sy += pp[1]; sz += pp[2]; c++; } } return [sx / c, sy / c, sz / c]; }), band: b });
+    }
+  }
+  // dedupe lines duplicated by the band overlap
+  lines.sort((a, b) => b.pts.length - a.pts.length);
+  const keptL = [], occ = new Map();
+  const okey = (p) => `${Math.floor(p[0] / 2)},${Math.floor(p[2] / 2)}`;
+  const covered = (p) => { for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = occ.get(`${Math.floor(p[0] / 2) + di},${Math.floor(p[2] / 2) + dj}`); if (l && l.some((q) => Math.hypot(q[0] - p[0], q[2] - p[2]) < 1.6 && Math.abs(q[1] - p[1]) < 1.2)) return true; } return false; };
+  for (const L of lines) { let c = 0; for (const p of L.pts) if (covered(p)) c++; if (c / L.pts.length < 0.5) { keptL.push(L); for (const p of L.pts) { const k = okey(p); if (!occ.has(k)) occ.set(k, []); occ.get(k).push(p); } } }
+  // frames + spatial hash of line samples
+  const framed = keptL.map((L, li) => ({ li, path: framePath(resample(L.pts, 2)) }));
+  const hash = new Map();
+  framed.forEach((F) => F.path.forEach((p, i) => { const k = `${Math.floor(p.x / 8)},${Math.floor(p.z / 8)}`; if (!hash.has(k)) hash.set(k, []); hash.get(k).push([F.li, i]); }));
+  // pairing: for each line, per side, the partner line most often found parallel at 4–22 m and same height
+  const bestOf = new Map(); // li → [{lj, n, d}, {lj, n, d}] per side (0 = left, 1 = right)
+  for (const F of framed) {
+    const votes = [new Map(), new Map()];
+    for (let i = 0; i < F.path.length; i += 2) {
+      const p = F.path[i];
+      const seen = new Map(); // li → best (|v|, cos)
+      for (let dj = -3; dj <= 3; dj++) for (let di = -3; di <= 3; di++) {
+        const l = hash.get(`${Math.floor(p.x / 8) + di},${Math.floor(p.z / 8) + dj}`); if (!l) continue;
+        for (const [lj, idx] of l) {
+          if (lj === F.li) continue;
+          const q = framed[lj].path[idx];
+          const u = (q.x - p.x) * p.tx + (q.z - p.z) * p.tz, v = (q.x - p.x) * p.nx + (q.z - p.z) * p.nz;
+          if (Math.abs(u) > 2.5 || Math.abs(v) < 4 || Math.abs(v) > 22 || Math.abs(q.y - p.y) > 0.7) continue;
+          const cos = Math.abs(q.tx * p.tx + q.tz * p.tz); if (cos < 0.85) continue;
+          const prev = seen.get(lj); if (!prev || Math.abs(v) < Math.abs(prev)) seen.set(lj, v);
+        }
+      }
+      // nearest partner on each side wins this sample
+      let bestL = null, bestR = null;
+      for (const [lj, v] of seen) { if (v < 0) { if (!bestL || -v < -bestL[1]) bestL = [lj, v]; } else if (!bestR || v < bestR[1]) bestR = [lj, v]; }
+      for (const [side, b] of [[0, bestL], [1, bestR]]) if (b) { const m = votes[side]; const e = m.get(b[0]) || { n: 0, d: [] }; e.n++; e.d.push(Math.abs(b[1])); m.set(b[0], e); }
+    }
+    const rec = [null, null];
+    for (const side of [0, 1]) {
+      let best = null; for (const [lj, e] of votes[side]) if (!best || e.n > best[1].n) best = [lj, e];
+      if (!best || best[1].n < Math.max(3, (F.path.length / 2) * 0.5)) continue;
+      rec[side] = { lj: best[0], n: best[1].n, d: best[1].d };
+    }
+    bestOf.set(F.li, rec);
+  }
+  // a pair is kept only when it is mutual: A's partner on one side is B and B's partner on some side is A
+  const pairs = new Map();
+  for (const [li, rec] of bestOf) for (const side of [0, 1]) {
+    const r = rec[side]; if (!r) continue;
+    const back = bestOf.get(r.lj); if (!back || !back.some((o) => o && o.lj === li)) continue;
+    const key = li < r.lj ? `${li}:${r.lj}` : `${r.lj}:${li}`;
+    const pr = pairs.get(key) || { a: Math.min(li, r.lj), b: Math.max(li, r.lj), d: [], votes: 0 };
+    pr.d.push(...r.d); pr.votes += r.n; pairs.set(key, pr);
+  }
+  // pavement check: deck points must exist between the lines (hash of deck-class points at 4 m cells)
+  const deckHash = new Map();
+  for (let i = 0; i < n; i++) { if (cls[i] !== C.deck) continue; const k = `${Math.floor(pos[i * 3] / 4)},${Math.floor(pos[i * 3 + 2] / 4)}`; let l = deckHash.get(k); if (!l) { l = []; deckHash.set(k, l); } if (l.length < 64) l.push(pos[i * 3 + 1]); }
+  // wall tops include fence points (up to ~1 m above the coping), so look for pavement within 2.2 m below the estimate
+  const pavementAt = (x, y, z) => { const l = deckHash.get(`${Math.floor(x / 4)},${Math.floor(z / 4)}`); if (!l) return null; const ys = l.filter((yy) => yy - y < 0.6 && y - yy < 2.2); return ys.length ? median(ys) : null; };
+  // decks from pairs: midline over the overlapping extent of the longer line
+  const roads = [];
+  for (const pr of pairs.values()) {
+    const A = framed[pr.a].path, B = framed[pr.b].path;
+    const [longP, shortP] = A.length >= B.length ? [A, B] : [B, A];
+    const bh = new Map(); shortP.forEach((q, i) => { const k = `${Math.floor(q.x / 8)},${Math.floor(q.z / 8)}`; if (!bh.has(k)) bh.set(k, []); bh.get(k).push(i); });
+    const mid = [];
+    for (const p of longP) {
+      let bq = null, bd = 1e9;
+      for (let dj = -3; dj <= 3; dj++) for (let di = -3; di <= 3; di++) { const l = bh.get(`${Math.floor(p.x / 8) + di},${Math.floor(p.z / 8) + dj}`); if (!l) continue; for (const i of l) { const q = shortP[i]; const u = (q.x - p.x) * p.tx + (q.z - p.z) * p.tz; if (Math.abs(u) > 2.5) continue; const d = Math.hypot(q.x - p.x, q.z - p.z); if (d < bd && d >= 4 && d <= 22 && Math.abs(q.y - p.y) < 0.7) { bd = d; bq = q; } } }
+      if (bq) mid.push([(p.x + bq.x) / 2, (p.y + bq.y) / 2 - RAIL_H, (p.z + bq.z) / 2]);
+    }
+    if (mid.length * 2 < minLen) continue;
+    let paved = 0; for (const m of mid) { const py = pavementAt(m[0], m[1], m[2]); if (py != null) { m[1] = py; paved++; } }
+    if (paved < mid.length * 0.6) continue; // phantom: no pavement between the two lines
+    for (let i = 0; i < mid.length; i++) if (mid[i][1] == null) mid[i][1] = mid[Math.max(0, i - 1)][1];
+    const w = Math.round((median(pr.d) + RAIL_T) * 10) / 10;
+    roads.push({ id: `pp${roads.length}`, hw: w > 9 ? 'motorway' : 'motorway_link', kind: w > 9 ? 'expressway' : 'ramp', elevated: true, layer: Math.max(1, Math.round(mid[0][1] / 5.6)), width: w, lanes: Math.max(1, Math.round((w - 1.5) / 3.4)), oneway: true, name: '', ref: '', pts: resample(mid, 4), fromParapets: true });
+  }
+  log(`parapet lines: ${keptL.length} (${lines.length} raw) → ${pairs.size} pairs → ${roads.length} decks, ${roads.reduce((a, r) => a + r.pts.length * 4, 0)} m`);
+  return roads;
+}
+
+// ---------------------------------------------------------------- 1b. split merged corridors
+/**
+ * A wide corridor that actually holds two parallel viaducts (up / down lines a few metres apart)
+ * is split along the lateral gaps in deck occupancy. Per 10 m bin a lateral histogram (0.25 m)
+ * of deck + marking points is scanned for runs separated by ≥ 0.75 m of emptiness; when ≥ 60 %
+ * of the bins agree on the run count, the corridor becomes that many sub-corridors.
+ */
+function splitCorridors(cloud, roads, { log = () => {} } = {}) {
+  const { n, pos, cls } = cloud;
+  const classified = cls.some((c) => c === C.deck);
+  const paths = roads.map((r) => framePath(resample(r.pts, 2)));
+  const CELL = 6, hash = new Map();
+  paths.forEach((path, ri) => path.forEach((p, i) => { const k = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`; if (!hash.has(k)) hash.set(k, []); hash.get(k).push([ri, i]); }));
+  const BIN = 10, HW = 0.25;
+  const hist = roads.map(() => new Map()); // bin → { h: Float32Array(lateral histogram), y: Float32Array(sum of heights) }
+  const span = (ri) => Math.ceil((roads[ri].width / 2 + 4) / HW);
+  for (let i = 0; i < n; i++) {
+    const y = pos[i * 3 + 1]; if (y < 3) continue;
+    const c = cls[i]; if (classified ? !(c === C.deck || c === C.marking || c === C.railing) : c === C.building) continue;
+    const x = pos[i * 3], z = pos[i * 3 + 2];
+    let best = null, bd = 1e9; const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const l = hash.get(`${cx + di},${cz + dj}`); if (!l) continue; for (const [ri, idx] of l) { const p = paths[ri][idx]; const d = (p.x - x) ** 2 + (p.z - z) ** 2 + (p.y - y) ** 2 * 0.15; if (d < bd) { bd = d; best = [ri, idx]; } } }
+    if (!best) continue;
+    const ri = best[0], p = paths[ri][best[1]], dy = y - p.y;
+    if (Math.abs(dy) > 2.5) continue;
+    const v = (x - p.x) * p.nx + (z - p.z) * p.nz, S = span(ri);
+    const cell = Math.round(v / HW) + S; if (cell < 0 || cell >= 2 * S + 1) continue;
+    const b = Math.floor(p.s / BIN); let h = hist[ri].get(b); if (!h) { h = { h: new Float32Array(2 * S + 1), y: new Float32Array(2 * S + 1), w: new Float32Array(2 * S + 1) }; hist[ri].set(b, h); }
+    const isWall = classified ? c === C.railing : false;
+    if (isWall) { if (dy > RAIL_H - 0.3 && dy < RAIL_H + 0.3) h.w[cell]++; continue; }
+    h.h[cell]++; h.y[cell] += y;
+  }
+  const out = [];
+  let splits = 0, calibrated = 0;
+  roads.forEach((road, ri) => {
+    const bins = hist[ri]; const S = span(ri);
+    const runsPerBin = new Map();
+    for (const [b, hh] of bins) {
+      const h = hh.h;
+      let mx = 0; for (const v of h) if (v > mx) mx = v;
+      if (mx < 3) continue;
+      // interior parapet lines: peaks of wall-top occupancy away from the outermost two
+      const wall = []; { let wm = 0; for (const v of hh.w) if (v > wm) wm = v; if (wm >= 3) { let st = -1; for (let c = 0; c <= hh.w.length; c++) { const on = c < hh.w.length && hh.w[c] >= wm * 0.25; if (on && st < 0) st = c; if (!on && st >= 0) { wall.push((st + c - 1) / 2); st = -1; } } } }
+      const cuts = new Set();
+      if (wall.length > 2) { const first = wall[0], last = wall[wall.length - 1]; const inner = wall.slice(1, -1).filter((w) => w - first > 1.2 / HW && last - w > 1.2 / HW); for (let k = 0; k < inner.length; k++) { let j = k; while (j + 1 < inner.length && inner[j + 1] - inner[j] < 1.0 / HW) j++; cuts.add(Math.round((inner[k] + inner[j]) / 2)); k = j; } }
+      const thr = mx * 0.12, runs = []; let start = -1, gap = 0;
+      const flush = (end) => { if ((end - start) * HW >= 2.5) { let sy = 0, sc = 0; for (let q = start; q < end; q++) { sy += hh.y[q]; sc += h[q]; } if (sc > 0) runs.push([(start - S) * HW, (end - 1 - S) * HW, sy / sc]); } };
+      for (let c = 0; c <= h.length; c++) {
+        const on = c < h.length && h[c] >= thr;
+        if (on && cuts.has(c) && start >= 0) { flush(c); start = c + 1; gap = 0; continue; }
+        if (on) { if (start < 0) start = c; gap = 0; }
+        else if (start >= 0) { gap++; if (gap >= 3 || c === h.length) { flush(c - gap); start = -1; gap = 0; } }
+      }
+      if (runs.length) runsPerBin.set(b, runs);
+    }
+    const counts = {}; for (const r of runsPerBin.values()) counts[r.length] = (counts[r.length] || 0) + 1;
+    const total = runsPerBin.size;
+    let k = 1, kc = 0; for (const [cnt, c] of Object.entries(counts)) if (c > kc) { kc = c; k = +cnt; }
+    const path = paths[ri], nb = Math.floor(path[path.length - 1].s / BIN) + 1;
+    if (k < 2 || kc < total * 0.6 || total < 3) {
+      // single carriageway: calibrate width and lateral centre from the measured pavement extent
+      const centre = new Array(nb).fill(null), width = new Array(nb).fill(null);
+      for (const [b, runs] of runsPerBin) if (runs.length === 1) { centre[b] = (runs[0][0] + runs[0][1]) / 2; width[b] = runs[0][1] - runs[0][0] + HW; }
+      const wv = width.filter((v) => v != null);
+      if (wv.length >= 2) {
+        const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const q of idx) { if (q < i) lo = q; else { hi = q; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
+        const cF = fill(centre);
+        const w = Math.round((median(wv) + RAIL_T) * 10) / 10;
+        const pts = path.filter((p, i) => i % 2 === 0).map((p) => { const b = Math.min(nb - 1, Math.floor(p.s / BIN)); return [p.x + p.nx * cF[b], p.y, p.z + p.nz * cF[b]]; });
+        calibrated++;
+        out.push({ ...road, width: w, lanes: Math.max(1, Math.round((w - 1.5) / 3.4)), hw: w > 9 ? 'motorway' : 'motorway_link', kind: w > 9 ? 'expressway' : 'ramp', pts });
+      } else out.push(road);
+      return;
+    }
+    splits++;
+    for (let j = 0; j < k; j++) {
+      const centre = new Array(nb).fill(null), width = new Array(nb).fill(null), hgt = new Array(nb).fill(null);
+      for (const [b, runs] of runsPerBin) if (runs.length === k) { centre[b] = (runs[j][0] + runs[j][1]) / 2; width[b] = runs[j][1] - runs[j][0] + HW; hgt[b] = runs[j][2]; }
+      const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const q of idx) { if (q < i) lo = q; else { hi = q; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
+      const cF = fill(centre), wF = fill(width), hF = fill(hgt);
+      const pts = path.filter((p, i) => i % 2 === 0).map((p) => { const b = Math.min(nb - 1, Math.floor(p.s / BIN)); return [p.x + p.nx * cF[b], hF ? hF[b] : p.y, p.z + p.nz * cF[b]]; });
+      const w = Math.round(median(wF.filter((v) => v != null)) * 10) / 10 + RAIL_T; // run = pavement extent → add the two half-walls
+      out.push({ ...road, id: `${road.id}_${j}`, width: w, lanes: Math.max(1, Math.round((w - 1.5) / 3.4)), hw: w > 9 ? 'motorway' : 'motorway_link', kind: w > 9 ? 'expressway' : 'ramp', pts });
+    }
+  });
+  log(`corridors: ${calibrated} widths calibrated from pavement extent, ${splits} divided at gaps / interior parapets → ${out.length} carriageways`);
+  return out;
 }
 
 // ---------------------------------------------------------------- 2. piers
@@ -2441,6 +3065,15 @@ function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true
   const { n, pos, cls, elem, dev } = cloud;
   elem.fill(UNASSIGNED); dev.fill(128);
   if (refineWidths) refineDeckWidths(cloud, elements, log);
+  const stats0 = assignPass(cloud, elements, log, 0);
+  if (!refineWidths) return stats0;
+  refinePiers(cloud, elements, log);
+  return assignPass(cloud, elements, log, 1); // re-assign against the refitted piers
+}
+function assignPass(cloud, elements, log, pass = 0) {
+  const { n, pos, cls, elem, dev } = cloud;
+  elem.fill(UNASSIGNED); dev.fill(128);
+  const colSlack = pass === 0 ? 0.8 : 0.45; // first pass: raster pier centres can be decimetres off
   // spatial hash of deck path samples (cell 6 m) → nearest corridor lookup
   const CELL = 6, hash = new Map();
   const decks = elements.filter((e) => e.type === 'deck');
@@ -2481,11 +3114,17 @@ function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true
       const nx = -tz / Math.sqrt(L2), nz = tx / Math.sqrt(L2);
       const v = (x - px) * nx + (z - pz) * nz, dy = y - py, hw = e.width / 2;
       const av = Math.abs(v);
-      if (av > hw - RAIL_T - 0.35 && av < hw + 0.45 && dy > 0.06 && dy < RAIL_H + 1.3) {                                    // parapet: lateral deviation of the nearer face
-        const rails = railByDeck.get(e.id) || [];
-        const rail = rails.find((rr) => Math.sign(rr.side) === Math.sign(v)) || rails[0];
-        if (rail) { hit = rail; dmm = (av >= hw - RAIL_T / 2 ? av - hw : av - (hw - RAIL_T)) * 1000; }
-      } else if (av <= hw - RAIL_T + 0.1 && dy > -0.3 && dy < 0.3) { hit = e; dmm = dy * 1000; }                          // deck surface: vertical deviation
+      const rails0 = railByDeck.get(e.id) || [];
+      const rail0 = rails0.find((rr) => Math.sign(rr.side) === Math.sign(v)) || rails0[0];
+      const c00 = rail0 ? (rail0.designAbs != null ? rail0.designAbs : hw - RAIL_T / 2) : hw - RAIL_T / 2;
+      if (rail0 && Math.abs(av - c00) < RAIL_T / 2 + 0.3 && dy > 0.12 && dy < RAIL_H + 1.3) {                                // parapet: lateral deviation of the nearer face
+        const rail = rail0;
+        {
+          const c0 = c00; hit = rail;
+          if (dy > RAIL_H - 0.12) dmm = 0;                                                            // wall top / fence: no lateral reference
+          else dmm = (av >= c0 ? av - (c0 + RAIL_T / 2) : av - (c0 - RAIL_T / 2)) * 1000;              // nearer face
+        }
+      } else if (av <= hw - RAIL_T + 0.1 && dy > -0.3 && dy < 0.3) { hit = e; dmm = dy * 1000; }                          // deck surface: vertical deviation from the design profile
       else if (Math.abs(v) < hw + 0.3 && dy < -0.2 && dy > -(DECK_T + GIRDER_D + 0.6)) {                                 // girder
         const gd = girderByDeck.get(e.id);
         if (gd) {
@@ -2501,31 +3140,37 @@ function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true
       for (const col of list) {
         if (y < col.yBot - 0.5 || y > col.yTop + 0.3) continue;
         let sd;
-        if (col.round) sd = Math.hypot(x - col.x, z - col.z) - col.colW / 2;
+        if (col.round) { const r = col.fit ? col.fit.r : col.colW / 2; sd = Math.hypot(x - col.x, z - col.z) - r; }
         else { const u = (x - col.x) * col.tx + (z - col.z) * col.tz, v = -(x - col.x) * col.tz + (z - col.z) * col.tx; const du = Math.abs(u) - col.colL / 2, dv = Math.abs(v) - col.colW / 2; sd = Math.max(du, dv); }
-        if (sd < 0.45 && sd > -0.6) { hit = col; dmm = sd * 1000; break; }
+        if (sd < colSlack && sd > -(colSlack + 0.15)) { hit = col; dmm = sd * 1000; break; }
       }
     }
     if (hit) { elem[i] = hit.id; const dd = Math.max(-127, Math.min(127, Math.round(dmm))); dev[i] = 128 + dd; acc(hit.id, dmm); assigned++; }
   }
   log(`assigned ${assigned.toLocaleString()} / ${n.toLocaleString()} points to ${stats.size} elements`);
+  // per-element point statistics onto the elements (used by the property sheet)
+  for (const [id, st] of stats) { const e = elements[id]; if (e) e.scan = { count: st.count, meanDev: st.sum / st.count, maxDev: st.maxAbs }; }
   const out = {};
   for (const [id, s] of stats) out[id] = { count: s.count, meanDev: s.sum / s.count, maxDev: s.maxAbs };
   return out;
 }
 
 /**
- * Refit each fitted corridor to the measured points: per 10 m bin along the path, the lateral
- * centre is the mid-point between the two parapet medians, the height is the median pavement
- * height, and the width follows the parapet spacing. Paths and dependent elements are updated.
+ * Refit each corridor to the scan. The lateral alignment is taken from the pavement edge lines
+ * (区画線) rather than the parapets, so a bulging parapet shows up as a deviation instead of
+ * bending the alignment. Heights come from a RANSAC plane per 10 m bin (vehicles rejected); the
+ * design profile is the median of bins 3–8 away, so a locally settled span stands out.
+ * Also stores per-element design offsets used by assignAndDeviate.
  */
 function refineDeckWidths(cloud, elements, log) {
-  const { n, pos, cls } = cloud;
+  const { n, pos, cls, inten } = cloud;
   const decks = elements.filter((e) => e.type === 'deck');
+  const classified = cls.some((c) => c === C.marking);
+  let iMax = 0; if (!classified) for (let i = 0; i < n; i++) if (inten && inten[i] > iMax) iMax = inten[i];
   const CELL = 6, hash = new Map();
   for (const e of decks) for (let i = 0; i < e.path.length; i++) { const p = e.path[i], k = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`; if (!hash.has(k)) hash.set(k, []); hash.get(k).push([e, i]); }
   const BIN = 10;
-  const bins = new Map(); // deckId → Map(binIndex → {L:[], R:[], H:[]})
+  const bins = new Map(); // deckId → Map(bin → {L:[], R:[], EL:[], ER:[], px:[], py:[], pz:[]})
   for (let i = 0; i < n; i++) {
     const y = pos[i * 3 + 1]; if (y < 3) continue;
     const c = cls[i]; if (c === C.building || c === C.ground || c === C.road) continue;
@@ -2537,40 +3182,139 @@ function refineDeckWidths(cloud, elements, log) {
     const v = (x - p.x) * p.nx + (z - p.z) * p.nz, av = Math.abs(v), hw = e.width / 2;
     if (av > hw + 3) continue;
     let m = bins.get(e.id); if (!m) { m = new Map(); bins.set(e.id, m); }
-    const b = Math.floor(p.s / BIN); let bb = m.get(b); if (!bb) { bb = { L: [], R: [], H: [] }; m.set(b, bb); }
-    if (dy > 0.3 && dy < RAIL_H && av > 1) (v < 0 ? bb.L : bb.R).push(av);
-    else if (Math.abs(dy) < 0.6 && av < hw - 0.6) bb.H.push(dy);
+    const b = Math.floor(p.s / BIN); let bb = m.get(b); if (!bb) { bb = { L: [], R: [], EL: [], ER: [], px: [], py: [], pz: [] }; m.set(b, bb); }
+    const isMark = classified ? c === C.marking : inten && inten[i] > iMax * 0.7 && Math.abs(dy) < 0.12;
+    if (dy > RAIL_H - 0.25 && dy < RAIL_H + 0.25 && av > 1) (v < 0 ? bb.L : bb.R).push(av);          // parapet top
+    else if (isMark && Math.abs(dy) < 0.6 && av > 1.2) (v < 0 ? bb.EL : bb.ER).push(av);                 // markings (outermost = edge line)
+    else if (Math.abs(dy) < 0.6 && av < hw - 0.6 && !isMark && bb.px.length < 600) { bb.px.push(x); bb.py.push(y); bb.pz.push(z); }
   }
-  const med = (a) => { if (a.length < 8) return null; a.sort((p, q) => p - q); return a[a.length >> 1]; };
-  let refined = 0;
+  const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); if (!idx.length) return null; return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const j of idx) { if (j < i) lo = j; else { hi = j; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
+  const med = (a) => (a.length >= 6 ? median(a) : null);
+  const edge = (a) => { if (a.length < 6) return null; const s2 = Float64Array.from(a).sort(); return s2[Math.floor(s2.length * 0.9)]; }; // outermost line
+  let refined = 0, markRef = 0, markBins = 0;
   for (const e of decks) {
     const m = bins.get(e.id); if (!m) continue;
-    // per-bin corrections, then interpolate along the path (holes filled from neighbours)
     const nb = Math.floor(e.path[e.path.length - 1].s / BIN) + 1;
-    const lat = new Array(nb).fill(null), ver = new Array(nb).fill(null), wid = new Array(nb).fill(null);
-    for (const [b, bb] of m) { const l = med(bb.L), r = med(bb.R), h = med(bb.H); if (l != null && r != null) { lat[b] = (r - l) / 2; wid[b] = (r + l) / 2 * 2 + RAIL_T; } if (h != null) ver[b] = h; }
-    const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); if (!idx.length) return null; return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const j of idx) { if (j < i) lo = j; else { hi = j; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
-    const latF = fill(lat), verF = fill(ver), widF = fill(wid);
-    if (!latF && !verF) continue;
-    refined++;
-    const smooth = (arr) => arr.map((v, i) => { let s = 0, c = 0; for (let q = -1; q <= 1; q++) if (arr[i + q] != null) { s += arr[i + q]; c++; } return s / c; });
-    const latS = latF && smooth(latF), verS = verF && smooth(verF);
-    for (const p of e.path) {
-      const b = Math.min(nb - 1, Math.floor(p.s / BIN));
-      if (latS) { p.x += p.nx * latS[b]; p.z += p.nz * latS[b]; }
-      if (verS) p.y += verS[b];
+    const lat = new Array(nb).fill(null), latRail = new Array(nb).fill(null), hAbs = new Array(nb).fill(null), wid = new Array(nb).fill(null), railL = new Array(nb).fill(null), railR = new Array(nb).fill(null);
+    for (const [b, bb] of m) {
+      const el = edge(bb.EL), er = edge(bb.ER), l = med(bb.L), r = med(bb.R);
+      if (el != null && er != null) { lat[b] = (er - el) / 2; markBins++; }   // alignment from the outermost markings
+      if (l != null && r != null) { latRail[b] = (r - l) / 2; wid[b] = l + r + RAIL_T; }
+      railL[b] = l; railR[b] = r;
+      if (bb.px.length >= 12) {
+        const pl = ransacPlane(bb.px, bb.py, bb.pz, { thresh: 0.05, iters: 40 });
+        if (pl && pl.count >= 8 && Math.abs(pl.n[1]) > 0.9) {
+          const p = samplePath(e.path, Math.min(e.path[e.path.length - 1].s, (b + 0.5) * BIN));
+          hAbs[b] = -(pl.n[0] * p.x + pl.n[2] * p.z + pl.d) / pl.n[1];   // measured pavement height at the bin centre
+        }
+      }
     }
-    if (widF) {
-      const ws = widF.slice().sort((a, b) => a - b), w = Math.round(ws[ws.length >> 1] * 100) / 100;
+    const useMark = lat.filter((v) => v != null).length >= Math.max(2, nb * 0.3);
+    if (useMark) markRef++;
+    const latF = fill(useMark ? lat : latRail), hF = fill(hAbs);
+    if (!latF && !hF) continue;
+    refined++;
+    const latS = latF && latF.map((v, i) => { let s2 = 0, c = 0; for (let q = -1; q <= 1; q++) if (latF[i + q] != null) { s2 += latF[i + q]; c++; } return s2 / c; });
+    // design profile: for each bin, a straight line fitted (least squares) through the measured heights of
+    // bins 3–8 away on both sides; a span settled over ~40 m therefore shows as a dip against its neighbours
+    let design = null;
+    if (hF) {
+      // robust quadratic (IRLS, Cauchy weights, 20 mm scale) through the measured heights of bins i-8…i+8:
+      // a vertical curve is a parabola, so it is reproduced; a settled span (4–5 bins) is down-weighted
+      design = hF.map((v, i) => {
+        const qs = [], hs = [];
+        for (let q = -8; q <= 8; q++) if (hF[i + q] != null) { qs.push(q); hs.push(hF[i + q]); }
+        if (qs.length < 5) return v;
+        let left = 0, right = 0; for (const q of qs) { if (q < 0) left++; else if (q > 0) right++; }
+        const deg = qs.length >= 7 && left >= 3 && right >= 3 ? 2 : 1;
+        let w = qs.map(() => 1), coef = null;
+        for (let it = 0; it < 4; it++) {
+          coef = polyfit(qs, hs, deg, w); if (!coef) return v;
+          w = qs.map((q, k) => { const r = hs[k] - (coef[0] + coef[1] * q + (coef[2] || 0) * q * q); return 1 / (1 + (r / 0.02) ** 2); });
+        }
+        return coef[0];
+      });
+    }
+    for (const p of e.path) {
+      const fb = Math.min(nb - 1, Math.max(0, p.s / BIN - 0.5)), b0 = Math.floor(fb), b1 = Math.min(nb - 1, b0 + 1), t = fb - b0;
+      if (latS) { const l = latS[b0] + (latS[b1] - latS[b0]) * t; p.x += p.nx * l; p.z += p.nz * l; }
+      if (design) p.y = design[b0] + (design[b1] - design[b0]) * t;   // path height := design profile (linear between bin centres)
+    }
+    e.measuredOffset = hF && design ? hF.map((v, i) => v - design[i]) : null; // per-bin settlement (m, negative = sagged)
+    e.profile = { hAbs, design, lat: latS, useMark };
+    // settled spans: ≥ 2 consecutive interior bins more than 20 mm below the design profile
+    e.settled = [];
+    if (e.measuredOffset) {
+      const mo = e.measuredOffset;
+      for (let i = 1; i < nb - 1; i++) if (hAbs[i] != null && mo[i] < -0.02 && ((hAbs[i - 1] != null && mo[i - 1] < -0.02) || (hAbs[i + 1] != null && mo[i + 1] < -0.02))) e.settled.push({ bin: i, s: (i + 0.5) * BIN, mm: Math.round(mo[i] * 1000) });
+    }
+    const wv = wid.filter((v) => v != null);
+    if (wv.length) {
+      const w = Math.round(median(wv) * 100) / 100;
+      const lDesign = median(railL.filter((v) => v != null)), rDesign = median(railR.filter((v) => v != null));
       for (const el of elements) if (el === e || el.parent === e.id) {
         if (el.type === 'deck') { el.width = w; el.typeName = `t=${(el.thick * 1000) | 0} W=${(w * 1000) | 0}`; }
         if (el.type === 'girder') { el.wTop = Math.max(3, w - 1.0); el.wBot = Math.max(2.5, w - 3.2); el.typeName = `W${(el.wTop * 1000) | 0}×D${(el.depth * 1000) | 0}`; }
-        if (el.type === 'railing') el.offset = el.side * (w / 2 - RAIL_T / 2);
+        if (el.type === 'railing') { const d = el.side < 0 ? lDesign : rDesign; el.offset = el.side * (d != null ? d : w / 2 - RAIL_T / 2); el.designAbs = d != null ? d : w / 2 - RAIL_T / 2; }
         if (el.type === 'cap') { el.w = w + 1.4; el.typeName = `W${((w + 1.4) * 1000) | 0}×H${(el.h * 1000) | 0}`; }
       }
     }
   }
-  log(`corridors refitted to parapets / pavement: ${refined} / ${decks.length}`);
+  log(`corridors refitted: ${refined} / ${decks.length} (alignment from markings on ${markRef}, ${markBins} bins; parapets otherwise); heights by per-bin RANSAC planes vs. local design trend`);
+}
+
+/** Weighted least-squares polynomial coefficients [c0, c1, c2] of the given degree through (q, h). */
+function polyfit(qs, hs, deg, w) {
+  const m = deg + 1, A = Array.from({ length: m }, () => new Float64Array(m)), B = new Float64Array(m);
+  for (let i = 0; i < qs.length; i++) { const pw = [1, qs[i], qs[i] * qs[i]], wi = w ? w[i] : 1; for (let r = 0; r < m; r++) { B[r] += wi * pw[r] * hs[i]; for (let c = 0; c < m; c++) A[r][c] += wi * pw[r] * pw[c]; } }
+  const M = A.map((row, i) => [...row, B[i]]);
+  for (let c = 0; c < m; c++) { let p = c; for (let r = c + 1; r < m; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r; if (Math.abs(M[p][c]) < 1e-12) return null; [M[c], M[p]] = [M[p], M[c]]; for (let r = 0; r < m; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k <= m; k++) M[r][k] -= f * M[c][k]; } }
+  return Array.from({ length: m }, (_, i) => M[i][m] / M[i][i]);
+}
+
+/** Pier refit: RANSAC circle on the lower and upper thirds of the shaft → position, radius, lean. */
+function refinePiers(cloud, elements, log) {
+  const { n, pos, elem } = cloud;
+  const cols = new Map();
+  for (const e of elements) if (e.type === 'column') cols.set(e.id, { e, x: [], z: [], y: [] });
+  for (let i = 0; i < n; i++) { const c = cols.get(elem[i]); if (c && c.x.length < 6000) { c.x.push(pos[i * 3]); c.z.push(pos[i * 3 + 2]); c.y.push(pos[i * 3 + 1]); } }
+  let fitted = 0, leaning = 0;
+  for (const { e, x, z, y } of cols.values()) {
+    if (x.length < 60) continue;
+    const h = e.yTop - e.yBot, lo = [], hi = [];
+    for (let i = 0; i < x.length; i++) { const f = (y[i] - e.yBot) / h; if (f < 0.35) lo.push(i); else if (f > 0.65) hi.push(i); }
+    if (lo.length < 20 || hi.length < 20) continue;
+    const circ = (idx) => ransacCircle(idx.map((i) => x[i]), idx.map((i) => z[i]), { thresh: 0.04, iters: 80, rMin: 0.4, rMax: 4 });
+    const rect = (idx) => rectCentre(idx.map((i) => x[i]), idx.map((i) => z[i]), e);
+    // shape decision from the data: a circle that explains ≥ 70 % of the lower third with ≤ 25 mm rms wins
+    let a = circ(lo), b = a && a.count >= lo.length * 0.7 && a.rms < 0.025 ? circ(hi) : null;
+    if (a && b && b.count >= hi.length * 0.6 && b.rms < 0.03) e.round = true;
+    else { e.round = false; a = rect(lo); b = rect(hi); }
+    if (!a || !b) continue;
+    fitted++;
+    const yLo = median(lo.map((i) => y[i])), yHi = median(hi.map((i) => y[i]));
+    const lean = [(b.cu - a.cu) / Math.max(1, yHi - yLo) * h, (b.cv - a.cv) / Math.max(1, yHi - yLo) * h]; // offset of the top relative to the base
+    const axisX = a.cu, axisZ = a.cv; // base position from the lower-third fit (no noisy extrapolation)
+    e.x = axisX; e.z = axisZ;
+    if (e.round) { e.colW = e.colL = Math.round(a.r * 2 * 100) / 100; e.typeName = `φ${(e.colW * 1000) | 0}`; e.family = 'RC円柱橋脚'; }
+    else if (a.size) { e.colL = Math.round(a.size[0] * 100) / 100; e.colW = Math.round(a.size[1] * 100) / 100; e.typeName = `${(e.colW * 1000) | 0}×${(e.colL * 1000) | 0}`; e.family = 'RC小判形橋脚'; }
+    e.fit = { r: a.r, rms: a.rms, lean, inliers: a.count + b.count };
+    e.asBuilt = { dx: lean[0], dy: 0, dz: lean[1] };
+    if (Math.hypot(lean[0], lean[1]) > 0.03) leaning++;
+    // caps / footings follow the pier base
+    for (const el of elements) if (el.parent === e.id) { el.x = axisX; el.z = axisZ; }
+  }
+  log(`piers refitted (RANSAC circles / face medians): ${fitted}, leaning > 30 mm at the top: ${leaning}`);
+}
+function rectCentre(xs, zs, e) {
+  const us = [], vs = [];
+  for (let i = 0; i < xs.length; i++) { const dx = xs[i] - e.x, dz = zs[i] - e.z; us.push(dx * e.tx + dz * e.tz); vs.push(-dx * e.tz + dz * e.tx); }
+  // each face = the points near its nominal plane; centre = mid-point between the two opposite face medians
+  const face = (arr, other, half, otherHalf, sign) => { const sel = []; for (let i = 0; i < arr.length; i++) if (Math.abs(other[i]) < otherHalf - 0.1 && Math.abs(arr[i] * sign - half) < 0.4) sel.push(arr[i]); return sel.length >= 6 ? median(sel) : null; };
+  const uP = face(us, vs, e.colL / 2, e.colW / 2, 1), uM = face(us, vs, e.colL / 2, e.colW / 2, -1), vP = face(vs, us, e.colW / 2, e.colL / 2, 1), vM = face(vs, us, e.colW / 2, e.colL / 2, -1);
+  if (uP == null || uM == null || vP == null || vM == null) return null;
+  const cu = (uP + uM) / 2, cv = (vP + vM) / 2;
+  return { cu: e.x + cu * e.tx - cv * e.tz, cv: e.z + cu * e.tz + cv * e.tx, r: 0, rms: 0, count: xs.length, size: [uP - uM, vP - vM] };
 }
 
 /** Full pipeline: cloud → { data (roads/buildings/piers), log } ready for buildStructure. */
@@ -2578,7 +3322,18 @@ function scanToBim(cloud, opts = {}) {
   const lines = [];
   const log = (m) => { lines.push(m); if (opts.log) opts.log(m); };
   let t = performance.now();
-  const roads = extractDecks(cloud, { log }); log(`  (decks ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  const fromPar = extractDecksFromParapets(cloud, { log }); log(`  (parapets ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  let roads = extractDecks(cloud, { log }); log(`  (decks ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  roads = splitCorridors(cloud, roads, { log }); log(`  (split ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  if (fromPar.length) {
+    // parapet-pair decks take precedence; occupancy corridors survive only where no pair deck lies within 4 m
+    const occ = new Map();
+    for (const r of fromPar) for (const p of r.pts) { const k = `${Math.floor(p[0] / 6)},${Math.floor(p[2] / 6)}`; if (!occ.has(k)) occ.set(k, []); occ.get(k).push(p); }
+    const near = (p) => { for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = occ.get(`${Math.floor(p[0] / 6) + di},${Math.floor(p[2] / 6) + dj}`); if (l && l.some((q) => Math.hypot(q[0] - p[0], q[2] - p[2]) < 4 && Math.abs(q[1] - p[1]) < 2)) return true; } return false; };
+    const rest = roads.filter((r) => r.pts.filter(near).length < r.pts.length * 0.5);
+    log(`combined: ${fromPar.length} parapet-pair decks + ${rest.length} occupancy corridors (${roads.length - rest.length} superseded)`);
+    roads = fromPar.concat(rest);
+  }
   const piers = extractPiers(cloud, roads, { log }); log(`  (piers ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
   const buildings = extractBuildings(cloud, { log }); log(`  (buildings ${((performance.now() - t) / 1000).toFixed(1)} s)`);
   const data = { site: { layerHeight: 5.6, cropM: [0, 0], drive: {} }, roads, buildings, water: [], parks: [], rail: [], piers };
@@ -2856,8 +3611,10 @@ function buildStructure(data) {
     const phase = phaseOf(road.id);
     const seqBase = hashStr(road.id) % 1000; // construction order along network
 
-    // as-built deviation injection (施工誤差・経年変形の疑似再現)
-    const settle = hashStr('settle' + road.id) % 23 === 5 ? -0.042 : 0;
+    // as-built deviation injection (施工誤差・経年変形の疑似再現): a local span settlement
+    // (raised-cosine bump ~44 m long at a hashed position) rather than a whole-way offset
+    const settle = hashStr('settle' + road.id) % 9 === 5 ? -0.042 : 0;
+    const settleAt = 0.15 + ((hashStr('where' + road.id) % 70) / 100); // 0.15–0.85 of the length
 
     const w = road.width;
     const girderWTop = Math.max(3, w - 1.0), girderWBot = Math.max(2.5, w - 3.2);
@@ -2865,22 +3622,23 @@ function buildStructure(data) {
       type: 'deck', tag: `D-${road.id.slice(-4)}`, path, width: w, thick: DECK_T, route, level, phase,
       family: 'RC床版', typeName: `t=${(DECK_T * 1000) | 0} W=${(w * 1000) | 0}`,
       material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase,
-      asBuilt: { dx: 0, dy: settle, dz: 0 },
+      asBuilt: { dx: 0, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L) },
     });
     add({
       type: 'girder', tag: `G-${road.id.slice(-4)}`, path, wTop: girderWTop, wBot: girderWBot, depth: GIRDER_D,
       route, level, phase, family: isExpress ? '鋼製箱桁' : 'PC箱桁',
       typeName: `W${(girderWTop * 1000) | 0}×D${(GIRDER_D * 1000) | 0}`,
       material: isExpress ? 'SM490Y 鋼材' : 'PC コンクリート 50N/mm²', road, length: L, seq: seqBase, parent: deck.id,
-      asBuilt: { dx: 0, dy: settle, dz: 0 },
+      asBuilt: { dx: 0, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L) },
     });
     for (const side of [-1, 1]) {
-      const bow = hashStr('bow' + road.id + side) % 11 === 2 ? 0.032 * side : 0;
+      const bow = hashStr('bow' + road.id + side) % 5 === 2 ? 0.032 * side : 0; // local bulge (~30 m) of the parapet
+      const bowAt = 0.2 + ((hashStr('bowat' + road.id + side) % 60) / 100);
       add({
         type: 'railing', tag: `R-${road.id.slice(-4)}${side < 0 ? 'L' : 'R'}`, path, side, offset: side * (w / 2 - RAIL_T / 2),
         h: RAIL_H, t: RAIL_T, route, level, phase, family: '壁高欄', typeName: `H${(RAIL_H * 1000) | 0} 剛性防護柵`,
         material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase, parent: deck.id,
-        asBuilt: { dx: bow, dy: settle, dz: 0 },
+        asBuilt: { dx: bow, dy: settle, dz: 0, at: settleAt, span: Math.min(0.9, 44 / L), bowAt, bowSpan: Math.min(0.9, 30 / L) },
       });
     }
 
@@ -2902,7 +3660,7 @@ function buildStructure(data) {
       const capBottom = p.y - DECK_T - GIRDER_D - CAP_H;
       const round = site.round != null ? site.round : road.kind !== 'expressway';
       const colW = site.colW || (round ? 2.5 : 2.6), colL = site.colL || (round ? 2.5 : 3.6);
-      const lean = hashStr('lean' + tag) % 17 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
+      const lean = hashStr('lean' + tag) % 7 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
       const pierPhase = phaseOf(tag);
       const col = add({
         type: 'column', tag, x: p.x, z: p.z, tx: p.tx, tz: p.tz, yBot: 0, yTop: capBottom, round, colW, colL,
@@ -3101,11 +3859,13 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   const cnt = (n) => Math.floor(n) + (rnd() < n - Math.floor(n) ? 1 : 0);
 
   // deviation (mm) of an element at a given point, signed
+  const bump = (u, at, span) => { const t = (u - at) / (span || 1); return Math.abs(t) < 0.5 ? 0.5 + 0.5 * Math.cos(2 * Math.PI * t) : 0; };
   const devAt = (e, x, y, z, u = 0) => {
     const a = e.asBuilt;
     let dx = a.dx, dy = a.dy, dz = a.dz;
     if (e.type === 'column') { const f = (y - e.yBot) / Math.max(1, e.yTop - e.yBot); dx *= f; dz *= f; }
-    if (e.type === 'railing') { const f = Math.sin(Math.PI * u); dx *= f; }
+    if (a.at != null) dy *= bump(u, a.at, a.span);
+    if (e.type === 'railing') { dx *= bump(u, a.bowAt, a.bowSpan); }
     const mag = dy !== 0 ? dy : Math.hypot(dx, dz) * (e.type === 'railing' ? Math.sign(e.asBuilt.dx) : 1);
     return { dx, dy, dz, mm: mag * 1000 + gauss(rnd) * 2.5 };
   };
@@ -4383,10 +5143,141 @@ class SectionBox {
   }
 }
 
+// ===== src/crs.js =====
+// Coordinate reference systems for LAS files: VLR parsing (GeoTIFF keys / WKT), EPSG lookup for the
+// systems common in Japan, and Transverse Mercator forward/inverse (Krüger series) so a scan can be
+// placed on the globe. No imports.
+
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const GRS80 = { a: 6378137, f: 1 / 298.257222101 };
+const WGS84 = { a: 6378137, f: 1 / 298.257223563 };
+
+// 平面直角座標系 I–XIX 系原点（JGD2011: EPSG 6669–6687, JGD2000: 2443–2461）
+const ZONES = [
+  [33, 129.5], [33, 131], [36, 132 + 10 / 60], [33, 133.5], [36, 134 + 20 / 60], [36, 136], [36, 137 + 10 / 60], [36, 138.5], [36, 139 + 50 / 60],
+  [40, 140 + 50 / 60], [44, 140.25], [44, 142.25], [44, 144.25], [26, 142], [26, 127.5], [26, 124], [26, 131], [20, 136], [26, 154],
+];
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX'];
+
+/** Describe an EPSG code: { name, tm: { lat0, lon0, k0, fe, fn, ell } } or geographic/other. */
+function describeEpsg(code) {
+  if (!code) return null;
+  if (code >= 6669 && code <= 6687) { const z = code - 6669; return { epsg: code, name: `JGD2011 / 平面直角座標系 第${ROMAN[z]}系`, tm: { lat0: ZONES[z][0], lon0: ZONES[z][1], k0: 0.9999, fe: 0, fn: 0, ell: GRS80 }, datum: 'JGD2011' }; }
+  if (code >= 2443 && code <= 2461) { const z = code - 2443; return { epsg: code, name: `JGD2000 / 平面直角座標系 第${ROMAN[z]}系`, tm: { lat0: ZONES[z][0], lon0: ZONES[z][1], k0: 0.9999, fe: 0, fn: 0, ell: GRS80 }, datum: 'JGD2000' }; }
+  if (code >= 6688 && code <= 6691) { const zone = 51 + (code - 6688); return { epsg: code, name: `JGD2011 / UTM zone ${zone}N`, tm: { lat0: 0, lon0: zone * 6 - 183, k0: 0.9996, fe: 500000, fn: 0, ell: GRS80 }, datum: 'JGD2011' }; }
+  if (code >= 3097 && code <= 3100) { const zone = 51 + (code - 3097); return { epsg: code, name: `JGD2000 / UTM zone ${zone}N`, tm: { lat0: 0, lon0: zone * 6 - 183, k0: 0.9996, fe: 500000, fn: 0, ell: GRS80 }, datum: 'JGD2000' }; }
+  if (code >= 32601 && code <= 32660) { const zone = code - 32600; return { epsg: code, name: `WGS 84 / UTM zone ${zone}N`, tm: { lat0: 0, lon0: zone * 6 - 183, k0: 0.9996, fe: 500000, fn: 0, ell: WGS84 }, datum: 'WGS84' }; }
+  if (code >= 32701 && code <= 32760) { const zone = code - 32700; return { epsg: code, name: `WGS 84 / UTM zone ${zone}S`, tm: { lat0: 0, lon0: zone * 6 - 183, k0: 0.9996, fe: 500000, fn: 10000000, ell: WGS84 }, datum: 'WGS84' }; }
+  if (code === 3857) return { epsg: code, name: 'WGS 84 / Pseudo-Mercator（Web メルカトル：縮尺が緯度で変わるため寸法計測には不向き）', merc: true, datum: 'WGS84' };
+  if (code === 4326 || code === 6668 || code === 4612) return { epsg: code, name: code === 4326 ? 'WGS 84（経緯度）' : `JGD${code === 6668 ? '2011' : '2000'}（経緯度）`, geographic: true };
+  return { epsg: code, name: `EPSG:${code}` };
+}
+
+/** Parse LAS VLRs for a CRS. Returns { epsg, wkt, source } or null. */
+function readLasCrs(buf, header) {
+  const dv = new DataView(buf);
+  const nVlr = dv.getUint32(100, true);
+  let off = header.headerSize;
+  let geoKeys = null, wkt = null;
+  for (let i = 0; i < nVlr && off + 54 <= buf.byteLength; i++) {
+    const userId = ascii(buf, off + 2, 16), recId = dv.getUint16(off + 18, true), len = dv.getUint16(off + 20, true);
+    const data = off + 54;
+    if (userId === 'LASF_Projection' && recId === 34735) geoKeys = parseGeoKeys(dv, data, len);
+    if (userId === 'LASF_Projection' && recId === 2112) wkt = ascii(buf, data, len).replace(/\0+$/, '');
+    off = data + len;
+  }
+  if (geoKeys && geoKeys.epsg) return { epsg: geoKeys.epsg, wkt, source: 'GeoTIFF キー (VLR 34735)', vertical: geoKeys.vertical };
+  if (wkt) { const m = /AUTHORITY\["EPSG",\s*"?(\d+)"?\]\s*\]?\s*$/i.exec(wkt) || /ID\["EPSG",\s*(\d+)\]\s*\]?\s*$/i.exec(wkt); return { epsg: m ? +m[1] : null, wkt, source: 'WKT (VLR 2112)' }; }
+  return null;
+}
+function ascii(buf, off, len) { const u = new Uint8Array(buf, off, Math.min(len, buf.byteLength - off)); let s = ''; for (let i = 0; i < u.length && u[i]; i++) s += String.fromCharCode(u[i]); return s; }
+function parseGeoKeys(dv, off, len) {
+  if (len < 8) return null;
+  const nKeys = dv.getUint16(off + 6, true);
+  let epsg = null, vertical = null, model = null;
+  for (let k = 0; k < nKeys && off + 8 + k * 8 + 8 <= off + len; k++) {
+    const id = dv.getUint16(off + 8 + k * 8, true), loc = dv.getUint16(off + 10 + k * 8, true), val = dv.getUint16(off + 14 + k * 8, true);
+    if (loc !== 0) continue;
+    if (id === 3072) epsg = val;            // ProjectedCSTypeGeoKey
+    if (id === 2048 && !epsg) model = val;  // GeographicTypeGeoKey
+    if (id === 4096) vertical = val;        // VerticalCSTypeGeoKey
+  }
+  return { epsg: epsg || model, vertical };
+}
+
+/** Build the GeoKeyDirectory VLR bytes for a projected EPSG code (for the LAS writer). */
+function geoKeyVlr(epsg) {
+  const keys = [[1024, 0, 1, 1], [3072, 0, 1, epsg], [3076, 0, 1, 9001]]; // ModelType=Projected, ProjectedCSType, LinearUnits=metre
+  const body = new ArrayBuffer(8 + keys.length * 8), dv = new DataView(body);
+  dv.setUint16(0, 1, true); dv.setUint16(2, 1, true); dv.setUint16(4, 0, true); dv.setUint16(6, keys.length, true);
+  keys.forEach((k, i) => k.forEach((v, j) => dv.setUint16(8 + i * 8 + j * 2, v, true)));
+  const vlr = new ArrayBuffer(54 + body.byteLength), u = new Uint8Array(vlr), d2 = new DataView(vlr);
+  u.set(new TextEncoder().encode('LASF_Projection'), 2); d2.setUint16(18, 34735, true); d2.setUint16(20, body.byteLength, true);
+  u.set(new TextEncoder().encode('GeoTIFF GeoKeyDirectoryTag'), 22);
+  u.set(new Uint8Array(body), 54);
+  return vlr;
+}
+
+// ---------------------------------------------------------------- Transverse Mercator (Krüger series, as in GSI / Karney)
+function tmConstants(ell) {
+  const { a, f } = ell, n = f / (2 - f);
+  const A = (a / (1 + n)) * (1 + n * n / 4 + n ** 4 / 64);
+  const alpha = [0, n / 2 - 2 * n * n / 3 + 5 * n ** 3 / 16, 13 * n * n / 48 - 3 * n ** 3 / 5, 61 * n ** 3 / 240];
+  const beta = [0, n / 2 - 2 * n * n / 3 + 37 * n ** 3 / 96, n * n / 48 + n ** 3 / 15, 17 * n ** 3 / 480];
+  const delta = [0, 2 * n - 2 * n * n / 3 - 2 * n ** 3, 7 * n * n / 3 - 8 * n ** 3 / 5, 56 * n ** 3 / 15];
+  return { n, A, alpha, beta, delta };
+}
+function meridianArc(lat0, ell) {
+  const { A, alpha } = tmConstants(ell); const { f } = ell; const n = f / (2 - f);
+  const e2 = f * (2 - f);
+  const t = Math.sinh(Math.atanh(Math.sin(lat0)) - (2 * Math.sqrt(n) / (1 + n)) * Math.atanh((2 * Math.sqrt(n) / (1 + n)) * Math.sin(lat0)));
+  const xi = Math.atan(t / Math.cos(0)); // lon diff 0
+  let s = xi; for (let j = 1; j <= 3; j++) s += alpha[j] * Math.sin(2 * j * xi);
+  return A * s;
+}
+/** lat/lon (deg) → { e, n } metres in the given TM definition. */
+function tmForward(lat, lon, tm) {
+  const { A, alpha } = tmConstants(tm.ell), f = tm.ell.f, n = f / (2 - f);
+  const phi = lat * D2R, lam = (lon - tm.lon0) * D2R;
+  const k = (2 * Math.sqrt(n)) / (1 + n);
+  const t = Math.sinh(Math.atanh(Math.sin(phi)) - k * Math.atanh(k * Math.sin(phi)));
+  const xi = Math.atan2(t, Math.cos(lam)), eta = Math.atanh(Math.sin(lam) / Math.sqrt(1 + t * t));
+  let E = eta, N = xi;
+  for (let j = 1; j <= 3; j++) { E += alpha[j] * Math.cos(2 * j * xi) * Math.sinh(2 * j * eta); N += alpha[j] * Math.sin(2 * j * xi) * Math.cosh(2 * j * eta); }
+  const S0 = meridianArc(tm.lat0 * D2R, tm.ell);
+  return { e: tm.k0 * A * E + tm.fe, n: tm.k0 * (A * N - S0) + tm.fn };
+}
+/** { e, n } metres → { lat, lon } degrees. */
+function tmInverse(e, n, tm) {
+  const { A, beta, delta } = tmConstants(tm.ell), f = tm.ell.f, nn = f / (2 - f);
+  const S0 = meridianArc(tm.lat0 * D2R, tm.ell);
+  const xi = ((n - tm.fn) / tm.k0 + S0) / A, eta = (e - tm.fe) / (tm.k0 * A);
+  let xi2 = xi, eta2 = eta;
+  for (let j = 1; j <= 3; j++) { xi2 -= beta[j] * Math.sin(2 * j * xi) * Math.cosh(2 * j * eta); eta2 -= beta[j] * Math.cos(2 * j * xi) * Math.sinh(2 * j * eta); }
+  const chi = Math.asin(Math.sin(xi2) / Math.cosh(eta2));
+  let phi = chi; for (let j = 1; j <= 3; j++) phi += delta[j] * Math.sin(2 * j * chi);
+  const lam = Math.atan2(Math.sinh(eta2), Math.cos(xi2));
+  return { lat: phi * R2D, lon: tm.lon0 + lam * R2D };
+}
+/** Guess a Japanese plane-rectangular zone from projected coordinates (metres) when the file has no CRS. */
+function guessZone(e, n) {
+  // plane rectangular coordinates are within ±~300 km of the zone origin; UTM eastings are 100k–900k
+  if (Math.abs(e) < 400000 && Math.abs(n) < 500000) return { hint: '平面直角座標系の可能性（原点からの距離が小さい）。系番号はファイルに記録されていません。' };
+  if (e > 100000 && e < 900000 && n > 2000000 && n < 5500000) return { hint: 'UTM 北半球の可能性（例: 東京は zone 54N, EPSG:6691 / 32654）' };
+  return null;
+}
+function formatDms(deg, latlon) {
+  const h = latlon === 'lat' ? (deg >= 0 ? 'N' : 'S') : (deg >= 0 ? 'E' : 'W');
+  const a = Math.abs(deg), d = Math.floor(a), m = Math.floor((a - d) * 60), s = ((a - d) * 60 - m) * 60;
+  return `${d}°${String(m).padStart(2, '0')}′${s.toFixed(2).padStart(5, '0')}″${h}`;
+}
+
 // ===== src/las.js =====
 // LAS / LAZ reader and LAS writer (plain script: no imports, so it can also run inside a classic
 // worker that loads laz-perf via importScripts). Produces the same attribute set as the synthesiser:
 // positions (y-up, local metres), intensity, classification, deviation (=0), element id (none), normals.
+
+
 const LAZPERF_URL = 'https://cdn.jsdelivr.net/npm/laz-perf@0.0.6/lib/web/';
 
 function readLasHeader(buf) {
@@ -4465,6 +5356,7 @@ function decodeRecords(header, dv, getRecord, { maxPoints = 16e6, progress = () 
 /** Parse an uncompressed LAS buffer. */
 function parseLas(buf, opts) {
   const header = readLasHeader(buf);
+  header.crs = safeCrs(buf, header);
   if (header.compressed) throw new Error('LAZ 圧縮ファイルです: parseLaz を使用してください');
   const dv = new DataView(buf);
   const base = header.offsetToPoints, len = header.recordLength;
@@ -4475,6 +5367,7 @@ function parseLas(buf, opts) {
 /** Decode a LAZ buffer with laz-perf (must be loaded: `createLazPerf` global or passed module). */
 async function parseLaz(buf, opts = {}) {
   const header = readLasHeader(buf);
+  header.crs = safeCrs(buf, header);
   const create = opts.createLazPerf || (typeof createLazPerf !== 'undefined' ? createLazPerf : null);
   if (!create) throw new Error('laz-perf が読み込まれていません');
   const LazPerf = await create({ locateFile: (f) => LAZPERF_URL + f });
@@ -4599,49 +5492,23 @@ function estimateNormalsKnn(pos, n, { k = 14, progress = () => {} } = {}) {
   return { normals: out, spacing, cell };
 }
 
-// smallest eigenvector of the symmetric 3x3 matrix [[a,b,d],[b,e,f],[d,f,g]] via a few Jacobi sweeps
-function smallestEigenvector(a, b, d, e, f, g) {
-  let A = [[a, b, d], [b, e, f], [d, f, g]];
-  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-  for (let sweep = 0; sweep < 8; sweep++) {
-    for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
-      if (Math.abs(A[p][q]) < 1e-12) continue;
-      const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
-      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
-      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
-      for (let k = 0; k < 3; k++) {
-        const akp = A[k][p], akq = A[k][q];
-        A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq;
-      }
-      for (let k = 0; k < 3; k++) {
-        const apk = A[p][k], aqk = A[q][k];
-        A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk;
-      }
-      for (let k = 0; k < 3; k++) {
-        const vkp = V[k][p], vkq = V[k][q];
-        V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq;
-      }
-    }
-  }
-  let mi = 0;
-  for (let i = 1; i < 3; i++) if (A[i][i] < A[mi][mi]) mi = i;
-  const v = [V[0][mi], V[1][mi], V[2][mi]];
-  const L = Math.hypot(v[0], v[1], v[2]) || 1;
-  return [v[0] / L, v[1] / L, v[2] / L];
-}
+function safeCrs(buf, header) { try { return readLasCrs(buf, header); } catch (e) { return null; } }
 
 /** Write a LAS 1.2 point-format-2 file (XYZ, intensity, classification, RGB) from viewer arrays. */
-function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
+function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0], epsg = null } = {}) {
   // standard ASPRS codes where they exist, this viewer's extended codes (20–31) otherwise
   const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 9: 9, 11: 11, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
   const headerSize = 227, recLen = 26;
-  const buf = new ArrayBuffer(headerSize + n * recLen);
+  const vlr = epsg ? geoKeyVlr(epsg) : null;
+  const vlrLen = vlr ? vlr.byteLength : 0;
+  const buf = new ArrayBuffer(headerSize + vlrLen + n * recLen);
   const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  if (vlr) u8.set(new Uint8Array(vlr), headerSize);
   u8.set([76, 65, 83, 70], 0); // LASF
   dv.setUint8(24, 1); dv.setUint8(25, 2);
   u8.set(new TextEncoder().encode('LiDAR x BIM synth'.padEnd(32, '\0')), 26);
   u8.set(new TextEncoder().encode('pointcloud-highway'.padEnd(32, '\0')), 58);
-  dv.setUint16(94, headerSize, true); dv.setUint32(96, headerSize, true); dv.setUint32(100, 0, true);
+  dv.setUint16(94, headerSize, true); dv.setUint32(96, headerSize + vlrLen, true); dv.setUint32(100, vlr ? 1 : 0, true);
   dv.setUint8(104, 2); dv.setUint16(105, recLen, true); dv.setUint32(107, n, true);
   const sc = 0.001;
   dv.setFloat64(131, sc, true); dv.setFloat64(139, sc, true); dv.setFloat64(147, sc, true);
@@ -4649,7 +5516,7 @@ function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
   let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
   for (let i = 0; i < n; i++) {
     const X = pos[i * 3], Y = -pos[i * 3 + 2], Z = pos[i * 3 + 1]; // viewer y-up → LAS z-up
-    const o = headerSize + i * recLen;
+    const o = headerSize + vlrLen + i * recLen;
     dv.setInt32(o, Math.round(X / sc), true); dv.setInt32(o + 4, Math.round(Y / sc), true); dv.setInt32(o + 8, Math.round(Z / sc), true);
     dv.setUint16(o + 12, inten[i] * 257, true);
     dv.setUint8(o + 14, 0x11); // return 1 of 1
@@ -4681,6 +5548,139 @@ self.onmessage = async (ev) => {
 };
 `;
 
+// ===== src/fit.js =====
+// Robust primitive fitting (RANSAC + least-squares refinement). Pure functions, no imports, so
+// the file can also be concatenated into the scan-to-BIM worker.
+
+function lcg(seed) { let s = seed >>> 0 || 1; return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296; }
+
+/** Plane through 3D points: returns { n:[a,b,c] (unit), d, inliers:Uint8Array, rms } with a·x+b·y+c·z+d=0. */
+function ransacPlane(xs, ys, zs, { thresh = 0.04, iters = 60, seed = 1 } = {}) {
+  const n = xs.length;
+  if (n < 3) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0, k = (rnd() * n) | 0;
+    if (i === j || j === k || i === k) continue;
+    const ux = xs[j] - xs[i], uy = ys[j] - ys[i], uz = zs[j] - zs[i], vx = xs[k] - xs[i], vy = ys[k] - ys[i], vz = zs[k] - zs[i];
+    let a = uy * vz - uz * vy, b = uz * vx - ux * vz, c = ux * vy - uy * vx;
+    const L = Math.hypot(a, b, c); if (L < 1e-9) continue;
+    a /= L; b /= L; c /= L;
+    const d = -(a * xs[i] + b * ys[i] + c * zs[i]);
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(a * xs[q] + b * ys[q] + c * zs[q] + d) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = [a, b, c, d]; }
+  }
+  if (!best) return null;
+  // refine: PCA plane through the inliers
+  const inl = new Uint8Array(n); let m = 0, mx = 0, my = 0, mz = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(best[0] * xs[q] + best[1] * ys[q] + best[2] * zs[q] + best[3]) < thresh) { inl[q] = 1; m++; mx += xs[q]; my += ys[q]; mz += zs[q]; }
+  if (m < 3) return null;
+  mx /= m; my /= m; mz /= m;
+  let a = 0, b = 0, d = 0, e = 0, f = 0, g = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const x = xs[q] - mx, y = ys[q] - my, z = zs[q] - mz; a += x * x; b += x * y; d += x * z; e += y * y; f += y * z; g += z * z; }
+  const nv = smallestEigenvector(a, b, d, e, f, g);
+  const dd = -(nv[0] * mx + nv[1] * my + nv[2] * mz);
+  let rms = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const r = nv[0] * xs[q] + nv[1] * ys[q] + nv[2] * zs[q] + dd; rms += r * r; }
+  return { n: nv, d: dd, inliers: inl, count: m, rms: Math.sqrt(rms / m), centroid: [mx, my, mz] };
+}
+
+/** Circle in 2D (u,v): RANSAC on 3-point circles, then Kåsa least-squares on the inliers. */
+function ransacCircle(us, vs, { thresh = 0.05, iters = 80, seed = 1, rMin = 0.3, rMax = 6 } = {}) {
+  const n = us.length;
+  if (n < 6) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0, k = (rnd() * n) | 0;
+    if (i === j || j === k || i === k) continue;
+    const c = circle3(us[i], vs[i], us[j], vs[j], us[k], vs[k]);
+    if (!c || c[2] < rMin || c[2] > rMax) continue;
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(Math.hypot(us[q] - c[0], vs[q] - c[1]) - c[2]) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = c; }
+  }
+  if (!best) return null;
+  const inl = new Uint8Array(n); let m = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(Math.hypot(us[q] - best[0], vs[q] - best[1]) - best[2]) < thresh) { inl[q] = 1; m++; }
+  if (m < 6) return null;
+  // Kåsa fit: minimise Σ (u²+v² + D u + E v + F)²
+  let suu = 0, suv = 0, svv = 0, su = 0, sv = 0, suuu = 0, suvv = 0, svvv = 0, svuu = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const u = us[q], v = vs[q]; suu += u * u; suv += u * v; svv += v * v; su += u; sv += v; suuu += u * u * u; suvv += u * v * v; svvv += v * v * v; svuu += v * u * u; }
+  const A = [[suu, suv, su], [suv, svv, sv], [su, sv, m]], B = [-(suuu + suvv), -(svuu + svvv), -(suu + svv)];
+  const sol = solve3(A, B);
+  if (!sol) return { cu: best[0], cv: best[1], r: best[2], inliers: inl, count: m, rms: thresh };
+  const cu = -sol[0] / 2, cv = -sol[1] / 2, r = Math.sqrt(Math.max(0, cu * cu + cv * cv - sol[2]));
+  let rms = 0; for (let q = 0; q < n; q++) if (inl[q]) { const e = Math.hypot(us[q] - cu, vs[q] - cv) - r; rms += e * e; }
+  return { cu, cv, r, inliers: inl, count: m, rms: Math.sqrt(rms / m) };
+}
+
+/** Line in 2D: RANSAC on 2-point lines, PCA refinement. Returns { p:[u,v] point, d:[du,dv] unit direction, n:[nu,nv] normal }. */
+function ransacLine(us, vs, { thresh = 0.04, iters = 60, seed = 1 } = {}) {
+  const n = us.length;
+  if (n < 2) return null;
+  const rnd = lcg(seed);
+  let best = null, bestCount = -1;
+  for (let it = 0; it < iters; it++) {
+    const i = (rnd() * n) | 0, j = (rnd() * n) | 0;
+    if (i === j) continue;
+    let du = us[j] - us[i], dv = vs[j] - vs[i]; const L = Math.hypot(du, dv); if (L < 1e-6) continue;
+    du /= L; dv /= L; const nu = -dv, nv = du, c = -(nu * us[i] + nv * vs[i]);
+    let count = 0;
+    for (let q = 0; q < n; q++) if (Math.abs(nu * us[q] + nv * vs[q] + c) < thresh) count++;
+    if (count > bestCount) { bestCount = count; best = [nu, nv, c]; }
+  }
+  if (!best) return null;
+  const inl = new Uint8Array(n); let m = 0, mu = 0, mv = 0;
+  for (let q = 0; q < n; q++) if (Math.abs(best[0] * us[q] + best[1] * vs[q] + best[2]) < thresh) { inl[q] = 1; m++; mu += us[q]; mv += vs[q]; }
+  if (m < 2) return null;
+  mu /= m; mv /= m;
+  let a = 0, b = 0, c = 0;
+  for (let q = 0; q < n; q++) if (inl[q]) { const x = us[q] - mu, y = vs[q] - mv; a += x * x; b += x * y; c += y * y; }
+  const th = 0.5 * Math.atan2(2 * b, a - c);
+  const d = [Math.cos(th), Math.sin(th)], nn = [-d[1], d[0]];
+  let rms = 0; for (let q = 0; q < n; q++) if (inl[q]) { const e = nn[0] * (us[q] - mu) + nn[1] * (vs[q] - mv); rms += e * e; }
+  return { p: [mu, mv], d, n: nn, inliers: inl, count: m, rms: Math.sqrt(rms / m) };
+}
+
+function circle3(x1, y1, x2, y2, x3, y3) {
+  const a = x1 - x2, b = y1 - y2, c = x1 - x3, d = y1 - y3;
+  const e = ((x1 * x1 - x2 * x2) + (y1 * y1 - y2 * y2)) / 2, f = ((x1 * x1 - x3 * x3) + (y1 * y1 - y3 * y3)) / 2;
+  const det = a * d - b * c;
+  if (Math.abs(det) < 1e-9) return null;
+  const cx = (d * e - b * f) / det, cy = (a * f - c * e) / det;
+  return [cx, cy, Math.hypot(x1 - cx, y1 - cy)];
+}
+function solve3(A, B) {
+  const M = A.map((r, i) => [...r, B[i]]);
+  for (let c = 0; c < 3; c++) {
+    let p = c; for (let r = c + 1; r < 3; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-12) return null;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < 3; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k < 4; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return [M[0][3] / M[0][0], M[1][3] / M[1][1], M[2][3] / M[2][2]];
+}
+function smallestEigenvector(a, b, d, e, f, g) {
+  let A = [[a, b, d], [b, e, f], [d, f, g]];
+  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  for (let sweep = 0; sweep < 8; sweep++) for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
+    if (Math.abs(A[p][q]) < 1e-12) continue;
+    const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+    const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+    const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+    for (let k = 0; k < 3; k++) { const akp = A[k][p], akq = A[k][q]; A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq; }
+    for (let k = 0; k < 3; k++) { const apk = A[p][k], aqk = A[q][k]; A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk; }
+    for (let k = 0; k < 3; k++) { const vkp = V[k][p], vkq = V[k][q]; V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq; }
+  }
+  let mi = 0; for (let i = 1; i < 3; i++) if (A[i][i] < A[mi][mi]) mi = i;
+  const v = [V[0][mi], V[1][mi], V[2][mi]], L = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / L, v[1] / L, v[2] / L];
+}
+function median(arr) { if (!arr.length) return null; const a = Float64Array.from(arr).sort(); return a[a.length >> 1]; }
+
 // ===== src/scan2bim.js =====
 // Scan-to-BIM: derive a structural model from a point cloud alone (no survey data needed).
 //   1. elevated deck surfaces → 2D rasters per height band → thinning → centreline polylines
@@ -4689,6 +5689,7 @@ self.onmessage = async (ev) => {
 //   3. buildings → oriented bounding rectangles of building-classified components
 //   4. every point is assigned to the nearest fitted element and its signed distance to the
 //      design surface is stored as deviation (mm) → real Scan-to-BIM heat map + per-element stats
+
 
 
 const UNASSIGNED = 65535;
@@ -4794,7 +5795,7 @@ function tracePolylines(sk, w, h) {
 }
 
 // ---------------------------------------------------------------- 1. decks
-function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.5, maxHeight = 45, log = () => {} } = {}) {
+function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 2.0, maxHeight = 45, log = () => {} } = {}) {
   const { n, pos, cls, nrm } = cloud;
   const classified = cls.some((c) => c === C.deck);
   let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity, maxy = 0;
@@ -4841,8 +5842,8 @@ function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.
     const sub = new Uint8Array(sw * sh);
     for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) sub[j * sw + i] = mask[(j + j0) * g.w + i + i0];
     const closed = erode(dilate(dilate(sub, sw, sh), sw, sh), sw, sh);
-    const dist = distanceTransform(closed, sw, sh);
     const m = erode(closed, sw, sh);
+    const dist = distanceTransform(m, sw, sh);
     const sk = thin(m, sw, sh);
     const lines = tracePolylines(sk, sw, sh);
     for (const line of lines) {
@@ -4855,22 +5856,31 @@ function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.
         for (const bb of [b, b + 1]) { const c = bands[bb] && bands[bb].get(k); if (c) { sy += c[1]; sc += c[0]; } }
         if (!sc) continue;
         pts.push([g.x(i), sy / sc, g.z(j)]);
-        widths.push(dist[kk] * 2 * res);
+        widths.push(Math.max(res, (dist[kk] * 2 - 1) * res));
       }
       if (pts.length < 4) continue;
       // smooth heights and positions (moving average), width = median of the central 60 %
       const sm = pts.map((p, i) => { let sx = 0, sy = 0, sz = 0, c = 0; for (let q = -3; q <= 3; q++) { const pp = pts[i + q]; if (pp) { sx += pp[0]; sy += pp[1]; sz += pp[2]; c++; } } return [sx / c, sy / c, sz / c]; });
-      const ws = widths.slice().sort((a, b) => a - b);
-      const width = Math.max(4, Math.min(32, ws[Math.floor(ws.length * 0.5)] + res * 0.5));
-      segments.push({ pts: sm, width, band: b });
+      const wsm = widths.map((w, i) => { const win = []; for (let q = -4; q <= 4; q++) if (widths[i + q] != null) win.push(widths[i + q]); win.sort((a, b2) => a - b2); return win[win.length >> 1]; });
+      // split where the local width changes class (a ramp running into a junction blob, a merge nose)
+      let start = 0;
+      for (let i = 1; i <= wsm.length; i++) {
+        const cur = wsm.slice(start, i); const curMed = cur.slice().sort((a, b2) => a - b2)[cur.length >> 1];
+        const jump = i < wsm.length && Math.abs(wsm[i] - curMed) > Math.max(3, curMed * 0.45) && (i + 4 >= wsm.length || Math.abs(wsm[i + 4] - curMed) > Math.max(3, curMed * 0.45));
+        if (i === wsm.length || jump) {
+          if (i - start >= 3) segments.push({ pts: sm.slice(start, i), width: Math.max(4, Math.min(32, curMed)), band: b });
+          start = i;
+        }
+      }
     }
   }
   // merge segments whose ends meet (same corridor split by band edges or junction nodes)
-  const near = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]) < 4.5 && Math.abs(a[1] - b[1]) < 2.5;
+  const near = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]) < 8 && Math.abs(a[1] - b[1]) < 3;
+  const similar = (A, B) => Math.abs(A.width - B.width) <= Math.max(2.5, 0.35 * Math.max(A.width, B.width));
   const dirAt = (pts, atEnd) => { const n = Math.min(4, pts.length - 1); const a = atEnd ? pts[pts.length - 1 - n] : pts[n], b = atEnd ? pts[pts.length - 1] : pts[0]; const dx = b[0] - a[0], dz = b[2] - a[2], L = Math.hypot(dx, dz) || 1; return [dx / L, dz / L]; };
   let merged = true;
-  const endHash = () => { const h = new Map(); segments.forEach((sg, j) => { for (const p of [sg.pts[0], sg.pts[sg.pts.length - 1]]) { const k = `${Math.floor(p[0] / 5)},${Math.floor(p[2] / 5)}`; if (!h.has(k)) h.set(k, new Set()); h.get(k).add(j); } }); return h; };
-  const candidatesNear = (h, p) => { const out = new Set(); for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = h.get(`${Math.floor(p[0] / 5) + di},${Math.floor(p[2] / 5) + dj}`); if (l) for (const j of l) out.add(j); } return out; };
+  const endHash = () => { const h = new Map(); segments.forEach((sg, j) => { for (const p of [sg.pts[0], sg.pts[sg.pts.length - 1]]) { const k = `${Math.floor(p[0] / 8)},${Math.floor(p[2] / 8)}`; if (!h.has(k)) h.set(k, new Set()); h.get(k).add(j); } }); return h; };
+  const candidatesNear = (h, p) => { const out = new Set(); for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = h.get(`${Math.floor(p[0] / 8) + di},${Math.floor(p[2] / 8) + dj}`); if (l) for (const j of l) out.add(j); } return out; };
   while (merged) {
     merged = false;
     const h = endHash();
@@ -4881,6 +5891,7 @@ function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.
       for (const j of cand) {
         if (i === j) continue;
         const B = segments[j];
+        if (!similar(A, B)) continue;
         const a0 = A.pts[0], a1 = A.pts[A.pts.length - 1], b0 = B.pts[0], b1 = B.pts[B.pts.length - 1];
         const cands = [];
         if (near(a1, b0)) cands.push([dirAt(A.pts, true), dirAt(B.pts, false), () => A.pts.concat(B.pts.slice(1))]);
@@ -4906,12 +5917,228 @@ function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.
     for (const p of s.pts) if (isCovered(p)) covered++;
     if (covered / s.pts.length < 0.6) { kept.push(s); for (const p of s.pts) { const k = okey(p); if (!occ.has(k)) occ.set(k, []); occ.get(k).push(p); } }
   }
-  log(`decks: ${kept.length} corridors, ${kept.reduce((a, s) => a + s.pts.length, 0)} m total`);
+  log(`decks: ${kept.length} corridors (${segments.length} after merging), ${kept.reduce((a, s) => a + s.pts.length * res, 0).toFixed(0)} m total`);
   return kept.map((s, i) => ({
     id: `scan${i}`, hw: s.width > 9 ? 'motorway' : 'motorway_link', kind: s.width > 9 ? 'expressway' : 'ramp', elevated: true,
     layer: Math.max(1, Math.round(s.pts.reduce((a, p) => a + p[1], 0) / s.pts.length / 5.6)), width: Math.round(s.width * 10) / 10,
     lanes: Math.max(1, Math.round((s.width - 1.5) / 3.4)), oneway: true, name: '', ref: '', pts: resample(s.pts, 4).map((p) => [p[0], p[1], p[2]]),
   }));
+}
+
+// ---------------------------------------------------------------- 1a. decks from parapet pairs (classified scans)
+/**
+ * Parapets are thin, continuous lines; two parallel ones at the same height 4–22 m apart bound a
+ * deck. This resolves adjacent decks that the occupancy raster merges into one blob.
+ */
+function extractDecksFromParapets(cloud, { res = 1, bandH = 2.0, minLen = 12, minHeight = 2.0, maxHeight = 45, log = () => {} } = {}) {
+  const { n, pos, cls } = cloud;
+  if (!cls.some((c) => c === C.railing)) return [];
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity, maxy = 0;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2], y = pos[i * 3 + 1]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; if (y > maxy) maxy = y; }
+  const g = new Grid(minx, minz, maxx - minx, maxz - minz, res);
+  const nb = Math.ceil(Math.min(maxy, maxHeight) / bandH) + 1;
+  const bands = Array.from({ length: nb }, () => new Map()); // cell → [count, maxY]
+  for (let i = 0; i < n; i++) {
+    if (cls[i] !== C.railing) continue;
+    const y = pos[i * 3 + 1]; if (y < minHeight || y > maxHeight) continue;
+    const b = Math.floor(y / bandH), k = g.iz(pos[i * 3 + 2]) * g.w + g.ix(pos[i * 3]);
+    const m = bands[b]; let cell = m.get(k); if (!cell) { cell = [0, -1e9]; m.set(k, cell); }
+    cell[0]++; if (y > cell[1]) cell[1] = y;
+  }
+  // parapet lines per band (lines are thin: no closing, light pruning by count)
+  const lines = []; // { pts:[[x,top,z]...] }
+  for (let b = 0; b < nb; b++) {
+    const mask = new Uint8Array(g.w * g.h); let any = 0;
+    for (const [k, c] of bands[b]) if (c[0] >= 2) { mask[k] = 1; any++; }
+    if (b + 1 < nb) for (const [k, c] of bands[b + 1]) if (c[0] >= 2) mask[k] = 1;
+    if (any < 10) continue;
+    let i0 = g.w, i1 = 0, j0 = g.h, j1 = 0;
+    for (let k = 0; k < mask.length; k++) if (mask[k]) { const i = k % g.w, j = (k / g.w) | 0; if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; }
+    i0 = Math.max(0, i0 - 3); j0 = Math.max(0, j0 - 3); i1 = Math.min(g.w - 1, i1 + 3); j1 = Math.min(g.h - 1, j1 + 3);
+    const sw = i1 - i0 + 1, sh = j1 - j0 + 1, sub = new Uint8Array(sw * sh);
+    for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) sub[j * sw + i] = mask[(j + j0) * g.w + i + i0];
+    const closed = erode(dilate(sub, sw, sh), sw, sh); // bridge 1-cell gaps only
+    const sk = thin(closed, sw, sh);
+    for (const line of tracePolylines(sk, sw, sh)) {
+      if (line.length * res < minLen) continue;
+      const pts = [];
+      for (const kk of line) {
+        const i = (kk % sw) + i0, j = ((kk / sw) | 0) + j0, k = j * g.w + i;
+        let top = -1e9; for (const bb of [b, b + 1]) { const c = bands[bb] && bands[bb].get(k); if (c && c[1] > top) top = c[1]; }
+        if (top < -1e8) { // skeleton cell outside raw cells (closing): take neighbours
+          for (let dj = -1; dj <= 1 && top < -1e8; dj++) for (let di = -1; di <= 1; di++) { const c = bands[b].get((j + dj) * g.w + i + di) || (bands[b + 1] && bands[b + 1].get((j + dj) * g.w + i + di)); if (c && c[1] > top) top = c[1]; }
+        }
+        if (top < -1e8) continue;
+        pts.push([g.x(i), top, g.z(j)]);
+      }
+      if (pts.length >= 4) lines.push({ pts: pts.map((p, i) => { let sx = 0, sy = 0, sz = 0, c = 0; for (let q = -2; q <= 2; q++) { const pp = pts[i + q]; if (pp) { sx += pp[0]; sy += pp[1]; sz += pp[2]; c++; } } return [sx / c, sy / c, sz / c]; }), band: b });
+    }
+  }
+  // dedupe lines duplicated by the band overlap
+  lines.sort((a, b) => b.pts.length - a.pts.length);
+  const keptL = [], occ = new Map();
+  const okey = (p) => `${Math.floor(p[0] / 2)},${Math.floor(p[2] / 2)}`;
+  const covered = (p) => { for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = occ.get(`${Math.floor(p[0] / 2) + di},${Math.floor(p[2] / 2) + dj}`); if (l && l.some((q) => Math.hypot(q[0] - p[0], q[2] - p[2]) < 1.6 && Math.abs(q[1] - p[1]) < 1.2)) return true; } return false; };
+  for (const L of lines) { let c = 0; for (const p of L.pts) if (covered(p)) c++; if (c / L.pts.length < 0.5) { keptL.push(L); for (const p of L.pts) { const k = okey(p); if (!occ.has(k)) occ.set(k, []); occ.get(k).push(p); } } }
+  // frames + spatial hash of line samples
+  const framed = keptL.map((L, li) => ({ li, path: framePath(resample(L.pts, 2)) }));
+  const hash = new Map();
+  framed.forEach((F) => F.path.forEach((p, i) => { const k = `${Math.floor(p.x / 8)},${Math.floor(p.z / 8)}`; if (!hash.has(k)) hash.set(k, []); hash.get(k).push([F.li, i]); }));
+  // pairing: for each line, per side, the partner line most often found parallel at 4–22 m and same height
+  const bestOf = new Map(); // li → [{lj, n, d}, {lj, n, d}] per side (0 = left, 1 = right)
+  for (const F of framed) {
+    const votes = [new Map(), new Map()];
+    for (let i = 0; i < F.path.length; i += 2) {
+      const p = F.path[i];
+      const seen = new Map(); // li → best (|v|, cos)
+      for (let dj = -3; dj <= 3; dj++) for (let di = -3; di <= 3; di++) {
+        const l = hash.get(`${Math.floor(p.x / 8) + di},${Math.floor(p.z / 8) + dj}`); if (!l) continue;
+        for (const [lj, idx] of l) {
+          if (lj === F.li) continue;
+          const q = framed[lj].path[idx];
+          const u = (q.x - p.x) * p.tx + (q.z - p.z) * p.tz, v = (q.x - p.x) * p.nx + (q.z - p.z) * p.nz;
+          if (Math.abs(u) > 2.5 || Math.abs(v) < 4 || Math.abs(v) > 22 || Math.abs(q.y - p.y) > 0.7) continue;
+          const cos = Math.abs(q.tx * p.tx + q.tz * p.tz); if (cos < 0.85) continue;
+          const prev = seen.get(lj); if (!prev || Math.abs(v) < Math.abs(prev)) seen.set(lj, v);
+        }
+      }
+      // nearest partner on each side wins this sample
+      let bestL = null, bestR = null;
+      for (const [lj, v] of seen) { if (v < 0) { if (!bestL || -v < -bestL[1]) bestL = [lj, v]; } else if (!bestR || v < bestR[1]) bestR = [lj, v]; }
+      for (const [side, b] of [[0, bestL], [1, bestR]]) if (b) { const m = votes[side]; const e = m.get(b[0]) || { n: 0, d: [] }; e.n++; e.d.push(Math.abs(b[1])); m.set(b[0], e); }
+    }
+    const rec = [null, null];
+    for (const side of [0, 1]) {
+      let best = null; for (const [lj, e] of votes[side]) if (!best || e.n > best[1].n) best = [lj, e];
+      if (!best || best[1].n < Math.max(3, (F.path.length / 2) * 0.5)) continue;
+      rec[side] = { lj: best[0], n: best[1].n, d: best[1].d };
+    }
+    bestOf.set(F.li, rec);
+  }
+  // a pair is kept only when it is mutual: A's partner on one side is B and B's partner on some side is A
+  const pairs = new Map();
+  for (const [li, rec] of bestOf) for (const side of [0, 1]) {
+    const r = rec[side]; if (!r) continue;
+    const back = bestOf.get(r.lj); if (!back || !back.some((o) => o && o.lj === li)) continue;
+    const key = li < r.lj ? `${li}:${r.lj}` : `${r.lj}:${li}`;
+    const pr = pairs.get(key) || { a: Math.min(li, r.lj), b: Math.max(li, r.lj), d: [], votes: 0 };
+    pr.d.push(...r.d); pr.votes += r.n; pairs.set(key, pr);
+  }
+  // pavement check: deck points must exist between the lines (hash of deck-class points at 4 m cells)
+  const deckHash = new Map();
+  for (let i = 0; i < n; i++) { if (cls[i] !== C.deck) continue; const k = `${Math.floor(pos[i * 3] / 4)},${Math.floor(pos[i * 3 + 2] / 4)}`; let l = deckHash.get(k); if (!l) { l = []; deckHash.set(k, l); } if (l.length < 64) l.push(pos[i * 3 + 1]); }
+  // wall tops include fence points (up to ~1 m above the coping), so look for pavement within 2.2 m below the estimate
+  const pavementAt = (x, y, z) => { const l = deckHash.get(`${Math.floor(x / 4)},${Math.floor(z / 4)}`); if (!l) return null; const ys = l.filter((yy) => yy - y < 0.6 && y - yy < 2.2); return ys.length ? median(ys) : null; };
+  // decks from pairs: midline over the overlapping extent of the longer line
+  const roads = [];
+  for (const pr of pairs.values()) {
+    const A = framed[pr.a].path, B = framed[pr.b].path;
+    const [longP, shortP] = A.length >= B.length ? [A, B] : [B, A];
+    const bh = new Map(); shortP.forEach((q, i) => { const k = `${Math.floor(q.x / 8)},${Math.floor(q.z / 8)}`; if (!bh.has(k)) bh.set(k, []); bh.get(k).push(i); });
+    const mid = [];
+    for (const p of longP) {
+      let bq = null, bd = 1e9;
+      for (let dj = -3; dj <= 3; dj++) for (let di = -3; di <= 3; di++) { const l = bh.get(`${Math.floor(p.x / 8) + di},${Math.floor(p.z / 8) + dj}`); if (!l) continue; for (const i of l) { const q = shortP[i]; const u = (q.x - p.x) * p.tx + (q.z - p.z) * p.tz; if (Math.abs(u) > 2.5) continue; const d = Math.hypot(q.x - p.x, q.z - p.z); if (d < bd && d >= 4 && d <= 22 && Math.abs(q.y - p.y) < 0.7) { bd = d; bq = q; } } }
+      if (bq) mid.push([(p.x + bq.x) / 2, (p.y + bq.y) / 2 - RAIL_H, (p.z + bq.z) / 2]);
+    }
+    if (mid.length * 2 < minLen) continue;
+    let paved = 0; for (const m of mid) { const py = pavementAt(m[0], m[1], m[2]); if (py != null) { m[1] = py; paved++; } }
+    if (paved < mid.length * 0.6) continue; // phantom: no pavement between the two lines
+    for (let i = 0; i < mid.length; i++) if (mid[i][1] == null) mid[i][1] = mid[Math.max(0, i - 1)][1];
+    const w = Math.round((median(pr.d) + RAIL_T) * 10) / 10;
+    roads.push({ id: `pp${roads.length}`, hw: w > 9 ? 'motorway' : 'motorway_link', kind: w > 9 ? 'expressway' : 'ramp', elevated: true, layer: Math.max(1, Math.round(mid[0][1] / 5.6)), width: w, lanes: Math.max(1, Math.round((w - 1.5) / 3.4)), oneway: true, name: '', ref: '', pts: resample(mid, 4), fromParapets: true });
+  }
+  log(`parapet lines: ${keptL.length} (${lines.length} raw) → ${pairs.size} pairs → ${roads.length} decks, ${roads.reduce((a, r) => a + r.pts.length * 4, 0)} m`);
+  return roads;
+}
+
+// ---------------------------------------------------------------- 1b. split merged corridors
+/**
+ * A wide corridor that actually holds two parallel viaducts (up / down lines a few metres apart)
+ * is split along the lateral gaps in deck occupancy. Per 10 m bin a lateral histogram (0.25 m)
+ * of deck + marking points is scanned for runs separated by ≥ 0.75 m of emptiness; when ≥ 60 %
+ * of the bins agree on the run count, the corridor becomes that many sub-corridors.
+ */
+function splitCorridors(cloud, roads, { log = () => {} } = {}) {
+  const { n, pos, cls } = cloud;
+  const classified = cls.some((c) => c === C.deck);
+  const paths = roads.map((r) => framePath(resample(r.pts, 2)));
+  const CELL = 6, hash = new Map();
+  paths.forEach((path, ri) => path.forEach((p, i) => { const k = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`; if (!hash.has(k)) hash.set(k, []); hash.get(k).push([ri, i]); }));
+  const BIN = 10, HW = 0.25;
+  const hist = roads.map(() => new Map()); // bin → { h: Float32Array(lateral histogram), y: Float32Array(sum of heights) }
+  const span = (ri) => Math.ceil((roads[ri].width / 2 + 4) / HW);
+  for (let i = 0; i < n; i++) {
+    const y = pos[i * 3 + 1]; if (y < 3) continue;
+    const c = cls[i]; if (classified ? !(c === C.deck || c === C.marking || c === C.railing) : c === C.building) continue;
+    const x = pos[i * 3], z = pos[i * 3 + 2];
+    let best = null, bd = 1e9; const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const l = hash.get(`${cx + di},${cz + dj}`); if (!l) continue; for (const [ri, idx] of l) { const p = paths[ri][idx]; const d = (p.x - x) ** 2 + (p.z - z) ** 2 + (p.y - y) ** 2 * 0.15; if (d < bd) { bd = d; best = [ri, idx]; } } }
+    if (!best) continue;
+    const ri = best[0], p = paths[ri][best[1]], dy = y - p.y;
+    if (Math.abs(dy) > 2.5) continue;
+    const v = (x - p.x) * p.nx + (z - p.z) * p.nz, S = span(ri);
+    const cell = Math.round(v / HW) + S; if (cell < 0 || cell >= 2 * S + 1) continue;
+    const b = Math.floor(p.s / BIN); let h = hist[ri].get(b); if (!h) { h = { h: new Float32Array(2 * S + 1), y: new Float32Array(2 * S + 1), w: new Float32Array(2 * S + 1) }; hist[ri].set(b, h); }
+    const isWall = classified ? c === C.railing : false;
+    if (isWall) { if (dy > RAIL_H - 0.3 && dy < RAIL_H + 0.3) h.w[cell]++; continue; }
+    h.h[cell]++; h.y[cell] += y;
+  }
+  const out = [];
+  let splits = 0, calibrated = 0;
+  roads.forEach((road, ri) => {
+    const bins = hist[ri]; const S = span(ri);
+    const runsPerBin = new Map();
+    for (const [b, hh] of bins) {
+      const h = hh.h;
+      let mx = 0; for (const v of h) if (v > mx) mx = v;
+      if (mx < 3) continue;
+      // interior parapet lines: peaks of wall-top occupancy away from the outermost two
+      const wall = []; { let wm = 0; for (const v of hh.w) if (v > wm) wm = v; if (wm >= 3) { let st = -1; for (let c = 0; c <= hh.w.length; c++) { const on = c < hh.w.length && hh.w[c] >= wm * 0.25; if (on && st < 0) st = c; if (!on && st >= 0) { wall.push((st + c - 1) / 2); st = -1; } } } }
+      const cuts = new Set();
+      if (wall.length > 2) { const first = wall[0], last = wall[wall.length - 1]; const inner = wall.slice(1, -1).filter((w) => w - first > 1.2 / HW && last - w > 1.2 / HW); for (let k = 0; k < inner.length; k++) { let j = k; while (j + 1 < inner.length && inner[j + 1] - inner[j] < 1.0 / HW) j++; cuts.add(Math.round((inner[k] + inner[j]) / 2)); k = j; } }
+      const thr = mx * 0.12, runs = []; let start = -1, gap = 0;
+      const flush = (end) => { if ((end - start) * HW >= 2.5) { let sy = 0, sc = 0; for (let q = start; q < end; q++) { sy += hh.y[q]; sc += h[q]; } if (sc > 0) runs.push([(start - S) * HW, (end - 1 - S) * HW, sy / sc]); } };
+      for (let c = 0; c <= h.length; c++) {
+        const on = c < h.length && h[c] >= thr;
+        if (on && cuts.has(c) && start >= 0) { flush(c); start = c + 1; gap = 0; continue; }
+        if (on) { if (start < 0) start = c; gap = 0; }
+        else if (start >= 0) { gap++; if (gap >= 3 || c === h.length) { flush(c - gap); start = -1; gap = 0; } }
+      }
+      if (runs.length) runsPerBin.set(b, runs);
+    }
+    const counts = {}; for (const r of runsPerBin.values()) counts[r.length] = (counts[r.length] || 0) + 1;
+    const total = runsPerBin.size;
+    let k = 1, kc = 0; for (const [cnt, c] of Object.entries(counts)) if (c > kc) { kc = c; k = +cnt; }
+    const path = paths[ri], nb = Math.floor(path[path.length - 1].s / BIN) + 1;
+    if (k < 2 || kc < total * 0.6 || total < 3) {
+      // single carriageway: calibrate width and lateral centre from the measured pavement extent
+      const centre = new Array(nb).fill(null), width = new Array(nb).fill(null);
+      for (const [b, runs] of runsPerBin) if (runs.length === 1) { centre[b] = (runs[0][0] + runs[0][1]) / 2; width[b] = runs[0][1] - runs[0][0] + HW; }
+      const wv = width.filter((v) => v != null);
+      if (wv.length >= 2) {
+        const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const q of idx) { if (q < i) lo = q; else { hi = q; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
+        const cF = fill(centre);
+        const w = Math.round((median(wv) + RAIL_T) * 10) / 10;
+        const pts = path.filter((p, i) => i % 2 === 0).map((p) => { const b = Math.min(nb - 1, Math.floor(p.s / BIN)); return [p.x + p.nx * cF[b], p.y, p.z + p.nz * cF[b]]; });
+        calibrated++;
+        out.push({ ...road, width: w, lanes: Math.max(1, Math.round((w - 1.5) / 3.4)), hw: w > 9 ? 'motorway' : 'motorway_link', kind: w > 9 ? 'expressway' : 'ramp', pts });
+      } else out.push(road);
+      return;
+    }
+    splits++;
+    for (let j = 0; j < k; j++) {
+      const centre = new Array(nb).fill(null), width = new Array(nb).fill(null), hgt = new Array(nb).fill(null);
+      for (const [b, runs] of runsPerBin) if (runs.length === k) { centre[b] = (runs[j][0] + runs[j][1]) / 2; width[b] = runs[j][1] - runs[j][0] + HW; hgt[b] = runs[j][2]; }
+      const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const q of idx) { if (q < i) lo = q; else { hi = q; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
+      const cF = fill(centre), wF = fill(width), hF = fill(hgt);
+      const pts = path.filter((p, i) => i % 2 === 0).map((p) => { const b = Math.min(nb - 1, Math.floor(p.s / BIN)); return [p.x + p.nx * cF[b], hF ? hF[b] : p.y, p.z + p.nz * cF[b]]; });
+      const w = Math.round(median(wF.filter((v) => v != null)) * 10) / 10 + RAIL_T; // run = pavement extent → add the two half-walls
+      out.push({ ...road, id: `${road.id}_${j}`, width: w, lanes: Math.max(1, Math.round((w - 1.5) / 3.4)), hw: w > 9 ? 'motorway' : 'motorway_link', kind: w > 9 ? 'expressway' : 'ramp', pts });
+    }
+  });
+  log(`corridors: ${calibrated} widths calibrated from pavement extent, ${splits} divided at gaps / interior parapets → ${out.length} carriageways`);
+  return out;
 }
 
 // ---------------------------------------------------------------- 2. piers
@@ -5029,6 +6256,15 @@ function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true
   const { n, pos, cls, elem, dev } = cloud;
   elem.fill(UNASSIGNED); dev.fill(128);
   if (refineWidths) refineDeckWidths(cloud, elements, log);
+  const stats0 = assignPass(cloud, elements, log, 0);
+  if (!refineWidths) return stats0;
+  refinePiers(cloud, elements, log);
+  return assignPass(cloud, elements, log, 1); // re-assign against the refitted piers
+}
+function assignPass(cloud, elements, log, pass = 0) {
+  const { n, pos, cls, elem, dev } = cloud;
+  elem.fill(UNASSIGNED); dev.fill(128);
+  const colSlack = pass === 0 ? 0.8 : 0.45; // first pass: raster pier centres can be decimetres off
   // spatial hash of deck path samples (cell 6 m) → nearest corridor lookup
   const CELL = 6, hash = new Map();
   const decks = elements.filter((e) => e.type === 'deck');
@@ -5069,11 +6305,17 @@ function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true
       const nx = -tz / Math.sqrt(L2), nz = tx / Math.sqrt(L2);
       const v = (x - px) * nx + (z - pz) * nz, dy = y - py, hw = e.width / 2;
       const av = Math.abs(v);
-      if (av > hw - RAIL_T - 0.35 && av < hw + 0.45 && dy > 0.06 && dy < RAIL_H + 1.3) {                                    // parapet: lateral deviation of the nearer face
-        const rails = railByDeck.get(e.id) || [];
-        const rail = rails.find((rr) => Math.sign(rr.side) === Math.sign(v)) || rails[0];
-        if (rail) { hit = rail; dmm = (av >= hw - RAIL_T / 2 ? av - hw : av - (hw - RAIL_T)) * 1000; }
-      } else if (av <= hw - RAIL_T + 0.1 && dy > -0.3 && dy < 0.3) { hit = e; dmm = dy * 1000; }                          // deck surface: vertical deviation
+      const rails0 = railByDeck.get(e.id) || [];
+      const rail0 = rails0.find((rr) => Math.sign(rr.side) === Math.sign(v)) || rails0[0];
+      const c00 = rail0 ? (rail0.designAbs != null ? rail0.designAbs : hw - RAIL_T / 2) : hw - RAIL_T / 2;
+      if (rail0 && Math.abs(av - c00) < RAIL_T / 2 + 0.3 && dy > 0.12 && dy < RAIL_H + 1.3) {                                // parapet: lateral deviation of the nearer face
+        const rail = rail0;
+        {
+          const c0 = c00; hit = rail;
+          if (dy > RAIL_H - 0.12) dmm = 0;                                                            // wall top / fence: no lateral reference
+          else dmm = (av >= c0 ? av - (c0 + RAIL_T / 2) : av - (c0 - RAIL_T / 2)) * 1000;              // nearer face
+        }
+      } else if (av <= hw - RAIL_T + 0.1 && dy > -0.3 && dy < 0.3) { hit = e; dmm = dy * 1000; }                          // deck surface: vertical deviation from the design profile
       else if (Math.abs(v) < hw + 0.3 && dy < -0.2 && dy > -(DECK_T + GIRDER_D + 0.6)) {                                 // girder
         const gd = girderByDeck.get(e.id);
         if (gd) {
@@ -5089,31 +6331,37 @@ function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true
       for (const col of list) {
         if (y < col.yBot - 0.5 || y > col.yTop + 0.3) continue;
         let sd;
-        if (col.round) sd = Math.hypot(x - col.x, z - col.z) - col.colW / 2;
+        if (col.round) { const r = col.fit ? col.fit.r : col.colW / 2; sd = Math.hypot(x - col.x, z - col.z) - r; }
         else { const u = (x - col.x) * col.tx + (z - col.z) * col.tz, v = -(x - col.x) * col.tz + (z - col.z) * col.tx; const du = Math.abs(u) - col.colL / 2, dv = Math.abs(v) - col.colW / 2; sd = Math.max(du, dv); }
-        if (sd < 0.45 && sd > -0.6) { hit = col; dmm = sd * 1000; break; }
+        if (sd < colSlack && sd > -(colSlack + 0.15)) { hit = col; dmm = sd * 1000; break; }
       }
     }
     if (hit) { elem[i] = hit.id; const dd = Math.max(-127, Math.min(127, Math.round(dmm))); dev[i] = 128 + dd; acc(hit.id, dmm); assigned++; }
   }
   log(`assigned ${assigned.toLocaleString()} / ${n.toLocaleString()} points to ${stats.size} elements`);
+  // per-element point statistics onto the elements (used by the property sheet)
+  for (const [id, st] of stats) { const e = elements[id]; if (e) e.scan = { count: st.count, meanDev: st.sum / st.count, maxDev: st.maxAbs }; }
   const out = {};
   for (const [id, s] of stats) out[id] = { count: s.count, meanDev: s.sum / s.count, maxDev: s.maxAbs };
   return out;
 }
 
 /**
- * Refit each fitted corridor to the measured points: per 10 m bin along the path, the lateral
- * centre is the mid-point between the two parapet medians, the height is the median pavement
- * height, and the width follows the parapet spacing. Paths and dependent elements are updated.
+ * Refit each corridor to the scan. The lateral alignment is taken from the pavement edge lines
+ * (区画線) rather than the parapets, so a bulging parapet shows up as a deviation instead of
+ * bending the alignment. Heights come from a RANSAC plane per 10 m bin (vehicles rejected); the
+ * design profile is the median of bins 3–8 away, so a locally settled span stands out.
+ * Also stores per-element design offsets used by assignAndDeviate.
  */
 function refineDeckWidths(cloud, elements, log) {
-  const { n, pos, cls } = cloud;
+  const { n, pos, cls, inten } = cloud;
   const decks = elements.filter((e) => e.type === 'deck');
+  const classified = cls.some((c) => c === C.marking);
+  let iMax = 0; if (!classified) for (let i = 0; i < n; i++) if (inten && inten[i] > iMax) iMax = inten[i];
   const CELL = 6, hash = new Map();
   for (const e of decks) for (let i = 0; i < e.path.length; i++) { const p = e.path[i], k = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`; if (!hash.has(k)) hash.set(k, []); hash.get(k).push([e, i]); }
   const BIN = 10;
-  const bins = new Map(); // deckId → Map(binIndex → {L:[], R:[], H:[]})
+  const bins = new Map(); // deckId → Map(bin → {L:[], R:[], EL:[], ER:[], px:[], py:[], pz:[]})
   for (let i = 0; i < n; i++) {
     const y = pos[i * 3 + 1]; if (y < 3) continue;
     const c = cls[i]; if (c === C.building || c === C.ground || c === C.road) continue;
@@ -5125,40 +6373,139 @@ function refineDeckWidths(cloud, elements, log) {
     const v = (x - p.x) * p.nx + (z - p.z) * p.nz, av = Math.abs(v), hw = e.width / 2;
     if (av > hw + 3) continue;
     let m = bins.get(e.id); if (!m) { m = new Map(); bins.set(e.id, m); }
-    const b = Math.floor(p.s / BIN); let bb = m.get(b); if (!bb) { bb = { L: [], R: [], H: [] }; m.set(b, bb); }
-    if (dy > 0.3 && dy < RAIL_H && av > 1) (v < 0 ? bb.L : bb.R).push(av);
-    else if (Math.abs(dy) < 0.6 && av < hw - 0.6) bb.H.push(dy);
+    const b = Math.floor(p.s / BIN); let bb = m.get(b); if (!bb) { bb = { L: [], R: [], EL: [], ER: [], px: [], py: [], pz: [] }; m.set(b, bb); }
+    const isMark = classified ? c === C.marking : inten && inten[i] > iMax * 0.7 && Math.abs(dy) < 0.12;
+    if (dy > RAIL_H - 0.25 && dy < RAIL_H + 0.25 && av > 1) (v < 0 ? bb.L : bb.R).push(av);          // parapet top
+    else if (isMark && Math.abs(dy) < 0.6 && av > 1.2) (v < 0 ? bb.EL : bb.ER).push(av);                 // markings (outermost = edge line)
+    else if (Math.abs(dy) < 0.6 && av < hw - 0.6 && !isMark && bb.px.length < 600) { bb.px.push(x); bb.py.push(y); bb.pz.push(z); }
   }
-  const med = (a) => { if (a.length < 8) return null; a.sort((p, q) => p - q); return a[a.length >> 1]; };
-  let refined = 0;
+  const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); if (!idx.length) return null; return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const j of idx) { if (j < i) lo = j; else { hi = j; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
+  const med = (a) => (a.length >= 6 ? median(a) : null);
+  const edge = (a) => { if (a.length < 6) return null; const s2 = Float64Array.from(a).sort(); return s2[Math.floor(s2.length * 0.9)]; }; // outermost line
+  let refined = 0, markRef = 0, markBins = 0;
   for (const e of decks) {
     const m = bins.get(e.id); if (!m) continue;
-    // per-bin corrections, then interpolate along the path (holes filled from neighbours)
     const nb = Math.floor(e.path[e.path.length - 1].s / BIN) + 1;
-    const lat = new Array(nb).fill(null), ver = new Array(nb).fill(null), wid = new Array(nb).fill(null);
-    for (const [b, bb] of m) { const l = med(bb.L), r = med(bb.R), h = med(bb.H); if (l != null && r != null) { lat[b] = (r - l) / 2; wid[b] = (r + l) / 2 * 2 + RAIL_T; } if (h != null) ver[b] = h; }
-    const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); if (!idx.length) return null; return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const j of idx) { if (j < i) lo = j; else { hi = j; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
-    const latF = fill(lat), verF = fill(ver), widF = fill(wid);
-    if (!latF && !verF) continue;
-    refined++;
-    const smooth = (arr) => arr.map((v, i) => { let s = 0, c = 0; for (let q = -1; q <= 1; q++) if (arr[i + q] != null) { s += arr[i + q]; c++; } return s / c; });
-    const latS = latF && smooth(latF), verS = verF && smooth(verF);
-    for (const p of e.path) {
-      const b = Math.min(nb - 1, Math.floor(p.s / BIN));
-      if (latS) { p.x += p.nx * latS[b]; p.z += p.nz * latS[b]; }
-      if (verS) p.y += verS[b];
+    const lat = new Array(nb).fill(null), latRail = new Array(nb).fill(null), hAbs = new Array(nb).fill(null), wid = new Array(nb).fill(null), railL = new Array(nb).fill(null), railR = new Array(nb).fill(null);
+    for (const [b, bb] of m) {
+      const el = edge(bb.EL), er = edge(bb.ER), l = med(bb.L), r = med(bb.R);
+      if (el != null && er != null) { lat[b] = (er - el) / 2; markBins++; }   // alignment from the outermost markings
+      if (l != null && r != null) { latRail[b] = (r - l) / 2; wid[b] = l + r + RAIL_T; }
+      railL[b] = l; railR[b] = r;
+      if (bb.px.length >= 12) {
+        const pl = ransacPlane(bb.px, bb.py, bb.pz, { thresh: 0.05, iters: 40 });
+        if (pl && pl.count >= 8 && Math.abs(pl.n[1]) > 0.9) {
+          const p = samplePath(e.path, Math.min(e.path[e.path.length - 1].s, (b + 0.5) * BIN));
+          hAbs[b] = -(pl.n[0] * p.x + pl.n[2] * p.z + pl.d) / pl.n[1];   // measured pavement height at the bin centre
+        }
+      }
     }
-    if (widF) {
-      const ws = widF.slice().sort((a, b) => a - b), w = Math.round(ws[ws.length >> 1] * 100) / 100;
+    const useMark = lat.filter((v) => v != null).length >= Math.max(2, nb * 0.3);
+    if (useMark) markRef++;
+    const latF = fill(useMark ? lat : latRail), hF = fill(hAbs);
+    if (!latF && !hF) continue;
+    refined++;
+    const latS = latF && latF.map((v, i) => { let s2 = 0, c = 0; for (let q = -1; q <= 1; q++) if (latF[i + q] != null) { s2 += latF[i + q]; c++; } return s2 / c; });
+    // design profile: for each bin, a straight line fitted (least squares) through the measured heights of
+    // bins 3–8 away on both sides; a span settled over ~40 m therefore shows as a dip against its neighbours
+    let design = null;
+    if (hF) {
+      // robust quadratic (IRLS, Cauchy weights, 20 mm scale) through the measured heights of bins i-8…i+8:
+      // a vertical curve is a parabola, so it is reproduced; a settled span (4–5 bins) is down-weighted
+      design = hF.map((v, i) => {
+        const qs = [], hs = [];
+        for (let q = -8; q <= 8; q++) if (hF[i + q] != null) { qs.push(q); hs.push(hF[i + q]); }
+        if (qs.length < 5) return v;
+        let left = 0, right = 0; for (const q of qs) { if (q < 0) left++; else if (q > 0) right++; }
+        const deg = qs.length >= 7 && left >= 3 && right >= 3 ? 2 : 1;
+        let w = qs.map(() => 1), coef = null;
+        for (let it = 0; it < 4; it++) {
+          coef = polyfit(qs, hs, deg, w); if (!coef) return v;
+          w = qs.map((q, k) => { const r = hs[k] - (coef[0] + coef[1] * q + (coef[2] || 0) * q * q); return 1 / (1 + (r / 0.02) ** 2); });
+        }
+        return coef[0];
+      });
+    }
+    for (const p of e.path) {
+      const fb = Math.min(nb - 1, Math.max(0, p.s / BIN - 0.5)), b0 = Math.floor(fb), b1 = Math.min(nb - 1, b0 + 1), t = fb - b0;
+      if (latS) { const l = latS[b0] + (latS[b1] - latS[b0]) * t; p.x += p.nx * l; p.z += p.nz * l; }
+      if (design) p.y = design[b0] + (design[b1] - design[b0]) * t;   // path height := design profile (linear between bin centres)
+    }
+    e.measuredOffset = hF && design ? hF.map((v, i) => v - design[i]) : null; // per-bin settlement (m, negative = sagged)
+    e.profile = { hAbs, design, lat: latS, useMark };
+    // settled spans: ≥ 2 consecutive interior bins more than 20 mm below the design profile
+    e.settled = [];
+    if (e.measuredOffset) {
+      const mo = e.measuredOffset;
+      for (let i = 1; i < nb - 1; i++) if (hAbs[i] != null && mo[i] < -0.02 && ((hAbs[i - 1] != null && mo[i - 1] < -0.02) || (hAbs[i + 1] != null && mo[i + 1] < -0.02))) e.settled.push({ bin: i, s: (i + 0.5) * BIN, mm: Math.round(mo[i] * 1000) });
+    }
+    const wv = wid.filter((v) => v != null);
+    if (wv.length) {
+      const w = Math.round(median(wv) * 100) / 100;
+      const lDesign = median(railL.filter((v) => v != null)), rDesign = median(railR.filter((v) => v != null));
       for (const el of elements) if (el === e || el.parent === e.id) {
         if (el.type === 'deck') { el.width = w; el.typeName = `t=${(el.thick * 1000) | 0} W=${(w * 1000) | 0}`; }
         if (el.type === 'girder') { el.wTop = Math.max(3, w - 1.0); el.wBot = Math.max(2.5, w - 3.2); el.typeName = `W${(el.wTop * 1000) | 0}×D${(el.depth * 1000) | 0}`; }
-        if (el.type === 'railing') el.offset = el.side * (w / 2 - RAIL_T / 2);
+        if (el.type === 'railing') { const d = el.side < 0 ? lDesign : rDesign; el.offset = el.side * (d != null ? d : w / 2 - RAIL_T / 2); el.designAbs = d != null ? d : w / 2 - RAIL_T / 2; }
         if (el.type === 'cap') { el.w = w + 1.4; el.typeName = `W${((w + 1.4) * 1000) | 0}×H${(el.h * 1000) | 0}`; }
       }
     }
   }
-  log(`corridors refitted to parapets / pavement: ${refined} / ${decks.length}`);
+  log(`corridors refitted: ${refined} / ${decks.length} (alignment from markings on ${markRef}, ${markBins} bins; parapets otherwise); heights by per-bin RANSAC planes vs. local design trend`);
+}
+
+/** Weighted least-squares polynomial coefficients [c0, c1, c2] of the given degree through (q, h). */
+function polyfit(qs, hs, deg, w) {
+  const m = deg + 1, A = Array.from({ length: m }, () => new Float64Array(m)), B = new Float64Array(m);
+  for (let i = 0; i < qs.length; i++) { const pw = [1, qs[i], qs[i] * qs[i]], wi = w ? w[i] : 1; for (let r = 0; r < m; r++) { B[r] += wi * pw[r] * hs[i]; for (let c = 0; c < m; c++) A[r][c] += wi * pw[r] * pw[c]; } }
+  const M = A.map((row, i) => [...row, B[i]]);
+  for (let c = 0; c < m; c++) { let p = c; for (let r = c + 1; r < m; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r; if (Math.abs(M[p][c]) < 1e-12) return null; [M[c], M[p]] = [M[p], M[c]]; for (let r = 0; r < m; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k <= m; k++) M[r][k] -= f * M[c][k]; } }
+  return Array.from({ length: m }, (_, i) => M[i][m] / M[i][i]);
+}
+
+/** Pier refit: RANSAC circle on the lower and upper thirds of the shaft → position, radius, lean. */
+function refinePiers(cloud, elements, log) {
+  const { n, pos, elem } = cloud;
+  const cols = new Map();
+  for (const e of elements) if (e.type === 'column') cols.set(e.id, { e, x: [], z: [], y: [] });
+  for (let i = 0; i < n; i++) { const c = cols.get(elem[i]); if (c && c.x.length < 6000) { c.x.push(pos[i * 3]); c.z.push(pos[i * 3 + 2]); c.y.push(pos[i * 3 + 1]); } }
+  let fitted = 0, leaning = 0;
+  for (const { e, x, z, y } of cols.values()) {
+    if (x.length < 60) continue;
+    const h = e.yTop - e.yBot, lo = [], hi = [];
+    for (let i = 0; i < x.length; i++) { const f = (y[i] - e.yBot) / h; if (f < 0.35) lo.push(i); else if (f > 0.65) hi.push(i); }
+    if (lo.length < 20 || hi.length < 20) continue;
+    const circ = (idx) => ransacCircle(idx.map((i) => x[i]), idx.map((i) => z[i]), { thresh: 0.04, iters: 80, rMin: 0.4, rMax: 4 });
+    const rect = (idx) => rectCentre(idx.map((i) => x[i]), idx.map((i) => z[i]), e);
+    // shape decision from the data: a circle that explains ≥ 70 % of the lower third with ≤ 25 mm rms wins
+    let a = circ(lo), b = a && a.count >= lo.length * 0.7 && a.rms < 0.025 ? circ(hi) : null;
+    if (a && b && b.count >= hi.length * 0.6 && b.rms < 0.03) e.round = true;
+    else { e.round = false; a = rect(lo); b = rect(hi); }
+    if (!a || !b) continue;
+    fitted++;
+    const yLo = median(lo.map((i) => y[i])), yHi = median(hi.map((i) => y[i]));
+    const lean = [(b.cu - a.cu) / Math.max(1, yHi - yLo) * h, (b.cv - a.cv) / Math.max(1, yHi - yLo) * h]; // offset of the top relative to the base
+    const axisX = a.cu, axisZ = a.cv; // base position from the lower-third fit (no noisy extrapolation)
+    e.x = axisX; e.z = axisZ;
+    if (e.round) { e.colW = e.colL = Math.round(a.r * 2 * 100) / 100; e.typeName = `φ${(e.colW * 1000) | 0}`; e.family = 'RC円柱橋脚'; }
+    else if (a.size) { e.colL = Math.round(a.size[0] * 100) / 100; e.colW = Math.round(a.size[1] * 100) / 100; e.typeName = `${(e.colW * 1000) | 0}×${(e.colL * 1000) | 0}`; e.family = 'RC小判形橋脚'; }
+    e.fit = { r: a.r, rms: a.rms, lean, inliers: a.count + b.count };
+    e.asBuilt = { dx: lean[0], dy: 0, dz: lean[1] };
+    if (Math.hypot(lean[0], lean[1]) > 0.03) leaning++;
+    // caps / footings follow the pier base
+    for (const el of elements) if (el.parent === e.id) { el.x = axisX; el.z = axisZ; }
+  }
+  log(`piers refitted (RANSAC circles / face medians): ${fitted}, leaning > 30 mm at the top: ${leaning}`);
+}
+function rectCentre(xs, zs, e) {
+  const us = [], vs = [];
+  for (let i = 0; i < xs.length; i++) { const dx = xs[i] - e.x, dz = zs[i] - e.z; us.push(dx * e.tx + dz * e.tz); vs.push(-dx * e.tz + dz * e.tx); }
+  // each face = the points near its nominal plane; centre = mid-point between the two opposite face medians
+  const face = (arr, other, half, otherHalf, sign) => { const sel = []; for (let i = 0; i < arr.length; i++) if (Math.abs(other[i]) < otherHalf - 0.1 && Math.abs(arr[i] * sign - half) < 0.4) sel.push(arr[i]); return sel.length >= 6 ? median(sel) : null; };
+  const uP = face(us, vs, e.colL / 2, e.colW / 2, 1), uM = face(us, vs, e.colL / 2, e.colW / 2, -1), vP = face(vs, us, e.colW / 2, e.colL / 2, 1), vM = face(vs, us, e.colW / 2, e.colL / 2, -1);
+  if (uP == null || uM == null || vP == null || vM == null) return null;
+  const cu = (uP + uM) / 2, cv = (vP + vM) / 2;
+  return { cu: e.x + cu * e.tx - cv * e.tz, cv: e.z + cu * e.tz + cv * e.tx, r: 0, rms: 0, count: xs.length, size: [uP - uM, vP - vM] };
 }
 
 /** Full pipeline: cloud → { data (roads/buildings/piers), log } ready for buildStructure. */
@@ -5166,7 +6513,18 @@ function scanToBim(cloud, opts = {}) {
   const lines = [];
   const log = (m) => { lines.push(m); if (opts.log) opts.log(m); };
   let t = performance.now();
-  const roads = extractDecks(cloud, { log }); log(`  (decks ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  const fromPar = extractDecksFromParapets(cloud, { log }); log(`  (parapets ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  let roads = extractDecks(cloud, { log }); log(`  (decks ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  roads = splitCorridors(cloud, roads, { log }); log(`  (split ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  if (fromPar.length) {
+    // parapet-pair decks take precedence; occupancy corridors survive only where no pair deck lies within 4 m
+    const occ = new Map();
+    for (const r of fromPar) for (const p of r.pts) { const k = `${Math.floor(p[0] / 6)},${Math.floor(p[2] / 6)}`; if (!occ.has(k)) occ.set(k, []); occ.get(k).push(p); }
+    const near = (p) => { for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = occ.get(`${Math.floor(p[0] / 6) + di},${Math.floor(p[2] / 6) + dj}`); if (l && l.some((q) => Math.hypot(q[0] - p[0], q[2] - p[2]) < 4 && Math.abs(q[1] - p[1]) < 2)) return true; } return false; };
+    const rest = roads.filter((r) => r.pts.filter(near).length < r.pts.length * 0.5);
+    log(`combined: ${fromPar.length} parapet-pair decks + ${rest.length} occupancy corridors (${roads.length - rest.length} superseded)`);
+    roads = fromPar.concat(rest);
+  }
   const piers = extractPiers(cloud, roads, { log }); log(`  (piers ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
   const buildings = extractBuildings(cloud, { log }); log(`  (buildings ${((performance.now() - t) / 1000).toFixed(1)} s)`);
   const data = { site: { layerHeight: 5.6, cropM: [0, 0], drive: {} }, roads, buildings, water: [], parks: [], rail: [], piers };
@@ -5340,6 +6698,7 @@ async function loadSite(key) {
   const [cw, ch] = data.site.cropM;
   sectionBox.min.set(-cw / 2, -3, -ch / 2); sectionBox.max.set(cw / 2, 60, ch / 2); sectionBox.update();
   syncSectionSliders();
+  renderCrs();
   overlay.classList.add('hidden');
 }
 
@@ -5398,7 +6757,41 @@ async function workerSource(embeddedKey, modules, body) {
   }
   return src.replace(/^export\s+(?=(const|let|function|class|async))/gm, '') + '\n' + body;
 }
-const lasWorkerSource = () => workerSource('__LAS_SRC__', ['las'], LAS_WORKER_BODY);
+const lasWorkerSource = () => workerSource('__LAS_SRC__', ['crs', 'fit', 'las'], LAS_WORKER_BODY);
+const SITE_EPSG = { hakozaki: 6677, ohashi: 6677 }; // 平面直角座標系 第IX系 (JGD2011)
+
+// ---------------------------------------------------------------- coordinate reference system
+function currentCrs() {
+  if (state.las) { const epsg = state.las.epsgOverride || (state.las.header.crs && state.las.header.crs.epsg); return { epsg, desc: describeEpsg(epsg), origin: [state.las.local.cx, state.las.local.cy, state.las.local.z0], source: state.las.epsgOverride ? '手動指定' : state.las.header.crs ? state.las.header.crs.source : null }; }
+  const epsg = SITE_EPSG[state.site], desc = describeEpsg(epsg);
+  const c = data ? tmForward(data.site.center[0], data.site.center[1], desc.tm) : { e: 0, n: 0 };
+  return { epsg, desc, origin: [c.e, c.n, 0], source: 'OSM 中心座標から投影' };
+}
+/** viewer local (x east, y up, z south) → projected E/N/H and lat/lon */
+function toWorld(x, y, z) {
+  const crs = currentCrs();
+  const E = crs.origin[0] + x, N = crs.origin[1] - z, H = crs.origin[2] + y;
+  const ll = crs.desc && crs.desc.tm ? tmInverse(E, N, crs.desc.tm) : null;
+  return { E, N, H, ll, crs };
+}
+function renderCrs() {
+  const crs = currentCrs();
+  const el = $('crs-info');
+  const o = crs.origin;
+  let html = `<div class="kv"><span>座標系<\/span><b>${crs.desc ? crs.desc.name : '不明（ファイルに CRS 情報なし）'}<\/b><\/div>`;
+  if (crs.epsg) html += `<div class="kv"><span>EPSG<\/span><b>${crs.epsg}${crs.source ? `（${crs.source}）` : ''}<\/b><\/div>`;
+  html += `<div class="kv"><span>ローカル原点<\/span><b>E ${o[0].toFixed(3)} / N ${o[1].toFixed(3)} / H ${o[2].toFixed(3)} m<\/b><\/div>`;
+  if (crs.desc && crs.desc.tm) { const ll = tmInverse(o[0], o[1], crs.desc.tm); html += `<div class="kv"><span>原点の経緯度<\/span><b>${formatDms(ll.lat, 'lat')} ${formatDms(ll.lon, 'lon')}<\/b><\/div>`; }
+  else if (state.las) { const g = guessZone(o[0], o[1]); if (g) html += `<div class="kv hint">${g.hint}<\/div>`; }
+  if (crs.desc && crs.desc.merc) html += `<div class="kv hint">${crs.desc.name}<\/div>`;
+  el.innerHTML = html;
+  $('crs-select-row').style.display = state.las && !(state.las.header.crs && state.las.header.crs.epsg) ? '' : 'none';
+}
+function showCoord(p) {
+  const w = toWorld(p.x, p.y, p.z);
+  $('coord-readout').innerHTML = `<b>E<\/b> ${w.E.toFixed(3)} <b>N<\/b> ${w.N.toFixed(3)} <b>H<\/b> ${w.H.toFixed(3)} m` + (w.ll ? `<br>${formatDms(w.ll.lat, 'lat')} ${formatDms(w.ll.lon, 'lon')}` : '') + `<br><span class="muted">ローカル x ${p.x.toFixed(2)} y ${p.y.toFixed(2)} z ${p.z.toFixed(2)}<\/span>`;
+}
+$('crs-select').addEventListener('change', (e) => { if (state.las) { state.las.epsgOverride = +e.target.value || null; renderCrs(); } });
 const S2B_BODY = `
 self.onmessage = (ev) => {
   const cloud = ev.data;
@@ -5415,7 +6808,7 @@ async function runScanToBim() {
   if (!cloud) return;
   overlay.classList.remove('hidden');
   setProgress(0.05, 'Scan-to-BIM: 高架の線形・橋脚・建物を点群から抽出中…');
-  const url = URL.createObjectURL(new Blob([await workerSource('__S2B_SRC__', ['geom', 'structure', 'scan2bim'], S2B_BODY)], { type: 'text/javascript' }));
+  const url = URL.createObjectURL(new Blob([await workerSource('__S2B_SRC__', ['geom', 'structure', 'fit', 'scan2bim'], S2B_BODY)], { type: 'text/javascript' }));
   const worker = new Worker(url);
   const payload = { n: cloud.n, pos: cloud.pos.slice(), cls: cloud.cls.slice(), nrm: cloud.nrm.slice(), elem: new Uint16Array(cloud.n), dev: new Uint8Array(cloud.n) };
   const res = await new Promise((resolve, reject) => {
@@ -5460,7 +6853,7 @@ async function loadLasFile(file) {
     worker.postMessage({ buf, isLaz, maxPoints: 16e6 }, [buf]);
   }).finally(() => { worker.terminate(); URL.revokeObjectURL(url); });
   // switch the viewer into "real scan" mode: no structural model, cloud only
-  state.las = { name: file.name, header: m.header, spacing: m.spacing, cell: m.cell, stride: m.stride, local: m.local };
+  state.las = { name: file.name, header: m.header, spacing: m.spacing, cell: m.cell, stride: m.stride, local: m.local, epsgOverride: null };
   state.isolateRoute = null; clearSelection(); measure.clear();
   elements = [];
   if (bim) { scene.remove(bim.group); bim.faceGeo.dispose(); bim.edgeGeo.dispose(); bim = null; }
@@ -5484,6 +6877,7 @@ async function loadLasFile(file) {
   sectionBox.min.set(c.x - r, c.y - r, c.z - r); sectionBox.max.set(c.x + r, c.y + r, c.z + r); sectionBox.update();
   const cfg = [['sx0', c.x - r, c.x + r, c.x - r], ['sx1', c.x - r, c.x + r, c.x + r], ['sy0', c.y - r, c.y + r, c.y - r], ['sy1', c.y - r, c.y + r, c.y + r], ['sz0', c.z - r, c.z + r, c.z - r], ['sz1', c.z - r, c.z + r, c.z + r]];
   for (const [id, lo, hi, v] of cfg) { const sl = $(id); sl.min = lo; sl.max = hi; sl.value = v; }
+  renderCrs();
   overlay.classList.add('hidden');
   const clsSet = new Set(m.cls);
   toast(`${m.n.toLocaleString()} 点を読み込みました（分類 ${clsSet.size} 種、平均点間隔 ${m.spacing.toFixed(2)} m）`, 5000);
@@ -5501,12 +6895,13 @@ function exportLas() {
     const k = (row * 256 + Math.min(255, Math.max(0, Math.round(t * 255)))) * 4;
     rgb[i * 3] = lutData[k]; rgb[i * 3 + 1] = lutData[k + 1]; rgb[i * 3 + 2] = lutData[k + 2];
   }
-  const buf = writeLas({ n, pos: cloud.pos, inten: cloud.inten, cls: cloud.cls, rgb }, { offset: state.las ? [state.las.local.cx, state.las.local.cy, state.las.local.z0] : [0, 0, 0] });
+  const crs = currentCrs();
+  const buf = writeLas({ n, pos: cloud.pos, inten: cloud.inten, cls: cloud.cls, rgb }, { offset: crs.origin, epsg: crs.desc && crs.desc.tm ? crs.epsg : null });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
   a.download = (state.las ? state.las.name.replace(/\.la[sz]$/i, '') : `${state.site}-synth`) + '.las';
   document.body.appendChild(a); a.click(); a.remove();
-  toast(`LAS 1.2 (PF2) を書き出しました: ${(buf.byteLength / 1e6).toFixed(0)} MB、${n.toLocaleString()} 点`, 5000);
+  toast(`LAS 1.2 (PF2) を書き出しました: ${(buf.byteLength / 1e6).toFixed(0)} MB、${n.toLocaleString()} 点${crs.epsg ? `、EPSG:${crs.epsg}` : ''}`, 5000);
 }
 $('las-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) loadLasFile(f).catch((err) => { overlay.classList.add('hidden'); toast(`読み込み失敗: ${err.message}`, 6000); }); e.target.value = ''; });
 $('las-export').addEventListener('click', exportLas);
@@ -5656,7 +7051,7 @@ canvas.addEventListener('pointerup', (e) => {
   raycaster.setFromCamera(pointer, camera);
   if (state.measuring) {
     const hit = lod && points.visible ? raycaster.intersectObjects(lod.objects, false)[0] : null;
-    if (hit) { measure.addPoint(hit.point); toast(measure.pending ? '2 点目をクリック' : `計測: ${(measure.items.at(-1).d).toFixed(3)} m`); }
+    if (hit) { showCoord(hit.point); measure.addPoint(hit.point); toast(measure.pending ? '2 点目をクリック' : `計測: ${(measure.items.at(-1).d).toFixed(3)} m`); }
     return;
   }
   let id = -1;
@@ -5664,9 +7059,9 @@ canvas.addEventListener('pointerup', (e) => {
     const hit = raycaster.intersectObject(bim.faces, false)[0];
     if (hit) id = elementAtFace(bim.ranges, hit.faceIndex);
   }
-  if (id < 0 && lod && points.visible) {
+  if (lod && points.visible) {
     const hit = raycaster.intersectObjects(lod.objects, false)[0];
-    if (hit) { const el = cloud.elem[hit.object.userData.cell.offset + hit.index]; if (el !== NO_ELEM) id = el; }
+    if (hit) { showCoord(hit.point); if (id < 0) { const el = cloud.elem[hit.object.userData.cell.offset + hit.index]; if (el !== NO_ELEM) id = el; } }
   }
   if (id >= 0) select(id); else clearSelection();
 });
@@ -5682,7 +7077,9 @@ function select(id) {
   let count = 0, sum = 0, maxAbs = 0;
   if (cloud) for (let i = 0; i < cloud.n; i++) if (cloud.elem[i] === id) { count++; const d = cloud.dev[i] - 128; sum += d; if (Math.abs(d) > maxAbs) maxAbs = Math.abs(d); }
   const expected = expectedPoints(e) * state.density;
-  const extra = { count, meanDev: count ? sum / count : null, maxDev: count ? maxAbs : null, coverage: expected > 0 ? Math.min(100, (count / expected) * 100) : null };
+  const extra = { count, meanDev: count ? sum / count : null, maxDev: count ? maxAbs : null, coverage: state.las ? null : expected > 0 ? Math.min(100, (count / expected) * 100) : null };
+  if (e.fit) extra.note = `RANSAC 当てはめ: ${e.round ? `半径 ${(e.fit.r * 1000).toFixed(0)} mm` : '矩形断面'}、残差 RMS ${(e.fit.rms * 1000).toFixed(0)} mm、天端の傾き ${(Math.hypot(e.fit.lean[0], e.fit.lean[1]) * 1000).toFixed(0)} mm`;
+  if (e.settled && e.settled.length) extra.note = `沈下疑い: ${e.settled.map((sp) => `${sp.s.toFixed(0)} m 付近 ${sp.mm} mm`).slice(0, 4).join('、')}`;
   if (e.type === 'footing') extra.note = '地中部材：スキャン未取得（BIM のみ）';
   renderProperties(e, extra);
 }

@@ -1,6 +1,9 @@
 // LAS / LAZ reader and LAS writer (plain script: no imports, so it can also run inside a classic
 // worker that loads laz-perf via importScripts). Produces the same attribute set as the synthesiser:
 // positions (y-up, local metres), intensity, classification, deviation (=0), element id (none), normals.
+import { smallestEigenvector } from './fit.js';
+import { readLasCrs, geoKeyVlr } from './crs.js';
+
 const LAZPERF_URL = 'https://cdn.jsdelivr.net/npm/laz-perf@0.0.6/lib/web/';
 
 export function readLasHeader(buf) {
@@ -79,6 +82,7 @@ export function decodeRecords(header, dv, getRecord, { maxPoints = 16e6, progres
 /** Parse an uncompressed LAS buffer. */
 export function parseLas(buf, opts) {
   const header = readLasHeader(buf);
+  header.crs = safeCrs(buf, header);
   if (header.compressed) throw new Error('LAZ 圧縮ファイルです: parseLaz を使用してください');
   const dv = new DataView(buf);
   const base = header.offsetToPoints, len = header.recordLength;
@@ -89,6 +93,7 @@ export function parseLas(buf, opts) {
 /** Decode a LAZ buffer with laz-perf (must be loaded: `createLazPerf` global or passed module). */
 export async function parseLaz(buf, opts = {}) {
   const header = readLasHeader(buf);
+  header.crs = safeCrs(buf, header);
   const create = opts.createLazPerf || (typeof createLazPerf !== 'undefined' ? createLazPerf : null);
   if (!create) throw new Error('laz-perf が読み込まれていません');
   const LazPerf = await create({ locateFile: (f) => LAZPERF_URL + f });
@@ -213,49 +218,23 @@ export function estimateNormalsKnn(pos, n, { k = 14, progress = () => {} } = {})
   return { normals: out, spacing, cell };
 }
 
-// smallest eigenvector of the symmetric 3x3 matrix [[a,b,d],[b,e,f],[d,f,g]] via a few Jacobi sweeps
-function smallestEigenvector(a, b, d, e, f, g) {
-  let A = [[a, b, d], [b, e, f], [d, f, g]];
-  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-  for (let sweep = 0; sweep < 8; sweep++) {
-    for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
-      if (Math.abs(A[p][q]) < 1e-12) continue;
-      const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
-      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
-      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
-      for (let k = 0; k < 3; k++) {
-        const akp = A[k][p], akq = A[k][q];
-        A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq;
-      }
-      for (let k = 0; k < 3; k++) {
-        const apk = A[p][k], aqk = A[q][k];
-        A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk;
-      }
-      for (let k = 0; k < 3; k++) {
-        const vkp = V[k][p], vkq = V[k][q];
-        V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq;
-      }
-    }
-  }
-  let mi = 0;
-  for (let i = 1; i < 3; i++) if (A[i][i] < A[mi][mi]) mi = i;
-  const v = [V[0][mi], V[1][mi], V[2][mi]];
-  const L = Math.hypot(v[0], v[1], v[2]) || 1;
-  return [v[0] / L, v[1] / L, v[2] / L];
-}
+function safeCrs(buf, header) { try { return readLasCrs(buf, header); } catch (e) { return null; } }
 
 /** Write a LAS 1.2 point-format-2 file (XYZ, intensity, classification, RGB) from viewer arrays. */
-export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
+export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0], epsg = null } = {}) {
   // standard ASPRS codes where they exist, this viewer's extended codes (20–31) otherwise
   const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 9: 9, 11: 11, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
   const headerSize = 227, recLen = 26;
-  const buf = new ArrayBuffer(headerSize + n * recLen);
+  const vlr = epsg ? geoKeyVlr(epsg) : null;
+  const vlrLen = vlr ? vlr.byteLength : 0;
+  const buf = new ArrayBuffer(headerSize + vlrLen + n * recLen);
   const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  if (vlr) u8.set(new Uint8Array(vlr), headerSize);
   u8.set([76, 65, 83, 70], 0); // LASF
   dv.setUint8(24, 1); dv.setUint8(25, 2);
   u8.set(new TextEncoder().encode('LiDAR x BIM synth'.padEnd(32, '\0')), 26);
   u8.set(new TextEncoder().encode('pointcloud-highway'.padEnd(32, '\0')), 58);
-  dv.setUint16(94, headerSize, true); dv.setUint32(96, headerSize, true); dv.setUint32(100, 0, true);
+  dv.setUint16(94, headerSize, true); dv.setUint32(96, headerSize + vlrLen, true); dv.setUint32(100, vlr ? 1 : 0, true);
   dv.setUint8(104, 2); dv.setUint16(105, recLen, true); dv.setUint32(107, n, true);
   const sc = 0.001;
   dv.setFloat64(131, sc, true); dv.setFloat64(139, sc, true); dv.setFloat64(147, sc, true);
@@ -263,7 +242,7 @@ export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {
   let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
   for (let i = 0; i < n; i++) {
     const X = pos[i * 3], Y = -pos[i * 3 + 2], Z = pos[i * 3 + 1]; // viewer y-up → LAS z-up
-    const o = headerSize + i * recLen;
+    const o = headerSize + vlrLen + i * recLen;
     dv.setInt32(o, Math.round(X / sc), true); dv.setInt32(o + 4, Math.round(Y / sc), true); dv.setInt32(o + 8, Math.round(Z / sc), true);
     dv.setUint16(o + 12, inten[i] * 257, true);
     dv.setUint8(o + 14, 0x11); // return 1 of 1

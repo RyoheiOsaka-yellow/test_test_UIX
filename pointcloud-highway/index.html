@@ -47,6 +47,11 @@
   .presets button small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
   .sub { margin-left: 22px; }
   .small { font-size: 11px; line-height: 1.5; margin: 6px 0; }
+  .mono { font-family: var(--mono); }
+  .kv { display: flex; gap: 8px; justify-content: space-between; border-top: 1px solid var(--panel-border); padding: 3px 0; }
+  .kv span { color: var(--muted); flex: none; }
+  .kv b { font-weight: 500; font-family: var(--mono); font-size: 10.5px; text-align: right; }
+  .kv.hint { display: block; color: var(--accent2); }
   .filebtn { display: block; text-align: center; background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
   .filebtn:hover { background: #242a39; }
   body.no-bim #sec-bim, body.no-bim #sec-4d, body.no-bim #drive, body.no-bim .presets [data-preset=bim], body.no-bim .presets [data-preset=scan2bim] { display: none; }
@@ -229,7 +234,21 @@
     <button id="s2b-run" class="las-only" style="width:100%; margin-top:4px">🏗 点群から構造モデルを自動生成（Scan-to-BIM）</button>
     <p class="muted small las-only">高架床版の線形・幅員・高さ（高さ帯ごとのラスタ→細線化）、橋脚（鉛直クラスタ、円形／矩形断面を当てはめ）、建物（外接矩形）を抽出し、各点を最寄り部材に対応付けて設計面との偏差を mm で計算します。</p>
     <pre id="s2b-log" class="muted small" style="white-space:pre-wrap; max-height:120px; overflow:auto; margin:0"></pre>
-    <button id="las-export" style="width:100%; margin-top:6px">⬇ 表示中の点群を LAS で書き出す</button>
+    <h2 style="margin-top:10px">座標系（CRS）</h2>
+    <div id="crs-info" class="small"></div>
+    <div id="crs-select-row" class="row" style="display:none"><label>系を指定</label>
+      <select id="crs-select" style="width:150px">
+        <option value="">（未指定）</option>
+        <optgroup label="JGD2011 平面直角座標系">
+          <option value="6669">第I系</option><option value="6670">第II系</option><option value="6671">第III系</option><option value="6672">第IV系</option><option value="6673">第V系</option><option value="6674">第VI系</option><option value="6675">第VII系</option><option value="6676">第VIII系</option><option value="6677">第IX系（東京）</option><option value="6678">第X系</option><option value="6679">第XI系</option><option value="6680">第XII系</option><option value="6681">第XIII系</option><option value="6682">第XIV系</option><option value="6683">第XV系</option><option value="6684">第XVI系</option><option value="6685">第XVII系</option><option value="6686">第XVIII系</option><option value="6687">第XIX系</option>
+        </optgroup>
+        <optgroup label="UTM (JGD2011)"><option value="6688">zone 51N</option><option value="6689">zone 52N</option><option value="6690">zone 53N</option><option value="6691">zone 54N</option></optgroup>
+        <optgroup label="UTM (WGS84)"><option value="32651">zone 51N</option><option value="32652">zone 52N</option><option value="32653">zone 53N</option><option value="32654">zone 54N</option></optgroup>
+      </select>
+    </div>
+    <div class="row"><label>クリック点の座標</label></div>
+    <div id="coord-readout" class="small mono">—（点群をクリック）</div>
+    <button id="las-export" style="width:100%; margin-top:6px">⬇ 表示中の点群を LAS で書き出す（CRS 付き）</button>
     <p class="muted small">LAS 1.2 / PF2（XYZ・強度・分類・現在の配色 RGB）。CloudCompare や Autodesk ReCap で開けます。</p>
   </div>
 </aside>
