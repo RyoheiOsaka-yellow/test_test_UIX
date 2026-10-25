@@ -45,7 +45,7 @@ const CSS = `/* ═════════════════════�
   border:1px solid var(--line);padding:14px 28px;transition:.3s var(--ease);}
 .case__demo:hover{background:var(--white);color:var(--black);}
 .case__links{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 8px;}
-.case__shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin:44px 0;}
+.case__shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:14px;margin:44px 0;}
 .case__shots figure{margin:0;background:#111;}
 .case__shots img{width:100%;height:auto;display:block;}
 .case__shots figcaption{font-size:11px;line-height:1.8;color:var(--grey-d);padding:8px 2px 0;}
@@ -86,8 +86,8 @@ const COMMON = {
   cs_idx_back:  ['← ホームへ戻る', '← Back to home'],
   cs_idx_tag:   ['Cases', 'Cases'],
   cs_idx_title: ['実装した事例。', 'What we have built.'],
-  cs_idx_lede:  ['工場のレイアウト検証から駅構内の3Dモデリング、点群データの活用、店頭販促のシミュレーションまで。参加しているプログラムやパートナーシップの記録も含みます。多くの事例はブラウザで動くデモを公開しています。',
-                 'From factory layout studies and 3D modelling of station interiors to point-cloud data and in-store promotion simulation, plus the programmes and partnerships we take part in. Most cases have a working demo that runs in the browser.'],
+  cs_idx_lede:  ['工場のレイアウト検証から駅構内の3Dモデリング、点群データの活用、店頭販促のシミュレーション、人流データの分析まで。多くの事例はブラウザで動くデモを公開しています。',
+                 'From factory layout studies and 3D modelling of station interiors to point-cloud data, in-store promotion simulation and mobility-data analysis. Most cases have a working demo that runs in the browser.'],
   cs_back_list: ['← 事例一覧へ戻る', '← All cases'],
   cs_open_demo: ['デモを開く ↗', 'Open demo ↗'],
   cs_open_press: ['プレスリリースを読む ↗', 'Read the press release ↗'],

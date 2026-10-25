@@ -11,8 +11,9 @@ fs.mkdirSync(OUT, { recursive: true });
   const pg = await br.newPage(); await pg.setContent('<canvas id="c"></canvas>');
   let n = 0, total = 0;
   const NEWS = require(REPO + 'news-append.js');
-  const jobs = cases.map(c => ({ src: c.imgs[0] && c.imgs[0].src, out: OUT }))
-    .concat(NEWS.images(NEWS.load()).map(im => ({ src: im.src, out: REPO + 'assets/news/_thumb/' })));
+  // 事例は全画像（1枚目は 800px、2枚目以降は 640px・やや強めの圧縮で1枚HTMLの重さを抑える）
+  const jobs = cases.flatMap(c => c.imgs.map((im, i) => ({ src: im.src, out: OUT, w: i ? 560 : 800, q: i ? 0.55 : 0.68 })))
+    .concat(NEWS.images(NEWS.load()).map(im => ({ src: im.src, out: REPO + 'assets/news/_thumb/', w: 800, q: 0.68 })));
   fs.mkdirSync(REPO + 'assets/news/_thumb/', { recursive: true });
   for (const job of jobs) {
     const src = job.src; if (!src) continue;
@@ -21,12 +22,12 @@ fs.mkdirSync(OUT, { recursive: true });
     const out = job.out + path.basename(file).replace(/\.[a-z]+$/, '') + '.webp';
     const mime = /\.png$/i.test(file) ? 'image/png' : /\.jpe?g$/i.test(file) ? 'image/jpeg' : 'image/webp';
     const data = 'data:' + mime + ';base64,' + fs.readFileSync(file).toString('base64');
-    const res = await pg.evaluate(async (d) => {
+    const res = await pg.evaluate(async ([d, maxW, q]) => {
       const im = new Image(); im.src = d; await im.decode();
-      const W = Math.min(800, im.naturalWidth), H = Math.round(im.naturalHeight * W / im.naturalWidth);
+      const W = Math.min(maxW, im.naturalWidth), H = Math.round(im.naturalHeight * W / im.naturalWidth);
       const cv = document.getElementById('c'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(im, 0, 0, W, H);
-      return cv.toDataURL("image/webp", 0.68);
-    }, data);
+      return cv.toDataURL("image/webp", q);
+    }, [data, job.w || 800, job.q || 0.68]);
     const buf = Buffer.from(res.split(',')[1], 'base64');
     fs.writeFileSync(out, buf); n++; total += buf.length;
     console.log('  ' + path.basename(out).padEnd(40), (buf.length >> 10) + 'KB');

@@ -55,7 +55,11 @@ function thumbDataUri(src) {
 function thumbSrcMap() {
   const cases = JSON.parse(fs.readFileSync(REPO + 'cases.json', 'utf8'));
   const m = {};
-  cases.forEach(c => { if (c.imgs[0]) m[c.key] = '/' + (fs.existsSync(REPO + thumbFile(c.imgs[0].src)) ? thumbFile(c.imgs[0].src) : c.imgs[0].src.replace(/^\//, '')); });
+  cases.forEach(c => c.imgs.forEach((im, i) => {
+    const v = '/' + (fs.existsSync(REPO + thumbFile(im.src)) ? thumbFile(im.src) : im.src.replace(/^\//, ''));
+    if (i === 0) m[c.key] = v;
+    m[c.key + ':' + i] = v;
+  }));
   NEWS.images(NEWS.load()).forEach(im => { m[im.key] = im.src; });   // お知らせの画像は実ファイルそのまま
   return m;
 }
@@ -160,14 +164,14 @@ function inline(h) {
 
   // ── 組み込みページ（1枚HTMLだけ）
   const IMG = {};
-  const slim = cases.map(c => {
-    const first = c.imgs[0];
-    if (!first) return { ...c, imgs: [] };
-    const uri = thumbDataUri(first.src);
-    if (uri) { IMG[c.key] = uri; return { ...c, imgs: [{ src: '__CASEIMG__' + c.key + '__', alt: first.alt }] }; }
-    return { ...c, imgs: [{ src: first.src.replace(/^\//, ''), alt: first.alt }] };
-  });
-  const slimDicts = dicts.map(d => ({ ...d, e: { ...d.e, alts: d.e.alts.slice(0, 1) } }));
+  // 事例の画像はすべて埋め込む（サムネイル）。1枚目は一覧カードと共用のキー、2枚目以降は key:n
+  const slim = cases.map(c => ({ ...c, imgs: c.imgs.map((im, i) => {
+    const uri = thumbDataUri(im.src);
+    const k = i === 0 ? c.key : c.key + ':' + i;
+    if (uri) { IMG[k] = uri; return { src: '__CASEIMG__' + k + '__', alt: im.alt }; }
+    return { src: im.src.replace(/^\//, ''), alt: im.alt };
+  }) }));
+  const slimDicts = dicts;
   let pages = indexPageHtml(slim, slimDicts).replace('<div class="page active" id="page-cases">', '<div class="page" id="page-cases">');
   slim.forEach((c, i) => {
     pages += casePageHtml(c, productOf(c.eyebrow), slimDicts[i])

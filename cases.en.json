@@ -811,116 +811,89 @@
   ]
  },
  "soip-iwaki-fc": {
-  "title": "Japan Sports Agency SOIP × Iwaki FC",
+  "title": "Japan Sports Agency SOIP × Iwaki FC: mobility analysis for stadium access and a new-stadium concept",
   "eyebrow": "xBUILD / Mobility analysis / Sport & region",
-  "tags": "Sports & regions",
-  "lead": "Selected for the Japan Sports Agency's Sports Open Innovation Platform (SOIP) in August 2025. Together with Iwaki FC, we work on improving stadium access and creating regional value from sport, using mobility data analysis.",
+  "tags": "Sport & region",
+  "lead": "Under the Japan Sports Agency's Sports Open Innovation Platform (SOIP), we worked with Iwaki FC and LocationMind Inc. on mobility analysis: easing car-park congestion on match days, analysing movement inside the stadium, and assessing location and access including the move to a new stadium.",
   "alts": [
-   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
+   "Key visual of the SPORTS OPEN INNOVATION BUSINESS DEVELOPMENT 2025 CONFERENCE (18 December 2025, Tokyo)"
   ],
   "sections": [
    {
     "paras": [
-     "SOIP is a programme run by the Japan Sports Agency to create new businesses and regional value through co-creation between sports organisations and companies.",
-     "Where home-game visitors come from, how they travel and which routes they take to the stadium are essential inputs for improving access and planning activity around the venue. In this programme we analyse and visualise this from mobility data and feed it into measures for the club and the region."
+     "SOIP is a programme run by the Japan Sports Agency to create new businesses and regional value through co-creation between sports organisations and companies. This project was selected to use mobility-data analysis for better access and regional problem-solving around Iwaki FC's new-stadium concept.",
+     "Where home-game visitors come from, how they travel, which routes they take and how they move inside the venue are essential inputs for improving car parks and circulation, and for assessing the site of a new stadium. At the CONFERENCE in Tokyo on 18 December 2025 we gave an interim report together with our partners."
     ],
     "items": []
    },
    {
     "paras": [],
     "items": [
-     "Analysis of match-day visitor demographics, catchment, modes of access and routes",
-     "Visualisation of congestion and dwell around the stadium",
-     "Access improvements and regional measures that link the venue with nearby retail and tourism"
+     "Easing car-park congestion: analysing arrival times, routes and car-park use to design dispersal and guidance measures",
+     "Movement inside the stadium: visualising circulation and dwell to pinpoint crowded spots and improvements",
+     "Analysis including the move to a new stadium: comparing location and access from catchment, modes of transport and spill-over to nearby facilities",
+     "Turning the findings into material for measures that the club, local government and transport operators can share"
     ]
    },
    {
     "paras": [
-     "Improving the visitor experience at sports clubs, match-day transport planning with local governments and operators, and promoting travel around the hometown."
+     "Match-day operations at sports clubs, transport and parking plans with local governments and operators, and location and access studies for new stadiums and large venues."
     ],
     "items": []
    }
   ],
   "spec": [
-   "Visitors to Iwaki FC home games",
-   "Location data collected with user consent and statistically processed (no personally identifiable information)",
-   "Visitor demographics, catchment, mode of access, routes and dwell",
-   "Improving stadium access and creating regional value from sport",
-   "Mobility data analysis, visualisation and support for planning measures (a programme selected under the Japan Sports Agency SOIP)"
+   "Visitors to Iwaki FC home games, the stadium surroundings and interior",
+   "Beacon and GPS location data (collected with user consent and statistically processed; no personally identifiable information), surveys and ticket data",
+   "Visitor demographics, catchment, mode of access, routes, car-park use, movement and dwell inside the venue",
+   "Easing car-park congestion, improving circulation inside the stadium, and assessing location and access including a move to a new stadium",
+   "Mobility-data analysis, visualisation and support for planning measures (a Japan Sports Agency SOIP project, with Iwaki FC and LocationMind)"
   ]
  },
- "btor-association": {
-  "title": "Joining the BtoR association",
-  "eyebrow": "Record / Participation / 2025.12",
-  "tags": "Partnership",
-  "lead": "YELLOW joined BtoR, the general incorporated association founded by the Tohoku Life Science Instruments Cluster (TOLIC), as a corporate member (December 2025). BtoR supports grant applications and manages awarded programmes.",
+ "factory-digital-twin": {
+  "title": "Factory digital twin: tracking people, simulating productivity and relocation",
+  "eyebrow": "xBUILD / Factory digital twin / Manufacturing",
+  "tags": "Manufacturing",
+  "lead": "A multi-building manufacturing plant rebuilt as a BIM-based 3D model from the site down to the building interiors. Worker location logs are overlaid to track movement, travel between processes is quantified to study productivity, and the relocation of processes and equipment is simulated across the whole site.",
   "alts": [
-   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
+   "Overview of the BIM model of a factory interior: columns, beams and roof trusses, equipment, pipes and ducts, logistics routes",
+   "The factory interior from a worker's eye level: aisles, pipe racks, tanks and equipment labels",
+   "Operation replay inside the factory: a forklift on the aisle and product storage",
+   "Overview of the whole building with operation replay and congestion display showing workers and vehicles",
+   "3D model of the whole site: buildings, tanks, internal roads and vehicles",
+   "Relocation simulation: the buildings on site and candidate locations for relocated processes"
   ],
   "sections": [
    {
     "paras": [
-     "Research-driven businesses face specialist procedures from applying for public grants through to managing awarded programmes. BtoR was founded so that TOLIC member companies and research institutions can support each other in this work.",
-     "As a company whose business is the social implementation of research seeds, YELLOW advances grant-funded development and trials within this framework."
+     "At a manufacturing plant with several buildings, the time spent moving and transporting between processes was shaping productivity. How people and vehicles actually moved inside the plant, however, was known only from drawings and intuition.",
+     "We rebuilt the site and the building interiors in 3D, overlaid measured location data to show what is happening now, and built an environment where improvement and relocation plans can be compared on the same model. The plant and the company are not named."
     ],
     "items": []
    },
    {
     "paras": [],
     "items": [
-     "Support for building plans for grant applications and managing programmes once awarded",
-     "Joint proposals with TOLIC member instrument makers and research institutions",
-     "Visualising the results of awarded programmes and carrying them into implementation"
+     "3D and BIM of the interior: columns, beams and roof trusses, equipment, pipes and ducts, logistics routes and process zones modelled part by part. Viewable in overview, section and worker's-eye views, and usable for clash checks and maintenance-clearance studies",
+     "Tracking people: worker location logs from beacons and similar sources replayed in 3D by day and by process. Routes, dwell and congestion are visualised to pinpoint issues in circulation and transport",
+     "Productivity simulation: the number, distance and time of movements between processes are quantified in staff-hours, and the savings from changes to layout or staffing are estimated. Comparison against a baseline and automatic optimisation candidates are supported",
+     "Relocation simulation: plans to move processes or equipment to another building are studied on the 3D model of the whole site, comparing travel distance and time and the staff required. Layouts can be saved and exported for stakeholders"
     ]
    },
    {
     "paras": [
-     "Funding and programme management when moving university or institute technology into products and businesses; joint development with member companies."
+     "Layout and circulation improvements, studies ahead of equipment renewal or process relocation, planning of new plants and moves, and investment decisions made by the shop floor and management looking at the same 3D model."
     ],
     "items": []
    }
   ],
   "spec": [
-   "BtoR general incorporated association (founded by TOLIC)",
-   "Planning and management of grant-funded R&D and demonstration projects",
-   "Participation as a corporate member"
-  ]
- },
- "tolic-membership": {
-  "title": "Membership of the Tohoku Life Science Instruments Cluster (TOLIC)",
-  "eyebrow": "Record / Membership / 2025",
-  "tags": "Partnership",
-  "lead": "YELLOW joined the Tohoku Life Science Instruments Cluster (TOLIC) as a corporate member in 2025. The cluster is one of Japan's leading hubs for research-instrument development and manufacturing, and gives us a direct route to instrument makers and research institutions.",
-  "alts": [
-   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
-  ],
-  "sections": [
-   {
-    "paras": [
-     "TOLIC brings together companies and research institutions working on instruments for the life sciences. Knowledge close to the research floor accumulates there, from instrument development and manufacturing to the use of measurement data.",
-     "YELLOW joined to connect with this concentration as a company that brings university and institute technology into society."
-    ],
-    "items": []
-   },
-   {
-    "paras": [],
-    "items": [
-     "Joint development and trials with member instrument makers and research institutions",
-     "Turning measurement and analysis data into products through visualisation and digital twins",
-     "Finding research seeds through the cluster network and exploring how to commercialise them"
-    ]
-   },
-   {
-    "paras": [
-     "Launching new businesses from research instruments and measurement data; forming industry–academia projects."
-    ],
-    "items": []
-   }
-  ],
-  "spec": [
-   "Tohoku Life Science Instruments Cluster (TOLIC)",
-   "Joint development and commercialisation starting from research instruments and measurement data",
-   "Membership as a corporate member"
+   "A manufacturing plant: the whole site and the interiors of several buildings",
+   "Building drawings and equipment specifications, site visits, worker location logs (beacons etc.), process and staffing data",
+   "Movements between processes (count, distance, time), staff-hours, congestion and dwell, transport distance",
+   "BIM display, equipment sections, worker's-eye view, operation replay, congestion display, routes, productivity analysis, relocation comparison, saving and export of layouts",
+   "Circulation and transport improvements, staffing studies, relocation of processes and equipment, new-plant planning",
+   "Construction of 3D and BIM models, location-data analysis, and development of a browser-based planning tool"
   ]
  }
 }

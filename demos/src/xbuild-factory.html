@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>内部3D・稼働検討 v6 | FLOW·LAB 3D — 加須工場 外観精緻化モデル v4.1</title>
+<title>内部3D・稼働検討 v6 | FLOW·LAB 3D — 工場 外観精緻化モデル v4.1</title>
 <style>
   :root { --bg:#0d1117; --panel:#161b22cc; --line:#30363d; --txt:#e6edf3; --sub:#9da7b3;
           --good:#3fb950; --bad:#f85149; --acc:#58a6ff; --warn:#d29922; }
@@ -303,7 +303,7 @@ body.sim-active .panel,body.sim-active #precision,body.sim-active #hint,body.sim
   <div class="ttl" id="tcTtl"></div><div class="txt" id="tcTxt"></div>
   <div class="bar"><i id="tcBar"></i></div>
 </div>
-<div id="splash"><div class="logo">FLOW·LAB <b>3D</b></div><div class="sub">アトミクス加須工場 — 全体シミュレーション + BIM/MEP を読み込み中…</div><div class="bar"><i></i></div></div>
+<div id="splash"><div class="logo">FLOW·LAB <b>3D</b></div><div class="sub">工場 — 全体シミュレーション + BIM/MEP を読み込み中…</div><div class="bar"><i></i></div></div>
 
 <script>
 setTimeout(function(){
@@ -349,7 +349,7 @@ function validate(c){if(!c||c.version!==1)throw Error('生産性設定の形式�
 function restore(c){validate(c);cfg=structuredClone(c);if(!app.hidden)render();}
 function download(content,name,type){const u=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function exportCsv(){const rows=[['工程','有効ID日','現状人員','現状直線距離指標_m日','移設直線距離指標_m日','短縮_m日','区分'],...scenario().results.map(r=>[r.group,r.n,cfg.staff[r.group],r.base,r.plan,r.delta,'人員換算による仮説・物の搬送便数ではない'])];download('\ufeff'+rows.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\r\n'),'factory-relocation-comparison.csv','text/csv;charset=utf-8');}
-function render(){const n=total();app.innerHTML=`<header><div><div class="pd-eyebrow">FLOW LAB / PRODUCTION STUDY 5.0</div><h1>加須工場 生産性・動線検討</h1></div><div class="pd-actions"><button id="pdExport">検討設定を保存</button><button id="pdImport">設定を読込</button><button id="pdInternal" class="pd-primary">内部3D・稼働シミュレーション</button><button id="pdLegacy">従来3Dを開く</button></div></header><main class="pd-wrap"><div class="pd-intro"><div><div class="pd-eyebrow">OBSERVATION → RELOCATION → STAFFING</div><h2>実測動線から、移設の効果を検討する。</h2><p class="pd-muted">2026.07.24 – 08.31 / 計測22日 / ワニス・調色の第二工場への移設計画</p></div><div class="pd-actions"><button id="pdCSV">比較CSV</button><button id="pdReset">仮定を初期値へ</button></div></div><nav>${[['overview','全体像'],['tracking','実測動線'],['scenario','移設比較'],['staff','人員計画'],['sources','元資料・集計方法']].map(([id,n])=>`<button data-tab="${id}" class="${ui.tab===id?'active':''}">${n}</button>`).join('')}</nav>${({overview,tracking,scenario:relocation,staff:staffing,sources})[ui.tab]()}<div class="pd-foot">この画面は計測結果と計画上の仮定を分けて表示します。設定は「検討設定を保存」でJSONに保存できます。</div><input id="pdConfigFile" type="file" accept=".json,application/json" hidden></main>`;
+function render(){const n=total();app.innerHTML=`<header><div><div class="pd-eyebrow">FLOW LAB / PRODUCTION STUDY 5.0</div><h1>工場 生産性・動線検討</h1></div><div class="pd-actions"><button id="pdExport">検討設定を保存</button><button id="pdImport">設定を読込</button><button id="pdInternal" class="pd-primary">内部3D・稼働シミュレーション</button><button id="pdLegacy">従来3Dを開く</button></div></header><main class="pd-wrap"><div class="pd-intro"><div><div class="pd-eyebrow">OBSERVATION → RELOCATION → STAFFING</div><h2>実測動線から、移設の効果を検討する。</h2><p class="pd-muted">2026.07.24 – 08.31 / 計測22日 / ワニス・調色の第二工場への移設計画</p></div><div class="pd-actions"><button id="pdCSV">比較CSV</button><button id="pdReset">仮定を初期値へ</button></div></div><nav>${[['overview','全体像'],['tracking','実測動線'],['scenario','移設比較'],['staff','人員計画'],['sources','元資料・集計方法']].map(([id,n])=>`<button data-tab="${id}" class="${ui.tab===id?'active':''}">${n}</button>`).join('')}</nav>${({overview,tracking,scenario:relocation,staff:staffing,sources})[ui.tab]()}<div class="pd-foot">この画面は計測結果と計画上の仮定を分けて表示します。設定は「検討設定を保存」でJSONに保存できます。</div><input id="pdConfigFile" type="file" accept=".json,application/json" hidden></main>`;
 app.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ui.tab=b.dataset.tab;ui.area=null;render();app.scrollTop=0;});for(const [id,k]of [['pdDay','day'],['pdGroup','group'],['pdFloor','floor']]){const e=document.getElementById(id);if(e)e.onchange=()=>{ui[k]=k==='floor'?+e.value:e.value;render();};}const tr=document.getElementById('pdTrace');if(tr)tr.onchange=()=>{ui.trace=tr.checked;render();};app.querySelectorAll('[data-area]').forEach(b=>b.onclick=()=>{ui.area=b.dataset.area;const el=document.getElementById('pdAreaDetail');if(el){const secs=sum(selected(),r=>r.areas[ui.area]||0);el.innerHTML=`<div class="pd-note">${esc(ui.area)}：観測滞在 ${fmt(secs/3600,2)} 人時。作業内容・稼働時間を確定する値ではありません。</div>`;}});
 app.querySelectorAll('[data-cfg],[data-staff],[data-planstaff]').forEach(el=>el.onchange=()=>{const next=structuredClone(cfg),v=el.type==='checkbox'?el.checked:el.value.trim()===''?NaN:Number(el.value);if(el.dataset.staff)next.staff[el.dataset.staff]=v;else if(el.dataset.planstaff)next.planStaff[el.dataset.planstaff]=v;else next[el.dataset.cfg]=v;try{validate(next);cfg=next;render();}catch(e){alert(e.message);render();}});
 document.getElementById('pdExport').onclick=()=>download(JSON.stringify({productivity:cfg,sourcePeriod:[D.days[0],D.days.at(-1)],sourceRows:D.quality.rawRows},null,2),'factory-productivity-plan.json','application/json');document.getElementById('pdImport').onclick=()=>document.getElementById('pdConfigFile').click();document.getElementById('pdConfigFile').onchange=async e=>{try{const p=JSON.parse(await e.target.files[0].text());restore(p.productivity); }catch(e){alert('読込失敗：'+e.message);}};document.getElementById('pdCSV').onclick=exportCsv;document.getElementById('pdReset').onclick=()=>{cfg=structuredClone(defaults);render();};document.getElementById('pdInternal').onclick=()=>{if(window.__factorySim)window.__factorySim.open();else alert('3Dを読み込んでいます。分析一覧は利用できます。');};document.getElementById('pdLegacy').onclick=()=>{window.__productivityRestore3D?.();app.hidden=true;};const view=document.getElementById('pdSource3D');if(view)view.onclick=()=>{if(!window.__productivityShow3D){alert('3Dの読込中です。位置データの分析画面は利用できます。');return;}window.__productivityShow3D(cfg,D.areas);app.hidden=true;};}
@@ -469,7 +469,7 @@ function asphaltTex(){
   _asphaltTex=tex; return tex;
 }
 
-// ================= 敷地データ（加須工場配置図 1/750 からの読取・概算） =================
+// ================= 敷地データ（工場配置図 1/750 からの読取・概算） =================
 // ※座標・寸法は図面からの目視概算。実測CAD値が入れば sw と各値の差替えで補正可能。
 let SITE_W = 260, SITE_D = 185;
 
@@ -510,7 +510,7 @@ const SITE_FLOWS = [
   ["whGen","gate",16],  ["whNew","paint1",6], ["lab","paint1",2],
 ];
 
-// ================= 建屋内部プリセット（アトミクス加須 現地取材ベース） =================
+// ================= 建屋内部プリセット（現地取材ベース） =================
 // proc: IN/OUT MILL(分散ミル) DSP(門型ディスパー槽) TNK(床置き調合槽) PTK(可搬ステン槽)
 //       KVT(縦型KVタンク) FIL(充填ライン) CAN(一斗缶ブロック) DRM(ドラムパレット)
 //       BAG(紙袋パレット) FRC(フレコン) NST(ネステナー) RCK(パレットラック)
@@ -2847,7 +2847,7 @@ function makeWorker(){
   return g;
 }
 function makeForklift(cargo){
-  // トヨタGENEO風（アトミクス構内車のオレンジ）
+  // トヨタGENEO風（構内車のオレンジ）
   const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.BoxGeometry(2.4,1.5,3.4),
     new THREE.MeshStandardMaterial({color:0xe8731a,roughness:0.5})); body.position.y=1.15; g.add(body);
@@ -3539,7 +3539,7 @@ function closePanels(){
 }
 const TOUR=[
   { t:"敷地全体 — 16建屋の配置と物流動線", dur:7000,
-    d:"アトミクス加須工場（敷地 260×185m）。建屋間の物流を日次便数に応じた太さの動線で表示し、搬送距離・動線交差・最長動線・全社物流工数をSLP指標で評価します。",
+    d:"工場（敷地 260×185m）。建屋間の物流を日次便数に応じた太さの動線で表示し、搬送距離・動線交差・最長動線・全社物流工数をSLP指標で評価します。",
     run:()=>{ if(ctx.kind==="interior") exitBuilding(); closePanels(); if(bimMode) bimBtn.onclick(); setCam("top"); camGoal.yaw=0.2; autoOrbit=false; } },
   { t:"稼働再生 — フォークリフトとトラック便", dur:8000,
     d:"フォークリフトが建屋間を往復搬送し、正門からの茨城便・千葉便が倉庫バースへ到着。端点では荷役（フォーク昇降・積み下ろし）を行い、混雑表示で通行負荷の高いセルが分かります。",
@@ -4013,7 +4013,7 @@ function exBuilding(b){
  }else if(b.proc==='gate'){
   const stone=0x9a9e94;for(const x of [-w/2,w/2]){exBox(g,.65,2.4,.7,x,1.2,0,stone,'concrete');exBox(g,.85,.12,.85,x,2.46,0,0x506660);}
   exBox(g,2.5,2.7,2.8,-w/2+1.85,1.35,.2,0xd9dfd6);exBox(g,2.8,.15,3.1,-w/2+1.85,2.77,.2,0x4c6868);exBox(g,2.0,.85,.045,-w/2+1.85,1.65,-1.23,0x476978,'glass');exSign(g,'受付',1.35,.32,-w/2+1.85,2.4,-1.26,Math.PI,'#314f4b');
-  exSign(g,'加須工場',3.8,.9,w/2+2.25,1.65,-.14,Math.PI,'#32534e','KAZO FACTORY');exBox(g,4.2,2.2,.35,w/2+2.25,1.1,.05,0x61776f,'concrete');
+  exSign(g,'工場',3.8,.9,w/2+2.25,1.65,-.14,Math.PI,'#32534e','KAZO FACTORY');exBox(g,4.2,2.2,.35,w/2+2.25,1.1,.05,0x61776f,'concrete');
   const arm=new THREE.Group();arm.userData.exAnimated=true;arm.position.set(-2.0,1.15,-.55);exBox(arm,6,.12,.14,3,0,0,0xe5e1c8);for(let x=.3;x<6;x+=1.1)exBox(arm,.32,.13,.15,x,0,0,0xab684a);arm.rotation.z=exterior.gateOpen?1.35:0;g.add(arm);exterior.gateArms.push(arm);exBox(g,.40,1.3,.45,-2,.65,-.55,0x536d68);
  }else if(b.proc==='pond'){
   const bank=exCylinder(g,w/2,.18,0,.09,0,0x819385,'concrete',40);bank.scale.z=d/w;
@@ -4121,7 +4121,7 @@ function exSync(){
 function exExport(){return {version:1,light:exterior.light,labels:exterior.labels,landscape:exterior.landscape,context:exterior.context,clean:exterior.clean,gateOpen:exterior.gateOpen};}
 function exImport(p){if(!p||p.version!==1)return;if(['day','late','dusk'].includes(p.light))exterior.light=p.light;for(const k of ['labels','landscape','context','clean','gateOpen'])if(typeof p[k]==='boolean')exterior[k]=p[k];}
 function exRender(){
- pBody.innerHTML=`<div id="v3Chapter">EXTERIOR / 4.1</div><h3 style="font-size:18px;margin:8px 0">加須工場・外観</h3><div class="v3-stage">建屋ごとの外壁、荷捌き口、屋外タンクと敷地の表情を確認できます。建屋をダブルクリックすると内部へ移動します。</div><div class="p-grid">${[['overall','敷地全景'],['gate','正門・受付'],['warehouse','出荷倉庫'],['tanks','屋外タンク']].map(([id,label])=>`<button class="btn" data-ex-cam="${id}">${label}</button>`).join('')}</div><label class="p-muted">光の設定<select id="exSun" aria-label="外観の光"><option value="day" ${exterior.light==='day'?'selected':''}>昼 / 質感を確認</option><option value="late" ${exterior.light==='late'?'selected':''}>午後 / 陰影を確認</option><option value="dusk" ${exterior.light==='dusk'?'selected':''}>夕景 / 灯りを確認</option></select></label>${[['labels','建屋名を重ねる'],['landscape','植栽を表示'],['context','周辺の参考建物を表示'],['clean','外観を広く表示'],['gateOpen','正門ゲートを開く']].map(([k,v])=>`<label class="v3-layer">${v}<input type="checkbox" data-ex-flag="${k}" ${exterior[k]?'checked':''}></label>`).join('')}<div class="p-actions"><button class="btn" id="exOrbit">${autoOrbit?'自動回転を停止':'ゆっくり自動回転'}</button><button class="btn" id="exCapture">画像を保存</button></div><div class="p-note">既存の配置・建屋寸法を継承。外壁・屋根・受付・植栽などの細部は外観提案です。敷地外の建物はスケール参考で、実景の再現ではありません。</div><div class="p-muted">窓枠・外壁目地・折板屋根・雨樋・室外機・換気口・ドック庇・車止め・タンク梯子・フェンス・植栽を追加。外構は外観表現で、物流経路や占有判定には未反映です。</div>`;
+ pBody.innerHTML=`<div id="v3Chapter">EXTERIOR / 4.1</div><h3 style="font-size:18px;margin:8px 0">工場・外観</h3><div class="v3-stage">建屋ごとの外壁、荷捌き口、屋外タンクと敷地の表情を確認できます。建屋をダブルクリックすると内部へ移動します。</div><div class="p-grid">${[['overall','敷地全景'],['gate','正門・受付'],['warehouse','出荷倉庫'],['tanks','屋外タンク']].map(([id,label])=>`<button class="btn" data-ex-cam="${id}">${label}</button>`).join('')}</div><label class="p-muted">光の設定<select id="exSun" aria-label="外観の光"><option value="day" ${exterior.light==='day'?'selected':''}>昼 / 質感を確認</option><option value="late" ${exterior.light==='late'?'selected':''}>午後 / 陰影を確認</option><option value="dusk" ${exterior.light==='dusk'?'selected':''}>夕景 / 灯りを確認</option></select></label>${[['labels','建屋名を重ねる'],['landscape','植栽を表示'],['context','周辺の参考建物を表示'],['clean','外観を広く表示'],['gateOpen','正門ゲートを開く']].map(([k,v])=>`<label class="v3-layer">${v}<input type="checkbox" data-ex-flag="${k}" ${exterior[k]?'checked':''}></label>`).join('')}<div class="p-actions"><button class="btn" id="exOrbit">${autoOrbit?'自動回転を停止':'ゆっくり自動回転'}</button><button class="btn" id="exCapture">画像を保存</button></div><div class="p-note">既存の配置・建屋寸法を継承。外壁・屋根・受付・植栽などの細部は外観提案です。敷地外の建物はスケール参考で、実景の再現ではありません。</div><div class="p-muted">窓枠・外壁目地・折板屋根・雨樋・室外機・換気口・ドック庇・車止め・タンク梯子・フェンス・植栽を追加。外構は外観表現で、物流経路や占有判定には未反映です。</div>`;
  pBody.querySelectorAll('[data-ex-cam]').forEach(b=>b.onclick=()=>exCamera(b.dataset.exCam));document.getElementById('exSun').onchange=e=>{exterior.light=e.target.value;exLight();};pBody.querySelectorAll('[data-ex-flag]').forEach(el=>el.onchange=()=>{exterior[el.dataset.exFlag]=el.checked;if(el.dataset.exFlag==='gateOpen')exterior.gateArms.forEach(a=>a.rotation.z=exterior.gateOpen?1.35:0);exSync();dirtyShadow();});document.getElementById('exOrbit').onclick=()=>{autoOrbit=!autoOrbit;exterior.auto=autoOrbit;exRender();};document.getElementById('exCapture').onclick=()=>document.getElementById('shotBtn').click();
 }
 function exInit(){for(const [id,view] of [['exAll','overall'],['exGate','gate'],['exWh','warehouse'],['exTanks','tanks']])document.getElementById(id).onclick=()=>exCamera(view);document.getElementById('exSunset').onclick=()=>{exterior.light=exterior.light==='dusk'?'day':'dusk';exSync();};}
