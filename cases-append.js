@@ -44,7 +44,7 @@ const CSS = `/* ═════════════════════�
 .case__demo{display:inline-block;font-size:11px;letter-spacing:var(--ls-ui);text-transform:uppercase;
   border:1px solid var(--line);padding:14px 28px;transition:.3s var(--ease);}
 .case__demo:hover{background:var(--white);color:var(--black);}
-.case__shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin:44px 0;}
+.case__shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin:44px 0;}
 .case__shots figure{margin:0;background:#111;}
 .case__shots img{width:100%;height:auto;display:block;}
 .case__shots figcaption{font-size:11px;line-height:1.8;color:var(--grey-d);padding:8px 2px 0;}

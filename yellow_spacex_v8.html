@@ -224,7 +224,7 @@ html[lang="en"] .lede{line-height:1.85;}
 .case__demo{display:inline-block;font-size:11px;letter-spacing:var(--ls-ui);text-transform:uppercase;
   border:1px solid var(--line);padding:14px 28px;transition:.3s var(--ease);}
 .case__demo:hover{background:var(--white);color:var(--black);}
-.case__shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin:44px 0;}
+.case__shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin:44px 0;}
 .case__shots figure{margin:0;background:#111;}
 .case__shots img{width:100%;height:auto;display:block;}
 .case__shots figcaption{font-size:11px;line-height:1.8;color:var(--grey-d);padding:8px 2px 0;}
@@ -774,7 +774,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
   .menu__sub a,.menu__foot a{display:inline-flex;align-items:center;min-height:44px;}
 
   /* フッターと事例カードのリンクも指で押せる高さに */
-  .ft__cols a{display:inline-flex;align-items:center;min-height:44px;}
+  .ft__cols a{display:inline-flex;align-items:center;min-height:44px;margin-right:22px;}
   .aside__v a{display:inline-block;padding:12px 0;}
   .case__nav a{display:inline-flex;align-items:center;min-height:44px;}
   .back{display:inline-flex;align-items:center;min-height:44px;}
@@ -1116,6 +1116,8 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 
 
 
+
+
 <!-- HOME-SECTIONS START -->
 <!-- ═══════════════════ CASES（トップ） ═══════════════════ -->
 <section class="sec" id="selected-cases">
@@ -1156,7 +1158,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
     <a class="card rv" data-d="3" href="#/case/retail-promo-sim">
       <div class="card__img"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-case-img="retail-promo-sim" alt="In-store promotion simulation" loading="lazy" decoding="async"></div>
       <div class="card__body">
-        <div class="card__meta"><span>xBUILD</span><span data-i18n="cs_21_tags">Retail, Other</span></div>
+        <div class="card__meta"><span>xAD</span><span data-i18n="cs_21_tags">Retail, Other</span></div>
         <h3 class="card__title" data-i18n="cs_21_title">In-store promotion simulation</h3>
         <p class="card__text" data-i18n="cs_21_lead">A simulator that reproduces a store in 3D and tests how combinations of digital advertising, in-store signage, giveaways, and shelf layout work from store visit through to purchase. Online ad exposure and offline in-store behaviour are linked in a single model.</p>
         <div class="card__more" data-i18n="btn_read">Read more →</div>
@@ -1831,7 +1833,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
       <a class="ccard" href="#/case/ad-analytics">
         <div class="ccard__img"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-case-img="ad-analytics" alt="Performance-advertising analytics tool" loading="lazy" decoding="async"></div>
         <div class="ccard__body">
-          <div class="ccard__tag">xBUILD</div>
+          <div class="ccard__tag">xAD</div>
           <h2 class="ccard__t" data-i18n="cs_20_title">Performance-advertising analytics tool</h2>
           <p class="ccard__d" data-i18n="cs_20_lead">A tool that analyses performance-advertising data and visualises results.</p>
         </div>
@@ -1839,7 +1841,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
       <a class="ccard" href="#/case/retail-promo-sim">
         <div class="ccard__img"><img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-case-img="retail-promo-sim" alt="In-store promotion simulation" loading="lazy" decoding="async"></div>
         <div class="ccard__body">
-          <div class="ccard__tag">xBUILD</div>
+          <div class="ccard__tag">xAD</div>
           <h2 class="ccard__t" data-i18n="cs_21_title">In-store promotion simulation</h2>
           <p class="ccard__d" data-i18n="cs_21_lead">A simulator that reproduces a store in 3D and tests how combinations of digital advertising, in-store signage, giveaways, and shelf layout work from store visit through to purchase. Online ad exposure and offline in-store behaviour are linked in a single model.</p>
         </div>
@@ -2811,7 +2813,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
   <section class="case">
     <div class="case__wrap">
       <a class="back" href="#/cases" data-i18n="cs_back_list">← All cases</a>
-      <p class="case__eyebrow" data-i18n="cs_20_eyebrow">xBUILD / Data / Advertising</p>
+      <p class="case__eyebrow" data-i18n="cs_20_eyebrow">xAD / Data / Advertising</p>
       <h1 class="case__title" data-i18n="cs_20_title">Performance-advertising analytics tool</h1>
       <p class="case__lead" data-i18n="cs_20_lead">A tool that analyses performance-advertising data and visualises results.</p>
       <p><a class="case__demo" href="https://xad-yellow.netlify.app/" target="_blank" rel="noopener" data-i18n="cs_open_demo">Open demo ↗</a></p>
@@ -2851,7 +2853,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 
       <nav class="case__nav">
         <a href="#/cases" data-i18n="cs_nav_list">← All cases</a>
-        <a href="#/xbuild" data-i18n="cs_about_xbuild">About xBUILD →</a>
+        <a href="#/xad" data-i18n="cs_about_xad">About xAD →</a>
       </nav>
     </div>
   </section>
@@ -2860,7 +2862,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
   <section class="case">
     <div class="case__wrap">
       <a class="back" href="#/cases" data-i18n="cs_back_list">← All cases</a>
-      <p class="case__eyebrow" data-i18n="cs_21_eyebrow">xBUILD / In-store promotion / Simulation</p>
+      <p class="case__eyebrow" data-i18n="cs_21_eyebrow">xAD / In-store promotion / Simulation</p>
       <h1 class="case__title" data-i18n="cs_21_title">In-store promotion simulation</h1>
       <p class="case__lead" data-i18n="cs_21_lead">A simulator that reproduces a store in 3D and tests how combinations of digital advertising, in-store signage, giveaways, and shelf layout work from store visit through to purchase. Online ad exposure and offline in-store behaviour are linked in a single model.</p>
       <p><a class="case__demo" href="https://in-store-promotion.netlify.app/" target="_blank" rel="noopener" data-i18n="cs_open_demo">Open demo ↗</a></p>
@@ -2901,7 +2903,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 
       <nav class="case__nav">
         <a href="#/cases" data-i18n="cs_nav_list">← All cases</a>
-        <a href="#/xbuild" data-i18n="cs_about_xbuild">About xBUILD →</a>
+        <a href="#/xad" data-i18n="cs_about_xad">About xAD →</a>
       </nav>
     </div>
   </section>
@@ -54546,7 +54548,7 @@ var I18N = {
     "cs_19_sk5": "提供形態",
     "cs_19_sv5": "Webデモ（ブラウザ）",
     "cs_20_title": "運用型広告 解析ツール",
-    "cs_20_eyebrow": "XBUILD ／ データ／広告",
+    "cs_20_eyebrow": "XAD ／ データ／広告",
     "cs_20_tags": "その他",
     "cs_20_lead": "運用型広告のデータを解析し、成果を可視化するツール。",
     "cs_20_h0": "案件背景",
@@ -54571,7 +54573,7 @@ var I18N = {
     "cs_20_sv4": "サンプルデータによるデモ（社名・数値はダミー）",
     "cs_20_sk5": "提供形態",
     "cs_20_sv5": "Webデモ（ブラウザ）",
-    "cs_21_eyebrow": "XBUILD ／ 店頭販促／シミュレーション",
+    "cs_21_eyebrow": "XAD ／ 店頭販促／シミュレーション",
     "cs_21_h0": "案件背景",
     "cs_21_p0_0": "店頭の販促は「効いた気がする」で終わりやすい。デジタル広告の接触から店内の回遊・視線・購買までを1つのモデルでつなぎ、什器・サイネージ・ノベルティ・棚割の組み合わせを実施前に比較できるように構築しました。",
     "cs_21_h1": "できること",
@@ -55346,7 +55348,7 @@ var I18N = {
     "cs_19_sk5": "Delivery",
     "cs_19_sv5": "Web demo (browser)",
     "cs_20_title": "Performance-advertising analytics tool",
-    "cs_20_eyebrow": "xBUILD / Data / Advertising",
+    "cs_20_eyebrow": "xAD / Data / Advertising",
     "cs_20_tags": "Other",
     "cs_20_lead": "A tool that analyses performance-advertising data and visualises results.",
     "cs_20_h0": "Background",
@@ -55371,7 +55373,7 @@ var I18N = {
     "cs_20_sv4": "Demo with sample data (company names and figures are dummy)",
     "cs_20_sk5": "Delivery",
     "cs_20_sv5": "Web demo (browser)",
-    "cs_21_eyebrow": "xBUILD / In-store promotion / Simulation",
+    "cs_21_eyebrow": "xAD / In-store promotion / Simulation",
     "cs_21_h0": "Background",
     "cs_21_p0_0": "In-store promotion tends to end with “it felt like it worked”. Built to link digital ad exposure to in-store circulation, gaze, and purchase in one model, so that combinations of fixtures, signage, giveaways, and shelf layouts can be compared before rollout.",
     "cs_21_h1": "What it does",
@@ -55578,8 +55580,15 @@ var PAGES = ['home', 'xinteractive', 'xad', 'xbuild', 'privacy', 'terms'];
 function showPage(name, scrollTo, restoreY) {
   // 事業ページのほか、組み込みの事例ページ（page-cases / page-case-<key>）も扱う
   if (!document.getElementById('page-' + name)) name = 'home';
+  var prevPage = document.querySelector('main > .page.active');
+  var switched = !prevPage || prevPage.id !== 'page-' + name;
   var all = document.querySelectorAll('main > .page');
   for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i].id === 'page-' + name);
+  // ホーム以外ではヘッダーの現在地ハイライトを消す（スクロールスパイはホームの節だけを見ている）
+  if (name !== 'home') {
+    var act = document.querySelectorAll('.hdr__nav .is-active');
+    for (var a = 0; a < act.length; a++) act[a].classList.remove('is-active');
+  }
   document.body.classList.remove('menu-open');
   var burger = document.getElementById('burger');
   if (burger) burger.setAttribute('aria-expanded', 'false');
@@ -55604,15 +55613,30 @@ function showPage(name, scrollTo, restoreY) {
     var htmlEl = document.documentElement;
     var prevBehavior = htmlEl.style.scrollBehavior;
     htmlEl.style.scrollBehavior = 'auto';
-    window.scrollTo(0, restoreY);
+    void getComputedStyle(htmlEl).scrollBehavior; // スタイル反映を待たずに即時スクロールさせる
+    try { window.scrollTo({ top: restoreY, left: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, restoreY); }
     requestAnimationFrame(function () { htmlEl.style.scrollBehavior = prevBehavior; });
     return;
   }
+  // 別ページへ切り替えたときは瞬時に移動する（前ページの末尾から新ページの先頭へ流れるのを防ぐ）
+  var jump = function (fn) {
+    if (!switched) { fn(); return; }
+    var el = document.documentElement, prev = el.style.scrollBehavior;
+    el.style.scrollBehavior = 'auto';
+    void getComputedStyle(el).scrollBehavior;
+    fn();
+    requestAnimationFrame(function () { el.style.scrollBehavior = prev; });
+  };
   if (scrollTo) {
     var t = document.getElementById(scrollTo);
-    if (t) { t.scrollIntoView(); return; }
+    if (t) {
+      if (switched) jump(function () { try { t.scrollIntoView({ behavior: 'instant', block: 'start' }); } catch (e) { t.scrollIntoView(); } });
+      else t.scrollIntoView();
+      return;
+    }
   }
-  window.scrollTo(0, 0);
+  if (switched) jump(function () { try { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); } });
+  else window.scrollTo(0, 0);
 }
 
 function routeFromHash(hash, restoreY) {
@@ -56052,7 +56076,7 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 /* ═══════════════════ SCROLLSPY ═══════════════════ */
 (function () {
-  var ids = ['xinteractive', 'xad', 'xbuild', 'record', 'company', 'careers', 'contact'];
+  var ids = ['xinteractive', 'xad', 'xbuild', 'selected-cases', 'news', 'company', 'careers', 'contact'];
   var links = {};
   var navLinks = document.querySelectorAll('.hdr__nav a.hdr__link');
   for (var i = 0; i < navLinks.length; i++) {
@@ -56061,6 +56085,8 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   }
   var trig = document.getElementById('prodTrigger');
   if (trig) { links.xbuild = trig; links.xad = trig; links.xinteractive = trig; }
+  if (links['/cases']) links['selected-cases'] = links['/cases'];
+  if (links['/news']) links['news'] = links['/news'];
   if (!('IntersectionObserver' in window)) return;
   var io = new IntersectionObserver(function (entries) {
     for (var i = 0; i < entries.length; i++) {

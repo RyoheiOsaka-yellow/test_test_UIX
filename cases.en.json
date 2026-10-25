@@ -714,7 +714,7 @@
  },
  "ad-analytics": {
   "title": "Performance-advertising analytics tool",
-  "eyebrow": "xBUILD / Data / Advertising",
+  "eyebrow": "xAD / Data / Advertising",
   "tags": "Other",
   "lead": "A tool that analyses performance-advertising data and visualises results.",
   "alts": [
@@ -763,7 +763,7 @@
  },
  "retail-promo-sim": {
   "title": "In-store promotion simulation",
-  "eyebrow": "xBUILD / In-store promotion / Simulation",
+  "eyebrow": "xAD / In-store promotion / Simulation",
   "tags": "Retail, Other",
   "lead": "A simulator that reproduces a store in 3D and tests how combinations of digital advertising, in-store signage, giveaways, and shelf layout work from store visit through to purchase. Online ad exposure and offline in-store behaviour are linked in a single model.",
   "alts": [
