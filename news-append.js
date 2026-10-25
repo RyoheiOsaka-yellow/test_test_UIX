@@ -41,7 +41,7 @@ const CSS = `/* ═════════════════════�
 .article p,.article li{font-size:13.5px;line-height:2.1;font-weight:300;color:rgba(255,255,255,.84);margin:0 0 12px;}
 .article ul{padding-left:1.3em;margin:4px 0 14px;}
 .article .article__note{font-size:12px;color:rgba(255,255,255,.55);}
-.article__figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin:22px 0 10px;}
+.article__figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;margin:22px 0 10px;}
 .article__figs figure{margin:0;background:#111;}
 .article__figs img{width:100%;height:auto;display:block;}
 .article__figs figcaption{font-size:11px;line-height:1.8;color:var(--grey-d);padding:8px 2px 0;}

@@ -210,6 +210,151 @@
   ]
  },
  {
+  "id": "lbma-chaosmap-2026",
+  "date": "2026-10-13",
+  "press": "https://prtimes.jp/main/html/rd/p/000000048.000055226.html",
+  "ja": {
+   "tag": "掲載",
+   "title": "「LBMA Japan カオスマップ2026」に掲載（人流可視化・3D）",
+   "text": "位置情報ビジネスの業界地図「LBMA Japan カオスマップ2026」の「データ分析・可視化」領域、「人流可視化・3D」カテゴリにYELLOWが掲載されました。",
+   "sub": "～位置情報ビジネス＆マーケティング カオスマップ 2026年版（一般社団法人LBMA Japan）～"
+  },
+  "en": {
+   "tag": "Featured",
+   "title": "YELLOW listed in the LBMA Japan Chaos Map 2026 (mobility visualisation and 3D)",
+   "text": "YELLOW appears in the LBMA Japan Chaos Map 2026, the industry map of location-based business, under \"Data analysis and visualisation\" in the \"Mobility visualisation / 3D\" category.",
+   "sub": "Location Business & Marketing Chaos Map 2026, published by LBMA Japan"
+  },
+  "logo": {
+   "src": "/assets/news/lbma-japan-logo.webp",
+   "ja": "一般社団法人LBMA Japan",
+   "en": "LBMA Japan"
+  },
+  "sections": [
+   {
+    "ja": {
+     "h": "",
+     "paras": [
+      "一般社団法人LBMA Japan（東京都千代田区／代表理事：川島邦之）が2026年10月13日に公開した「LBMA Japan カオスマップ2026」に、株式会社YELLOWが掲載されました。掲載カテゴリは「データ分析・可視化」領域の「人流可視化・3D」です。",
+      "カオスマップは、位置情報ビジネスに関わる企業・サービスを領域別に整理した業界地図で、今回が6回目のアップデートです。開催中の「CEATEC 2026」でも展示されています。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "",
+     "paras": [
+      "YELLOW Inc. is listed in the LBMA Japan Chaos Map 2026, published on 13 October 2026 by LBMA Japan (Chiyoda, Tokyo; representative director Kuniyuki Kawashima). YELLOW appears under \"Data analysis and visualisation\", in the \"Mobility visualisation / 3D\" category.",
+      "The Chaos Map is an industry map that organises the companies and services of location-based business by field. This is its sixth update, and it is also on display at CEATEC 2026."
+     ],
+     "items": []
+    },
+    "imgs": [
+     {
+      "src": "/assets/news/lbma-chaosmap-2026.webp",
+      "ja": "位置情報ビジネス＆マーケティング カオスマップ 2026年版（出典：一般社団法人LBMA Japan）",
+      "en": "Location Business & Marketing Chaos Map 2026 (source: LBMA Japan)"
+     }
+    ]
+   },
+   {
+    "ja": {
+     "h": "2026年版の主なアップデート（リリースより）",
+     "paras": [],
+     "items": [
+      "「ジオAI」が独立した大カテゴリとして初登場。位置情報とAIを組み合わせ、現実世界を認識・判断して動かす領域が拡大",
+      "センシング領域が「陸・空・海・宇宙」へ拡張。モビリティ、ドローン、衛星、航空、海運、リモートセンシングのデータ活用が進む",
+      "広告・マーケティングは「リテールメディア」から「コマースメディア」へ。認知から来店、購買までを一連で捉える方向へ",
+      "「防災・国土強靱化」を明確に位置づけ。位置情報が公共性の高いインフラ領域にも浸透"
+     ]
+    },
+    "en": {
+     "h": "Main updates in the 2026 edition (from the release)",
+     "paras": [],
+     "items": [
+      "\"Geo AI\" debuts as an independent top-level category, as AI combined with location data moves from analysis to recognising, judging and acting on the physical world",
+      "Sensing expands to land, air, sea and space, with mobility, drones, satellites, aviation, shipping and remote sensing as new data sources",
+      "Advertising and marketing shift from retail media to commerce media, following the customer from awareness to visit and purchase",
+      "Disaster prevention and national resilience are positioned clearly, as location data becomes infrastructure in public-interest fields"
+     ]
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "YELLOWの掲載カテゴリについて",
+     "paras": [
+      "「人流可視化・3D」は、人や車の動きを計測・分析し、地図や3D空間の上で可視化する事業者のカテゴリです。YELLOWは、栃木県スポーツコミッションの県内周遊事業やスポーツ庁SOIP採択事業での人流データ分析、自治体向けの人流データ可視化DB、駅構内や都市の3Dモデリングなどを通じて、この領域に取り組んでいます。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "About YELLOW's category",
+     "paras": [
+      "\"Mobility visualisation / 3D\" covers companies that measure and analyse the movement of people and vehicles and visualise it on maps and in 3D space. YELLOW works in this field through mobility-data analysis for the Tochigi Prefecture Sports Commission and the Japan Sports Agency's SOIP programme, a mobility-data visualisation database for local governments, and 3D modelling of station interiors and cities."
+     ],
+     "items": []
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "カオスマップの変遷",
+     "paras": [
+      "LBMA Japanの加盟企業数は2020年の15社から2026年の128社へ広がり、カオスマップの領域も人流・店舗中心から、ジオAIや陸・空・海・宇宙のセンシングへと拡大しています。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "How the Chaos Map has evolved",
+     "paras": [
+      "LBMA Japan has grown from 15 member companies in 2020 to 128 in 2026, and the map's scope has widened from footfall and stores to Geo AI and sensing across land, air, sea and space."
+     ],
+     "items": []
+    },
+    "imgs": [
+     {
+      "src": "/assets/news/lbma-chaosmap-history.webp",
+      "ja": "カオスマップと加盟企業数の変遷（出典：一般社団法人LBMA Japan）",
+      "en": "The Chaos Map and membership over the years (source: LBMA Japan)"
+     }
+    ]
+   },
+   {
+    "ja": {
+     "h": "一般社団法人LBMA Japan 概要",
+     "paras": [
+      "位置情報データを活用したビジネス・マーケティング・サービス施策を促進する非営利社団法人。日本国内で事業を展開する127社が加盟しています（2026年10月現在）。"
+     ],
+     "items": [
+      "所在地：東京都千代田区神田和泉町1番地6-16 ヤマトビル405",
+      "設立：2020年2月",
+      "代表理事：川島邦之",
+      "URL：https://www.lbmajapan.com/"
+     ],
+     "notes": [
+      "※画像は一般社団法人LBMA Japanのプレスリリースより引用しています。"
+     ]
+    },
+    "en": {
+     "h": "About LBMA Japan",
+     "paras": [
+      "A non-profit association that promotes business, marketing and service initiatives built on location data. 127 companies operating in Japan are members (as of October 2026)."
+     ],
+     "items": [
+      "Address: Yamato Bldg. 405, 1-6-16 Kanda-Izumicho, Chiyoda-ku, Tokyo",
+      "Founded: February 2020",
+      "Representative director: Kuniyuki Kawashima",
+      "URL: https://www.lbmajapan.com/"
+     ],
+     "notes": [
+      "Images are quoted from the LBMA Japan press release."
+     ]
+    },
+    "imgs": []
+   }
+  ]
+ },
+ {
   "id": "wellnexus-2026-03",
   "date": "2026-03-01",
   "case": "wellnexus-kamakura-2026",
@@ -240,19 +385,212 @@
   }
  },
  {
-  "id": "soip-2025-08",
-  "date": "2025-08-01",
+  "id": "soip-2025-09",
+  "date": "2025-09-29",
   "case": "soip-iwaki-fc",
+  "press": "https://prtimes.jp/main/html/rd/p/000000001.000157998.html",
   "ja": {
-   "tag": "公的プログラム",
-   "title": "スポーツ庁「スポーツオープンイノベーション推進事業（SOIP）」に採択",
-   "text": "いわきFCとともに、人流データ分析によるスタジアムアクセスの改善と地域価値の創造に取り組みます。"
+   "tag": "プレスリリース",
+   "title": "YELLOW、スポーツ庁SOIP採択事業に参画　人流データ分析で地域課題解決へ",
+   "text": "いわきFC・LocationMind株式会社と連携し、「人流データ分析によるアクセス改善と地域課題解決型新スタジアム構想推進事業」を推進します。",
+   "sub": "～令和7年度「スポーツオープンイノベーション推進事業（SOIP）」～"
   },
   "en": {
-   "tag": "Public programme",
-   "title": "Selected for the Japan Sports Agency's Sports Open Innovation Platform (SOIP)",
-   "text": "Together with Iwaki FC, we work on improving stadium access and creating regional value through mobility data analysis."
-  }
+   "tag": "Press release",
+   "title": "YELLOW joins a Japan Sports Agency SOIP project: solving regional issues with mobility-data analysis",
+   "text": "Together with Iwaki FC and LocationMind Inc., we are driving a project that uses mobility-data analysis to improve stadium access and advance a new-stadium concept that addresses regional issues.",
+   "sub": "Sports Open Innovation Platform (SOIP) programme, fiscal 2025"
+  },
+  "sections": [
+   {
+    "ja": {
+     "h": "",
+     "paras": [
+      "研究開発シーズ事業を展開する株式会社YELLOW（所在地：群馬県高崎市、共同代表 代表取締役：大坂 亮平、代表取締役：岩渕 知弘）は、スポーツ庁が推進する令和7年度「スポーツオープンイノベーション推進事業（SOIP）」に参画し、いわきFCならびにLocationMind株式会社と連携して「人流データ分析によるアクセス改善と地域課題解決型新スタジアム構想推進事業」を推進することをお知らせします。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "",
+     "paras": [
+      "YELLOW Inc. (Takasaki, Gunma; co-representative directors Ryohei Osaka and Tomohiro Iwabuchi), a company that develops research and development seeds into businesses, has joined the Japan Sports Agency's fiscal 2025 Sports Open Innovation Platform (SOIP) programme. Together with Iwaki FC and LocationMind Inc., it will drive a project that uses mobility-data analysis to improve access and advance a new-stadium concept that addresses regional issues."
+     ],
+     "items": []
+    },
+    "imgs": [
+     {
+      "src": "/assets/news/soip-2025-keyvisual.webp",
+      "ja": "スポーツオープンイノベーション推進事業（SOIP）2025（画像：スポーツ庁・eiicon）",
+      "en": "Sports Open Innovation Business Development 2025 (image: Japan Sports Agency / eiicon)"
+     }
+    ]
+   },
+   {
+    "ja": {
+     "h": "SOIP2025 事業概要",
+     "paras": [
+      "本事業は、福島県いわき市のJ2クラブ「いわきFC」が推進する新スタジアム建設構想において、最新の人流データ分析技術を活用し、地域課題の解決と持続可能なまちづくりを実現する取り組みです。"
+     ],
+     "items": [
+      "主催：スポーツ庁",
+      "運営：株式会社eiicon",
+      "参画団体：いわきFC、LocationMind株式会社、株式会社YELLOW"
+     ]
+    },
+    "en": {
+     "h": "SOIP 2025 project outline",
+     "paras": [
+      "The project applies the latest mobility-data analysis to the new-stadium concept led by Iwaki FC, the J2 club of Iwaki City, Fukushima, to solve regional issues and realise sustainable town planning."
+     ],
+     "items": [
+      "Organiser: Japan Sports Agency",
+      "Operator: eiicon Inc.",
+      "Participants: Iwaki FC, LocationMind Inc., YELLOW Inc."
+     ]
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "新スタジアム構想「IWAKI STADIUM LABO（仮称）」",
+     "paras": [
+      "いわきFCは、いわき市小名浜港のアクアマリンふくしま隣接地に、J1基準対応スタジアムを2031年シーズン開幕までに建設予定です。単なる試合会場ではなく、「地域価値創造の実験場」として機能する施設設計を特徴としています。"
+     ],
+     "items": [
+      "複合型ビルディング棟の併設",
+      "市民参加型設計（1,500件超の市民意見を反映）"
+     ]
+    },
+    "en": {
+     "h": "The new-stadium concept \"IWAKI STADIUM LABO\" (tentative name)",
+     "paras": [
+      "Iwaki FC plans to build a J1-standard stadium next to Aquamarine Fukushima at Onahama Port, Iwaki, in time for the 2031 season. Rather than a mere match venue, it is designed to work as a laboratory for creating regional value."
+     ],
+     "items": [
+      "A mixed-use building wing alongside the stadium",
+      "Participatory design reflecting more than 1,500 comments from residents"
+     ]
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "人流データ分析による地域課題解決アプローチ",
+     "paras": [
+      "本事業では、4つの分析手法を統合した人流データ分析を実施し、新スタジアム設計の最適化と地域課題解決を目指します。"
+     ],
+     "items": [
+      "ビーコン設置による流動性把握：スタジアム内外の移動パターンと滞留状況をリアルタイム分析",
+      "GPS位置情報によるOD分析：来場者の出発地から目的地までの移動パターンと滞留状況、周辺施設への波及効果測定",
+      "ファンクラブ会員アンケート調査（実施予定）：交通手段、行動パターン、アクセス改善要望等の定量・定性調査",
+      "チケットデータ分析（実施予定）：既存データベースを活用し購買行動と来場パターンの相関性分析"
+     ]
+    },
+    "en": {
+     "h": "Approach: solving regional issues with mobility-data analysis",
+     "paras": [
+      "The project combines four analytical methods to optimise the design of the new stadium and address regional issues."
+     ],
+     "items": [
+      "Beacons for flow measurement: real-time analysis of movement patterns and dwell inside and around the stadium",
+      "Origin-destination analysis from GPS location data: travel patterns and dwell from origin to destination, and spill-over effects on nearby facilities",
+      "Fan-club member survey (planned): quantitative and qualitative research on transport modes, behaviour and requests for better access",
+      "Ticket-data analysis (planned): correlating purchasing behaviour with attendance patterns using existing databases"
+     ]
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "期待される成果と地域への貢献",
+     "paras": [
+      "短期的な交通環境改善から長期的な地域価値創造まで、段階的な成果を見込んでいます。人流データ分析による科学的なアプローチにより、持続可能な地域発展モデルの確立を目指します。"
+     ],
+     "items": [
+      "短期（〜1年）：スタジアム周辺の交通渋滞緩和、駐車場利用の最適化、来場者体験の向上",
+      "中期（1〜3年）：新スタジアム設計への具体的フィードバック、CO2排出量削減効果の定量化、地域商業・観光施設への回遊促進、自治体とのデータ連携モデル確立",
+      "長期（3年〜）：Jリーグ全体への波及モデル構築、スポーツ×データによる持続可能な街づくり、SDGs目標達成への貢献"
+     ]
+    },
+    "en": {
+     "h": "Expected outcomes and contribution to the region",
+     "paras": [
+      "Outcomes are expected in stages, from short-term improvements in traffic to long-term creation of regional value. A scientific approach based on mobility data aims to establish a sustainable model for regional development."
+     ],
+     "items": [
+      "Short term (within a year): less congestion around the stadium, better use of car parks, a better visitor experience",
+      "Medium term (1 to 3 years): concrete feedback for the stadium design, quantified CO2 reductions, more visits to local shops and tourist facilities, a data-sharing model with local government",
+      "Long term (3 years on): a model that can spread across the J.League, sustainable town planning through sport and data, contributions to the SDGs"
+     ]
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "今後のスケジュール",
+     "paras": [
+      "2025年8月から2026年2月までのインキュベーション期間中、いわきFCのホームゲーム6試合において継続的なデータ収集と分析を実施し、2026年2月下旬の成果発表会（DEMO DAY）にて最終成果を発表予定です。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "Schedule",
+     "paras": [
+      "During the incubation period from August 2025 to February 2026, data will be collected and analysed continuously at six Iwaki FC home games, with final results presented at the DEMO DAY in late February 2026."
+     ],
+     "items": []
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "株式会社YELLOW 代表取締役 大坂亮平 コメント",
+     "paras": [
+      "この度、スポーツ庁のSOIP事業に参画し、いわきFCの革新的な取り組みに貢献できることを大変光栄に思います。人流データ分析技術を活用した地域課題解決とスポーツ産業の発展に向けて、パートナー企業の皆様と連携しながら、持続可能な地域価値創造モデルの構築に取り組んでまいります。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "Comment from Ryohei Osaka, Representative Director, YELLOW Inc.",
+     "paras": [
+      "We are honoured to join the Japan Sports Agency's SOIP programme and to contribute to Iwaki FC's innovative initiative. Working with our partners, we will build a sustainable model for creating regional value, using mobility-data analysis to solve regional issues and to develop the sports industry."
+     ],
+     "items": []
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "株式会社YELLOWについて",
+     "paras": [
+      "株式会社YELLOWは、研究開発シーズ事業を中核に据え、大学・研究機関・企業が有する技術シーズを社会へ橋渡しする事業を展開しています。Society 5.0における重点技術領域（AI、ビッグデータ、ブロックチェーン）や応用領域（人流分析、スポーツDX）に焦点を当て、研究成果の事業化支援および社会実装をマーケティング領域を含めて推進しています。",
+      "また、位置情報ビッグデータ解析のリーディングカンパニーであるLocationMind株式会社と業務提携を行い、先端的な人流データ解析や都市・地域におけるデジタル実装を加速させています。"
+     ],
+     "items": [
+      "社名：株式会社YELLOW",
+      "共同代表 代表取締役：大坂 亮平、岩渕 知弘",
+      "所在地：〒370-0825 群馬県高崎市白銀町9番地 白銀ビル3階",
+      "事業内容：研究シーズ開発",
+      "URL：https://yellow.technology/"
+     ]
+    },
+    "en": {
+     "h": "About YELLOW Inc.",
+     "paras": [
+      "YELLOW develops research and development seeds into businesses, bridging the technology seeds of universities, research institutions and companies into society. It focuses on the priority technologies of Society 5.0 (AI, big data, blockchain) and their applications (mobility analysis, sports DX), supporting the commercialisation and social implementation of research, marketing included.",
+      "YELLOW also has a business alliance with LocationMind Inc., a leading company in location big-data analysis, to accelerate advanced mobility-data analysis and digital implementation in cities and regions."
+     ],
+     "items": [
+      "Company: YELLOW Inc.",
+      "Co-representative directors: Ryohei Osaka, Tomohiro Iwabuchi",
+      "Address: Shirogane Bldg. 3F, 9 Shirogane-cho, Takasaki, Gunma 370-0825",
+      "Business: development of research seeds",
+      "URL: https://yellow.technology/"
+     ]
+    },
+    "imgs": []
+   }
+  ]
  },
  {
   "id": "tolic-2025",
