@@ -101,6 +101,8 @@ function dict(items) {
       (J.notes || []).forEach((t, i) => { ja[p + 'n' + si + '_' + i] = t; en[p + 'n' + si + '_' + i] = E.notes[i]; });
       (s.imgs || []).forEach((im, i) => { ja[p + 'c' + si + '_' + i] = im.ja; en[p + 'c' + si + '_' + i] = im.en; });
     });
+    // 関連リンク（任意）: links: [{href, ja, en}]
+    (n.links || []).forEach((l, i) => { ja[p + 'l' + i] = l.ja; en[p + 'l' + i] = l.en; });
   });
   return { ja, en };
 }
@@ -173,6 +175,7 @@ function articleHtml(n, imgSrc) {
   const links = [];
   if (n.press) links.push(`<a href="${esc(n.press)}" target="_blank" rel="noopener" data-i18n="nw_press">${COMMON.nw_press[1]}</a>`);
   if (n.case) links.push(`<a href="/cases/${n.case}/" data-i18n="nw_case">${COMMON.nw_case[1]}</a>`);
+  (n.links || []).forEach((l, i) => links.push(`<a href="${esc(l.href)}" target="_blank" rel="noopener" data-i18n="${p}l${i}">${esc(l.en)}</a>`));
   return `<div class="page active" id="page-news-${n.id}">
   <section class="article">
     <div class="article__wrap">

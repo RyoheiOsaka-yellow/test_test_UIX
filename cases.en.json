@@ -810,86 +810,9 @@
    "Web demo (browser)"
   ]
  },
- "wellnexus-kamakura-2026": {
-  "title": "On stage at the WELLNEXUS Kamakura final: KAMAKURA WELLNESS FLOW",
-  "eyebrow": "Record / Open innovation / 2026.03",
-  "tags": "Open innovation",
-  "lead": "YELLOW Inc. (representative director Ryohei Osaka), together with location-analytics company LocationMind Inc., presented at the first final round of the open-innovation business contest WELLNEXUS Kamakura (16 March 2026, Kirara Kamakura). The presentation theme was \"KAMAKURA WELLNESS FLOW: a wellness-city model built from mobility data and sport\".",
-  "alts": [
-   "Awards ceremony at the first WELLNEXUS Kamakura final round (group photo of presenters and judges)"
-  ],
-  "sections": [
-   {
-    "paras": [
-     "WELLNEXUS Kamakura is an open-innovation contest and pilot programme co-hosted by Kamakura City, Kamakura International and Spic. Built on the concept of creating a \"nexus\" of wellness in the town, it aims to solve Kamakura's regional issues and open up new possibilities.",
-     "The first final round was held on 16 March 2026 at Kirara Kamakura (the city's lifelong-learning centre), where seven finalists presented to an audience of about 100. YELLOW took the stage with a joint proposal developed with LocationMind Inc."
-    ],
-    "items": []
-   },
-   {
-    "paras": [
-     "Under the theme \"KAMAKURA WELLNESS FLOW: a wellness-city model built from mobility data and sport\", we proposed a data-driven model of town planning that uses location and mobility analytics to visualise all movement of people within Kamakura. Three effects are expected."
-    ],
-    "items": [
-     "Optimised tourism",
-     "Better health for residents",
-     "Stronger disaster-prevention infrastructure"
-    ]
-   },
-   {
-    "paras": [
-     "Data-driven town planning by local governments, sports clubs and local businesses working together: designing tourist flows, health measures for residents, and the use of mobility data in disaster planning."
-    ],
-    "items": []
-   }
-  ],
-  "spec": [
-   "First WELLNEXUS Kamakura final round (co-hosted by Kamakura City, Kamakura International and Spic)",
-   "Location and mobility data (in collaboration with LocationMind Inc.)",
-   "Data-driven town planning through visualisation of movement within Kamakura",
-   "Presentation at the final round (16 March 2026, Kirara Kamakura)"
-  ]
- },
- "btor-association": {
-  "title": "Joining the BtoR association",
-  "eyebrow": "Record / Participation / 2025.12",
-  "tags": "Partnership",
-  "lead": "YELLOW joined BtoR, the general incorporated association founded by the Tohoku Life Science Instruments Cluster (TOLIC), as a corporate member (December 2025). BtoR supports grant applications and manages awarded programmes.",
-  "alts": [
-   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
-  ],
-  "sections": [
-   {
-    "paras": [
-     "Research-driven businesses face specialist procedures from applying for public grants through to managing awarded programmes. BtoR was founded so that TOLIC member companies and research institutions can support each other in this work.",
-     "As a company whose business is the social implementation of research seeds, YELLOW advances grant-funded development and trials within this framework."
-    ],
-    "items": []
-   },
-   {
-    "paras": [],
-    "items": [
-     "Support for building plans for grant applications and managing programmes once awarded",
-     "Joint proposals with TOLIC member instrument makers and research institutions",
-     "Visualising the results of awarded programmes and carrying them into implementation"
-    ]
-   },
-   {
-    "paras": [
-     "Funding and programme management when moving university or institute technology into products and businesses; joint development with member companies."
-    ],
-    "items": []
-   }
-  ],
-  "spec": [
-   "BtoR general incorporated association (founded by TOLIC)",
-   "Planning and management of grant-funded R&D and demonstration projects",
-   "Participation as a corporate member"
-  ]
- },
  "soip-iwaki-fc": {
   "title": "Japan Sports Agency SOIP × Iwaki FC",
-  "eyebrow": "Record / Public programme / 2025.08",
+  "eyebrow": "xBUILD / Mobility analysis / Sport & region",
   "tags": "Sports & regions",
   "lead": "Selected for the Japan Sports Agency's Sports Open Innovation Platform (SOIP) in August 2025. Together with Iwaki FC, we work on improving stadium access and creating regional value from sport, using mobility data analysis.",
   "alts": [
@@ -924,43 +847,6 @@
    "Visitor demographics, catchment, mode of access, routes and dwell",
    "Improving stadium access and creating regional value from sport",
    "Mobility data analysis, visualisation and support for planning measures (a programme selected under the Japan Sports Agency SOIP)"
-  ]
- },
- "tolic-membership": {
-  "title": "Membership of the Tohoku Life Science Instruments Cluster (TOLIC)",
-  "eyebrow": "Record / Membership / 2025",
-  "tags": "Partnership",
-  "lead": "YELLOW joined the Tohoku Life Science Instruments Cluster (TOLIC) as a corporate member in 2025. The cluster is one of Japan's leading hubs for research-instrument development and manufacturing, and gives us a direct route to instrument makers and research institutions.",
-  "alts": [
-   "Illustrative image from YELLOW's mobility and point-cloud visualisation demos"
-  ],
-  "sections": [
-   {
-    "paras": [
-     "TOLIC brings together companies and research institutions working on instruments for the life sciences. Knowledge close to the research floor accumulates there, from instrument development and manufacturing to the use of measurement data.",
-     "YELLOW joined to connect with this concentration as a company that brings university and institute technology into society."
-    ],
-    "items": []
-   },
-   {
-    "paras": [],
-    "items": [
-     "Joint development and trials with member instrument makers and research institutions",
-     "Turning measurement and analysis data into products through visualisation and digital twins",
-     "Finding research seeds through the cluster network and exploring how to commercialise them"
-    ]
-   },
-   {
-    "paras": [
-     "Launching new businesses from research instruments and measurement data; forming industry–academia projects."
-    ],
-    "items": []
-   }
-  ],
-  "spec": [
-   "Tohoku Life Science Instruments Cluster (TOLIC)",
-   "Joint development and commercialisation starting from research instruments and measurement data",
-   "Membership as a corporate member"
   ]
  }
 }

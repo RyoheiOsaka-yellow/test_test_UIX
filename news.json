@@ -357,22 +357,103 @@
  {
   "id": "wellnexus-2026-03",
   "date": "2026-03-16",
-  "case": "wellnexus-kamakura-2026",
   "ja": {
    "tag": "オープンイノベーション",
    "title": "「WELLNEXUS鎌倉」第1回最終審査会に登壇（KAMAKURA WELLNESS FLOW）",
-   "text": "LocationMind株式会社と共同で、人流データ×スポーツで創るウェルネス都市モデルを提案しました。鎌倉市内の人の動きを可視化し、観光の最適化、住民の健康向上、防災インフラの整備につなげる構想です。"
+   "text": "LocationMind株式会社と共同で、人流データ×スポーツで創るウェルネス都市モデルを提案しました。鎌倉市内の人の動きを可視化し、観光の最適化、住民の健康向上、防災インフラの整備につなげる構想です。",
+   "sub": "～KAMAKURA WELLNESS FLOW 〜人流データ×スポーツで創るウェルネス都市モデル〜（LocationMind株式会社との共同提案）～"
   },
   "en": {
    "tag": "Open innovation",
    "title": "On stage at the first WELLNEXUS Kamakura final round (KAMAKURA WELLNESS FLOW)",
-   "text": "With LocationMind Inc., we proposed a wellness-city model built from mobility data and sport: visualising movement within Kamakura to optimise tourism, improve residents' health and strengthen disaster-prevention infrastructure."
-  }
+   "text": "With LocationMind Inc., we proposed a wellness-city model built from mobility data and sport: visualising movement within Kamakura to optimise tourism, improve residents' health and strengthen disaster-prevention infrastructure.",
+   "sub": "KAMAKURA WELLNESS FLOW: a wellness-city model built from mobility data and sport (a joint proposal with LocationMind Inc.)"
+  },
+  "links": [
+   {
+    "href": "https://wellnexus.spic.com/",
+    "ja": "WELLNEXUS 公式サイト ↗",
+    "en": "WELLNEXUS official site ↗"
+   },
+   {
+    "href": "https://www.spic.com/news/detail/nomDUZti",
+    "ja": "最終審査会 開催レポート（スピック）↗",
+    "en": "Final-round report by Spic ↗"
+   }
+  ],
+  "sections": [
+   {
+    "ja": {
+     "h": "",
+     "paras": [
+      "株式会社YELLOW（代表取締役：大坂亮平）は、位置情報分析のLocationMind株式会社と共同で、オープンイノベーションビジネスコンテスト「WELLNEXUS鎌倉」の第1回最終審査会に登壇しました。",
+      "最終審査会は2026年3月16日、神奈川県鎌倉市の「きらら鎌倉（生涯学習センター）」で開かれ、約100名の来場者を前にファイナリスト7社が発表しました。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "",
+     "paras": [
+      "YELLOW Inc. (representative director Ryohei Osaka), together with location-analytics company LocationMind Inc., presented at the first final round of the open-innovation business contest WELLNEXUS Kamakura.",
+      "The final round was held on 16 March 2026 at Kirara Kamakura (the city's lifelong-learning centre) in Kamakura, Kanagawa, where seven finalists presented to an audience of about 100."
+     ],
+     "items": []
+    },
+    "imgs": [
+     {
+      "src": "/assets/news/wellnexus-kamakura-2026-final.webp",
+      "ja": "第1回「WELLNEXUS鎌倉」最終審査会の表彰式にて（登壇者と審査員の集合写真）",
+      "en": "Awards ceremony at the first WELLNEXUS Kamakura final round (group photo of presenters and judges)"
+     }
+    ]
+   },
+   {
+    "ja": {
+     "h": "提案内容・取り組みの概要",
+     "paras": [
+      "プレゼンテーマは「KAMAKURA WELLNESS FLOW 〜人流データ×スポーツで創るウェルネス都市モデル〜」。位置情報および人流データの分析技術を活用し、鎌倉市内の人の動きをすべて可視化するデータドリブンなまちづくりのモデルを提案しました。期待される効果は次の3点です。"
+     ],
+     "items": [
+      "観光の最適化",
+      "住民の健康向上",
+      "防災インフラの整備"
+     ]
+    },
+    "en": {
+     "h": "The proposal",
+     "paras": [
+      "Under the theme \"KAMAKURA WELLNESS FLOW: a wellness-city model built from mobility data and sport\", we proposed a data-driven model of town planning that uses location and mobility analytics to visualise all movement of people within Kamakura. Three effects are expected."
+     ],
+     "items": [
+      "Optimised tourism",
+      "Better health for residents",
+      "Stronger disaster-prevention infrastructure"
+     ]
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "「WELLNEXUS鎌倉」について",
+     "paras": [
+      "「WELLNEXUS鎌倉」は、鎌倉市・鎌倉インターナショナル・スピックの3団体が共催するオープンイノベーション型のコンテスト・実証プログラムです。「まちのウェルネスの接点（NEXUS）」をつくることをコンセプトに、鎌倉が抱える地域課題の解決と新たな可能性の創出を目指しています。受賞の有無にかかわらず、ファイナリストには主催団体との協業や実証プロジェクトに発展する可能性があります。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "About WELLNEXUS Kamakura",
+     "paras": [
+      "WELLNEXUS Kamakura is an open-innovation contest and pilot programme co-hosted by Kamakura City, Kamakura International and Spic. Built on the concept of creating a \"nexus\" of wellness in the town, it aims to solve Kamakura's regional issues and open up new possibilities. Whether or not they win an award, finalists may go on to collaborations and pilot projects with the hosts."
+     ],
+     "items": []
+    },
+    "imgs": []
+   }
+  ]
  },
  {
   "id": "btor-2025-12",
   "date": "2025-12-01",
-  "case": "btor-association",
   "ja": {
    "tag": "参画",
    "title": "一般社団法人BtoR に企業会員として参画",
@@ -382,7 +463,49 @@
    "tag": "Participation",
    "title": "Joined the BtoR association as a corporate member",
    "text": "BtoR, founded by TOLIC, supports grant applications and manages awarded programmes."
-  }
+  },
+  "sections": [
+   {
+    "ja": {
+     "h": "",
+     "paras": [
+      "東北ライフサイエンス・インストルメンツ・クラスター（TOLIC）が設立した一般社団法人BtoRに、企業会員として参画しました（2025年12月）。BtoRは、助成金の申請と採択された事業の管理を支える組織です。",
+      "研究開発型の事業では、公的な助成金の申請から採択後の事業管理までに専門的な手続きが伴います。BtoRは、TOLICの会員企業や研究機関がこの部分を共同で支え合うために設立されました。YELLOWは、研究シーズの社会実装を事業とする立場から、助成制度を活用した開発や実証をこの枠組みのなかで進めます。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "",
+     "paras": [
+      "YELLOW joined BtoR, the general incorporated association founded by the Tohoku Life Science Instruments Cluster (TOLIC), as a corporate member in December 2025. BtoR supports grant applications and manages awarded programmes.",
+      "Research-driven businesses face specialist procedures from applying for public grants through to managing awarded programmes. BtoR was founded so that TOLIC member companies and research institutions can support each other in this work. As a company whose business is the social implementation of research seeds, YELLOW advances grant-funded development and trials within this framework."
+     ],
+     "items": []
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "参画により取り組むこと",
+     "paras": [],
+     "items": [
+      "助成金申請に向けた事業計画づくりと、採択後の事業管理の支援を受けられる体制",
+      "TOLIC会員の機器メーカー・研究機関との共同提案",
+      "採択事業で得られた成果の可視化と社会実装への展開"
+     ]
+    },
+    "en": {
+     "h": "What membership brings",
+     "paras": [],
+     "items": [
+      "Support for building plans for grant applications and managing programmes once awarded",
+      "Joint proposals with TOLIC member instrument makers and research institutions",
+      "Visualising the results of awarded programmes and carrying them into implementation"
+     ]
+    },
+    "imgs": []
+   }
+  ]
  },
  {
   "id": "soip-2025-09",
@@ -596,7 +719,6 @@
   "id": "tolic-2025",
   "date": "2025-01-01",
   "dateLabel": "2025",
-  "case": "tolic-membership",
   "ja": {
    "tag": "加盟",
    "title": "東北ライフサイエンス・インストルメンツ・クラスター（TOLIC）に加盟",
@@ -606,6 +728,48 @@
    "tag": "Membership",
    "title": "Joined the Tohoku Life Science Instruments Cluster (TOLIC)",
    "text": "Corporate membership of one of Japan's leading hubs for research-instrument development and manufacturing."
-  }
+  },
+  "sections": [
+   {
+    "ja": {
+     "h": "",
+     "paras": [
+      "東北ライフサイエンス・インストルメンツ・クラスター（TOLIC）に企業会員として加盟しました（2025年）。研究機器の開発・製造が集まる国内有数の拠点とつながり、機器メーカーや研究機関との連携の入口を得ています。",
+      "TOLICは、ライフサイエンス分野の研究機器に関わる企業と研究機関が集まるクラスターです。機器の開発から製造、計測で得られるデータの活用まで、研究の現場に近い知見が集積しています。YELLOWは、大学や研究機関の技術を社会に実装する事業者として、この集積に接続するために加盟しました。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "",
+     "paras": [
+      "YELLOW joined the Tohoku Life Science Instruments Cluster (TOLIC) as a corporate member in 2025. The cluster is one of Japan's leading hubs for research-instrument development and manufacturing, and gives us a direct route to instrument makers and research institutions.",
+      "TOLIC brings together companies and research institutions working on instruments for the life sciences. Knowledge close to the research floor accumulates there, from instrument development and manufacturing to the use of measurement data. YELLOW joined to connect with this concentration as a company that brings university and institute technology into society."
+     ],
+     "items": []
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "加盟により取り組むこと",
+     "paras": [],
+     "items": [
+      "会員の機器メーカー・研究機関との共同開発や実証の相談",
+      "計測・分析データの可視化やデジタルツイン化によるプロダクト化の支援",
+      "クラスターのネットワークを通じた研究シーズの発掘と事業化の検討"
+     ]
+    },
+    "en": {
+     "h": "What membership brings",
+     "paras": [],
+     "items": [
+      "Joint development and trials with member instrument makers and research institutions",
+      "Turning measurement and analysis data into products through visualisation and digital twins",
+      "Finding research seeds through the cluster network and exploring how to commercialise them"
+     ]
+    },
+    "imgs": []
+   }
+  ]
  }
 ]
