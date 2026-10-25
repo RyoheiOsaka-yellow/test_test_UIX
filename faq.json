@@ -1,37 +1,57 @@
 [
  {
   "id": "about",
-  "ja": {"q": "株式会社YELLOWはどのような会社ですか？",
-         "a": "大学・研究機関・企業が持つ技術シーズを社会に実装する会社です。群馬県高崎市に本社を置き、2022年に設立しました。xINTERACTIVE、xAD、xBUILD の3つのプロダクトで、体験の制作から販促・広告の分析、産業領域の分析・開発までを手がけます。"},
-  "en": {"q": "What does YELLOW Inc. do?",
-         "a": "YELLOW brings technology seeds from universities, research institutions and companies into society. Founded in 2022 and based in Takasaki, Gunma, we work through three products: xINTERACTIVE, xAD and xBUILD, covering interactive experiences, promotion and advertising analytics, and analysis and development for industry."}
+  "ja": {
+   "q": "株式会社YELLOWはどのような会社ですか？",
+   "a": "大学・研究機関・企業が持つ技術シーズを社会に実装する会社です。群馬県高崎市に本社を置き、2022年に設立しました。xINTERACTIVE、xAD、xBUILD の3つの事業で、エンタメ・体験・UI/UXの開発から、戦略分析とプロトタイピングの伴走、人流や工業の大規模開発までを手がけます。"
+  },
+  "en": {
+   "q": "What does YELLOW Inc. do?",
+   "a": "YELLOW brings technology seeds from universities, research institutions and companies into society. Founded in 2022 and based in Takasaki, Gunma, we work through three businesses: xINTERACTIVE, xAD and xBUILD, covering entertainment, experience and UI/UX development; strategy analysis and prototyping as project managers and consultants; and large-scale development for mobility and industry."
+  }
  },
  {
   "id": "products",
-  "ja": {"q": "xINTERACTIVE・xAD・xBUILD の違いは何ですか？",
-         "a": "xINTERACTIVE は Web・什器・広告・エンターテインメントの領域でYELLOWの技術を体験として届けるプロダクトです。xAD は販促や広告をダッシュボードで可視化してマーケティング戦略を設計し、同時にAIでプロトタイピングするプロダクトです。xBUILD は工場や設備、人流、衛星データなど産業領域のデータを分析し、現場で動くシステムまで開発するプロダクトです。"},
-  "en": {"q": "What is the difference between xINTERACTIVE, xAD and xBUILD?",
-         "a": "xINTERACTIVE puts YELLOW's technology to work as experiences in web, retail fixtures, advertising and entertainment. xAD visualises promotion and advertising on dashboards, designs the marketing strategy and prototypes it with AI at the same time. xBUILD analyses industrial data such as factories, equipment, mobility and satellite data, and develops the systems that run on site."}
+  "ja": {
+   "q": "xINTERACTIVE・xAD・xBUILD の違いは何ですか？",
+   "a": "xINTERACTIVE は、エンターテインメント・体験・UI/UXを対象に、研究シーズやAIの知見を盛り込んで提供するプロジェクトです。xAD は、戦略分析とプロトタイピングをプロジェクトマネージャー・コンサルタントとして担うプロジェクトです。xBUILD は、人流や工業といった大規模な領域の分析と開発を行うプロジェクトです。"
+  },
+  "en": {
+   "q": "What is the difference between xINTERACTIVE, xAD and xBUILD?",
+   "a": "xINTERACTIVE delivers projects for entertainment, experiences and UI/UX, bringing in research seeds and AI know-how. xAD takes on strategy analysis and prototyping, with YELLOW acting as project manager and consultant. xBUILD carries out large-scale analysis and development for fields such as mobility and industry."
+  }
  },
  {
   "id": "sectors",
-  "ja": {"q": "どのような業種の実績がありますか？",
-         "a": "製造業の工場移転シミュレーションや設備の3Dモデリング、建設・不動産の点群データや駅構内の3D化、商業施設や店頭販促のシミュレーション、自治体やスポーツコミッションと取り組む人流データの分析などがあります。詳しくは事例ページをご覧ください。"},
-  "en": {"q": "Which sectors have you worked in?",
-         "a": "Factory relocation simulation and 3D modelling of equipment in manufacturing; point-cloud data and 3D station interiors in construction and real estate; simulation of commercial facilities and in-store promotion; and mobility-data analysis with local governments and sports commissions. See the cases page for details."}
+  "ja": {
+   "q": "どのような業種の実績がありますか？",
+   "a": "製造業の工場移転シミュレーションや設備の3Dモデリング、建設・不動産の点群データや駅構内の3D化、商業施設や店頭販促のシミュレーション、自治体やスポーツコミッションと取り組む人流データの分析などがあります。詳しくは事例ページをご覧ください。"
+  },
+  "en": {
+   "q": "Which sectors have you worked in?",
+   "a": "Factory relocation simulation and 3D modelling of equipment in manufacturing; point-cloud data and 3D station interiors in construction and real estate; simulation of commercial facilities and in-store promotion; and mobility-data analysis with local governments and sports commissions. See the cases page for details."
+  }
  },
  {
   "id": "demos",
-  "ja": {"q": "事例のデモは実際に触れますか？",
-         "a": "多くの事例で、ブラウザで動くデモを公開しています。各事例ページの「デモを開く」から、インストールなしでご覧いただけます。"},
-  "en": {"q": "Can I try the demos from the cases?",
-         "a": "Most cases have a working demo that runs in the browser. Open it from the case page with \"Open demo\"; nothing needs to be installed."}
+  "ja": {
+   "q": "事例のデモは実際に触れますか？",
+   "a": "多くの事例で、ブラウザで動くデモを公開しています。各事例ページの「デモを開く」から、インストールなしでご覧いただけます。"
+  },
+  "en": {
+   "q": "Can I try the demos from the cases?",
+   "a": "Most cases have a working demo that runs in the browser. Open it from the case page with \"Open demo\"; nothing needs to be installed."
+  }
  },
  {
   "id": "contact",
-  "ja": {"q": "相談や見積もりはどこから依頼できますか？",
-         "a": "お問い合わせフォーム、またはメール（info@yellow.technology）からご連絡ください。大学・研究機関、自治体、企業のいずれからのご相談も受け付けています。"},
-  "en": {"q": "How do I get in touch or request a quote?",
-         "a": "Use the contact form or email info@yellow.technology. We welcome enquiries from universities, research institutions, public bodies and companies."}
+  "ja": {
+   "q": "相談や見積もりはどこから依頼できますか？",
+   "a": "お問い合わせフォーム、またはメール（info@yellow.technology）からご連絡ください。大学・研究機関、自治体、企業のいずれからのご相談も受け付けています。"
+  },
+  "en": {
+   "q": "How do I get in touch or request a quote?",
+   "a": "Use the contact form or email info@yellow.technology. We welcome enquiries from universities, research institutions, public bodies and companies."
+  }
  }
 ]

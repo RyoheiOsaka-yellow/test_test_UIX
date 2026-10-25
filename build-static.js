@@ -11,30 +11,30 @@ const ORIGIN = 'https://yellow.technology';   // ★ドメイン確定時はこ�
 
 const ROUTES = [
   { id: 'home', dir: '', title: '株式会社YELLOW｜研究を、素材として。',
-    desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。Web・什器・エンタメのインタラクティブな体験、販促・広告のダッシュボードとAIプロトタイピング、産業領域の分析と開発を手がけます。群馬県高崎市。',
+    desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。xINTERACTIVE（エンタメ・体験・UI/UX）、xAD（戦略分析とプロトタイピング）、xBUILD（人流・工業の大規模開発）の3つの事業を手がけます。群馬県高崎市。',
     en: { title: 'YELLOW Inc. — Research as material.',
-          desc: 'YELLOW bridges technology seeds from universities, research institutions, and companies into society — interactive experiences for web, retail and entertainment, promotion and advertising dashboards with AI prototyping, and analysis and development for industry.' } },
-  { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜Web・什器・広告・エンタメでYELLOWの技術を活用する — 株式会社YELLOW',
-    desc: 'Web、什器、広告、エンターテインメント。YELLOWの技術 — リアルタイム3D、シミュレーション、空間データ — を人が実際に触れる領域で活用し、体験の設計から実装、現場運用まで手がけます。株式会社YELLOWのプロダクト xINTERACTIVE。',
-    en: { title: 'xINTERACTIVE — YELLOW\'s technology in web, retail fixtures, advertising and entertainment | YELLOW Inc.',
-          desc: 'Web experiences, retail fixtures, advertising and entertainment — applying YELLOW\'s real-time 3D, simulation and spatial data where people actually meet it, from design to on-site operation.' },
-    service: { name: 'xINTERACTIVE', alt: 'Web・什器・広告・エンタメ領域での技術活用',
-               desc: 'YELLOWの技術を、Web、什器、広告、エンターテインメントの領域で活用するプロダクト。',
-               offers: ['Web・什器', '広告・エンタメ'] } },
-  { id: 'xad', dir: 'xad', title: 'xAD｜販促・広告をダッシュボードで可視化し、戦略とAIプロトタイプを届ける — 株式会社YELLOW',
-    desc: '店頭・デジタル・メディアにまたがる販促や広告の動きをダッシュボードで可視化し、マーケティング戦略を設計して提供。同時にAIでのプロトタイピングも行い、試せるかたちで届けます。株式会社YELLOWのプロダクト xAD。',
-    en: { title: 'xAD — Promotion and advertising dashboards, marketing strategy and AI prototyping | YELLOW Inc.',
-          desc: 'Visualising promotion and advertising on dashboards, turning them into marketing strategy, and prototyping the ideas with AI at the same time.' },
-    service: { name: 'xAD', alt: '販促・広告ダッシュボード、マーケティング戦略、AIプロトタイピング',
-               desc: '販促や広告をダッシュボードで可視化してマーケティング戦略を提供し、同時にAIでのプロトタイピングも行うプロダクト。',
-               offers: ['ダッシュボードと戦略', 'AIプロトタイピング'] } },
-  { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜工業・産業から衛星データまで、産業領域の分析と開発 — 株式会社YELLOW',
-    desc: '工場・設備・施設をデジタルツインとして再現し、生産ラインや機械から点群、衛星データまでを分析。その結果を動かすツールやシステムを開発します。株式会社YELLOWのプロダクト xBUILD。',
-    en: { title: 'xBUILD — Analysis and development across industry, from factories to satellite data | YELLOW Inc.',
-          desc: 'Modelling factories, equipment and facilities as digital twins, analysing how they run — from production lines to point clouds and satellite data — and building the systems that put the findings to work.' },
-    service: { name: 'xBUILD', alt: '産業領域の分析と開発（デジタルツイン・システム開発）',
-               desc: '工業・産業から衛星データまで、産業領域の分析と開発を行うプロダクト。',
-               offers: ['産業領域の分析', '産業領域の開発'] } },
+          desc: 'YELLOW Inc. bridges technology seeds from universities, research institutions and companies into society through three businesses: xINTERACTIVE (entertainment, experiences and UI/UX), xAD (strategy analysis and prototyping) and xBUILD (large-scale development for mobility and industry).' } },
+  { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜エンタメ・体験・UI/UXに、研究シーズとAIの知見を — 株式会社YELLOW',
+    desc: 'エンターテインメント、体験、UI/UXを対象に、研究シーズ（リアルタイム3D、シミュレーション、空間データ）とAIの知見を盛り込んだプロジェクトを提供。企画・体験設計から実装、現場運用まで手がけます。株式会社YELLOWの事業 xINTERACTIVE。',
+    en: { title: 'xINTERACTIVE — Entertainment, experiences and UI/UX, built with research seeds and AI | YELLOW Inc.',
+          desc: 'Projects for entertainment, experiences and UI/UX that bring in research seeds (real-time 3D, simulation, spatial data) and AI know-how, from concept and design to on-site operation.' },
+    service: { name: 'xINTERACTIVE', alt: 'エンタメ・体験・UI/UXの企画・開発',
+               desc: 'エンターテインメント、体験、UI/UXを対象に、研究シーズやAIの知見を盛り込んで提供するプロジェクト。',
+               offers: ['体験・エンターテインメント', 'UI/UX デザイン・開発'] } },
+  { id: 'xad', dir: 'xad', title: 'xAD｜戦略分析とプロトタイピングを、PM・コンサルタントとして — 株式会社YELLOW',
+    desc: '新規事業やマーケティングの戦略分析と、AIを使ったプロトタイピングを、プロジェクトマネージャー・コンサルタントとして担います。データから戦略を設計し、試せる形まで届けます。株式会社YELLOWの事業 xAD。',
+    en: { title: 'xAD — Strategy analysis and prototyping, as project managers and consultants | YELLOW Inc.',
+          desc: 'Strategy analysis for new businesses and marketing, and AI-driven prototyping, delivered as project managers and consultants: from data to strategy to something you can test.' },
+    service: { name: 'xAD', alt: '戦略分析・プロトタイピング（PM・コンサルティング）',
+               desc: '戦略分析とプロトタイピングを、プロジェクトマネージャー・コンサルタントとして担うプロジェクト。',
+               offers: ['プロトタイピング', '戦略分析'] } },
+  { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜人流や工業など、大規模な領域の分析と開発 — 株式会社YELLOW',
+    desc: '人流や工業といった大規模な領域の開発プロジェクト。都市・施設・工場・設備をデジタルツインとして再現し、人流データや点群、衛星データ、機械の稼働までを分析して、現場で動くシステムまで開発します。株式会社YELLOWの事業 xBUILD。',
+    en: { title: 'xBUILD — Large-scale analysis and development, from mobility to industry | YELLOW Inc.',
+          desc: 'Large-scale development for mobility and industry: cities, facilities, factories and equipment modelled as digital twins, analysed from mobility data to machinery, and built into systems that run on site.' },
+    service: { name: 'xBUILD', alt: '人流・工業の大規模開発（デジタルツイン・システム開発）',
+               desc: '人流や工業といった大規模な領域の分析と開発を行うプロジェクト。',
+               offers: ['工業・設備', '人流・都市'] } },
   { id: 'privacy', dir: 'privacy', title: 'プライバシーポリシー — 株式会社YELLOW',
     desc: '株式会社YELLOWのウェブサイトにおける個人情報の取り扱いについて定めています。',
     en: { title: 'Privacy Policy — YELLOW Inc.', desc: 'How YELLOW Inc. handles personal information on this website.' },
@@ -53,7 +53,7 @@ const ORG_LD = {
   logo: { '@type': 'ImageObject', url: ORIGIN + '/og.png', width: 1200, height: 630 },
   email: 'info@yellow.technology',
   foundingDate: '2022',
-  description: '大学・研究機関・企業の技術シーズを社会へ橋渡しする会社。Web・什器・エンタメのインタラクティブな体験、販促・広告のダッシュボードとAIプロトタイピング、産業領域の分析と開発を手がける。',
+  description: '大学・研究機関・企業の技術シーズを社会へ橋渡しする会社。xINTERACTIVE（エンタメ・体験・UI/UX）、xAD（戦略分析とプロトタイピング）、xBUILD（人流・工業の大規模開発）の3つの事業を手がける。',
   address: {
     '@type': 'PostalAddress', addressCountry: 'JP', addressRegion: '群馬県',
     addressLocality: '高崎市', streetAddress: '白銀町9番地 白銀ビル3F',
@@ -488,24 +488,24 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 ## 概要
 
 株式会社YELLOWは、研究水準の手法と、その現場での実装をつなぐレイヤーを担う。
-事業は3つのプロダクトに整理されている。
+事業は3つに整理されている。
 
-- **xINTERACTIVE（動かす）**: YELLOWの技術を、Web、什器、広告、エンターテインメントの領域で活用する。
-  内訳は「Web・什器」と「広告・エンタメ」。体験の設計から実装、現場運用まで。
-- **xAD（届ける）**: 販促や広告の動きをダッシュボードで可視化し、マーケティング戦略を設計して提供する。
-  同時にAIでのプロトタイピングも行う。内訳は「ダッシュボードと戦略」と「AIプロトタイピング」。
-- **xBUILD（つくる）**: 工業・産業から衛星データまで、産業領域の分析と開発を行う。
-  工場・設備・施設をデジタルツインとして再現し、現場で稼働するシステムまで開発する。
-  内訳は「産業領域の分析」と「産業領域の開発」。TOLIC 加盟。
+- **xINTERACTIVE（動かす）**: エンターテインメント、体験、UI/UXを対象に、研究シーズやAIの知見を盛り込んで提供するプロジェクト。
+  内訳は「体験・エンターテインメント」と「UI/UX デザイン・開発」。企画・体験設計から実装、現場運用まで。
+- **xAD（届ける）**: 戦略分析とプロトタイピングを、プロジェクトマネージャー・コンサルタントとして担うプロジェクト。
+  内訳は「プロトタイピング」と「戦略分析」。分析と試作を往復させ、意思決定と実行を伴走する。
+- **xBUILD（つくる）**: 人流や工業といった大規模な領域の分析と開発を行うプロジェクト。
+  都市・施設・工場・設備をデジタルツインとして再現し、現場で稼働するシステムまで開発する。
+  内訳は「工業・設備」と「人流・都市」。TOLIC 加盟。
 
 ## 主なページ
 
 - [ホーム](${ORIGIN}/): 会社概要、3プロダクト、事例、お知らせ、採用、お問い合わせ
 - [事例](${ORIGIN}/cases/): 実装した事例の一覧
 - [お知らせ](${ORIGIN}/news/): 採択・加盟・プレスリリース
-- [xINTERACTIVE](${ORIGIN}/xinteractive/): Web・什器・広告・エンタメでの技術活用
-- [xAD](${ORIGIN}/xad/): 販促・広告ダッシュボード、戦略、AIプロトタイピング
-- [xBUILD](${ORIGIN}/xbuild/): 産業領域の分析と開発（デジタルツイン）
+- [xINTERACTIVE](${ORIGIN}/xinteractive/): エンタメ・体験・UI/UX（研究シーズ×AI）
+- [xAD](${ORIGIN}/xad/): 戦略分析とプロトタイピング（PM・コンサルティング）
+- [xBUILD](${ORIGIN}/xbuild/): 人流・工業の大規模開発（デジタルツイン）
 - [プライバシーポリシー](${ORIGIN}/privacy/)
 - [利用規約](${ORIGIN}/terms/)
 
