@@ -1,0 +1,15 @@
+import pw from '/opt/node-tools/node_modules/playwright/index.js'; const { chromium } = pw;
+import http from 'http'; import fs from 'fs'; import path from 'path';
+const root = path.resolve(new URL('..', import.meta.url).pathname);
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.wasm': 'application/wasm' };
+const server = http.createServer((req, res) => { let p = decodeURIComponent(req.url.split('?')[0]); if (p === '/') p = '/index.html'; const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end('nf'); return; } res.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream' }); res.end(d); }); });
+await new Promise(r => server.listen(8123, r));
+const url = process.argv[2] || '/dev/geo-test.html'; const out = process.argv[3] || '/tmp/shot.png';
+const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+page.on('console', m => console.log('[console]', m.type(), m.text())); page.on('pageerror', e => console.log('[pageerror]', e.message));
+await page.goto('http://localhost:8123' + url, { waitUntil: 'load' });
+await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 }).catch(e => console.log('ready timeout'));
+await page.waitForTimeout(1500);
+await page.screenshot({ path: out }); console.log('saved', out);
+await browser.close(); server.close();

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANGLEX — Fabrication Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2313130f'/%3E%3Cpath d='M8 24 L16 8 L24 24 M11 18 H21' stroke='%23B8A67A' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="app" class="app">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">ANGLEX</span><span class="brand-sub">FABRICATION INTELLIGENCE · BIM</span></div>
+    <div class="topbar-divider"></div>
+    <div class="project-pill" id="projectPill"><span class="dot"></span><span class="pname" id="projectName">プロジェクト</span><span class="pmeta" id="projectMeta"></span></div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <span class="mode-badge" id="storeMode">local</span>
+      <div class="user-pill" id="userPill"><span class="org-badge" id="orgBadge">A</span><span id="userName">—</span><span class="caret">▾</span></div>
+      <button class="btn ghost" id="btnSave" title="保存 (Ctrl+S)">保存</button>
+    </div>
+  </header>
+  <nav class="ribbon">
+    <div class="ribbon-tabs" id="ribbonTabs">
+      <button class="rtab on" data-tab="home">ホーム</button><button class="rtab" data-tab="import">読込</button><button class="rtab" data-tab="view">表示</button><button class="rtab" data-tab="project">プロジェクト</button><button class="rtab" data-tab="help">ヘルプ</button>
+    </div>
+    <div class="ribbon-panels">
+      <div class="rpanel on" data-panel="home">
+        <div class="rgroup"><div class="rgroup-title">配置</div><button class="rbtn big" id="btnCatalog"><span class="ri">▦</span>カタログ</button><button class="rbtn big" id="btnFamily"><span class="ri">◧</span>ファミリ</button><button class="rbtn" id="btnNewType">新規タイプ</button></div>
+        <div class="rgroup"><div class="rgroup-title">接合・加工</div><button class="rbtn big" id="btnJoint"><span class="ri">▷</span>接合</button><button class="rbtn" id="btnHoleTool">穴あけ</button><button class="rbtn" id="btnInstr">指示入力</button></div>
+        <div class="rgroup"><div class="rgroup-title">編集</div><button class="rbtn" id="btnMove">移動 (G)</button><button class="rbtn" id="btnRotate">回転 (R)</button><button class="rbtn" id="btnDup">複製</button><button class="rbtn danger" id="btnDelete">削除</button><button class="rbtn" id="btnUndo">↶</button><button class="rbtn" id="btnRedo">↷</button></div>
+        <div class="rgroup"><div class="rgroup-title">集計・見積</div><button class="rbtn big" id="btnSchedules"><span class="ri">≣</span>集計表</button><button class="rbtn big" id="btnEstimate"><span class="ri">¥</span>見積</button><button class="rbtn" id="btnClash">干渉チェック</button></div>
+      </div>
+      <div class="rpanel" data-panel="import">
+        <div class="rgroup"><div class="rgroup-title">図面・BIM 読込</div><button class="rbtn big" id="btnImport"><span class="ri">⤓</span>ファイル読込</button><button class="rbtn" id="btnDrawing">図面ビュー</button><button class="rbtn" id="btn3d">3D ビュー</button></div>
+        <div class="rgroup"><div class="rgroup-title">対応形式</div><div class="rtext">DXF（実パース）/ PDF（ベクター）/ IFC（web-ifc）/ glTF・OBJ・STL・FBX<br>DWG・JWW・SFC/P21・RVT・DGN・SKP・3DM → サーバ変換（<span id="convStatus">未設定</span>）</div></div>
+        <div class="rgroup"><div class="rgroup-title">デモ</div><button class="rbtn" id="btnDemoDxf">サンプル DXF</button><button class="rbtn" id="btnDemoModel">サンプルモデル</button></div>
+      </div>
+      <div class="rpanel" data-panel="view">
+        <div class="rgroup"><div class="rgroup-title">ビュー</div><button class="rbtn" data-view="3d">3D</button><button class="rbtn" data-view="iso">アイソメ</button><button class="rbtn" data-view="plan">平面</button><button class="rbtn" data-view="front">正面</button><button class="rbtn" data-view="side">側面</button><button class="rbtn" data-view="2d">図面</button><button class="rbtn" id="btnFit">全体表示</button></div>
+        <div class="rgroup"><div class="rgroup-title">表示スタイル</div><select id="selStyle" class="rsel"><option value="realistic">リアル（材質）</option><option value="shaded-edges" selected>陰影 + エッジ</option><option value="shaded">陰影</option><option value="hidden-line">隠線処理</option><option value="wireframe">ワイヤ</option><option value="ghost">半透明</option></select><select id="selLod" class="rsel"><option value="200">LOD200 概略</option><option value="300">LOD300 設計</option><option value="400" selected>LOD400 製作</option></select><button class="rbtn" id="btnTheme">背景 明/暗</button></div>
+        <div class="rgroup"><div class="rgroup-title">補助</div><label class="chk"><input type="checkbox" id="chkGrid" checked>グリッド</label><label class="chk"><input type="checkbox" id="chkShadow" checked>影</label><label class="chk"><input type="checkbox" id="chkLevels" checked>レベル</label><label class="chk"><input type="checkbox" id="chkRefs" checked>参照（配管）</label><label class="chk"><input type="checkbox" id="chkSite" checked>現場材（アンカー・吊ボルト）</label><label class="chk"><input type="checkbox" id="chkTags" checked>符号</label></div>
+        <div class="rgroup"><div class="rgroup-title">断面・分解</div><button class="rbtn" id="btnSection">断面ボックス</button><label class="chk">分解 <input type="range" id="rngExplode" min="0" max="1" step="0.05" value="0"></label><button class="rbtn" id="btnMeasure">計測</button></div>
+      </div>
+      <div class="rpanel" data-panel="project">
+        <div class="rgroup"><div class="rgroup-title">プロジェクト</div><button class="rbtn" id="btnNew">新規</button><button class="rbtn" id="btnOpen">開く</button><button class="rbtn" id="btnSave2">保存</button><button class="rbtn" id="btnRename">名称変更</button></div>
+        <div class="rgroup"><div class="rgroup-title">書出し</div><button class="rbtn" id="btnExpJson">JSON</button><button class="rbtn" id="btnExpGltf">glTF/GLB</button><button class="rbtn" id="btnExpDxf">DXF 加工図</button><button class="rbtn" id="btnExpIfc">IFC-JSON</button><button class="rbtn" id="btnShot">画像</button></div>
+        <div class="rgroup"><div class="rgroup-title">設定</div><button class="rbtn" id="btnRates">単価表</button><button class="rbtn" id="btnLevels">レベル</button><button class="rbtn" id="btnUsers">アカウント</button></div>
+      </div>
+      <div class="rpanel" data-panel="help"><div class="rgroup"><div class="rtext help">
+        <b>考え方（Revit 準拠）</b>: ファミリ（パラメトリック定義）→ タイプ（寸法セット）→ インスタンス（配置）。タイプ パラメータ[T]の変更は同タイプ全てに、インスタンス パラメータ[I]は1体のみに反映。幾何・重量・集計・見積は同じ部品リストから生成（単一ソース）。<br>
+        <b>操作</b>: 左ドラッグ回転 / 右ドラッグ平行移動 / ホイール拡縮 / クリック選択 / ダブルクリック注視 / G 移動 / R 回転 / Delete 削除 / Ctrl+Z 元に戻す。<br>
+        <b>接合</b>: 「接合」→ 2部材をクリック → 溶接 or ボルト。指示入力例: 「MF-1 と LB-1 を隅肉溶接 6 両側」「PL-1 を MF-1 に M12 ボルト 4本 @100 で接合」「MF-1 に φ15 穴 2個 @100 端から50 脚A」。<br>
+        <b>多社ワークフロー</b>: A社（見積作成）→ B社（利益上乗せのみ）→ C社（工場原価のみ）。各社が触れる項目はフィールド単位で制限され、受け渡しごとに改訂凍結・監査ログ。</div></div></div>
+    </div>
+  </nav>
+  <main class="main">
+    <aside class="side left"><div class="side-head">プロジェクトブラウザ</div><div class="side-body" id="browser"></div></aside>
+    <section class="stage" id="stage">
+      <div class="viewport" id="viewport"></div>
+      <div class="drawing" id="drawing" hidden></div>
+      <div class="hud" id="hud"></div>
+      <div class="drop-hint" id="dropHint">図面・BIM ファイルをここへドロップ（DXF / PDF / IFC / glTF / DWG…）</div>
+      <div class="instr-box" id="instrBox"><input id="instrInput" placeholder="加工指示を日本語で入力（例: MF-1 と LB-1 を隅肉溶接 6 両側 / MF-1 に φ15 穴 2個 @100 端から50）"><button class="btn primary sm" id="instrRun">実行</button></div>
+    </section>
+    <aside class="side right"><div class="side-head">プロパティ</div><div class="side-body" id="props"></div></aside>
+  </main>
+  <footer class="statusbar"><span id="status">準備完了</span><span class="spacer"></span><span id="statusModel"></span><span class="sep"></span><span id="statusWarn"></span></footer>
+</div>
+<input type="file" id="fileInput" multiple hidden>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

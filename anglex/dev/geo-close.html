@@ -1,0 +1,33 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>geo close</title>
+<style>html,body{margin:0;height:100%;background:#f4f5f7}#v{position:fixed;inset:0}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head><body><div id="v"></div>
+<script type="module">
+import * as THREE from 'three';
+import { Viewer } from '../js/viewer/scene.js';
+import { buildMember } from '../js/geo/profiles.js';
+import { hexBolt, uBolt, anchorBolt } from '../js/geo/fasteners.js';
+import { filletBead } from '../js/geo/welds.js';
+const v = new Viewer(document.getElementById('v'), { theme: 'light' }); window.viewer = v;
+const q = new URLSearchParams(location.search); const what = q.get('what') || 'corner';
+if (what === 'corner') {
+  // 柱脚: L-50x50x6 を PL-9 に全周隅肉溶接、アンカーM12。近接で穴・ビード・スパングルを見る
+  const base = buildMember({ spec: 'PL-9x150x150', length: 150, finish: 'HDZ', lod: 400, holes: [{ face: 'face', z: 25, s: 25, d: 15 }, { face: 'face', z: 125, s: 125, d: 15 }, { face: 'face', z: 25, s: 125, d: 15, slot: { len: 30, dir: 's' } }, { face: 'face', z: 125, s: 25, d: 15 }] });
+  base.position.set(0, 0, 0); v.add(base); // 板: x 0..150 (s), z 0..150, 厚み y 0..9
+  const col = buildMember({ spec: 'L-50x50x6', length: 250, finish: 'HDZ', lod: 400, holes: [{ face: 'B', z: 60, s: 28, d: 12, slot: { len: 25, dir: 'z' } }, { face: 'A', z: 120, s: 28, d: 12 }] });
+  col.rotation.x = -Math.PI / 2; col.position.set(50, 9, 100); v.add(col); // 角 (50, 9, 100); 脚A +x 50..100; 脚B: y→ -z : z 100..50
+  const P = (x, z) => new THREE.Vector3(x, 9, z); const UP = new THREE.Vector3(0, 1, 0);
+  const segs = [[P(50, 100), P(100, 100), new THREE.Vector3(0, 0, 1)], [P(100, 100), P(100, 94), new THREE.Vector3(1, 0, 0)], [P(100, 94), P(56, 94), new THREE.Vector3(0, 0, -1)], [P(56, 94), P(56, 50), new THREE.Vector3(1, 0, 0)], [P(56, 50), P(50, 50), new THREE.Vector3(0, 0, -1)], [P(50, 50), P(50, 100), new THREE.Vector3(-1, 0, 0)]];
+  for (const [a, b, n] of segs) v.add(filletBead({ from: a, to: b, n1: n, n2: UP, size: 6, lod: 400 }));
+  for (const [x, z] of [[25, 25], [125, 125], [125, 25], [25, 125]]) { const a = anchorBolt({ M: 'M12', plateT: 9 }); a.rotation.x = -Math.PI / 2; a.position.set(x, 0, z); v.add(a); }
+  const b = hexBolt({ M: 'M12', L: 35, lod: 400 }); b.position.set(50 + 6, 9 + 120, 100 - 28); b.rotation.y = -Math.PI / 2; v.add(b);
+  v.camera.position.set(260, 220, 330); v.controls.target.set(70, 60, 90);
+} else if (what === 'ubolt') {
+  const beam = buildMember({ spec: '[-75x40x5x7', length: 300, finish: 'HDZ', lod: 400, holes: [{ face: 'ft', z: 150 - 35, s: 20, d: 11 }, { face: 'ft', z: 150 + 35, s: 20, d: 11 }] });
+  beam.rotation.set(0, Math.PI / 2, 0); beam.position.set(150, 0, -40); v.add(beam); // 長さ +X、ウェブ背面 z=-40、フランジ +Z 側
+  const ub = uBolt({ od: 60.5, nominal: '50A', plateT: 7, lod: 400 }); ub.position.set(0, 75, -20); ub.rotation.y = Math.PI / 2; v.add(ub);
+  const pipe = buildMember({ spec: 'SGP-50A', length: 400, lod: 400, material: new THREE.MeshStandardMaterial({ color: 0x2a7d8c, metalness: 0.3, roughness: 0.5 }) }); pipe.position.set(0, 75 + 60.5 / 2 + 3, -20); pipe.rotation.y = Math.PI / 2; pipe.position.x = -200; v.add(pipe);
+  v.camera.position.set(280, 230, 300); v.controls.target.set(0, 70, 0);
+}
+v.setDisplayStyle(q.get('style') || 'realistic'); v.fitShadow(); window.__ready = true;
+</script></body></html>

@@ -1,0 +1,19 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>family test</title>
+<style>html,body{margin:0;height:100%;background:#f4f5f7}#v{position:fixed;inset:0}.v-label{font:12px system-ui;background:#fff;border:1px solid #999;padding:2px 5px;border-radius:3px}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head><body><div id="v"></div>
+<script type="module">
+import * as THREE from 'three';
+import { Viewer } from '../js/viewer/scene.js';
+import { FAMILIES, familyById } from '../js/bim/families.js';
+import { resolveParams } from '../js/bim/params.js';
+import { buildInstance } from '../js/bim/build.js';
+import { summarize } from '../js/bim/weight.js';
+const q = new URLSearchParams(location.search); const fid = q.get('f') || 'portal_frame'; const lod = +(q.get('lod') || 400);
+const v = new Viewer(document.getElementById('v'), { theme: q.get('theme') || 'light' }); window.viewer = v;
+const fam = familyById(fid); const over = q.get('p') ? JSON.parse(q.get('p')) : {}; const p = resolveParams(fam.params, over);
+const t0 = performance.now(); const parts = fam.parts(p); const g = buildInstance(parts, { lod }); v.add(g); const t1 = performance.now();
+const sum = summarize(parts); console.log(fid, 'parts', parts.length, 'build ms', Math.round(t1 - t0), 'mass', JSON.stringify({ steelNet: sum.steelNet, zinc: sum.zinc, fasteners: sum.fasteners, welds: sum.welds, total: sum.total, weldLen: Math.round(sum.weldLength), holes: sum.holeCount, slots: sum.slotCount }));
+v.setDisplayStyle(q.get('style') || 'shaded-edges'); v.setView(q.get('view') || 'iso'); if (q.get('cam')) { const c = q.get('cam').split(',').map(Number); v.camera.position.set(c[0], c[1], c[2]); v.controls.target.set(c[3], c[4], c[5]); }
+window.__ready = true;
+</script></body></html>
