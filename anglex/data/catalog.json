@@ -10658,8 +10658,8 @@
     "NC-300"
    ],
    "orderFields": [],
-   "finish": "SUS304",
-   "material": "SUS304",
+   "finish": "HDZ",
+   "material": "SS400",
    "family": "channel_stand",
    "familyParams": {},
    "skus": []
@@ -10723,8 +10723,8 @@
     "B-100〜B-3000"
    ],
    "orderFields": [],
-   "finish": "SUS304",
-   "material": "SUS304",
+   "finish": "EZ",
+   "material": "SS400",
    "family": "channel",
    "familyParams": {
     "size": "C-100x50x5"
@@ -10759,8 +10759,8 @@
     "NM253〜NM508"
    ],
    "orderFields": [],
-   "finish": "SUS304",
-   "material": "SUS304",
+   "finish": "HDZ",
+   "material": "SS400",
    "family": "portal_frame",
    "familyParams": {
     "profile": "C",

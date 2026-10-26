@@ -52,7 +52,7 @@ export function summarize(parts) {
     if (pt.kind === 'member' || pt.kind === 'plate' || pt.kind === 'pipe') { const w = memberWeight(pt); if (!w) continue; row.each = w.total; row.mass = KG(w.total * q); out.steelGross += w.gross * q; out.steelNet += w.net * q; out.zinc += w.zinc * q; out.areaM2 += w.areaM2 * q; out.holeCount += w.holeCount * q; out.slotCount += w.slotCount * q; row.detail = w; }
     else if (pt.kind === 'weld') { const w = weldWeight({ type: pt.weldType || 'fillet', size: pt.size, length: pt.length, sides: pt.sides || 1 }); row.each = w.mass; row.mass = KG(w.mass * q); out.welds += w.mass * q; out.weldLength += w.length * q; }
     else if (['bolt', 'ubolt', 'anchor', 'rod', 'nut', 'washer'].includes(pt.kind)) { const w = fastenerWeight(pt.kind, pt.M || 'M12', pt.L || pt.od || 40, 1); row.each = w.mass; row.mass = KG(w.mass * q); out.fasteners += w.mass * q; }
-    else if (pt.mass != null) { row.each = pt.mass; row.mass = KG(pt.mass * q); out.fasteners += pt.mass * q; }
+    else if (pt.mass != null) { row.each = pt.mass; row.mass = KG(pt.mass * q); if (pt.kind === 'custom' && pt.custom !== 'can') { const z = (pt.areaM2 || 0) * ((GALV[pt.finish] ?? (pt.finish && pt.finish.startsWith('HDZ') ? GALV.HDZ55 : 0)) / 1000); out.steelGross += pt.mass * q; out.steelNet += pt.mass * q; out.zinc += z * q; out.areaM2 += (pt.areaM2 || 0) * q; row.mass = KG((pt.mass + z) * q); row.each = KG(pt.mass + z); } else out.fasteners += pt.mass * q; }
     out.items.push(row);
   }
   out.total = KG(out.steelNet + out.zinc + out.fasteners + out.welds); for (const k of ['steelGross', 'steelNet', 'zinc', 'fasteners', 'welds']) out[k] = KG(out[k]); out.areaM2 = Math.round(out.areaM2 * 1000) / 1000;

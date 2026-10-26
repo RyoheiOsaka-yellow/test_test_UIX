@@ -15,11 +15,15 @@ OUT_JSON = os.path.join(HERE, '..', 'data', 'catalog.json')
 OUT_JS = os.path.join(HERE, '..', 'js', 'data', 'catalog.js')
 
 def finish_of(name, notes):
-    s = name + ' ' + notes
-    if 'ステンレス' in s or 'SUS' in s: return 'SUS304'
-    if 'ドブ' in name or '溶融亜鉛めっき' in s: return 'HDZ'
-    if '高耐食' in s: return 'ZAM'
-    if '電気亜鉛' in s: return 'EZ'
+    if 'ステンレス' in name or 'SUS' in name: return 'SUS304'
+    if 'ドブ' in name: return 'HDZ'
+    m = re.search(r'材質[:：]\s*([^/]+)', notes)
+    mat = m.group(1) if m else notes
+    if 'ステンレス' in mat or 'SUS' in mat: return 'SUS304'
+    if '溶融亜鉛' in mat: return 'HDZ'
+    if '高耐食' in mat: return 'ZAM'
+    if '電気亜鉛' in mat: return 'EZ'
+    if '溶融亜鉛めっき' in name: return 'HDZ'
     return 'EZ'
 
 def material_of(name, notes):
