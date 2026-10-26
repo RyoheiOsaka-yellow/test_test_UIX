@@ -32,7 +32,8 @@ class App {
     this.store = await createStore(); $('#storeMode').textContent = this.store.mode; $('#storeMode').classList.toggle('server', this.store.mode === 'server');
     if (this.store.mode === 'local' && !this.store.session()) await this.store.login(DEMO_USERS[0].email);
     if (this.store.mode === 'server' && !this.store.session()) await this.loginDialog();
-    const qp = new URLSearchParams(location.search); const quality = qp.get('quality') !== '0'; window.__anglexNoPBR = !quality; this.viewer = new Viewer($('#viewport'), { theme: this.theme, quality, hdri: quality }); if (!quality) { const c = $('#chkQuality'); if (c) c.checked = false; } this.viewer.setDisplayStyle('shaded-edges');
+    const qp = new URLSearchParams(location.search); const quality = qp.get('quality') !== '0'; window.__anglexNoPBR = !quality; this.viewer = new Viewer($('#viewport'), { theme: this.theme, quality, hdri: quality }); if (!quality) { const c = $('#chkQuality'); if (c) c.checked = false; }
+    this.model.on('change', () => this.viewer.invalidate()); this.viewer.setDisplayStyle('shaded-edges');
     this.viewer.onPick = (hit, e) => this.onPick(hit, e); this.viewer.onSelect = () => { }; this.viewer.onTransformEnd = obj => this.onGizmoEnd(obj);
     this.model.on('change', () => { this.updateStatus(); this.scheduleAutosave(); });
     this.bindUI(); this.renderUser();
@@ -60,7 +61,7 @@ class App {
   }
   // ---------- ビルド ----------
   refreshAll() { this.rebuildAll(); this.refreshBrowser(); this.refreshProps(); $('#projectName').textContent = this.project.name; }
-  rebuildAll() { this.viewer.clear(); this.groups.clear(); this.jointGroups.clear(); for (const [id, o] of this.refObjects) this.viewer.modelRoot.add(o); this.evaluateJoints(); for (const inst of this.model.instances) this.rebuildInstance(inst, false); this.rebuildJoints(); this.viewer.applyDisplayStyle(); this.drawLevels(); this.viewer.fitShadow(); }
+  rebuildAll() { this.viewer.clear(); if (!this.viewer.quality) setTimeout(() => this.viewer.setQuality(false), 0); this.groups.clear(); this.jointGroups.clear(); for (const [id, o] of this.refObjects) this.viewer.modelRoot.add(o); this.evaluateJoints(); for (const inst of this.model.instances) this.rebuildInstance(inst, false); this.rebuildJoints(); this.viewer.applyDisplayStyle(); this.drawLevels(); this.viewer.fitShadow(); }
   evaluateJoints() { for (const j of this.model.joints) { try { const r = evaluateJoint(this.model, j); j.eval = r; j.warning = r.warning || null; } catch (e) { j.eval = { parts: [], holes: [] }; j.warning = e.message; } } }
   instanceParts(inst) { const fam = this.model.familyOf(inst); const p = this.model.resolved(inst); const parts = fam.parts(p, { inst, model: this.model }).map(x => ({ ...x, holes: x.holes ? [...x.holes] : x.holes })); for (const j of this.model.joints) for (const hh of (j.eval?.holes || [])) if (hh.instId === inst.id && parts[hh.partIndex] && parts[hh.partIndex].holes) parts[hh.partIndex].holes.push({ ...hh.hole, id: j.id }); return parts; }
   rebuildInstance(inst, withJoints = true) { const old = this.groups.get(inst.id); if (old) this.viewer.modelRoot.remove(old); let g; try { g = buildInstance(this.instanceParts(inst), { lod: this.lod, showRefs: this.showRefs, showSite: this.showSite }); } catch (e) { console.error(e); toast('ジオメトリ生成エラー: ' + e.message, 'bad'); g = new THREE.Group(); } g.userData.instId = inst.id; g.position.set(...inst.pos); g.rotation.set(...(inst.rot || [0, 0, 0])); this.groups.set(inst.id, g); this.viewer.modelRoot.add(g); this.tagFor(inst, g); if (withJoints) { this.evaluateJoints(); this.rebuildJoints(); this.viewer.applyDisplayStyle(); } if (this.selection === inst.id) this.viewer.select(g); return g; }

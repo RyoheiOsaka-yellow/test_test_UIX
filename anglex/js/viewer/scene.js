@@ -19,7 +19,7 @@ export class Viewer {
     const W = container.clientWidth || 800, H = container.clientHeight || 600;
     this.scene = new THREE.Scene();
     this.theme = opts.theme || 'light'; // light: Revit 風白背景 / dark: 工場モデル風
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true, logarithmicDepthBuffer: false });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false, logarithmicDepthBuffer: false });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); this.renderer.setSize(W, H);
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
@@ -78,7 +78,9 @@ export class Viewer {
     try { this.gtao = new GTAOPass(this.scene, this.activeCamera, W, H); this.gtao.output = GTAOPass.OUTPUT.Default; this.gtao.updateGtaoMaterial({ radius: 28, distanceExponent: 1.2, thickness: 12, scale: 1.0, samples: 12, distanceFallOff: 1.0, screenSpaceRadius: false }); this.gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 8 }); this.gtao.blendIntensity = 0.85; this.composer.addPass(this.gtao); } catch (e) { console.warn('GTAO unavailable', e); this.gtao = null; }
     this.composer.addPass(new OutputPass()); this.smaa = new SMAAPass(); this.composer.addPass(this.smaa);
   }
-  setQuality(on) { this.quality = on; this.invalidate(); }
+  setQuality(on) { this.quality = on; this.invalidate(); // 低品質時はクリアコート/異方性/法線マップを外してシェーダ負荷を下げる（内蔵GPU・ソフトウェアGL向け）
+    const mats = new Set(); this.scene.traverse(o => { if (o.isMesh && o.material) mats.add(o.material); if (o.userData?._mat) mats.add(o.userData._mat); });
+    for (const m of mats) { if (!m.isMeshPhysicalMaterial && !m.isMeshStandardMaterial) continue; if (!m.userData._hq) m.userData._hq = { clearcoat: m.clearcoat, anisotropy: m.anisotropy, normalMap: m.normalMap, roughnessMap: m.roughnessMap }; const h = m.userData._hq; if (on) { if (m.isMeshPhysicalMaterial) { m.clearcoat = h.clearcoat; m.anisotropy = h.anisotropy; } m.normalMap = h.normalMap; m.roughnessMap = h.roughnessMap; } else { if (m.isMeshPhysicalMaterial) { m.clearcoat = 0; m.anisotropy = 0; } m.normalMap = null; m.roughnessMap = null; } m.needsUpdate = true; } }
   _syncCamera() { if (this.renderPass) this.renderPass.camera = this.activeCamera; if (this.gtao) { this.gtao.camera = this.activeCamera; } }
   async loadHDRI(url = HDRI_URL) { try { const hdr = await new RGBELoader().loadAsync(url); hdr.mapping = THREE.EquirectangularReflectionMapping; this.hdri = hdr; this.scene.environment = this.pmrem.fromEquirectangular(hdr).texture; this.scene.environmentIntensity = 1.0; this.applyDisplayStyle(); } catch (e) { console.warn('HDRI 読込失敗（RoomEnvironment を使用）', e.message); } }
   dispose() { cancelAnimationFrame(this._frame); this._resizeObs.disconnect(); this.renderer.dispose(); }
