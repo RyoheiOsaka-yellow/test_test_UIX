@@ -1,5 +1,7 @@
 // 部材認識: 図面テキスト（鋼材仕様・穴・ピッチ・Uボルト・仕上げ）と幾何（閉じた矩形・長手方向）から部材候補を抽出し、確信度を付ける
 import { parseSpec } from '../geo/profiles.js';
+import { assessMember, DEFAULT_RISK } from '../bim/risk.js';
+import { pipeOD } from '../data/sections.js';
 export const SPEC_RE = /(?:L|Ｌ)[-‐－]?\s*(\d{2,3})\s*[x×X＊*]\s*(\d{2,3})\s*[x×X＊*]\s*(\d(?:\.\d)?)|(?:\[|C|Ｃ|\[-)[-‐－]?\s*(\d{2,3})\s*[x×X＊*]\s*(\d{2,3})\s*[x×X＊*]\s*(\d(?:\.\d)?)(?:\s*[x×X＊*]\s*(\d{1,2}(?:\.\d)?))?|(?:FB|ＦＢ|平鋼)[-‐－]?\s*(\d(?:\.\d)?)\s*[x×X＊*]\s*(\d{2,3})|(?:PL|ＰＬ)[-‐－]?\s*(\d{1,2}(?:\.\d)?)(?:\s*[x×X＊*]\s*(\d{2,4})\s*[x×X＊*]\s*(\d{2,4}))?|(?:SGP|STPG|白ガス管|黒ガス管)?\s*(\d{2,3})\s*A\b|(?:□|口|STKR)[-‐－]?\s*(\d{2,3})\s*[x×X＊*]\s*(\d{2,3})\s*[x×X＊*]\s*(\d(?:\.\d)?)|(?:H|Ｈ)[-‐－]?\s*(\d{3})\s*[x×X＊*]\s*(\d{2,3})\s*[x×X＊*]\s*(\d{1,2})\s*[x×X＊*]\s*(\d{1,2})/g;
 export function specsInText(text) {
   const out = []; const t = String(text).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
@@ -12,6 +14,7 @@ export function featuresInText(text) {
   const slot = t.match(/(?:長穴|ナガアナ|SLOT)\s*(\d{1,2})\s*[x×]\s*(\d{2,3})/i); if (slot) f.slot = { w: +slot[1], len: +slot[2] };
   const pitch = t.match(/(?:P|ピッチ|@)\s*[=＝]?\s*(\d{2,4})/); if (pitch) f.pitch = +pitch[1];
   const ub = t.match(/U\s*[-ー]?\s*(?:ボルト|BOLT)?\s*(\d{2,3})\s*A?/i); if (/U\s*[-ー]?\s*(ボルト|BOLT|B)/i.test(t)) f.ubolt = ub ? ub[1] + 'A' : true;
+  const pa = t.match(/(\d{2,3})\s*A\b/); if (pa) f.pipeOD = pipeOD(pa[1], 'SGP') || +pa[1];
   if (/溶融亜鉛|ドブ|HDZ/.test(t)) f.finish = 'HDZ'; else if (/電気亜鉛|ユニクロ|EZ/.test(t)) f.finish = 'EZ'; else if (/SUS\s*304|ステンレス/.test(t)) f.finish = 'SUS304'; else if (/サビ止め|錆止め|プライマー/.test(t)) f.finish = 'PAINT';
   const weld = t.match(/(?:▷|△|隅肉|すみ肉|溶接)\s*(\d{1,2})/); if (weld) f.weld = +weld[1]; if (/全周/.test(t)) f.allAround = true;
   const anc = t.match(/(?:アンカー|ANCHOR|AB)\s*[-ー]?\s*(M\d{1,2})/i); if (anc) f.anchor = anc[1].toUpperCase();
@@ -32,6 +35,7 @@ export function recognizeDXF(dxf) {
   for (const p of polys) { const bb = bboxPts(p.pts); const ar = Math.max(bb.w, bb.h) / Math.max(1, Math.min(bb.w, bb.h)); if (ar > 6 && Math.min(bb.w, bb.h) >= 20 && Math.min(bb.w, bb.h) <= 150 && !members.some(m => m.bbox && m.bbox.x0 === bb.x0 && m.bbox.y0 === bb.y0)) { const w = Math.round(Math.min(bb.w, bb.h)); members.push({ id: 'D' + seq++, spec: `L-${w}x${w}x${w <= 40 ? 3 : w <= 65 ? 5 : 6}`, length: Math.round(Math.max(bb.w, bb.h)), lengthSource: '図形外形', holes: [], feat: {}, text: '（仕様注記なし・形状から推定）', pos: [bb.x0, bb.y0], layer: p.layer, bbox: bb, confidence: 0.4, status: 'review' }); } }
   // 近傍注記の特徴（穴・Uボルト・仕上げ）を部材へ紐付け
   for (const m of members) for (const nt of notes) { const d = Math.hypot(nt.pos[0] - m.pos[0], nt.pos[1] - m.pos[1]); if (d < 400) { m.feat = { ...nt.feat, ...m.feat }; m.linkedNotes = (m.linkedNotes || []).concat(nt.text); } }
+  applyRisk(members);
   return { members, notes, stats: { texts: texts.length, polylines: polys.length, lines: lines.length, circles: circles.length, layers: Object.keys(dxf.layers).length } };
 }
 function bboxPts(pts) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 }; }
@@ -40,8 +44,10 @@ export function recognizeTextItems(items) { // items: [{text, x, y, page}]
   const members = []; let seq = 1; const notes = [];
   for (const it of items) { const specs = specsInText(it.text); const feat = featuresInText(it.text); if (!specs.length) { if (Object.keys(feat).length) notes.push({ ...it, feat }); continue; } for (const sp of specs) members.push({ id: 'P' + seq++, spec: sp.spec, length: feat.length || null, lengthSource: feat.length ? '寸法注記' : null, holes: [], feat, text: it.text, pos: [it.x, it.y], page: it.page, confidence: feat.length ? 0.75 : 0.5, status: feat.length ? 'inferred' : 'review' }); }
   for (const m of members) for (const nt of notes) { if (nt.page === m.page && Math.hypot(nt.x - m.pos[0], nt.y - m.pos[1]) < 160) { m.feat = { ...nt.feat, ...m.feat }; m.linkedNotes = (m.linkedNotes || []).concat(nt.text); } }
+  applyRisk(members);
   return { members, notes };
 }
+export function applyRisk(members, risk = (globalThis.__anglexRisk || DEFAULT_RISK)) { for (const m of members) { const a = assessMember(m, risk); m.status = a.status; m.risk = a.risk; m.riskReasons = a.reasons; m.riskWorst = a.worst; m.pipeFactor = a.pipeFactor; } return members; }
 // 認識部材 → ファミリ・パラメータ提案（Revit のタイプ作成に相当）
 export function proposeType(m) {
   const p = parseSpec(m.spec); const finish = m.feat.finish || 'HDZ';

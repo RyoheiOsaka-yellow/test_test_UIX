@@ -146,10 +146,12 @@ export function holePerimeter(h) { const r = h.d / 2; return h.slot && h.slot.le
 function plateMesh(pl, material, lod) {
   const shape = new THREE.Shape(); shape.moveTo(0, 0); shape.lineTo(pl.w, 0); shape.lineTo(pl.w, pl.h); shape.lineTo(0, pl.h); shape.closePath();
   for (const h of pl.holes) shape.holes.push(holePath(h));
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: pl.t, bevelEnabled: false, curveSegments: lod >= 400 ? 24 : 12 });
+  const bev = lod >= 400 && pl.t >= 2 ? Math.min(0.45, pl.t * 0.12) : 0;
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: pl.t - 2 * bev, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelOffset: -bev, bevelSegments: 1, curveSegments: lod >= 400 ? 24 : 12 });
+  if (bev > 0) geo.translate(0, 0, bev);
   geo.applyMatrix4(pl.M);
   // UV: スパングル等のスケール（mm→タイル 200mm）
-  const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 200, uv.getY(i) / 200);
+  const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 130, uv.getY(i) / 130);
   geo.computeVertexNormals();
   const mesh = new THREE.Mesh(geo, material); mesh.userData.plate = pl.name; mesh.castShadow = mesh.receiveShadow = true; return mesh;
 }

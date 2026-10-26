@@ -9,6 +9,7 @@ export const DEFAULT_RATES = {
   cut: { small: 180, medium: 320, large: 520 },                                           // ¥/カット（断面高さ ≤50 / ≤100 / それ以上）
   hole: { d13: 120, d20: 180, d30: 260, slot: 300 },                                      // ¥/穴
   weldPer100mm: { 3: 180, 4: 210, 6: 300, 8: 380, 10: 460, butt: 520 },                   // ¥/100mm
+  siteWeldFactor: 1.8,                                                                     // 現場溶接の単価倍率（出張・足場・検査）
   bend: 260,                                                                              // ¥/曲げ
   assemblyPerPart: 160,                                                                   // ¥/部品（組立・仮付け）
   galvPerKg: 98, galvMin: 3500,                                                           // 溶融亜鉛めっき ¥/kg・最低料金
@@ -39,7 +40,7 @@ export function costParts(parts, R = DEFAULT_RATES) {
       const bends = (it.pattern === 'drainpan' ? 4 : 0) * q; c.bend += bends * R.bend;
       if (it.finish && it.finish.startsWith('HDZ')) galvKg += w.net * q; else if (it.finish === 'EZ') ezKg += w.net * q; else if (it.finish === 'PAINT') paintM2 += w.areaM2 * q;
       steelParts += q; c.lines.push({ name: it.name, kind: it.kind, qty: q, mass: it.mass, material: r1(mat), cut: cutC, hole: holeC, finish: it.finish });
-    } else if (it.kind === 'weld') { const len = (it.length || 0) * (it.sides || 1) * q; const wc = len / 100 * weldRate(it.size, it.weldType, R); c.weld += wc; }
+    } else if (it.kind === 'weld') { const len = (it.length || 0) * (it.sides || 1) * q; const wc = len / 100 * weldRate(it.size, it.weldType, R) * (it.site ? (R.siteWeldFactor || 1.8) : 1); c.weld += wc; if (it.site) c.siteWeld = (c.siteWeld || 0) + wc; }
     else if (it.kind === 'bolt') { c.fasteners += (R.fasteners.bolt[it.M] || 60) * q; }
     else if (it.kind === 'ubolt') { c.fasteners += (R.fasteners.ubolt[it.M] || 300) * q; }
     else if (it.kind === 'anchor') { c.fasteners += (R.fasteners.anchor[it.M] || 240) * q; }

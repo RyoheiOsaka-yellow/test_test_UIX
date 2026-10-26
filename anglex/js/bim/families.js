@@ -52,12 +52,12 @@ export function outlineWeld(part, end, size, opts = {}) {
   const p = parseSpec(part.spec); if (!p) return []; const pts = sectionOutline(p); const L = part.length; const zE = end === 'end' ? L : 0; const axis = xdir(part.pl, DIR.Z); const n2 = end === 'end' ? neg(axis) : axis;
   const welds = []; const n = pts.length;
   for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; const dx = b[0] - a[0], dy = b[1] - a[1]; const len = Math.hypot(dx, dy); if (len < 0.5) continue; if (opts.skipShort && len < opts.skipShort) continue; const ne = norm([dy, -dx, 0]); // CCW 外形の外向き法線
-    welds.push({ kind: 'weld', weldType: 'fillet', size, length: len, from: xform(part.pl, [a[0], a[1], zE]), to: xform(part.pl, [b[0], b[1], zE]), n1: xdir(part.pl, ne), n2, group: opts.group || part.name + ' 端部全周', allAround: true }); }
+    welds.push({ kind: 'weld', weldType: 'fillet', size, length: len, from: xform(part.pl, [a[0], a[1], zE]), to: xform(part.pl, [b[0], b[1], zE]), n1: xdir(part.pl, ne), n2, group: opts.group || part.name + ' 端部全周', allAround: true, site: !!opts.site, symbol: `${opts.site ? '▶' : ''}○▷${size}` }); }
   return welds;
 }
 // 直線隅肉: from/to（ワールド）, 面1法線 n1, 面2法線 n2, sides=2 なら反対側（n1 反転・板厚 offset）も
 export function lineWeld(from, to, n1, n2, size, { sides = 1, thick = 0, group = '' } = {}) {
-  const w = [{ kind: 'weld', weldType: 'fillet', size, length: Math.hypot(...add(to, neg(from))), from, to, n1, n2, group }];
+  const w = [{ kind: 'weld', weldType: 'fillet', size, length: Math.hypot(...add(to, neg(from))), from, to, n1, n2, group, symbol: `${sides === 2 ? '▷' : ''}▷${size}` }];
   if (sides === 2) { const off = mul(norm(n1), -thick); w.push({ ...w[0], from: add(from, off), to: add(to, off), n1: neg(n1) }); }
   return w;
 }
@@ -103,7 +103,7 @@ reg({
   catalog: ['CH14_004', 'CH14_005', 'CH14_010', 'CH13_021', 'CH13_022', 'CH13_023', 'CH13_024'],
   params: [sel('profile', '柱・梁 形鋼', [['L', '山形鋼（アングル）'], ['C', '溝形鋼（チャンネル）']], 'L'), spec('colSpec', '柱 鋼材仕様', 'L-50x50x6'), spec('beamSpec', '梁 鋼材仕様', 'L-50x50x6'),
     num('W', '内寸法 W（柱内々）', 500, { scope: 'instance' }), num('H', '高さ H（床〜梁上端）', 600, { scope: 'instance' }), num('overhang', '梁 持出し（片側）', 0),
-    bool('base', 'ベースプレート付', true), num('baseT', 'ベース板厚', 9), num('baseW', 'ベース幅', 150), num('baseD', 'ベース奥行', 150), sel('baseFix', 'ベース取付', [['weld', '溶接'], ['bolt', 'ボルト止め']], 'weld'), sel('anchorM', 'アンカー', [['M10', 'M10'], ['M12', 'M12'], ['M16', 'M16']], 'M12'), int('anchorN', 'アンカー本数/枚', 2), bool('anchorDraw', 'アンカーを描画', true),
+    bool('base', 'ベースプレート付', true), num('baseT', 'ベース板厚', 9), num('baseW', 'ベース幅', 150), num('baseD', 'ベース奥行', 150), sel('baseFix', 'ベース取付', [['weld', '工場溶接'], ['siteweld', '現場溶接（▶）'], ['bolt', 'ボルト止め']], 'weld'), sel('anchorM', 'アンカー', [['M10', 'M10'], ['M12', 'M12'], ['M16', 'M16']], 'M12'), int('anchorN', 'アンカー本数/枚', 2), bool('anchorDraw', 'アンカーを描画', true),
     P.pipes, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
   parts(p) {
     const parts = []; const cs = parseSpec(p.colSpec), bs = parseSpec(p.beamSpec); const cb = sectionBox(cs), bb = sectionBox(bs);
@@ -140,7 +140,7 @@ reg({
         const pts = p.anchorN >= 4 ? [[0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.8, 0.8]] : [[0.5, 0.15], [0.5, 0.85]];
         for (const [fx, fz] of pts) holes.push({ face: 'face', z: fz * p.baseD, s: fx * p.baseW, d: hd, kind: 'anchor' });
         parts.push({ kind: 'plate', name: 'ベースPL', spec: `PL-${p.baseT}x${p.baseW}x${p.baseD}`, length: p.baseD, holes, finish: p.finish, material: p.material, pl: place([bx, 0, bz], DIR.Z, DIR.X), group: 'ベース' });
-        if (p.baseFix === 'weld') parts.push(...outlineWeld(c, 'start', p.weldSize, { group: '柱脚溶接' }));
+        if (p.baseFix === 'weld' || p.baseFix === 'siteweld') parts.push(...outlineWeld(c, 'start', p.weldSize, { group: p.baseFix === 'siteweld' ? '柱脚 現場溶接' : '柱脚溶接', site: p.baseFix === 'siteweld' }));
         else { for (const h of holes.slice(0, 2)) parts.push({ kind: 'bolt', name: `ボルト ${p.anchorM}`, M: p.anchorM, L: 35, pl: place([bx + h.s, p.baseT + 2, bz + h.z], DIR.NY, DIR.X), group: 'ベース' }); }
         if (p.anchorDraw) for (const h of holes) parts.push({ kind: 'anchor', name: `アンカー ${p.anchorM}`, M: p.anchorM, plateT: p.baseT, pl: place([bx + h.s, 0, bz + h.z], DIR.Y, DIR.X), group: 'アンカー', site: true });
       }

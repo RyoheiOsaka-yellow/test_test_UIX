@@ -32,7 +32,7 @@ export function detectContacts(model, instA, instB) {
   res.sort((x, y) => y.area - x.area); return res;
 }
 // 隅肉溶接 parts を生成（接触矩形の外周。 A が B の面に乗る T 継手を想定: ビードは A の側面と B の面の隅）
-export function weldPartsFromContact(c, size = 6, { allAround = true, sides = 1 } = {}) {
+export function weldPartsFromContact(c, size = 6, { allAround = true, sides = 1, site = false } = {}) {
   const ks = c.others; const nB = unit[c.axis].map(v => v * c.aSide); // B 面の法線（A 側へ向く）= A の軸方向の逆…  A が +側にあるなら B面法線は +
   const r = c.rect; const corners = [[r.min[ks[0]], r.min[ks[1]]], [r.max[ks[0]], r.min[ks[1]]], [r.max[ks[0]], r.max[ks[1]]], [r.min[ks[0]], r.max[ks[1]]]];
   // 外形が A の板断面と一致するか（Aの端面がBに乗る）判定: A box の他2軸範囲が rect と一致 → A 外周に溶接
@@ -40,7 +40,7 @@ export function weldPartsFromContact(c, size = 6, { allAround = true, sides = 1 
   // 外向き法線の向きを rect 中心基準で補正
   const cx = (r.min[ks[0]] + r.max[ks[0]]) / 2, cy = (r.min[ks[1]] + r.max[ks[1]]) / 2;
   const parts = []; for (const e of edges) { const mx = (e.from[0] + e.to[0]) / 2, my = (e.from[1] + e.to[1]) / 2, mz = (e.from[2] + e.to[2]) / 2; const mid = { x: mx, y: my, z: mz }; const d = [mid[ks[0]] - cx, mid[ks[1]] - cy]; const n1 = [0, 0, 0]; n1[['x', 'y', 'z'].indexOf(ks[0])] = Math.abs(d[0]) > Math.abs(d[1]) ? Math.sign(d[0]) : 0; n1[['x', 'y', 'z'].indexOf(ks[1])] = Math.abs(d[1]) >= Math.abs(d[0]) ? Math.sign(d[1]) : 0;
-    const len = Math.hypot(e.to[0] - e.from[0], e.to[1] - e.from[1], e.to[2] - e.from[2]); if (len < 1) continue; parts.push({ kind: 'weld', weldType: 'fillet', size, length: len, from: e.from, to: e.to, n1, n2: nB.map(v => -v), group: '接合溶接', allAround }); }
+    const len = Math.hypot(e.to[0] - e.from[0], e.to[1] - e.from[1], e.to[2] - e.from[2]); if (len < 1) continue; parts.push({ kind: 'weld', weldType: 'fillet', size, length: len, from: e.from, to: e.to, n1, n2: nB.map(v => -v), group: site ? '現場接合溶接' : '接合溶接', allAround, site, symbol: `${site ? '▶' : ''}${allAround ? '○' : ''}▷${size}` }); }
   if (!allAround) return parts.slice(0, sides); return parts;
 }
 // ボルト接合: 重ね部（接触矩形）にボルト n 本 + 両部材に穴
@@ -64,7 +64,7 @@ export function worldToHole(pb, world, d, slot = null) {
 export function evaluateJoint(model, j) {
   const a = model.getInstance(j.a), b = model.getInstance(j.b); if (!a || !b) return { parts: [], holes: [] };
   const cs = detectContacts(model, a, b); const c = cs[0]; if (!c) return { parts: [], holes: [], warning: '接触面が見つかりません（部材を接触させてください）' };
-  if (j.type === 'fillet' || j.type === 'weld') return { parts: weldPartsFromContact(c, j.size || 6, { allAround: j.allAround !== false, sides: j.sides || 1 }), holes: [], contact: c };
+  if (j.type === 'fillet' || j.type === 'weld') return { parts: weldPartsFromContact(c, j.size || 6, { allAround: j.allAround !== false, sides: j.sides || 1, site: !!j.site }), holes: [], contact: c };
   if (j.type === 'butt') { const ks = c.others; const r = c.rect; const from = pt3(c.axis, c.plane, ks, r.min[ks[0]], (r.min[ks[1]] + r.max[ks[1]]) / 2), to = pt3(c.axis, c.plane, ks, r.max[ks[0]], (r.min[ks[1]] + r.max[ks[1]]) / 2); return { parts: [{ kind: 'weld', weldType: 'butt', size: j.size || 6, length: Math.hypot(...to.map((v, i) => v - from[i])), from, to, n1: unit[c.axis], n2: unit[c.axis], group: '突合せ溶接' }], holes: [], contact: c }; }
   if (j.type === 'bolt') { const r = boltPartsFromContact(c, { M: j.M || 'M12', count: j.count || 2, pitch: j.pitch }); const holes = []; for (const h of r.holes) { const ha = worldToHole(c.a, h.world, h.d), hb = worldToHole(c.b, h.world, h.d); if (ha) holes.push({ instId: a.id, partIndex: c.a.partIndex, hole: ha }); if (hb) holes.push({ instId: b.id, partIndex: c.b.partIndex, hole: hb }); } return { parts: r.parts, holes, contact: c, bolt: r.bolt }; }
   return { parts: [], holes: [] };
@@ -76,7 +76,7 @@ export function parseInstruction(text, model) {
   const t = String(text).replace(/\s+/g, ' ').replace(/[Ｍ]/g, 'M').replace(/×/g, 'x').trim(); const marks = [...t.matchAll(/\b([A-Z]{1,3}-\d+)\b/g)].map(m => m[1]);
   const find = mk => model.instances.find(i => i.mark === mk);
   const num = (re, def) => { const m = t.match(re); return m ? parseFloat(m[1]) : def; };
-  if (/(隅肉|すみ肉|溶接)/.test(t) && !/突合|突き合/.test(t) && marks.length >= 2) return { op: 'joint', type: 'fillet', a: find(marks[0])?.id, b: find(marks[1])?.id, size: num(/(?:脚長|S|s)?\s*(\d+(?:\.\d+)?)\s*(?:mm)?(?=\s*(?:両側|片側|全周|$))/, 6), sides: /両側/.test(t) ? 2 : 1, allAround: !/片側のみ|一辺/.test(t), label: `${marks[0]}–${marks[1]} 隅肉溶接` };
+  if (/(隅肉|すみ肉|溶接)/.test(t) && !/突合|突き合/.test(t) && marks.length >= 2) return { op: 'joint', type: 'fillet', a: find(marks[0])?.id, b: find(marks[1])?.id, size: num(/(?:脚長|S|s)?\s*(\d+(?:\.\d+)?)\s*(?:mm)?(?=\s*(?:両側|片側|全周|現場|工場|$))/, 6), sides: /両側/.test(t) ? 2 : 1, allAround: !/片側のみ|一辺/.test(t), site: /現場/.test(t), label: `${marks[0]}–${marks[1]} ${/現場/.test(t) ? '現場' : ''}隅肉溶接` };
   if (/(突合|突き合)/.test(t) && marks.length >= 2) return { op: 'joint', type: 'butt', a: find(marks[0])?.id, b: find(marks[1])?.id, size: num(/t\s*(\d+)/, 6), label: `${marks[0]}–${marks[1]} 突合せ溶接` };
   if (/ボルト/.test(t) && !/Uボルト|ｕボルト/i.test(t) && marks.length >= 2) { const M = (t.match(/\b(M\d{1,2}|W\d\/\d)\b/) || [])[1] || 'M12'; return { op: 'joint', type: 'bolt', a: find(marks[0])?.id, b: find(marks[1])?.id, M, count: num(/(\d+)\s*本/, 2), pitch: num(/@\s*(\d+)/, null), label: `${marks[0]}–${marks[1]} ${M} ボルト接合` }; }
   if (/(穴|孔|長穴)/.test(t) && marks.length >= 1) { const inst = find(marks[0]); const d = num(/(?:φ|Φ|ф|径)\s*(\d+(?:\.\d+)?)/, 15); const n = num(/(\d+)\s*[個ヶ箇]/, 1); const pitch = num(/@\s*(\d+)/, 100); const edge = num(/端(?:から|あき)\s*(\d+)/, 50); const slot = /長穴/.test(t) ? num(/長穴\s*(\d+)/, d + 13) : null; const face = (t.match(/(脚A|脚B|ウェブ|上フランジ|下フランジ|板面|上面)/) || [])[1]; const faceKey = { 脚A: 'A', 脚B: 'B', ウェブ: 'web', 上フランジ: 'ft', 下フランジ: 'fb', 板面: 'face', 上面: 'top' }[face] || 'A'; return { op: 'holes', inst: inst?.id, holes: Array.from({ length: n }, (_, i) => `${faceKey}:z${edge + i * pitch} s${num(/s\s*(\d+)/, 25)} d${d}${slot ? ' slot' + slot + 'z' : ''}`).join('; '), label: `${marks[0]} に ${face || ''} φ${d} ${slot ? '長穴' : '穴'} ×${n}` }; }

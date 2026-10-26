@@ -4,6 +4,7 @@ import * as WF from '../core/workflow.js';
 import { estimateModel } from '../bim/cost.js';
 import { summarize } from '../bim/weight.js';
 import { parseSpec } from '../geo/profiles.js';
+import { exportEstimateCSV, exportEstimateXLSX, exportEstimatePDF, exportWorkOrderPDF } from './reports.js';
 
 export async function openEstimate(app) {
   const role = app.role(); const user = app.user();
@@ -24,7 +25,7 @@ export async function createEstimate(app) {
 }
 function renderEstimate(app, est, rerender, m) {
   const role = app.role(); const user = app.user(); const mine = est.currentOrg === role && est.status !== 'final'; const cols = WF.visibleColumns(role); const T = WF.totals(est);
-  const head = h('div', { class: 'est-head' }, h('div', {}, h('h3', {}, `${est.no}  ${est.projectName}`), h('div', { class: 'muted' }, `Rev.${est.revision} ・ ${WF.STATUS[est.status]} ・ 現在の担当: `, h('b', { style: { color: WF.ROLES[est.currentOrg].color } }, WF.ROLES[est.currentOrg].name), mine ? h('span', { class: 'chip ok' }, 'あなたの編集段階') : h('span', { class: 'chip ghost' }, '閲覧のみ'))), h('div', { class: 'est-head-actions' }, h('button', { class: 'btn', onClick: () => printQuote(app, est) }, '見積書 印刷/PDF'), role !== 'B' ? h('button', { class: 'btn', onClick: () => printWorkOrder(app, est) }, '加工指示書') : null, h('button', { class: 'btn', onClick: () => download(`${est.no}.csv`, csv([['No', '品名', '仕様', '符号', '数量', '単位', '質量kg', ...cols], ...est.lines.map(l => { const p = WF.linePrices(l); return [l.no, l.desc, l.spec, l.marks.join(' '), l.qty, l.unit, l.mass, ...cols.map(c => c === 'aPrice' ? p.aPrice : c === 'bPrice' ? p.bPrice : l[c])]; })]), 'text/csv') }, 'CSV')));
+  const head = h('div', { class: 'est-head' }, h('div', {}, h('h3', {}, `${est.no}  ${est.projectName}`), h('div', { class: 'muted' }, `Rev.${est.revision} ・ ${WF.STATUS[est.status]} ・ 現在の担当: `, h('b', { style: { color: WF.ROLES[est.currentOrg].color } }, WF.ROLES[est.currentOrg].name), mine ? h('span', { class: 'chip ok' }, 'あなたの編集段階') : h('span', { class: 'chip ghost' }, '閲覧のみ'))), h('div', { class: 'est-head-actions' }, h('span', { class: 'muted small' }, '書出し:'), h('button', { class: 'btn', onClick: () => exportEstimatePDF(app, est) }, '見積書 PDF'), h('button', { class: 'btn', onClick: () => exportEstimateXLSX(app, est) }, 'XLSX'), h('button', { class: 'btn', onClick: () => exportEstimateCSV(app, est) }, 'CSV'), h('button', { class: 'btn', onClick: () => printQuote(app, est) }, '印刷'), role !== 'B' ? h('button', { class: 'btn', onClick: () => exportWorkOrderPDF(app, est) }, '加工指示書 PDF') : null, role !== 'B' ? h('button', { class: 'btn', onClick: () => printWorkOrder(app, est) }, '加工指示書 印刷') : null));
   // 明細テーブル（役割別に列・編集可否）
   const colDef = { baseCost: ['A社 基準原価', 'number'], factoryCost: ['C社 工場単価', 'number'], aPrice: ['A社 提示単価', null], bMarginPct: ['B社 利益率 %', 'number'], bPrice: ['販売単価（B社）', null], leadDays: ['納期（日）', 'number'], accepted: ['受注可否', 'select'] };
   const edit = async (lineId, field, value) => { try { await app.store.editEstimate(est.id, { role, who: user.name, lineId, field, value }); toast('更新しました', 'ok', 1200); rerender(); } catch (e) { toast(e.message, 'bad'); rerender(); } };
