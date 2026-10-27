@@ -26,7 +26,6 @@ import { initShell } from './ui/shell.js';
 import { openExplode } from './ui/explode.js';
 import { showContextBar, hideContextBar } from './ui/context.js';
 import { openShowroom } from './ui/showroom.js';
-import { addTypeFromProduct } from './ui/catalog.js';
 import { detectMisalignment } from './bim/review.js';
 import { CAD_LEGEND } from './viewer/scene.js';
 import { openAlerts, openAlign, saveSnapshotDialog, openHistory } from './ui/review.js';
