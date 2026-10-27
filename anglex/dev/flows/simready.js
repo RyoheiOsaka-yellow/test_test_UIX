@@ -1,5 +1,5 @@
 const dl = []; page.on('download', d => dl.push(d));
-await page.click('.rtab[data-tab=project]'); await page.click('#btnExpSimReady');
+await page.click('.rtab[data-tab=project]'); await page.click('#btnExpSimReady'); await page.waitForTimeout(400); await page.click('.modal-foot .btn.primary');
 await page.waitForFunction(() => !!document.querySelector('.toast.ok, .toast.bad'), null, { timeout: 120000 }).catch(() => console.log('toast timeout'));
 console.log('TOAST:', await page.$eval('.toast.ok, .toast.bad', e => e.textContent).catch(() => '-'));
 await page.waitForTimeout(1000);

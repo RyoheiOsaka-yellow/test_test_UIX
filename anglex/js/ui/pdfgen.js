@@ -1,8 +1,20 @@
 // PDF 生成（pdf-lib + fontkit + Noto Sans JP 埋め込み・サブセット化）。印刷ダイアログに依存せず直接ダウンロードできる日本語 PDF。
-let libs = null, fontBytes = null, fontIsTrueType = false;
+let libs = null, fontBytes = null, fontIsTrueType = false, hb = null;
+// HarfBuzz（WASM）によるフォントサブセット: 使用した文字だけを含むフォントを生成して埋め込む（pdf-lib 内蔵サブセッタは CJK で不安定なため）
+async function loadHb() { if (hb) return hb; try { const r = await fetch('https://cdn.jsdelivr.net/npm/harfbuzzjs@0.4.6/hb-subset.wasm'); const { instance } = await WebAssembly.instantiate(await r.arrayBuffer()); hb = instance.exports; } catch (e) { console.warn('hb-subset 読込失敗（全文埋込にフォールバック）', e); hb = null; } return hb; }
+export function hbSubset(fontBuf, text) {
+  if (!hb) return null; const ex = hb; const src = new Uint8Array(fontBuf); const ptr = ex.malloc(src.byteLength); new Uint8Array(ex.memory.buffer).set(src, ptr);
+  const blob = ex.hb_blob_create(ptr, src.byteLength, 2, 0, 0); const face = ex.hb_face_create(blob, 0); ex.hb_blob_destroy(blob);
+  const input = ex.hb_subset_input_create_or_fail(); const uset = ex.hb_subset_input_unicode_set(input); const cps = new Set([...text].map(c => c.codePointAt(0))); for (let c = 0x20; c < 0x7f; c++) cps.add(c); for (const c of cps) ex.hb_set_add(uset, c);
+  const sub = ex.hb_subset_or_fail(face, input); ex.hb_subset_input_destroy(input); if (!sub) { ex.hb_face_destroy(face); ex.free(ptr); return null; }
+  const rb = ex.hb_face_reference_blob(sub); const off = ex.hb_blob_get_data(rb, 0); const len = ex.hb_blob_get_length(rb); const out = len ? new Uint8Array(ex.memory.buffer).slice(off, off + len) : null;
+  ex.hb_blob_destroy(rb); ex.hb_face_destroy(sub); ex.hb_face_destroy(face); ex.free(ptr); return out && out.byteLength ? out.buffer : null;
+}
+function collectText(doc) { const out = []; const walk = v => { if (v == null) return; if (typeof v === 'string' || typeof v === 'number') out.push(String(v)); else if (Array.isArray(v)) v.forEach(walk); else if (typeof v === 'object') { for (const [k, x] of Object.entries(v)) if (k !== 'dataUrl') walk(x); } }; walk(doc); out.push('0123456789.,¥/—－：:（）() kg mm m² ANGLEX ' + new Date().toLocaleString('ja-JP')); return out.join(''); }
 export async function loadPdfLibs() {
   if (libs) return libs;
   const pdfLib = await import('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.min.js');
+  loadHb(); // 並行ロード（失敗しても可）
   if (!window.fontkit) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
   if (!fontBytes) { // 1) 同梱の JIS サブセット TrueType（サブセット埋込可 → 小さい PDF） 2) 失敗時は CDN の Noto Sans JP（CFF: 全文埋込）
     if (window.__anglexFontB64) { try { fontBytes = Uint8Array.from(atob(window.__anglexFontB64), c => c.charCodeAt(0)).buffer; fontIsTrueType = true; } catch (e) { fontBytes = null; } } // 単一 HTML 版: 同梱フォント
@@ -14,7 +26,8 @@ const A4 = [595.28, 841.89];
 // 汎用レポート: { title, subtitle, meta:[[k,v]], sections:[{heading, table:{cols:[{label,w,align}], rows:[[...]]}, text, image:{dataUrl,w,h}, kv:[[k,v]] }], footer, landscape }
 export async function buildReport(doc) {
   const { PDFDocument, rgb, StandardFonts } = await loadPdfLibs(); const pdf = await PDFDocument.create(); pdf.registerFontkit(libs.fontkit);
-  const font = await pdf.embedFont(fontBytes, { subset: fontIsTrueType }); const mono = await pdf.embedFont(StandardFonts.Helvetica);
+  await loadHb(); let fb = fontBytes; try { const sub = hbSubset(fontBytes, collectText(doc)); if (sub) fb = sub; } catch (e) { console.warn('subset failed', e); }
+  const font = await pdf.embedFont(fb, { subset: false }); const mono = await pdf.embedFont(StandardFonts.Helvetica);
   const [W, H] = doc.landscape ? [A4[1], A4[0]] : A4; const M = 40; let page = pdf.addPage([W, H]); let y = H - M; const ink = rgb(0.1, 0.1, 0.09), mute = rgb(0.45, 0.45, 0.42), line = rgb(0.75, 0.73, 0.65), head = rgb(0.92, 0.91, 0.86);
   const tw = (s, size) => font.widthOfTextAtSize(String(s ?? ''), size);
   const newPage = () => { page = pdf.addPage([W, H]); y = H - M; };
