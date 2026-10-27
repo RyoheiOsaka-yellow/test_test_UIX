@@ -1,8 +1,8 @@
 const S = '/tmp/claude-0/-home-user-test-test-UIX/8bb357dc-bfe3-5217-a828-e2bc54d304f7/scratchpad';
 await page.evaluate(() => document.querySelector('#btnDemoDxf').click()); await page.waitForTimeout(1500);
-await page.evaluate(() => document.querySelector('#recHost .rec-actions .btn.primary').click()); await page.waitForTimeout(1200);
+await page.evaluate(() => (document.querySelector('#recHost .rec-actions .btn.primary') || document.querySelector('.modal-back:last-of-type .modal-foot .btn.primary')).click()); await page.waitForTimeout(1200);
 await page.evaluate(() => document.querySelector('#btn3d').click()); await page.waitForTimeout(400);
-await page.evaluate(() => { const i = app.model.instances.find(x => x.source === 'import' && app.model.familyOf(x).id === 'member'); window.__sel = i.id; app.select(i.id); app.shell.goStep(4); const hs = app.model.instances.find(x => x.source === 'import' && x.mark.startsWith('HS')); app.viewer.fit(app.groups.get(hs.id)); const c = app.viewer.controls.target; app.viewer.camera.position.set(c.x + 1100, c.y + 800, c.z + 1500); app.viewer.controls.update(); app.viewer.invalidate(3); });
+await page.evaluate(() => { const i = app.model.instances.find(x => x.source === 'import' && app.model.familyOf(x).id === 'member'); window.__sel = i.id; app.select(i.id); app.shell?.goStep(4); const hs = app.model.instances.find(x => x.source === 'import' && x.mark.startsWith('HS')); app.viewer.fit(app.groups.get(hs.id)); const c = app.viewer.controls.target; app.viewer.camera.position.set(c.x + 1100, c.y + 800, c.z + 1500); app.viewer.controls.update(); app.viewer.invalidate(3); });
 await page.waitForTimeout(1200);
 await page.evaluate(() => { const el = document.querySelector('#props .pp-group.review'); if (el) el.scrollIntoView({ block: 'start' }); });
 await page.waitForTimeout(600); await page.screenshot({ path: S + '/s7_review_flags.png' });

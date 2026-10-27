@@ -4,7 +4,7 @@ const fillLast = (sel, v) => page.evaluate(([s, val]) => { const el = document.q
 const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
 // 1) 穴位置の旗: デモ DXF を読み込んで配置 → 読込由来の単材の穴に旗
 await page.evaluate(() => document.querySelector('#btnDemoDxf').click()); await page.waitForTimeout(1500);
-await page.evaluate(() => document.querySelector('#recHost .rec-actions .btn.primary').click()); await page.waitForTimeout(1500); await page.evaluate(() => document.querySelector('#btn3d').click()); await page.waitForTimeout(300);
+await page.evaluate(() => (document.querySelector('#recHost .rec-actions .btn.primary') || document.querySelector('.modal-back:last-of-type .modal-foot .btn.primary')).click()); await page.waitForTimeout(1500); await page.evaluate(() => document.querySelector('#btn3d').click()); await page.waitForTimeout(300);
 log('FLAGS', await page.evaluate(() => [...document.querySelectorAll('.v-label.alert')].map(e => e.textContent).filter(t => /穴/.test(t))));
 log('HOLE POS', await page.evaluate(async () => { const m = await import('./js/bim/review.js'); const i = app.model.instances.find(x => x.source === 'import' && app.model.familyOf(x).id === 'member'); const pt = app.instanceParts(i)[0]; const h = pt.holes[0]; const p = m.holePos(pt, h); return { spec: pt.spec, L: pt.length, hole: [h.face, h.z, h.s], local: [p.x, p.y, p.z].map(v => Math.round(v * 10) / 10), instPos: i.pos }; }));
 // 2) 部材長で密着: 単材 L-50x50x6 axis=y L=1488 @y=0（FL）, 板 @y=1500（サポート天端）, 隙間 12

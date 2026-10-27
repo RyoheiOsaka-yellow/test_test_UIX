@@ -14,7 +14,7 @@ console.log('STEP:', await page.evaluate(() => app.shell.step), 'SEL:', await pa
 await click('#btnBackToSelect'); await shot('07_select_no_drawing');
 await page.evaluate(() => app.shell.goStep(1)); await shot('08_upload');
 await click('#btnDemoDxf'); await page.waitForTimeout(1500); await shot('09_analyze');
-await page.evaluate(() => document.querySelector('#recHost .rec-actions .btn.primary').click()); await page.waitForTimeout(1500); await shot('10_select_drawing');
+await page.evaluate(() => (document.querySelector('#recHost .rec-actions .btn.primary') || document.querySelector('.modal-back:last-of-type .modal-foot .btn.primary')).click()); await page.waitForTimeout(1500); await shot('10_select_drawing');
 console.log('DETECT ROWS:', await page.$$eval('.detect-row', els => els.length));
 await page.evaluate(() => document.querySelectorAll('.detect-row')[5].click()); await page.waitForTimeout(1500); await shot('11_detail');
 await page.evaluate(() => { document.querySelector('#stage').scrollTop = 700; }); await shot('12_detail_lower');

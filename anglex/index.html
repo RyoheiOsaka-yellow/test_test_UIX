@@ -11,190 +11,72 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 </head>
 <body>
-<!-- ===== 入口（サインイン / モード選択 / 案件管理 / かんたん見積チャット） ===== -->
-<div id="sm-root">
-  <div class="sm-topbar" id="smTopbar">
-    <div class="sm-brand" id="smBrand"><span class="sm-y">ANGLEX<b>.</b></span><span class="sm-sub">FABRICATION INTELLIGENCE</span></div>
-    <div class="sm-acct"><span id="smAcctName"></span><a id="smToMode">モード選択</a><a id="smSignOut">サインアウト</a></div>
-  </div>
-  <div class="sm-view" id="sm-view-signin">
-    <div class="sm-signin">
-      <div class="sm-logo">ANGLEX<b>.</b></div>
-      <div class="sm-tag">図面に、語らせる。</div>
-      <div class="sm-field"><label>メールアドレス</label><input id="sm-inEmail" placeholder="メールアドレス" autocomplete="username"></div>
-      <div class="sm-field"><label>パスワード</label><input type="password" id="sm-inPass" placeholder="パスワード" autocomplete="current-password"></div>
-      <div class="sm-field"><label>会社・役割（デモ）</label><select id="sm-inOrg"><option value="A">A社 — 設計・見積作成（モデル編集可）</option><option value="B">B社 — 販売（利益率のみ編集）</option><option value="C">C社 — 加工工場（工場単価のみ編集）</option></select></div>
-      <div class="sm-dummy" id="smAuthNote">※ デモ用ダミー認証。任意の入力でサインインできます。</div>
-      <button class="sm-btn primary full" id="smSignIn">サインイン</button>
-    </div>
-  </div>
-  <div class="sm-view" id="sm-view-modeselect">
-    <div class="sm-container">
-      <div class="sm-page-h">モードを選択</div>
-      <div class="sm-page-sub">役割・場面に合わせて入口を選びます。どちらも同じ加工指示エンジン（ファミリ／タイプ／インスタンスの単一ソース）を使います。</div>
-      <div class="sm-mode-grid">
-        <div class="sm-mode-card" id="smModeChat"><div class="sm-mi">💬</div><h3>かんたん見積（チャットで相談）</h3><p>「何を作りたいか」を会話で答えるだけ。配管サイズ・仕上げ・数量を順に選ぶと、確認すべき加工指示と概算がその場で出ます。スマホ・iPad 向け。</p><div class="sm-go">チャットを開く →</div></div>
-        <div class="sm-mode-card sm-3d" id="smMode3D"><div class="sm-mi">📐</div><h3>図面から加工指示（3D）</h3><p>CAD・BIM 図面をドロップして、描かれていない加工指示（溶接・穴・Uボルト・アンカー）を 3D で確定する詳細モード。穴芯・溶接面・干渉まで検証し、重量・見積へ同期します。</p><div class="sm-go">3D部材モードを開く →</div></div>
-      </div>
-      <div class="sm-mode-foot"><a id="smModeProjects">顧客・案件管理へ →</a></div>
-    </div>
-  </div>
-  <div class="sm-view" id="sm-view-projects">
-    <div class="sm-container">
-      <div class="sm-proj-top">
-        <div><div class="sm-page-h">顧客・案件管理</div><div class="sm-page-sub" style="margin-bottom:0">顧客会社ごとに案件（3D モデル）と<span style="color:var(--sm-accent)">見積の改訂・受け渡し</span>を管理。A社 → B社 → C社 の受け渡し状況もここに記録されます。</div></div>
-        <div class="sm-proj-actions"><button class="sm-btn" id="smNewChat">＋ 新規案件（チャット）</button><button class="sm-btn accent" id="smNewDrawing">＋ 新規案件（図面から）</button></div>
-      </div>
-      <div class="sm-proj-grid" id="sm-projGrid"></div>
-    </div>
-  </div>
-  <div class="sm-view" id="sm-view-chat">
-    <div class="sm-chat-shell">
-      <div class="sm-chat-head">
-        <div class="sm-chat-id"><div class="sm-chat-mark">A</div><div><div class="ttl">かんたん見積</div><div class="sm-chat-ctx" id="sm-chTitle"><span class="sm-dot"></span>オンライン ・ カタログ 151 製品 / 34 ファミリ</div></div></div>
-        <div class="sm-chat-right"><button class="sm-head-3d" id="smChatTo3D" title="3D 詳細モードへ">3D で確認 →</button></div>
-      </div>
-      <div class="sm-chat-body"><div class="sm-chat-inner" id="sm-chatInner"></div></div>
-      <div class="sm-chat-input"><form id="smChatForm"><input id="sm-chatField" placeholder="自由入力でもOK（例：125Aの門型架台 ベース付 めっき 2台）" autocomplete="off"><button type="submit">送信</button></form></div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== 3D 詳細モード（5 ステップ） ===== -->
-<div class="app sm-hidden" id="app">
+<div id="app" class="app">
   <header class="topbar">
-    <div class="brand" id="appBrand" title="案件一覧へ"><span class="brand-mark">ANGLEX.</span><span class="brand-sub">FABRICATION INTELLIGENCE · BIM</span></div>
+    <div class="brand"><span class="brand-mark">ANGLEX</span><span class="brand-sub">FABRICATION INTELLIGENCE · BIM</span></div>
     <div class="topbar-divider"></div>
-    <div class="project-pill" id="projectPill" title="クリックで名称変更"><span class="dot"></span><span class="pname" id="projectName">プロジェクト</span><span class="pmeta" id="projectMeta"></span></div>
+    <div class="project-pill" id="projectPill"><span class="dot"></span><span class="pname" id="projectName">プロジェクト</span><span class="pmeta" id="projectMeta"></span></div>
     <div class="topbar-spacer"></div>
     <div class="topbar-actions">
       <span class="mode-badge" id="storeMode">local</span>
       <div class="user-pill" id="userPill"><span class="org-badge" id="orgBadge">A</span><span id="userName">—</span><span class="caret">▾</span></div>
       <button class="btn ghost" id="btnSave" title="保存 (Ctrl+S)">保存</button>
-      <button class="btn ghost" id="btnProjects">案件一覧</button>
     </div>
   </header>
-  <div id="workflow" class="workflow">
-    <div class="wf-step active" data-step="1"><div class="wf-num">1</div><div class="wf-text"><div class="wf-title">CAD取込</div><div class="wf-desc">DXF・PDF・IFC・BIM D&amp;D</div></div></div>
-    <div class="wf-step locked" data-step="2"><div class="wf-num">2</div><div class="wf-text"><div class="wf-title">読込・分析</div><div class="wf-desc">部材認識 → リスク行列</div></div></div>
-    <div class="wf-step locked" data-step="3"><div class="wf-num">3</div><div class="wf-text"><div class="wf-title">部材を選択</div><div class="wf-desc">図面ビューから抽出</div></div></div>
-    <div class="wf-step locked" data-step="4"><div class="wf-num">4</div><div class="wf-text"><div class="wf-title">部材ディテール</div><div class="wf-desc">断面・加工指示・3D・積算</div></div></div>
-    <div class="wf-step locked" data-step="5"><div class="wf-num">5</div><div class="wf-text"><div class="wf-title">概算見積</div><div class="wf-desc">A社 → B社 → C社・出力</div></div></div>
-  </div>
-  <main class="stage" id="stageOuter">
-    <div id="stage" class="stage-scroll">
-      <div class="drop-hint" id="dropHint">図面・BIM ファイルをここへドロップ（DXF / PDF / IFC / glTF / DWG…）</div>
-
-      <!-- ① CAD 取込 -->
-      <section class="pane" id="pane1">
-        <div class="upload-wrap fade-in">
-          <div class="upload-zone" id="uploadZone">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <h4>図面をドロップ / クリックで選択</h4>
-            <p>PDF=PDF.js / DXF=実パース / IFC(BIM)=web-ifc で 3D 生成 / <b>DWG・JWW=クラウド変換</b>（<span id="convStatus">未設定</span>） — 原図をそのまま取込</p>
-            <div class="upload-formats"><span class="chip">DXF</span><span class="chip">PDF</span><span class="chip">IFC</span><span class="chip">glTF/OBJ/STL/FBX</span><span class="chip">DWG</span><span class="chip">JWW</span><span class="chip">SFC/P21</span><span class="chip">RVT</span></div>
-          </div>
-          <div class="sample-strip">
-            <button class="sample-thumb" id="btnDemoDxf"><div class="st-tag">サンプル DXF ・ PS 支持金具</div><div class="st-name">PS 配管サポート 部材図</div><div class="st-meta">L-50×50×6 / [-75×40 / FB-6×50 / PL-9 / 注記からの認識</div></button>
-            <button class="sample-thumb" id="btnDemoModel"><div class="st-tag">サンプルモデル ・ カタログ第13-14章</div><div class="st-name">PS 配管サポート一式（門型架台・吊サポート）</div><div class="st-meta">門型架台 ×2 / L型ブラケット / 吊アングル / 吊バンド</div></button>
-            <button class="sample-thumb" id="btnNew"><div class="st-tag">新規</div><div class="st-name">空のモデルから始める</div><div class="st-meta">カタログ／ファミリから配置して組み立て</div></button>
-            <button class="sample-thumb" id="btnOpen"><div class="st-tag">保存済み</div><div class="st-name">プロジェクトを開く</div><div class="st-meta">ローカル保存 / サーバ保存の案件を再開</div></button>
-          </div>
-          <div class="upload-foot muted small">読込は「図面ビュー」で認識枠を確認 → 3 状態モデル（確定／推論／要判断）で保持 → 部材を 3D 化。手書き PDF は画像表示のみ（OCR は v2.0）。</div>
-        </div>
-      </section>
-
-      <!-- ② 読込・分析 -->
-      <section class="pane" id="pane2" hidden>
-        <div class="analyze-wrap fade-in">
-          <div class="analyze-card">
-            <div class="analyze-head"><div class="ah-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M8 12h8M12 8v8" stroke-linecap="round"/></svg></div><div><h3 id="anTitle">図面を読み解いています</h3><div class="sub" id="anSub">パース → 部材認識 → リスク行列（Case B）→ 3 状態</div></div></div>
-            <div class="proc-bar"><div class="proc-fill" id="pf"></div></div>
-            <div class="proc-label"><span id="pl-txt">待機中</span><span id="pl-pct">0%</span></div>
-            <div class="alog" id="alog"></div>
-          </div>
-          <div id="recHost" class="rec-host"></div>
-        </div>
-      </section>
-
-      <!-- ③ 部材を選択 -->
-      <section class="pane" id="pane3" hidden>
-        <div class="ws">
-          <div class="ws-main">
-            <div class="ws-tabs"><button class="ws-tab active" id="btnDrawing">◎ 図面ビュー（認識枠）</button><button class="ws-tab" id="wsTabPlan">▦ 3D 平面</button><span class="ws-tab-spacer"></span><span class="ws-hint" id="wsHint">認識枠または右の部材をクリック → 部材ディテールへ</span></div>
-            <div class="ws-stage"><div class="drawing" id="drawing"></div></div>
-          </div>
-          <div class="ws-side">
-            <div class="side-head"><h3>検出部材</h3><span class="side-count" id="detectCount">0 件</span></div>
-            <div class="detect-list" id="detectList"></div>
-            <div class="side-cta">クリックで部材ディテールへ。3D アセンブリ上で直接クリックしても選択できます。</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ④ 部材ディテール（3D・加工指示・積算） -->
-      <section class="pane" id="pane4" hidden>
-        <div class="detail-wrap">
-          <div class="detail-top">
-            <button class="back-btn" id="btnBackToSelect" title="部材を選択へ戻る">← 部材選択</button>
-            <div class="detail-title"><h2><span class="det-sw" id="detSwatch"></span><span id="detMark">—</span><span class="dcard-badge" id="detStatus"></span></h2><div class="dspec" id="detSpec">部材を選択すると、断面・加工指示・積算がここに表示されます</div></div>
-            <div class="detail-actions-top">
-              <button class="q-btn" id="btnAlerts" title="人が必ず確認する箇所の一覧">⚑ 確認リスト <span class="cnt" id="alertCnt"></span></button>
-              <button class="q-btn" id="btnAlign">ズレ補正</button>
-              <button class="q-btn" id="btnSchedules">集計表</button>
-              <button class="q-btn primary" id="btnToQuote">概算見積へ →</button>
-            </div>
-          </div>
-          <div class="detail-grid">
-            <div class="dcard wide" id="card3d">
-              <div class="dcard-head">
-                <div class="dcard-icon">◫</div><div class="dcard-title">3D アセンブリ（該当部材ハイライト）</div>
-                <div class="toolstrip" id="toolstrip">
-                  <div class="tmenu"><button class="tbtn" data-menu="place">配置 ▾</button><div class="tpop" data-pop="place"><button class="tbtn" id="btnCatalog">カタログから配置</button><button class="tbtn" id="btnFamily">ファミリから配置</button><button class="tbtn" id="btnNewType">新規タイプ</button><div class="tsep"></div><button class="tbtn" id="btnImport">ファイル読込…</button></div></div>
-                  <div class="tmenu"><button class="tbtn" data-menu="fab">加工 ▾</button><div class="tpop" data-pop="fab"><button class="tbtn" id="btnJoint">接合（2 部材をクリック）</button><button class="tbtn" id="btnHoleTool">穴あけ</button><button class="tbtn" id="btnInstr">指示入力（日本語）</button><div class="tsep"></div><button class="tbtn" id="btnUngroup">分解（組立品 → 個別部材）</button></div></div>
-                  <div class="tgroup"><button class="tbtn" id="btnMove" title="移動 (G)">移動</button><button class="tbtn" id="btnRotate" title="回転 (R)">回転</button><button class="tbtn" id="btnDup">複製</button><button class="tbtn danger" id="btnDelete">削除</button><button class="tbtn" id="btnUndo" title="元に戻す (Ctrl+Z)">↶</button><button class="tbtn" id="btnRedo" title="やり直し (Ctrl+Y)">↷</button></div>
-                  <div class="tmenu"><button class="tbtn" data-menu="view">表示 ▾</button><div class="tpop wide" data-pop="view">
-                    <div class="trow"><select id="selStyle" class="rsel"><option value="realistic">リアル（材質）</option><option value="shaded-edges" selected>陰影 + エッジ</option><option value="shaded">陰影</option><option value="hidden-line">隠線処理</option><option value="wireframe">ワイヤ</option><option value="ghost">半透明</option></select><select id="selLod" class="rsel"><option value="200">LOD200 概略</option><option value="300">LOD300 設計</option><option value="400" selected>LOD400 製作</option></select><button class="tbtn" id="btnTheme">背景 明/暗</button></div>
-                    <div class="trow chks"><label class="chk" title="GTAO 接触陰影 + SMAA + HDRI 環境光"><input type="checkbox" id="chkQuality" checked>高品質</label><label class="chk"><input type="checkbox" id="chkGrid" checked>グリッド</label><label class="chk"><input type="checkbox" id="chkShadow" checked>影</label><label class="chk"><input type="checkbox" id="chkLevels" checked>レベル</label><label class="chk"><input type="checkbox" id="chkRefs" checked>参照（配管）</label><label class="chk"><input type="checkbox" id="chkSite" checked>現場材</label><label class="chk"><input type="checkbox" id="chkTags" checked>符号</label><label class="chk" title="JIS Z 3021"><input type="checkbox" id="chkWeldSym" checked>溶接記号</label><label class="chk"><input type="checkbox" id="chkAlerts" checked>確認フラグ</label></div>
-                    <div class="trow"><button class="tbtn" id="btnSection">断面ボックス</button><button class="tbtn" id="btnMeasure">計測</button><label class="chk">分解 <input type="range" id="rngExplode" min="0" max="1" step="0.05" value="0"></label></div>
-                  </div></div>
-                  <div class="tmenu"><button class="tbtn" data-menu="out">書出し ▾</button><div class="tpop" data-pop="out"><button class="tbtn" id="btnExpJson">プロジェクト JSON</button><button class="tbtn" id="btnExpGltf">glTF / GLB</button><button class="tbtn" id="btnExpDxf">DXF 加工図</button><button class="tbtn" id="btnExpIfc">IFC-JSON</button><button class="tbtn" id="btnExpSimReady">SimReady パッケージ（USD/USDZ/GLB）</button><button class="tbtn" id="btnShot">画像</button><div class="tsep"></div><button class="tbtn" id="btnWeightPdf">重量計算書 PDF</button><button class="tbtn" id="btnWeightXlsx">重量計算書 XLSX</button><button class="tbtn" id="btnWeightCsv">重量計算書 CSV</button><button class="tbtn" id="btnEstPdf">見積書 PDF</button></div></div>
-                  <div class="tmenu"><button class="tbtn" data-menu="proj">作業 ▾</button><div class="tpop" data-pop="proj"><button class="tbtn" id="btnSnapshot">作業を保存（Ctrl+Shift+S）</button><button class="tbtn" id="btnHistory">作業履歴</button><div class="tsep"></div><button class="tbtn" id="btnSave2">プロジェクト保存</button><button class="tbtn" id="btnRename">名称変更</button><div class="tsep"></div><button class="tbtn" id="btnRates">単価表</button><button class="tbtn" id="btnLevels">レベル</button><button class="tbtn" id="btnUsers">アカウント</button></div></div>
-                </div>
-              </div>
-              <div class="dcard-body d3-body">
-                <div class="d3-stage" id="d3stage">
-                  <div class="viewport" id="viewport"></div>
-                  <div class="hud" id="hud"></div>
-                  <div class="d3-zoom"><button id="btnZoomIn" title="拡大">＋</button><button id="btnZoomOut" title="縮小">－</button></div>
-                  <button class="d3-legend-toggle" id="btnLegend">▤ 部材 / 画層</button>
-                  <div class="d3-legend" id="legendPanel"><div class="lg-head">プロジェクトブラウザ（ファミリ / タイプ / インスタンス / レベル）</div><div id="browser"></div></div>
-                  <div class="d3-toolbar"><button class="d3-tool active" data-view="3d">3D</button><button class="d3-tool" data-view="iso">アイソメ</button><button class="d3-tool" data-view="plan">平面</button><button class="d3-tool" data-view="front">正面</button><button class="d3-tool" data-view="side">側面</button><button class="d3-tool" id="btnFit">全体</button><button class="d3-tool danger" id="btnClash">⚠ 干渉</button><button class="d3-tool" id="btn3d" hidden>3D</button></div>
-                  <div class="instr-box" id="instrBox"><input id="instrInput" placeholder="加工指示を日本語で（例: MF-1 と LB-1 を隅肉溶接 6 両側 / MF-1 に φ15 穴 2個 @100 端から50）"><button class="btn primary sm" id="instrRun">実行</button></div>
-                </div>
-              </div>
-            </div>
-            <div class="dcard" id="cardSpec"><div class="dcard-head"><div class="dcard-icon">≡</div><div class="dcard-title">仕様 ＆ 加工指示（プロパティ・確認事項）</div><span class="dcard-badge" id="specBadge">single source</span></div><div class="dcard-body props-body"><div id="props"></div></div></div>
-            <div class="dcard" id="cardSection"><div class="dcard-head"><div class="dcard-icon">⌗</div><div class="dcard-title">部材断面図（2D・寸法・穴）</div><span class="dcard-badge" id="sectionBadge"></span></div><div class="dcard-body" id="sectionHost"></div></div>
-            <div class="dcard" id="cardInteg"><div class="dcard-head"><div class="dcard-icon">◎</div><div class="dcard-title">整合チェック（干渉・ズレ・接合）</div><span class="dcard-badge" id="integBadge"></span></div><div class="dcard-body" id="integHost"></div></div>
-            <div class="dcard" id="cardExplode"><div class="dcard-head"><div class="dcard-icon">⤧</div><div class="dcard-title">分解図（部品表・バルーン）</div><span class="dcard-badge" id="explodeBadge"></span></div><div class="dcard-body" id="explodeHost"></div></div>
-            <div class="dcard" id="cardCost"><div class="dcard-head"><div class="dcard-icon">¥</div><div class="dcard-title">積算コスト（この部材 / モデル全体）</div><span class="dcard-badge">JIS G 3192 質量 × 単価表</span></div><div class="dcard-body" id="costHost"></div></div>
-            <div class="dcard" id="cardCatalog"><div class="dcard-head"><div class="dcard-icon">▦</div><div class="dcard-title">特注品として発注する場合の該当区分（カタログ照合）</div><span class="dcard-badge ai">参考</span></div><div class="dcard-body" id="catalogHost"></div></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ⑤ 概算見積 -->
-      <section class="pane" id="pane5" hidden>
-        <div class="quote-page"><div id="estHost" class="est-inline"></div></div>
-      </section>
+  <nav class="ribbon">
+    <div class="ribbon-tabs" id="ribbonTabs">
+      <button class="rtab on" data-tab="home">ホーム</button><button class="rtab" data-tab="import">読込</button><button class="rtab" data-tab="view">表示</button><button class="rtab" data-tab="project">プロジェクト</button><button class="rtab" data-tab="help">ヘルプ</button>
     </div>
+    <div class="ribbon-panels">
+      <div class="rpanel on" data-panel="home">
+        <div class="rgroup"><div class="rgroup-title">配置</div><button class="rbtn big" id="btnCatalog"><span class="ri">▦</span>カタログ</button><button class="rbtn big" id="btnFamily"><span class="ri">◧</span>ファミリ</button><button class="rbtn" id="btnNewType">新規タイプ</button></div>
+        <div class="rgroup"><div class="rgroup-title">接合・加工</div><button class="rbtn big" id="btnJoint"><span class="ri">▷</span>接合</button><button class="rbtn" id="btnHoleTool">穴あけ</button><button class="rbtn" id="btnInstr">指示入力</button></div>
+        <div class="rgroup"><div class="rgroup-title">編集</div><button class="rbtn" id="btnMove">移動 (G)</button><button class="rbtn" id="btnRotate">回転 (R)</button><button class="rbtn" id="btnDup">複製</button><button class="rbtn danger" id="btnDelete">削除</button><button class="rbtn" id="btnUndo">↶</button><button class="rbtn" id="btnRedo">↷</button></div>
+        <div class="rgroup"><div class="rgroup-title">集計・見積</div><button class="rbtn big" id="btnSchedules"><span class="ri">≣</span>集計表</button><button class="rbtn big" id="btnEstimate"><span class="ri">¥</span>見積</button><button class="rbtn" id="btnClash">干渉チェック</button></div>
+        <div class="rgroup"><div class="rgroup-title">確認・補正</div><button class="rbtn big" id="btnAlerts" title="人が必ず確認する箇所（溶接・穴・アンカー・図面根拠）の一覧。ここから溶接指示・穴あけ指示"><span class="ri">⚑</span>確認リスト</button><button class="rbtn" id="btnAlign" title="隙間・レベル不一致・穴の板外/5mm単位外・配管位置を検出して自動補正">ズレ補正</button></div>
+        <div class="rgroup"><div class="rgroup-title">作業</div><button class="rbtn" id="btnSnapshot" title="現在の状態に名前を付けて保存 (Ctrl+Shift+S)">作業を保存</button><button class="rbtn" id="btnHistory">作業履歴</button></div>
+      </div>
+      <div class="rpanel" data-panel="import">
+        <div class="rgroup"><div class="rgroup-title">図面・BIM 読込</div><button class="rbtn big" id="btnImport"><span class="ri">⤓</span>ファイル読込</button><button class="rbtn" id="btnDrawing">図面ビュー</button><button class="rbtn" id="btn3d">3D ビュー</button></div>
+        <div class="rgroup"><div class="rgroup-title">対応形式</div><div class="rtext">DXF（実パース）/ PDF（ベクター）/ IFC（web-ifc）/ glTF・OBJ・STL・FBX<br>DWG・JWW・SFC/P21・RVT・DGN・SKP・3DM → サーバ変換（<span id="convStatus">未設定</span>）</div></div>
+        <div class="rgroup"><div class="rgroup-title">デモ</div><button class="rbtn" id="btnDemoDxf">サンプル DXF</button><button class="rbtn" id="btnDemoModel">サンプルモデル</button></div>
+      </div>
+      <div class="rpanel" data-panel="view">
+        <div class="rgroup"><div class="rgroup-title">ビュー</div><button class="rbtn" data-view="3d">3D</button><button class="rbtn" data-view="iso">アイソメ</button><button class="rbtn" data-view="plan">平面</button><button class="rbtn" data-view="front">正面</button><button class="rbtn" data-view="side">側面</button><button class="rbtn" data-view="2d">図面</button><button class="rbtn" id="btnFit">全体表示</button></div>
+        <div class="rgroup"><div class="rgroup-title">表示スタイル</div><select id="selStyle" class="rsel"><option value="realistic">リアル（材質）</option><option value="shaded-edges" selected>陰影 + エッジ</option><option value="shaded">陰影</option><option value="hidden-line">隠線処理</option><option value="wireframe">ワイヤ</option><option value="ghost">半透明</option><option value="cad">CAD 図面色（暗背景・役割色）</option></select><select id="selLod" class="rsel"><option value="200">LOD200 概略</option><option value="300">LOD300 設計</option><option value="400" selected>LOD400 製作</option></select><button class="rbtn" id="btnTheme">背景 明/暗</button></div>
+        <div class="rgroup"><div class="rgroup-title">補助</div><label class="chk" title="GTAO 接触陰影 + SMAA + HDRI 環境光"><input type="checkbox" id="chkQuality" checked>高品質</label><label class="chk"><input type="checkbox" id="chkGrid" checked>グリッド</label><label class="chk"><input type="checkbox" id="chkShadow" checked>影</label><label class="chk"><input type="checkbox" id="chkLevels" checked>レベル</label><label class="chk"><input type="checkbox" id="chkRefs" checked>参照（配管）</label><label class="chk"><input type="checkbox" id="chkSite" checked>現場材（アンカー・吊ボルト）</label><label class="chk"><input type="checkbox" id="chkTags" checked>符号</label><label class="chk" title="JIS Z 3021: ▷隅肉 ○全周 ▶現場溶接 V突合せ"><input type="checkbox" id="chkWeldSym" checked>溶接記号</label><label class="chk" title="未確認の確認事項を 3D 上に旗で表示"><input type="checkbox" id="chkAlerts" checked>確認フラグ</label></div>
+        <div class="rgroup"><div class="rgroup-title">分解・確認</div><button class="rbtn big" id="btnExplodeView" title="選択部材を部品ごとにバラして確認（部品表・バルーン・単独表示）"><span class="ri">⤧</span>分解図</button><label class="chk" title="選択部材があればその部品を、無ければ部材同士をバラします">分解 <input type="range" id="rngExplode" min="0" max="1" step="0.05" value="0"></label><label class="chk"><input type="checkbox" id="chkBalloons">バルーン</label><button class="rbtn" id="btnUngroup" title="組立品を単材・板のインスタンスへ分解">個別部材化</button></div>
+        <div class="rgroup"><div class="rgroup-title">視点</div><button class="rbtn" id="btnCenter" title="選択部材を画面中央へ (C) ・ ダブルクリックでも中央へ">中央へ (C)</button><button class="rbtn" id="btnPan" title="左ドラッグで画面を掴んで移動（もう一度で回転に戻る）">✋ 手のひら</button><button class="rbtn" id="btnSection">断面ボックス</button><button class="rbtn" id="btnMeasure">計測</button></div>
+      </div>
+      <div class="rpanel" data-panel="project">
+        <div class="rgroup"><div class="rgroup-title">プロジェクト</div><button class="rbtn" id="btnNew">新規</button><button class="rbtn" id="btnOpen">開く</button><button class="rbtn" id="btnSave2">保存</button><button class="rbtn" id="btnRename">名称変更</button></div>
+        <div class="rgroup"><div class="rgroup-title">書出し</div><button class="rbtn" id="btnExpJson">JSON</button><button class="rbtn" id="btnExpGltf">glTF/GLB</button><button class="rbtn" id="btnExpDxf">DXF 加工図</button><button class="rbtn" id="btnExpIfc">IFC-JSON</button><button class="rbtn" id="btnExpSimReady" title="USD + GLB + PBR テクスチャ + metadata（BOM/質量/重心）+ サムネイルの ZIP">SimReady パッケージ</button><button class="rbtn" id="btnShot">画像</button></div>
+        <div class="rgroup"><div class="rgroup-title">帳票</div><button class="rbtn" id="btnWeightPdf">重量計算書 PDF</button><button class="rbtn" id="btnWeightXlsx">重量計算書 XLSX</button><button class="rbtn" id="btnWeightCsv">重量計算書 CSV</button><button class="rbtn" id="btnEstPdf">見積書 PDF</button></div>
+        <div class="rgroup"><div class="rgroup-title">設定</div><button class="rbtn" id="btnRates">単価表</button><button class="rbtn" id="btnLevels">レベル</button><button class="rbtn" id="btnUsers">アカウント</button></div>
+      </div>
+      <div class="rpanel" data-panel="help"><div class="rgroup"><div class="rtext help">
+        <b>考え方（Revit 準拠）</b>: ファミリ（パラメトリック定義）→ タイプ（寸法セット）→ インスタンス（配置）。タイプ パラメータ[T]の変更は同タイプ全てに、インスタンス パラメータ[I]は1体のみに反映。幾何・重量・集計・見積は同じ部品リストから生成（単一ソース）。<br>
+        <b>操作</b>: 左ドラッグ回転 / 右ドラッグ平行移動 / ホイール拡縮 / クリック選択 / <b>ダブルクリック＝その部材を画面中央へ</b> / C 選択部材を中央へ / F 全体表示 / ✋ 手のひら＝左ドラッグで画面を掴んで移動 / G 移動 / R 回転 / Delete 削除 / Ctrl+Z 元に戻す。<br>
+        <b>分解・CAD色</b>: 「分解図」で選択部材を部品ごとにバラし（スライダー・バルーン番号・部品表、行クリックでその部品だけ表示）、「個別部材化」で組立品を単材・板のインスタンスへ。表示スタイル「CAD 図面色」は図面ビューと同じ暗背景・役割色（柱=青 / 梁=緑 / ベース=青緑 / ガセット=紫 / 方杖=黄 / 支持金物=橙 / 配管=水色）で 3D と図面を照合できます。<br>
+        <b>接合</b>: 「接合」→ 2部材をクリック → 溶接 or ボルト。指示入力例: 「MF-1 と LB-1 を隅肉溶接 6 両側」「PL-1 を MF-1 に M12 ボルト 4本 @100 で接合」「MF-1 に φ15 穴 2個 @100 端から50 脚A」。<br>
+        <b>確認・補正</b>: 図面から 3D 化した部材には、溶接・穴・アンカー・図面根拠など人が必ず確認する箇所が「確認事項」として付き、3D に旗（⚑）で表示。プロパティの確認事項から「確認済」「溶接指示」「穴あけ指示」を行うと 3D・集計・見積に同期。「ズレ補正」は隙間・レベル・穴位置・配管位置を検出して自動修正。「作業を保存」（Ctrl+Shift+S）で名前付きスナップショット、「作業履歴」から復元。<br>
+        <b>多社ワークフロー</b>: A社（見積作成）→ B社（利益上乗せのみ）→ C社（工場原価のみ）。各社が触れる項目はフィールド単位で制限され、受け渡しごとに改訂凍結・監査ログ。</div></div></div>
+    </div>
+  </nav>
+  <main class="main">
+    <aside class="side left"><div class="side-head">プロジェクトブラウザ</div><div class="side-body" id="browser"></div></aside>
+    <section class="stage" id="stage">
+      <div class="viewport" id="viewport"></div>
+      <div class="drawing" id="drawing" hidden></div>
+      <div class="hud" id="hud"></div>
+      <div class="drop-hint" id="dropHint">図面・BIM ファイルをここへドロップ（DXF / PDF / IFC / glTF / DWG…）</div>
+      <div class="instr-box" id="instrBox"><input id="instrInput" placeholder="加工指示を日本語で入力（例: MF-1 と LB-1 を隅肉溶接 6 両側 / MF-1 に φ15 穴 2個 @100 端から50）"><button class="btn primary sm" id="instrRun">実行</button></div>
+    </section>
+    <aside class="side right"><div class="side-head">プロパティ</div><div class="side-body" id="props"></div></aside>
   </main>
   <footer class="statusbar"><span id="status">準備完了</span><span class="spacer"></span><span id="statusModel"></span><span class="sep"></span><span id="statusWarn"></span></footer>
-  <button class="fab-launch" id="fabChat" title="加工指示を日本語で入力（チャット）"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4V5z" stroke-linejoin="round"/></svg></button>
 </div>
 <input type="file" id="fileInput" multiple hidden>
-<button id="btnEstimate" hidden></button>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

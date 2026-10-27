@@ -4,12 +4,12 @@ const clickSel = sel => page.evaluate(s => { const el = document.querySelector(s
 const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
 // 1) デモ DXF を読み込んで配置 → 読込由来インスタンスに確認事項が付く
 await page.evaluate(() => document.querySelector('#btnDemoDxf').click()); await page.waitForTimeout(1500);
-await page.evaluate(() => document.querySelector('#recHost .rec-actions .btn.primary').click()); await page.waitForTimeout(1500);
+await page.evaluate(() => (document.querySelector('#recHost .rec-actions .btn.primary') || document.querySelector('.modal-back:last-of-type .modal-foot .btn.primary')).click()); await page.waitForTimeout(1500);
 log('STATUS', await page.$eval('#statusWarn', e => e.textContent));
 log('IMPORTED', await page.evaluate(() => app.model.instances.map(i => ({ mark: i.mark, src: i.source, st: i.status, reasons: (i.reviewReasons || []).length }))));
 log('FLAGS', await page.evaluate(() => [...document.querySelectorAll('.v-label.alert')].map(e => e.textContent)));
 // 2) 1 体目を選択 → プロパティの確認事項
-await page.evaluate(() => { const i = app.model.instances.find(x => x.source === 'import' && app.model.familyOf(x).id === 'member'); window.__sel = i.id; app.select(i.id); app.shell.goStep(4); }); await page.waitForTimeout(400);
+await page.evaluate(() => { const i = app.model.instances.find(x => x.source === 'import' && app.model.familyOf(x).id === 'member'); window.__sel = i.id; app.select(i.id); app.shell?.goStep(4); }); await page.waitForTimeout(400);
 log('SEL', await page.evaluate(() => { const i = app.model.getInstance(window.__sel); return [i.mark, i.status, i.reviewReasons]; }));
 log('REVIEW ITEMS', await page.$$eval('#props .rv-item', els => els.map(e => e.querySelector('.rv-kind').textContent + ' / ' + e.querySelector('.rv-label').textContent + ' [' + e.className.replace('rv-item ', '') + ']')));
 // 3) 溶接指示（単材: 両端全周 6 現場）

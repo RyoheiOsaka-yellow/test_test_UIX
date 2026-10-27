@@ -13,6 +13,17 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { finishMaterial } from '../geo/materials.js';
 const HDRI_URL = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr';
 
+// CAD 図面色（元デモの図面ビューの配色）: 役割ごとのフラットカラー。暗背景＋明るいエッジで図面と照合しやすくする
+const CAD_COLORS = { column: 0x3b5bdb, beam: 0x2fa84f, base: 0x14b8a6, gusset: 0xa855f7, brace: 0xeab308, support: 0xf97316, pipe: 0x22d3ee, ubolt: 0xf97316, anchor: 0xef4444, bolt: 0xf43f5e, rod: 0xf472b6, weld: 0xfb923c, band: 0x38bdf8, plate: 0x8b9db5, steel: 0x60a5fa };
+export function cadRole(pt) {
+  if (!pt) return 'steel'; const n = `${pt.group || ''} ${pt.name || ''}`;
+  if (pt.kind === 'pipe' || pt.finish === 'PIPE' || pt.ref) return 'pipe'; if (pt.kind === 'weld') return 'weld'; if (pt.kind === 'ubolt') return 'ubolt'; if (pt.kind === 'anchor') return 'anchor'; if (pt.kind === 'rod') return 'rod'; if (['bolt', 'nut', 'washer'].includes(pt.kind)) return 'bolt'; if (pt.kind === 'custom') return 'band';
+  if (/ベース|base/i.test(n)) return 'base'; if (/ガセット|接合板|リブ|gusset/i.test(n)) return 'gusset'; if (/斜|方杖|ブレース/.test(n)) return 'brace'; if (/柱|支柱|脚|ポール|縦材/.test(n)) return 'column'; if (/梁|横架|腕|枠|桁/.test(n)) return 'beam'; if (/支持|サポート|金物|帯/.test(n)) return 'support';
+  if (pt.kind === 'plate') return 'plate'; return 'steel';
+}
+const _cadCache = new Map();
+export function cadMaterial(pt) { const role = cadRole(pt); if (_cadCache.has(role)) return _cadCache.get(role); const c = new THREE.Color(CAD_COLORS[role] || CAD_COLORS.steel); const m = new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(0.22), transparent: role === 'pipe', opacity: role === 'pipe' ? 0.55 : 1, side: THREE.DoubleSide }); _cadCache.set(role, m); return m; }
+export const CAD_LEGEND = [['column', '柱・支柱'], ['beam', '梁・横架材・腕'], ['base', 'ベースプレート'], ['gusset', 'ガセット・接合板'], ['brace', '方杖・斜材'], ['support', '配管支持金物'], ['pipe', '配管（参照）'], ['ubolt', 'Uボルト'], ['anchor', 'アンカー'], ['bolt', 'ボルト・ナット'], ['rod', '吊ボルト'], ['weld', '溶接'], ['band', 'バンド・加工品'], ['plate', 'その他の板'], ['steel', 'その他の鋼材']].map(([k, l]) => ({ role: k, label: l, hex: '#' + CAD_COLORS[k].toString(16).padStart(6, '0') }));
 export class Viewer {
   constructor(container, opts = {}) {
     this.container = container; this.opts = opts;
@@ -121,15 +132,30 @@ export class Viewer {
       else if (s === 'hidden-line') { o.material = o.userData._white || (o.userData._white = new THREE.MeshBasicMaterial({ color: 0xffffff, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })); }
       else if (s === 'wireframe') { o.material = o.userData._wire || (o.userData._wire = new THREE.MeshBasicMaterial({ color: 0x334155, wireframe: true })); }
       else if (s === 'ghost') { o.material = o.userData._ghost || (o.userData._ghost = new THREE.MeshStandardMaterial({ color: 0x9aa6b2, transparent: true, opacity: 0.35, depthWrite: false })); }
-      if (s === 'shaded-edges' || s === 'hidden-line') {
+      else if (s === 'cad') { o.material = cadMaterial(this._partOf(o)); }
+      if (s === 'shaded-edges' || s === 'hidden-line' || s === 'cad') {
         const eg = o.userData._edges || (o.userData._edges = new THREE.EdgesGeometry(o.geometry, s === 'hidden-line' ? 12 : 22));
-        const ln = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: s === 'hidden-line' ? 0x111827 : (this.theme === 'dark' ? 0x0b0f14 : 0x1f2937), transparent: true, opacity: s === 'hidden-line' ? 1 : 0.55 }));
+        const ln = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: s === 'hidden-line' ? 0x111827 : s === 'cad' ? 0xe8e4d6 : (this.theme === 'dark' ? 0x0b0f14 : 0x1f2937), transparent: true, opacity: s === 'hidden-line' ? 1 : s === 'cad' ? 0.45 : 0.55 }));
         o.updateWorldMatrix(true, false); ln.matrixAutoUpdate = false; ln.matrix.copy(o.matrixWorld); ln.userData.src = o; this.edgeRoot.add(ln);
       }
     });
     this.floor.visible = (s === 'realistic'); this.sun.intensity = s === 'realistic' ? 2.2 : 1.6; this.hemi.intensity = s === 'realistic' ? 0.35 : 0.55; this.ground.visible = !this.floor.visible; this.grid.visible = this.gridOn !== false && s !== 'realistic';
     if (s === 'realistic' && this.hdri && this.theme === 'light') { this.scene.background = this.hdri; this.scene.backgroundBlurriness = 0.55; this.scene.backgroundIntensity = 0.9; } else this.setTheme(this.theme);
+    if (s === 'cad') { this.scene.background = new THREE.Color(0x141410); this.scene.fog = null; this.grid.material.color.set(0x3a3a30); this.grid.material.opacity = 0.55; this.ground.visible = false; this.sun.intensity = 1.1; this.hemi.intensity = 0.9; this.hemi.color.set(0xffffff); this.hemi.groundColor.set(0x666666); this.renderer.toneMappingExposure = 1.0; }
+    if (this.onStyleApplied) this.onStyleApplied(s);
   }
+  // 部品（parts）の参照: メッシュ → 祖先の userData.part
+  _partOf(o) { let p = o; while (p && p !== this.modelRoot) { if (p.userData && p.userData.part) return p.userData.part; p = p.parent; } return null; }
+  // 任意のオブジェクトを画面中央へ（距離は維持・アニメーション）
+  focusOn(obj, { animate = true, ms = 380 } = {}) {
+    if (!obj) return; const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3());
+    const ctl = this.controls, cam = this.camera; const t0 = ctl.target.clone(), p0 = cam.position.clone(); const d = c.clone().sub(t0); const p1 = p0.clone().add(d);
+    const ot0 = this.orthoControls.target.clone(), op0 = this.ortho.position.clone(); const op1 = op0.clone().add(c.clone().sub(ot0));
+    if (!animate) { ctl.target.copy(c); cam.position.copy(p1); this.orthoControls.target.copy(c); this.ortho.position.copy(op1); ctl.update(); this.orthoControls.update(); this.invalidate(2); return; }
+    const start = performance.now(); const ease = x => 1 - Math.pow(1 - x, 3); const step = () => { const k = Math.min(1, (performance.now() - start) / ms); const e = ease(k); ctl.target.lerpVectors(t0, c, e); cam.position.lerpVectors(p0, p1, e); this.orthoControls.target.lerpVectors(ot0, c, e); this.ortho.position.lerpVectors(op0, op1, e); ctl.update(); this.orthoControls.update(); this.invalidate(2); if (k < 1) requestAnimationFrame(step); }; step();
+  }
+  // 手のひら（パン）モード: 左ドラッグで画面を掴んで移動
+  setPanMode(on) { this.panMode = !!on; const M = THREE.MOUSE; for (const c of [this.controls, this.orthoControls]) { c.mouseButtons = { LEFT: on ? M.PAN : M.ROTATE, MIDDLE: M.DOLLY, RIGHT: on ? M.ROTATE : M.PAN }; c.touches = { ONE: on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }; c.screenSpacePanning = true; } this.renderer.domElement.style.cursor = on ? 'grab' : ''; }
   syncEdges() { this.invalidate(); for (const ln of this.edgeRoot.children) { const o = ln.userData.src; if (o) { o.updateWorldMatrix(true, false); ln.matrix.copy(o.matrixWorld); ln.visible = o.visible && this._visibleUp(o); } } }
   _visibleUp(o) { let p = o; while (p) { if (!p.visible) return false; p = p.parent; } return true; }
   // 断面ボックス（6面クリッピング）
@@ -141,10 +167,16 @@ export class Viewer {
     if (!this.sectionBoxHelper) { this.sectionBoxHelper = new THREE.Box3Helper(box, 0xd97706); this.sectionBoxHelper.userData.helper = true; this.scene.add(this.sectionBoxHelper); } else { this.sectionBoxHelper.box = box; this.sectionBoxHelper.visible = true; }
   }
   // 分解表示: 各インスタンスを重心から放射状に
-  setExplode(k) { this.invalidate();
-    this.exploded = k; const center = new THREE.Box3().setFromObject(this.modelRoot).getCenter(new THREE.Vector3());
-    for (const inst of this.modelRoot.children) { if (!inst.userData._home) inst.userData._home = inst.position.clone(); const c = new THREE.Box3().setFromObject(inst).getCenter(new THREE.Vector3()); const off = c.sub(center).multiplyScalar(k * 0.9); inst.position.copy(inst.userData._home).add(k > 0 ? off : new THREE.Vector3()); }
-    this.syncEdges();
+  // 分解: target（インスタンス group）があればその部品を部品単位でバラす。無ければインスタンス単位
+  setExplode(k, target = null) { this.invalidate();
+    this.exploded = k; if (target && !target.parent) target = null;
+    // 以前の部品分解を戻す
+    for (const inst of this.modelRoot.children) { for (const ch of inst.children) if (ch.userData._phome) { ch.position.copy(ch.userData._phome); ch.visible = ch.userData._pvis ?? ch.visible; } }
+    const center = new THREE.Box3().setFromObject(this.modelRoot).getCenter(new THREE.Vector3());
+    for (const inst of this.modelRoot.children) { if (!inst.userData._home) inst.userData._home = inst.position.clone(); if (target) { inst.position.copy(inst.userData._home); continue; } const c = new THREE.Box3().setFromObject(inst).getCenter(new THREE.Vector3()); const off = c.sub(center).multiplyScalar(k * 0.9); inst.position.copy(inst.userData._home).add(k > 0 ? off : new THREE.Vector3()); }
+    if (target && k > 0) { const ic = new THREE.Box3().setFromObject(target).getCenter(new THREE.Vector3()); target.worldToLocal(ic); const size = new THREE.Box3().setFromObject(target).getSize(new THREE.Vector3()).length();
+      for (const ch of target.children) { const pt = ch.userData.part; if (!pt || ch.userData.ref) continue; if (!ch.userData._phome) { ch.userData._phome = ch.position.clone(); ch.userData._pvis = ch.visible; } if (pt.kind === 'weld') { ch.visible = false; continue; } const b = new THREE.Box3().setFromObject(ch); if (b.isEmpty()) continue; const c = b.getCenter(new THREE.Vector3()); target.worldToLocal(c); let dir = c.clone().sub(ic); if (dir.length() < 1) dir.set(0, 1, 0); dir.normalize(); const small = ['bolt', 'ubolt', 'anchor', 'rod', 'nut', 'washer'].includes(pt.kind); const amp = k * (small ? 0.35 : 0.6) * size; ch.position.copy(ch.userData._phome).add(dir.multiplyScalar(amp)); } }
+    this.explodeTarget = target; this.syncEdges();
   }
   // ラベル（CSS2D）
   label(text, pos, cls = 'tag') { this.invalidate(); const el = document.createElement('div'); el.className = 'v-label ' + cls; el.innerHTML = text; const o = new CSS2DObject(el); o.position.copy(pos); this.overlayRoot.add(o); return o; }
@@ -160,7 +192,7 @@ export class Viewer {
     el.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
     el.addEventListener('pointerup', e => { if (!down) return; const dx = e.clientX - down[0], dy = e.clientY - down[1]; down = null; if (dx * dx + dy * dy > 16) return; const hit = this.pick(e); if (this.onPick) this.onPick(hit, e); });
     el.addEventListener('pointermove', e => { if (this.opts.hover === false) return; const hit = this.pick(e); this.setHover(hit ? hit.instance : null); if (this.onHover) this.onHover(hit, e); });
-    el.addEventListener('dblclick', e => { const hit = this.pick(e); if (hit) this.fit(hit.instance); });
+    el.addEventListener('dblclick', e => { const hit = this.pick(e); if (!hit) return; if (this.onDblClick) this.onDblClick(hit); else this.focusOn(hit.instance); });
   }
   pick(e) {
     const r = this.renderer.domElement.getBoundingClientRect(); this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);

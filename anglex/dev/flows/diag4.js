@@ -1,5 +1,5 @@
 const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
-await page.evaluate(() => { const i = app.model.instances[0]; app.select(i.id); app.shell.goStep(4); }); await page.waitForTimeout(800);
+await page.evaluate(() => { const i = app.model.instances[0]; app.select(i.id); app.shell?.goStep(4); }); await page.waitForTimeout(800);
 log('LISTENERS', await page.evaluate(() => Object.fromEntries(Object.entries(app.model.h).map(([k, v]) => [k, v.length]))));
 log('T', await page.evaluate(() => { const t = {}; const wrap = (obj, name) => { const f = obj[name]; obj[name] = function (...a) { const t0 = performance.now(); const r = f.apply(this, a); t[name] = (t[name] || 0) + (performance.now() - t0); return r; }; }; wrap(app, 'updateStatus'); wrap(app, 'scheduleAutosave'); wrap(app.shell, 'onModelChange'); wrap(app.viewer, 'invalidate'); wrap(app.model, 'serialize'); wrap(app.model, '_snapshot'); wrap(app.model, 'emit'); const t0 = performance.now(); app.model.updateInstance(app.model.instances[0].id, { pos: app.model.instances[0].pos }); t.total = performance.now() - t0; return t; }));
 log('RENDER1', await page.evaluate(() => { const t0 = performance.now(); app.viewer.composer ? app.viewer.composer.render() : app.viewer.renderer.render(app.viewer.scene, app.viewer.camera); return performance.now() - t0; }));
