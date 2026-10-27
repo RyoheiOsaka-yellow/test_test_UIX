@@ -16,7 +16,7 @@ const HDRI_URL = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_sm
 // CAD 図面色（元デモの図面ビューの配色）: 役割ごとのフラットカラー。暗背景＋明るいエッジで図面と照合しやすくする
 const CAD_COLORS = { column: 0x3b5bdb, beam: 0x2fa84f, base: 0x14b8a6, gusset: 0xa855f7, brace: 0xeab308, support: 0xf97316, pipe: 0x22d3ee, ubolt: 0xf97316, anchor: 0xef4444, bolt: 0xf43f5e, rod: 0xf472b6, weld: 0xfb923c, band: 0x38bdf8, plate: 0x8b9db5, steel: 0x60a5fa };
 export function cadRole(pt) {
-  if (!pt) return 'steel'; const n = `${pt.group || ''} ${pt.name || ''}`;
+  if (!pt) return 'steel'; if (pt.cadRole && pt.cadRole !== 'auto' && CAD_COLORS[pt.cadRole]) return pt.cadRole; const n = `${pt.group || ''} ${pt.name || ''}`;
   if (pt.kind === 'pipe' || pt.finish === 'PIPE' || pt.ref) return 'pipe'; if (pt.kind === 'weld') return 'weld'; if (pt.kind === 'ubolt') return 'ubolt'; if (pt.kind === 'anchor') return 'anchor'; if (pt.kind === 'rod') return 'rod'; if (['bolt', 'nut', 'washer'].includes(pt.kind)) return 'bolt'; if (pt.kind === 'custom') return 'band';
   if (/ベース|base/i.test(n)) return 'base'; if (/ガセット|接合板|リブ|gusset/i.test(n)) return 'gusset'; if (/斜|方杖|ブレース/.test(n)) return 'brace'; if (/柱|支柱|脚|ポール|縦材/.test(n)) return 'column'; if (/梁|横架|腕|枠|桁/.test(n)) return 'beam'; if (/支持|サポート|金物|帯/.test(n)) return 'support';
   if (pt.kind === 'plate') return 'plate'; return 'steel';

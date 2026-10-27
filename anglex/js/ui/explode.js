@@ -1,6 +1,7 @@
 // 分解図パネル（v1 リボン用モーダル / 共通）: 部品ごとの分解スライダー・番号バルーン・部品表（行クリックで部品を単独表示）・個別部材化
 import { $, h, modal, toast, confirmDialog, fmt } from './common.js';
 import { summarize } from '../bim/weight.js';
+import { exportExplodedPDF } from './reports.js';
 
 export function explodePanel(app, inst, host) {
   host.innerHTML = ''; const fam = app.model.familyOf(inst); const parts = app.instanceParts(inst); const real = parts.filter(x => !x.ref && x.kind !== 'weld'); const welds = parts.filter(x => x.kind === 'weld');
@@ -21,7 +22,7 @@ export function explodePanel(app, inst, host) {
   };
   render();
   const canUngroup = fam.id !== 'member' && fam.id !== 'plate' && real.some(x => ['member', 'plate', 'pipe'].includes(x.kind));
-  host.append(h('div', { class: 'explode-foot' }, h('button', { class: 'btn sm primary', disabled: !canUngroup || app.role() !== 'A', title: canUngroup ? '組立品を単材・板・管のインスタンスに分解（穴・仕様・配置を保持）' : '単材／板はこれ以上分解できません', onClick: async () => { if (!(await confirmDialog(`${inst.mark} を ${real.filter(x => ['member', 'plate', 'pipe'].includes(x.kind)).length} 個の個別部材に分解しますか？\nボルト類・溶接は集計から外れます（「接合」で再定義できます）。元に戻すには Ctrl+Z。`))) return; app.ungroupInstance(inst.id); host.dispatchEvent(new CustomEvent('ungrouped', { bubbles: true })); } }, '分解（個別部材化）'), h('button', { class: 'btn sm', onClick: () => $('#btnShot')?.click() }, '分解図を画像保存'), h('span', { class: 'muted small' }, '行クリック＝その部品だけ表示 ・ バルーン＝3D 上の部品番号')));
+  host.append(h('div', { class: 'explode-foot' }, h('button', { class: 'btn sm primary', disabled: !canUngroup || app.role() !== 'A', title: canUngroup ? '組立品を単材・板・管のインスタンスに分解（穴・仕様・配置を保持）' : '単材／板はこれ以上分解できません', onClick: async () => { if (!(await confirmDialog(`${inst.mark} を ${real.filter(x => ['member', 'plate', 'pipe'].includes(x.kind)).length} 個の個別部材に分解しますか？\nボルト類・溶接は集計から外れます（「接合」で再定義できます）。元に戻すには Ctrl+Z。`))) return; app.ungroupInstance(inst.id); host.dispatchEvent(new CustomEvent('ungrouped', { bubbles: true })); } }, '分解（個別部材化）'), h('button', { class: 'btn sm', onClick: () => exportExplodedPDF(app, inst) }, '分解図 PDF（バルーン＋部品表）'), h('button', { class: 'btn sm', onClick: () => $('#btnShot')?.click() }, '画像保存'), h('span', { class: 'muted small' }, '行クリック＝その部品だけ表示 ・ バルーン＝3D 上の部品番号')));
   return { render };
 }
 

@@ -63,12 +63,28 @@ export async function exportEstimatePDF(app, est) {
         est.snapshot3d ? { heading: '3D モデル', image: { dataUrl: est.snapshot3d, w: 320 } } : null].filter(Boolean), footer: 'ANGLEX 見積書' }); t.remove(); toast('見積書 PDF を書き出しました', 'ok'); } catch (e) { t.remove(); console.error(e); toast('PDF 生成に失敗: ' + e.message, 'bad', 6000); }
 }
 // ---------- 加工指示書 PDF ----------
+// 分解図セクション（画像＋バルーン＋部品表）: 加工指示書・単体 PDF で共用
+export function explodedSections(app, inst, { heading = null } = {}) {
+  const secs = []; let ex = null; try { ex = app.screenshotExploded ? app.screenshotExploded(inst.id) : null; } catch (e) { console.warn('exploded shot', e); }
+  const parts = app.instanceParts(inst); const real = parts.filter(x => !x.ref && x.kind !== 'weld'); const welds = parts.filter(x => x.kind === 'weld'); const sum = summarize(real);
+  if (heading) secs.push({ heading });
+  secs.push({ text: `分解図 — 番号は部品表の No に対応。溶接 ${welds.length} 本（総長 ${Math.round(welds.reduce((a, w) => a + w.length, 0))} mm）は分解図では非表示。` });
+  if (ex) secs.push({ image: { dataUrl: ex.url, w: 360, iw: ex.w, ih: ex.h, balloons: ex.balloons } });
+  const rows = real.map((pt, i) => { const w = sum.items.find(x => x.name === pt.name && x.kind === pt.kind && x.spec === pt.spec && x.pl?.pos?.join() === pt.pl?.pos?.join()) || sum.items.find(x => x.name === pt.name && x.kind === pt.kind); return [String(i + 1), pt.name || pt.kind, pt.spec ? (parseSpec(pt.spec)?.label || pt.spec) : (pt.M || pt.custom || ''), pt.length ? String(Math.round(pt.length)) : '', w?.mass != null ? w.mass.toFixed(2) : '', (pt.holes || []).map(hh => `${hh.face}: z${hh.z} s${hh.s} ${hh.slot ? '長穴' + hh.d + '×' + hh.slot.len : 'φ' + hh.d}`).join('\n') || '—', pt.finish || '']; });
+  secs.push({ table: { cols: [{ label: 'No', w: 4, align: 'right' }, { label: '部品', w: 16 }, { label: '仕様', w: 16 }, { label: '長さ', w: 7, align: 'right' }, { label: '質量 kg', w: 8, align: 'right' }, { label: '穴（面: 長さ方向 z / 幅方向 s / 径）', w: 36 }, { label: '仕上げ', w: 9 }], rows } });
+  return secs;
+}
+export async function exportExplodedPDF(app, inst) {
+  const t = toast('分解図 PDF 生成中…', 'info', 20000); try { const type = app.model.getType(inst.typeId); const p = app.model.resolved(inst);
+    await downloadPdf(`${inst.mark}_分解図.pdf`, { title: `分解図  ${inst.mark}  ${type.name}`, subtitle: app.project.name, meta: [['作成', new Date().toLocaleDateString('ja-JP')], ['ファミリ', app.model.familyOf(inst).name], ['状態', { confirmed: '確定', inferred: '推論', review: '要判断' }[inst.status] || inst.status], ['仕様', [p.spec || p.colSpec || '', p.L ? 'L=' + p.L : '', p.W ? 'W=' + p.W : '', p.H ? 'H=' + p.H : '', p.finish || ''].filter(Boolean).join(' ')]], sections: explodedSections(app, inst), footer: 'ANGLEX 分解図' });
+    t.remove(); toast('分解図 PDF を書き出しました', 'ok'); } catch (e) { t.remove(); console.error(e); toast('PDF 生成に失敗: ' + e.message, 'bad', 6000); }
+}
 export async function exportWorkOrderPDF(app, est) {
   const t = toast('加工指示書 PDF 生成中…', 'info', 30000); const sections = [];
   try { for (const l of est.lines) { if (!l.typeId) continue; const inst = app.model.instances.find(i => i.typeId === l.typeId); if (!inst) continue; const fam = app.model.familyOf(inst); const p = app.model.resolved(inst); const parts = fam.parts(p, { inst, model: app.model }).filter(x => !x.ref); const s = summarize(parts); const shot = app.screenshotInstance ? app.screenshotInstance(inst.id) : null;
       const welds = {}; for (const x of parts.filter(x => x.kind === 'weld')) { const k = `${x.group || ''}|${x.weldType}|${x.size}`; (welds[k] ||= { g: x.group, t: x.weldType, s: x.size, L: 0, n: 0 }); welds[k].L += x.length; welds[k].n++; } const fast = {}; for (const x of parts.filter(x => ['bolt', 'ubolt', 'anchor', 'rod', 'nut'].includes(x.kind))) { (fast[x.name] ||= { n: 0, site: x.site }); fast[x.name].n += x.qty || 1; }
       sections.push({ heading: `${l.desc}　${l.marks.join(' ')}　数量 ${l.qty} ${l.unit}`, kv: [['ファミリ', fam.name], ['パラメータ', Object.entries(p).filter(([k]) => !k.startsWith('__')).map(([k, v]) => `${k}=${v}`).join('  ')], ['質量', `${s.total} kg（鋼材 ${s.steelNet} / めっき ${s.zinc} / ボルト ${s.fasteners} / 溶接 ${s.welds}）`], ['穴', `丸穴 ${s.holeCount} / 長穴 ${s.slotCount}`], ['溶接', Object.values(welds).map(x => `${x.g || ''} ${x.t === 'butt' ? '突合せ' : '隅肉'} ▷${x.s} L=${Math.round(x.L)}（${x.n}箇所）`).join(' / ') || '—'], ['ボルト類', Object.entries(fast).map(([k, v]) => `${k} ×${v.n}${v.site ? '（現場）' : ''}`).join(' / ') || '—']] });
       if (shot) sections.push({ image: { dataUrl: shot, w: 300 } });
-      sections.push({ table: { cols: [{ label: '部品', w: 18 }, { label: '鋼材仕様', w: 18 }, { label: '長さ', w: 8, align: 'right' }, { label: '穴（面: 長さ方向 z / 幅方向 s / 径）', w: 40 }, { label: '仕上げ', w: 10 }], rows: parts.filter(x => ['member', 'plate', 'pipe'].includes(x.kind)).map(x => [x.name, parseSpec(x.spec)?.label || x.spec, Math.round(x.length || 0), (x.holes || []).map(hh => `${hh.face}: z${hh.z} s${hh.s} ${hh.slot ? '長穴' + hh.d + '×' + hh.slot.len : 'φ' + hh.d}`).join('\n') || '—', x.finish || '']) } }); }
+      sections.push(...explodedSections(app, inst)); }
     await downloadPdf(`${est.no}_加工指示書.pdf`, { title: '加工指示書', subtitle: `${est.no}  ${est.projectName}`, meta: [['作成', new Date().toLocaleDateString('ja-JP')], ['溶接記号', 'JIS Z 3021'], ['穴位置', '各面の端部基準（z: 長さ方向, s: 幅方向）'], ['仕上げ', '記載の通り']], sections, footer: 'ANGLEX 加工指示書' }); t.remove(); toast('加工指示書 PDF を書き出しました', 'ok'); } catch (e) { t.remove(); console.error(e); toast('PDF 生成に失敗: ' + e.message, 'bad', 6000); }
 }
