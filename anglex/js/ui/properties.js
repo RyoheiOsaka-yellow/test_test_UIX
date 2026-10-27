@@ -5,6 +5,7 @@ import { summarize } from '../bim/weight.js';
 import { costParts } from '../bim/cost.js';
 import { holeFaces, FACE_LABEL, parseSpec } from '../geo/profiles.js';
 import { ROLES, canEdit } from '../core/workflow.js';
+import { renderReviewSection } from './review.js';
 
 export function renderProperties(app, host) {
   host.innerHTML = ''; const inst = app.selectedInstance(); const role = app.role();
@@ -42,6 +43,7 @@ export function renderProperties(app, host) {
   const byGroup = {}; for (const pt of parts) (byGroup[pt.group || '本体'] ||= []).push(pt);
   for (const [g, pts] of Object.entries(byGroup)) { const det = h('details', { open: g === '本体' || g === '柱' }, h('summary', {}, `${g}（${pts.length}）`)); for (const pt of pts) { const w = sum.items.find(i => i === pt) ; det.append(h('div', { class: 'pp-part' + (pt.ref ? ' ref' : '') + (pt.site ? ' site' : ''), onMouseEnter: () => app.highlightPart(inst.id, pt), onMouseLeave: () => app.highlightPart(null) }, h('span', { class: 'pp-part-name' }, pt.name || pt.kind), h('span', { class: 'pp-part-spec' }, pt.kind === 'weld' ? `▷${pt.size} L=${Math.round(pt.length)}` : pt.spec ? `${pt.spec} L=${Math.round(pt.length || 0)}` : pt.M || ''), pt.holes?.length ? h('span', { class: 'chip ghost' }, `穴${pt.holes.length}`) : null, pt.ref ? h('span', { class: 'chip ghost' }, '参照') : null, pt.site ? h('span', { class: 'chip ghost' }, '現場') : null)); } list.append(det); }
   host.append(list);
+  try { const rv = renderReviewSection(app, inst, app.instanceParts(inst)); if (rv) host.append(rv); } catch (e) { console.error(e); }
   const btns = h('div', { class: 'pp-actions' }, h('button', { class: 'btn sm', disabled: !editable, onClick: () => { const n = app.model.duplicateInstance(inst.id); app.rebuildInstance(n); app.select(n.id); } }, '複製'), h('button', { class: 'btn sm', disabled: !editable, onClick: () => app.familyEditor(t.id) }, 'タイプ編集'), h('button', { class: 'btn sm', onClick: () => app.viewer.fit(app.groups.get(inst.id)) }, 'ズーム'), h('button', { class: 'btn sm danger', disabled: !editable, onClick: () => app.removeInstance(inst.id) }, '削除'));
   host.append(btns);
 }

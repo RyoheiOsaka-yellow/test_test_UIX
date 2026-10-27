@@ -6,6 +6,8 @@ export function hbSubset(fontBuf, text) {
   if (!hb) return null; const ex = hb; const src = new Uint8Array(fontBuf); const ptr = ex.malloc(src.byteLength); new Uint8Array(ex.memory.buffer).set(src, ptr);
   const blob = ex.hb_blob_create(ptr, src.byteLength, 2, 0, 0); const face = ex.hb_face_create(blob, 0); ex.hb_blob_destroy(blob);
   const input = ex.hb_subset_input_create_or_fail(); const uset = ex.hb_subset_input_unicode_set(input); const cps = new Set([...text].map(c => c.codePointAt(0))); for (let c = 0x20; c < 0x7f; c++) cps.add(c); for (const c of cps) ex.hb_set_add(uset, c);
+  // GSUB/GPOS/GDEF を落とす: fontkit が英字直後の数字を locl 代替グリフへ置換し全角幅で描かれる問題を防ぐ（帳票はカーニング不要）
+  const dset = ex.hb_subset_input_set(input, 3 /* HB_SUBSET_SETS_DROP_TABLE_TAG */); for (const t of ['GSUB', 'GPOS', 'GDEF']) ex.hb_set_add(dset, ((t.charCodeAt(0) << 24) | (t.charCodeAt(1) << 16) | (t.charCodeAt(2) << 8) | t.charCodeAt(3)) >>> 0);
   const sub = ex.hb_subset_or_fail(face, input); ex.hb_subset_input_destroy(input); if (!sub) { ex.hb_face_destroy(face); ex.free(ptr); return null; }
   const rb = ex.hb_face_reference_blob(sub); const off = ex.hb_blob_get_data(rb, 0); const len = ex.hb_blob_get_length(rb); const out = len ? new Uint8Array(ex.memory.buffer).slice(off, off + len) : null;
   ex.hb_blob_destroy(rb); ex.hb_face_destroy(sub); ex.hb_face_destroy(face); ex.free(ptr); return out && out.byteLength ? out.buffer : null;

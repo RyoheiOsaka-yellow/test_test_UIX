@@ -48,6 +48,9 @@ export function parseHoles(str) {
   return out;
 }
 // 部材外周の全周隅肉溶接（端部）: 断面外形の各辺に沿ったビード。end: 'start'|'end'。n2 は基板面の法線（部材軸方向）
+// 端部溶接 DSL: "start:6 site; end:6" → [{end,size,site}]
+export function parseWelds(str) { const out = []; for (const seg of String(str || '').split(/[;\n]+/)) { const s = seg.trim(); if (!s) continue; const m = s.match(/^(start|end|始端|終端|両端|both)\s*[:：]?\s*(\d+(?:\.\d+)?)?\s*(site|現場)?/i); if (!m) continue; const size = m[2] ? +m[2] : 6; const site = !!m[3]; const e = m[1].toLowerCase(); if (e === 'both' || e === '両端') { out.push({ end: 'start', size, site }); out.push({ end: 'end', size, site }); } else out.push({ end: e === '始端' ? 'start' : e === '終端' ? 'end' : e, size, site }); } return out; }
+export function endWelds(part, dsl) { const out = []; for (const w of parseWelds(dsl)) out.push(...outlineWeld(part, w.end, w.size, { site: w.site, group: `${part.name} ${w.end === 'end' ? '終端' : '始端'}全周` })); return out; }
 export function outlineWeld(part, end, size, opts = {}) {
   const p = parseSpec(part.spec); if (!p) return []; const pts = sectionOutline(p); const L = part.length; const zE = end === 'end' ? L : 0; const axis = xdir(part.pl, DIR.Z); const n2 = end === 'end' ? neg(axis) : axis;
   const welds = []; const n = pts.length;
@@ -87,15 +90,15 @@ reg({
   id: 'member', name: '単材（形鋼・平鋼・鋼管）', category: '部材', ifc: 'IfcMember', markPrefix: 'M', icon: 'L',
   params: [spec('spec', '鋼材仕様', 'L-50x50x6', { help: 'L-50x50x6 / [-75x40x5x7 / FB-6x50 / PL-6x100x200 / SGP-50A / □-50x50x2.3 / LC-40x40x1.6 / H-100x100x6x8' }),
     num('L', '長さ', 1000, { scope: 'instance' }), { key: 'holes', label: '穴（DSL）', type: 'text', default: '', scope: 'instance', group: '加工', help: 'A:z50 s25 d12 slot25z; B:z150 s25 d12 x3@100' },
-    sel('axis', '配置軸', [['x', '水平 X'], ['y', '垂直 Y'], ['z', '水平 Z']], 'x', { scope: 'instance' }), P.material, P.finish],
-  parts(p) { const zDir = p.axis === 'y' ? DIR.Y : p.axis === 'z' ? DIR.Z : DIR.X; const xDir = p.axis === 'y' ? DIR.X : p.axis === 'z' ? DIR.X : DIR.NZ; return [{ kind: 'member', name: p.spec, spec: p.spec, length: p.L, holes: parseHoles(p.holes), finish: p.finish, material: p.material, pl: place([0, 0, 0], zDir, xDir) }]; },
+    sel('axis', '配置軸', [['x', '水平 X'], ['y', '垂直 Y'], ['z', '水平 Z']], 'x', { scope: 'instance' }), { key: 'welds', label: '端部溶接（DSL）', type: 'text', default: '', scope: 'instance', group: '加工', help: 'start:6 site; end:6 （始端/終端 全周隅肉、site=現場）' }, P.material, P.finish],
+  parts(p) { const zDir = p.axis === 'y' ? DIR.Y : p.axis === 'z' ? DIR.Z : DIR.X; const xDir = p.axis === 'y' ? DIR.X : p.axis === 'z' ? DIR.X : DIR.NZ; const m = { kind: 'member', name: p.spec, spec: p.spec, length: p.L, holes: parseHoles(p.holes), finish: p.finish, material: p.material, pl: place([0, 0, 0], zDir, xDir) }; return [m, ...endWelds(m, p.welds)]; },
 });
 // ---- 2. 板（穴パターン付き） ----
 reg({
   id: 'plate', name: '鋼板（穴パターン）', category: '部材', ifc: 'IfcPlate', markPrefix: 'PL', icon: '▭',
-  params: [num('t', '板厚', 6), num('W', '幅 W', 150), num('H', '長さ H', 150, { scope: 'instance' }), int('cols', '穴列数（W方向）', 2, { group: '加工' }), int('rows', '穴行数（H方向）', 2, { group: '加工' }), num('pitchW', '穴ピッチ W', 100, { group: '加工' }), num('pitchH', '穴ピッチ H', 100, { group: '加工' }), num('holeD', '穴径', 15, { group: '加工' }), num('slotLen', '長穴長さ（0=丸穴）', 0, { group: '加工' }), sel('slotDir', '長穴方向', [['z', 'H 方向'], ['s', 'W 方向']], 'z', { group: '加工' }), P.material, P.finish],
+  params: [num('t', '板厚', 6), num('W', '幅 W', 150), num('H', '長さ H', 150, { scope: 'instance' }), int('cols', '穴列数（W方向）', 2, { group: '加工' }), int('rows', '穴行数（H方向）', 2, { group: '加工' }), num('pitchW', '穴ピッチ W', 100, { group: '加工' }), num('pitchH', '穴ピッチ H', 100, { group: '加工' }), num('holeD', '穴径', 15, { group: '加工' }), num('slotLen', '長穴長さ（0=丸穴）', 0, { group: '加工' }), sel('slotDir', '長穴方向', [['z', 'H 方向'], ['s', 'W 方向']], 'z', { group: '加工' }), { key: 'welds', label: '端部溶接（DSL）', type: 'text', default: '', scope: 'instance', group: '加工', help: 'start:6 site; end:6' }, P.material, P.finish],
   parts(p) { const holes = []; const w0 = (p.W - (p.cols - 1) * p.pitchW) / 2, h0 = (p.H - (p.rows - 1) * p.pitchH) / 2; for (let r = 0; r < p.rows; r++) for (let c = 0; c < p.cols; c++) holes.push({ face: 'face', z: h0 + r * p.pitchH, s: w0 + c * p.pitchW, d: p.holeD, slot: p.slotLen > p.holeD ? { len: p.slotLen, dir: p.slotDir } : null });
-    return [{ kind: 'plate', name: `PL-${p.t}×${p.W}×${p.H}`, spec: `PL-${p.t}x${p.W}x${p.H}`, length: p.H, holes, finish: p.finish, material: p.material, pl: place([0, 0, 0], DIR.Z, DIR.X) }]; },
+    const pl = { kind: 'plate', name: `PL-${p.t}×${p.W}×${p.H}`, spec: `PL-${p.t}x${p.W}x${p.H}`, length: p.H, holes, finish: p.finish, material: p.material, pl: place([0, 0, 0], DIR.Z, DIR.X) }; return [pl, ...endWelds(pl, p.welds)]; },
 });
 // ---- 3. 門型架台（ベース付 / なし） CH14_004 / 005 / 010, CH13_021〜024 ----
 reg({
