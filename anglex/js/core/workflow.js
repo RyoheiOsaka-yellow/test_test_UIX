@@ -41,7 +41,7 @@ export function handoff(est, { from, to, who, note = '' }) {
   const token = 'h_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); est.tokens[to] = token; est.handoffs.push({ at: now, from, to, who, note, token });
   est.audit.push({ at: now, who, org: from, action: 'handoff', note: `${ROLES[from].name} → ${ROLES[to].name}` + (note ? '：' + note : '') }); est.updatedAt = now; return { est, token };
 }
-export function finalize(est, { who, org }) { if (org !== 'A') throw new Error('確定は A社のみ'); est.status = 'final'; est.currentOrg = 'A'; const now = new Date().toISOString(); est.audit.push({ at: now, who, org, action: 'finalize', note: '見積を確定' }); est.updatedAt = now; return est; }
+export function finalize(est, { who, org, note = '' }) { if (org !== 'A') throw new Error('確定は A社のみ'); est.status = 'final'; est.currentOrg = 'A'; const now = new Date().toISOString(); est.audit.push({ at: now, who, org, action: 'finalize', note: '見積を確定' + (note ? '：' + note : '') }); est.updatedAt = now; return est; }
 export function reject(est, { who, org, note }) { const now = new Date().toISOString(); est.status = 'rejected'; est.currentOrg = 'A'; est.audit.push({ at: now, who, org, action: 'reject', note: note || '差戻し' }); est.updatedAt = now; return est; }
 // 役割向けの表示用フィルタ（見せてはいけない列を落とす）
 export function redact(est, role) { if (role === 'A') return est; const e = JSON.parse(JSON.stringify(est)); for (const l of e.lines) { if (role === 'B') { delete l.factoryCost; delete l.breakdown; delete l.cNote; delete l.leadDays; l.aPrice = linePrices(l).aPrice; delete l.baseCost; delete l.aMarginPct; } if (role === 'C') { delete l.baseCost; delete l.aMarginPct; delete l.bMarginPct; delete l.bNote; } } if (role !== 'A') delete e.rates; return e; }

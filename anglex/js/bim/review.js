@@ -2,7 +2,10 @@
 // 3D 上にアラート（旗）を立てる。ズレ（隙間・レベル不一致・穴の板外/非5mm単位・配管位置）を検出して自動補正する。
 import * as THREE from 'three';
 import { plateBoxes } from './joints.js';
-import { parseSpec, sectionBox } from '../geo/profiles.js';
+import { parseSpec, sectionBox, decompose } from '../geo/profiles.js';
+import { xform } from './families.js';
+// 穴の位置（インスタンス座標）: 面→板ローカル (u,v) → 部品座標 → 配置
+export function holePos(pt, h) { try { const sp = parseSpec(pt.spec); if (!sp) return null; const plates = decompose(sp, pt.length); const pl = plates.find(q => q.name === h.face) || plates[0]; if (!pl) return null; const [u, v] = pl.map(h.z, h.s); const loc = new THREE.Vector3(u, v, pl.t / 2).applyMatrix4(pl.M); return new THREE.Vector3(...xform(pt.pl, [loc.x, loc.y, loc.z])); } catch { return null; } }
 
 export const REVIEW_KINDS = { weld: '溶接', hole: '穴あけ', anchor: 'アンカー', ubolt: 'Uボルト', rod: '吊ボルト', finish: '仕上げ', origin: '図面根拠', risk: 'リスク要因', length: '寸法' };
 // チェックリスト生成（parts = app.instanceParts(inst)）
@@ -11,7 +14,7 @@ export function buildChecklist(inst, parts, { importOnly = true } = {}) {
   const welds = {}; for (const pt of parts) if (pt.kind === 'weld') { const k = pt.group || '溶接'; (welds[k] ||= { L: 0, n: 0, size: pt.size, site: pt.site, type: pt.weldType, mid: V(pt.from) }); welds[k].L += pt.length; welds[k].n++; }
   for (const [g, w] of Object.entries(welds)) items.push({ id: 'weld:' + g, kind: 'weld', label: `${g}  ${w.type === 'butt' ? '突合せ' : '隅肉'} ▷${w.size}  L=${Math.round(w.L)}mm（${w.site ? '現場 ▶' : '工場'}）`, need: '溶接の要否・脚長・全周/片側・現場/工場を確認', pos: w.mid, mustCheck: true });
   const holes = {}; parts.forEach((pt, pi) => { if (!pt.holes || pt.ref) return; for (const h of pt.holes) { const k = `${pt.name || pt.spec}|${h.kind || 'general'}|${h.d}${h.slot ? 'x' + h.slot.len : ''}`; const o = (holes[k] ||= { part: pt.name || pt.spec, kind: h.kind || 'general', d: h.d, slot: h.slot, n: 0, partIndex: pi, first: h }); o.n++; } });
-  for (const o of Object.values(holes)) { const use = { anchor: 'アンカー', ubolt: 'Uボルト', rod: '吊ボルト', joint: '接合ボルト', general: '一般' }[o.kind] || o.kind; items.push({ id: 'hole:' + o.part + ':' + o.kind + ':' + o.d, kind: 'hole', label: `${o.part}  ${o.slot ? `長穴 ${o.d}×${o.slot.len}` : `丸穴 φ${o.d}`} ×${o.n}（${use}）`, need: '穴径・ピッチ・端あき・面を確認', partIndex: o.partIndex, hole: o.first, mustCheck: o.kind !== 'ubolt' }); }
+  for (const o of Object.values(holes)) { const use = { anchor: 'アンカー', ubolt: 'Uボルト', rod: '吊ボルト', joint: '接合ボルト', general: '一般' }[o.kind] || o.kind; items.push({ id: 'hole:' + o.part + ':' + o.kind + ':' + o.d, kind: 'hole', label: `${o.part}  ${o.slot ? `長穴 ${o.d}×${o.slot.len}` : `丸穴 φ${o.d}`} ×${o.n}（${use}）`, flag: `${o.slot ? '長穴' : '穴'} φ${o.d}×${o.n}`, need: '穴径・ピッチ・端あき・面を確認', partIndex: o.partIndex, hole: o.first, pos: holePos(parts[o.partIndex], o.first), mustCheck: o.kind !== 'ubolt' }); }
   const anchors = parts.filter(p => p.kind === 'anchor'); if (anchors.length) items.push({ id: 'anchor', kind: 'anchor', label: `アンカー ${anchors[0].M} ×${anchors.length}（現場施工）`, need: 'アンカー種別・埋込深さ・母材を確認', pos: V(anchors[0].pl.pos), mustCheck: true });
   const ubs = parts.filter(p => p.kind === 'ubolt'); const ubg = {}; for (const u of ubs) (ubg[u.nominal || u.od] ||= { n: 0, M: u.M, pos: V(u.pl.pos) }).n++; for (const [k, u] of Object.entries(ubg)) items.push({ id: 'ubolt:' + k, kind: 'ubolt', label: `Uボルト ${u.M} ×${u.n}（配管 ${k}）`, need: '管径・メーカー差（ピッチ P）・材質を確認', pos: u.pos, mustCheck: imported });
   const rods = parts.filter(p => p.kind === 'rod'); if (rods.length) items.push({ id: 'rod', kind: 'rod', label: `吊ボルト ${rods[0].M} ×${rods.length} L=${rods[0].L}`, need: '吊り長さ・ナット位置を確認', pos: V(rods[0].pl.pos), mustCheck: imported });
@@ -30,9 +33,12 @@ export function detectMisalignment(app) {
   // 1) 隙間（0.5〜60mm）: 面が平行に向き合い、他2軸で重なる
   for (let a = 0; a < insts.length; a++) for (let b = a + 1; b < insts.length; b++) { const A = insts[a], B = insts[b]; let best = null; for (const pa of pbs.get(A.id)) for (const pb of pbs.get(B.id)) { if (pa.part.ref || pb.part.ref) continue; for (const ax of AX) { const o = AX.filter(k => k !== ax); const overlap = o.every(k => Math.min(pa.box.max[k], pb.box.max[k]) - Math.max(pa.box.min[k], pb.box.min[k]) > 5); if (!overlap) continue; const g1 = pb.box.min[ax] - pa.box.max[ax], g2 = pa.box.min[ax] - pb.box.max[ax]; const g = g1 > 0.5 ? g1 : g2 > 0.5 ? g2 : null; if (g == null || g > 60) continue; if (!best || g < best.gap) best = { gap: g, axis: ax, dir: g1 > 0.5 ? -1 : 1, pa, pb }; } }
     if (best) { const onLevel = i => model.levels.some(l => Math.abs(l.elev - i.pos[1]) <= 1); let mover = B, dir = best.dir; // Y 方向の隙間はレベルに載っていない側を動かす（両方レベル上なら自動補正しない＝部材長で調整）
-      if (best.axis === 'y') { if (onLevel(B) && !onLevel(A)) { mover = A; dir = -dir; } else if (onLevel(A) && onLevel(B)) mover = null; }
+      let ext = null; // 両方レベル上: 下側の部材を伸ばして密着（単材 axis=y → L、門型架台/ポール → H）
+      if (best.axis === 'y') { if (onLevel(B) && !onLevel(A)) { mover = A; dir = -dir; } else if (onLevel(A) && onLevel(B)) { mover = null; const lower = best.dir === -1 ? A : B; ext = extendable(model, lower); } }
       const delta = [0, 0, 0]; delta[AX.indexOf(best.axis)] = dir * best.gap; const gmm = Math.round(best.gap * 10) / 10;
-      alerts.push({ id: `gap:${A.id}:${B.id}`, kind: 'gap', label: `${A.mark} と ${B.mark} の間に隙間 ${gmm} mm（${best.axis.toUpperCase()} 方向）`, instIds: [A.id, B.id], fixLabel: mover ? `${mover.mark} を ${gmm} mm 寄せて密着` : '両方レベル上のため自動補正なし（部材長・H で調整）', fix: mover ? () => { model.updateInstance(mover.id, { pos: mover.pos.map((v, i) => v + delta[i]) }); app.syncInstanceTransform(mover); } : null }); } }
+      const fixLabel = mover ? `${mover.mark} を ${gmm} mm 寄せて密着` : ext ? `${ext.inst.mark} の ${ext.label} を +${gmm} mm（${ext.cur} → ${Math.round((ext.cur + best.gap) * 10) / 10}）で密着` : '両方レベル上・伸ばせる部材なし（手動で寸法調整）';
+      const fix = mover ? () => { model.updateInstance(mover.id, { pos: mover.pos.map((v, i) => v + delta[i]) }); app.syncInstanceTransform(mover); } : ext ? () => { model.updateInstance(ext.inst.id, { params: { [ext.key]: Math.round((ext.cur + best.gap) * 10) / 10 } }); app.rebuildInstance(ext.inst); } : null;
+      alerts.push({ id: `gap:${A.id}:${B.id}`, kind: 'gap', label: `${A.mark} と ${B.mark} の間に隙間 ${gmm} mm（${best.axis.toUpperCase()} 方向）`, instIds: [A.id, B.id], fixLabel, fix }); } }
   // 2) レベル不一致: 原点 y がどのレベルとも一致しない（±1mm）
   for (const i of insts) { const lv = model.levels.find(l => Math.abs(l.elev - i.pos[1]) <= 1); if (!lv) { const near = model.levels.reduce((p, c) => Math.abs(c.elev - i.pos[1]) < Math.abs(p.elev - i.pos[1]) ? c : p); const d = near.elev - i.pos[1]; if (Math.abs(d) <= 150) alerts.push({ id: 'level:' + i.id, kind: 'level', label: `${i.mark} の高さ ${Math.round(i.pos[1])} が ${near.name}（${near.elev}）と ${Math.round(d)} mm ずれ`, instIds: [i.id], fixLabel: `${near.name} に合わせる`, fix: () => { model.updateInstance(i.id, { pos: [i.pos[0], near.elev, i.pos[2]], level: near.id }); app.syncInstanceTransform(i); } }); } }
   // 3) 穴: 板外・5mm 単位でない（単材/板ファミリの DSL と extraHoles を対象）
@@ -46,6 +52,8 @@ export function detectMisalignment(app) {
   for (const j of model.joints) if (j.warning) { const A = model.getInstance(j.a), B = model.getInstance(j.b); if (!A || !B) continue; const g = alerts.find(x => x.kind === 'gap' && x.instIds.includes(A.id) && x.instIds.includes(B.id)); alerts.push({ id: 'joint:' + j.id, kind: 'joint', label: `接合 ${j.label}: 接触面なし`, instIds: [A.id, B.id], fixLabel: g ? '隙間を詰めて再評価' : '部材を手動で接触させる', fix: g ? () => { g.fix(); app.rebuildAll(); } : null }); }
   return alerts;
 }
+// 上方向へ伸ばせる寸法: 単材（配置軸 Y）の L、門型架台・ポールの H
+function extendable(model, inst) { const fam = model.familyOf(inst); const p = model.resolved(inst); if (fam.id === 'member' && p.axis === 'y') return { inst, key: 'L', label: '長さ L', cur: p.L }; if ((fam.id === 'portal_frame' || fam.id === 'pole') && p.H != null) return { inst, key: 'H', label: '高さ H', cur: p.H }; return null; }
 function holeSourceOf(app, inst, pt, pi) { // 穴の出所: 単材/板の holes DSL か extraHoles
   const fam = app.model.familyOf(inst); if (fam.id === 'member') return { key: 'holes' }; return { key: 'extraHoles', partIndex: pi }; }
 export function holeDSL(h) { return `${h.face}:z${Math.round(h.z * 10) / 10} s${Math.round(h.s * 10) / 10} d${h.d}${h.slot ? ' slot' + h.slot.len + h.slot.dir : ''}`; }

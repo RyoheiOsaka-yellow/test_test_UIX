@@ -2,6 +2,8 @@ await page.click('#btnEstimate'); await page.waitForTimeout(600);
 await page.click('text=モデルから見積を作成'); await page.waitForTimeout(1500);
 page.once('dialog', d => d.accept());
 await page.click('text=→ 販売（商社・代理店） へ渡す'); await page.waitForTimeout(400);
+// 確認ゲート（未確認あり）→ 理由を付けて進める
+if (await page.locator('.modal >> text=承知の上で受け渡し').count()) { await page.click('.modal >> text=承知の上で受け渡し'); await page.waitForTimeout(300); await page.fill('.modal textarea', '客先要望で先行'); await page.click('.modal-foot .btn.primary'); await page.waitForTimeout(400); }
 await page.fill('.modal textarea', '利益率をお願いします'); await page.click('.modal-foot .btn.primary'); await page.waitForTimeout(800);
 console.log('AFTER HANDOFF (A view):', (await page.textContent('.est-main')).slice(0, 200).replace(/\s+/g, ' '));
 // B社へ切替
