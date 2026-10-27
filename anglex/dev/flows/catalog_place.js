@@ -1,4 +1,4 @@
-await page.click('#btnCatalog'); await page.waitForTimeout(600);
+await page.evaluate(() => document.querySelector('#btnCatalog').click()); await page.waitForTimeout(600);
 await page.fill('.cat-filters input', 'タン付吊バンド'); await page.waitForTimeout(300);
 await page.click('.cat-item >> nth=0'); await page.waitForTimeout(300);
 await page.selectOption('.cat-models select', { index: 5 }); await page.waitForTimeout(200);

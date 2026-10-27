@@ -13,9 +13,12 @@ export function reviewGate(app, actionLabel) {
 }
 
 export async function openEstimate(app) {
-  const role = app.role(); const user = app.user();
-  const ests = await app.store.listEstimates(app.project.id); const current = app.currentEstimateId ? ests.find(e => e.id === app.currentEstimateId) : ests[0];
-  const host = h('div', { class: 'est-wrap' }); const m = modal({ title: '見積ワークフロー', wide: true, cls: 'estimate', body: host });
+  const host = h('div', { class: 'est-wrap' }); const m = modal({ title: '見積ワークフロー', wide: true, cls: 'estimate', body: host }); await mountEstimate(app, host, m);
+}
+// ⑤ 概算見積ペインへインライン描画（シェル用）
+export async function renderEstimatePanel(app, host) { host.innerHTML = ''; const wrap = h('div', { class: 'est-wrap' }); host.append(wrap); await mountEstimate(app, wrap, { close() { } }); }
+async function mountEstimate(app, host, m) {
+  const role = app.role();
   const render = async () => { host.innerHTML = ''; const list = await app.store.listEstimates(app.project.id); const est = app.currentEstimateId ? list.find(e => e.id === app.currentEstimateId) || list[0] : list[0]; if (est) app.currentEstimateId = est.id;
     const side = h('div', { class: 'est-side' }, h('div', { class: 'est-side-head' }, '見積一覧'), ...list.map(e => h('div', { class: 'est-item' + (est && e.id === est.id ? ' sel' : ''), onClick: () => { app.currentEstimateId = e.id; render(); } }, h('div', {}, h('b', {}, e.no), ' ', h('span', { class: 'chip ' + statusCls(e.status) }, WF.STATUS[e.status])), h('div', { class: 'muted' }, `Rev.${e.revision} / 担当: ${WF.ROLES[e.currentOrg].name} / ${fmt.date(e.updatedAt)}`))), role === 'A' ? h('button', { class: 'btn primary block', onClick: async () => { const r = await createEstimate(app); if (r) render(); } }, '＋ モデルから見積を作成') : h('div', { class: 'muted' }, 'A社が作成した見積が受け渡されるとここに表示されます'));
     host.append(side); if (!est) { host.append(h('div', { class: 'pp-empty' }, '見積がありません。「モデルから見積を作成」で現在の3Dモデル（単一ソース）から明細を自動生成します。')); return; }

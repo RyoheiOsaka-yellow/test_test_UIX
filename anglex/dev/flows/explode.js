@@ -1,0 +1,14 @@
+const S = '/tmp/claude-0/-home-user-test-test-UIX/8bb357dc-bfe3-5217-a828-e2bc54d304f7/scratchpad'; const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
+await page.evaluate(() => { const i = app.model.instances.find(x => x.mark === 'MF-1'); app.select(i.id); app.shell.goStep(4); app.viewer.fit(app.groups.get(i.id)); const c = app.viewer.controls.target; app.viewer.camera.position.set(c.x + 900, c.y + 700, c.z + 1100); app.viewer.controls.update(); app.viewer.invalidate(3); }); await page.waitForTimeout(800);
+log('BOM ROWS', await page.$$eval('#explodeHost .bom-table tbody tr', trs => trs.length));
+await page.evaluate(() => { const chk = document.querySelector('#explodeHost input[type=checkbox]'); chk.click(); const sl = document.querySelector('#explodeHost input[type=range]'); sl.value = 0.6; sl.dispatchEvent(new Event('input', { bubbles: true })); }); await page.waitForTimeout(1200);
+log('BALLOONS', await page.evaluate(() => document.querySelectorAll('.v-label.balloon-lbl').length));
+await page.screenshot({ path: S + '/s14_explode.png' });
+await page.evaluate(() => { document.querySelector('#stage').scrollTop = 1400; }); await page.waitForTimeout(500); await page.screenshot({ path: S + '/s15_bom.png' });
+const before = await page.evaluate(() => app.model.instances.length);
+await page.evaluate(() => { const sl = document.querySelector('#explodeHost input[type=range]'); sl.value = 0; sl.dispatchEvent(new Event('input', { bubbles: true })); app.ungroupInstance(app.model.instances.find(x => x.mark === 'MF-1').id); }); await page.waitForTimeout(2000);
+log('UNGROUP', await page.evaluate(() => ({ n: app.model.instances.length, made: app.model.instances.filter(i => i.name && i.name.startsWith('MF-1 ')).map(i => ({ mark: i.mark, name: i.name, spec: app.model.resolved(i).spec, L: app.model.resolved(i).L, pos: i.pos, rot: i.rot.map(v => Math.round(v * 100) / 100), holes: app.model.resolved(i).holes })) })));
+await page.evaluate(() => { document.querySelector('#stage').scrollTop = 0; app.viewer.fit(); const c = app.viewer.controls.target; app.viewer.camera.position.set(c.x + 1200, c.y + 900, c.z + 1500); app.viewer.controls.update(); app.viewer.invalidate(3); }); await page.waitForTimeout(1200); await page.screenshot({ path: S + '/s16_ungrouped.png' });
+log('MASS', await page.evaluate(() => document.querySelector('#statusModel').textContent));
+await page.evaluate(() => { for (let k = 0; k < 20 && app.model.instances.length !== 5; k++) app.model.undo(); app.rebuildAll(); app.refreshBrowser(); }); await page.waitForTimeout(800);
+log('AFTER UNDO', await page.evaluate(() => app.model.instances.map(i => i.mark).join(',')));
