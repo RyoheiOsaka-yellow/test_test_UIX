@@ -23,6 +23,8 @@ for k, v in mods.items():
     imports[k] = 'data:text/javascript;charset=utf-8;base64,' + base64.b64encode(v.encode('utf-8')).decode()
 html = re.sub(r'<script type="importmap">.*?</script>', lambda m: '<script type="importmap">' + json.dumps({"imports": imports}) + '</script>', html, flags=re.S)
 html = html.replace('<link rel="stylesheet" href="css/app.css">', '<style>\n' + css + '\n</style>')
-html = html.replace('<script type="module" src="js/main.js"></script>', '<script type="module">import "anglex:js/main.js";</script>')
+font = ROOT / 'fonts' / 'NotoSansJP-JIS.ttf'
+fontTag = ('<script>window.__anglexFontB64=' + json.dumps(base64.b64encode(font.read_bytes()).decode()) + ';</script>\n') if font.exists() else ''
+html = html.replace('<script type="module" src="js/main.js"></script>', fontTag + '<script type="module">import "anglex:js/main.js";</script>')
 out = ROOT / 'dist' / 'ANGLEX.html'; out.parent.mkdir(exist_ok=True); out.write_text(html, encoding='utf-8')
 print('wrote', out, round(out.stat().st_size / 1024), 'KB,', len(mods), 'modules')

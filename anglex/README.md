@@ -60,7 +60,7 @@ risk ≤ 0.6 で確定、≤ 1.8 で推論、それ以上は要判断。読込�
 ## 帳票の書出し（CSV / XLSX / PDF）
 - 見積: 見積書 PDF（日本語フォント埋込・直接ダウンロード）、XLSX（数式入り: 採用原価・提示単価・販売単価・小計・税）、CSV、加工指示書 PDF（部材ごとの3Dスナップ・穴・溶接・ボルト）
 - 重量: 重量計算書 PDF / XLSX（単位質量×長さ、穴控除、めっき付着、合計の数式）/ CSV、集計表 XLSX
-- モデル: プロジェクト JSON、glTF/GLB、DXF 加工図（板展開＋穴）、IFC 風 JSON、**SimReady パッケージ**（USDA + GLB + PBR テクスチャ PNG + metadata.json（BOM・質量・重心・bbox・意味クラス）+ サムネイルの ZIP）
+- モデル: プロジェクト JSON、glTF/GLB、DXF 加工図（板展開＋穴）、IFC 風 JSON、**SimReady パッケージ**（USDA + USDZ（64byte整列）+ GLB + PBR テクスチャ PNG + 簡略コリジョン（部品 OBB の Cube プロキシ、メッシュは convexHull 近似）+ metadata.json（BOM・質量・重心・bbox・意味クラス）+ サムネイルの ZIP）
 
 ## 3D 品質（SimReady 指向）
 PBR（アルベド / 法線 / 粗さ / AO）マテリアル、HDRI 環境光（Poly Haven CC0）、GTAO 接触陰影 + SMAA、面取り付き六角ボルト・ナット（30° 円錐面取り）、LOD400 の実螺旋ねじ山、板エッジ・穴の面取り、根元R、溶接ビードの波紋。CDN が使えない環境ではプロシージャル材質と RoomEnvironment にフォールバックします。

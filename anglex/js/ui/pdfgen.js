@@ -1,17 +1,20 @@
 // PDF 生成（pdf-lib + fontkit + Noto Sans JP 埋め込み・サブセット化）。印刷ダイアログに依存せず直接ダウンロードできる日本語 PDF。
-let libs = null, fontBytes = null;
+let libs = null, fontBytes = null, fontIsTrueType = false;
 export async function loadPdfLibs() {
   if (libs) return libs;
   const pdfLib = await import('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.min.js');
   if (!window.fontkit) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
-  if (!fontBytes) { const r = await fetch('https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-jp/NotoSansJP_400Regular.ttf'); if (!r.ok) throw new Error('日本語フォントを取得できません'); fontBytes = await r.arrayBuffer(); }
+  if (!fontBytes) { // 1) 同梱の JIS サブセット TrueType（サブセット埋込可 → 小さい PDF） 2) 失敗時は CDN の Noto Sans JP（CFF: 全文埋込）
+    if (window.__anglexFontB64) { try { fontBytes = Uint8Array.from(atob(window.__anglexFontB64), c => c.charCodeAt(0)).buffer; fontIsTrueType = true; } catch (e) { fontBytes = null; } } // 単一 HTML 版: 同梱フォント
+    try { const r = await fetch(new URL('fonts/NotoSansJP-JIS.ttf', document.baseURI)); if (r.ok) { fontBytes = await r.arrayBuffer(); fontIsTrueType = new DataView(fontBytes).getUint32(0) === 0x00010000; } } catch (e) { }
+    if (!fontBytes) { const r = await fetch('https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-jp/NotoSansJP_400Regular.ttf'); if (!r.ok) throw new Error('日本語フォントを取得できません'); fontBytes = await r.arrayBuffer(); fontIsTrueType = false; } }
   libs = { ...pdfLib, fontkit: window.fontkit }; return libs;
 }
 const A4 = [595.28, 841.89];
 // 汎用レポート: { title, subtitle, meta:[[k,v]], sections:[{heading, table:{cols:[{label,w,align}], rows:[[...]]}, text, image:{dataUrl,w,h}, kv:[[k,v]] }], footer, landscape }
 export async function buildReport(doc) {
   const { PDFDocument, rgb, StandardFonts } = await loadPdfLibs(); const pdf = await PDFDocument.create(); pdf.registerFontkit(libs.fontkit);
-  const font = await pdf.embedFont(fontBytes, { subset: false }); const mono = await pdf.embedFont(StandardFonts.Helvetica);
+  const font = await pdf.embedFont(fontBytes, { subset: fontIsTrueType }); const mono = await pdf.embedFont(StandardFonts.Helvetica);
   const [W, H] = doc.landscape ? [A4[1], A4[0]] : A4; const M = 40; let page = pdf.addPage([W, H]); let y = H - M; const ink = rgb(0.1, 0.1, 0.09), mute = rgb(0.45, 0.45, 0.42), line = rgb(0.75, 0.73, 0.65), head = rgb(0.92, 0.91, 0.86);
   const tw = (s, size) => font.widthOfTextAtSize(String(s ?? ''), size);
   const newPage = () => { page = pdf.addPage([W, H]); y = H - M; };
