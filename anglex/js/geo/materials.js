@@ -96,19 +96,30 @@ export function upgradeMaterial(m, name, { repeat = 1, normalScale = 0.6, useAlb
 export const FINISH_COLORS = { HDZ: 0xb9bdc2, HDZ35: 0xb9bdc2, HDZ55: 0xb5b9be, EZ: 0xc6cad0, SUS304: 0xd2d5d9, ZAM: 0xc0c4c8, PAINT: 0x8c3b2b, BLACK: 0x3d3f42, PVC: 0x9ea3a8, RUBBER: 0x222426, ZINC_PAINT: 0xa9adb1, BOLT: 0xb4b8bd, WELD: 0x6f7378, CONCRETE: 0xa8a39a, GLASS: 0x9ec8e0 };
 
 // finish コード → MeshStandardMaterial（キャッシュ）
+// 汚れ・使用感（プロシージャル 3D ノイズ）: ワールド座標ベースで、アルベドをわずかに暗く・粗さをムラにする。軽量描画（__anglexNoPBR）では無効
+function addGrunge(m, k = 0.1) {
+  if (globalThis.__anglexNoPBR) return m;
+  m.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('void main() {', 'varying vec3 vGrungeP;\nvoid main() {').replace('#include <begin_vertex>', '#include <begin_vertex>\n vGrungeP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('void main() {', `varying vec3 vGrungeP;\nfloat gh_(vec3 p){ return fract(sin(dot(p, vec3(12.9898,78.233,37.719))) * 43758.5453); }\nfloat gn_(vec3 p){ vec3 i=floor(p); vec3 f=fract(p); f=f*f*(3.0-2.0*f); float a=gh_(i), b=gh_(i+vec3(1,0,0)), c=gh_(i+vec3(0,1,0)), d=gh_(i+vec3(1,1,0)), e=gh_(i+vec3(0,0,1)), f2=gh_(i+vec3(1,0,1)), g=gh_(i+vec3(0,1,1)), h2=gh_(i+vec3(1,1,1)); return mix(mix(mix(a,b,f.x),mix(c,d,f.x),f.y), mix(mix(e,f2,f.x),mix(g,h2,f.x),f.y), f.z); }\nfloat grunge_(vec3 p){ return 0.55*gn_(p*0.012)+0.3*gn_(p*0.05)+0.15*gn_(p*0.2); }\nvoid main() {`)
+      .replace('#include <map_fragment>', `#include <map_fragment>\n { float g_ = grunge_(vGrungeP); diffuseColor.rgb *= 1.0 - ${k.toFixed(3)} * smoothstep(0.35, 0.85, g_); }`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>\n { float g2_ = grunge_(vGrungeP + 37.0); roughnessFactor = clamp(roughnessFactor + ${(k * 1.6).toFixed(3)} * (g2_ - 0.5), 0.05, 1.0); }`);
+  };
+  m.customProgramCacheKey = () => 'grunge' + k.toFixed(3); return m;
+}
 export function finishMaterial(finish = 'HDZ', opts = {}) {
   const key = finish + JSON.stringify(opts); if (cache.has(key)) return cache.get(key);
   let m;
   switch (finish) {
-    case 'HDZ': case 'HDZ35': case 'HDZ45': case 'HDZ55': { const t = spangle(512, 7 + (finish.length)); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, roughnessMap: t.roughnessMap, normalMap: t.normalMap, normalScale: new THREE.Vector2(0.18, 0.18), metalness: 0.72, roughness: 0.5, envMapIntensity: 1.15, clearcoat: 0.05, clearcoatRoughness: 0.5 }); break; }
+    case 'HDZ': case 'HDZ35': case 'HDZ45': case 'HDZ55': { const t = spangle(512, 7 + (finish.length)); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, roughnessMap: t.roughnessMap, normalMap: t.normalMap, normalScale: new THREE.Vector2(0.18, 0.18), metalness: 0.72, roughness: 0.5, envMapIntensity: 1.15, clearcoat: 0.05, clearcoatRoughness: 0.5 }); addGrunge(m, 0.10); break; }
     case 'SUS304': case 'SUS': { const t = hairline(); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, roughnessMap: t.roughnessMap, normalMap: t.normalMap, normalScale: new THREE.Vector2(0.4, 0.4), metalness: 0.95, roughness: 0.36, envMapIntensity: 1.05, anisotropy: 0.6 }); upgradeMaterial(m, 'metal_plate', { repeat: 1, normalScale: 0.35, useAlbedo: false }); break; }
-    case 'EZ': { const t = noise(256, [200, 204, 212], 10, 11); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.9, roughness: 0.28, envMapIntensity: 1.0 }); upgradeMaterial(m, 'metal_plate_02', { repeat: 1, normalScale: 0.25, useAlbedo: false }); break; }
+    case 'EZ': { const t = noise(256, [200, 204, 212], 10, 11); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.9, roughness: 0.28, envMapIntensity: 1.0 }); upgradeMaterial(m, 'metal_plate_02', { repeat: 1, normalScale: 0.25, useAlbedo: false }); addGrunge(m, 0.08); break; }
     case 'ZAM': { const t = noise(256, [186, 190, 194], 14, 12); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0.8, roughness: 0.45 }); break; }
-    case 'PAINT': m = new THREE.MeshPhysicalMaterial({ color: FINISH_COLORS.PAINT, metalness: 0.0, roughness: 0.72, clearcoat: 0.15, clearcoatRoughness: 0.6 }); upgradeMaterial(m, 'metal_plate', { normalScale: 0.3, useAlbedo: false }); break;
-    case 'BLACK': { const t = millscale(); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0.55, roughness: 0.78 }); upgradeMaterial(m, 'rusty_metal_04', { repeat: 1, normalScale: 0.6, useAlbedo: false }); break; }
+    case 'PAINT': m = new THREE.MeshPhysicalMaterial({ color: FINISH_COLORS.PAINT, metalness: 0.0, roughness: 0.72, clearcoat: 0.15, clearcoatRoughness: 0.6 }); upgradeMaterial(m, 'metal_plate', { normalScale: 0.3, useAlbedo: false }); addGrunge(m, 0.12); break;
+    case 'BLACK': { const t = millscale(); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0.55, roughness: 0.78 }); upgradeMaterial(m, 'rusty_metal_04', { repeat: 1, normalScale: 0.6, useAlbedo: false }); addGrunge(m, 0.16); break; }
     case 'PVC': m = new THREE.MeshStandardMaterial({ color: FINISH_COLORS.PVC, metalness: 0.0, roughness: 0.55 }); break;
     case 'RUBBER': m = new THREE.MeshStandardMaterial({ color: FINISH_COLORS.RUBBER, metalness: 0.0, roughness: 0.95 }); break;
-    case 'BOLT': { const t = noise(256, [190, 194, 200], 14, 31); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.92, roughness: 0.34, envMapIntensity: 1.0 }); break; }
+    case 'BOLT': { const t = noise(256, [190, 194, 200], 14, 31); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.92, roughness: 0.34, envMapIntensity: 1.0 }); addGrunge(m, 0.08); break; }
     case 'THREAD': { m = new THREE.MeshStandardMaterial({ color: 0xaeb2b7, metalness: 0.9, roughness: 0.42, normalMap: threadNormalMap(8), normalScale: new THREE.Vector2(1.0, 1.0) }); break; }
     case 'WELD': { m = new THREE.MeshStandardMaterial({ color: 0x7c8086, metalness: 0.75, roughness: 0.55, normalMap: weldNormalMap(), normalScale: new THREE.Vector2(1.2, 1.2) }); break; }
     case 'CONCRETE': { const t = noise(256, [168, 164, 156], 22, 21); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0, roughness: 0.95 }); upgradeMaterial(m, 'concrete_floor_02', { repeat: 20, normalScale: 0.7, useAlbedo: true }); break; }

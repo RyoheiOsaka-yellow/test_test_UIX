@@ -1,0 +1,5 @@
+const S = '/tmp/claude-0/-home-user-test-test-UIX/8bb357dc-bfe3-5217-a828-e2bc54d304f7/scratchpad'; const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
+log('GRUNGE', await page.evaluate(async () => { const m = await import('./js/geo/materials.js'); return { hdz: typeof m.finishMaterial('HDZ').onBeforeCompile, key: m.finishMaterial('HDZ').customProgramCacheKey?.() }; }));
+await page.evaluate(() => { const s = document.querySelector('#selStyle'); s.value = 'realistic'; s.dispatchEvent(new Event('change', { bubbles: true })); const i = app.model.instances.find(x => x.mark === 'MF-1'); app.select(i.id); app.viewer.fit(app.groups.get(i.id), 1.1); const c = app.viewer.controls.target; app.viewer.camera.position.set(c.x + 700, c.y + 420, c.z + 800); app.viewer.controls.update(); app.viewer.invalidate(4); }); await page.waitForTimeout(6000);
+log('GL ERR', await page.evaluate(() => { const gl = app.viewer.renderer.getContext(); return gl.getError(); }));
+await page.screenshot({ path: S + '/s20_realistic.png' });

@@ -83,7 +83,9 @@ function pipeSet(parts, pipesStr, span, { origin = [0, 0, 0], topY = 0, plateT =
 
 // ========================================================================================
 export const FAMILIES = [];
-const reg = f => { FAMILIES.push(f); return f; };
+// CAD 図面色の既定役割（ファミリ側のヒント）。インスタンスの cadRole（上書き） > role（ファミリ既定） > 名称判定
+const ROLE_HINTS = { portal_frame: [[/柱/, 'column'], [/梁/, 'beam'], [/ベース/, 'base'], [/方杖|斜/, 'brace']], bracket_L: [[/腕/, 'beam'], [/縦|壁板/, 'column'], [/斜/, 'brace'], [/ベース/, 'base']], bracket_tri: [[/腕/, 'beam'], [/縦/, 'column'], [/斜/, 'brace']], hanger_support: [[/サポート材/, 'support']], channel_stand: [[/チャンネル/, 'support'], [/脚|縦/, 'column'], [/ベース/, 'base']], pole: [[/ポール/, 'column'], [/ベース/, 'base'], [/ブラケット/, 'beam']], frame_stand: [[/枠/, 'beam'], [/脚/, 'column'], [/ベース/, 'base']], ceiling_trapeze: [[/横材/, 'support']], guard: [[/支柱/, 'column'], [/横桟/, 'beam'], [/ベース/, 'base']], double_member: [[/部材/, 'beam']], slotted_angle: [[/フリーアングル/, 'support']], lip_channel: [[/フリーチャンネル/, 'support']] };
+const reg = f => { const hints = ROLE_HINTS[f.id]; if (hints && f.parts) { const orig = f.parts; f.parts = function (p, ctx) { const parts = orig.call(this, p, ctx); for (const pt of parts) { if (pt.role || pt.ref || !['member', 'plate', 'pipe', 'custom'].includes(pt.kind)) continue; const n = `${pt.group || ''} ${pt.name || ''}`; const hit = hints.find(([re]) => re.test(n)); if (hit) pt.role = hit[1]; } return parts; }; } FAMILIES.push(f); return f; };
 
 // ---- 1. 単材（形鋼・板・管） ----
 reg({
