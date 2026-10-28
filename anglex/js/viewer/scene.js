@@ -45,8 +45,8 @@ export class Viewer {
     this.camera = new THREE.PerspectiveCamera(42, W / H, 1, 60000); this.camera.position.set(2200, 1700, 2600);
     this.ortho = new THREE.OrthographicCamera(-1000, 1000, 750, -750, -50000, 50000);
     this.activeCamera = this.camera;
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement); this.controls.enableDamping = true; this.controls.dampingFactor = 0.08; this.controls.target.set(0, 600, 0); this.controls.maxPolarAngle = Math.PI * 0.95;
-    this.orthoControls = new OrbitControls(this.ortho, this.renderer.domElement); this.orthoControls.enableRotate = false; this.orthoControls.enabled = false; this.orthoControls.enableDamping = true;
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement); this.controls.enableDamping = true; this.controls.dampingFactor = 0.1; this.controls.zoomToCursor = true; this.controls.zoomSpeed = 0.9; this.controls.target.set(0, 600, 0); this.controls.maxPolarAngle = Math.PI * 0.95;
+    this.orthoControls = new OrbitControls(this.ortho, this.renderer.domElement); this.orthoControls.enableRotate = false; this.orthoControls.enabled = false; this.orthoControls.enableDamping = true; this.orthoControls.zoomToCursor = true;
     // ライト
     this.amb = new THREE.AmbientLight(0xffffff, 0.25); this.scene.add(this.amb);
     this.hemi = new THREE.HemisphereLight(0xdfe8f2, 0x5a5650, 0.55); this.scene.add(this.hemi);
@@ -60,7 +60,7 @@ export class Viewer {
     this.axes = new THREE.AxesHelper(300); this.axes.userData.helper = true; this.scene.add(this.axes);
     this.modelRoot = new THREE.Group(); this.modelRoot.name = 'model'; this.scene.add(this.modelRoot);
     this.overlayRoot = new THREE.Group(); this.overlayRoot.name = 'overlay'; this.scene.add(this.overlayRoot);
-    this.edgeRoot = new THREE.Group(); this.edgeRoot.name = 'edges'; this.scene.add(this.edgeRoot);
+    this.edgeRoot = new THREE.Group(); this.edgeRoot.name = 'edges'; this.scene.add(this.edgeRoot); this.selRoot = new THREE.Group(); this.selRoot.name = 'selection'; this.scene.add(this.selRoot); this._selMat = new THREE.LineBasicMaterial({ color: 0x1d4ed8, transparent: true, opacity: 0.9, depthTest: true }); this._selMatBack = new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.22, depthTest: false });
     this.gizmo = new TransformControls(this.camera, this.renderer.domElement); this.gizmo.setTranslationSnap(5); this.gizmo.setRotationSnap(THREE.MathUtils.degToRad(15)); this.gizmo.setSize(0.8);
     this.gizmo.addEventListener('dragging-changed', e => { this.controls.enabled = !e.value; if (!e.value && this.onTransformEnd) this.onTransformEnd(this.gizmo.object); });
     this.gizmo.addEventListener('objectChange', () => { if (this.onTransformChange) this.onTransformChange(this.gizmo.object); });
@@ -70,11 +70,11 @@ export class Viewer {
     this.floor = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000), finishMaterial('CONCRETE')); this.floor.rotation.x = -Math.PI / 2; this.floor.position.y = -0.5; this.floor.receiveShadow = true; this.floor.visible = false; this.floor.userData.helper = true; this.floor.userData.noPick = true; this.scene.add(this.floor);
     this.quality = opts.quality !== false; this._buildComposer();
     this.setTheme(this.theme);
-    this._bindPointer(); this._resizeObs = new ResizeObserver(() => this.resize()); this._resizeObs.observe(container);
+    this.noAnim = !!(globalThis.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !!globalThis.__anglexNoAnim; this._bindPointer(); this._resizeObs = new ResizeObserver(() => this.resize()); this._resizeObs.observe(container);
     // オンデマンド描画: 変化があったフレームだけ描画（GPU/バッテリー節約）。最低でも 1 秒に 1 回は描画してテクスチャ到着等を反映
     this._dirty = 2; this._lastRender = 0; this.invalidate = (n = 2) => { this._dirty = Math.max(this._dirty, n); };
     this.controls.addEventListener('change', () => this.invalidate()); this.orthoControls.addEventListener('change', () => this.invalidate()); this.gizmo.addEventListener('change', () => this.invalidate());
-    this._raf = (t) => { this._frame = requestAnimationFrame(this._raf); const moved = this.controls.update() | this.orthoControls.update(); if (moved) this.invalidate(); if (this._dirty > 0 || t - this._lastRender > 1000) { this._dirty = Math.max(0, this._dirty - 1); this._lastRender = t; this.render(); } }; this._raf(0);
+    this._raf = (t) => { this._frame = requestAnimationFrame(this._raf); if (this._tween) this._stepTween(t); const moved = this.controls.update() | this.orthoControls.update(); if (moved) this.invalidate(); if (this.selRoot.children.length && (moved || this._dirty > 0)) this.syncSelection(); if (this._dirty > 0 || t - this._lastRender > 1000) { this._dirty = Math.max(0, this._dirty - 1); this._lastRender = t; this.render(); } }; this._raf(0);
   }
   setTheme(t) { if (this.invalidate) this.invalidate();
     this.theme = t; this.scene.backgroundBlurriness = 0;
@@ -101,28 +101,39 @@ export class Viewer {
   dispose() { cancelAnimationFrame(this._frame); this._resizeObs.disconnect(); this.renderer.dispose(); }
 
   // ---- モデル操作 ----
-  clear() { this.invalidate(); while (this.modelRoot.children.length) this.modelRoot.remove(this.modelRoot.children[0]); this.clearEdges(); this.clearOverlays(); this.select(null); }
+  clear() { this.invalidate(); while (this.modelRoot.children.length) this.modelRoot.remove(this.modelRoot.children[0]); this.clearEdges(); this.clearOverlays(); this.select(null); this.clearSelection(); }
   add(obj) { this.modelRoot.add(obj); this.applyDisplayStyle(); this.invalidate(); return obj; }
   remove(obj) { this.modelRoot.remove(obj); this.applyDisplayStyle(); this.invalidate(); }
   clearOverlays() { this.invalidate(); while (this.overlayRoot.children.length) { const c = this.overlayRoot.children[0]; this.overlayRoot.remove(c); c.traverse?.(o => { if (o.element?.parentNode) o.element.parentNode.removeChild(o.element); }); } }
   clearEdges() { while (this.edgeRoot.children.length) this.edgeRoot.remove(this.edgeRoot.children[0]); }
   // 影カメラをモデルに合わせる
   fitShadow() { const box = new THREE.Box3().setFromObject(this.modelRoot); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() * 0.6 + 200; const sc = this.sun.shadow.camera; sc.left = sc.bottom = -r; sc.right = sc.top = r; sc.updateProjectionMatrix(); this.sun.target.position.copy(c); this.sun.position.copy(c).add(new THREE.Vector3(1800, 3200, 1400).normalize().multiplyScalar(r * 2.2)); this.sun.shadow.camera.far = r * 6; }
-  fit(obj = this.modelRoot, pad = 1.35) { this.invalidate();
+  fit(obj = this.modelRoot, pad = 1.35, { animate = null, ms = 420 } = {}) { this.invalidate();
     const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()); const r = Math.max(size.x, size.y, size.z) * 0.5 * pad + 50;
     const dir = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize(); const dist = r / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    this.camera.position.copy(c).add(dir.multiplyScalar(dist)); this.controls.target.copy(c); this.camera.near = Math.max(1, dist / 500); this.camera.far = dist * 50; this.camera.updateProjectionMatrix();
+    const p1 = c.clone().add(dir.multiplyScalar(dist)); const near = Math.max(1, dist / 500), far = dist * 50;
     const a = this.container.clientWidth / this.container.clientHeight; this.ortho.top = r; this.ortho.bottom = -r; this.ortho.left = -r * a; this.ortho.right = r * a; this.ortho.updateProjectionMatrix(); this.orthoControls.target.copy(c);
     this.grid.position.x = Math.round(c.x / 100) * 100; this.grid.position.z = Math.round(c.z / 100) * 100;
-    this.fitShadow(); this.controls.update();
+    this.fitShadow();
+    const anim = animate == null ? (this._lastRender > 0 && this.activeCamera === this.camera && !this.noAnim) : animate;
+    if (!anim) { this._tween = null; this.camera.position.copy(p1); this.controls.target.copy(c); this.camera.near = near; this.camera.far = far; this.camera.updateProjectionMatrix(); this.controls.update(); return; }
+    // 近・遠クリップは先に広げておき、移動後に最終値へ
+    this.camera.near = Math.min(this.camera.near, near); this.camera.far = Math.max(this.camera.far, far); this.camera.updateProjectionMatrix();
+    this.animateTo(p1, c, { ms, onDone: () => { this.camera.near = near; this.camera.far = far; this.camera.updateProjectionMatrix(); } });
   }
+  // カメラのスムーズ移動（位置・注視点を同時に補間）。操作中は中断される
+  animateTo(pos, target, { ms = 420, onDone = null } = {}) {
+    const cam = this.camera, ctl = this.controls; this._tween = { t0: performance.now(), ms, p0: cam.position.clone(), t0v: ctl.target.clone(), p1: pos.clone(), t1: target.clone(), onDone }; this.invalidate(2);
+  }
+  _stepTween(now) { const tw = this._tween; if (!tw) return; const k = Math.min(1, (now - tw.t0) / tw.ms); const e = 1 - Math.pow(1 - k, 3); this.camera.position.lerpVectors(tw.p0, tw.p1, e); this.controls.target.lerpVectors(tw.t0v, tw.t1, e); this.invalidate(2); if (k >= 1) { this._tween = null; tw.onDone && tw.onDone(); } }
+  cancelTween() { this._tween = null; }
   // ビュープリセット: 3d | plan | front | side | back | left | iso
   setView(name) { this.invalidate(3);
     const box = new THREE.Box3().setFromObject(this.modelRoot); const c = box.isEmpty() ? new THREE.Vector3(0, 500, 0) : box.getCenter(new THREE.Vector3()); const r = box.isEmpty() ? 2000 : box.getSize(new THREE.Vector3()).length();
-    if (name === '3d' || name === 'iso') { this.activeCamera = this.camera; this._syncCamera(); this.controls.enabled = true; this.orthoControls.enabled = false; this.gizmo.camera = this.camera; if (name === 'iso') { this.camera.position.copy(c).add(new THREE.Vector3(1, 0.82, 1).normalize().multiplyScalar(r * 1.3)); this.controls.target.copy(c); } this.fit(); return; }
+    if (name === '3d' || name === 'iso') { this.activeCamera = this.camera; this._syncCamera(); this.controls.enabled = true; this.orthoControls.enabled = false; this.gizmo.camera = this.camera; if (name === 'iso') { const p1 = c.clone().add(new THREE.Vector3(1, 0.82, 1).normalize().multiplyScalar(r * 1.3)); if (this._lastRender > 0 && !this.noAnim) { this.animateTo(p1, c, { ms: 380, onDone: () => this.fit(undefined, undefined, { animate: true, ms: 260 }) }); return; } this.camera.position.copy(p1); this.controls.target.copy(c); } this.fit(); return; }
     const d = r * 2 + 1000; const dirs = { plan: [0, 1, 0], front: [0, 0, 1], back: [0, 0, -1], side: [1, 0, 0], right: [1, 0, 0], left: [-1, 0, 0], bottom: [0, -1, 0] };
     const v = new THREE.Vector3(...(dirs[name] || dirs.front)); this.ortho.position.copy(c).add(v.multiplyScalar(d)); this.ortho.up.set(0, name === 'plan' || name === 'bottom' ? -1 : 1, name === 'plan' ? -1 : 0); if (name === 'plan') this.ortho.up.set(0, 0, -1); if (name === 'bottom') this.ortho.up.set(0, 0, 1);
-    this.ortho.lookAt(c); this.activeCamera = this.ortho; this._syncCamera(); this.controls.enabled = false; this.orthoControls.enabled = true; this.orthoControls.target.copy(c); this.gizmo.camera = this.ortho; this.fit();
+    this.ortho.lookAt(c); this.activeCamera = this.ortho; this._syncCamera(); this.controls.enabled = false; this.orthoControls.enabled = true; this.orthoControls.target.copy(c); this.gizmo.camera = this.ortho; this.fit(undefined, undefined, { animate: false });
   }
   // 表示スタイル: realistic | shaded | shaded-edges | hidden-line | wireframe | ghost
   setDisplayStyle(s) { this.displayStyle = s; this.applyDisplayStyle(); }
@@ -160,7 +171,7 @@ export class Viewer {
   }
   // 手のひら（パン）モード: 左ドラッグで画面を掴んで移動
   setPanMode(on) { this.panMode = !!on; const M = THREE.MOUSE; for (const c of [this.controls, this.orthoControls]) { c.mouseButtons = { LEFT: on ? M.PAN : M.ROTATE, MIDDLE: M.DOLLY, RIGHT: on ? M.ROTATE : M.PAN }; c.touches = { ONE: on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }; c.screenSpacePanning = true; } this.renderer.domElement.style.cursor = on ? 'grab' : ''; }
-  syncEdges() { this.invalidate(); for (const ln of this.edgeRoot.children) { const o = ln.userData.src; if (o) { o.updateWorldMatrix(true, false); ln.matrix.copy(o.matrixWorld); ln.visible = o.visible && this._visibleUp(o); } } }
+  syncEdges() { this.invalidate(); this.syncSelection(); for (const ln of this.edgeRoot.children) { const o = ln.userData.src; if (o) { o.updateWorldMatrix(true, false); ln.matrix.copy(o.matrixWorld); ln.visible = o.visible && this._visibleUp(o); } } }
   _visibleUp(o) { let p = o; while (p) { if (!p.visible) return false; p = p.parent; } return true; }
   // 断面ボックス（6面クリッピング）
   setSectionBox(box) { this.invalidate(); // THREE.Box3 | null
@@ -193,7 +204,7 @@ export class Viewer {
   // ---- ピッキング ----
   _bindPointer() {
     const el = this.renderer.domElement; let down = null;
-    el.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+    el.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; this._tween = null; }); el.addEventListener('wheel', () => { this._tween = null; }, { passive: true });
     el.addEventListener('pointerup', e => { if (!down) return; const dx = e.clientX - down[0], dy = e.clientY - down[1]; down = null; if (dx * dx + dy * dy > 16) return; const hit = this.pick(e); if (this.onPick) this.onPick(hit, e); });
     el.addEventListener('pointermove', e => { if (this.opts.hover === false) return; const hit = this.pick(e); this.setHover(hit ? hit.instance : null); if (this.onHover) this.onHover(hit, e); });
     el.addEventListener('dblclick', e => { const hit = this.pick(e); if (!hit) return; if (this.onDblClick) this.onDblClick(hit); else this.focusOn(hit.instance); });
@@ -204,10 +215,14 @@ export class Viewer {
     if (!hits.length) return null; const h = hits[0]; let inst = h.object; while (inst.parent && inst.parent !== this.modelRoot) inst = inst.parent; return { object: h.object, instance: inst, point: h.point, face: h.face, distance: h.distance };
   }
   setHover(inst) { if (this.hovered === inst) return; this.invalidate(); this._tint(this.hovered, null); this.hovered = inst; if (inst && inst !== this.selected) this._tint(inst, 0x22, 0.35); this.renderer.domElement.style.cursor = inst ? 'pointer' : ''; }
-  select(inst) { this.invalidate(); if (this.selected) this._tint(this.selected, null); this.selected = inst; if (inst) this._tint(inst, 0x2563eb, 0.55); if (this.onSelect) this.onSelect(inst); }
+  select(inst) { this.invalidate(); if (this.selected) this._tint(this.selected, null); this.selected = inst; if (inst) this._tint(inst, 0x2563eb, 0.55); this.buildSelection(inst); if (this.onSelect) this.onSelect(inst); }
+  // 選択部材のアウトライン（角部品のエッジを強調色で。隠れている側は薄く透過表示）
+  buildSelection(inst) { this.clearSelection(); if (!inst) return; let n = 0; inst.traverse(o => { if (!o.isMesh || !o.geometry || n > 60) return; const pt = o.userData.part || (o.parent && o.parent.userData.part); const kind = pt ? pt.kind : ''; if (['bolt', 'nut', 'washer', 'weld', 'anchor', 'rod'].includes(kind)) return; const cnt = o.geometry.attributes.position ? o.geometry.attributes.position.count : 0; if (!cnt || cnt > 40000) return; let eg = o.geometry.userData._selEdges; if (!eg) { eg = new THREE.EdgesGeometry(o.geometry, 28); o.geometry.userData._selEdges = eg; } const ln = new THREE.LineSegments(eg, this._selMat); ln.matrixAutoUpdate = false; ln.userData.src = o; ln.userData.noPick = true; ln.renderOrder = 5; const bk = new THREE.LineSegments(eg, this._selMatBack); bk.matrixAutoUpdate = false; bk.userData.src = o; bk.userData.noPick = true; bk.renderOrder = 4; this.selRoot.add(ln, bk); n++; }); this.syncSelection(); }
+  syncSelection() { for (const ln of this.selRoot.children) { const o = ln.userData.src; if (!o) continue; o.updateWorldMatrix(true, false); ln.matrix.copy(o.matrixWorld); ln.visible = o.visible && this._visibleUp(o); } }
+  clearSelection() { while (this.selRoot.children.length) this.selRoot.remove(this.selRoot.children[0]); }
   _tint(inst, color, k = 0.4) { if (!inst) return; inst.traverse(o => { if (!o.isMesh || !o.material) return; if (!o.userData._emis) o.userData._emis = (o.material.emissive ? o.material.emissive.getHex() : 0); if (o.material.emissive) { if (color == null) { o.material.emissive.setHex(o.userData._emis); o.material.emissiveIntensity = 1; } else { o.material = o.material.clone(); o.material.emissive.setHex(color); o.material.emissiveIntensity = k; } } }); }
   attachGizmo(inst, mode = 'translate', axis = 'all') { this.invalidate(); if (!inst) { this.gizmo.detach(); return; } this.gizmo.attach(inst); this.gizmo.setMode(mode); this.gizmo.showX = axis === 'all' || axis === 'x'; this.gizmo.showY = axis === 'all' || axis === 'y'; this.gizmo.showZ = axis === 'all' || axis === 'z'; }
-  screenshot(w = 1600, h = 1000) { const pr = this.renderer.getPixelRatio(); const oldW = this.container.clientWidth, oldH = this.container.clientHeight; this.renderer.setPixelRatio(1); this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.quality && this.composer) { this.composer.setSize(w, h); this.gtao?.setSize(w, h); this.composer.render(); } else this.renderer.render(this.scene, this.activeCamera); const url = this.renderer.domElement.toDataURL('image/png'); if (this.composer) { this.composer.setSize(oldW, oldH); this.gtao?.setSize(oldW, oldH); } this.renderer.setPixelRatio(pr); this.renderer.setSize(oldW, oldH); this.camera.aspect = oldW / oldH; this.camera.updateProjectionMatrix(); return url; }
+  screenshot(w = 1600, h = 1000) { const sv = this.selRoot.visible; this.selRoot.visible = false; const pr = this.renderer.getPixelRatio(); const oldW = this.container.clientWidth, oldH = this.container.clientHeight; this.renderer.setPixelRatio(1); this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.quality && this.composer) { this.composer.setSize(w, h); this.gtao?.setSize(w, h); this.composer.render(); } else this.renderer.render(this.scene, this.activeCamera); const url = this.renderer.domElement.toDataURL('image/png'); this.selRoot.visible = sv; if (this.composer) { this.composer.setSize(oldW, oldH); this.gtao?.setSize(oldW, oldH); } this.renderer.setPixelRatio(pr); this.renderer.setSize(oldW, oldH); this.camera.aspect = oldW / oldH; this.camera.updateProjectionMatrix(); return url; }
   setGrid(on) { this.invalidate(); this.gridOn = on; this.grid.visible = on && this.displayStyle !== 'realistic'; this.axes.visible = on; }
   setShadows(on) { this.invalidate(); this.renderer.shadowMap.enabled = on; this.sun.castShadow = on; this.modelRoot.traverse(o => { if (o.isMesh && o.material) o.material.needsUpdate = true; }); }
 }

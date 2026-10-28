@@ -923,3 +923,21 @@ table.grid{width:100%;border-collapse:collapse;font-size:12px;background:#fff}ta
 .sr-act{flex-shrink:0}.sr-foot{display:flex;gap:6px;align-items:center;border-top:1px solid var(--line-faint);padding-top:6px}
 
 .sr-thumb{width:64px;height:44px;border-radius:6px;background:linear-gradient(135deg,#eceae2,#dcd8ca);object-fit:contain;flex-shrink:0;border:1px solid var(--line-faint)}.sr-thumb.ok{background:#f7f6f1}.sr-thumb.na{opacity:.35}
+
+/* ---- 操作性（滑らかな UX）: 出現アニメーション・ホバー吹き出し・ショートカット表 ---- */
+@keyframes anx-pop{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes anx-fade{from{opacity:0}to{opacity:1}}
+@keyframes anx-slide{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+.ctx-bar{animation:anx-pop .16s cubic-bezier(.2,.8,.2,1)}
+.modal-back{animation:anx-fade .14s ease-out}.modal{animation:anx-pop .18s cubic-bezier(.2,.8,.2,1)}
+.showroom{animation:anx-slide .2s cubic-bezier(.2,.8,.2,1)}
+.ctx-pop,.tpop{transition:opacity .12s ease-out,transform .12s ease-out}.ctx-pop:not(.open){opacity:0;transform:translateY(-4px);pointer-events:none}
+.ctx-pop.open{animation:anx-pop .12s ease-out}
+.btn,.tbtn,.chip,.icon-btn,.tiny{transition:background-color .12s,border-color .12s,color .12s,box-shadow .12s,transform .08s}.btn:active,.tbtn:active,.icon-btn:active{transform:translateY(1px)}
+.sr-row{transition:background-color .12s,border-color .12s}.sr-thumb{transition:opacity .25s ease-out;opacity:0}.sr-thumb.ok,.sr-thumb.na{opacity:1}.sr-thumb.instant{transition:none}
+.toast.bump{transform:translateY(-2px)}
+.hover-tip{position:absolute;left:0;top:0;z-index:23;pointer-events:none;background:rgba(19,19,15,.92);color:#fff;padding:6px 9px;border-radius:7px;font-size:11.5px;line-height:1.35;max-width:300px;opacity:0;transition:opacity .12s ease-out;will-change:transform;white-space:nowrap}.hover-tip.show{opacity:1}.hover-tip .muted{color:#c9c6bd}.hover-tip .ht-part{color:#ffd79a;margin-top:2px}
+.kbd-table{border-collapse:collapse;width:100%;font-size:12.5px}.kbd-table td{padding:6px 8px;border-bottom:1px solid var(--line-soft);vertical-align:top}.kbd-table td:first-child{white-space:nowrap;width:44%}
+kbd{display:inline-block;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:#faf9f5;font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+#viewport canvas{outline:none}
+@media (prefers-reduced-motion:reduce){.ctx-bar,.modal,.modal-back,.showroom,.ctx-pop.open{animation:none}.hover-tip,.sr-thumb,.ctx-pop,.tpop{transition:none}}
