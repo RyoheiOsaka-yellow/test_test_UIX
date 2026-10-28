@@ -9,7 +9,7 @@ import { productParams } from './catalog.js';
 import { CATALOG } from '../data/catalog.js';
 import { PRETHUMBS } from '../data/thumbs_pre.js';
 
-const W = 240, H = 160, VER = 'v3'; // VER: 描画仕様を変えたら上げる（旧キャッシュを無効化）
+const W = 240, H = 160, VER = 'v4'; // VER: 描画仕様を変えたら上げる（旧キャッシュを無効化）
 let R = null; const cache = new Map(); const queue = []; let pumping = false;
 const STORE_KEY = 'anglex.thumbs.' + VER + '.' + String(CATALOG.generatedAt || CATALOG.products.length);
 
@@ -62,7 +62,9 @@ export function warmThumbs(items, { budgetMs = 8000 } = {}) {
 function render(p, sku) {
   const pp = productParams(p, sku); const fam = familyById(pp.familyId); if (!fam) return null; const params = resolveParams(fam.params, pp.params); const parts = fam.parts(params, { model: { joints: [], instances: [] }, inst: {} });
   const g = buildInstance(parts, { lod: 200, showRefs: true, showSite: true }); const { r, scene, cam } = renderer(); scene.add(g);
-  let box = new THREE.Box3(); for (const ch of g.children) if (!ch.userData.ref) box.expandByObject(ch); if (box.isEmpty()) box = new THREE.Box3().setFromObject(g); if (box.isEmpty()) { scene.remove(g); return null; } const c = box.getCenter(new THREE.Vector3()); const size = box.getSize(new THREE.Vector3()); const s = Math.max(size.length(), 50);
+  // 枠取り: 参照物（配管）と細長い締結部品（吊ボルト等）を除いた本体でフレーミングし、本体が無ければ全体
+  const minor = o => { const k = o.userData.part?.kind; return o.userData.ref || ['rod', 'bolt', 'nut', 'washer', 'anchor'].includes(k); };
+  let box = new THREE.Box3(); for (const ch of g.children) if (!minor(ch)) box.expandByObject(ch); if (box.isEmpty()) for (const ch of g.children) if (!ch.userData.ref) box.expandByObject(ch); if (box.isEmpty()) box = new THREE.Box3().setFromObject(g); if (box.isEmpty()) { scene.remove(g); return null; } const c = box.getCenter(new THREE.Vector3()); const size = box.getSize(new THREE.Vector3()); const s = Math.max(size.length(), 50);
   cam.position.copy(c).add(new THREE.Vector3(0.95, 0.6, 1.1).normalize().multiplyScalar(s * 0.95)); cam.lookAt(c); cam.near = Math.max(1, s * 0.02); cam.far = s * 6; cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
   r.render(scene, cam); let url = r.domElement.toDataURL('image/webp', 0.86); if (!url.startsWith('data:image/webp')) url = r.domElement.toDataURL('image/png'); scene.remove(g); g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); return url;
 }

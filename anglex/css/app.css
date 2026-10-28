@@ -98,3 +98,5 @@ kbd{display:inline-block;padding:1px 6px;border:1px solid var(--line);border-bot
 .mb-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.mb-head .icon-btn{margin-left:auto}
 .tn.leaf.multi{background:rgba(37,99,235,.10);box-shadow:inset 3px 0 0 #2563eb}
 .v-label.ghost-lbl{background:rgba(37,99,235,.92);color:#fff;border:0;padding:4px 8px;border-radius:6px;font-size:11.5px;line-height:1.3;white-space:nowrap}
+
+.showroom{width:400px}.sr-foot{flex-wrap:nowrap}.sr-foot .btn{white-space:nowrap;padding:4px 8px}.sr-foot .muted{white-space:nowrap}
