@@ -1,0 +1,1308 @@
+[
+ {
+  "kind": "member",
+  "name": "柱（左）",
+  "spec": "L-50x50x6",
+  "length": 541,
+  "finish": "HDZ",
+  "material": "SS400",
+  "holes": [],
+  "pl": {
+   "pos": [
+    -300,
+    9,
+    25
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ],
+    [
+     0,
+     1,
+     0
+    ]
+   ]
+  },
+  "group": "柱",
+  "role": "column"
+ },
+ {
+  "kind": "member",
+  "name": "柱（右）",
+  "spec": "L-50x50x6",
+  "length": 541,
+  "finish": "HDZ",
+  "material": "SS400",
+  "holes": [],
+  "pl": {
+   "pos": [
+    300,
+    9,
+    -25
+   ],
+   "basis": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ],
+    [
+     0,
+     1,
+     0
+    ]
+   ]
+  },
+  "group": "柱",
+  "role": "column"
+ },
+ {
+  "kind": "member",
+  "name": "梁",
+  "spec": "L-50x50x6",
+  "length": 600,
+  "finish": "HDZ",
+  "material": "SS400",
+  "holes": [
+   {
+    "face": "A",
+    "z": 150,
+    "s": -56.837500000000006,
+    "d": 17.5,
+    "kind": "ubolt"
+   },
+   {
+    "face": "A",
+    "z": 150,
+    "s": 106.8375,
+    "d": 17.5,
+    "kind": "ubolt"
+   },
+   {
+    "face": "A",
+    "z": 300,
+    "s": -3.1125000000000007,
+    "d": 11,
+    "kind": "ubolt"
+   },
+   {
+    "face": "A",
+    "z": 300,
+    "s": 53.1125,
+    "d": 11,
+    "kind": "ubolt"
+   },
+   {
+    "face": "A",
+    "z": 450,
+    "s": 4.637499999999999,
+    "d": 11,
+    "kind": "ubolt"
+   },
+   {
+    "face": "A",
+    "z": 450,
+    "s": 45.3625,
+    "d": 11,
+    "kind": "ubolt"
+   }
+  ],
+  "pl": {
+   "pos": [
+    -300,
+    600,
+    -25
+   ],
+   "basis": [
+    [
+     0,
+     0,
+     1
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     1,
+     0,
+     0
+    ]
+   ]
+  },
+  "group": "梁",
+  "role": "beam"
+ },
+ {
+  "kind": "pipe",
+  "name": "配管 125A",
+  "spec": "SGP-125A",
+  "length": 540,
+  "finish": "PIPE",
+  "pl": {
+   "pos": [
+    -150,
+    673.9,
+    -270
+   ],
+   "basis": [
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  },
+  "ref": true,
+  "group": "配管",
+  "nominal": "125A",
+  "od": 139.8
+ },
+ {
+  "kind": "ubolt",
+  "name": "Uボルト W5/8（125A）",
+  "M": "W5/8",
+  "od": 139.8,
+  "nominal": "125A",
+  "plateT": 6,
+  "pl": {
+   "pos": [
+    -150,
+    600,
+    0
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  },
+  "group": "配管",
+  "holeD": 17.5,
+  "pitch": 163.675
+ },
+ {
+  "kind": "pipe",
+  "name": "配管 32A",
+  "spec": "SGP-32A",
+  "length": 540,
+  "finish": "PIPE",
+  "pl": {
+   "pos": [
+    0,
+    623.3499999999999,
+    -270
+   ],
+   "basis": [
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  },
+  "ref": true,
+  "group": "配管",
+  "nominal": "32A",
+  "od": 42.7
+ },
+ {
+  "kind": "ubolt",
+  "name": "Uボルト W3/8（32A）",
+  "M": "W3/8",
+  "od": 42.7,
+  "nominal": "32A",
+  "plateT": 6,
+  "pl": {
+   "pos": [
+    0,
+    600,
+    0
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  },
+  "group": "配管",
+  "holeD": 11,
+  "pitch": 56.225
+ },
+ {
+  "kind": "pipe",
+  "name": "配管 20A",
+  "spec": "SGP-20A",
+  "length": 540,
+  "finish": "PIPE",
+  "pl": {
+   "pos": [
+    150,
+    615.5999999999999,
+    -270
+   ],
+   "basis": [
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  },
+  "ref": true,
+  "group": "配管",
+  "nominal": "20A",
+  "od": 27.2
+ },
+ {
+  "kind": "ubolt",
+  "name": "Uボルト W3/8（20A）",
+  "M": "W3/8",
+  "od": 27.2,
+  "nominal": "20A",
+  "plateT": 6,
+  "pl": {
+   "pos": [
+    150,
+    600,
+    0
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  },
+  "group": "配管",
+  "holeD": 11,
+  "pitch": 40.725
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 50,
+  "from": [
+   -300,
+   550,
+   25
+  ],
+  "to": [
+   -250,
+   550,
+   25
+  ],
+  "n1": [
+   0,
+   0,
+   1
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 6,
+  "from": [
+   -250,
+   550,
+   25
+  ],
+  "to": [
+   -250,
+   550,
+   19
+  ],
+  "n1": [
+   1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 44,
+  "from": [
+   -250,
+   550,
+   19
+  ],
+  "to": [
+   -294,
+   550,
+   19
+  ],
+  "n1": [
+   0,
+   0,
+   -1
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 44,
+  "from": [
+   -294,
+   550,
+   19
+  ],
+  "to": [
+   -294,
+   550,
+   -25
+  ],
+  "n1": [
+   1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 6,
+  "from": [
+   -294,
+   550,
+   -25
+  ],
+  "to": [
+   -300,
+   550,
+   -25
+  ],
+  "n1": [
+   0,
+   0,
+   -1
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 50,
+  "from": [
+   -300,
+   550,
+   -25
+  ],
+  "to": [
+   -300,
+   550,
+   25
+  ],
+  "n1": [
+   -1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 50,
+  "from": [
+   300,
+   550,
+   -25
+  ],
+  "to": [
+   250,
+   550,
+   -25
+  ],
+  "n1": [
+   0,
+   0,
+   -1
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 6,
+  "from": [
+   250,
+   550,
+   -25
+  ],
+  "to": [
+   250,
+   550,
+   -19
+  ],
+  "n1": [
+   -1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 44,
+  "from": [
+   250,
+   550,
+   -19
+  ],
+  "to": [
+   294,
+   550,
+   -19
+  ],
+  "n1": [
+   0,
+   0,
+   1
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 44,
+  "from": [
+   294,
+   550,
+   -19
+  ],
+  "to": [
+   294,
+   550,
+   25
+  ],
+  "n1": [
+   -1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 6,
+  "from": [
+   294,
+   550,
+   25
+  ],
+  "to": [
+   300,
+   550,
+   25
+  ],
+  "n1": [
+   0,
+   0,
+   1
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 50,
+  "from": [
+   300,
+   550,
+   25
+  ],
+  "to": [
+   300,
+   550,
+   -25
+  ],
+  "n1": [
+   1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   -1,
+   0
+  ],
+  "group": "柱頭溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "plate",
+  "name": "ベースPL",
+  "spec": "PL-9x150x150",
+  "length": 150,
+  "holes": [
+   {
+    "face": "face",
+    "z": 22.5,
+    "s": 75,
+    "d": 15.5,
+    "kind": "anchor"
+   },
+   {
+    "face": "face",
+    "z": 127.5,
+    "s": 75,
+    "d": 15.5,
+    "kind": "anchor"
+   }
+  ],
+  "finish": "HDZ",
+  "material": "SS400",
+  "pl": {
+   "pos": [
+    -350,
+    0,
+    -75
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  },
+  "group": "ベース",
+  "role": "base"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 50,
+  "from": [
+   -300,
+   9,
+   25
+  ],
+  "to": [
+   -250,
+   9,
+   25
+  ],
+  "n1": [
+   0,
+   0,
+   1
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 6,
+  "from": [
+   -250,
+   9,
+   25
+  ],
+  "to": [
+   -250,
+   9,
+   19
+  ],
+  "n1": [
+   1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 44,
+  "from": [
+   -250,
+   9,
+   19
+  ],
+  "to": [
+   -294,
+   9,
+   19
+  ],
+  "n1": [
+   0,
+   0,
+   -1
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 44,
+  "from": [
+   -294,
+   9,
+   19
+  ],
+  "to": [
+   -294,
+   9,
+   -25
+  ],
+  "n1": [
+   1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 6,
+  "from": [
+   -294,
+   9,
+   -25
+  ],
+  "to": [
+   -300,
+   9,
+   -25
+  ],
+  "n1": [
+   0,
+   0,
+   -1
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 50,
+  "from": [
+   -300,
+   9,
+   -25
+  ],
+  "to": [
+   -300,
+   9,
+   25
+  ],
+  "n1": [
+   -1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "anchor",
+  "name": "アンカー M12",
+  "M": "M12",
+  "plateT": 9,
+  "pl": {
+   "pos": [
+    -275,
+    0,
+    -52.5
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ],
+    [
+     0,
+     1,
+     0
+    ]
+   ]
+  },
+  "group": "アンカー",
+  "site": true
+ },
+ {
+  "kind": "anchor",
+  "name": "アンカー M12",
+  "M": "M12",
+  "plateT": 9,
+  "pl": {
+   "pos": [
+    -275,
+    0,
+    52.5
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ],
+    [
+     0,
+     1,
+     0
+    ]
+   ]
+  },
+  "group": "アンカー",
+  "site": true
+ },
+ {
+  "kind": "plate",
+  "name": "ベースPL",
+  "spec": "PL-9x150x150",
+  "length": 150,
+  "holes": [
+   {
+    "face": "face",
+    "z": 22.5,
+    "s": 75,
+    "d": 15.5,
+    "kind": "anchor"
+   },
+   {
+    "face": "face",
+    "z": 127.5,
+    "s": 75,
+    "d": 15.5,
+    "kind": "anchor"
+   }
+  ],
+  "finish": "HDZ",
+  "material": "SS400",
+  "pl": {
+   "pos": [
+    200,
+    0,
+    -75
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ]
+  },
+  "group": "ベース",
+  "role": "base"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 50,
+  "from": [
+   300,
+   9,
+   -25
+  ],
+  "to": [
+   250,
+   9,
+   -25
+  ],
+  "n1": [
+   0,
+   0,
+   -1
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 6,
+  "from": [
+   250,
+   9,
+   -25
+  ],
+  "to": [
+   250,
+   9,
+   -19
+  ],
+  "n1": [
+   -1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 44,
+  "from": [
+   250,
+   9,
+   -19
+  ],
+  "to": [
+   294,
+   9,
+   -19
+  ],
+  "n1": [
+   0,
+   0,
+   1
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 44,
+  "from": [
+   294,
+   9,
+   -19
+  ],
+  "to": [
+   294,
+   9,
+   25
+  ],
+  "n1": [
+   -1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 6,
+  "from": [
+   294,
+   9,
+   25
+  ],
+  "to": [
+   300,
+   9,
+   25
+  ],
+  "n1": [
+   0,
+   0,
+   1
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "weld",
+  "weldType": "fillet",
+  "size": 6,
+  "length": 50,
+  "from": [
+   300,
+   9,
+   25
+  ],
+  "to": [
+   300,
+   9,
+   -25
+  ],
+  "n1": [
+   1,
+   0,
+   0
+  ],
+  "n2": [
+   0,
+   1,
+   0
+  ],
+  "group": "柱脚溶接",
+  "allAround": true,
+  "site": false,
+  "symbol": "○▷6"
+ },
+ {
+  "kind": "anchor",
+  "name": "アンカー M12",
+  "M": "M12",
+  "plateT": 9,
+  "pl": {
+   "pos": [
+    275,
+    0,
+    -52.5
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ],
+    [
+     0,
+     1,
+     0
+    ]
+   ]
+  },
+  "group": "アンカー",
+  "site": true
+ },
+ {
+  "kind": "anchor",
+  "name": "アンカー M12",
+  "M": "M12",
+  "plateT": 9,
+  "pl": {
+   "pos": [
+    275,
+    0,
+    52.5
+   ],
+   "basis": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ],
+    [
+     0,
+     1,
+     0
+    ]
+   ]
+  },
+  "group": "アンカー",
+  "site": true
+ }
+]

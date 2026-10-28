@@ -16,6 +16,8 @@ export function filletBead({ from, to, n1, n2, size = 6, lod = 300, ripple = tru
   const dir = new THREE.Vector3().subVectors(to, from); const L = dir.length(); if (L < 1e-3) return null; dir.normalize();
   const sh = filletSection(size);
   const geo = new THREE.ExtrudeGeometry(sh, { depth: L, bevelEnabled: false, curveSegments: lod >= 400 ? 10 : 6 });
+  // 熱影響の焼け色（トゥ側へ 茶→青 のグラデーション）: 頂点色で表現。WELD 材質は vertexColors
+  { const pos = geo.attributes.position; const col = new Float32Array(pos.count * 3); for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i); const t = Math.min(1, Math.max(0, (Math.max(x, y) / size - 0.5) / 0.5)); const brown = [0.80, 0.60, 0.42], blue = [0.55, 0.62, 0.82], base = [0.88, 0.89, 0.90]; const k2 = x > y ? 0 : 1; const tint = [brown[0] * (1 - k2 * 0.5) + blue[0] * k2 * 0.5, brown[1] * (1 - k2 * 0.5) + blue[1] * k2 * 0.5, brown[2] * (1 - k2 * 0.5) + blue[2] * k2 * 0.5]; const w = t * t * 0.85; col[i * 3] = base[0] * (1 - w) + tint[0] * w; col[i * 3 + 1] = base[1] * (1 - w) + tint[1] * w; col[i * 3 + 2] = base[2] * (1 - w) + tint[2] * w; } geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); }
   // ビード表面の波紋（LOD400）: 長さ方向の正弦で断面を微小に膨縮
   if (ripple && lod >= 400) {
     const pos = geo.attributes.position; const pitch = Math.max(2.5, size * 0.55);

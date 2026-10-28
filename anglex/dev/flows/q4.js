@@ -1,0 +1,3 @@
+const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
+await page.evaluate(() => { const hb = app.model.instances.find(x => x.mark === 'HB-1'); const mf = app.model.instances.find(x => x.mark === 'MF-1'); app.attachTo(hb.id, mf.id); }); await page.waitForTimeout(600);
+log('ATTACH2', await page.evaluate(() => { const hb = app.model.instances.find(x => x.mark === 'HB-1'); const sp = app.pipeRefsOf(hb); return { pos: hb.pos, hbOd: sp[0]?.od, near: app.pipeRefsOf(app.model.instances.find(x => x.mark === 'MF-1')).map(t => [t.nominal, Math.round(t.od), t.center.toArray().map(Math.round)]) }; }));

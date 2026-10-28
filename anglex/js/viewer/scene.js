@@ -12,6 +12,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { finishMaterial } from '../geo/materials.js';
 const HDRI_URL = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr';
+// 環境光プリセット（Poly Haven CC0）
+export const ENVIRONMENTS = { studio: { label: 'スタジオ', url: HDRI_URL }, warehouse: { label: '倉庫（工場）', url: 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/empty_warehouse_01_1k.hdr' }, workshop: { label: '工作機械室', url: 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/machine_shop_01_1k.hdr' }, overcast: { label: '屋外（曇天）', url: 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kloofendal_48d_partly_cloudy_puresky_1k.hdr' } };
 
 // CAD 図面色（元デモの図面ビューの配色）: 役割ごとのフラットカラー。暗背景＋明るいエッジで図面と照合しやすくする
 const CAD_COLORS = { column: 0x3b5bdb, beam: 0x2fa84f, base: 0x14b8a6, gusset: 0xa855f7, brace: 0xeab308, support: 0xf97316, pipe: 0x22d3ee, ubolt: 0xf97316, anchor: 0xef4444, bolt: 0xf43f5e, rod: 0xf472b6, weld: 0xfb923c, band: 0x38bdf8, plate: 0x8b9db5, steel: 0x60a5fa };
@@ -84,7 +86,8 @@ export class Viewer {
   // ポストプロセス: GTAO（接触陰影）+ SMAA（AA）+ Output（トーンマップ/色空間）
   _buildComposer() {
     const W = this.container.clientWidth || 800, H = this.container.clientHeight || 600;
-    this.composer = new EffectComposer(this.renderer); this.composer.setPixelRatio(Math.min(devicePixelRatio, 2)); this.composer.setSize(W, H);
+    let rt = null; try { if (this.renderer.capabilities.isWebGL2 && !globalThis.__anglexNoPBR) rt = new THREE.WebGLRenderTarget(W, H, { samples: 4, type: THREE.HalfFloatType }); } catch { rt = null; } // MSAA 4x（WebGL2）
+    this.composer = new EffectComposer(this.renderer, rt || undefined); this.composer.setPixelRatio(Math.min(devicePixelRatio, 2)); this.composer.setSize(W, H);
     this.renderPass = new RenderPass(this.scene, this.activeCamera); this.composer.addPass(this.renderPass);
     try { this.gtao = new GTAOPass(this.scene, this.activeCamera, W, H); this.gtao.output = GTAOPass.OUTPUT.Default; this.gtao.updateGtaoMaterial({ radius: 28, distanceExponent: 1.2, thickness: 12, scale: 1.0, samples: 12, distanceFallOff: 1.0, screenSpaceRadius: false }); this.gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 8 }); this.gtao.blendIntensity = 0.85; this.composer.addPass(this.gtao); } catch (e) { console.warn('GTAO unavailable', e); this.gtao = null; }
     this.composer.addPass(new OutputPass()); this.smaa = new SMAAPass(); this.composer.addPass(this.smaa);
@@ -93,6 +96,7 @@ export class Viewer {
     const mats = new Set(); this.scene.traverse(o => { if (o.isMesh && o.material) mats.add(o.material); if (o.userData?._mat) mats.add(o.userData._mat); });
     for (const m of mats) { if (!m.isMeshPhysicalMaterial && !m.isMeshStandardMaterial) continue; if (!m.userData._hq) m.userData._hq = { clearcoat: m.clearcoat, anisotropy: m.anisotropy, normalMap: m.normalMap, roughnessMap: m.roughnessMap }; const h = m.userData._hq; if (on) { if (m.isMeshPhysicalMaterial) { m.clearcoat = h.clearcoat; m.anisotropy = h.anisotropy; } m.normalMap = h.normalMap; m.roughnessMap = h.roughnessMap; } else { if (m.isMeshPhysicalMaterial) { m.clearcoat = 0; m.anisotropy = 0; } m.normalMap = null; m.roughnessMap = null; } m.needsUpdate = true; } }
   _syncCamera() { if (this.renderPass) this.renderPass.camera = this.activeCamera; if (this.gtao) { this.gtao.camera = this.activeCamera; } }
+  async setEnvironment(name) { const e = ENVIRONMENTS[name] || ENVIRONMENTS.studio; this.envName = name; await this.loadHDRI(e.url); this.applyDisplayStyle(); }
   async loadHDRI(url = HDRI_URL) { try { const hdr = await new RGBELoader().loadAsync(url); hdr.mapping = THREE.EquirectangularReflectionMapping; this.hdri = hdr; this.scene.environment = this.pmrem.fromEquirectangular(hdr).texture; this.scene.environmentIntensity = 1.0; this.applyDisplayStyle(); } catch (e) { console.warn('HDRI 読込失敗（RoomEnvironment を使用）', e.message); } }
   dispose() { cancelAnimationFrame(this._frame); this._resizeObs.disconnect(); this.renderer.dispose(); }
 

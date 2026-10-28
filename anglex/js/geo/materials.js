@@ -121,7 +121,7 @@ export function finishMaterial(finish = 'HDZ', opts = {}) {
     case 'RUBBER': m = new THREE.MeshStandardMaterial({ color: FINISH_COLORS.RUBBER, metalness: 0.0, roughness: 0.95 }); break;
     case 'BOLT': { const t = noise(256, [190, 194, 200], 14, 31); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.92, roughness: 0.34, envMapIntensity: 1.0 }); addGrunge(m, 0.08); break; }
     case 'THREAD': { m = new THREE.MeshStandardMaterial({ color: 0xaeb2b7, metalness: 0.9, roughness: 0.42, normalMap: threadNormalMap(8), normalScale: new THREE.Vector2(1.0, 1.0) }); break; }
-    case 'WELD': { m = new THREE.MeshStandardMaterial({ color: 0x7c8086, metalness: 0.75, roughness: 0.55, normalMap: weldNormalMap(), normalScale: new THREE.Vector2(1.2, 1.2) }); break; }
+    case 'WELD': { m = new THREE.MeshStandardMaterial({ color: 0x8a8e94, metalness: 0.72, roughness: 0.52, vertexColors: true, normalMap: weldNormalMap(), normalScale: new THREE.Vector2(1.2, 1.2) }); break; }
     case 'CONCRETE': { const t = noise(256, [168, 164, 156], 22, 21); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0, roughness: 0.95 }); upgradeMaterial(m, 'concrete_floor_02', { repeat: 20, normalScale: 0.7, useAlbedo: true }); break; }
     case 'PIPE': m = new THREE.MeshStandardMaterial({ color: 0x2a7d8c, metalness: 0.35, roughness: 0.5 }); break;
     case 'GHOST': m = new THREE.MeshStandardMaterial({ color: 0x8b98a5, transparent: true, opacity: 0.28, roughness: 0.8, depthWrite: false }); break;

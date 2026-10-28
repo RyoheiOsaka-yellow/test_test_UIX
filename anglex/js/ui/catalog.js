@@ -24,8 +24,9 @@ export function openCatalog(app) {
   render(); renderDetail(); setTimeout(() => search.focus(), 50);
 }
 // 製品 + SKU → ファミリパラメータ
-export function addTypeFromProduct(app, p, sku) {
-  const fam = familyById(p.family); const params = { ...(p.familyParams || {}) }; const existing = app.model.types.find(t => t.params.__pid === p.pid && t.params.__sku === (sku ? sku.sku : null)); if (existing) return existing;
+// 製品 + SKU → ファミリ ID・パラメータ・タイプ名（タイプを作らずに計算。サムネイル生成でも使う）
+export function productParams(p, sku) {
+  const fam = familyById(p.family); if (!fam) throw new Error('ファミリ未対応: ' + p.family); const params = { ...(p.familyParams || {}) };
   params.finish = p.finish === 'HDZ' ? 'HDZ' : p.finish === 'SUS304' ? 'SUS304' : p.finish === 'ZAM' ? 'ZAM' : 'EZ'; if (p.finish === 'SUS304') params.material = 'SUS304';
   if (sku) { const d = sku.dims; const num = s => { const m = String(s || '').match(/-?\d+(?:\.\d+)?/); return m ? +m[0] : null; };
     if (d['適合配管径']) params.od = num(d['適合配管径']); else if (d['管径称']) params.od = pipeOD(d['管径称'], 'SGP') || num(d['管径称']); else if (d['管径称(VP)']) params.od = pipeOD(d['管径称(VP)'].replace('A', ''), 'VP') || num(d['管径称(VP)']);
@@ -38,5 +39,6 @@ export function addTypeFromProduct(app, p, sku) {
   // ファミリに無いキーは除外（__ 系は保持）
   const keys = new Set(fam.params.map(x => x.key)); for (const k of Object.keys(params)) if (!keys.has(k) && !k.startsWith('__')) delete params[k];
   const name = p.name + (sku ? ` ${sku.dims['管径称'] || sku.dims['管径称(VP)'] || sku.dims['サイズ'] || sku.sku}` : '');
-  return app.model.addType(fam.id, name, params);
+  return { familyId: fam.id, name, params };
 }
+export function addTypeFromProduct(app, p, sku) { const existing = app.model.types.find(t => t.params.__pid === p.pid && t.params.__sku === (sku ? sku.sku : null)); if (existing) return existing; const pp = productParams(p, sku); return app.model.addType(pp.familyId, pp.name, pp.params); }
