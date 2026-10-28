@@ -438,6 +438,7 @@ body.menu-open .burger i:nth-child(3){transform:translateY(-6.25px) rotate(-45de
   position:fixed;inset:0;z-index:70;background:#000;
   display:flex;flex-direction:column;justify-content:center;
   padding:var(--hdr-h) var(--pad) 40px;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
   opacity:0;visibility:hidden;transition:opacity .5s var(--ease),visibility .5s;
 }
 body.menu-open .menu{opacity:1;visibility:visible;}
@@ -448,6 +449,7 @@ body.menu-open .menu{opacity:1;visibility:visible;}
   opacity:0;transform:translateY(24px);
 }
 html[lang="en"] .menu__item{text-transform:uppercase;}
+.menu__item.nt{text-transform:none;}
 body.menu-open .menu__item{opacity:1;transform:none;transition:opacity .6s var(--ease) var(--dl,0s),transform .6s var(--ease) var(--dl,0s),color .3s var(--ease);}
 .menu__item:hover{color:var(--white);}
 .menu__sub{display:flex;flex-wrap:wrap;gap:8px 26px;margin:6px 0 4px;}
@@ -962,17 +964,14 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 <!-- ═══════════════════ MENU ═══════════════════ -->
 <div class="menu" id="menu">
   <nav class="menu__list" aria-label="Menu">
-    <a class="menu__item" href="#/xinteractive"    style="--dl:.06s" data-i18n="nav_work">Work</a>
-    <div class="menu__sub">
-      <a href="#/xinteractive">xINTERACTIVE</a>
-      <a href="#/xad">xAD</a>
-      <a href="#/xbuild">xBUILD</a>
-    </div>
-    <a class="menu__item" href="#/cases" data-i18n="nav_cases" style="--dl:.10s">Cases</a>
-    <a class="menu__item" href="#/news" style="--dl:.12s" data-i18n="nav_news">News</a>
-    <a class="menu__item" href="#company" style="--dl:.18s" data-i18n="nav_company">Company</a>
+    <a class="menu__item nt" href="#/xinteractive" style="--dl:.06s">xINTERACTIVE</a>
+    <a class="menu__item nt" href="#/xad" style="--dl:.09s">xAD</a>
+    <a class="menu__item nt" href="#/xbuild" style="--dl:.12s">xBUILD</a>
+    <a class="menu__item" href="#/cases" data-i18n="nav_cases" style="--dl:.15s">Cases</a>
+    <a class="menu__item" href="#/news" style="--dl:.18s" data-i18n="nav_news">News</a>
+    <a class="menu__item" href="#company" style="--dl:.21s" data-i18n="nav_company">Company</a>
     <a class="menu__item" href="#careers" style="--dl:.24s" data-i18n="nav_careers">Careers</a>
-    <a class="menu__item" href="#contact" style="--dl:.30s" data-i18n="nav_contact">Contact</a>
+    <a class="menu__item" href="#contact" style="--dl:.27s" data-i18n="nav_contact">Contact</a>
   </nav>
   <div class="menu__foot">
     <a href="mailto:info@yellow.technology">info@yellow.technology</a>
@@ -1114,6 +1113,8 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
       </div>
   </div>
 </section>
+
+
 
 
 
