@@ -13,7 +13,7 @@ const ROUTES = [
   { id: 'home', dir: '', title: '株式会社YELLOW｜研究を、素材として。',
     desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。xINTERACTIVE（エンタメ・体験・UI/UX）、xAD（戦略分析とプロトタイピング）、xBUILD（人流・工業の大規模開発）の3つの事業を手がけます。群馬県高崎市。',
     en: { title: 'YELLOW Inc. — Research as material.',
-          desc: 'YELLOW Inc. turns research seeds into real products: xINTERACTIVE (entertainment, experiences, UI/UX), xAD (strategy analysis and prototyping), xBUILD (mobility and industry).' } },
+          desc: 'YELLOW Inc. turns research seeds into real products: xINTERACTIVE (experiences and UI/UX), xAD (strategy and prototyping), xBUILD (mobility and industry).' } },
   { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜エンタメ・体験・UI/UXに、研究シーズとAIの知見を — 株式会社YELLOW',
     desc: 'エンターテインメント、体験、UI/UXを対象に、研究シーズ（リアルタイム3D、シミュレーション、空間データ）とAIの知見を盛り込んだプロジェクトを提供。企画・体験設計から実装、現場運用まで手がけます。株式会社YELLOWの事業 xINTERACTIVE。',
     en: { title: 'xINTERACTIVE — Entertainment, experiences and UI/UX, built with research seeds and AI | YELLOW Inc.',
