@@ -6,7 +6,9 @@ export async function imageToBinary(src, { maxPx = 2200 } = {}) {
   const img = src instanceof HTMLCanvasElement ? src : await loadImage(src); const s = Math.min(1, maxPx / Math.max(img.width, img.height)); const w = Math.max(1, Math.round(img.width * s)), hgt = Math.max(1, Math.round(img.height * s));
   const c = document.createElement('canvas'); c.width = w; c.height = hgt; const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, hgt); ctx.drawImage(img, 0, 0, w, hgt);
   const d = ctx.getImageData(0, 0, w, hgt).data; const g = new Uint8Array(w * hgt); const hist = new Uint32Array(256); for (let i = 0, k = 0; i < d.length; i += 4, k++) { const v = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000 | 0; g[k] = v; hist[v]++; }
-  const thr = Math.min(Math.max(otsu(hist, w * hgt), 40), 200); const bin = new Uint8Array(w * hgt); for (let k = 0; k < g.length; k++) bin[k] = g[k] <= thr ? 1 : 0; return { bin, w, h: hgt, scale: s, thr, canvas: c };
+  // 図面はインク率 1〜5% 程度。Otsu が薄い線を白側に落とした（インク率 < 0.4%）場合は、暗い方から 1% に達する輝度まで閾値を上げる
+  let thr = Math.min(Math.max(otsu(hist, w * hgt), 40), 200); const total = w * hgt; let cum = 0; for (let t = 0; t <= thr; t++) cum += hist[t]; if (cum / total < 0.004) { let acc = 0; for (let t = 0; t < 256; t++) { acc += hist[t]; if (acc / total >= 0.01) { thr = Math.min(Math.max(thr, t), 225); break; } } }
+  const bin = new Uint8Array(total); for (let k = 0; k < g.length; k++) bin[k] = g[k] <= thr ? 1 : 0; return { bin, w, h: hgt, scale: s, thr, canvas: c };
 }
 function loadImage(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('画像を読めません')); im.src = typeof src === 'string' ? src : URL.createObjectURL(src); }); }
 // 行方向・列方向のラン（連続した黒）を抽出し、隣接する行のランを束ねて 1 本の線にする
