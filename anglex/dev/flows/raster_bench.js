@@ -6,12 +6,12 @@ const res = await page.evaluate(async () => {
   if (!src) return { error: 'demoDXF not found' };
   const dxf = parseDXF(src); const truth = recognizeDXF(dxf); const bb = dxf.bbox; const mmW = bb.w, mmH = bb.h;
   const out = []; for (const cfg of [{ dpi: 200, noise: 0, blur: 0, label: 'clean' }, { dpi: 200, noise: 0.02, blur: 1, label: 'scan-like' }, { dpi: 150, noise: 0.04, blur: 1.5, label: 'poor-scan' }]) {
-    const scale = 10; const pxPerMm = cfg.dpi / 25.4 / scale; const W = Math.round(mmW * pxPerMm * 1.1), H = Math.round(mmH * pxPerMm * 1.1);
+    const scale = 10; const pxPerMm = cfg.dpi / 25.4 / scale; const pad0 = Math.max(mmW, mmH) * 0.04; const W = Math.round((mmW + 2 * pad0) * pxPerMm), H = Math.round((mmH + 2 * pad0) * pxPerMm); // viewBox と同じ縦横比（等倍・中央寄せのズレを避ける）
     const svg = dxfToSVG(dxf, { width: W, height: H }); const img = new Image(); await new Promise((r, j) => { img.onload = r; img.onerror = j; img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))); });
     const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); if (cfg.blur) { const s = 1 / (1 + cfg.blur); const t = document.createElement('canvas'); t.width = Math.max(1, Math.round(W * s)); t.height = Math.max(1, Math.round(H * s)); const tg = t.getContext('2d'); tg.fillStyle = '#fff'; tg.fillRect(0, 0, t.width, t.height); tg.drawImage(img, 0, 0, t.width, t.height); g.imageSmoothingEnabled = true; g.drawImage(t, 0, 0, W, H); } else g.drawImage(img, 0, 0, W, H);
     if (cfg.noise) { const d = g.getImageData(0, 0, W, H); for (let i = 0; i < d.data.length; i += 4) { if (Math.random() < cfg.noise) { const v = Math.random() < 0.5 ? 0 : 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; } } g.putImageData(d, 0, 0); }
     // SVG は図面 bbox に 4% pad で描かれる → mm/px は pad 込みで換算
-    const pad = Math.max(mmW, mmH) * 0.04; const mmPerPx = (mmW + 2 * pad) / W;
+    const pad = pad0; const mmPerPx = 1 / pxPerMm;
     const vec = await vectorizeImage(c, { mmPerPx, minLenMm: 15 }); const rec = recognizeDXF({ entities: vec.entities, layers: vec.layers, blocks: {}, bbox: null }); const { rectsFromLines } = await import('./js/import/raster.js');
     // 真値（DXF）と検出（ベクタ化）の座標系: SVG は bbox に pad を付けて描く → 検出座標は (x - bb.x0 + pad, y - bb.y0 + pad)
     const tx = p => [p[0] - bb.x0 + pad, p[1] - bb.y0 + pad]; const truthLines = dxf.entities.filter(e => e.type === 'LINE' && Math.hypot(e.b[0] - e.a[0], e.b[1] - e.a[1]) >= 15).map(e => ({ a: tx(e.a), b: tx(e.b) })); const recLines = vec.entities.filter(e => e.type === 'LINE'); const lineMatch = truthLines.filter(t => recLines.some(r => (Math.hypot(r.a[0] - t.a[0], r.a[1] - t.a[1]) < 10 && Math.hypot(r.b[0] - t.b[0], r.b[1] - t.b[1]) < 10) || (Math.hypot(r.a[0] - t.b[0], r.a[1] - t.b[1]) < 10 && Math.hypot(r.b[0] - t.a[0], r.b[1] - t.a[1]) < 10)));

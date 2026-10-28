@@ -1,11 +1,12 @@
 // ラスター図面（スキャン PDF / 画像）のベクタ化: 二値化 → 軸方向の線分抽出（行・列のラン）→ 矩形（閉ループ）復元 → DXF 互換の entities
 // 寸法注記は読めないので、縮尺（1:n）と解像度（dpi）から mm/px を決める。斜線（方杖）と円（穴）は連結成分の形状から抽出
-export function otsu(hist, total) { let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i]; let sumB = 0, wB = 0, max = 0, thr = 128; for (let t = 0; t < 256; t++) { wB += hist[t]; if (!wB) continue; const wF = total - wB; if (!wF) break; sumB += t * hist[t]; const mB = sumB / wB, mF = (sum - sumB) / wF; const v = wB * wF * (mB - mF) * (mB - mF); if (v > max) { max = v; thr = t; } } return thr; }
+export function otsu(hist, total) { let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i]; let sumB = 0, wB = 0, max = 0; const vs = new Float64Array(256); for (let t = 0; t < 256; t++) { wB += hist[t]; if (!wB) continue; const wF = total - wB; if (!wF) break; sumB += t * hist[t]; const mB = sumB / wB, mF = (sum - sumB) / wF; const v = wB * wF * (mB - mF) * (mB - mF); vs[t] = v; if (v > max) max = v; } // 二峰（0 / 255 のみ）では分散が平坦になるため、最大値の台地の中央を取る
+  const ts = []; for (let t = 0; t < 256; t++) if (vs[t] >= max * (1 - 1e-6)) ts.push(t); return ts.length ? ts[Math.floor(ts.length / 2)] : 128; }
 export async function imageToBinary(src, { maxPx = 2200 } = {}) {
   const img = src instanceof HTMLCanvasElement ? src : await loadImage(src); const s = Math.min(1, maxPx / Math.max(img.width, img.height)); const w = Math.max(1, Math.round(img.width * s)), hgt = Math.max(1, Math.round(img.height * s));
   const c = document.createElement('canvas'); c.width = w; c.height = hgt; const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, hgt); ctx.drawImage(img, 0, 0, w, hgt);
   const d = ctx.getImageData(0, 0, w, hgt).data; const g = new Uint8Array(w * hgt); const hist = new Uint32Array(256); for (let i = 0, k = 0; i < d.length; i += 4, k++) { const v = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000 | 0; g[k] = v; hist[v]++; }
-  const thr = Math.min(otsu(hist, w * hgt), 200); const bin = new Uint8Array(w * hgt); for (let k = 0; k < g.length; k++) bin[k] = g[k] < thr ? 1 : 0; return { bin, w, h: hgt, scale: s, thr, canvas: c };
+  const thr = Math.min(Math.max(otsu(hist, w * hgt), 40), 200); const bin = new Uint8Array(w * hgt); for (let k = 0; k < g.length; k++) bin[k] = g[k] <= thr ? 1 : 0; return { bin, w, h: hgt, scale: s, thr, canvas: c };
 }
 function loadImage(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('画像を読めません')); im.src = typeof src === 'string' ? src : URL.createObjectURL(src); }); }
 // 行方向・列方向のラン（連続した黒）を抽出し、隣接する行のランを束ねて 1 本の線にする
@@ -54,8 +55,9 @@ export async function vectorizeImage(src, { mmPerPx = null, dpi = 200, scale = 1
   const { bin, w, h, scale: s, thr, canvas } = await imageToBinary(src); const mmpp = mmPerPx != null ? mmPerPx / s : (25.4 / dpi) * scale / s; const minLen = Math.max(8, Math.round(minLenMm / mmpp));
   const H = runs(bin, w, h, minLen, true), V = runs(bin, w, h, minLen, false); const tol = Math.max(3, Math.round(2 / mmpp) + 2); const rects = rectangles(H, V, tol);
   const toMm = ([x, y]) => [Math.round(x * mmpp * 10) / 10, Math.round((h - y) * mmpp * 10) / 10];
-  const { diag, circles } = diagonalsAndCircles(bin, w, h, H, V, { minLen: minLen, minD: Math.max(5, Math.round(4 / mmpp)), maxD: Math.round(60 / mmpp) });
+  const { diag, circles: circles0 } = diagonalsAndCircles(bin, w, h, H, V, { minLen: minLen, minD: Math.max(5, Math.round(4 / mmpp)), maxD: Math.round(60 / mmpp) });
+  const circles = circles0.filter(c => rects.some(r => c.c[0] > r.x0 + 2 && c.c[0] < r.x1 - 2 && c.c[1] > r.y0 + 2 && c.c[1] < r.y1 - 2)); // 穴は部材外形（矩形）の内側にある。文字の o / 0 を除外
   const entities = []; for (const l of [...H, ...V]) entities.push({ type: 'LINE', a: toMm(l.a), b: toMm(l.b), layer: 'RASTER' }); for (const l of diag) entities.push({ type: 'LINE', a: toMm(l.a), b: toMm(l.b), layer: 'RASTER_DIAG' }); for (const c of circles) entities.push({ type: 'CIRCLE', c: toMm(c.c), r: Math.round(c.r * mmpp * 10) / 10, layer: 'RASTER_HOLE' });
   for (const r of rects) entities.push({ type: 'LWPOLYLINE', pts: [toMm([r.x0, r.y0]), toMm([r.x1, r.y0]), toMm([r.x1, r.y1]), toMm([r.x0, r.y1])], closed: true, layer: 'RASTER_RECT' });
-  return { entities, layers: { RASTER: { on: true }, RASTER_RECT: { on: true }, RASTER_DIAG: { on: true }, RASTER_HOLE: { on: true } }, stats: { px: `${w}×${h}`, threshold: thr, lines: H.length + V.length, diagonals: diag.length, circles: circles.length, rects: rects.length, mmPerPx: Math.round(mmpp * 1000) / 1000 }, mmPerPx: mmpp, canvas };
+  return { entities, layers: { RASTER: { on: true }, RASTER_RECT: { on: true }, RASTER_DIAG: { on: true }, RASTER_HOLE: { on: true } }, stats: { px: `${w}×${h}`, threshold: thr, lines: H.length + V.length, diagonals: diag.length, circles: circles.length, circlesRaw: circles0.length, rects: rects.length, mmPerPx: Math.round(mmpp * 1000) / 1000 }, mmPerPx: mmpp, canvas };
 }
