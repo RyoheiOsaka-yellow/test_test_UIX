@@ -112,14 +112,13 @@
     "xad-cap02": "fade",
     "xbuild-hero": "fade",
     "xbuild-cap01": "fade",
-    "xbuild-cap02": "fade"
+    "xbuild-cap02": "fade",
+    "home-careers": "fade"
   },
   "mobile": {
-    "_": "スマホでの手加減。dpr=描画解像度の上限 / skip=スマホでは動かさないデモ（ポスターのまま）",
-    "dpr": 1.25,
+    "_": "スマホでの手加減。dpr=描画解像度の上限 / skip=スマホでは動かさないデモ（ポスターのまま）。遅すぎる端末や失敗した端末は自動でポスターに戻る（ydemo-slow / ydemo-fail）",
+    "dpr": 1.0,
     "skip": [
-      "clearwater",
-      "hicity",
       "xad-store",
       "xbuild-factory",
       "xbuild-arena"

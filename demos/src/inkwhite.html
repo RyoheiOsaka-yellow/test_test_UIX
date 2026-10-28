@@ -42,7 +42,8 @@ const DYE = [GRID[0] * 4, GRID[1] * 4];
 const canvas = document.getElementById('ink');
 const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance' });
 if (!gl) throw new Error('WebGL2 unavailable');
-if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('EXT_color_buffer_float unavailable');
+// 16F しか使わないので、半精度の描画先（EXT_color_buffer_half_float）でも動く。スマホ GPU の多くは 32F 非対応
+if (!gl.getExtension('EXT_color_buffer_float') && !gl.getExtension('EXT_color_buffer_half_float')) throw new Error('float color buffer unavailable');
 
 /* ---------- shader plumbing ---------- */
 const VS = `#version 300 es
