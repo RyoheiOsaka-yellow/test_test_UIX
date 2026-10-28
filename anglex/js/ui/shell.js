@@ -35,10 +35,11 @@ export function initShell(app) {
   };
   sh.enterApp = step => { sh.showView('app'); const n = step || (app.model.instances.length ? 4 : 1); sh.unlockFor(); sh.goStep(n); };
   // ---------- サインイン ----------
+  const fillBranches = () => { const sel = $('#sm-inBranch'); if (!sel) return; sel.innerHTML = ''; for (const b of BRANCHES) sel.append(h('option', { value: b.code }, b.name)); }; fillBranches();
   const signIn = async () => {
     const email = $('#sm-inEmail').value.trim(); const pass = $('#sm-inPass').value; const org = $('#sm-inOrg').value;
     if (app.store.mode === 'server') { try { await app.store.login(email, pass); } catch (e) { toast('サインイン失敗: ' + e.message, 'bad'); return; } }
-    else { const br = $('#sm-inBranch')?.value || null; const u = (org === 'A' ? DEMO_USERS.find(x => x.org === 'A' && x.branch === br) : null) || DEMO_USERS.find(x => x.org === org) || DEMO_USERS[0]; await app.switchUser({ ...u, branch: org === 'A' ? (br || u.branch) : u.branch, name: email && !email.includes('@example.com') ? `${email.split('@')[0]}（${u.company || u.org + '社'}）` : u.name }); }
+    else { const br = $('#sm-inBranch')?.value || null; const pool = app.store.d?.users || DEMO_USERS; const u = (org === 'A' ? pool.find(x => x.org === 'A' && x.branch === br) : null) || pool.find(x => x.org === org) || DEMO_USERS[0]; await app.switchUser({ ...u, branch: org === 'A' ? (br || u.branch) : u.branch, name: email && !email.includes('@example.com') ? `${email.split('@')[0]}（${u.company || u.org + '社'}）` : u.name }); }
     app.renderUser(); toast(`サインインしました: ${app.user().name}`, 'ok'); sh.showView('modeselect');
   };
   $('#smSignIn').addEventListener('click', signIn); $('#sm-inPass').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
@@ -227,7 +228,7 @@ export function initShell(app) {
     if (qp.get('handoff')) { sh.enterApp(5); return; }
     if (v === '3d') { sh.showView('app'); sh.enterApp(app.model.instances.length ? 4 : 1); return; }
     if (v === 'chat') { sh.showView('chat'); return; } if (v === 'projects') { sh.showView('projects'); return; }
-    sh.showView('signin');
+    fillBranches(); sh.showView('signin');
   };
   return sh;
 }

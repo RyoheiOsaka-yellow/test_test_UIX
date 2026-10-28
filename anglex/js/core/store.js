@@ -29,6 +29,10 @@ export class LocalStore {
   async finalizeEstimate(id, who) { const e = this.d.estimates[id]; WF.finalize(e, who); this.save(); return e; }
   async rejectEstimate(id, who) { const e = this.d.estimates[id]; WF.reject(e, who); this.save(); return e; }
   async byToken(token) { return Object.values(this.d.estimates).find(e => Object.values(e.tokens).includes(token)) || null; }
+  async listBranches() { return this.d.branches || null; }
+  async saveBranches(list) { this.d.branches = list; this.save(); return list; }
+  async listUsers() { return this.d.users; }
+  async saveUsers(list) { this.d.users = list; if (this.d.session?.user) { const u = list.find(x => x.id === this.d.session.user.id); if (u) this.d.session.user = { ...u }; } this.save(); return list; }
   async exportAll() { return JSON.parse(JSON.stringify(this.d)); }
   async importAll(d) { this.d = { ...this.d, ...d }; this.save(); }
 }
@@ -41,6 +45,10 @@ export class RestStore {
   session() { return this._session; }
   async me() { try { this._session = await this.req('GET', '/api/me'); return this._session; } catch { return null; } }
   async listProjects(opts = {}) { return this.req('GET', '/api/projects' + (opts.all ? '?all=1' : '')); }
+  async listBranches() { return this.req('GET', '/api/branches'); }
+  async saveBranches(list) { return this.req('POST', '/api/branches', list); }
+  async listUsers() { return this.req('GET', '/api/users'); }
+  async saveUsers(list) { return this.req('POST', '/api/users/bulk', list); }
   async listPrices() { return this.req('GET', '/api/prices'); }
   async listLearn() { return this.req('GET', '/api/learn'); }
   async addLearn(rows) { return this.req('POST', '/api/learn', rows); }

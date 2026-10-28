@@ -988,3 +988,5 @@ tr.new td{background:rgba(29,78,216,.06)}tr.gone td{background:rgba(0,0,0,.04);t
 .proj-branch{font-size:10px;padding:1px 6px;border-radius:9px;background:rgba(255,255,255,.12);color:#e8dfcf;margin-left:6px;cursor:pointer;white-space:nowrap}.proj-branch.unset{opacity:.6;border:1px dashed rgba(255,255,255,.4)}
 .sm-branch-bar{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0 2px}
 .dash-chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0 2px}
+
+.modal.admin{width:min(1100px,96vw);height:min(820px,92vh)}.admin-wrap .cell-edit{width:100%}

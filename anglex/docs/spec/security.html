@@ -1,0 +1,60 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ANGLEX セキュリティ説明</title><link rel="stylesheet" href="doc.css"><style>
+.sec-head{display:flex;align-items:baseline;gap:10pt;margin-bottom:6pt}.sec-head .brand{font-size:18pt;font-weight:800;letter-spacing:.1em}.sec-head h1{font-size:16pt}
+.five{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:3mm;margin:6pt 0}.five .card{padding:6pt 7pt}.five .card b.n{display:block;font-size:16pt;color:var(--accent);line-height:1}.five .card h4{font-size:9.5pt;margin:2pt 0 2pt;color:var(--ink)}.five .card p{font-size:8.5pt;margin:0;color:var(--ink2)}
+.diagram{border:1px solid var(--line);border-radius:5pt;padding:6pt;background:#fff;margin:6pt 0}
+.perm{font-size:8.8pt}.perm th,.perm td{padding:3pt 5pt}.ok{color:var(--ok);font-weight:700}.no{color:#b42318;font-weight:700}
+.two{display:grid;grid-template-columns:1.2fr 1fr;gap:5mm;align-items:start}
+.faq{font-size:9pt}.faq b{color:var(--accent2)}
+</style></head><body>
+<div class="sec-head"><span class="brand">ANGLEX</span><h1>セキュリティの考え方（1 枚）</h1><span class="muted small">データは貴社の中で完結し、見せる範囲は権限で機械的に分け、すべての操作が記録に残る</span></div>
+<div class="five">
+<div class="card"><b class="n">1</b><h4>データは社内で完結</h4><p>社内サーバー（既存仮想環境可）に配置。外部通信なし。オフライン版あり。クラウドは貴社専用</p></div>
+<div class="card"><b class="n">2</b><h4>外部 AI に送らない</h4><p>図面認識・見積はサーバー／PC 内で処理。外部生成 AI 連携は標準で無効、貴社判断でオン</p></div>
+<div class="card"><b class="n">3</b><h4>権限で項目単位に分離</h4><p>営業所・販売・工場で見える列を分ける。画面の出し分けでなくサーバー側でも検証</p></div>
+<div class="card"><b class="n">4</b><h4>監査ログと Rev 凍結</h4><p>作成・編集・受け渡し・確定・差戻しを日時・会社・担当・前後の値で記録。受け渡しごとに改訂を凍結</p></div>
+<div class="card"><b class="n">5</b><h4>安全なリンク共有</h4><p>受け渡しは推測不能なトークン付きリンク。開いた会社の権限でしか見えない。HTTPS は社内標準で付与</p></div>
+</div>
+<div class="two">
+<div>
+<div class="diagram">
+<svg viewBox="0 0 620 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="NotoJP,sans-serif" font-size="11">
+  <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#4a4a44"/></marker></defs>
+  <rect x="8" y="8" width="604" height="284" rx="8" fill="#f4f2ea" stroke="#d9d6cc"/>
+  <text x="18" y="26" font-size="11" fill="#7a7a72">貴社ネットワーク（閉域）— 外部への通信なし</text>
+  <!-- 営業所 -->
+  <rect x="20" y="42" width="150" height="120" rx="6" fill="#fff" stroke="#1f5f8b"/><text x="95" y="60" text-anchor="middle" font-weight="700" fill="#1f5f8b">営業所（A社）× 20</text>
+  <rect x="32" y="70" width="126" height="22" rx="4" fill="#eef4f9"/><text x="95" y="85" text-anchor="middle">PC のブラウザで操作</text>
+  <text x="95" y="110" text-anchor="middle" font-size="10" fill="#4a4a44">図面認識・3D・見積作成</text>
+  <text x="95" y="126" text-anchor="middle" font-size="10" fill="#4a4a44">自営業所の案件のみ既定</text>
+  <text x="95" y="150" text-anchor="middle" font-size="9.5" fill="#7a7a72">見える: 原価・マージン・全列</text>
+  <!-- サーバー -->
+  <rect x="235" y="42" width="150" height="120" rx="6" fill="#fff" stroke="#c8622f" stroke-width="1.5"/><text x="310" y="60" text-anchor="middle" font-weight="700" fill="#c8622f">社内サーバー × 1</text>
+  <text x="310" y="80" text-anchor="middle" font-size="10">案件・見積・監査ログ</text><text x="310" y="95" text-anchor="middle" font-size="10">営業所コードで仕分け</text><text x="310" y="110" text-anchor="middle" font-size="10">権限をサーバー側で検証</text>
+  <text x="310" y="130" text-anchor="middle" font-size="10">トークン発行・HTTPS</text><text x="310" y="150" text-anchor="middle" font-size="9.5" fill="#7a7a72">日次バックアップ → NAS</text>
+  <!-- 工場 -->
+  <rect x="450" y="42" width="150" height="120" rx="6" fill="#fff" stroke="#3e6b4a"/><text x="525" y="60" text-anchor="middle" font-weight="700" fill="#3e6b4a">加工工場（C社）× 1 ID</text>
+  <rect x="462" y="70" width="126" height="22" rx="4" fill="#eef5f0"/><text x="525" y="85" text-anchor="middle">リンクで見積を開く</text>
+  <text x="525" y="110" text-anchor="middle" font-size="10" fill="#4a4a44">工場単価・納期・可否を入力</text>
+  <text x="525" y="126" text-anchor="middle" font-size="10" fill="#4a4a44">全営業所の案件を横断</text>
+  <text x="525" y="150" text-anchor="middle" font-size="9.5" fill="#7a7a72">見えない: 販売価格・マージン</text>
+  <!-- arrows -->
+  <line x1="170" y1="100" x2="233" y2="100" stroke="#4a4a44" stroke-width="1.5" marker-end="url(#ar)"/><text x="201" y="92" text-anchor="middle" font-size="9">保存・受け渡し</text>
+  <line x1="385" y1="100" x2="448" y2="100" stroke="#4a4a44" stroke-width="1.5" marker-end="url(#ar)"/><text x="416" y="92" text-anchor="middle" font-size="9">リンク（トークン）</text>
+  <!-- 販売 -->
+  <rect x="235" y="190" width="150" height="56" rx="6" fill="#fff" stroke="#8a5a1f"/><text x="310" y="208" text-anchor="middle" font-weight="700" fill="#8a5a1f">販売会社（B社）</text><text x="310" y="226" text-anchor="middle" font-size="10">利益率・販売価格のみ編集</text><text x="310" y="240" text-anchor="middle" font-size="9.5" fill="#7a7a72">見えない: 工場原価</text>
+  <line x1="310" y1="162" x2="310" y2="188" stroke="#4a4a44" stroke-width="1.5" marker-end="url(#ar)"/>
+  <!-- outside -->
+  <rect x="20" y="190" width="150" height="56" rx="6" fill="#fff" stroke="#d9d6cc" stroke-dasharray="4 3"/><text x="95" y="208" text-anchor="middle" font-weight="700" fill="#7a7a72">外部（インターネット）</text><text x="95" y="226" text-anchor="middle" font-size="9.5" fill="#7a7a72">図面・単価は送らない</text><text x="95" y="240" text-anchor="middle" font-size="9.5" fill="#7a7a72">生成 AI 連携は任意・既定オフ</text>
+  <line x1="170" y1="218" x2="233" y2="218" stroke="#b42318" stroke-width="1.5" stroke-dasharray="4 3"/><text x="201" y="212" text-anchor="middle" font-size="9" fill="#b42318">遮断</text>
+  <text x="18" y="278" font-size="9.5" fill="#4a4a44">監査ログ: 誰が・いつ・何を（前後の値） ／ 受け渡しごとに Rev を凍結 ／ 営業所の担当者は自営業所のみ・工場は 1 ID で全営業所</text>
+</svg>
+</div>
+</div>
+<div>
+<table class="perm"><tr><th>項目</th><th>営業所（A）</th><th>販売（B）</th><th>工場（C）</th></tr>
+<tr><td>3D・数量・仕様</td><td class="ok">編集</td><td>閲覧</td><td>閲覧</td></tr><tr><td>基準原価・マージン</td><td class="ok">編集</td><td class="no">非表示</td><td class="no">非表示</td></tr><tr><td>利益率・販売価格</td><td>閲覧</td><td class="ok">編集</td><td class="no">非表示</td></tr><tr><td>工場単価・納期・可否</td><td>閲覧</td><td class="no">非表示</td><td class="ok">編集</td></tr><tr><td>他営業所の案件</td><td class="no">既定で非表示</td><td>全営業所</td><td>全営業所</td></tr><tr><td>確定</td><td class="ok">可（チェック付）</td><td>—</td><td>—</td></tr></table>
+<div class="faq"><p><b>Q. 暗号化は？</b> 通信は HTTPS（社内の IIS / nginx で付与）。保存データは貴社サーバーのディスク暗号化（BitLocker / LUKS）を推奨。</p><p><b>Q. ID 管理・多要素認証は？</b> 現状はサーバーのアカウント管理（営業所 20 ID ＋ 工場 1〜2 ID）。Active Directory / Entra ID 連携は本導入の要件として対応。</p><p><b>Q. 第三者診断は？</b> 本番展開前に脆弱性診断を実施する計画。</p><p><b>Q. バックアップ・復旧は？</b> 日次で貴社ファイルサーバーへ。案件単位で JSON 書出し・読込ができ、作業スナップショットでいつでも戻せる。</p><p><b>Q. 退職・異動時は？</b> ユーザー管理画面で所属変更・削除。発行済みリンクは差戻し／確定で無効化。</p></div>
+</div>
+</div>
+<p class="small muted" style="margin-top:6pt">対応済: 閉域運用・オフライン版・項目単位の権限（サーバー側検証）・監査ログ・Rev 凍結・トークンリンク・営業所の仕分け・ユーザー／営業所の管理画面と CSV 取込　／　予定: SSO（AD / Entra ID）・多要素認証・第三者診断・自動バックアップスクリプト</p>
+</body></html>

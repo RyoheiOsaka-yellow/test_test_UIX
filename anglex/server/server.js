@@ -47,6 +47,9 @@ const server = http.createServer(async (req, res) => {
         persist(); return send(res, 200, WF.redact(e, me.user.org)); }
       if (p === '/api/prices' && req.method === 'GET') return send(res, 200, (db.prices || []).filter(r => me.user.org !== 'B'));
       if (p === '/api/prices' && req.method === 'POST') { const rows = JSON.parse(await readBody(req) || '[]'); db.prices = (db.prices || []).concat(rows).slice(-20000); persist(); return send(res, 200, { ok: true, n: db.prices.length }); }
+      if (p === '/api/branches' && req.method === 'GET') return send(res, 200, db.branches || null);
+      if (p === '/api/branches' && req.method === 'POST' && me.user.org === 'A') { db.branches = JSON.parse(await readBody(req) || '[]'); persist(); return send(res, 200, db.branches); }
+      if (p === '/api/users/bulk' && req.method === 'POST' && me.user.org === 'A') { const list = JSON.parse(await readBody(req) || '[]'); const next = list.map(u => { const ex = db.users.find(x => x.id === u.id || x.email === u.email); return { id: u.id || ex?.id || ('u_' + crypto.randomBytes(4).toString('hex')), name: u.name, org: u.org, company: u.company, email: u.email, branch: u.branch || null, scope: u.scope || null, pw: ex?.pw || hash('anglex') }; }); if (!next.some(u => u.id === me.user.id)) return send(res, 400, { error: '自分自身は削除できません' }); db.users = next; persist(); return send(res, 200, db.users.map(pub)); }
       if (p === '/api/learn' && req.method === 'GET') return send(res, 200, db.learn || []);
       if (p === '/api/learn' && req.method === 'POST') { const rows = JSON.parse(await readBody(req) || '[]'); db.learn = (db.learn || []).concat(rows).slice(-20000); persist(); return send(res, 200, { ok: true, n: db.learn.length }); }
       if (p === '/api/export' && me.user.org === 'A') return send(res, 200, db);

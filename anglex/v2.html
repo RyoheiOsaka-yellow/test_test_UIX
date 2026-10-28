@@ -23,7 +23,7 @@
       <div class="sm-tag">図面に、語らせる。</div>
       <div class="sm-field"><label>メールアドレス</label><input id="sm-inEmail" placeholder="メールアドレス" autocomplete="username"></div>
       <div class="sm-field"><label>パスワード</label><input type="password" id="sm-inPass" placeholder="パスワード" autocomplete="current-password"></div>
-      <div class="sm-field"><label>営業所（A社の場合）</label><select id="sm-inBranch"><option value="TKY">東京営業所</option><option value="OSK">大阪営業所</option><option value="NGY">名古屋営業所</option><option value="FKO">福岡営業所</option><option value="SDI">仙台営業所</option><option value="HQ">本社</option></select></div>
+      <div class="sm-field"><label>営業所（A社の場合）</label><select id="sm-inBranch"></select></div>
       <div class="sm-field"><label>会社・役割（デモ）</label><select id="sm-inOrg"><option value="A">A社 — 設計・見積作成（モデル編集可）</option><option value="B">B社 — 販売（利益率のみ編集）</option><option value="C">C社 — 加工工場（工場単価のみ編集）</option></select></div>
       <div class="sm-dummy" id="smAuthNote">※ デモ用ダミー認証。任意の入力でサインインできます。</div>
       <button class="sm-btn primary full" id="smSignIn">サインイン</button>
@@ -44,7 +44,7 @@
     <div class="sm-container">
       <div class="sm-proj-top">
         <div><div class="sm-page-h">顧客・案件管理</div><div class="sm-page-sub" style="margin-bottom:0">顧客会社ごとに案件（3D モデル）と<span style="color:var(--sm-accent)">見積の改訂・受け渡し</span>を管理。A社 → B社 → C社 の受け渡し状況もここに記録されます。</div></div>
-        <div class="sm-proj-actions"><button class="sm-btn" id="btnDashboard" title="案件横断: 見積状態・担当・合計・期限">▦ ダッシュボード</button><button class="sm-btn" id="smNewChat">＋ 新規案件（チャット）</button><button class="sm-btn accent" id="smNewDrawing">＋ 新規案件（図面から）</button></div>
+        <div class="sm-proj-actions"><button class="sm-btn" id="btnDashboard" title="案件横断: 見積状態・担当・合計・期限">▦ ダッシュボード</button><button class="sm-btn" id="btnAdmin" title="営業所・ユーザーの管理">⚙ 営業所・ユーザー</button><button class="sm-btn" id="smNewChat">＋ 新規案件（チャット）</button><button class="sm-btn accent" id="smNewDrawing">＋ 新規案件（図面から）</button></div>
       </div>
       <div class="sm-proj-grid" id="sm-projGrid"></div>
     </div>

@@ -1,0 +1,27 @@
+// ラスター認識のベンチ: デモ DXF（sample_支持金具.dxf）を SVG → 画像化（200 dpi 相当・ノイズ/ぼかし付き）してベクタ化し、DXF 認識（真値）と比較
+const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
+const res = await page.evaluate(async () => {
+  const { parseDXF, dxfToSVG } = await import('./js/import/dxf.js'); const { recognizeDXF } = await import('./js/import/recognize.js'); const { vectorizeImage } = await import('./js/import/raster.js'); const imp = await import('./js/ui/importer.js');
+  const src = (await import('./js/main.js')).demoDXF();
+  if (!src) return { error: 'demoDXF not found' };
+  const dxf = parseDXF(src); const truth = recognizeDXF(dxf); const bb = dxf.bbox; const mmW = bb.w, mmH = bb.h;
+  const out = []; for (const cfg of [{ dpi: 200, noise: 0, blur: 0, label: 'clean' }, { dpi: 200, noise: 0.02, blur: 1, label: 'scan-like' }, { dpi: 150, noise: 0.04, blur: 1.5, label: 'poor-scan' }]) {
+    const scale = 10; const pxPerMm = cfg.dpi / 25.4 / scale; const W = Math.round(mmW * pxPerMm * 1.1), H = Math.round(mmH * pxPerMm * 1.1);
+    const svg = dxfToSVG(dxf, { width: W, height: H }); const img = new Image(); await new Promise((r, j) => { img.onload = r; img.onerror = j; img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))); });
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); if (cfg.blur) { const s = 1 / (1 + cfg.blur); const t = document.createElement('canvas'); t.width = Math.max(1, Math.round(W * s)); t.height = Math.max(1, Math.round(H * s)); const tg = t.getContext('2d'); tg.fillStyle = '#fff'; tg.fillRect(0, 0, t.width, t.height); tg.drawImage(img, 0, 0, t.width, t.height); g.imageSmoothingEnabled = true; g.drawImage(t, 0, 0, W, H); } else g.drawImage(img, 0, 0, W, H);
+    if (cfg.noise) { const d = g.getImageData(0, 0, W, H); for (let i = 0; i < d.data.length; i += 4) { if (Math.random() < cfg.noise) { const v = Math.random() < 0.5 ? 0 : 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; } } g.putImageData(d, 0, 0); }
+    // SVG は図面 bbox に 4% pad で描かれる → mm/px は pad 込みで換算
+    const pad = Math.max(mmW, mmH) * 0.04; const mmPerPx = (mmW + 2 * pad) / W;
+    const vec = await vectorizeImage(c, { mmPerPx, minLenMm: 15 }); const rec = recognizeDXF({ entities: vec.entities, layers: vec.layers, blocks: {}, bbox: null }); const { rectsFromLines } = await import('./js/import/raster.js');
+    // 真値（DXF）と検出（ベクタ化）の座標系: SVG は bbox に pad を付けて描く → 検出座標は (x - bb.x0 + pad, y - bb.y0 + pad)
+    const tx = p => [p[0] - bb.x0 + pad, p[1] - bb.y0 + pad]; const truthLines = dxf.entities.filter(e => e.type === 'LINE' && Math.hypot(e.b[0] - e.a[0], e.b[1] - e.a[1]) >= 15).map(e => ({ a: tx(e.a), b: tx(e.b) })); const recLines = vec.entities.filter(e => e.type === 'LINE'); const lineMatch = truthLines.filter(t => recLines.some(r => (Math.hypot(r.a[0] - t.a[0], r.a[1] - t.a[1]) < 10 && Math.hypot(r.b[0] - t.b[0], r.b[1] - t.b[1]) < 10) || (Math.hypot(r.a[0] - t.b[0], r.a[1] - t.b[1]) < 10 && Math.hypot(r.b[0] - t.a[0], r.b[1] - t.a[1]) < 10)));
+    const truthRects = rectsFromLines(truthLines, 2); const recRects = vec.entities.filter(e => e.type === 'LWPOLYLINE').map(e => { const xs = e.pts.map(q => q[0]), ys = e.pts.map(q => q[1]); return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }; }); const rectMatch = truthRects.filter(t => recRects.some(r => Math.abs(r.x0 - t.x0) < 10 && Math.abs(r.x1 - t.x1) < 10 && Math.abs(r.y0 - t.y0) < 10 && Math.abs(r.y1 - t.y1) < 10));
+    // 真値: DXF 認識の部材（bbox あり）と DXF の円。照合: 中心距離 < 60mm かつ 長さ誤差 < 12%
+    const tm = truth.members.filter(m => m.bbox); const matched = tm.filter(t => rec.members.some(r => r.bbox && Math.hypot((r.bbox.x0 + r.bbox.x1) / 2 - (t.bbox.x0 + t.bbox.x1) / 2 + pad - pad, (r.bbox.y0 + r.bbox.y1) / 2 - (t.bbox.y0 + t.bbox.y1) / 2) < 80 && Math.abs(Math.max(r.bbox.w, r.bbox.h) - Math.max(t.bbox.w, t.bbox.h)) / Math.max(1, Math.max(t.bbox.w, t.bbox.h)) < 0.12));
+    const tc = dxf.entities.filter(e => e.type === 'CIRCLE').map(e => ({ c: tx(e.c), r: e.r })); const rc = vec.entities.filter(e => e.type === 'CIRCLE'); const cm = tc.filter(t => rc.some(r => Math.hypot(r.c[0] - t.c[0], r.c[1] - t.c[1]) < 12 && Math.abs(r.r - t.r) < Math.max(3, t.r * 0.5))); const cfalse = rc.filter(r => !tc.some(t => Math.hypot(r.c[0] - t.c[0], r.c[1] - t.c[1]) < 12)).length;
+    const tl = dxf.entities.filter(e => e.type === 'LINE' && Math.abs(e.a[0] - e.b[0]) > 20 && Math.abs(e.a[1] - e.b[1]) > 20); const rl = vec.entities.filter(e => e.layer === 'RASTER_DIAG');
+    out.push({ cfg: cfg.label, px: `${W}×${H}`, threshold: vec.stats.threshold, lines: { truth: truthLines.length, rec: recLines.length, recall: Math.round(lineMatch.length / Math.max(1, truthLines.length) * 100) }, rects: { truth: truthRects.length, rec: recRects.length, recall: truthRects.length ? Math.round(rectMatch.length / truthRects.length * 100) : null }, members: { truth: truth.members.length, rec: rec.members.length }, circles: { truth: tc.length, rec: rc.length, recall: tc.length ? Math.round(cm.length / tc.length * 100) : null, false: cfalse }, diagonals: { truth: tl.length, rec: rl.length } });
+  }
+  return { drawing: { mm: [Math.round(mmW), Math.round(mmH)], members: truth.members.length, circles: dxf.entities.filter(e => e.type === 'CIRCLE').length }, out };
+});
+log('BENCH', res);

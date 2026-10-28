@@ -1,5 +1,5 @@
 // 営業所（拠点）マスタ: 全営業所と工場が 1 つのシステム・1 つの DB を共有し、案件・見積は branch で仕分ける
-export const BRANCHES = [
+export const DEFAULT_BRANCHES = [
   { code: 'HQ', name: '本社', short: '本社' },
   { code: 'TKY', name: '東京営業所', short: '東京' },
   { code: 'OSK', name: '大阪営業所', short: '大阪' },
@@ -7,6 +7,10 @@ export const BRANCHES = [
   { code: 'FKO', name: '福岡営業所', short: '福岡' },
   { code: 'SDI', name: '仙台営業所', short: '仙台' },
 ];
+export const BRANCHES = DEFAULT_BRANCHES.map(b => ({ ...b }));
+export function setBranches(list) { BRANCHES.splice(0, BRANCHES.length, ...list.map(b => ({ code: String(b.code || '').toUpperCase(), name: b.name || b.code, short: b.short || b.name || b.code }))); return BRANCHES; }
+export async function loadBranches(app) { try { const list = await app.store.listBranches(); if (Array.isArray(list) && list.length) setBranches(list); } catch (e) { console.warn('branches', e); } return BRANCHES; }
+export async function saveBranches(app, list) { setBranches(list); await app.store.saveBranches(BRANCHES.map(b => ({ ...b }))); return BRANCHES; }
 export const branchOf = code => BRANCHES.find(b => b.code === code) || null;
 export const branchName = code => branchOf(code)?.name || (code ? code : '未設定');
 export const branchShort = code => branchOf(code)?.short || (code ? code : '—');
