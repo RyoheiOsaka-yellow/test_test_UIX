@@ -13,7 +13,7 @@ const ROUTES = [
   { id: 'home', dir: '', title: '株式会社YELLOW｜研究を、素材として。',
     desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。xINTERACTIVE（エンタメ・体験・UI/UX）、xAD（戦略分析とプロトタイピング）、xBUILD（人流・工業の大規模開発）の3つの事業を手がけます。群馬県高崎市。',
     en: { title: 'YELLOW Inc. — Research as material.',
-          desc: 'YELLOW Inc. bridges technology seeds from universities, research institutions and companies into society through three businesses: xINTERACTIVE (entertainment, experiences and UI/UX), xAD (strategy analysis and prototyping) and xBUILD (large-scale development for mobility and industry).' } },
+          desc: 'YELLOW Inc. turns research seeds into real products: xINTERACTIVE (entertainment, experiences, UI/UX), xAD (strategy analysis and prototyping), xBUILD (mobility and industry).' } },
   { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜エンタメ・体験・UI/UXに、研究シーズとAIの知見を — 株式会社YELLOW',
     desc: 'エンターテインメント、体験、UI/UXを対象に、研究シーズ（リアルタイム3D、シミュレーション、空間データ）とAIの知見を盛り込んだプロジェクトを提供。企画・体験設計から実装、現場運用まで手がけます。株式会社YELLOWの事業 xINTERACTIVE。',
     en: { title: 'xINTERACTIVE — Entertainment, experiences and UI/UX, built with research seeds and AI | YELLOW Inc.',
@@ -36,11 +36,11 @@ const ROUTES = [
                desc: '人流や工業といった大規模な領域の分析と開発を行うプロジェクト。',
                offers: ['工業・設備', '人流・都市'] } },
   { id: 'privacy', dir: 'privacy', title: 'プライバシーポリシー — 株式会社YELLOW',
-    desc: '株式会社YELLOWのウェブサイトにおける個人情報の取り扱いについて定めています。',
+    desc: '株式会社YELLOWのウェブサイトにおける個人情報の取り扱いについて定めています。取得する情報、利用目的、第三者提供、委託、安全管理、開示・訂正・削除の窓口を記載しています。',
     en: { title: 'Privacy Policy — YELLOW Inc.', desc: 'How YELLOW Inc. handles personal information on this website.' },
     noindexHint: false },
   { id: 'terms', dir: 'terms', title: '利用規約 — 株式会社YELLOW',
-    desc: '株式会社YELLOWのウェブサイトの利用条件を定めています。',
+    desc: '株式会社YELLOWのウェブサイトの利用条件を定めています。著作権、デモやコンテンツの利用範囲、免責事項、準拠法について記載しています。',
     en: { title: 'Terms of Use — YELLOW Inc.', desc: 'Terms and conditions for using the YELLOW Inc. website.' } },
 ];
 
@@ -402,7 +402,7 @@ const NEWS_PAGES = [{
   meta: { page: 'news', ja: {}, en: {},
     title: 'News — YELLOW Inc.', titleJa: 'お知らせ — 株式会社YELLOW',
     desc: 'Announcements from YELLOW Inc.: programmes, memberships and press releases.',
-    descJa: '株式会社YELLOWのお知らせ。採択、加盟、プレスリリースなど。',
+    descJa: '株式会社YELLOWのお知らせ一覧。プレスリリース、公的プログラムへの採択、団体への加盟・参画、カオスマップへの掲載など、最近の動きをまとめています。',
     url: newsUrl, ld: newsLd },
 }];
 NEWS_ITEMS.filter(NEWS.hasArticle).forEach(n => {
@@ -425,14 +425,17 @@ NEWS_ITEMS.filter(NEWS.hasArticle).forEach(n => {
   }, null, 2);
   NEWS_PAGES.push({ dir: 'news/' + n.id, url: '/news/' + n.id + '/', inner: NEWS.articleHtml(n),
     meta: { page: 'news_' + n.id.replace(/-/g, '_'), ja: {}, en: {},
-      title: n.en.title + ' — News | YELLOW Inc.', titleJa: n.ja.title + ' — お知らせ | 株式会社YELLOW',
-      desc: n.en.text.slice(0, 160), descJa: n.ja.text.slice(0, 118), url, ld, image: imgs[0] ? imgs[0].replace(ORIGIN, '') : undefined } });
+      title: n.en.title + ' | YELLOW Inc.', titleJa: n.ja.title + ' | 株式会社YELLOW',
+      desc: (n.en.text.length < 70 ? n.en.text + ' News from YELLOW Inc.' : n.en.text).slice(0, 160), descJa: (n.ja.text.length < 60 ? n.ja.text + ' 株式会社YELLOWのお知らせ（' + n.ja.tag + '）。' : n.ja.text).slice(0, 118), url, ld, image: imgs[0] ? imgs[0].replace(ORIGIN, '') : undefined } });
 });
 const CASES = buildCases({ DIST, ORIGIN, base, ORG_ID: ORIGIN + '/#organization', extra: NEWS_PAGES });
 for (const [u, n] of CASES.sizes) console.log(u.padEnd(30), (n / 1024).toFixed(0).padStart(4) + 'KB');
 
 // ── 3. 付随ファイル
 for (const f of ['og.png', '404.html', 'contact.php']) fs.copyFileSync(REPO + f, DIST + f);
+fs.writeFileSync(DIST + 'site.webmanifest', JSON.stringify({ name: '株式会社YELLOW', short_name: 'YELLOW', start_url: '/', display: 'browser', background_color: '#000000', theme_color: '#000000',
+  icons: [{ src: '/assets/icon/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/assets/icon/icon-512.png', sizes: '512x512', type: 'image/png' }] }, null, 1));
+fs.copyFileSync(REPO + 'assets/icon/favicon-32.png', DIST + 'favicon.png');
 fs.cpSync(REPO + 'assets', DIST + 'assets', { recursive: true });
 
 fs.writeFileSync(DIST + 'robots.txt', `# 株式会社YELLOW
@@ -530,6 +533,13 @@ ${NEWS_ITEMS.map(n => `- **${NEWS.label(n)}** ${n.ja.title}: ${n.ja.text}` + (NE
 
 // XServer(Apache) 用
 fs.writeFileSync(DIST + '.htaccess', `ErrorDocument 404 /404.html
+
+# デモは sandbox 付き iframe（origin null）から module script を読むため CORS 許可が必要
+<IfModule mod_headers.c>
+  <If "%{REQUEST_URI} =~ m#^/assets/demo/#">
+    Header set Access-Control-Allow-Origin "*"
+  </If>
+</IfModule>
 
 # 静的アセットは長期キャッシュ、HTMLは都度確認
 <IfModule mod_expires.c>

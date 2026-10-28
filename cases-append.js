@@ -296,7 +296,7 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID, extra }) {
     title: 'Cases — YELLOW Inc.',
     titleJa: '事例 — 株式会社YELLOW',
     desc: 'Factory layout studies, 3D modelling of station interiors, point-cloud data, in-store promotion simulation and more: ' + cases.length + ' cases implemented by YELLOW Inc., each with a working browser demo.',
-    descJa: '工場のレイアウト検証、駅構内の3Dモデリング、点群データの活用、店頭販促シミュレーションなど、株式会社YELLOWが実装した' + cases.length + '件の事例。いずれもブラウザで動くデモを公開しています。',
+    descJa: '工場のレイアウト検証、駅構内の3Dモデリング、点群データの活用、店頭販促シミュレーション、人流データの分析など、株式会社YELLOWが実装した事例の一覧。多くの事例はブラウザで動くデモを公開しています。',
     url: listUrl, ld: listLd, image: cases[0] && cases[0].imgs[0] && cases[0].imgs[0].src,
   })]);
 
@@ -325,10 +325,10 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID, extra }) {
     }, null, 2);
     sizes.push(['/cases/' + c.key + '/', emit(path.join('cases', c.key), casePageHtml(c, prod, d), {
       page: 'case_' + c.key.replace(/-/g, '_'), ja: d.ja, en: d.en,
-      title: d.e.title + ' — Cases | YELLOW Inc.',
-      titleJa: c.title + ' — 事例 | 株式会社YELLOW',
-      desc: d.e.lead.slice(0, 160),
-      descJa: c.lead.slice(0, 118),
+      title: d.e.title + ' | YELLOW Inc.',
+      titleJa: c.title + ' | 株式会社YELLOW',
+      desc: (d.e.lead.length < 70 ? d.e.lead + ' A case from YELLOW Inc. (' + d.e.tags + ').' : d.e.lead).slice(0, 160),
+      descJa: (c.lead.length < 60 ? c.lead + ' 株式会社YELLOWの事例（' + c.tags + '）。ブラウザで動くデモを公開しています。' : c.lead).slice(0, 118),
       url, ld, image: c.imgs[0] && c.imgs[0].src,
     })]);
   });
