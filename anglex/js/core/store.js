@@ -5,12 +5,13 @@ function readLS() { try { return JSON.parse(localStorage.getItem(LS) || '{}'); }
 function writeLS(d) { try { localStorage.setItem(LS, JSON.stringify(d)); } catch (e) { console.warn('localStorage 保存失敗', e); } }
 
 export const DEMO_USERS = [
-  { id: 'u_a1', name: '山田（A社 設計）', org: 'A', company: 'A社（設計・見積）', email: 'a@example.com' },
-  { id: 'u_b1', name: '鈴木（B社 営業）', org: 'B', company: 'B社（商社・販売）', email: 'b@example.com' },
-  { id: 'u_c1', name: '佐藤（C社 工場）', org: 'C', company: 'C社（加工工場）', email: 'c@example.com' },
+  { id: 'u_a1', name: '山田（A社 設計）', org: 'A', company: 'A社（設計・見積）', email: 'a@example.com', branch: 'TKY' },
+  { id: 'u_a2', name: '田中（A社 大阪営業所）', org: 'A', company: 'A社（設計・見積）', email: 'a-osk@example.com', branch: 'OSK' },
+  { id: 'u_b1', name: '鈴木（B社 営業）', org: 'B', company: 'B社（商社・販売）', email: 'b@example.com', branch: null, scope: 'all' },
+  { id: 'u_c1', name: '佐藤（C社 工場）', org: 'C', company: 'C社（加工工場）', email: 'c@example.com', branch: null, scope: 'all' },
 ];
 export class LocalStore {
-  constructor() { this.mode = 'local'; const d = readLS(); this.d = { projects: d.projects || {}, estimates: d.estimates || {}, users: d.users || DEMO_USERS, session: d.session || null, rates: d.rates || null }; }
+  constructor() { this.mode = 'local'; const d = readLS(); this.d = { projects: d.projects || {}, estimates: d.estimates || {}, users: d.users || DEMO_USERS, session: d.session || null, rates: d.rates || null }; if (!this.d.users.some(u => u.id === 'u_a2')) this.d.users = DEMO_USERS; for (const u of this.d.users) { const def = DEMO_USERS.find(x => x.id === u.id); if (def && u.branch === undefined) { u.branch = def.branch; u.scope = def.scope; } } if (this.d.session?.user && this.d.session.user.branch === undefined) { const def = DEMO_USERS.find(x => x.id === this.d.session.user.id); if (def) this.d.session.user = { ...this.d.session.user, branch: def.branch, scope: def.scope }; } }
   save() { writeLS(this.d); }
   async health() { return { ok: true, mode: 'local' }; }
   async login(email, password) { const u = this.d.users.find(x => x.email === email) || this.d.users[0]; this.d.session = { user: u, token: 'local' }; this.save(); return this.d.session; }
@@ -39,7 +40,11 @@ export class RestStore {
   async logout() { this.token = null; localStorage.removeItem('anglex.token'); this._session = null; }
   session() { return this._session; }
   async me() { try { this._session = await this.req('GET', '/api/me'); return this._session; } catch { return null; } }
-  async listProjects() { return this.req('GET', '/api/projects'); }
+  async listProjects(opts = {}) { return this.req('GET', '/api/projects' + (opts.all ? '?all=1' : '')); }
+  async listPrices() { return this.req('GET', '/api/prices'); }
+  async listLearn() { return this.req('GET', '/api/learn'); }
+  async addLearn(rows) { return this.req('POST', '/api/learn', rows); }
+  async addPrices(rows) { return this.req('POST', '/api/prices', rows); }
   async saveProject(p) { return this.req('PUT', '/api/projects/' + p.id, p); }
   async getProject(id) { return this.req('GET', '/api/projects/' + id); }
   async deleteProject(id) { return this.req('DELETE', '/api/projects/' + id); }

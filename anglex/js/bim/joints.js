@@ -87,3 +87,15 @@ export function parseInstruction(text, model) {
   const kv = [...t.matchAll(/([A-Za-z]\w*)\s*[=＝:：]\s*([^\s,、]+)/g)]; if (kv.length && marks.length >= 1) { const params = {}; for (const m of kv) params[m[1]] = isNaN(+m[2]) ? m[2] : +m[2]; return { op: 'param', inst: find(marks[0])?.id, params, label: `${marks[0]} のパラメータ変更` }; }
   return { op: 'unknown', label: '解釈できませんでした: ' + text, hint: '例: 「MF-1 と LB-1 を隅肉溶接 6 両側」「PL-1 を MF-1 に M12 ボルト 4本 @100 で接合」「MF-1 に φ15 穴 2個 @100 端から50 脚A」「MF-1 に Uボルト 50A」「MF-1 を X100 移動」' };
 }
+
+// 組立確認: ボルト・アンカー・U ボルト・吊ボルトの頭／ナット側に工具スペース（長さ 2.5M+20, 幅 1.6M）があるか。他部材の板・管と重なれば不足
+const mmOf = M => { const m = String(M || 'M12').match(/M(\d+(?:\.\d+)?)/); if (m) return +m[1]; const w = String(M).match(/W(\d+)\/(\d+)/); return w ? (+w[1] / +w[2]) * 25.4 : 12; };
+export function toolClearanceIssues(model) {
+  const insts = model.instances; const plates = new Map(insts.map(i => [i.id, plateBoxes(model, i)])); const out = [];
+  for (const inst of insts) { const fam = model.familyOf(inst); const parts = fam.parts(model.resolved(inst), { inst, model }); const M = instMatrix(inst);
+    for (const pt of parts) { if (!['bolt', 'anchor', 'ubolt', 'rod'].includes(pt.kind) || pt.ref) continue; const d = mmOf(pt.M); const clear = 2.5 * d + 20, half = 1.6 * d; const PM = partMatrix(pt).premultiply(M); const L = pt.kind === 'ubolt' ? (pt.plateT || 6) + 2 * d : (pt.L || (pt.kind === 'anchor' ? 3 * d : 40));
+      const ends = pt.kind === 'anchor' ? [['ナット側', L, L + clear]] : pt.kind === 'ubolt' ? [['ナット側', -(L + clear), -0.5 * L]] : [['頭側', -clear, 0], ['ナット側', L, L + clear]];
+      for (const [label, z0, z1] of ends) { const box = new THREE.Box3(); for (const c of [[-half, -half, z0], [half, half, z0], [-half, -half, z1], [half, half, z1]]) box.expandByPoint(V(c).applyMatrix4(PM));
+        for (const other of insts) { if (other.id === inst.id) continue; for (const pb of plates.get(other.id)) { const inter = box.clone().intersect(pb.box); if (inter.isEmpty()) continue; const sz = inter.getSize(new THREE.Vector3()); if (sz.x > 2 && sz.y > 2 && sz.z > 2) out.push({ inst, part: pt, other, otherPart: pb.part, end: label, need: Math.round(clear), c: inter.getCenter(new THREE.Vector3()), label: `${inst.mark} ${pt.name || (pt.kind + ' ' + (pt.M || ''))} の${label}に工具スペース ${Math.round(clear)} mm が取れません（${other.mark} ${pb.part.name || pb.part.spec} と干渉）` }); } } } } }
+  return out;
+}

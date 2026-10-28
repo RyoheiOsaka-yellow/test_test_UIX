@@ -11,9 +11,9 @@ export function canEdit(role, field) { const r = ROLES[role]; if (!r) return fal
 export function canSee(role, field) { const r = ROLES[role]; if (!r) return false; if (role === 'A') return true; return r.sees.includes(field) || r.edits.includes(field); }
 
 // 見積ドキュメント
-export function newEstimate({ projectId, projectName, lines, rates, author, org }) {
+export function newEstimate({ projectId, projectName, lines, rates, author, org, branch = null }) {
   const now = new Date().toISOString();
-  return { id: 'E' + Date.now().toString(36), no: 'Q-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random() * 9000) + 1000), projectId, projectName, status: 'draft', currentOrg: 'A', revision: 1, createdAt: now, updatedAt: now,
+  return { id: 'E' + Date.now().toString(36), no: 'Q-' + (branch ? branch + '-' : '') + new Date().getFullYear() + '-' + String(Math.floor(Math.random() * 9000) + 1000), projectId, projectName, branch, status: 'draft', currentOrg: 'A', revision: 1, createdAt: now, updatedAt: now,
     meta: { customer: '', site: '', deliveryDate: '', terms: '工場渡し / 税別', validity: '30日', notes: '' },
     lines: lines.map((l, i) => ({ id: l.id || 'ln' + i, no: i + 1, desc: l.desc, spec: l.spec || '', family: l.family, marks: l.marks || [], qty: l.qty, unit: l.unit || '台', mass: l.mass || 0, breakdown: l.cost ? { material: l.cost.material, cut: l.cost.cut, hole: l.cost.hole, weld: l.cost.weld, bend: l.cost.bend, assembly: l.cost.assembly, finish: l.cost.finish, fasteners: l.cost.fasteners, overhead: l.cost.overhead, profit: l.cost.profit } : null,
       baseCost: l.unitCost, aMarginPct: 10, factoryCost: null, bMarginPct: 15, leadDays: null, accepted: null, bNote: '', cNote: '' })),

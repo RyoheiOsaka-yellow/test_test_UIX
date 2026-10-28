@@ -9,16 +9,19 @@ const PORT = +(opt('--port', process.env.PORT || 8080)); const DATA = path.resol
 const DB_FILE = path.join(DATA, 'db.json');
 const db = fs.existsSync(DB_FILE) ? JSON.parse(fs.readFileSync(DB_FILE, 'utf8')) : { users: [], projects: {}, estimates: {}, sessions: {} };
 if (!db.users.length) db.users = [ // 初期ユーザ（パスワードは全員 "anglex"。本番では /api/users で変更）
-  { id: 'u_a1', name: '山田（A社 設計）', org: 'A', company: 'A社（設計・見積）', email: 'a@example.com', pw: hash('anglex') },
-  { id: 'u_b1', name: '鈴木（B社 営業）', org: 'B', company: 'B社（商社・販売）', email: 'b@example.com', pw: hash('anglex') },
-  { id: 'u_c1', name: '佐藤（C社 工場）', org: 'C', company: 'C社（加工工場）', email: 'c@example.com', pw: hash('anglex') }];
+  { id: 'u_a1', name: '山田（A社 設計）', org: 'A', company: 'A社（設計・見積）', email: 'a@example.com', pw: hash('anglex'), branch: 'TKY' },
+  { id: 'u_a2', name: '田中（A社 大阪営業所）', org: 'A', company: 'A社（設計・見積）', email: 'a-osk@example.com', pw: hash('anglex'), branch: 'OSK' },
+  { id: 'u_b1', name: '鈴木（B社 営業）', org: 'B', company: 'B社（商社・販売）', email: 'b@example.com', pw: hash('anglex'), branch: null, scope: 'all' },
+  { id: 'u_c1', name: '佐藤（C社 工場）', org: 'C', company: 'C社（加工工場）', email: 'c@example.com', pw: hash('anglex'), branch: null, scope: 'all' }];
+// 営業所の仕分け: 所属営業所のあるユーザーは自営業所の案件のみ（?all=1 で全営業所）。scope=all（工場・販売）は全営業所
+function canSeeProject(u, p, all) { if (all || !u || u.scope === 'all' || !u.branch) return true; return !p.branch || p.branch === u.branch; }
 let saveTimer = null; function persist() { clearTimeout(saveTimer); saveTimer = setTimeout(() => fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 1)), 200); }
 function hash(s) { return crypto.createHash('sha256').update('anglex:' + s).digest('hex'); }
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.ico': 'image/x-icon', '.csv': 'text/csv' };
 function send(res, code, obj, headers = {}) { const body = typeof obj === 'string' ? obj : JSON.stringify(obj); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers }); res.end(body); }
 function readBody(req) { return new Promise((res, rej) => { const chunks = []; req.on('data', c => chunks.push(c)); req.on('end', () => res(Buffer.concat(chunks))); req.on('error', rej); }); }
 function auth(req) { const h = req.headers.authorization || ''; const t = h.replace(/^Bearer\s+/i, ''); const s = db.sessions[t]; if (!s) return null; const u = db.users.find(x => x.id === s.userId); return u ? { user: pub(u), token: t } : null; }
-const pub = u => ({ id: u.id, name: u.name, org: u.org, company: u.company, email: u.email });
+const pub = u => ({ id: u.id, name: u.name, org: u.org, company: u.company, email: u.email, branch: u.branch || null, scope: u.scope || null });
 function canAccessEstimate(user, e) { if (!user) return false; if (user.org === 'A') return true; return e.currentOrg === user.org || e.handoffs.some(h => h.to === user.org); }
 
 const server = http.createServer(async (req, res) => {
@@ -31,7 +34,7 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/me') { if (!me) return send(res, 401, { error: 'unauthorized' }); return send(res, 200, me); }
       if (p === '/api/handoff/' + p.split('/')[3] && req.method === 'GET') { const token = p.split('/')[3]; const e = Object.values(db.estimates).find(x => Object.values(x.tokens || {}).includes(token)); if (!e) return send(res, 404, { error: 'token not found' }); const org = Object.keys(e.tokens).find(k => e.tokens[k] === token); return send(res, 200, WF.redact(e, org)); }
       if (!me) return send(res, 401, { error: 'ログインが必要です' });
-      if (p === '/api/projects' && req.method === 'GET') return send(res, 200, Object.values(db.projects).filter(x => me.user.org === 'A' || (x.sharedWith || []).includes(me.user.org)).map(x => ({ ...x, model: undefined, size: JSON.stringify(x.model || {}).length })));
+      if (p === '/api/projects' && req.method === 'GET') return send(res, 200, Object.values(db.projects).filter(x => (me.user.org === 'A' || (x.sharedWith || []).includes(me.user.org)) && canSeeProject(me.user, x, url.searchParams.get('all') === '1')).map(x => ({ ...x, model: undefined, size: JSON.stringify(x.model || {}).length })));
       let m;
       if ((m = p.match(/^\/api\/projects\/([^/]+)$/))) { const id = m[1]; if (req.method === 'GET') { const x = db.projects[id]; if (!x) return send(res, 404, { error: 'not found' }); return send(res, 200, x); } if (req.method === 'PUT') { if (me.user.org !== 'A') return send(res, 403, { error: 'モデル・プロジェクトの編集は A社のみ' }); const b = JSON.parse(await readBody(req)); b.id = id; b.updatedAt = new Date().toISOString(); b.owner = me.user.id; db.projects[id] = b; persist(); return send(res, 200, b); } if (req.method === 'DELETE') { if (me.user.org !== 'A') return send(res, 403, { error: 'forbidden' }); delete db.projects[id]; persist(); return send(res, 200, { ok: true }); } }
       if (p === '/api/estimates' && req.method === 'GET') { const pid = url.searchParams.get('project'); return send(res, 200, Object.values(db.estimates).filter(e => (!pid || e.projectId === pid) && canAccessEstimate(me.user, e)).map(e => WF.redact(e, me.user.org))); }
@@ -42,6 +45,10 @@ const server = http.createServer(async (req, res) => {
         const b = JSON.parse(await readBody(req) || '{}');
         try { if (action === 'edit') { if (b.role !== me.user.org) return send(res, 403, { error: '役割が一致しません' }); WF.applyEdit(e, { ...b, who: me.user.name }); } else if (action === 'handoff') { if (b.from !== me.user.org) return send(res, 403, { error: '役割が一致しません' }); const r = WF.handoff(e, { ...b, who: me.user.name }); persist(); return send(res, 200, { est: WF.redact(e, me.user.org), token: r.token }); } else if (action === 'finalize') WF.finalize(e, { who: me.user.name, org: me.user.org, note: b.note || '' }); else if (action === 'reject') WF.reject(e, { who: me.user.name, org: me.user.org, note: b.note }); } catch (err) { return send(res, 400, { error: err.message }); }
         persist(); return send(res, 200, WF.redact(e, me.user.org)); }
+      if (p === '/api/prices' && req.method === 'GET') return send(res, 200, (db.prices || []).filter(r => me.user.org !== 'B'));
+      if (p === '/api/prices' && req.method === 'POST') { const rows = JSON.parse(await readBody(req) || '[]'); db.prices = (db.prices || []).concat(rows).slice(-20000); persist(); return send(res, 200, { ok: true, n: db.prices.length }); }
+      if (p === '/api/learn' && req.method === 'GET') return send(res, 200, db.learn || []);
+      if (p === '/api/learn' && req.method === 'POST') { const rows = JSON.parse(await readBody(req) || '[]'); db.learn = (db.learn || []).concat(rows).slice(-20000); persist(); return send(res, 200, { ok: true, n: db.learn.length }); }
       if (p === '/api/export' && me.user.org === 'A') return send(res, 200, db);
       if (p === '/api/import' && req.method === 'POST' && me.user.org === 'A') { const b = JSON.parse(await readBody(req)); Object.assign(db.projects, b.projects || {}); Object.assign(db.estimates, b.estimates || {}); persist(); return send(res, 200, { ok: true }); }
       if (p === '/api/users' && req.method === 'GET' && me.user.org === 'A') return send(res, 200, db.users.map(pub));

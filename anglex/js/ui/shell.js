@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { $, $$, h, toast, confirmDialog, promptDialog, fmt, table } from './common.js';
 import { DEMO_USERS } from '../core/store.js';
+import { BRANCHES, branchName, branchShort, canSeeProject } from '../core/branches.js';
 import * as WF from '../core/workflow.js';
 import { familyById, CATEGORIES } from '../bim/families.js';
 import { summarize } from '../bim/weight.js';
@@ -37,7 +38,7 @@ export function initShell(app) {
   const signIn = async () => {
     const email = $('#sm-inEmail').value.trim(); const pass = $('#sm-inPass').value; const org = $('#sm-inOrg').value;
     if (app.store.mode === 'server') { try { await app.store.login(email, pass); } catch (e) { toast('サインイン失敗: ' + e.message, 'bad'); return; } }
-    else { const u = DEMO_USERS.find(x => x.org === org) || DEMO_USERS[0]; await app.switchUser({ ...u, name: email && !email.includes('@example.com') ? `${email.split('@')[0]}（${u.company || u.org + '社'}）` : u.name }); }
+    else { const br = $('#sm-inBranch')?.value || null; const u = (org === 'A' ? DEMO_USERS.find(x => x.org === 'A' && x.branch === br) : null) || DEMO_USERS.find(x => x.org === org) || DEMO_USERS[0]; await app.switchUser({ ...u, branch: org === 'A' ? (br || u.branch) : u.branch, name: email && !email.includes('@example.com') ? `${email.split('@')[0]}（${u.company || u.org + '社'}）` : u.name }); }
     app.renderUser(); toast(`サインインしました: ${app.user().name}`, 'ok'); sh.showView('modeselect');
   };
   $('#smSignIn').addEventListener('click', signIn); $('#sm-inPass').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
@@ -49,7 +50,9 @@ export function initShell(app) {
   $('#appBrand').addEventListener('click', () => sh.showView('projects')); $('#btnProjects').addEventListener('click', () => sh.showView('projects'));
   // ---------- 案件管理 ----------
   async function renderProjects() {
-    const host = $('#sm-projGrid'); host.innerHTML = ''; const projects = await app.store.listProjects(); const ests = await app.store.listEstimates();
+    const host = $('#sm-projGrid'); host.innerHTML = ''; const u = app.user(); const allP = await app.store.listProjects(); const projects = allP.filter(p => canSeeProject(u, p, { all: sh.allBranches })); const ests = await app.store.listEstimates();
+    if (u.branch && u.scope !== 'all') host.append(h('div', { class: 'sm-branch-bar' }, h('span', { class: 'muted small' }, sh.allBranches ? `全営業所の案件（${allP.length}）` : `${branchName(u.branch)} の案件（${projects.length} / 全 ${allP.length}）`), h('button', { class: 'sm-btn', onClick: () => { sh.allBranches = !sh.allBranches; renderProjects(); } }, sh.allBranches ? '自営業所だけ' : '全営業所を表示')));
+    else host.append(h('div', { class: 'sm-branch-bar' }, h('span', { class: 'muted small' }, `全営業所の案件（${projects.length}）`), ...BRANCHES.map(b => { const n = projects.filter(p => p.branch === b.code).length; return n ? h('span', { class: 'chip ghost' }, `${b.short} ${n}`) : null; })));
     if (!projects.length) { host.append(h('div', { class: 'sm-empty' }, '案件がありません。「＋ 新規案件」から始めるか、サンプル DXF／サンプルモデルを読み込んでください。')); return; }
     const groups = new Map(); for (const p of projects) { const k = p.client || '顧客未設定'; (groups.get(k) || groups.set(k, []).get(k)).push(p); }
     for (const [client, list] of groups) {
@@ -61,7 +64,7 @@ export function initShell(app) {
         const st = latest ? latest.status : 'draft'; const stCls = { draft: 'draft', to_B: 'estimating', to_C: 'estimating', from_C: 'estimating', final: 'confirmed', rejected: 'archived' }[st] || 'draft';
         const tot = latest ? WF.totals(latest) : null;
         const pc = h('div', { class: 'sm-pcard' + (p.id === app.project.id ? ' cur' : '') },
-          h('div', { class: 'sm-pc-h' }, h('div', {}, h('div', { class: 'sm-pc-name' }, p.name), h('div', { class: 'sm-pc-client' }, `${ni} インスタンス / ${nt} タイプ ・ 更新 ${fmt.date(p.updatedAt)}`)), h('span', { class: 'sm-pc-status ' + stCls }, latest ? WF.STATUS[st] : '未見積')),
+          h('div', { class: 'sm-pc-h' }, h('div', {}, h('div', { class: 'sm-pc-name' }, p.name, ' ', h('span', { class: 'chip ghost', style: { fontSize: '10px' } }, branchShort(p.branch))), h('div', { class: 'sm-pc-client' }, `${ni} インスタンス / ${nt} タイプ ・ 更新 ${fmt.date(p.updatedAt)}`)), h('span', { class: 'sm-pc-status ' + stCls }, latest ? WF.STATUS[st] : '未見積')),
           h('div', { class: 'sm-pc-stats' }, h('div', { class: 'sm-pc-stat' }, h('div', { class: 'k' }, '見積'), h('div', { class: 'v' }, String(pe.length))), h('div', { class: 'sm-pc-stat' }, h('div', { class: 'k' }, '最新 見積額（税抜）'), h('div', { class: 'v' + (tot ? '' : ' warn') }, tot ? yen(tot.b) : '—')), latest ? h('span', { class: 'sm-ver ' + (latest.status !== 'draft' ? 'sent' : '') , style: { alignSelf: 'center', marginLeft: 'auto' } }, `Rev.${latest.revision} ${latest.status !== 'draft' ? '受け渡し済' : '下書き'}`) : null),
           pe.length ? h('div', { class: 'sm-pc-hist' }, h('div', { class: 'sm-hist-h' }, '見積バージョン履歴'), ...pe.slice(0, 4).map(e => h('div', { class: 'sm-hist-row' }, h('span', { class: 'sm-hist-v' }, 'v' + e.revision), h('span', { class: 'sm-hist-no' }, e.no), h('span', { class: 'sm-hist-d' }, fmt.date(e.updatedAt)), h('span', { class: 'sm-hist-t' }, yen(WF.totals(e).b)), h('span', { class: 'sm-hist-s' }, `${WF.STATUS[e.status]} / ${WF.ROLES[e.currentOrg].name}`)))) : null,
           h('div', { class: 'sm-pc-actions' }, h('button', { class: 'sm-btn primary', onClick: async () => { await openProject(p.id); sh.enterApp(app.model.instances.length ? 4 : 1); } }, '再開（3D）'), h('button', { class: 'sm-btn', onClick: async () => { await openProject(p.id); sh.enterApp(5); } }, '見積'), h('button', { class: 'sm-btn', onClick: async () => { await openProject(p.id); sh.enterApp(3); } }, '部材選択'), app.role() === 'A' ? h('button', { class: 'sm-btn', onClick: async () => { if (!(await confirmDialog(`「${p.name}」を削除しますか？`, { danger: true }))) return; await app.store.deleteProject(p.id); renderProjects(); } }, '削除') : null));

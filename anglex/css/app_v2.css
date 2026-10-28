@@ -982,3 +982,9 @@ tr.new td{background:rgba(29,78,216,.06)}tr.gone td{background:rgba(0,0,0,.04);t
 .fc-issues{margin:6px 0 0;padding-left:18px;font-size:12px}.fc-issues li.bad{color:var(--bad)}.fc-issues li.warn{color:#9a6b12}
 .modal.dash{width:min(1240px,96vw);height:min(860px,92vh)}.dash-kpis{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap}.dash-kpi{border:1px solid var(--line);border-radius:9px;padding:8px 14px;min-width:120px;display:flex;flex-direction:column;gap:2px;font-size:12px}.dash-kpi b{font-size:20px}.dash-kpi.bad b{color:var(--bad)}.dash-kpi.warn b{color:#9a6b12}
 .dash-turn{color:var(--bad);font-weight:700;white-space:nowrap}tr.mine td{background:rgba(214,122,72,.07)}tr.overdue td:last-child{color:#b42318;font-weight:600}
+
+/* ---- 営業所（拠点） ---- */
+.branch-badge{font-size:10px;padding:1px 6px;border-radius:9px;background:rgba(255,255,255,.14);color:#f3e6d8;margin-left:4px;white-space:nowrap}
+.proj-branch{font-size:10px;padding:1px 6px;border-radius:9px;background:rgba(255,255,255,.12);color:#e8dfcf;margin-left:6px;cursor:pointer;white-space:nowrap}.proj-branch.unset{opacity:.6;border:1px dashed rgba(255,255,255,.4)}
+.sm-branch-bar{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 0 2px}
+.dash-chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0 2px}

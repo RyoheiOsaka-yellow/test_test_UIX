@@ -3,6 +3,7 @@ import { $, h, toast } from './common.js';
 import { buildChecklist, REVIEW_KINDS } from '../bim/review.js';
 import { setReview, weldInstructionDialog, holeInstructionDialog } from './review.js';
 import * as THREE from 'three';
+import { recordConfirmation } from '../import/learn.js';
 
 const ORDER = ['weld', 'hole', 'anchor', 'ubolt', 'rod', 'origin', 'risk', 'finish', 'length'];
 export function closeReviewWizard(app) { document.querySelector('.wiz-panel')?.remove(); document.removeEventListener('keydown', app._wizKeys || (() => { })); app._wizKeys = null; app.wizard = null; }
@@ -30,7 +31,7 @@ export function openReviewWizard(app, { kind = null } = {}) {
     acts.append(h('button', { class: 'btn sm primary', title: 'Enter', onClick: () => mark('ok', note.value) }, '✓ 確認済（Enter）'));
     if (it.kind === 'weld') acts.append(h('button', { class: 'btn sm', onClick: async () => { await weldInstructionDialog(app, r.inst, it); render(); } }, '溶接指示…'));
     if (it.kind === 'hole') acts.append(h('button', { class: 'btn sm', onClick: async () => { await holeInstructionDialog(app, r.inst, it); render(); } }, '穴あけ指示…'));
-    if (it.kind === 'origin' || it.kind === 'risk') acts.append(h('button', { class: 'btn sm', title: 'この部材を確定（推論→確定）', onClick: () => { app.model.updateInstance(r.inst.id, { status: 'confirmed' }); app.rebuildInstance(r.inst); st.rows = st.rows.filter(x => x.inst.id !== r.inst.id || x.it.kind !== 'origin'); mark('ok', note.value || '図面根拠を確認し確定'); } }, '部材を確定'));
+    if (it.kind === 'origin' || it.kind === 'risk') acts.append(h('button', { class: 'btn sm', title: 'この部材を確定（推論→確定）', onClick: () => { app.model.updateInstance(r.inst.id, { status: 'confirmed' }); app.rebuildInstance(r.inst); recordConfirmation(app, app.model.getInstance(r.inst.id)).catch(() => { }); st.rows = st.rows.filter(x => x.inst.id !== r.inst.id || x.it.kind !== 'origin'); mark('ok', note.value || '図面根拠を確認し確定'); } }, '部材を確定'));
     acts.append(h('button', { class: 'btn sm', title: '→', onClick: next }, 'スキップ →'), h('button', { class: 'btn sm', title: '←', disabled: st.i === 0, onClick: prev }, '← 戻る'));
     const same = st.rows.filter((x, k) => k >= st.i && x.it.kind === it.kind).length; if (same > 1) acts.append(h('button', { class: 'btn sm', onClick: () => { const rest = st.rows.slice(st.i).filter(x => x.it.kind === it.kind); for (const x of rest) setReview(app, x.inst, x.it.id, 'ok', note.value); st.done += rest.length; st.rows = st.rows.filter((x, k) => k < st.i || x.it.kind !== it.kind); app.refreshProps(); app.drawLevels(); app.flowRefresh?.(); render(); } }, `残りの${REVIEW_KINDS[it.kind] || it.kind} ${same} 件を確認済に`));
     panel.append(acts);

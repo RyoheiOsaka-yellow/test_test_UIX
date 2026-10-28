@@ -4,6 +4,7 @@ import * as WF from '../core/workflow.js';
 import { exportEstimatePDF, exportWorkOrderPDF } from './reports.js';
 import { openCompare } from './compare.js';
 import { handoffDialog } from './handoff.js';
+import { branchName } from '../core/branches.js';
 
 export function renderRoleView(app, est, rerender, m, { detail = null } = {}) {
   const role = app.role(); const user = app.user(); const mine = est.currentOrg === role && est.status !== 'final'; const T = WF.totals(est);
@@ -11,7 +12,7 @@ export function renderRoleView(app, est, rerender, m, { detail = null } = {}) {
   const bulk = async (field, value, label) => { for (const l of est.lines) if (l[field] !== value) { try { await app.store.editEstimate(est.id, { role, who: user.name, lineId: l.id, field, value }); } catch (e) { toast(e.message, 'bad'); break; } } toast(label, 'ok'); rerender(); };
   const wrap = h('div', { class: 'rv-wrap' });
   const todo = role === 'B' ? (mine ? '各行の利益率を入れて販売価格を決め、A社へ返すか C社へ渡してください' : '現在は他社の作業段階です（閲覧のみ）') : (mine ? '各行の工場単価・納期・受注可否を入れて A社へ回答してください' : '現在は他社の作業段階です（閲覧のみ）');
-  wrap.append(h('div', { class: 'rv-head' }, h('div', {}, h('h3', {}, `${est.no}  ${est.projectName}`), h('div', { class: 'muted' }, `Rev.${est.revision} ・ ${WF.STATUS[est.status]} ・ 作成: ${est.audit[0]?.who || ''}`), (() => { const d = WF.deadlineInfo(est); return d && d.due ? h('div', { class: 'chip ' + (d.overdue ? 'bad' : d.left <= 1 ? 'warn' : 'ghost'), style: { marginTop: '4px' } }, d.overdue ? `回答期限 ${d.due} を ${-d.left} 日超過` : `回答期限 ${d.due}（残り ${d.left} 日）`) : null; })()), h('div', { class: 'rv-todo ' + (mine ? 'on' : '') }, h('b', {}, role === 'B' ? 'B社（販売）のやること' : 'C社（加工工場）のやること'), h('div', {}, todo))));
+  wrap.append(h('div', { class: 'rv-head' }, h('div', {}, h('h3', {}, `${est.no}  ${est.projectName}`), h('div', { class: 'muted' }, `Rev.${est.revision} ・ ${WF.STATUS[est.status]} ・ 作成: ${est.audit[0]?.who || ''}${est.branch ? ' ・ ' + branchName(est.branch) : ''}`), (() => { const d = WF.deadlineInfo(est); return d && d.due ? h('div', { class: 'chip ' + (d.overdue ? 'bad' : d.left <= 1 ? 'warn' : 'ghost'), style: { marginTop: '4px' } }, d.overdue ? `回答期限 ${d.due} を ${-d.left} 日超過` : `回答期限 ${d.due}（残り ${d.left} 日）`) : null; })()), h('div', { class: 'rv-todo ' + (mine ? 'on' : '') }, h('b', {}, role === 'B' ? 'B社（販売）のやること' : 'C社（加工工場）のやること'), h('div', {}, todo))));
   // 一括設定
   if (mine) { const bulkRow = h('div', { class: 'rv-bulk' }, h('span', { class: 'muted small' }, '一括:'));
     if (role === 'B') { const inp = h('input', { type: 'number', value: est.lines[0]?.bMarginPct ?? 15, step: 1, style: { width: '70px' } }); bulkRow.append(h('label', {}, '利益率 ', inp, ' %'), h('button', { class: 'btn sm', onClick: () => bulk('bMarginPct', +inp.value, `全行に利益率 ${inp.value}% を適用`) }, '全行に適用')); }

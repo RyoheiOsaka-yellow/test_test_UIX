@@ -24,6 +24,7 @@ const P = {
   finish: { key: 'finish', label: '仕上げ', type: 'select', options: FINISH_OPTS, default: 'HDZ', scope: 'type', group: '材料' },
   material: { key: 'material', label: '材質', type: 'select', options: [['SS400', 'SS400（一般構造用）'], ['SUS304', 'SUS304']], default: 'SS400', scope: 'type', group: '材料' },
   weldSize: { key: 'weldSize', label: '溶接脚長', type: 'length', unit: 'mm', default: 6, scope: 'type', group: '加工' },
+  insul: { key: 'insul', label: '保温厚（U ボルト内径に加算）', type: 'length', default: 0, scope: 'instance', group: '配管', help: '保温・被覆のある配管は厚さ mm を入れると U ボルト径・穴ピッチ・配管高さが保温外径で決まる' },
   pipes: { key: 'pipes', label: '配管（呼び径@位置, カンマ区切り）', type: 'text', default: '50A', scope: 'instance', group: '配管', help: '例: 125A@120, 32A@300, 20A@420  位置省略で等配' },
   ubolt: { key: 'ubolt', label: 'Uボルト', type: 'bool', default: true, scope: 'type', group: '配管' },
   pipeKind: { key: 'pipeKind', label: '管種', type: 'select', options: [['SGP', 'SGP（白ガス管）'], ['SUS', 'SUS管'], ['VP', '塩ビ管 VP']], default: 'SGP', scope: 'instance', group: '配管' },
@@ -68,15 +69,15 @@ const uboltFor = (od, nominal) => { const s = UBOLTS[nominal]; return s ? s.M : 
 const uboltR = (od, nominal) => { const M = uboltFor(od, nominal); const b = boltDims(M); const s = UBOLTS[nominal]; return od / 2 + (s ? s.c : 3) + b.d / 2; };
 
 // Uボルト + 配管 + 取付穴 を部材上面に生成。 topY: 取付面の y、x: 配管位置、zc: 配管中心 z、pipeDir: 配管軸（既定 Z）
-function pipeSet(parts, pipesStr, span, { origin = [0, 0, 0], topY = 0, plateT = 6, pipeKind = 'SGP', pipeLen = 600, ubolt = true, holeTarget = null, holeFace = 'A', holeS = 0, holeFn = null, lenDir = DIR.X, group = '配管' } = {}) {
+function pipeSet(parts, pipesStr, span, { origin = [0, 0, 0], topY = 0, plateT = 6, pipeKind = 'SGP', pipeLen = 600, ubolt = true, insul = 0, holeTarget = null, holeFace = 'A', holeS = 0, holeFn = null, lenDir = DIR.X, group = '配管' } = {}) {
   const items = parsePipes(pipesStr, span, pipeKind); const result = [];
   for (const it of items) {
-    const base = add(origin, mul(norm(lenDir), it.x)); const cy = topY + uboltR(it.od, it.nominal) - boltDims(uboltFor(it.od, it.nominal)).d / 2; // 配管中心 = 取付面 + od/2 + c
+    const base = add(origin, mul(norm(lenDir), it.x)); const odE = it.od + 2 * (insul || 0); const nomE = insul ? it.nominal + '+' + insul : it.nominal; const cy = topY + uboltR(odE, nomE) - boltDims(uboltFor(odE, nomE)).d / 2; // 配管中心 = 取付面 + od/2 + c
     const pipeC = [base[0], cy, base[2]]; const pipeDir = cross(lenDir, DIR.Y); // 配管軸は部材長さ方向と直交（水平）
-    parts.push({ kind: 'pipe', name: `配管 ${it.nominal}`, spec: pipeKind === 'VP' ? 'VP-' + it.nominal.replace('A', '') : 'SGP-' + it.nominal, length: pipeLen, finish: pipeKind === 'SUS' ? 'SUS304' : 'PIPE', pl: place(add(pipeC, mul(norm(pipeDir), -pipeLen / 2)), pipeDir, DIR.Y), ref: true, group, nominal: it.nominal, od: it.od });
-    if (ubolt) { const M = uboltFor(it.od, it.nominal); const R = uboltR(it.od, it.nominal); parts.push({ kind: 'ubolt', name: `Uボルト ${M}（${it.nominal}）`, M, od: it.od, nominal: it.nominal, plateT, pl: place([base[0], topY, base[2]], pipeDir, lenDir), group, holeD: boltDims(M).hole, pitch: 2 * R });
+    parts.push({ kind: 'pipe', name: `配管 ${it.nominal}`, spec: pipeKind === 'VP' ? 'VP-' + it.nominal.replace('A', '') : 'SGP-' + it.nominal, length: pipeLen, finish: pipeKind === 'SUS' ? 'SUS304' : 'PIPE', pl: place(add(pipeC, mul(norm(pipeDir), -pipeLen / 2)), pipeDir, DIR.Y), ref: true, group, nominal: it.nominal, od: it.od, insul: insul || 0 });
+    if (ubolt) { const M = uboltFor(odE, nomE); const R = uboltR(odE, nomE); parts.push({ kind: 'ubolt', name: `Uボルト ${M}（${it.nominal}${insul ? ' 保温' + insul : ''}）`, M, od: odE, nominal: it.nominal, insul: insul || 0, plateT, pl: place([base[0], topY, base[2]], pipeDir, lenDir), group, holeD: boltDims(M).hole, pitch: 2 * R });
       if (holeFn) holeFn(it, R, boltDims(M).hole); }
-    result.push({ ...it, R: uboltR(it.od, it.nominal) });
+    result.push({ ...it, R: uboltR(odE, nomE) });
   }
   return result;
 }
@@ -109,7 +110,7 @@ reg({
   params: [sel('profile', '柱・梁 形鋼', [['L', '山形鋼（アングル）'], ['C', '溝形鋼（チャンネル）']], 'L'), spec('colSpec', '柱 鋼材仕様', 'L-50x50x6'), spec('beamSpec', '梁 鋼材仕様', 'L-50x50x6'),
     num('W', '内寸法 W（柱内々）', 500, { scope: 'instance' }), num('H', '高さ H（床〜梁上端）', 600, { scope: 'instance' }), num('overhang', '梁 持出し（片側）', 0),
     bool('base', 'ベースプレート付', true), num('baseT', 'ベース板厚', 9), num('baseW', 'ベース幅', 150), num('baseD', 'ベース奥行', 150), sel('baseFix', 'ベース取付', [['weld', '工場溶接'], ['siteweld', '現場溶接（▶）'], ['bolt', 'ボルト止め']], 'weld'), sel('anchorM', 'アンカー', [['M10', 'M10'], ['M12', 'M12'], ['M16', 'M16']], 'M12'), int('anchorN', 'アンカー本数/枚', 2), bool('anchorDraw', 'アンカーを描画', true),
-    P.pipes, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
+    P.pipes, P.insul, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
   parts(p) {
     const parts = []; const cs = parseSpec(p.colSpec), bs = parseSpec(p.beamSpec); const cb = sectionBox(cs), bb = sectionBox(bs);
     const colW = cb.w; // 柱の幅（断面 x）
@@ -134,7 +135,7 @@ reg({
     parts.push(beam);
     // 配管 + Uボルト（梁上面）。Uボルト脚穴を梁の上面板に開ける
     const topFace = bs.kind === 'C' ? 'web' : bs.kind === 'L' ? 'A' : 'top';
-    pipeSet(parts, p.pipes, beamLen, { origin: [x0 - p.overhang, p.H, 0], topY: p.H, plateT: bs.kind === 'C' ? bs.t1 : bs.t, pipeKind: p.pipeKind, ubolt: p.ubolt, pipeLen: Math.max(400, Math.round((p.W + 2 * colW) * 0.9)), lenDir: DIR.X,
+    pipeSet(parts, p.pipes, beamLen, { origin: [x0 - p.overhang, p.H, 0], topY: p.H, plateT: bs.kind === 'C' ? bs.t1 : bs.t, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: Math.max(400, Math.round((p.W + 2 * colW) * 0.9)), lenDir: DIR.X,
       holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) { const z = it.x + 0; const s = bs.kind === 'C' ? bs.H / 2 + sgn * R : bs.kind === 'L' ? bs.A / 2 + sgn * R : bb.w / 2 + sgn * R; beam.holes.push({ face: topFace, z, s, d: hole, kind: 'ubolt' }); } } });
     // 柱–梁 溶接（柱頭全周）
     for (const c of [colL, colR]) parts.push(...outlineWeld(c, 'end', p.weldSize, { group: '柱頭溶接' }));
@@ -159,7 +160,7 @@ reg({
   catalog: ['CH14_006', 'CH14_015', 'CH13_015', 'CH13_016', 'CH13_017'],
   params: [sel('profile', '形鋼', [['L', '山形鋼'], ['C', '溝形鋼'], ['FB', '平鋼']], 'L'), spec('spec', '鋼材仕様', 'L-50x50x6'), num('A', '腕長さ A（壁面〜先端）', 400, { scope: 'instance' }), num('H', '縦材高さ H', 300, { scope: 'instance' }),
     bool('gusset', '斜材（ブレース）', true), spec('gussetSpec', '斜材仕様', 'FB-6x50'), int('wallHoles', '壁アンカー穴数', 2, { group: '加工' }), num('wallHoleD', '壁穴径', 15, { group: '加工' }), num('wallSlot', '壁長穴長さ（0=丸穴）', 0, { group: '加工' }),
-    P.pipes, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
+    P.pipes, P.insul, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
   parts(p) {
     const parts = []; const s = parseSpec(p.spec), sb = sectionBox(s); const w = sb.w, h = sb.h;
     // 壁面 = z=0 平面（ブラケットは +Z 側へ張り出す）。縦材: 長さ Y、背面が壁に接する
@@ -180,7 +181,7 @@ reg({
     if (p.gusset) { const gs = parseSpec(p.gussetSpec); const a = [0, 60, h], b = [0, p.H - (s.kind === 'L' ? s.B : h) - 10, p.A - 40]; const d = add(b, neg(a)); const len = Math.hypot(...d); const gPl = place([a[0] - (gs.w || 50) / 2, a[1], a[2]], d, DIR.X); parts.push({ kind: 'member', name: '斜材', spec: p.gussetSpec, length: len, finish: p.finish, material: p.material, holes: [], pl: gPl, group: '本体' }); const gpart = parts[parts.length - 1]; parts.push(...outlineWeld(gpart, 'start', p.weldSize, { group: '斜材溶接', skipShort: 7 }), ...outlineWeld(gpart, 'end', p.weldSize, { group: '斜材溶接', skipShort: 7 })); }
     // 配管 + Uボルト（腕上面）
     const topFace = s.kind === 'C' ? 'web' : s.kind === 'L' ? 'A' : 'face';
-    pipeSet(parts, p.pipes, p.A - h, { origin: [0, p.H, h], topY: p.H, plateT: s.kind === 'C' ? s.t1 : s.t, pipeKind: p.pipeKind, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.Z, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) arm.holes.push({ face: topFace, z: it.x, s: (s.kind === 'C' ? s.H : s.kind === 'L' ? s.A : s.w) / 2 + sgn * R, d: hole, kind: 'ubolt' }); } });
+    pipeSet(parts, p.pipes, p.A - h, { origin: [0, p.H, h], topY: p.H, plateT: s.kind === 'C' ? s.t1 : s.t, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.Z, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) arm.holes.push({ face: topFace, z: it.x, s: (s.kind === 'C' ? s.H : s.kind === 'L' ? s.A : s.w) / 2 + sgn * R, d: hole, kind: 'ubolt' }); } });
     return parts;
   },
 });
@@ -188,7 +189,7 @@ reg({
 reg({
   id: 'bracket_tri', name: '三角ブラケット', category: 'ブラケット', ifc: 'IfcElementAssembly', markPrefix: 'TB', icon: '◺',
   catalog: ['CH14_007', 'CH13_010', 'CH13_011', 'CH13_012', 'CH13_013', 'CH13_014'],
-  params: [spec('spec', '鋼材仕様', 'L-50x50x4'), num('A', '腕長さ A', 400, { scope: 'instance' }), num('H', '縦材高さ H', 350, { scope: 'instance' }), int('wallHoles', '壁穴数', 2, { group: '加工' }), num('wallHoleD', '壁穴径', 12, { group: '加工' }), int('armHoles', '腕 取付穴数', 3, { group: '加工' }), num('armHoleD', '腕穴径', 11, { group: '加工' }), P.pipes, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
+  params: [spec('spec', '鋼材仕様', 'L-50x50x4'), num('A', '腕長さ A', 400, { scope: 'instance' }), num('H', '縦材高さ H', 350, { scope: 'instance' }), int('wallHoles', '壁穴数', 2, { group: '加工' }), num('wallHoleD', '壁穴径', 12, { group: '加工' }), int('armHoles', '腕 取付穴数', 3, { group: '加工' }), num('armHoleD', '腕穴径', 11, { group: '加工' }), P.pipes, P.insul, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
   parts(p) {
     const parts = []; const s = parseSpec(p.spec); const A = s.A || 50, t = s.t || 4;
     const vert = { kind: 'member', name: '縦材', spec: p.spec, length: p.H, finish: p.finish, material: p.material, holes: [], pl: place([-A / 2, 0, 0], DIR.Y, DIR.X), group: '本体' };
@@ -198,7 +199,7 @@ reg({
     parts.push(vert, arm, ...outlineWeld(arm, 'start', p.weldSize, { group: '腕溶接' }));
     const a = [0, 40, A], b = [0, p.H - A - 20, p.A - 30]; const d = add(b, neg(a)); const brace = { kind: 'member', name: '斜材', spec: p.spec, length: Math.hypot(...d), finish: p.finish, material: p.material, holes: [], pl: place([-A / 2, a[1], a[2]], d, DIR.X), group: '本体' };
     parts.push(brace, ...outlineWeld(brace, 'start', p.weldSize, { group: '斜材溶接', skipShort: 5 }), ...outlineWeld(brace, 'end', p.weldSize, { group: '斜材溶接', skipShort: 5 }));
-    pipeSet(parts, p.pipes, p.A - A, { origin: [0, p.H, A], topY: p.H, plateT: t, pipeKind: p.pipeKind, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.Z, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) arm.holes.push({ face: 'A', z: it.x, s: A / 2 + sgn * R, d: hole, kind: 'ubolt' }); } });
+    pipeSet(parts, p.pipes, p.A - A, { origin: [0, p.H, A], topY: p.H, plateT: t, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.Z, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) arm.holes.push({ face: 'A', z: it.x, s: A / 2 + sgn * R, d: hole, kind: 'ubolt' }); } });
     return parts;
   },
 });
@@ -206,7 +207,7 @@ reg({
 reg({
   id: 'hanger_support', name: '吊アングル・チャンネルサポート', category: '吊り', ifc: 'IfcElementAssembly', markPrefix: 'HS', icon: '⊥',
   catalog: ['CH14_002', 'CH14_003'],
-  params: [sel('profile', '形鋼', [['L', '山形鋼'], ['C', '溝形鋼']], 'L'), spec('spec', '鋼材仕様', 'L-40x40x5'), num('L', '長さ L', 600, { scope: 'instance' }), num('edge', '吊穴 端あき', 30, { group: '加工' }), sel('rodM', '吊ボルト', [['W3/8', 'W3/8'], ['W1/2', 'W1/2'], ['M10', 'M10'], ['M12', 'M12']], 'W3/8'), num('rodSlot', '吊穴 長穴長さ', 25, { group: '加工' }), bool('rods', '吊ボルトを描画', true), num('rodL', '吊ボルト長さ', 500), P.pipes, P.pipeKind, P.ubolt, P.material, P.finish],
+  params: [sel('profile', '形鋼', [['L', '山形鋼'], ['C', '溝形鋼']], 'L'), spec('spec', '鋼材仕様', 'L-40x40x5'), num('L', '長さ L', 600, { scope: 'instance' }), num('edge', '吊穴 端あき', 30, { group: '加工' }), sel('rodM', '吊ボルト', [['W3/8', 'W3/8'], ['W1/2', 'W1/2'], ['M10', 'M10'], ['M12', 'M12']], 'W3/8'), num('rodSlot', '吊穴 長穴長さ', 25, { group: '加工' }), bool('rods', '吊ボルトを描画', true), num('rodL', '吊ボルト長さ', 500), P.pipes, P.insul, P.pipeKind, P.ubolt, P.material, P.finish],
   parts(p) {
     const parts = []; const s = parseSpec(p.spec); const b = boltDims(p.rodM);
     const pl = s.kind === 'C' ? place([0, 0, s.H / 2], DIR.X, DIR.NY) : place([0, 0, -s.A / 2], DIR.X, DIR.Z); // 上面 y=0 (配管載せ面)
@@ -215,7 +216,7 @@ reg({
     for (const z of [p.edge, p.L - p.edge]) mem.holes.push({ face, z, s: mid, d: b.hole, slot: p.rodSlot > b.hole ? { len: p.rodSlot, dir: 'z' } : null, kind: 'rod' });
     parts.push(mem);
     if (p.rods) for (const z of [p.edge, p.L - p.edge]) parts.push({ kind: 'rod', name: `吊ボルト ${p.rodM}`, M: p.rodM, L: p.rodL, pl: place([z, -(s.kind === 'C' ? s.t1 : s.t) - b.m - 4, 0], DIR.Y, DIR.X), group: '吊り', site: true });
-    pipeSet(parts, p.pipes, p.L, { origin: [0, 0, 0], topY: 0, plateT: s.kind === 'C' ? s.t1 : s.t, pipeKind: p.pipeKind, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.X, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) mem.holes.push({ face, z: it.x, s: mid + sgn * R, d: hole, kind: 'ubolt' }); } });
+    pipeSet(parts, p.pipes, p.L, { origin: [0, 0, 0], topY: 0, plateT: s.kind === 'C' ? s.t1 : s.t, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.X, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) mem.holes.push({ face, z: it.x, s: mid + sgn * R, d: hole, kind: 'ubolt' }); } });
     return parts;
   },
 });
@@ -223,7 +224,7 @@ reg({
 reg({
   id: 'ceiling_trapeze', name: '吊架台（トラピーズ）', category: '吊り', ifc: 'IfcElementAssembly', markPrefix: 'CT', icon: '⊓',
   catalog: ['CH14_011', 'CH14_012', 'CH14_013'],
-  params: [sel('profile', '形鋼', [['L', '山形鋼'], ['C', '溝形鋼']], 'L'), spec('spec', '鋼材仕様', 'L-50x50x6'), num('L', '横材長さ', 800, { scope: 'instance' }), int('tiers', '段数', 1), num('tierPitch', '段ピッチ', 300), sel('rodM', '吊ボルト', [['W3/8', 'W3/8'], ['W1/2', 'W1/2'], ['M12', 'M12']], 'W1/2'), num('drop', '吊り長さ（天井〜最上段）', 600, { scope: 'instance' }), sel('mount', '取付', [['ceiling', '天井（インサート/アンカー）'], ['beam', '梁（ビームクランプ）']], 'ceiling'), num('edge', '吊穴 端あき', 40), P.pipes, P.pipeKind, P.ubolt, P.material, P.finish],
+  params: [sel('profile', '形鋼', [['L', '山形鋼'], ['C', '溝形鋼']], 'L'), spec('spec', '鋼材仕様', 'L-50x50x6'), num('L', '横材長さ', 800, { scope: 'instance' }), int('tiers', '段数', 1), num('tierPitch', '段ピッチ', 300), sel('rodM', '吊ボルト', [['W3/8', 'W3/8'], ['W1/2', 'W1/2'], ['M12', 'M12']], 'W1/2'), num('drop', '吊り長さ（天井〜最上段）', 600, { scope: 'instance' }), sel('mount', '取付', [['ceiling', '天井（インサート/アンカー）'], ['beam', '梁（ビームクランプ）']], 'ceiling'), num('edge', '吊穴 端あき', 40), P.pipes, P.insul, P.pipeKind, P.ubolt, P.material, P.finish],
   parts(p) {
     const parts = []; const s = parseSpec(p.spec); const b = boltDims(p.rodM); const face = s.kind === 'C' ? 'web' : 'A'; const mid = (s.kind === 'C' ? s.H : s.A) / 2;
     for (let k = 0; k < p.tiers; k++) {
@@ -231,7 +232,7 @@ reg({
       const mem = { kind: 'member', name: `横材 ${k + 1}段`, spec: p.spec, length: p.L, finish: p.finish, material: p.material, holes: [], pl, group: '本体' };
       for (const z of [p.edge, p.L - p.edge]) mem.holes.push({ face, z, s: mid, d: b.hole, kind: 'rod' });
       parts.push(mem);
-      pipeSet(parts, p.pipes, p.L, { origin: [0, y, 0], topY: y, plateT: s.kind === 'C' ? s.t1 : s.t, pipeKind: p.pipeKind, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.X, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) mem.holes.push({ face, z: it.x, s: mid + sgn * R, d: hole, kind: 'ubolt' }); } });
+      pipeSet(parts, p.pipes, p.L, { origin: [0, y, 0], topY: y, plateT: s.kind === 'C' ? s.t1 : s.t, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.X, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) mem.holes.push({ face, z: it.x, s: mid + sgn * R, d: hole, kind: 'ubolt' }); } });
       for (const z of [p.edge, p.L - p.edge]) { parts.push({ kind: 'nut', name: `ナット ${p.rodM}`, M: p.rodM, pl: place([z, y - (s.kind === 'C' ? s.t1 : s.t) - b.m, 0], DIR.Y, DIR.X), group: '吊り' }, { kind: 'nut', name: `ナット ${p.rodM}`, M: p.rodM, pl: place([z, y + 0.5, 0], DIR.Y, DIR.X), group: '吊り' }); }
     }
     const rodL = p.drop + (p.tiers - 1) * p.tierPitch + 60;
@@ -271,16 +272,16 @@ reg({
 reg({
   id: 'channel_stand', name: 'チャンネル架台（チャンネル君）', category: '架台', ifc: 'IfcMember', markPrefix: 'CS', icon: '⊏',
   catalog: ['CH13_018', 'CH13_019'],
-  params: [spec('spec', '鋼材仕様', '[-100x50x5x7.5'), num('L', '長さ', 300, { scope: 'instance' }), int('slots', '長穴数', 2, { group: '加工' }), num('slotLen', '長穴長さ', 30, { group: '加工' }), num('slotD', '長穴幅', 12, { group: '加工' }), P.pipes, P.pipeKind, P.ubolt, P.material, P.finish],
+  params: [spec('spec', '鋼材仕様', '[-100x50x5x7.5'), num('L', '長さ', 300, { scope: 'instance' }), int('slots', '長穴数', 2, { group: '加工' }), num('slotLen', '長穴長さ', 30, { group: '加工' }), num('slotD', '長穴幅', 12, { group: '加工' }), P.pipes, P.insul, P.pipeKind, P.ubolt, P.material, P.finish],
   parts(p) { const parts = []; const s = parseSpec(p.spec); const mem = { kind: 'member', name: 'チャンネル', spec: p.spec, length: p.L, finish: p.finish, material: p.material, holes: [], pl: place([0, 0, s.H / 2], DIR.X, DIR.NY), group: '本体' };
     for (let i = 0; i < p.slots; i++) mem.holes.push({ face: 'web', z: p.L * (i + 1) / (p.slots + 1), s: s.H / 2, d: p.slotD, slot: { len: p.slotLen, dir: 'z' }, kind: 'anchor' });
-    parts.push(mem); pipeSet(parts, p.pipes, p.L, { origin: [0, 0, 0], topY: 0, plateT: s.t1, pipeKind: p.pipeKind, ubolt: p.ubolt, pipeLen: 400, lenDir: DIR.X, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) mem.holes.push({ face: 'web', z: it.x, s: s.H / 2 + sgn * R, d: hole, kind: 'ubolt' }); } }); return parts; },
+    parts.push(mem); pipeSet(parts, p.pipes, p.L, { origin: [0, 0, 0], topY: 0, plateT: s.t1, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: 400, lenDir: DIR.X, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) mem.holes.push({ face: 'web', z: it.x, s: s.H / 2 + sgn * R, d: hole, kind: 'ubolt' }); } }); return parts; },
 });
 // ---- 10. ポール CH14_019 / 020 ----
 reg({
   id: 'pole', name: 'アングル／チャンネルポール', category: '架台', ifc: 'IfcElementAssembly', markPrefix: 'PO', icon: '|',
   catalog: ['CH14_019', 'CH14_020'],
-  params: [spec('spec', 'ポール鋼材', 'L-65x65x6'), num('H', '高さ', 1800, { scope: 'instance' }), num('baseT', 'ベース板厚', 9), num('baseW', 'ベース寸法', 200), int('brackets', 'ブラケット段数', 2), num('bracketPitch', 'ブラケットピッチ', 600), num('bracketL', 'ブラケット長さ', 300), spec('bracketSpec', 'ブラケット鋼材', 'L-50x50x6'), P.pipes, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
+  params: [spec('spec', 'ポール鋼材', 'L-65x65x6'), num('H', '高さ', 1800, { scope: 'instance' }), num('baseT', 'ベース板厚', 9), num('baseW', 'ベース寸法', 200), int('brackets', 'ブラケット段数', 2), num('bracketPitch', 'ブラケットピッチ', 600), num('bracketL', 'ブラケット長さ', 300), spec('bracketSpec', 'ブラケット鋼材', 'L-50x50x6'), P.pipes, P.insul, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
   parts(p) { const parts = []; const s = parseSpec(p.spec); const sb = sectionBox(s); const pole = { kind: 'member', name: 'ポール', spec: p.spec, length: p.H - p.baseT, finish: p.finish, material: p.material, holes: [], pl: place([-sb.w / 2, p.baseT, -sb.h / 2], DIR.Y, DIR.X), group: '本体' };
     parts.push(pole, { kind: 'plate', name: 'ベースPL', spec: `PL-${p.baseT}x${p.baseW}x${p.baseW}`, length: p.baseW, holes: [[0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.8, 0.8]].map(([a, b]) => ({ face: 'face', z: b * p.baseW, s: a * p.baseW, d: 15, kind: 'anchor' })), finish: p.finish, material: p.material, pl: place([-p.baseW / 2, 0, -p.baseW / 2], DIR.Z, DIR.X), group: 'ベース' }, ...outlineWeld(pole, 'start', p.weldSize, { group: 'ポール脚溶接' }));
     for (const [a, b] of [[0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.8, 0.8]]) parts.push({ kind: 'anchor', name: 'アンカー M12', M: 'M12', plateT: p.baseT, pl: place([(a - 0.5) * p.baseW, 0, (b - 0.5) * p.baseW], DIR.Y, DIR.X), group: 'アンカー', site: true });
@@ -288,7 +289,7 @@ reg({
       // 脚A上面 = y: 脚A厚み(+Y) → Y = X×(-Z) = (0,1,0)… 上向き → pos.y = y - t。脚Bは +Y … 下向きに: xDir=+Z → Y = X×Z = -Y ✓
       arm.pl = place([sb.w / 2, y, -bsp.A / 2], DIR.X, DIR.Z);
       parts.push(arm, ...outlineWeld(arm, 'start', p.weldSize, { group: 'ブラケット溶接' }));
-      pipeSet(parts, p.pipes, p.bracketL, { origin: [sb.w / 2, y, 0], topY: y, plateT: bsp.t, pipeKind: p.pipeKind, ubolt: p.ubolt, pipeLen: 400, lenDir: DIR.X, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) arm.holes.push({ face: 'A', z: it.x, s: bsp.A / 2 + sgn * R, d: hole, kind: 'ubolt' }); } }); }
+      pipeSet(parts, p.pipes, p.bracketL, { origin: [sb.w / 2, y, 0], topY: y, plateT: bsp.t, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: 400, lenDir: DIR.X, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) arm.holes.push({ face: 'A', z: it.x, s: bsp.A / 2 + sgn * R, d: hole, kind: 'ubolt' }); } }); }
     return parts; },
 });
 // ---- 11. ダブルアングル / ダブルチャンネル CH14_017 / 018 ----

@@ -23,6 +23,7 @@
       <div class="sm-tag">図面に、語らせる。</div>
       <div class="sm-field"><label>メールアドレス</label><input id="sm-inEmail" placeholder="メールアドレス" autocomplete="username"></div>
       <div class="sm-field"><label>パスワード</label><input type="password" id="sm-inPass" placeholder="パスワード" autocomplete="current-password"></div>
+      <div class="sm-field"><label>営業所（A社の場合）</label><select id="sm-inBranch"><option value="TKY">東京営業所</option><option value="OSK">大阪営業所</option><option value="NGY">名古屋営業所</option><option value="FKO">福岡営業所</option><option value="SDI">仙台営業所</option><option value="HQ">本社</option></select></div>
       <div class="sm-field"><label>会社・役割（デモ）</label><select id="sm-inOrg"><option value="A">A社 — 設計・見積作成（モデル編集可）</option><option value="B">B社 — 販売（利益率のみ編集）</option><option value="C">C社 — 加工工場（工場単価のみ編集）</option></select></div>
       <div class="sm-dummy" id="smAuthNote">※ デモ用ダミー認証。任意の入力でサインインできます。</div>
       <button class="sm-btn primary full" id="smSignIn">サインイン</button>
@@ -65,11 +66,11 @@
   <header class="topbar">
     <div class="brand" id="appBrand" title="案件一覧へ"><span class="brand-mark">ANGLEX.</span><span class="brand-sub">FABRICATION INTELLIGENCE · BIM</span></div>
     <div class="topbar-divider"></div>
-    <div class="project-pill" id="projectPill" title="クリックで名称変更"><span class="dot"></span><span class="pname" id="projectName">プロジェクト</span><span class="pmeta" id="projectMeta"></span></div>
+    <div class="project-pill" id="projectPill" title="クリックで名称変更"><span class="dot"></span><span class="pname" id="projectName">プロジェクト</span><span class="proj-branch" id="projectBranch" title="案件の営業所（クリックで変更）">—</span><span class="pmeta" id="projectMeta"></span></div>
     <div class="topbar-spacer"></div>
     <div class="topbar-actions">
       <span class="mode-badge" id="storeMode">local</span>
-      <div class="user-pill" id="userPill"><span class="org-badge" id="orgBadge">A</span><span id="userName">—</span><span class="caret">▾</span></div>
+      <div class="user-pill" id="userPill"><span class="org-badge" id="orgBadge">A</span><span id="userName">—</span><span class="branch-badge" id="branchBadge" title="所属営業所">—</span><span class="caret">▾</span></div>
       <button class="btn ghost" id="btnSave" title="保存 (Ctrl+S)">保存</button>
       <button class="btn ghost" id="btnProjects">案件一覧</button>
       <button class="btn ghost" id="btnSwitchUI" title="v1 インターフェース（リボン型 BIM ワークスペース）へ切替">⇄ UI v1</button>
