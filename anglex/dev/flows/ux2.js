@@ -30,5 +30,5 @@ await page.waitForTimeout(600); await page.screenshot({ path: S + '/x4_attach_mu
 // ショールーム: まとめて選択
 await page.evaluate(() => document.querySelector('#btnShowroom').click()); await page.waitForTimeout(400);
 await page.evaluate(() => { const rows = [...document.querySelectorAll('.sr-row:not(.na)')].slice(0, 3); for (const r of rows) r.click(); }); await page.waitForTimeout(1500);
-log('SHOWROOM SELECT ALL', await page.evaluate(() => { const b = [...document.querySelectorAll('.sr-foot .btn')].find(x => x.textContent === 'まとめて選択'); b.click(); return { placed: app.model.instances.filter(i => i.source === 'catalog').length, selected: app.selectedIds().length, bar: !!document.querySelector('.multi-bar') }; }));
+log('SHOWROOM SELECT ALL', await page.evaluate(() => { const b = [...document.querySelectorAll('.sr-foot .btn')].find(x => x.textContent === '全選択'); b.click(); return { placed: app.model.instances.filter(i => i.source === 'catalog').length, selected: app.selectedIds().length, bar: !!document.querySelector('.multi-bar') }; }));
 log('GL', await page.evaluate(() => app.viewer.renderer.getContext().getError()));
