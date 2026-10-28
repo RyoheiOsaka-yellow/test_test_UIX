@@ -18,7 +18,7 @@ const CSS = `/* ═════════════════════�
 .newslist a:hover{background:rgba(255,255,255,.03);}
 .newslist time{font-size:11px;letter-spacing:var(--ls-ui);color:var(--grey-d);font-variant-numeric:tabular-nums;}
 .newslist__t{font-size:15px;font-weight:500;line-height:1.7;}
-.newslist__tag{display:block;font-size:10px;letter-spacing:var(--ls-ui);text-transform:uppercase;color:var(--grey-d);margin-bottom:6px;}
+.newslist__tag{display:block;font-size:11px;letter-spacing:var(--ls-ui);text-transform:uppercase;color:var(--grey-d);margin-bottom:6px;}
 .newslist__d{display:block;font-size:12.5px;line-height:1.95;font-weight:300;color:rgba(255,255,255,.6);margin-top:6px;}
 .newslist__go{font-size:11px;letter-spacing:var(--ls-ui);color:rgba(255,255,255,.55);white-space:nowrap;}
 .newslist a:hover .newslist__go{color:var(--white);}

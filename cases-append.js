@@ -31,14 +31,14 @@ const CSS = `/* ═════════════════════�
 .ccard__img img{width:100%;height:100%;object-fit:cover;transition:transform 1s var(--ease);}
 .ccard:hover .ccard__img img{transform:scale(1.05);}
 .ccard__body{padding:20px 22px 26px;}
-.ccard__tag{font-size:10px;letter-spacing:var(--ls-ui);text-transform:uppercase;color:var(--grey-d);}
+.ccard__tag{font-size:11px;letter-spacing:var(--ls-ui);text-transform:uppercase;color:var(--grey-d);}
 .ccard__t{font-size:15px;font-weight:700;line-height:1.6;margin:8px 0 8px;}
 .ccard__d{font-size:12px;line-height:1.95;font-weight:300;color:rgba(255,255,255,.6);
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 
 .case{padding:calc(var(--hdr-h) + clamp(40px,6vh,72px)) var(--pad) clamp(70px,10vh,120px);}
 .case__wrap{max-width:62em;}
-.case__eyebrow{font-size:10px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--grey);margin:0 0 16px;}
+.case__eyebrow{font-size:11px;letter-spacing:var(--ls-eyebrow);text-transform:uppercase;color:var(--grey);margin:0 0 16px;}
 .case__title{font-size:clamp(26px,3.6vw,48px);font-weight:700;line-height:1.25;margin:0 0 20px;}
 .case__lead{font-size:clamp(14px,1.5vw,17px);line-height:2;font-weight:300;color:rgba(255,255,255,.84);max-width:44em;margin:0 0 28px;}
 .case__demo{display:inline-block;font-size:11px;letter-spacing:var(--ls-ui);text-transform:uppercase;
@@ -55,7 +55,7 @@ const CSS = `/* ═════════════════════�
 .case ul{padding-left:1.3em;margin:8px 0;}
 .case__spec{width:100%;border-collapse:collapse;border-top:1px solid var(--line-s);}
 .case__spec th,.case__spec td{text-align:left;vertical-align:top;padding:13px 0;border-bottom:1px solid var(--line-s);font-weight:400;}
-.case__spec th{width:9em;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--grey-d);padding-right:14px;}
+.case__spec th{width:9em;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--grey-d);padding-right:14px;}
 .case__spec td{font-size:13px;line-height:1.9;color:rgba(255,255,255,.84);}
 .case__nav{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
   margin-top:clamp(50px,8vh,90px);padding-top:24px;border-top:1px solid var(--line-s);}
@@ -165,12 +165,12 @@ ${shots}
       <div class="case__cols">
         <div>
 ${body}        </div>
-        <aside>
+        <div class="case__aside">
           <h2 data-i18n="cs_spec_h">${COMMON.cs_spec_h[1]}</h2>
           <table class="case__spec"><tbody>
 ${spec}
           </tbody></table>
-        </aside>
+        </div>
       </div>
 
       <nav class="case__nav">

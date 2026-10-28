@@ -9,16 +9,20 @@ body{margin:0;background:#000;color:#fff;min-height:100svh;display:flex;flex-dir
      align-items:center;justify-content:center;gap:22px;text-align:center;padding:0 24px;
      font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Noto Sans JP',Arial,sans-serif;}
 .logo{font-family:'Raleway',sans-serif;font-weight:300;font-size:30px;letter-spacing:.42em;padding-left:.42em;}
-.code{font-size:11px;letter-spacing:.3em;color:#767676;}
+.code{font-size:11px;letter-spacing:.3em;color:#8a8a8a;}
+h1{margin:0;font-size:16px;font-weight:400;color:rgba(255,255,255,.88);}
 p{margin:0;font-size:14px;color:rgba(255,255,255,.78);}
-p.sub{font-size:12px;color:rgba(255,255,255,.45);}
+p.sub{font-size:12px;color:rgba(255,255,255,.7);}
+main{display:contents;}
 a{color:#fff;font-size:12px;letter-spacing:.22em;text-decoration:none;text-transform:uppercase;
   border:1px solid rgba(255,255,255,.4);padding:12px 26px;transition:.3s;margin-top:6px;}
 a:hover{background:#fff;color:#000;}
 </style></head><body>
-<div class="logo">YELLOW</div>
-<div class="code">404 — NOT FOUND</div>
-<p>The page you are looking for could not be found.</p>
+<main>
+<div class="logo" aria-label="YELLOW">YELLOW</div>
+<div class="code" aria-hidden="true">404 — NOT FOUND</div>
+<h1>404 — The page you are looking for could not be found.</h1>
 <p class="sub" lang="ja">お探しのページは見つかりませんでした。</p>
 <a href="/">Back to home</a>
+</main>
 </body></html>
