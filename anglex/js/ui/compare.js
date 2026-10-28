@@ -1,0 +1,41 @@
+// 見積の比較ビュー: Rev 間・会社間の金額差分を行ごとに色分けし、変更理由（監査ログ・受け渡しメッセージ）を横に表示
+import { h, modal, fmt, table } from './common.js';
+import * as WF from '../core/workflow.js';
+
+const FIELDS = { qty: ['数量', v => v], baseCost: ['A社 基準原価', fmt.yen], factoryCost: ['C社 工場単価', v => v == null ? '未回答' : fmt.yen(v)], aMarginPct: ['A社 マージン %', fmt.pct], bMarginPct: ['B社 利益率 %', v => v == null ? '—' : fmt.pct(v)], leadDays: ['納期（日）', v => v == null ? '—' : v + ' 日'], accepted: ['受注可否', v => v == null ? '—' : v ? '可' : '不可'] };
+const VISIBLE = { A: ['qty', 'baseCost', 'factoryCost', 'aMarginPct', 'bMarginPct', 'leadDays', 'accepted'], B: ['qty', 'bMarginPct'], C: ['qty', 'factoryCost', 'leadDays', 'accepted'] };
+const PRICE = { A: [['aPrice', 'A社 提示単価'], ['bPrice', '販売単価'], ['amountB', '金額（販売）']], B: [['aPrice', 'A社 提示単価'], ['bPrice', '販売単価'], ['amountB', '金額（販売）']], C: [['factory', '工場単価'], ['amountFactory', '金額（工場）']] };
+export function openCompare(app, est) {
+  const role = app.role(); const host = h('div', { class: 'cmp-wrap' }); const m = modal({ title: `見積の比較 — ${est.no}`, wide: true, cls: 'compare', body: host });
+  const versions = [...est.revisions.map(r => ({ key: 'rev' + r.rev, label: `Rev.${r.rev}（${r.org}社 ${r.who}・${fmt.date(r.at)}）`, lines: r.snapshot.lines, at: r.at, org: r.org, note: r.note })), { key: 'cur', label: `Rev.${est.revision}（現在・${WF.ROLES[est.currentOrg].name}）`, lines: est.lines, at: est.updatedAt, org: est.currentOrg, note: '' }];
+  // 既定: 直近で差分のある Rev の組（受け渡し時に凍結した状態どうし → その会社が何を変えたかが見える）
+  const differs = (a, b) => { const ma = new Map(a.lines.map(l => [l.id, l])); if (a.lines.length !== b.lines.length) return true; return b.lines.some(l => { const o = ma.get(l.id); return !o || ['qty', 'baseCost', 'factoryCost', 'aMarginPct', 'bMarginPct', 'leadDays', 'accepted'].some(k => o[k] !== l[k]); }); };
+  let right = versions.length - 1, left = Math.max(0, right - 1); for (let i = versions.length - 1; i > 0; i--) if (differs(versions[i - 1], versions[i])) { left = i - 1; right = i; break; } let mode = 'rev';
+  const render = () => {
+    host.innerHTML = ''; const A = versions[left], B = versions[right];
+    const sel = (val, on) => h('select', { onChange: e => { on(+e.target.value); render(); } }, ...versions.map((v, i) => h('option', { value: i, selected: i === val }, v.label)));
+    host.append(h('div', { class: 'cmp-ctl' }, h('div', { class: 'seg' }, h('button', { class: 'btn sm' + (mode === 'rev' ? ' on' : ''), onClick: () => { mode = 'rev'; render(); } }, 'Rev 間の差分'), h('button', { class: 'btn sm' + (mode === 'org' ? ' on' : ''), onClick: () => { mode = 'org'; render(); } }, '会社間の金額')), mode === 'rev' ? h('div', { class: 'cmp-sel' }, h('span', { class: 'muted small' }, '比較元'), sel(left, v => left = v), h('span', { class: 'muted small' }, '→ 比較先'), sel(right, v => right = v)) : null, h('div', { class: 'cmp-legend muted small' }, h('span', { class: 'd up' }, '▲ 増'), ' ', h('span', { class: 'd down' }, '▼ 減'), ' ', h('span', { class: 'd new' }, '追加'), ' ', h('span', { class: 'd gone' }, '削除'))));
+    if (mode === 'org') { host.append(renderOrg(est, role)); return; }
+    // 変更理由: 比較元の時刻〜比較先の時刻の監査ログ（行ごと）
+    const t0 = A.at || '', t1 = B.at || '9'; const logs = est.audit.filter(a => a.at > t0 && a.at <= t1); const notes = est.handoffs.filter(x => x.at > t0 && x.at <= t1).map(x => `${x.from}→${x.to} ${x.who}: ${x.note || ''}`.trim());
+    const fields = VISIBLE[role] || VISIBLE.A; const headers = ['No', '品名', ...fields.map(f => FIELDS[f][0]), ...PRICE[role].map(p => p[1]), '変更理由（誰が・いつ・何を）'];
+    const ids = [...new Set([...A.lines.map(l => l.id), ...B.lines.map(l => l.id)])]; let changed = 0;
+    const rows = ids.map(id => { const a = A.lines.find(l => l.id === id), b = B.lines.find(l => l.id === id); const l = b || a; const cls = !a ? 'new' : !b ? 'gone' : '';
+      const cellF = f => { const va = a?.[f], vb = b?.[f]; const fmtv = FIELDS[f][1]; if (!a || !b) return fmtv(l[f]); if (va === vb) return h('span', { class: 'muted' }, fmtv(vb)); changed++; const num = typeof va === 'number' && typeof vb === 'number'; return h('span', { class: 'd ' + (num ? (vb > va ? 'up' : 'down') : 'chg') }, h('s', {}, fmtv(va)), ' → ', h('b', {}, fmtv(vb)), num ? h('small', {}, ` (${vb > va ? '+' : ''}${Math.round((vb - va) * 100) / 100})`) : null); };
+      const cellP = key => { const pa = a ? WF.linePrices(a) : null, pb = b ? WF.linePrices(b) : null; if (!pa || !pb) return fmt.yen((pb || pa)[key]); if (pa[key] === pb[key]) return h('span', { class: 'muted' }, fmt.yen(pb[key])); const d = pb[key] - pa[key]; return h('span', { class: 'd ' + (d > 0 ? 'up' : 'down') }, h('s', {}, fmt.yen(pa[key])), ' → ', h('b', {}, fmt.yen(pb[key])), h('small', {}, ` (${d > 0 ? '+' : ''}${fmt.yen(d)}${pa[key] ? ' / ' + (d > 0 ? '+' : '') + Math.round(d / pa[key] * 1000) / 10 + '%' : ''})`)); };
+      const why = logs.filter(x => x.lineId === id && x.action === 'edit').map(x => h('div', { class: 'small' }, h('b', {}, x.org + '社 ' + x.who), ` ${fmt.date(x.at)} ${FIELDS[x.field?.replace('lines.', '')]?.[0] || x.field}: ${x.before ?? '—'} → ${x.after}`));
+      return { cls, cells: [l.no, h('div', {}, h('b', {}, l.desc), h('div', { class: 'muted small' }, l.marks?.join(' ') || '')), ...fields.map(cellF), ...PRICE[role].map(p => cellP(p[0])), why.length ? h('div', {}, ...why) : (cls === 'new' ? '追加された行' : cls === 'gone' ? '削除された行' : h('span', { class: 'muted' }, '—'))] }; });
+    const tbl = table(headers, rows.map(r => r.cells)); [...tbl.querySelectorAll('tbody tr')].forEach((tr, i) => { if (rows[i].cls) tr.classList.add(rows[i].cls); });
+    const TA = WF.totals({ lines: A.lines }), TB = WF.totals({ lines: B.lines }); const tot = (k, label) => { const d = TB[k] - TA[k]; return h('div', { class: 'kv' }, h('span', {}, label), h('span', { class: d ? 'd ' + (d > 0 ? 'up' : 'down') : '' }, `${fmt.yen(TA[k])} → ${fmt.yen(TB[k])}${d ? ` (${d > 0 ? '+' : ''}${fmt.yen(d)})` : ''}`)); };
+    host.append(h('div', { class: 'cmp-sum' }, h('div', {}, h('b', {}, `${A.label.split('（')[0]} → ${B.label.split('（')[0]}`), h('div', { class: 'muted small' }, `変更セル ${changed} ・ 追加 ${rows.filter(r => r.cls === 'new').length} 行 ・ 削除 ${rows.filter(r => r.cls === 'gone').length} 行 ・ 編集ログ ${logs.filter(x => x.action === 'edit').length} 件`), notes.length ? h('div', { class: 'small' }, '受け渡しメッセージ: ', notes.join(' / ')) : null), h('div', { class: 'est-totals' }, role !== 'B' ? tot('factory', '工場原価 計') : null, role !== 'C' ? tot('a', 'A社 提示 計') : null, role !== 'C' ? tot('b', '販売価格 計') : null)));
+    host.append(h('div', { class: 'est-table' }, tbl));
+  };
+  render(); return m;
+}
+// 会社間: 同じ行の 工場単価 → A社提示 → 販売単価 を横に（役割で見える列だけ）
+function renderOrg(est, role) {
+  const cols = role === 'A' ? [['factory', 'C社 工場単価'], ['aPrice', 'A社 提示単価'], ['bPrice', 'B社 販売単価']] : role === 'B' ? [['aPrice', 'A社 提示単価'], ['bPrice', 'B社 販売単価']] : [['factory', 'C社 工場単価']];
+  const rows = est.lines.map(l => { const p = WF.linePrices(l); const cells = cols.map(([k], i) => { const v = p[k]; const prev = i ? p[cols[i - 1][0]] : null; const d = prev != null && prev ? Math.round((v - prev) / prev * 1000) / 10 : null; return h('span', {}, fmt.yen(v), d != null ? h('small', { class: 'd ' + (d >= 0 ? 'up' : 'down') }, ` ${d >= 0 ? '+' : ''}${d}%`) : null); }); return [l.no, h('div', {}, h('b', {}, l.desc), h('div', { class: 'muted small' }, l.marks?.join(' ') || '')), `${l.qty} ${l.unit}`, ...cells, l.accepted == null ? '—' : l.accepted ? '受注可' : '不可', [l.bNote, l.cNote].filter(Boolean).join(' / ')]; });
+  const T = WF.totals(est);
+  return h('div', {}, h('div', { class: 'cmp-sum' }, h('div', { class: 'est-totals' }, role !== 'B' ? h('div', { class: 'kv' }, h('span', {}, '工場原価 計'), h('span', {}, fmt.yen(T.factory))) : null, role !== 'C' ? h('div', { class: 'kv' }, h('span', {}, 'A社 提示 計'), h('span', {}, fmt.yen(T.a))) : null, role !== 'C' ? h('div', { class: 'kv total' }, h('span', {}, '販売価格 計'), h('b', {}, fmt.yen(T.b))) : null, role === 'A' ? h('div', { class: 'kv' }, h('span', {}, 'A社 粗利 / B社 粗利'), h('span', {}, `${fmt.yen(T.a - T.factory)} / ${fmt.yen(T.b - T.a)}`)) : null)), h('div', { class: 'est-table' }, table(['No', '品名', '数量', ...cols.map(c => c[1]), '受注可否', 'メモ'], rows)));
+}

@@ -169,6 +169,8 @@ export class Viewer {
     if (!animate) { ctl.target.copy(c); cam.position.copy(p1); this.orthoControls.target.copy(c); this.ortho.position.copy(op1); ctl.update(); this.orthoControls.update(); this.invalidate(2); return; }
     const start = performance.now(); const ease = x => 1 - Math.pow(1 - x, 3); const step = () => { const k = Math.min(1, (performance.now() - start) / ms); const e = ease(k); ctl.target.lerpVectors(t0, c, e); cam.position.lerpVectors(p0, p1, e); this.orthoControls.target.lerpVectors(ot0, c, e); this.ortho.position.lerpVectors(op0, op1, e); ctl.update(); this.orthoControls.update(); this.invalidate(2); if (k < 1) requestAnimationFrame(step); }; step();
   }
+  // 任意の点を画面中央へ（距離は指定 or 現状維持）
+  focusPoint(pt, { dist = null, ms = 380 } = {}) { const ctl = this.controls, cam = this.camera; const dir = cam.position.clone().sub(ctl.target).normalize(); const d = dist || cam.position.distanceTo(ctl.target); const p1 = pt.clone().add(dir.multiplyScalar(d)); this.orthoControls.target.copy(pt); this.animateTo(p1, pt, { ms }); }
   // 手のひら（パン）モード: 左ドラッグで画面を掴んで移動
   setPanMode(on) { this.panMode = !!on; const M = THREE.MOUSE; for (const c of [this.controls, this.orthoControls]) { c.mouseButtons = { LEFT: on ? M.PAN : M.ROTATE, MIDDLE: M.DOLLY, RIGHT: on ? M.ROTATE : M.PAN }; c.touches = { ONE: on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }; c.screenSpacePanning = true; } this.renderer.domElement.style.cursor = on ? 'grab' : ''; }
   syncEdges() { this.invalidate(); this.syncSelection(); for (const ln of this.edgeRoot.children) { const o = ln.userData.src; if (o) { o.updateWorldMatrix(true, false); ln.matrix.copy(o.matrixWorld); ln.visible = o.visible && this._visibleUp(o); } } }

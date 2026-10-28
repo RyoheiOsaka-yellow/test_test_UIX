@@ -8,6 +8,9 @@ import { openEstimate, createEstimate, reviewGate } from './estimate.js';
 import { exportWeightPDF, exportWeightCSV, exportWeightXLSX, exportEstimatePDF, exportWorkOrderPDF } from './reports.js';
 import { openSchedules } from './schedules.js';
 import { openShowroom } from './showroom.js';
+import { openReviewWizard } from './reviewWizard.js';
+import { openCompare } from './compare.js';
+import { renderRoleView } from './roleview.js';
 
 const STAGE_ORDER = ['model', 'review', 'weight', 'estimate', 'share', 'final'];
 export async function openFlow(app) {
@@ -21,6 +24,14 @@ export async function buildFlow(app, rerender, m) {
   const open = app.openReviewCount(); let align = []; try { align = detectMisalignment(app); } catch { }
   const list = await app.store.listEstimates(app.project.id); const est = (app.currentEstimateId && list.find(e => e.id === app.currentEstimateId)) || list[0] || null; const T = est ? WF.totals(est) : null;
   const mine = est && est.currentOrg === role && est.status !== 'final';
+  // B社・C社: 役割専用の簡略ビュー（受け取り → 入力 → 返す）
+  if (role !== 'A') {
+    const steps = role === 'B' ? [['受け取り', 'A社から見積を受け取る'], ['利益率を入力', '各行の利益率 → 販売価格'], ['返す／渡す', 'A社へ返す or C社へ渡す']] : [['受け取り', 'A社から見積を受け取る'], ['単価・納期・可否', '各行の工場単価・納期・受注可否'], ['A社へ回答', '回答すると A社が確定']];
+    const cur = !est ? 0 : mine ? ((role === 'C' ? est.lines.some(l => l.factoryCost != null) : est.lines.some(l => l.bMarginPct != null)) ? 2 : 1) : 3;
+    const stepper = h('div', { class: 'flow-steps' }, ...steps.map(([t, d], i) => h('div', { class: 'flow-step ' + (i < cur ? 'done' : i === cur ? 'cur' : 'todo') }, h('span', { class: 'no' }, i < cur ? '✓' : String(i + 1)), h('span', {}, h('div', {}, t), h('div', { class: 'muted small' }, d)))));
+    const who = h('div', { class: 'flow-who' }, h('span', { class: 'chip' }, `${user.name}（${role}社: ${WF.ROLES[role].name}）`), h('span', { class: 'muted small' }, 'プロジェクト: ' + app.project.name), h('span', { class: 'spacer' }), h('span', { class: 'muted small' }, role === 'B' ? '見えるのは A社提示単価と自社の利益率・販売価格だけです' : '見えるのは数量・仕様・質量と自社の工場単価・納期だけです'));
+    return h('div', {}, who, stepper, est ? renderRoleView(app, est, rerender, m) : h('div', { class: 'pp-empty' }, 'まだ受け取った見積がありません。A社から受け渡しリンク（?handoff=…）が届くとここに表示されます。'));
+  }
   // 段階の状態
   const st = { model: nInst ? 'done' : 'todo', review: !nInst ? 'todo' : (open + align.length) ? 'cur' : 'done', weight: nInst ? 'done' : 'todo', estimate: !est ? (nInst ? 'cur' : 'todo') : 'done', share: !est ? 'todo' : est.handoffs?.length ? 'done' : 'cur', final: est?.status === 'final' ? 'done' : est ? 'cur' : 'todo' };
   let cur = STAGE_ORDER.find(k => st[k] === 'cur') || (st.final === 'done' ? 'final' : 'model');
@@ -34,7 +45,7 @@ export async function buildFlow(app, rerender, m) {
     '3D・質量・集計・見積はこのモデルから自動で派生します');
   // ② 確認
   const c2 = card('review', '② 人が確認する箇所', h('div', { class: 'fc-grid' }, kv('未処理の確認事項', open + ' 件', open ? 'bad' : 'ok'), kv('ズレ（隙間・レベル・穴）', align.length + ' 件', align.length ? 'warn' : 'ok'), kv('現場溶接', rows.filter(r => r.kind === 'weld' && r.site).length + ' 箇所'), kv('アンカー', rows.filter(r => r.kind === 'anchor').length + ' 本')),
-    [h('button', { class: 'btn sm ' + (open ? 'primary' : ''), onClick: () => { m.close(); openAlerts(app); } }, `確認リスト（${open}）`), h('button', { class: 'btn sm' + (align.length ? ' primary' : ''), onClick: () => { m.close(); openAlign(app); } }, `ズレ補正（${align.length}）`)],
+    [h('button', { class: 'btn sm ' + (open ? 'primary' : ''), disabled: !open, title: '未確認をカード送りで処理。3D がその箇所へ寄ります', onClick: () => { m.close(); openReviewWizard(app); } }, `まとめて確認（${open}）`), h('button', { class: 'btn sm', onClick: () => { m.close(); openAlerts(app); } }, '確認リスト'), h('button', { class: 'btn sm' + (align.length ? ' primary' : ''), onClick: () => { m.close(); openAlign(app); } }, `ズレ補正（${align.length}）`)],
     open ? '未確認のまま受け渡すと工場側で手戻りになります（受け渡し時にゲートが掛かります）' : 'すべて確認済み。受け渡しできます');
   // ③ 重量・集計
   const parts = [['鋼材（穴控除後）', s.steelNet], ['めっき付着', s.zinc], ['ボルト類', s.fasteners], ['溶接金属', s.welds]]; const max = Math.max(1, ...parts.map(p => p[1]));
@@ -43,7 +54,7 @@ export async function buildFlow(app, rerender, m) {
     [h('button', { class: 'btn sm primary', onClick: () => exportWeightPDF(app) }, '重量計算書 PDF'), h('button', { class: 'btn sm', onClick: () => exportWeightXLSX(app) }, 'XLSX'), h('button', { class: 'btn sm', onClick: () => exportWeightCSV(app) }, 'CSV'), h('button', { class: 'btn sm', onClick: () => { m.close(); openSchedules(app); } }, '集計表（部材・ボルト・溶接・穴）')]);
   // ④ 見積
   const c4 = card('estimate', '④ 見積', est ? h('div', { class: 'fc-grid' }, kv('見積番号', `${est.no} Rev.${est.revision}`), kv('状態', WF.STATUS[est.status], est.status === 'final' ? 'ok' : 'warn'), role !== 'C' ? kv('販売価格 計（税別）', fmt.yen(T.b), 'big') : kv('工場原価 計', fmt.yen(T.factory), 'big'), kv('明細', est.lines.length + ' 行 / ' + fmt.kg(T.mass))) : h('div', { class: 'muted' }, '見積はまだありません。モデルから明細（品名・仕様・数量・質量・基準原価）を自動生成します。'),
-    [role === 'A' ? h('button', { class: 'btn sm primary', onClick: async () => { const r = await createEstimate(app); if (r) { toast(`見積 ${r.no} を作成しました`, 'ok'); rerender(); } } }, est ? '＋ モデルから見積を再作成（新 Rev）' : '＋ モデルから見積を作成') : null, h('button', { class: 'btn sm', onClick: () => { m.close(); $('#btnEstimate')?.click(); } }, '見積ワークフローを開く'), est ? h('button', { class: 'btn sm', onClick: () => exportEstimatePDF(app, est) }, '見積書 PDF') : null, est && role !== 'B' ? h('button', { class: 'btn sm', onClick: () => exportWorkOrderPDF(app, est) }, '加工指示書 PDF') : null]);
+    [role === 'A' ? h('button', { class: 'btn sm primary', onClick: async () => { const r = await createEstimate(app); if (r) { toast(`見積 ${r.no} を作成しました`, 'ok'); rerender(); } } }, est ? '＋ モデルから見積を再作成（新 Rev）' : '＋ モデルから見積を作成') : null, h('button', { class: 'btn sm', onClick: () => { m.close(); $('#btnEstimate')?.click(); } }, '見積ワークフローを開く'), est && est.revisions.length ? h('button', { class: 'btn sm', title: 'Rev 間・会社間の差分と変更理由', onClick: () => openCompare(app, est) }, '⇄ Rev 比較') : null, est ? h('button', { class: 'btn sm', onClick: () => exportEstimatePDF(app, est) }, '見積書 PDF') : null, est && role !== 'B' ? h('button', { class: 'btn sm', onClick: () => exportWorkOrderPDF(app, est) }, '加工指示書 PDF') : null]);
   // ⑤ 共有（受け渡し）
   const shareBody = h('div', {});
   if (est) {
