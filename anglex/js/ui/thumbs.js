@@ -7,6 +7,7 @@ import { familyById } from '../bim/families.js';
 import { resolveParams } from '../bim/params.js';
 import { productParams } from './catalog.js';
 import { CATALOG } from '../data/catalog.js';
+import { PRETHUMBS } from '../data/thumbs_pre.js';
 
 const W = 240, H = 160, VER = 'v3'; // VER: 描画仕様を変えたら上げる（旧キャッシュを無効化）
 let R = null; const cache = new Map(); const queue = []; let pumping = false;
@@ -19,6 +20,8 @@ function openDB() { if (dbP) return dbP; dbP = new Promise(res => { try { const 
 export function loadThumbCache() {
   if (loaded) return loaded;
   loaded = (async () => {
+    // 配布物に同梱した事前生成サムネイル（ビルド時に描画）: 初回起動から即表示
+    try { if (PRETHUMBS && PRETHUMBS.v === STORE_KEY && PRETHUMBS.t) for (const [k, v] of Object.entries(PRETHUMBS.t)) if (!cache.has(k)) cache.set(k, v); } catch { }
     const db = await openDB();
     if (db) { try { const rows = await new Promise((res, rej) => { const tx = db.transaction('thumbs', 'readonly'); const rq = tx.objectStore('thumbs').get(STORE_KEY); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => rej(rq.error); }); if (rows) for (const [k, v] of Object.entries(rows)) if (!cache.has(k)) cache.set(k, v); return cache.size; } catch (e) { console.warn('thumb cache load', e.message); } }
     try { const raw = localStorage.getItem(STORE_KEY); if (raw) for (const [k, v] of Object.entries(JSON.parse(raw))) if (!cache.has(k)) cache.set(k, v); } catch { }
@@ -64,3 +67,6 @@ function render(p, sku) {
   r.render(scene, cam); let url = r.domElement.toDataURL('image/webp', 0.86); if (!url.startsWith('data:image/webp')) url = r.domElement.toDataURL('image/png'); scene.remove(g); g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); return url;
 }
 export function thumbCacheSize() { return cache.size; }
+export const THUMB_STORE_KEY = STORE_KEY;
+// 事前生成（dev/gen-thumbs.mjs から呼ぶ）: 全製品（既定 SKU）を描画して {key: dataURL} を返す
+export function renderAllThumbs(onProgress = null) { const items = CATALOG.products.filter(p => p.kind !== '章扉解説' && p.category !== '参照資料' && familyById(p.family)).map(p => [p, (p.skus || [])[0] || null]); return new Promise(res => { let n = 0; const out = {}; for (const [p, sku] of items) thumbFor(p, sku, url => { if (url) out[thumbKey(p, sku)] = url; if (++n === items.length) res({ v: STORE_KEY, t: out }); else onProgress && onProgress(n, items.length); }); }); }

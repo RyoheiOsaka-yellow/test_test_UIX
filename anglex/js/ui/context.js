@@ -1,6 +1,7 @@
 // 3D 内のコンテキストバー: 触った部材／部品の横に「足りないものを足す」操作を出す
 // （同じ部材を隣に追加 / 穴 / 溶接 / ファミリ固有の追加（方杖・アンカー・配管…） / 関連寸法の微調整 / 軸ロック移動 / 単独表示 / ズレ補正）
-import { $, h, toast, promptDialog } from './common.js';
+import { $, h, toast, promptDialog, confirmDialog } from './common.js';
+import * as THREE from 'three';
 import { weldInstructionDialog, holeInstructionDialog, openAlign } from './review.js';
 import { detectMisalignment } from '../bim/review.js';
 import { cadRole } from '../viewer/scene.js';
@@ -9,7 +10,7 @@ import { openExplode } from './explode.js';
 // 部品の役割 → 関係する寸法パラメータ（名前のヒューリスティック）
 const RELATED = { column: /^(H|L|colSpec|spec|t)$/, beam: /^(W|L|beamSpec|spec|overhang|B)$/, base: /^(base|anchor|t|W|H)/, brace: /^(brace|A|H|L)/, support: /^(L|A|spec|rodM|rodL|t|B)$/, pipe: /^(pipes|pipeKind|ubolt|od|nominal)$/, ubolt: /^(pipes|ubolt|od)$/, anchor: /^anchor/, rod: /^(rod|d|L)/, band: /^(od|t|B|d|L1|L2)$/, plate: /^(t|W|H|cols|rows|pitch|holeD|slot)/, steel: /^(spec|L|W|H|A|t)$/ };
 
-export function hideContextBar(app) { const el = document.querySelector('.ctx-bar'); if (el) el.remove(); app.ctx = null; }
+export function hideContextBar(app) { const el = document.querySelector('.ctx-bar'); if (el) el.remove(); app.ctx = null; app.hideAttachGhost?.(); }
 
 export function showContextBar(app, { inst, partIndex = null, part = null, x = 0, y = 0 }) {
   hideContextBar(app); const stage = $('#d3stage') || $('#stage'); if (!stage || !inst) return; const editable = app.role() === 'A';
@@ -34,10 +35,10 @@ export function showContextBar(app, { inst, partIndex = null, part = null, x = 0
   // 取付先へスナップ（配管を持つ他の部材へ）
   const targets = app.model.instances.filter(i => i.id !== inst.id).map(i => ({ i, refs: app.pipeRefsOf(i), d: Math.hypot(...i.pos.map((v, k) => v - inst.pos[k])) })).filter(t => t.refs.length).sort((a, b) => a.d - b.d).slice(0, 6);
   const fits = app.pipeFitParam(inst); // 口径パラメータ（pipes / od / nominal）があれば、取付と同時に口径も合わせる
-  if (targets.length && editable) { const pop = h('div', { class: 'ctx-pop' }, fits ? h('div', { class: 'muted small', style: { padding: '2px 6px' } }, `取付先の口径に「${fits.label}」も合わせます（Uボルト穴ピッチ・配管位置が同時に揃う）`) : null, ...targets.map(({ i, d, refs }) => h('button', { class: 'btn sm', onClick: () => { app.attachTo(inst.id, i.id); hideContextBar(app); } }, `${i.mark} ${app.model.getType(i.typeId).name} — 配管 ${[...new Set(refs.map(r => r.nominal || Math.round(r.od) + 'φ'))].join('/')}（${Math.round(d / 100) / 10} m）`))); row3.append(h('div', { class: 'ctx-menu' }, h('button', { class: 'btn sm', title: '選んだ部材の配管へ、向きを合わせて取り付ける（空いている位置へ）。口径パラメータがあれば同時に合わせる', onClick: e => { e.stopPropagation(); pop.classList.toggle('open'); } }, (fits ? '配管へ取付（口径も合わせる）' : '配管へ取付') + ' ▾'), pop)); }
+  if (targets.length && editable) { const pop = h('div', { class: 'ctx-pop' }, fits ? h('div', { class: 'muted small', style: { padding: '2px 6px' } }, `取付先の口径に「${fits.label}」も合わせます（Uボルト穴ピッチ・配管位置が同時に揃う）`) : null, ...targets.map(({ i, d, refs }) => h('button', { class: 'btn sm', title: 'ホバーで結果をプレビュー（半透明）、クリックで確定', onMouseenter: () => app.previewAttach(inst.id, i.id), onMouseleave: () => app.hideAttachGhost(), onClick: () => { app.attachTo(inst.id, i.id); hideContextBar(app); } }, `${i.mark} ${app.model.getType(i.typeId).name} — 配管 ${[...new Set(refs.map(r => r.nominal || Math.round(r.od) + 'φ'))].join('/')}（${Math.round(d / 100) / 10} m）`))); row3.append(h('div', { class: 'ctx-menu' }, h('button', { class: 'btn sm', title: '選んだ部材の配管へ、向きを合わせて取り付ける（空いている位置へ）。口径パラメータがあれば同時に合わせる', onClick: e => { e.stopPropagation(); pop.classList.toggle('open'); } }, (fits ? '配管へ取付（口径も合わせる）' : '配管へ取付') + ' ▾'), pop)); }
   // 逆方向: この部材が配管（支持対象）なら、近くの支持金具をこの配管へ呼び寄せる
   const myRefs = app.pipeRefsOf(inst).filter(r => !r.pt.ref);
-  if (myRefs.length && editable) { const sup = app.model.instances.filter(i => i.id !== inst.id && app.pipeFitParam(i)).map(i => ({ i, d: Math.hypot(...i.pos.map((v, k) => v - inst.pos[k])) })).sort((a, b) => a.d - b.d).slice(0, 6); if (sup.length) { const pop = h('div', { class: 'ctx-pop' }, h('div', { class: 'muted small', style: { padding: '2px 6px' } }, `この配管 ${[...new Set(myRefs.map(r => r.nominal))].join('/')} に合わせて支持金具を取り付けます`), ...sup.map(({ i, d }) => h('button', { class: 'btn sm', onClick: () => { app.attachTo(i.id, inst.id); hideContextBar(app); } }, `${i.mark} ${app.model.getType(i.typeId).name}（${Math.round(d / 100) / 10} m）`))); row3.append(h('div', { class: 'ctx-menu' }, h('button', { class: 'btn sm', title: '選んだ支持金具の口径をこの配管に合わせ、ここへ取り付ける', onClick: e => { e.stopPropagation(); pop.classList.toggle('open'); } }, '支持金具をここへ ▾'), pop)); } }
+  if (myRefs.length && editable) { const sup = app.model.instances.filter(i => i.id !== inst.id && app.pipeFitParam(i)).map(i => ({ i, d: Math.hypot(...i.pos.map((v, k) => v - inst.pos[k])) })).sort((a, b) => a.d - b.d).slice(0, 6); if (sup.length) { const pop = h('div', { class: 'ctx-pop' }, h('div', { class: 'muted small', style: { padding: '2px 6px' } }, `この配管 ${[...new Set(myRefs.map(r => r.nominal))].join('/')} に合わせて支持金具を取り付けます`), ...sup.map(({ i, d }) => h('button', { class: 'btn sm', title: 'ホバーで結果をプレビュー（半透明）、クリックで確定', onMouseenter: () => app.previewAttach(i.id, inst.id), onMouseleave: () => app.hideAttachGhost(), onClick: () => { app.attachTo(i.id, inst.id); hideContextBar(app); } }, `${i.mark} ${app.model.getType(i.typeId).name}（${Math.round(d / 100) / 10} m）`))); row3.append(h('div', { class: 'ctx-menu' }, h('button', { class: 'btn sm', title: '選んだ支持金具の口径をこの配管に合わせ、ここへ取り付ける', onClick: e => { e.stopPropagation(); pop.classList.toggle('open'); } }, '支持金具をここへ ▾'), pop)); } }
   let alerts = []; try { alerts = detectMisalignment(app).filter(a => a.instIds.includes(inst.id)); } catch { }
   if (alerts.length) row3.append(h('button', { class: 'btn sm danger', title: alerts.map(a => a.label).join('\n'), onClick: () => openAlign(app) }, `ズレ ${alerts.length} → 補正`));
   bar.append(row3);
@@ -58,4 +59,23 @@ function familyAdds(app, inst, fam, p) {
   if (fam.id === 'member' || fam.id === 'plate') out.push({ label: '端部溶接を追加（両端 全周）', run: () => { app.model.updateInstance(inst.id, { params: { welds: 'start:6; end:6' } }); app.rebuildInstance(inst); app.refreshProps(); toast('端部溶接 ▷6 を追加しました', 'ok'); } });
   out.push({ label: '接合（溶接／ボルト）を別の部材と定義…', run: () => $('#btnJoint')?.click() });
   return out.slice(0, 10);
+}
+
+// ---- 複数選択バー（Shift+クリックで 2 体以上）: 整列 / 配管へ取付 / 複製 / 削除 ----
+export function hideMultiBar(app) { document.querySelector('.multi-bar')?.remove(); }
+export function showMultiBar(app) {
+  hideMultiBar(app); const stage = $('#d3stage') || $('#stage'); if (!stage) return; const ids = app.selectedIds(); if (ids.length < 2) return; const editable = app.role() === 'A';
+  const marks = ids.map(id => app.model.getInstance(id)?.mark).filter(Boolean);
+  const bar = h('div', { class: 'multi-bar', onClick: e => e.stopPropagation() });
+  bar.append(h('div', { class: 'mb-head' }, h('b', {}, `選択 ${ids.length} 体`), h('span', { class: 'muted small' }, marks.join(', ')), h('span', { class: 'muted small' }, '（Shift+クリックで追加／解除。移動ギズモ・矢印はまとめて動きます）'), h('button', { class: 'icon-btn', title: '選択解除', onClick: () => app.select(null) }, '✕')));
+  const row = h('div', { class: 'ctx-row' });
+  if (editable) {
+    const apop = h('div', { class: 'ctx-pop' }, h('button', { class: 'btn sm', onClick: () => app.alignSelected('x') }, 'X 方向に並べる（200mm 間隔）'), h('button', { class: 'btn sm', onClick: () => app.alignSelected('z') }, 'Z 方向に並べる（200mm 間隔）'), h('button', { class: 'btn sm', onClick: () => app.alignSelected('y') }, `高さを ${marks[0]} に揃える`));
+    row.append(h('div', { class: 'ctx-menu' }, h('button', { class: 'btn sm', onClick: e => { e.stopPropagation(); apop.classList.toggle('open'); } }, '整列 ▾'), apop));
+    const targets = app.model.instances.filter(i => !ids.includes(i.id)).map(i => ({ i, refs: app.pipeRefsOf(i) })).filter(t => t.refs.length).slice(0, 8);
+    if (targets.length) { const tpop = h('div', { class: 'ctx-pop' }, ...targets.map(({ i, refs }) => h('button', { class: 'btn sm', onClick: () => { app.attachSelectedTo(i.id); } }, `${i.mark} ${app.model.getType(i.typeId).name} — 配管 ${[...new Set(refs.map(r => r.nominal || Math.round(r.od) + 'φ'))].join('/')}`))); row.append(h('div', { class: 'ctx-menu' }, h('button', { class: 'btn sm', title: '選択した部材をまとめて同じ配管へ（口径も合わせ、重ならない位置に順に取付）', onClick: e => { e.stopPropagation(); tpop.classList.toggle('open'); } }, '配管へ取付 ▾'), tpop)); }
+    row.append(h('button', { class: 'btn sm', onClick: () => app.duplicateSelected() }, '複製'), h('button', { class: 'btn sm danger', onClick: async () => { if (await confirmDialog(`${ids.length} 体（${marks.join(', ')}）を削除しますか？`)) app.removeInstances(ids); } }, '削除'));
+  }
+  row.append(h('button', { class: 'btn sm', title: '選択した部材全体を画面中央へ', onClick: () => { const box = new THREE.Box3(); for (const id of ids) { const gg = app.groups.get(id); if (gg) box.expandByObject(gg); } if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()); const v = app.viewer; v.animateTo(v.camera.position.clone().add(c.clone().sub(v.controls.target)), c, { ms: 380 }); } }, '中央へ'));
+  bar.append(row); stage.append(bar);
 }
