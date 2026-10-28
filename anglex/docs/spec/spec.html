@@ -1,0 +1,99 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ANGLEX 仕様書</title><link rel="stylesheet" href="doc.css"></head><body>
+<div class="cover page">
+  <div><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE ・ BIM</div></div>
+  <div><div class="title">配管支持金具 積算・製作支援システム<br>仕様書</div><div class="lead">図面に、語らせる。図面（DXF / PDF）から部材を認識し、Revit 的な BIM モデル（ファミリ → タイプ → インスタンス）を単一ソースとして、3D・重量・集計・見積・帳票・他社との見積共有までを一つのブラウザアプリで行うシステムの仕様です。</div></div>
+  <div class="meta">版: v1 / v2（build 2026-10-28）・ 仕様書 Rev.1 ・ 対象読者: 導入検討者、情報システム部門、運用担当者</div>
+</div>
+
+<h2>目次</h2>
+<ol class="toc"><li>システム概要</li><li>システム構成とアーキテクチャ</li><li>機能仕様</li><li>データモデル</li><li>計算仕様（重量・原価・見積）</li><li>ワークフロー（A社 → B社 → C社）と権限</li><li>帳票・出力</li><li>画面構成（v1 / v2）</li><li>非機能要件（性能・保存・セキュリティ・オフライン）</li><li>対応環境</li><li>制約事項・今後の拡張</li></ol>
+
+<h2>1. システム概要</h2>
+<h3>1.1 目的</h3>
+<p>配管支持金具（架台・ブラケット・吊り金具・バンド・特注加工品）の積算業務において、図面の読み替え・部材の拾い出し・重量計算・見積作成・加工指示・他社との受け渡しを、<b>1 つの 3D モデルを単一ソース</b>として自動化・可視化する。人が必ず確認すべき箇所（溶接・穴・アンカー・図面根拠）を明示し、確認なしに次工程へ渡らない仕組みで手戻りを防ぐ。</p>
+<h3>1.2 基本方針</h3>
+<ul><li><b>単一ソース:</b> ファミリの <code>parts()</code> が生成する部品リストから、3D・質量・集計・見積・帳票のすべてを派生させる。入力は一箇所、出力はすべて整合。</li><li><b>3 状態モデル:</b> 認識結果を「推論／要判断／確定」で管理し、リスク行列（信頼度 × 手戻りコスト）で要判断の境界を決める。</li><li><b>人の確認をゲートに:</b> 未確認項目が残ると受け渡し・確定を止め、上書きは理由付きで監査ログに残す。</li><li><b>役割で見える範囲を限定:</b> A社（見積作成）・B社（販売）・C社（加工工場）でフィールド単位の閲覧・編集権限を分ける。</li><li><b>ブラウザ完結:</b> 図面認識・3D・計算・帳票生成はすべてブラウザ内で動作し、GPU サーバーや外部サービスに依存しない。</li></ul>
+<h3>1.3 主要な数値</h3>
+<table><tr><th>項目</th><th>値</th></tr><tr><td>ファミリ数</td><td>34（門型架台、L型ブラケット、吊アングル、吊バンド、立バンド、スリーブ、両フランジ管、パイプガード、汎用加工品 ほか）</td></tr><tr><td>カタログ</td><td>151 製品 / 700 SKU（第 1 章 吊バンド 76、第 13 章 アングル・チャンネルブラケット 46、第 14 章 特注加工品 29）</td></tr><tr><td>形鋼仕様</td><td>L（山形）、C（溝形）、[（軽溝形）、LC（リップ溝形）、FB（平鋼）、PL（板）、□（角パイプ）、H、RB（丸鋼）、SGP / VP 管</td></tr><tr><td>表示スタイル</td><td>7（リアル / 陰影 / 陰影＋エッジ / 隠線 / ワイヤ / 半透明 / CAD 図面色）</td></tr><tr><td>帳票</td><td>見積書、重量計算書、集計表、加工指示書、分解図（PDF / XLSX / CSV）、3D（GLB / USD・USDZ）</td></tr><tr><td>自動テスト</td><td>Playwright による画面フロー 30 シナリオ以上（図面読込、確認、見積、受け渡し、オフライン）</td></tr></table>
+
+<h2>2. システム構成とアーキテクチャ</h2>
+<h3>2.1 構成</h3>
+<table><tr><th style="width:36mm">層</th><th>内容</th><th style="width:40mm">技術</th></tr>
+<tr><td>UI（v1）</td><td>リボン型 BIM ワークスペース: プロジェクトブラウザ、3D / 図面ビュー、プロパティ、コンテキストバー、業務フロー</td><td>HTML / CSS / ES Modules</td></tr>
+<tr><td>UI（v2）</td><td>5 ステップ型: サインイン → モード選択 → 案件一覧 → チャット見積 / 図面 → 3D 確認 → 概算見積</td><td>同上（同一エンジンを共有）</td></tr>
+<tr><td>BIM コア</td><td>ファミリ / タイプ / インスタンス、パラメータ（式・スコープ）、レベル、接合、レビュー、リスク行列、モデルストア（Undo / Redo）</td><td>js/bim/*</td></tr>
+<tr><td>ジオメトリ</td><td>形鋼の板分解、穴・長穴の貫通、ボルト・ナット・座金・アンカー・U ボルト（JIS）、溶接ビード、曲げ品、材質（亜鉛めっきスパングル、SUS ヘアライン、黒皮、塗装）</td><td>js/geo/* ・ three.js r180</td></tr>
+<tr><td>3D ビューア</td><td>WebGL 2、HDRI 環境光、GTAO 接触陰影、MSAA 4x + SMAA、PCF ソフトシャドウ、CSS2D ラベル、断面ボックス、分解表示、ピッキング（部材 → 部品）</td><td>three.js + postprocessing</td></tr>
+<tr><td>図面読込</td><td>DXF（線分・円・寸法・注記）、PDF（ベクタ抽出）、IFC、glTF / OBJ / STL、DWG / JWW / RVT（外部コンバータ経由）</td><td>pdf.js、web-ifc、自作 DXF パーサ</td></tr>
+<tr><td>計算</td><td>重量（断面積 × 長さ、穴控除、めっき付着、ボルト JIS 質量、溶接金属）、原価（材料・切断・穴・溶接・曲げ・組立・仕上げ・副資材）、見積（A/B/C 価格）</td><td>js/bim/weight.js, cost.js, core/workflow.js</td></tr>
+<tr><td>帳票</td><td>PDF（pdf-lib + 日本語フォントサブセット）、XLSX（SheetJS）、CSV、GLB / USD</td><td>js/ui/pdfgen.js, reports.js</td></tr>
+<tr><td>保存・共有</td><td>ローカル（IndexedDB / localStorage）、社内サーバー（Node.js + JSON ストア、REST API、受け渡しトークン）</td><td>js/core/store.js, server/server.js</td></tr></table>
+<h3>2.2 配布形態</h3>
+<ul><li><b>単一 HTML（オンライン版）:</b> <code>dist/ANGLEX_v1.html</code> / <code>ANGLEX_v2.html</code>（約 5 MB）。three.js 等は CDN 参照。</li><li><b>単一 HTML（オフライン版）:</b> <code>dist/ANGLEX_v1_offline.html</code> / <code>ANGLEX_v2_offline.html</code>（約 21 MB）。three.js、pdf-lib、fontkit、HarfBuzz サブセッタ、SheetJS、pdf.js、日本語フォント、スタジオ環境光を同梱。外部通信なしで動作。</li><li><b>ソース配置:</b> 静的ファイル一式を任意の Web サーバーに配置（Netlify 設定同梱）。</li><li><b>社内サーバー:</b> <code>node server/server.js --port 8080</code>。案件・見積 API、受け渡しトークン、監査ログ。</li></ul>
+
+<h2>3. 機能仕様</h2>
+<h3>3.1 図面読込と部材認識</h3>
+<ul><li>DXF / PDF / 画像の読込。線分・円・寸法・注記・レイヤから形鋼の輪郭・穴・寸法を抽出し、部材候補（ファミリ・寸法・仕様・仕上げ）を推定する。</li><li>各推定に信頼度を付与し、リスク行列（部材の寸法区分 × 加工種別 × 手戻りコスト）で「推論（自動確定）／要判断（人が判断）」に振り分ける。根拠（図面の座標・注記）を保持。</li><li>認識結果は一覧で確認し、図面上の矩形クリックと 3D の部材が連動する。</li><li>日本語の加工指示入力（例「MF-1 と LB-1 を隅肉溶接 6 両側」「MF-1 に φ15 穴 2 個 @100 端から 50」）を解釈して接合・穴を追加する。</li></ul>
+<h3>3.2 BIM モデル</h3>
+<ul><li>ファミリ（34）は寸法・仕様・加工・配管などのパラメータ（タイプ／インスタンス スコープ、式）を持ち、<code>parts()</code> で部品リスト（部材・板・管・ボルト・ナット・座金・アンカー・全ねじ・U ボルト・溶接・曲げ品）を生成する。</li><li>タイプ → インスタンス（位置・回転・レベル・個別パラメータ・CAD 役割上書き・追加穴・状態・確認記録）。接合（溶接／ボルト）は 2 部材を指定して定義し、穴・溶接を派生させる。</li><li>カタログ（151 製品 / 700 SKU）からタイプを生成。ショールームで製品を選ぶと 3D に並び、サムネイルは事前生成して同梱。</li><li>Undo / Redo、作業スナップショット（名前・メモ付きの状態保存と復元）、自動保存。</li></ul>
+<h3>3.3 3D ビューア</h3>
+<ul><li>視点: 3D / アイソメ / 平面 / 立面（正面・側面・背面）/ 下面。フィット、焦点移動（距離維持）、カーソル中心ズーム、手のひらパン、カメラのイージング。</li><li>表示: リアル（HDRI スタジオ／倉庫／工場／屋外、GTAO、MSAA、ソフトシャドウ、PBR 材質、汚れ・粗さムラ、溶接の熱影響色）、陰影、エッジ、隠線、ワイヤ、半透明、CAD 図面色（役割別フラットカラー・凡例）。</li><li>選択: 部材 → 部品の 2 段階、Shift+クリックで複数選択、アウトライン強調、ホバー吹き出し。</li><li>編集: コンテキストバー（同じ部材を隣に／穴／溶接／ファミリ固有の追加／寸法ステッパー／軸ロック移動 5 mm／密着スナップ／単独表示／分解図／配管へ取付／等ピッチ配置／ズレ補正）、移動・回転ギズモ、矢印キー移動、複数選択の整列・複製・削除・一括取付。</li><li>配管への取付: 取付先の呼び径に支持金具の配管パラメータ（pipes / od / nominal）を合わせてから再生成し、U ボルト穴ピッチ・位置・向きを同時に揃える。ホットスポット（◎ 呼び径）とゴースト プレビュー。</li><li>分解: 部材単位／部品単位の分解表示、バルーン番号、部品表、個別部材化（組立品の分解）。断面ボックス、計測、レベル表示、溶接記号（JIS Z 3021）、工場／現場の区別。</li></ul>
+<h3>3.4 確認（レビュー）とズレ補正</h3>
+<ul><li>確認事項を自動生成: 溶接（種類・脚長・長さ・工場／現場）、穴（径・長穴・用途・個数・位置）、アンカー、U ボルト、吊ボルト、仕上げ、図面根拠、リスク要因。3D に ⚑ フラグを立て、クリックで該当部材へ。</li><li>確認リスト、まとめて確認ウィザード（カード送り・3D 自動フォーカス・溶接／穴あけ指示・部材の確定・同種一括）、確認済・指示済の記録（担当・日時・メモ）。</li><li>ズレ検出: 隙間（部材間）、レベル差、穴の板外・5 mm 単位外、配管との不整合、接合不良。補正: 相手に密着、レベルへ合わせる、部材長 L／架台高さ H の延長、穴の端あき・丸め。</li><li>ゲート: 未確認が残ると受け渡し・確定で停止。理由付き上書きは監査ログに記録。</li></ul>
+<h3>3.5 重量・集計</h3>
+<ul><li>製品ごと・モデル全体の質量（鋼材 穴控除後／めっき付着／ボルト類／溶接金属）、表面積、溶接長、穴・長穴数。</li><li>集計表: 部材、ボルト・ナット・座金、溶接、穴、仕上げ。CSV / XLSX / PDF。</li></ul>
+<h3>3.6 見積と業務フロー</h3>
+<ul><li>モデルから明細（品名・仕様・符号・数量・質量・基準原価）を自動生成。A社 マージン、B社 利益率、C社 工場単価・納期・受注可否をフィールド単位の権限で編集。</li><li>受け渡し（A → B / C、B → C / A、C → A / B）: トークン付きリンクを発行し、メッセージ・回答期限を付けて通知文（メール／チャット用）を生成。改訂（Rev）として状態を凍結し、監査ログに記録。差戻し、確定（A社）。</li><li>業務フロー パネル: モデル → 確認 → 重量・集計 → 見積 → 共有 → 確定 の 6 段階を、状態・数字・次の一手とともに 1 画面に表示。B社・C社は役割専用の簡略ビュー。</li><li>確定前チェック: 受注不可・未回答・利益率未入力・要求納期超過の行を一覧にして停止。</li><li>比較ビュー: Rev 間の差分（役割で見える列、▲増▼減、追加・削除、変更理由）と会社間の金額（工場単価 → A社提示 → 販売単価、上乗せ率、粗利）。</li><li>ダッシュボード: 案件横断で見積状態・担当・合計・未確認・期限を並べ、「自分の番」と期限超過を上位に。</li></ul>
+
+<h2>4. データモデル</h2>
+<table><tr><th style="width:30mm">オブジェクト</th><th>主な属性</th></tr>
+<tr><td>Project</td><td>id, name, client, rates（単価表）, createdAt / updatedAt, snapshots[]（作業スナップショット）, model</td></tr>
+<tr><td>Model</td><td>types[], instances[], joints[], levels[], refs[]（参照モデル）, drawing（読込図面）</td></tr>
+<tr><td>Type</td><td>id, familyId, name, params{}（タイプ スコープの値）, __pid（カタログ製品 ID）</td></tr>
+<tr><td>Instance</td><td>id, mark（符号）, typeId, pos[3] mm, rot[3] rad, level, params{}（インスタンス上書き）, status（inferred / review / confirmed）, source（import / catalog / manual）, reviewReasons[], review{itemId: {status, note, at, by}}, cadRole, importRef</td></tr>
+<tr><td>Part（派生）</td><td>kind（member / plate / pipe / bolt / nut / washer / anchor / rod / ubolt / weld / custom）, name, spec, length, holes[]{face, z, s, d, slot, kind}, finish, material, pl{pos, basis[x,y,z]}, ref, site, group, role, mass</td></tr>
+<tr><td>Joint</td><td>id, a, b（インスタンス id）, type（weld / bolt）, size, site, eval{holes[], welds[]}, warning</td></tr>
+<tr><td>Estimate</td><td>id, no, projectId, projectName, revision, status（draft / to_B / to_C / from_C / final / rejected）, currentOrg, lines[]{no, desc, spec, marks[], qty, unit, mass, baseCost, aMarginPct, bMarginPct, factoryCost, leadDays, accepted, bNote, cNote}, rates, meta{customer, requiredLead}, revisions[]{rev, org, who, at, note, snapshot}, handoffs[]{at, from, to, who, note, token, due}, tokens{org: token}, due, audit[]{at, who, org, action, field, before, after, note}, snapshot3d</td></tr></table>
+<p class="small muted">案件は JSON として書出し・読込できる。サーバー型では <code>server/data/db.json</code> に同じ構造で保存される。</p>
+
+<h2>5. 計算仕様</h2>
+<h3>5.1 重量</h3>
+<ul><li>形鋼・板: 断面積（JIS 寸法表または t × 幅）× 長さ × 7.85 g/cm³。穴・長穴は体積を控除。</li><li>めっき: 表面積 × 付着量（HDZ55 = 550 g/m² ほか仕様別）。電気亜鉛・塗装・SUS は仕様に応じた係数。</li><li>ボルト類: JIS B 1180 / 1181 / 1256 の質量表（呼び径・長さ）。アンカー・全ねじ・U ボルトも同様。</li><li>溶接金属: 隅肉は脚長² / 2 × 長さ × 7.85、突合せは開先断面 × 長さ。</li></ul>
+<h3>5.2 原価</h3>
+<ul><li>材料（鋼材単価 × 質量 × 歩留まり係数）、切断（本数・サイズ）、穴（個数・径）、溶接（長さ・脚長）、曲げ、組立、仕上げ（面積 × 単価）、副資材（ボルト類）。単価表は案件ごとに上書き可能。</li></ul>
+<h3>5.3 見積</h3>
+<ul><li>工場単価 = C社回答（未回答時は A社基準原価）。A社提示単価 = 工場単価 × (1 + A社マージン%)。販売単価 = A社提示単価 × (1 + B社利益率%)。金額 = 単価 × 数量。消費税 10%。</li></ul>
+
+<h2>6. ワークフローと権限</h2>
+<table><tr><th>項目</th><th>A社（見積作成）</th><th>B社（販売）</th><th>C社（加工工場）</th></tr>
+<tr><td>3D モデル・数量・仕様</td><td>編集</td><td>閲覧（数量・仕様のみ）</td><td>閲覧</td></tr><tr><td>A社 基準原価・マージン</td><td>編集</td><td>非表示</td><td>非表示</td></tr><tr><td>B社 利益率・販売価格</td><td>閲覧</td><td>編集</td><td>非表示</td></tr><tr><td>C社 工場単価・納期・受注可否</td><td>閲覧</td><td>非表示</td><td>編集</td></tr><tr><td>受け渡し</td><td>B / C へ</td><td>C / A へ</td><td>A / B へ</td></tr><tr><td>確定</td><td>可（確認ゲート・確定前チェック付き）</td><td>—</td><td>—</td></tr><tr><td>差戻し</td><td>可</td><td>可</td><td>可</td></tr></table>
+<p>受け渡しごとに Rev を凍結し、編集はフィールド単位で監査ログ（日時・会社・担当・前後の値）に残る。リンクはトークン（推測不能な乱数）で、開いた会社の権限で同じ見積を表示する。</p>
+
+<h2>7. 帳票・出力</h2>
+<table><tr><th>帳票</th><th>内容</th><th>形式</th></tr><tr><td>見積書</td><td>明細（品名・仕様・符号・数量・質量・単価・金額）、合計、税、3D スナップショット</td><td>PDF / XLSX / CSV / 印刷</td></tr><tr><td>重量計算書</td><td>部材ごとの断面・長さ・穴控除・めっき・質量、合計</td><td>PDF / XLSX / CSV</td></tr><tr><td>集計表</td><td>部材・ボルト類・溶接・穴・仕上げの集計</td><td>XLSX / CSV</td></tr><tr><td>加工指示書</td><td>部材ごとの寸法・穴座標（0.1 mm）・溶接記号・工場／現場、分解図とバルーン</td><td>PDF / 印刷</td></tr><tr><td>分解図</td><td>バルーン付き分解表示と部品表</td><td>PDF / PNG</td></tr><tr><td>3D データ</td><td>GLB、USD / USDZ（質量・重心・衝突形状のメタデータ付き）</td><td>ファイル</td></tr></table>
+<p>PDF は同梱の日本語フォント（Noto Sans JP の JIS サブセット）をさらに使用文字でサブセット化して埋め込み、1 帳票あたり数十 KB 〜 数百 KB。</p>
+
+<h2>8. 画面構成</h2>
+<h3>8.1 v1（BIM ワークスペース）</h3>
+<ul><li>トップバー（案件名・ユーザー・保存・UI 切替）、リボン（ホーム／読込／表示／プロジェクト／ヘルプ）、左: プロジェクトブラウザ（ビュー・レベル・ファミリ／タイプ／インスタンス・接合・参照モデル・ファミリライブラリ）、中央: 3D / 図面ビュー、右: プロパティ、下: 指示入力・ステータスバー。</li><li>ホーム リボン: 配置（カタログ・ショールーム・ファミリ・新規タイプ）、接合・加工（接合・穴あけ・指示入力）、編集（移動・回転・複製・削除・Undo/Redo）、集計・見積（案件一覧・業務フロー・集計表・見積・干渉チェック）、確認・補正（確認リスト・ズレ補正）、作業（保存・履歴）。</li></ul>
+<h3>8.2 v2（ステップ型）</h3>
+<ul><li>サインイン → モード選択（チャット見積／図面から）→ 案件一覧（ダッシュボード）→ ① 入力 ② 図面確認 ③ 部材選択 ④ 3D 確認（詳細カード: 断面・部品・分解・原価・カタログ照合）⑤ 概算見積（役割別ビュー）。v1 と同じエンジン・データを共有し、相互に切替可能。</li></ul>
+<h3>8.3 ショートカット</h3>
+<p>クリック / もう一度（部材 → 部品）、ダブルクリック / C（中央へ）、ホイール（カーソル中心ズーム）、Space / H（手のひら）、F（フィット）、G / R（移動 / 回転）、矢印 / PageUp・Down（5 mm 移動、Shift で 50 mm）、Shift+クリック（複数選択）、Delete、Ctrl+Z / Y、Ctrl+S / Ctrl+Shift+S（保存 / スナップショット）、Esc（段階的に閉じる）、?（一覧）。</p>
+
+<h2>9. 非機能要件</h2>
+<table><tr><th style="width:32mm">項目</th><th>仕様</th></tr>
+<tr><td>性能</td><td>起動 2 秒程度（オフライン版、SSD）。部材 150 体（約 5,000 メッシュ）までを対話的に編集。オンデマンド描画（操作がない間は再描画しない）で CPU・電力を抑制。低性能 GPU では自動で軽量表示（後処理・写真テクスチャ省略）。</td></tr>
+<tr><td>保存</td><td>変更ごとの自動保存（ローカル）、作業スナップショット、案件 JSON の書出し・読込。サーバー型は JSON ストア（日次バックアップ推奨）。</td></tr>
+<tr><td>セキュリティ</td><td>閉域運用可（外部通信なし）。受け渡しリンクは推測不能なトークン。役割ごとのフィールド権限はサーバー側でも検証。監査ログ（作成・編集・受け渡し・確定・差戻し）。HTTPS はリバースプロキシで付与。</td></tr>
+<tr><td>可用性</td><td>サーバー停止時もローカル保存で作業継続。サーバーは静的配信＋軽量 API のため仮想マシン 1 台で十分。</td></tr>
+<tr><td>保守性</td><td>ES Modules による疎結合構成。ファミリはデータ駆動で追加可能。カタログ更新時はサムネイルを CI（GitHub Actions）で自動再生成。</td></tr>
+<tr><td>テスト</td><td>Playwright による画面フロー自動テスト（30 シナリオ以上）、オフライン検証、スクリーンショット比較。</td></tr></table>
+
+<h2>10. 対応環境</h2>
+<table><tr><th>区分</th><th>最小</th><th>推奨</th></tr><tr><td>PC</td><td>4 コア / 8 GB / SSD 128 GB / 内蔵 GPU（WebGL 2）/ FHD</td><td>6〜8 コア / 16〜32 GB / NVMe 512 GB / 独立 GPU 4〜8 GB / WQHD または FHD × 2</td></tr><tr><td>OS</td><td colspan="2">Windows 10 / 11、macOS 12 以降、Linux</td></tr><tr><td>ブラウザー</td><td colspan="2">Chrome / Edge 最新安定版（推奨）、Firefox、Safari 17 以降</td></tr><tr><td>サーバー（共有時）</td><td>2 vCPU / 4 GB / 20 GB、Node.js 20</td><td>4 vCPU / 8 GB / 100 GB、既存仮想基盤で可</td></tr><tr><td>ネットワーク</td><td colspan="2">不要（オフライン版）または社内 LAN</td></tr></table>
+
+<h2>11. 制約事項・今後の拡張</h2>
+<ul><li>図面認識はベクタデータ（DXF / ベクタ PDF）を前提とする。スキャン画像（ラスタ）は手動の部材配置、または外部 OCR / ベクタ化と組み合わせる。</li><li>DWG / JWW / RVT は外部コンバータ（ODA File Converter 等）の HTTP ラッパ経由で読込む。</li><li>IFC 読込はオフライン版では web-ifc ライブラリの別配置が必要。</li><li>SSO（AD / Entra ID）、社内 LLM 連携、通知の自動送信（メール / チャット API）は要件に応じて追加する。</li><li>カタログは日栄インテック 第 1・13・14 章を収録。他章・他社カタログはシート追加で拡張可能。</li></ul>
+<p class="small muted">本仕様書は製品の実装（ソースコード・自動テスト）に基づいて作成しています。機能の詳細手順は README を参照してください。</p>
+</body></html>

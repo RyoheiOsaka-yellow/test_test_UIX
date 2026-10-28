@@ -1,0 +1,20 @@
+// オフライン検証: 外部ネットワークを全て遮断して単一ファイル版を起動し、3D 描画・PDF/XLSX 書出し・図面 PDF 読込が動くか確認する
+import pw from '/opt/node-tools/node_modules/playwright/index.js'; const { chromium } = pw;
+import http from 'http'; import fs from 'fs'; import path from 'path';
+const root = path.resolve(new URL('..', import.meta.url).pathname); const file = process.argv[2] || 'dist/ANGLEX_v1_offline.html';
+const server = http.createServer((req, res) => { let p = decodeURIComponent(req.url.split('?')[0]); const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end('nf'); return; } res.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html' : 'application/octet-stream' }); res.end(d); }); });
+await new Promise(r => server.listen(8140, r));
+const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true }); const page = await ctx.newPage();
+const blocked = []; await page.route('**/*', route => { const u = route.request().url(); if (u.startsWith('http://localhost:8140') || u.startsWith('data:') || u.startsWith('blob:')) return route.continue(); blocked.push(u.slice(0, 80)); return route.abort('internetdisconnected'); });
+page.on('pageerror', e => console.log('[pageerror]', e.message.slice(0, 200)));
+const errs = []; page.on('console', m => { if (m.type() === 'error') errs.push(m.text().slice(0, 120)); });
+await page.goto('http://localhost:8140/' + file + '?quality=1&view=3d', { waitUntil: 'load' });
+await page.waitForFunction(() => window.__ready === true, null, { timeout: 120000 }).catch(() => console.log('ready timeout'));
+await page.waitForTimeout(3000);
+console.log('BOOT', JSON.stringify(await page.evaluate(() => ({ offline: !!globalThis.__anglexOffline, instances: app.model.instances.length, meshes: (() => { let n = 0; app.viewer.modelRoot.traverse(o => { if (o.isMesh) n++; }); return n; })(), env: !!app.viewer.scene.environment, composer: !!app.viewer.composer, gl: app.viewer.renderer.getContext().getError() }))));
+await page.screenshot({ path: process.argv[3] || '/tmp/offline.png' });
+const dl1 = page.waitForEvent('download', { timeout: 60000 }); await page.evaluate(async () => { const r = await import('anglex:js/ui/reports.js'); await r.exportWeightPDF(app); }); const d1 = await dl1; const p1 = await d1.path(); console.log('PDF', d1.suggestedFilename(), fs.statSync(p1).size, 'bytes', fs.readFileSync(p1).slice(0, 5).toString());
+const dl2 = page.waitForEvent('download', { timeout: 60000 }); await page.evaluate(async () => { const r = await import('anglex:js/ui/reports.js'); await r.exportWeightXLSX(app); }); const d2 = await dl2; console.log('XLSX', d2.suggestedFilename(), fs.statSync(await d2.path()).size, 'bytes');
+console.log('BLOCKED (expected external only)', [...new Set(blocked)].slice(0, 10)); console.log('CONSOLE ERRORS', errs.slice(0, 6));
+await browser.close(); server.close();

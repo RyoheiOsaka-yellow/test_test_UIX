@@ -1,0 +1,64 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ANGLEX 提案書</title><link rel="stylesheet" href="doc.css"><style>
+.pcover{height:257mm;border-radius:6pt;background:#13130f url('img/b01_hero.png') center/cover no-repeat;position:relative;color:#fff;margin-bottom:8mm}
+.pcover .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(19,19,15,.15) 0%,rgba(19,19,15,.55) 55%,rgba(19,19,15,.92) 100%);border-radius:6pt}
+.pcover .in{position:absolute;left:12mm;right:12mm;bottom:14mm}.pcover .brand{font-size:40pt;font-weight:800;letter-spacing:.14em}.pcover .sub{letter-spacing:.3em;color:#e8dfcf;font-size:10.5pt;margin-top:2pt}
+.pcover .tag2{font-size:26pt;font-weight:700;margin-top:10mm;line-height:1.3}.pcover .lead{font-size:12pt;color:#efe9dc;margin-top:6pt;max-width:150mm}.pcover .kpis{display:flex;gap:9mm;margin-top:10mm}.pcover .kpi b{display:block;font-size:24pt;color:#f3c99a;line-height:1.1}.pcover .kpi span{font-size:9pt;color:#d8d2c3}
+.sec{display:flex;align-items:baseline;gap:8pt;margin:12pt 0 6pt}.sec .n{font-size:22pt;font-weight:800;color:var(--accent);line-height:1}.sec h2{border:0;margin:0;padding:0;font-size:16pt}
+.feat{display:grid;grid-template-columns:1.25fr 1fr;gap:6mm;align-items:start;break-inside:avoid;margin-bottom:8pt}.feat.rev{grid-template-columns:1fr 1.25fr}.feat.rev figure{order:2}
+.feat h3{margin-top:0;font-size:12.5pt;color:var(--ink)}.feat ul{margin-top:3pt}
+.benefit{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5mm}.benefit .card b.big{display:block;font-size:22pt;color:var(--accent);line-height:1.1;margin-bottom:2pt}
+.quote{font-size:13pt;color:var(--accent2);font-weight:700;text-align:center;margin:10pt 0}
+.gal{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm}.gal figure{margin:0}
+.pill{display:inline-block;padding:1pt 8pt;border-radius:10pt;background:var(--soft);border:1px solid var(--line);font-size:8.5pt;margin:0 3pt 3pt 0}
+</style></head><body>
+<div class="pcover page"><div class="veil"></div><div class="in"><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE ・ 図面に、語らせる</div><div class="tag2">配管支持金具の積算を、<br>「図面を読む」から「3D で確かめる」へ。</div><div class="lead">図面（DXF / PDF）から部材を認識し、1 つの 3D モデルから重量・集計・見積・加工指示・他社との受け渡しまでを自動で派生させる、ブラウザだけで動く積算・製作支援システムです。</div><div class="kpis"><div class="kpi"><b>1</b><span>単一ソース（3D＝重量＝見積）</span></div><div class="kpi"><b>34</b><span>ファミリ（架台・ブラケット・吊り金具…）</span></div><div class="kpi"><b>151</b><span>カタログ製品 / 700 SKU</span></div><div class="kpi"><b>0</b><span>必要な GPU サーバー</span></div></div></div></div>
+
+<div class="sec"><span class="n">01</span><h2>いまの積算の困りごと</h2></div>
+<div class="benefit">
+<div class="card"><h4>図面の読み替えに時間がかかる</h4><p>形鋼の仕様・穴・溶接・仕上げを図面から拾い、重量と見積に写し替える。担当者の経験に依存し、案件ごとに数時間〜数日。</p></div>
+<div class="card"><h4>確認漏れが工場で手戻りになる</h4><p>溶接の脚長、穴の位置、アンカーの有無。「たぶんこう」のまま渡った見積が、加工段階で作り直しに。</p></div>
+<div class="card"><h4>販売会社・工場との往復が見えない</h4><p>Excel とメールで Rev が増え、誰がどこを変えたか分からない。利益率や工場単価の見せる・見せないも手作業。</p></div>
+</div>
+<div class="quote">ANGLEX は、図面を「3D の部材」に変え、そこからすべてを派生させます。</div>
+
+<div class="sec"><span class="n">02</span><h2>ANGLEX でできること</h2></div>
+<div class="feat"><figure><img src="img/b01_hero_full.png"><figcaption>BIM ワークスペース（v1）。左: プロジェクトブラウザ、中央: 3D、右: プロパティ。質量・原価は選ぶだけで表示</figcaption></figure><div><h3>図面から 3D へ、3D からすべてへ</h3><ul><li>DXF / PDF を読み込み、形鋼・穴・溶接・仕上げを認識。確信度の低い箇所は「要判断」として人に委ねます。</li><li>ファミリ → タイプ → インスタンスの BIM モデルが単一ソース。寸法を変えれば 3D・質量・見積・帳票が同時に更新されます。</li><li>日本語の指示入力（「MF-1 に φ15 穴 2 個 @100」）で接合・穴を追加。</li></ul></div></div>
+<div class="feat rev"><figure><img src="img/b03_context.png"><figcaption>部品に触れると出るコンテキストバー。足りないものを足す操作だけに絞っています</figcaption></figure><div><h3>3D 内で「足りないものを足す」</h3><ul><li>部材 → 部品の 2 段階選択。同じ部材を隣に、穴、溶接、方杖やアンカーの追加、寸法の ±5 mm 調整。</li><li>移動は軸ロック・5 mm 刻み・密着スナップ。自由に動かし過ぎない設計です。</li><li>ズレ（隙間・レベル差・穴の板外）を検出し、ワンクリックで補正。</li></ul></div></div>
+<div class="feat"><figure><img src="img/b05_hotspots.png"><figcaption>支持金具を選ぶと、近くの配管に「◎ 呼び径」のホットスポット。ホバーで結果をプレビュー</figcaption></figure><div><h3>配管へ取付、口径も一緒に</h3><ul><li>取付先の呼び径に合わせて U ボルトの穴ピッチ・位置・向きが同時に揃います。</li><li>半透明のゴーストで結果を確認してからクリックで確定。</li><li>「等ピッチ配置」でサポート間隔を指定すれば、架台の本数・重量・見積が一度に出ます。</li></ul></div></div>
+<div class="feat rev"><figure><img src="img/b04_showroom.png"><figcaption>カタログ ショールーム。151 製品のサムネイルは同梱済みで初回から即表示</figcaption></figure><div><h3>カタログから選ぶだけで 3D に並ぶ</h3><ul><li>日栄インテック カタログ（吊バンド・アングル／チャンネルブラケット・特注加工品）を検索して配置。</li><li>SKU を切り替えれば寸法もその場で変わり、見積の品名・仕様に反映。</li><li>選んだ部材の分解図・部品表・断面もワンクリック。</li></ul></div></div>
+<div class="gal"><figure><img src="img/b02_cad.png"><figcaption>CAD 図面色（役割別の色分け・凡例）</figcaption></figure><figure><img src="img/b07_explode.png"><figcaption>分解表示とバルーン番号 → 分解図 PDF</figcaption></figure><figure><img src="img/b06_ghost.png"><figcaption>取付のゴースト プレビュー</figcaption></figure></div>
+
+<div class="sec"><span class="n">03</span><h2>人が確認すべき箇所を、確認してから渡す</h2></div>
+<div class="feat"><figure><img src="img/b09_wizard.png"><figcaption>まとめて確認ウィザード。カード送りで処理し、3D がその箇所へ自動で寄ります</figcaption></figure><div><h3>確認漏れをゲートで止める</h3><ul><li>溶接・穴・アンカー・図面根拠などの確認事項を自動生成し、3D に ⚑ フラグ。</li><li>ウィザードで 1 件ずつ、溶接指示・穴あけ指示もその場で。Enter で確認済。</li><li>未確認が残ると受け渡し・確定が止まり、承知の上で進める場合は理由が監査ログに残ります。</li></ul></div></div>
+
+<div class="sec"><span class="n">04</span><h2>重量・見積・共有を、1 画面の業務フローで</h2></div>
+<div class="feat rev"><figure><img src="img/b08_flow.png"><figcaption>業務フロー パネル。6 段階の「いまどこか・数字はいくつか・次に押すボタン」</figcaption></figure><div><h3>モデル → 確認 → 重量 → 見積 → 共有 → 確定</h3><ul><li>総質量の内訳（鋼材・めっき・ボルト・溶接）と算出根拠、重量計算書 PDF / XLSX。</li><li>モデルから見積を自動生成。見積書・加工指示書・分解図を PDF で。</li><li>A社 → B社 → C社の受け渡しはリンク 1 本。通知文（リンク・合計・回答期限）を自動生成してコピー。</li></ul></div></div>
+<div class="feat"><figure><img src="img/b13_roleview_C.png"><figcaption>加工工場（C社）の画面。工場単価・納期・受注可否だけが見え、販売価格は出ません</figcaption></figure><div><h3>相手には「見るべき数字と押すボタン」だけ</h3><ul><li>販売会社（B社）は利益率と販売価格、加工工場（C社）は工場単価・納期・可否。一括入力で数分。</li><li>フィールド単位の権限で、見せない数字は画面にも帳票にも出ません。</li><li>受け渡しごとに Rev を凍結し、誰が・いつ・何を変えたかを監査ログに。</li></ul></div></div>
+<div class="feat rev"><figure><img src="img/b11_compare.png"><figcaption>比較ビュー。C社の回答で下がった行と変更理由が一目で</figcaption></figure><div><h3>差分と理由が見える</h3><ul><li>Rev 間の差分を ▲増 ▼減 で色分け、右端に変更理由。</li><li>会社間の金額（工場単価 → 提示 → 販売）と粗利を横に。</li><li>確定前チェックで、受注不可・未回答・納期超過の行を止めます。</li></ul></div></div>
+<div class="gal"><figure><img src="img/b10_dashboard.png"><figcaption>案件横断ダッシュボード（自分の番・期限超過を上に）</figcaption></figure><figure><img src="img/b16_estimate.png"><figcaption>見積ワークフロー（明細・権限・監査ログ）</figcaption></figure><figure><img src="img/b15_schedules.png"><figcaption>集計表（部材・ボルト・溶接・穴）</figcaption></figure></div>
+
+<div class="sec"><span class="n">05</span><h2>現場に合わせた 2 つの画面</h2></div>
+<div class="gal"><figure><img src="img/v01_signin.png"><figcaption>v2: サインイン</figcaption></figure><figure><img src="img/v04_chat.png"><figcaption>v2: チャットで概算（製品 → サイズ → 仕上げ → 数量）</figcaption></figure><figure><img src="img/v05_3d.png"><figcaption>v2: 5 ステップで図面 → 3D 確認 → 概算見積</figcaption></figure></div>
+<p>経験者向けの <b>v1（BIM ワークスペース）</b>と、初めてでも迷わない <b>v2（ステップ型）</b>。同じエンジン・同じデータで、ボタン 1 つで切り替えられます。</p>
+
+<div class="sec"><span class="n">06</span><h2>導入効果</h2></div>
+<div class="benefit">
+<div class="card"><b class="big">数時間 → 数分</b><h4>拾い出しと重量計算</h4><p>図面読込と自動認識、カタログからの配置で、拾い出し・重量・集計が同時に完成。見積は明細まで自動生成。</p></div>
+<div class="card"><b class="big">手戻りゼロへ</b><h4>確認ゲートと加工指示書</h4><p>溶接・穴・アンカーを確認してからしか渡せない。工場には穴座標・溶接記号・分解図付きの加工指示書。</p></div>
+<div class="card"><b class="big">透明な往復</b><h4>Rev・監査ログ・権限</h4><p>誰が何を変えたかが残り、見せない数字は出ない。差分と理由が 1 画面で判断できる。</p></div>
+</div>
+<p class="small muted">効果は業務内容により異なります。デモ案件（門型架台・ブラケット・吊り金具 5 体）では、図面読込から見積書 PDF までを自動テストで約 1 分で完了しています。</p>
+
+<div class="sec"><span class="n">07</span><h2>導入形態と必要な環境</h2></div>
+<div class="grid3">
+<div class="card"><h4>スタンドアロン</h4><p>オフライン版 HTML 1 ファイルを各 PC へ。インターネット不要。</p><span class="pill">試行・少人数</span></div>
+<div class="card accent"><h4>社内サーバー型（推奨）</h4><p>社内 LAN の小型サーバー（既存仮想基盤で可）に配置し、案件・見積・受け渡しを部署内で共有。閉域で完結。</p><span class="pill">1 部署〜</span></div>
+<div class="card"><h4>クラウド型</h4><p>社外の販売会社・加工工場とも同じリンクで受け渡し。</p><span class="pill">社外連携</span></div>
+</div>
+<table><tr><th>利用者 PC（最小）</th><th>利用者 PC（推奨）</th><th>サーバー（共有時）</th></tr><tr><td>4 コア / 8 GB / SSD / 内蔵 GPU / Windows 10 以降 / Chrome・Edge</td><td>6〜8 コア / 16 GB / 独立 GPU 4〜8 GB / 27 型 2 画面</td><td>2〜4 vCPU / 4〜8 GB / Node.js 20、既存仮想環境で可。GPU 不要</td></tr></table>
+
+<div class="sec"><span class="n">08</span><h2>導入の進め方</h2></div>
+<div class="steps"><div class="step"><b>1</b><div class="t">試行（2 週間）</div>オフライン版で実案件 3〜5 件を試す。認識精度と帳票を確認</div><div class="step"><b>2</b><div class="t">設定（1 週間）</div>単価表・仕上げ・ファミリ既定値・帳票様式を貴社仕様に</div><div class="step"><b>3</b><div class="t">部署導入（1 ヶ月）</div>社内サーバー配置、販売会社・工場との受け渡し運用を開始</div><div class="step"><b>4</b><div class="t">展開</div>カタログ追加、他部署・他拠点へ。SSO・社内 LLM 連携は要件に応じて</div></div>
+<div class="callout"><b>お渡しできるもの:</b> 単一ファイル版（オンライン／オフライン、v1 / v2）、仕様書、ハードウェア構成回答書、README（操作手順）、自動テスト一式。デモ案件と日栄インテック カタログ（第 1・13・14 章）を同梱しています。</div>
+<p class="small muted" style="text-align:center;margin-top:10mm">ANGLEX ・ FABRICATION INTELLIGENCE ・ 2026 年 10 月</p>
+</body></html>

@@ -1,0 +1,23 @@
+// プロジェクト横断ダッシュボード: 見積状態・担当会社・合計・未確認・期限を並べ、「自分の番」を上に
+import { h, modal, fmt, toast, table } from './common.js';
+import * as WF from '../core/workflow.js';
+import { Model } from '../bim/model.js';
+import { buildChecklist, openCount } from '../bim/review.js';
+
+export async function openDashboard(app) {
+  const role = app.role(); const host = h('div', { class: 'dash-wrap' }); const m = modal({ title: 'ダッシュボード（案件横断）', wide: true, cls: 'dash', body: host });
+  host.append(h('div', { class: 'muted' }, '読み込み中…'));
+  const projects = await app.store.listProjects(); const rows = [];
+  for (const p of projects) { const ests = await app.store.listEstimates(p.id); const est = ests[0] || null; let inst = 0, open = null; try { const full = p.model ? p : await app.store.getProject(p.id); const mdl = new Model(full.model || {}); inst = mdl.instances.length; if (role === 'A') { open = 0; for (const i of mdl.instances) { try { const fam = mdl.familyOf(i); open += openCount(buildChecklist(i, fam.parts(mdl.resolved(i), { inst: i, model: mdl }))); } catch { } } } } catch { }
+    const dl = est ? WF.deadlineInfo(est) : null; const T = est ? WF.totals(est) : null; const mine = est && est.currentOrg === role && est.status !== 'final';
+    rows.push({ p, est, inst, open, dl, T, mine, sort: (mine ? 0 : est ? (est.status === 'final' ? 3 : 2) : 1) * 1e13 + (dl?.overdue ? 0 : 1e12) - new Date(p.updatedAt || 0).getTime() }); }
+  rows.sort((a, b) => a.sort - b.sort);
+  const chip = r => !r.est ? h('span', { class: 'chip ghost' }, '見積なし') : h('span', { class: 'chip ' + (r.est.status === 'final' ? 'ok' : r.mine ? 'bad' : 'warn') }, WF.STATUS[r.est.status]);
+  const due = r => { if (!r.dl) return '—'; const parts = []; if (r.dl.due) parts.push(h('span', { class: r.dl.overdue ? 'd up' : '' }, r.dl.overdue ? `期限超過 ${-r.dl.left} 日` : `残り ${r.dl.left} 日（${r.dl.due}）`)); if (r.dl.since != null && r.est.status !== 'final') parts.push(h('div', { class: 'muted small' }, `未回答 ${r.dl.since} 日`)); return h('div', {}, ...parts); };
+  const money = r => !r.T ? '—' : role === 'C' ? fmt.yen(r.T.factory) : role === 'B' ? fmt.yen(r.T.b) : h('div', {}, h('b', {}, fmt.yen(r.T.b)), h('div', { class: 'muted small' }, `原価 ${fmt.yen(r.T.factory)}`));
+  const kpis = h('div', { class: 'dash-kpis' }, kpi('自分の番', rows.filter(r => r.mine).length, 'bad'), kpi('期限超過', rows.filter(r => r.dl?.overdue).length, 'warn'), kpi('進行中', rows.filter(r => r.est && r.est.status !== 'final').length), kpi('確定', rows.filter(r => r.est?.status === 'final').length), role === 'A' ? kpi('未確認 合計', rows.reduce((a, r) => a + (r.open || 0), 0)) : null);
+  const tbl = table(['', '案件', '更新', '部材', role === 'A' ? '未確認' : '', '見積', '担当', role === 'C' ? '工場原価' : '販売価格', '期限'], rows.map(r => [r.mine ? h('span', { class: 'dash-turn', title: 'あなたの会社の作業段階' }, '▶ 自分の番') : '', h('div', {}, h('b', {}, r.p.name), h('div', { class: 'muted small' }, r.p.client || '')), fmt.date(r.p.updatedAt), r.inst + ' 体', role === 'A' ? (r.open ? h('span', { class: 'd up' }, r.open + ' 件') : h('span', { class: 'muted' }, '0')) : '', r.est ? h('div', {}, `${r.est.no} Rev.${r.est.revision}`, h('div', {}, chip(r))) : chip(r), r.est ? WF.ROLES[r.est.currentOrg].name.replace(/（.*?）/, '') : '—', money(r), due(r)]), { onRow: async (_, i) => { const r = rows[i]; m.close(); const full = await app.store.getProject(r.p.id); if (!full) return; await app.loadProjectData(full); if (r.est) app.currentEstimateId = r.est.id; toast(`${r.p.name} を開きました`, 'ok'); if (r.est) { const f = await import('./flow.js'); f.openFlow(app); } } });
+  [...tbl.querySelectorAll('tbody tr')].forEach((tr, i) => { if (rows[i].mine) tr.classList.add('mine'); if (rows[i].dl?.overdue) tr.classList.add('overdue'); });
+  host.innerHTML = ''; host.append(h('div', { class: 'muted small' }, `${app.user().name}（${WF.ROLES[role].name}）・ 行をクリックで案件を開く（見積があれば業務フローへ）`), kpis, h('div', { class: 'est-table' }, tbl));
+}
+function kpi(label, v, cls = '') { return h('div', { class: 'dash-kpi ' + cls }, h('span', {}, label), h('b', {}, String(v))); }

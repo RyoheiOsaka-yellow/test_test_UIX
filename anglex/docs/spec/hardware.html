@@ -1,0 +1,121 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ANGLEX 導入ハードウェア構成 回答書</title><link rel="stylesheet" href="doc.css"></head><body>
+<div class="cover page">
+  <div><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE</div></div>
+  <div><div class="title">「03 積算AI」導入に必要な<br>ハードウェア構成について（回答書）</div><div class="lead">1 部署での小規模導入を想定した、提供・設置方式、利用者 PC、サーバー、周辺機器、推奨機種の回答です。「最小構成」と「推奨構成」を併記し、各項目の対応状況（対応済／対応中／要検討）を明示しています。</div></div>
+  <div class="meta">2026 年 10 月 28 日 ・ ANGLEX 製品版 v1 / v2（build 2026-10-28）に基づく ・ 回答書 Rev.1</div>
+</div>
+
+<h2>0. 回答の要点</h2>
+<div class="callout"><b>結論:</b> ANGLEX は <b>ブラウザで動く Web アプリ</b>で、AI 処理（図面認識・部材推定・リスク判定・見積生成）はすべて利用者 PC のブラウザ内で実行します。<b>AI 用 GPU サーバーは不要</b>です。インターネット接続のない環境でも、ライブラリ同梱の<b>オフライン版（単一 HTML ファイル、約 21 MB）</b>と、社内 LAN に置く<b>小型サーバー（Node.js、既存サーバー／仮想環境で可）</b>の組合せで利用できます（対応済）。</div>
+<table><tr><th style="width:28mm">項目</th><th>回答の要約</th><th style="width:22mm">対応状況</th></tr>
+<tr><td>① 提供・設置方式</td><td>オンプレミス推奨。インターネット非接続環境は「オフライン版 HTML ＋ 社内サーバー」で利用可。閉域内で完結し外部通信は発生しない</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>② 利用者 PC</td><td>最小: 4 コア / 8 GB / SSD 128 GB / 内蔵 GPU（WebGL2）。推奨: 6〜8 コア / 16 GB / SSD 512 GB / 独立 GPU 4〜8 GB。Windows 10/11・macOS、Chrome / Edge。AI 処理端末と 3D 閲覧端末は同一仕様で可（閲覧専用は最小構成で十分）</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>③ サーバー</td><td>専用サーバー・AI 用 GPU とも不要。見積の社内共有を行う場合のみ小型サーバー 1 台（2 vCPU / 4 GB / 20 GB）。既存サーバー・仮想環境・コンテナで可</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>④ 周辺機器</td><td>必須なし。推奨: 24〜27 型モニター 2 台、A3 スキャナー（図面は PDF/DXF の電子データ推奨）、A3 カラープリンター。サーバー運用時は日次バックアップと UPS を推奨</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>⑤ 推奨機種</td><td>動作確認済み環境と、仕様で指定する推奨機種例（Dell / HP / Lenovo のワークステーション・ビジネス機）を記載。型番は調達時点の後継機で可</td><td><span class="tag ok">対応済</span></td></tr>
+</table>
+
+<h2>1. 製品の技術的な前提（回答の根拠）</h2>
+<ul>
+<li><b>実行形態:</b> HTML / JavaScript（ES Modules）による単一ページ Web アプリ。3D は WebGL 2（three.js）、帳票 PDF・XLSX の生成もブラウザ内で完結します。</li>
+<li><b>「積算AI」の中身:</b> 図面（DXF / PDF）の線分・寸法・注記からの部材認識、ルールベース推論（形鋼仕様・穴・仕上げの推定と信頼度）、リスク行列（信頼度 × 手戻りコスト）による「推論／要判断／確定」の 3 状態判定、BIM モデルからの重量・集計・見積の自動生成。いずれも CPU 上の JavaScript で数秒以内に処理し、学習済みモデルの推論サーバーや GPU は使いません。</li>
+<li><b>生成 AI 連携（任意）:</b> 日本語指示入力の解釈は内蔵パーサーで動作します。外部 LLM（Astra GPT 等）との連携は任意機能で、利用時のみインターネット接続が必要です。閉域運用では無効化できます。</li>
+<li><b>データ保存:</b> 単体利用時はブラウザのローカル保存（IndexedDB / localStorage）と JSON 書出し。共有利用時は社内サーバーの JSON ストア（ファイル）または REST API。</li>
+<li><b>検証済みの負荷:</b> デモ案件（5〜150 部材、約 260〜5,000 メッシュ）で、ソフトウェア描画（GPU なし・SwiftShader）でも起動・3D 表示・PDF/XLSX 出力・図面読込が動作することを自動テストで確認しています。独立 GPU があると高品質表示（環境光 HDRI、接触陰影、MSAA 4x）が 60 fps で滑らかになります。</li>
+</ul>
+
+<h2>2. ① 提供・設置方式</h2>
+<div class="q"><div class="qt">ご質問</div><div class="qq">先日のミーティングではオンプレミス型を推奨されていたかと存じますが、インターネット接続のない環境でも利用可能でしょうか。</div>
+<p><b>回答: 利用可能です（対応済）。</b> 次の 3 形態から選べます。小規模導入では <b>形態 B（社内サーバー型）</b>を推奨します。</p>
+<table><tr><th style="width:34mm">形態</th><th>内容</th><th style="width:30mm">インターネット</th><th style="width:30mm">向いている規模</th></tr>
+<tr><td>A. スタンドアロン</td><td>オフライン版 HTML ファイル 1 つを各 PC に配布。データは各 PC のブラウザに保存、案件は JSON で受け渡し</td><td>不要</td><td>1〜3 名の試行</td></tr>
+<tr><td>B. 社内サーバー型（推奨）</td><td>社内 LAN の小型サーバーに ANGLEX を配置。各 PC はブラウザでアクセス。案件・見積・受け渡しリンクをサーバーで共有</td><td>不要（閉域で完結）</td><td>1 部署〜複数部署</td></tr>
+<tr><td>C. クラウド型</td><td>当方ホスティング（または貴社クラウド）に配置。社外の販売会社・加工工場との見積共有を同じリンクで行える</td><td>必要</td><td>社外連携が主目的の場合</td></tr>
+</table>
+<p><b>閉域で制限される機能:</b> 以下はインターネット上の素材・サービスを使うため、閉域では自動的に無効化または代替表示になります。業務機能（図面認識・3D・重量・見積・帳票）には影響しません。</p>
+<ul><li>3D の環境光プリセット「倉庫／工場／屋外」（閉域ではスタジオ環境光を同梱して使用）と Poly Haven の写真テクスチャ（手続き的な金属質感で代替）</li><li>Web フォント（システムの日本語フォントで表示。帳票 PDF 用の日本語フォントは同梱）</li><li>IFC 読込（web-ifc ライブラリ。必要な場合はサーバーに同梱配置可能）、外部 LLM 連携</li></ul>
+<p class="small muted">補足: 形態 B では、販売会社・加工工場への受け渡しリンクは LAN 内でのみ開けます。社外と共有する場合は、見積書 PDF / XLSX の送付、または形態 C の併用（社外向け見積のみクラウド）となります。</p></div>
+
+<h2>3. ② 利用者が操作する PC の仕様</h2>
+<div class="q"><div class="qt">ご質問</div><div class="qq">CPU、メモリ、SSD 容量、GPU の要否と、必要な場合の GPU・GPU メモリの仕様、対応 OS・ブラウザーについてお教えください。また、AI 処理を行う端末と、3D の閲覧・確認を行う端末では、必要な仕様が異なるでしょうか。</div>
+<table><tr><th style="width:26mm">項目</th><th>最小構成（動作する）</th><th>推奨構成（通常業務で快適）</th></tr>
+<tr><td>CPU</td><td>4 コア（Intel Core i3-10 世代 / Ryzen 3 以上）</td><td>6〜8 コア（Core i5-12400 / i7-13700 / Ryzen 5 5600 / Ryzen 7 以上）</td></tr>
+<tr><td>メモリ</td><td>8 GB</td><td>16 GB（図面 PDF 多数・大型案件は 32 GB）</td></tr>
+<tr><td>ストレージ</td><td>SSD 128 GB（ANGLEX 本体は 25 MB 以下、空き 2 GB）</td><td>NVMe SSD 512 GB</td></tr>
+<tr><td>GPU</td><td>CPU 内蔵（Intel UHD 620 / Iris Xe、AMD Radeon 内蔵、Apple M1 以上）。WebGL 2 対応が条件。GPU メモリは共有で可</td><td>独立 GPU 4〜8 GB（NVIDIA GeForce RTX 3050 / 4060、RTX A1000 / A2000、AMD Radeon RX 6600 以上）。高品質表示（HDRI・接触陰影・MSAA 4x・4K 影）が滑らか</td></tr>
+<tr><td>画面</td><td>1920×1080</td><td>2560×1440 以上、または FHD 2 画面（図面と 3D を並べる）</td></tr>
+<tr><td>OS</td><td colspan="2">Windows 10 / 11（64 bit）、macOS 12 以降。Linux（Ubuntu 22.04 以降）でも動作</td></tr>
+<tr><td>ブラウザー</td><td colspan="2">Google Chrome / Microsoft Edge の最新安定版（120 以降）を推奨。Firefox・Safari 17 以降でも主要機能は動作（高品質表示の一部に差異）</td></tr>
+<tr><td>ネットワーク</td><td colspan="2">形態 B では社内 LAN（100 Mbps 以上）。形態 A では不要</td></tr>
+</table>
+<p><b>AI 処理端末と 3D 閲覧端末の違い:</b> 同じ仕様で構いません。AI 処理（図面認識・推論・見積生成）は CPU とメモリを使い、3D 表示は GPU を使います。役割で分ける場合の目安は次のとおりです。</p>
+<ul><li><b>見積作成（A社相当）担当の PC:</b> 推奨構成。図面読込・3D 編集・帳票出力を日常的に行うため。</li><li><b>閲覧・確認（上長・販売・工場）の PC:</b> 最小構成で十分。3D は品質を自動で下げて表示でき、見積の確認・入力は軽量です。</li></ul>
+<p class="small muted">実測の目安: デモ案件（部材 5 体、約 260 メッシュ）で起動 2 秒、メモリ使用量 300〜500 MB。カタログ 151 製品のサムネイルは同梱済みで初回から即表示。</p></div>
+
+<h2>4. ③ サーバーの要否・仕様</h2>
+<div class="q"><div class="qt">ご質問</div><div class="qq">専用サーバーや AI 処理用 GPU は必要でしょうか。必要な場合は、推奨構成・台数についてお教えください。また、既存サーバーや仮想環境の利用は可能でしょうか。</div>
+<p><b>回答: 専用サーバー・AI 用 GPU とも不要です。</b> 案件・見積を部署内で共有し、販売会社・工場との受け渡しリンクを使う場合のみ、小型の Web サーバー 1 台を用意します。<b>既存サーバー・仮想環境（Hyper-V / VMware / Proxmox）・コンテナ（Docker）で問題ありません。</b></p>
+<table><tr><th style="width:26mm">項目</th><th>最小構成</th><th>推奨構成（1 部署 10〜30 名）</th></tr>
+<tr><td>台数</td><td>1 台（既存サーバーの仮想マシンで可）</td><td>1 台（＋バックアップ先）</td></tr>
+<tr><td>CPU / メモリ</td><td>2 vCPU / 4 GB</td><td>4 vCPU / 8 GB</td></tr>
+<tr><td>ストレージ</td><td>20 GB（案件 1 件あたり 1〜5 MB）</td><td>100 GB SSD（図面 PDF の保管を含む）</td></tr>
+<tr><td>OS</td><td colspan="2">Windows Server 2019 以降、または Linux（Ubuntu 22.04 / RHEL 9 系）</td></tr>
+<tr><td>ソフトウェア</td><td colspan="2">Node.js 20 LTS 以降（同梱の <code>server/server.js</code>）。データは JSON ファイルストア。リバースプロキシ（IIS / nginx）と HTTPS を推奨</td></tr>
+<tr><td>GPU</td><td colspan="2">不要（AI 処理は利用者 PC 側で実行。サーバーは配信と共有のみ）</td></tr>
+<tr><td>同時利用</td><td>〜10 名</td><td>〜50 名（静的配信＋軽量 API のため負荷は小さい）</td></tr>
+</table>
+<p class="small muted">将来、図面の一括 OCR や LLM の社内ホスティングを行う場合は、別途 GPU サーバー（例: NVIDIA L4 24 GB 1 枚）を追加する構成になりますが、現行機能には不要です。</p></div>
+
+<h2>5. ④ 周辺機器</h2>
+<div class="q"><div class="qt">ご質問</div><div class="qq">モニター、図面用の大型スキャナー、プリンター・プロッター、データ保存・バックアップ装置、無停電電源装置など、必須または推奨となる周辺機器があればお教えください。</div>
+<table><tr><th style="width:30mm">機器</th><th style="width:16mm">必須／推奨</th><th>内容</th></tr>
+<tr><td>モニター</td><td>推奨</td><td>24〜27 型・FHD 以上を 2 台（図面ビューと 3D／見積を並べる）。1 台の場合は WQHD 以上</td></tr>
+<tr><td>スキャナー</td><td>推奨</td><td>A3 フラットベッドまたは複合機のスキャン機能（300 dpi、PDF 出力）。A1 など大判図面は <b>電子データ（PDF / DXF）の入手を優先</b>し、紙しかない場合のみ大判スキャナーまたは外部スキャンサービスを利用</td></tr>
+<tr><td>プリンター</td><td>推奨</td><td>A3 対応カラー複合機（見積書・重量計算書・加工指示書・分解図は A4/A3 で出力）。<b>プロッターは不要</b></td></tr>
+<tr><td>バックアップ</td><td>推奨（サーバー運用時）</td><td>サーバーの JSON ストアを日次でバックアップ（NAS またはファイルサーバー、世代 30 日）。スタンドアロン時はアプリ内の「作業スナップショット」と案件 JSON 書出しを週次で共有フォルダへ</td></tr>
+<tr><td>UPS</td><td>推奨（サーバー運用時）</td><td>500〜1000 VA（サーバーと NAS 用）。利用者 PC には不要（自動保存あり）</td></tr>
+<tr><td>入力機器</td><td>任意</td><td>3 ボタンマウス（3D の回転・パン・ズーム）。タッチパッド・タッチ操作にも対応</td></tr>
+</table></div>
+
+<h2>6. ⑤ 推奨機種</h2>
+<div class="q"><div class="qt">ご質問</div><div class="qq">動作確認済みの機器や、推奨されるメーカー・型番があればお教えください。</div>
+<h3>6.1 動作確認済み環境</h3>
+<table><tr><th>区分</th><th>環境</th><th>確認内容</th></tr>
+<tr><td>ブラウザー</td><td>Chromium 140 系（Linux、自動テスト 30 シナリオ）。Windows 11 の Chrome / Edge は同一エンジン（Blink）のため同等に動作する見込み（導入時に貴社実機で確認）</td><td>起動、図面読込（DXF / PDF）、3D 編集、重量・見積、PDF / XLSX 出力、受け渡しリンク</td></tr>
+<tr><td>GPU</td><td>ソフトウェア描画（SwiftShader、GPU なし）で全自動テストを実施。独立 GPU / 内蔵 GPU は WebGL 2 の標準機能のみ使用</td><td>高品質表示（HDRI / GTAO / MSAA 4x）と軽量表示の切替。ソフトウェア描画でも全機能が動作</td></tr>
+<tr><td>オフライン</td><td>外部通信を全遮断した状態（自動テスト）</td><td>オフライン版の起動、3D 表示、重量計算書 PDF、XLSX 出力</td></tr>
+<tr><td>サーバー</td><td>Node.js 20 / 22（Linux）</td><td>案件・見積 API、A → B → C の受け渡し、監査ログ</td></tr>
+</table>
+<h3>6.2 推奨機種の例（調達時点の後継機で可）</h3>
+<table><tr><th style="width:30mm">用途</th><th>機種例</th><th>仕様の目安</th></tr>
+<tr><td>見積作成 PC（推奨構成・デスクトップ）</td><td>Dell Precision 3680 Tower / HP Z2 G9 Tower / Lenovo ThinkStation P3 Tower</td><td>Core i7（14 世代）、32 GB、NVMe 1 TB、NVIDIA RTX A2000 12 GB または GeForce RTX 4060 8 GB、Windows 11 Pro</td></tr>
+<tr><td>見積作成 PC（推奨構成・ノート）</td><td>Dell Precision 3591 / HP ZBook Power G11 / Lenovo ThinkPad P16s Gen 3</td><td>Core i7 または Ryzen 7 PRO、32 GB、1 TB、RTX A1000 / RTX 2000 Ada 6〜8 GB、16 型 WQXGA</td></tr>
+<tr><td>閲覧・確認 PC（最小構成）</td><td>Dell OptiPlex 7020 / HP ProDesk 400 G9 / Lenovo ThinkCentre M70s</td><td>Core i5、16 GB、SSD 256 GB、内蔵 GPU（Intel UHD 770）</td></tr>
+<tr><td>サーバー（仮想マシンで可）</td><td>既存の Windows Server / Linux 仮想基盤、または HPE ProLiant MicroServer / Dell PowerEdge T160 相当</td><td>4 vCPU、8 GB、SSD 100 GB、Node.js 20 LTS</td></tr>
+<tr><td>モニター</td><td>Dell P2725H（27 型 FHD）× 2、または Dell U2724D（27 型 WQHD）</td><td>IPS、USB-C 給電があるとノート運用が簡単</td></tr>
+<tr><td>複合機（スキャン・印刷）</td><td>既設の A3 カラー複合機で可（RICOH IM C / Canon iR-ADV / FUJIFILM Apeos 等）</td><td>300 dpi PDF スキャン、A3 カラー印刷</td></tr>
+<tr><td>UPS</td><td>APC Smart-UPS SMT750J（750 VA）または OMRON BY80S</td><td>サーバー＋NAS で 10 分以上の給電</td></tr>
+</table>
+<p class="small muted">型番は 2026 年 10 月時点の例です。発注時は「仕様の目安」で指定いただければ、同等の後継機で問題ありません。Mac（Apple M1 以降、16 GB）でも推奨構成相当で動作します。</p></div>
+
+<h2>7. 最小構成と推奨構成（まとめ）</h2>
+<div class="grid2">
+<div class="card"><h4>最小構成（1 部署・試行〜小規模）</h4><ul><li>利用者 PC × 2〜3: 4 コア / 8 GB / SSD 128 GB / 内蔵 GPU / FHD 1 画面 / Windows 10 以降 / Chrome or Edge</li><li>サーバー: なし（オフライン版 HTML を配布、案件 JSON を共有フォルダで受け渡し）</li><li>周辺機器: 既設の A3 複合機</li><li>インターネット: 不要</li></ul><p class="small muted">概算: PC 1 台あたり 12〜15 万円級の一般業務機で可</p></div>
+<div class="card accent"><h4>推奨構成（通常業務で快適・部署内共有）</h4><ul><li>見積作成 PC × 2: 6〜8 コア / 16〜32 GB / NVMe 512 GB〜1 TB / 独立 GPU 6〜8 GB / 27 型 2 画面</li><li>閲覧 PC × 必要数: 最小構成相当</li><li>サーバー × 1: 既存仮想基盤の VM（4 vCPU / 8 GB / 100 GB）＋ 日次バックアップ（NAS）＋ UPS</li><li>周辺機器: A3 複合機（300 dpi スキャン）</li><li>インターネット: 不要（社外共有が必要な場合のみクラウド併用）</li></ul><p class="small muted">概算: 見積作成 PC 25〜35 万円級、サーバーは既存基盤流用で追加費用なし</p></div>
+</div>
+
+<h2>8. 対応状況（磨き込みの結果）</h2>
+<p>ご質問に関連して、今回の回答に合わせて製品側で対応した項目と、今後の予定です。</p>
+<table><tr><th style="width:52mm">項目</th><th>内容</th><th style="width:22mm">状況</th></tr>
+<tr><td>オフライン版ビルド</td><td>three.js・PDF 生成・XLSX・図面 PDF 読込・日本語フォント・スタジオ環境光をすべて同梱した単一 HTML（v1 / v2、約 21 MB）。外部通信を遮断した自動テストで起動・3D・帳票出力を確認</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>軽量表示モード</td><td>内蔵 GPU やソフトウェア描画でも動くよう、後処理（接触陰影・MSAA）と写真テクスチャを自動で省く設定。URL パラメータまたは設定で切替</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>社内サーバー型</td><td>Node.js サーバー（案件・見積 API、受け渡しリンク、監査ログ）。既存サーバー・仮想環境で動作</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>カタログ サムネイルの同梱</td><td>151 製品の 3D サムネイルを事前生成して同梱。初回起動から即表示（低性能 PC でも描画負荷なし）</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>帳票の日本語フォント同梱</td><td>見積書・重量計算書・加工指示書・分解図 PDF は同梱フォントで生成（インターネット不要）</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>IFC 読込の閉域対応</td><td>web-ifc ライブラリのサーバー同梱配置（手順書化）</td><td><span class="tag wip">対応中</span></td></tr>
+<tr><td>Windows サービス化・HTTPS 設定手順</td><td>IIS / nginx のリバースプロキシ設定例、サービス登録手順、バックアップスクリプト</td><td><span class="tag wip">対応中</span></td></tr>
+<tr><td>SSO（Active Directory / Entra ID）連携</td><td>現状はリンク（トークン）とデモユーザーによる役割切替。AD 連携は要件確認のうえ対応</td><td><span class="tag todo">要検討</span></td></tr>
+<tr><td>社内 LLM との連携</td><td>日本語指示入力は内蔵パーサーで動作。社内ホスト LLM を使う場合は API 接続先の設定を追加</td><td><span class="tag todo">要検討</span></td></tr>
+</table>
+<p class="small muted">本回答書の内容は、製品の技術仕様（仕様書）と自動テストの結果に基づきます。構成表（Excel）が必要な場合は、本表をもとに作成してお渡しします。</p>
+</body></html>

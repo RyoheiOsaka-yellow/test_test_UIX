@@ -76,6 +76,29 @@ Drive フォルダでこのアカウントから読めるのは ch13-14 製品�
 - **Rev 間の差分**: 比較元／比較先の Rev を選び、行ごとに 数量・原価・利益率・納期・受注可否（役割で見える列）と単価・金額の変化を ▲増（赤）／▼減（緑）で表示、追加行・削除行も色分け。右端に「誰が・いつ・何を」（監査ログ）と受け渡しメッセージ
 - **会社間の金額**: 同じ行の 工場単価 → A社提示 → 販売単価 を横に並べ、段ごとの上乗せ率と粗利を表示（役割で見える列だけ）
 
+### 受け渡しの通知文・回答期限・確定前チェック・ダッシュボード
+- **受け渡し**: メッセージと回答期限（既定 B社 3 日 / C社 7 日）を入力すると、相手へ送る通知文（リンク・お願い事項・合計・期限・未入力行）を自動生成してクリップボードへ。「メールで開く」で mailto 起動。業務フロー／見積ワークフローの「通知文」で再表示。
+- **期限**: 業務フロー ⑤ と B/C 社ビューに「回答期限（残り n 日 / 超過 n 日）」「未回答 n 日」を表示。
+- **確定前チェック**: 確定時に 受注不可・工場単価未回答・受注可否未回答・利益率未入力・要求納期超過（⑥ の「要求納期」入力）の行を一覧にして停止。承知の上で確定する場合は理由を監査ログへ。
+- **ダッシュボード**: ホーム「案件一覧」／プロジェクト タブ／v2 の案件一覧。全案件の見積状態・担当会社・合計・未確認件数・期限を並べ、「自分の番」と期限超過を上位に。行クリックで案件を開き業務フローへ。
+
+## オフライン版（インターネット非接続・閉域向け）
+```bash
+python3 tools/vendor_three.py                                   # three.js addons を依存ごと vendor/ へ（初回のみ）
+# ほかのライブラリ（pdf-lib / fontkit / hb-subset.wasm / xlsx / pdf.js / スタジオ HDRI）は tools/build_single.py の VENDOR_URLS を vendor/ に curl（README 末尾のコマンド）
+python3 tools/build_single.py --offline index.html css/app.css dist/ANGLEX_v1_offline.html
+python3 tools/build_single.py --offline v2.html css/app_v2.css dist/ANGLEX_v2_offline.html
+node dev/offline-check.mjs dist/ANGLEX_v1_offline.html           # 外部通信を全遮断して起動・3D・PDF/XLSX を検証
+```
+three.js（本体＋使用する addons）、pdf-lib、fontkit、HarfBuzz サブセッタ、SheetJS、pdf.js、日本語フォント、スタジオ環境光を同梱した単一 HTML（約 21 MB）。外部通信なしで 3D・帳票・図面 PDF 読込が動作します（倉庫／工場／屋外の環境光、Poly Haven テクスチャ、Web フォント、IFC 読込、外部 LLM は要インターネット）。
+
+## ドキュメント（PDF）
+`node dev/render-docs.mjs` で `docs/spec/*.html` を `docs/pdf/` に PDF 化します（同梱の日本語フォントで印刷）。
+- `docs/pdf/ANGLEX_仕様書.pdf` — システム構成・機能・データモデル・計算仕様・権限・帳票・非機能・対応環境
+- `docs/pdf/ANGLEX_提案書.pdf` — スクリーンショット中心のパンフレット（課題 → できること → 確認ゲート → 業務フロー → 導入形態 → 進め方）
+- `docs/pdf/ANGLEX_ハードウェア構成_回答書.pdf` — 「03 積算AI」導入ハードウェアの質問 ①〜⑤ への回答（最小／推奨構成、対応状況）
+スクリーンショットは `dev/flows/brochure.js` / `v2shots.js` で `docs/spec/img/` に自動取得します。
+
 ## 複数選択とまとめ操作
 Shift+クリックで部材を追加／解除（プロジェクトブラウザも青で表示）。2 体以上で画面左下に **選択バー** が出ます。
 - **整列 ▾**: X / Z 方向に 200mm 間隔で並べる（高さ・奥行きは先頭に揃う）、高さを先頭に揃える
@@ -189,4 +212,9 @@ PBR（アルベド / 法線 / 粗さ / AO）マテリアル、HDRI 環境光（P
 ```bash
 node dev/shot.mjs /dev/fam-test.html?f=portal_frame out.png   # ファミリ単体の描画
 node dev/app-shot.mjs out.png dev/flows/estimate.js             # UI フロー
+```
+
+### オフライン版のライブラリ取得（vendor/、git 管理外）
+```bash
+cd anglex/vendor && for u in "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js" "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.min.js" "https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js" "https://cdn.jsdelivr.net/npm/harfbuzzjs@0.4.6/hb-subset.wasm" "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs" "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs" "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr"; do f=$(echo "$u" | sed 's#https://##; s#[/@]#_#g'); curl -sSL -o "$f" "$u"; done; cd .. && python3 tools/vendor_three.py
 ```
