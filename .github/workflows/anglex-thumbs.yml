@@ -1,0 +1,40 @@
+# ANGLEX: カタログ・ジオメトリが変わったらショールームのサムネイルを再生成し、単一ファイル版を再ビルドしてコミットする
+name: ANGLEX thumbnails
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'anglex/js/data/catalog.js'
+      - 'anglex/js/bim/**'
+      - 'anglex/js/geo/**'
+      - 'anglex/js/ui/thumbs.js'
+      - 'anglex/js/ui/catalog.js'
+jobs:
+  thumbs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright (Chromium, SwiftShader でソフトウェア描画)
+        working-directory: anglex
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+      - name: Generate thumbnails
+        working-directory: anglex
+        run: node dev/gen-thumbs.mjs
+      - name: Rebuild single-file builds
+        working-directory: anglex
+        run: |
+          python3 tools/build_single.py && cp dist/ANGLEX.html dist/ANGLEX_v1.html
+          python3 tools/build_single.py v2.html css/app_v2.css dist/ANGLEX_v2.html
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add anglex/js/data/thumbs_pre.js anglex/dist/ANGLEX.html anglex/dist/ANGLEX_v1.html anglex/dist/ANGLEX_v2.html
+          git diff --cached --quiet && echo "no change" || (git commit -m "ANGLEX: サムネイル再生成（CI）" && git push)

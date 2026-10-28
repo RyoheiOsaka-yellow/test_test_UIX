@@ -1,6 +1,6 @@
 // ショールーム サムネイルの事前生成: アプリを headless で起動して全製品（既定 SKU）を描画し、js/data/thumbs_pre.js に書き出す
 // 使い方: node dev/gen-thumbs.mjs   （GPU があれば数十秒、ソフトウェア描画では数分）
-import pw from '/opt/node-tools/node_modules/playwright/index.js'; const { chromium } = pw;
+const pw = await import(process.env.PLAYWRIGHT_MODULE || 'playwright').catch(() => import('/opt/node-tools/node_modules/playwright/index.js')); const { chromium } = pw.default || pw;
 import http from 'http'; import fs from 'fs'; import path from 'path';
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
