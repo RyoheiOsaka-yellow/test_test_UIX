@@ -295,7 +295,7 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID, extra }) {
     page: 'cases', ja: idxJa, en: idxEn,
     title: 'Cases — YELLOW Inc.',
     titleJa: '事例 — 株式会社YELLOW',
-    desc: 'Factory layout studies, 3D modelling of station interiors, point-cloud data, in-store promotion simulation and more: ' + cases.length + ' cases implemented by YELLOW Inc., each with a working browser demo.',
+    desc: 'Factory layouts, 3D station interiors, point clouds, in-store promotion simulation and mobility analysis: ' + cases.length + ' cases by YELLOW Inc., most with a browser demo.',
     descJa: '工場のレイアウト検証、駅構内の3Dモデリング、点群データの活用、店頭販促シミュレーション、人流データの分析など、株式会社YELLOWが実装した事例の一覧。多くの事例はブラウザで動くデモを公開しています。',
     url: listUrl, ld: listLd, image: cases[0] && cases[0].imgs[0] && cases[0].imgs[0].src,
   })]);
