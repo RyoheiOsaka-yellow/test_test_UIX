@@ -17,7 +17,7 @@
 <meta property="og:locale" content="ja_JP">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" href="/images/hero-summer.webp" as="image" fetchpriority="high">
+<link rel="preload" href="/images/hero-pv.mp4" as="video" type="video/mp4" fetchpriority="high">
 <!-- 構造化データ（確定情報のみ） -->
 <script type="application/ld+json">
 {
@@ -189,7 +189,7 @@
 
   <section class="hero">
     <div class="hero-media">
-      <div class="hero-fig on"><video autoplay muted loop playsinline preload="none" poster="/images/hero-summer.webp" aria-label="COMPASS HOUSE PV"></video></div>
+      <div class="hero-fig on"><video autoplay muted loop playsinline preload="auto" aria-label="COMPASS HOUSE PV"></video></div>
     </div>
     <div class="hero-veil"></div>
 
@@ -323,7 +323,7 @@
           </div>
         </a>
         <a href="/shop" class="svc rv">
-          <div class="svc-bg"><img src="/images/rental-ski.webp" srcset="/images/rental-ski-800.webp 800w, /images/rental-ski.webp 1600w" sizes="(max-width:600px) 100vw, (max-width:1080px) 50vw, 400px" alt="Shop" loading="lazy" decoding="async"></div>
+          <div class="svc-bg"><img src="/images/shop-tile.webp" srcset="/images/shop-tile-800.webp 800w, /images/shop-tile.webp 1600w" sizes="(max-width:600px) 100vw, (max-width:1080px) 50vw, 400px" alt="Shop" loading="lazy" decoding="async"></div>
           <div class="svc-veil"></div>
           <div class="svc-in">
             <span class="svc-no">03</span>
@@ -564,7 +564,7 @@
         <div class="route">
           <div class="route-n">02</div>
           <div class="route-t" data-i="tn.2t">持ち物・服装</div>
-          <p class="route-d" data-i="tn.2d">動きやすい服装・スニーカー・飲み物をご用意ください。ヘルメット等の安全装備はツアー料金に含まれます。グローブ・サングラスの持参を推奨します。</p>
+          <p class="route-d" data-i="tn.2d">持ち物・服装は初回利用ガイドをご覧ください。</p>
         </div>
         <div class="route">
           <div class="route-n">03</div>
@@ -583,7 +583,6 @@
         <div class="rv">
           <div class="eyebrow light">MOVIE</div>
           <div class="h-sec"><div class="en-t" style="font-size:clamp(26px,3.6vw,40px)">Compass House TV</div><span class="jp-t" data-i="vd.sub">動画コンテンツ</span></div>
-          <p class="lead" style="margin-top:20px" data-i="vd.note">サービス別の動画は制作中のため、共通動画を掲載しています。</p>
           <a href="https://www.youtube.com/user/CompassHouseTV" target="_blank" rel="noopener" class="btn btn-light" style="margin-top:24px"><span data-i="vd.cta">YouTubeチャンネル</span><span class="ar">&#8599;</span></a>
         </div>
       </div>
@@ -618,6 +617,7 @@
         <button data-rs="winter">WINTER SEASON<em data-i="rs.winter">ウインターシーズン / スキー・スノーボード</em></button>
       </div>
 
+      <div class="season-tabs sub rv" id="rentalSub" style="display:none"></div>
       <div class="gear-grid rv" id="rentalGrid"></div>
 
       <!-- PDF band -->
@@ -742,7 +742,6 @@
         <div class="rv">
           <div class="eyebrow light">MOVIE</div>
           <div class="h-sec"><div class="en-t" style="font-size:clamp(26px,3.6vw,40px)">Compass House TV</div><span class="jp-t" data-i="vd.sub">動画コンテンツ</span></div>
-          <p class="lead" style="margin-top:20px" data-i="vd.note">サービス別の動画は制作中のため、共通動画を掲載しています。</p>
           <a href="https://www.youtube.com/user/CompassHouseTV" target="_blank" rel="noopener" class="btn btn-light" style="margin-top:24px"><span data-i="vd.cta">YouTubeチャンネル</span><span class="ar">&#8599;</span></a>
         </div>
       </div>
@@ -808,7 +807,6 @@
         <div class="rv">
           <div class="eyebrow light">MOVIE</div>
           <div class="h-sec"><div class="en-t" style="font-size:clamp(26px,3.6vw,40px)">Compass House TV</div><span class="jp-t" data-i="vd.sub">動画コンテンツ</span></div>
-          <p class="lead" style="margin-top:20px" data-i="vd.note">サービス別の動画は制作中のため、共通動画を掲載しています。</p>
           <a href="https://www.youtube.com/user/CompassHouseTV" target="_blank" rel="noopener" class="btn btn-light" style="margin-top:24px"><span data-i="vd.cta">YouTubeチャンネル</span><span class="ar">&#8599;</span></a>
         </div>
       </div>
@@ -837,7 +835,7 @@
           <div class="eyebrow">OUR EVENT</div>
           <div class="h-sec"><div class="en-t">Compass Event</div><span class="jp-t" data-i="ep.sub">自社イベント・タイアップ</span></div>
         </div>
-        <p class="lead" data-i="ep.lead">※ 掲載内容は準備中です。運用開始後、随時更新いたします。</p>
+        <p class="lead" data-i="ep.lead">最新のイベント情報は随時更新いたします。</p>
       </div>
       <div class="ev-grid rv" id="eventGrid"></div>
     </div>
@@ -976,13 +974,13 @@
       <div class="tabp" id="tab-dmo">
         <div class="formal">
           <h3 data-i="dmo.h1">DMO・地域連携について</h3>
-          <p data-i="dmo.p1">当社は、野沢温泉村を中心とした観光地域づくり法人（DMO）および自治体・行政、観光・交通・アウトドア関連企業の皆様と連携し、通年型の観光コンテンツ開発に取り組んでいます。</p>
+          <p data-i="dmo.p1">DMO・自治体・地域事業者との連携に取り組んでいます。詳細は順次公開いたします。</p>
           <p data-i="dmo.p2">冬季のスキー観光に依存しがちな地域構造に対し、グリーンシーズンのサイクルツーリズムやアクティビティを核とした通年集客モデルの構築を目指しています。フィールドの実務を担う事業者として、企画立案から現場運営、安全管理までを一貫してご提供できることが当社の強みです。</p>
 
           
 
           <h3 data-i="dmo.h2">連携実績・取り組み領域</h3>
-          <div class="tbd"><b data-i="tbd.h">準備中</b><p data-i="dmo.tbd">連携実績・取り組み領域の情報をご提供いただき次第、この枠に掲載します。</p></div>
+          <div class="tbd"><b data-i="tbd.h">近日公開</b><p data-i="dmo.tbd">連携実績・取り組み領域の詳細は近日公開予定です。</p></div>
 
           <h3 data-i="dmo.h3">連携のご相談</h3>
           <p data-i="dmo.p3">自治体・DMO・企業の皆様からのご相談を承っております。事業内容や実績資料のご請求は、お問い合わせフォームより「企業タイアップのお問い合わせ」を選択のうえご連絡ください。</p>
@@ -994,7 +992,7 @@
       <div class="tabp" id="tab-recruit">
         <div class="formal">
           <h3 data-i="rc.h1">採用について</h3>
-          <p data-i="rc.p1">COMPASS HOUSE では、野沢温泉のフィールドとともに働く仲間を募集しています。スキー・スノーボード・自転車が好きな方、接客やガイド業務に関心のある方のご応募をお待ちしております。</p>
+          <p data-i="rc.p1">採用に関するお問い合わせは、お問い合わせフォームよりご連絡ください。</p>
           <p data-i="rc.p2">経験の有無は問いません。研修制度およびガイド資格取得のサポート体制を整えています。</p>
         </div>
 
@@ -1002,10 +1000,10 @@
           <div class="job">
             <div class="job-h"><div><div class="job-t" data-i="rc.j1t">募集職種</div></div><span class="job-tag">TBC</span></div>
             <dl class="job-dl">
-              <div><dt data-i="rc.d1">業務内容</dt><dd class="tbd-inline" data-i="tbd.wait1">ご提供待ち</dd></div>
-              <div><dt data-i="rc.d2">勤務地</dt><dd class="tbd-inline" data-i="tbd.wait2">ご提供待ち</dd></div>
-              <div><dt data-i="rc.d3">雇用形態</dt><dd class="tbd-inline" data-i="tbd.wait3">ご提供待ち</dd></div>
-              <div><dt data-i="rc.d4">求める人物像</dt><dd class="tbd-inline" data-i="tbd.wait4">ご提供待ち</dd></div>
+              <div><dt data-i="rc.d1">業務内容</dt><dd class="tbd-inline" data-i="tbd.wait1">お問い合わせください</dd></div>
+              <div><dt data-i="rc.d2">勤務地</dt><dd class="tbd-inline" data-i="tbd.wait2">お問い合わせください</dd></div>
+              <div><dt data-i="rc.d3">雇用形態</dt><dd class="tbd-inline" data-i="tbd.wait3">お問い合わせください</dd></div>
+              <div><dt data-i="rc.d4">求める人物像</dt><dd class="tbd-inline" data-i="tbd.wait4">お問い合わせください</dd></div>
             </dl>
           </div>
         </div>
@@ -1034,7 +1032,6 @@
         <div class="rv">
           <div class="eyebrow light">MOVIE</div>
           <div class="h-sec"><div class="en-t" style="font-size:clamp(26px,3.6vw,40px)">Compass House TV</div><span class="jp-t" data-i="vd.sub">動画コンテンツ</span></div>
-          <p class="lead" style="margin-top:20px" data-i="vd.note">サービス別の動画は制作中のため、共通動画を掲載しています。</p>
           <a href="https://www.youtube.com/user/CompassHouseTV" target="_blank" rel="noopener" class="btn btn-light" style="margin-top:24px"><span data-i="vd.cta">YouTubeチャンネル</span><span class="ar">&#8599;</span></a>
         </div>
       </div>
@@ -1206,7 +1203,7 @@
 
           <h3 data-i="ss.w.t1h">COMPASS HOUSE WINTER TOUR</h3>
           <p data-i="ss.w.t1p">野沢の大自然を滑るバックカントリーや、初心者から上級者までレベルや年齢に関係なく多くの人に参加していただけるイベント・ツアーを開催しています。ヘトヘトになるまで遊んで、心から「楽しかった！」と終える1日を、COMPASS HOUSEでぜひ体験してください。</p>
-          <div class="tbd"><b data-i="ss.w.tbd.h">ウインターツアー プラン一覧</b><p data-i="ss.w.tbd">冬季ツアーの個別プラン（プラン名・料金・所要時間）をご提供いただき次第、この枠に掲載します。</p></div>
+          <div class="tbd"><b data-i="ss.w.tbd.h">ウインターツアー プラン一覧</b><p data-i="ss.w.tbd">ウインターツアーの各プランは、ツアーページ（ウィンターシーズン）をご覧ください。</p></div>
         </div>
         <div class="ss-cta">
           <a href="/rental" class="btn"><span data-i="ss.cta.r">レンタルを見る</span><span class="ar">&rarr;</span></a>

@@ -1,5 +1,5 @@
 /* ============================================================
-   COMPASS HOUSE — Renewal Demo / app.js
+   COMPASS HOUSE — Official Site / app.js
    ============================================================ */
 'use strict';
 
@@ -200,47 +200,60 @@ const GEAR = {
      pdf:'/docs/bike_price_2025.pdf'}
   ],
   winter:[
-    {cat:'STANDARD RENTAL', name:'Ski & Snowboard Set',
-     d:'初めての方から中級者まで使いやすいスタンダードセット。スキー・スノーボードを気軽に楽しみたい方におすすめです。',
-     dEn:'A standard set easy to use from first-timers to intermediates. Recommended for those who want to casually enjoy skiing or snowboarding.',
-     p:'5,700', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (set + boots)',
-     img:IMG.ski},
-    {cat:'PREMIUM SKI', name:'ARMADA Ski Set',
-     d:'ARMADAの高性能スキーで、野沢の雪をしっかり楽しめます。パウダーやフリーライドを楽しみたい方におすすめ。中・上級者向けの高性能モデルをご用意。',
-     dEn:'Enjoy Nozawa\'s snow with ARMADA\'s high-performance skis. Recommended for powder and freeride. High-performance models for intermediate and advanced skiers.',
-     p:'7,200', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (skis + boots)',
-     img:'/images/armada-madsteez.webp'},
-    {cat:'PREMIUM SNOWBOARD', name:'CAPiTA / KORUA',
-     catch:'ARMADA / BURTON / CAPiTA / KORUA SHAPES',
-     catchEn:'ARMADA / BURTON / CAPiTA / KORUA SHAPES',
-     d:'ハイエンドブランドをラインナップ。通常は購入しなければ体験できない高性能モデルをレンタルでお試しいただけます。カービングやパウダーなど、より質の高い滑りを求める方に。',
-     dEn:'High-end brand lineup. Try high-performance models normally only available for purchase. For those seeking higher-quality riding such as carving and powder.',
-     p:'7,200', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (board + boots)',
-     img:'/images/armada-black.webp'},
-    {cat:'STANDARD SNOWBOARD', name:'Burton Set',
-     d:'初めてスノーボードに挑戦する方や、気軽に楽しみたい方におすすめ。扱いやすく乗りやすいBurtonのボードを中心に、安心してゲレンデデビューをお楽しみいただけます。',
-     dEn:'Recommended for first-time snowboarders. Centered on easy-to-handle Burton boards for a confident slope debut.',
-     p:'5,700', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (board + boots)',
-     img:'/images/snowboard-powder.webp'},
-    {cat:'STANDARD SKI', name:'ARMADA Standard',
-     d:'初めてスキーを楽しむ方や、久しぶりに雪山へ来た方に最適なセット。扱いやすく安定感のあるARMADAのスキーを採用し、安心してゲレンデを楽しめます。',
-     dEn:'Ideal for first-time skiers or those returning to the mountains. Easy-to-handle, stable ARMADA skis for confident slope enjoyment.',
-     p:'5,700', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (skis + boots)',
+    {type:'ski', cat:'SKI', name:'STANDARD SKI SET',
+     d:'初めての方から中級者まで使いやすいスタンダードスキーセットです。ゲレンデでの滑走を気軽に楽しみたい方におすすめです。',
+     dEn:'A standard ski set that is easy to use from first-timers to intermediates. Recommended for those who want to casually enjoy the slopes.',
+     set:'セット内容：スキー板・ブーツ・ポール', setEn:'Includes: skis, boots, poles',
+     p:'6,500', unit:'1日（税込）', unitEn:'/ day (tax incl.)',
      img:'/images/ski-group.webp'},
-    {cat:'STEP ON', name:'BURTON Step On',
-     d:'着脱がワンステップで完了するBURTONのStep Onシステム。リフト降り場での手間を大幅に軽減します。',
-     dEn:'BURTON\'s Step On system completes entry in one step, greatly reducing hassle at lift exits.',
-     p:'8,700', unit:'日〜（ボード＋ブーツ）', unitEn:'/ day~ (board + boots)',
-     imgFile:null, imgLabel:'BURTON Step On', img:null},
-  {cat:'RENTAL BASE', name:'WINTER 料金表 PDF',
-     nameEn:'WINTER Price List PDF',
-     d:'スキー・スノーボードのレンタルラインナップと料金表はPDFにてご確認いただけます。',
-     dEn:'Ski & snowboard rental lineup and price list available as PDF.',
-     p:null, unit:'', unitEn:'',
-     img:IMG.heroWinter, isPdf:true,
+    {type:'ski', cat:'SKI', name:'PREMIUM SKI SET',
+     d:'ARMADAの高性能スキーを使用したプレミアムセットです。パウダーやフリーライド向けのモデルから、ゲレンデでのカービングを楽しめるモデルまで幅広くご用意しています。',
+     dEn:'A premium set featuring ARMADA high-performance skis, from powder and freeride models to carving models for the groomed slopes.',
+     set:'セット内容：スキー板・ブーツ・ポール', setEn:'Includes: skis, boots, poles',
+     p:'8,000', unit:'1日（税込）', unitEn:'/ day (tax incl.)',
+     img:'/images/armada-madsteez.webp'},
+    {type:'ski', cat:'SKI', name:'PREMIUM SKI',
+     catch:'取扱ブランド：ARMADA', catchEn:'Brands: ARMADA',
+     d:'ARMADAの最新モデルをレンタルできます。カービングからパウダー、フリーライドまで幅広いモデルをラインナップ。気になっていたスキーのお試しや、その日の雪質に合わせた板選びにもおすすめです。',
+     dEn:'Rent the latest ARMADA models, from carving to powder and freeride. Ideal for trying a ski you have had your eye on, or choosing skis to match the day\'s snow.',
+     set:'レンタル内容：スキー板のみ（ブーツ・ポールなし）', setEn:'Includes: skis only (no boots or poles)',
+     p:'6,500', unit:'1日（税込）', unitEn:'/ day (tax incl.)',
+     img:'/images/gear-ski-premium.webp'},
+    {type:'snowboard', cat:'SNOWBOARD', name:'STANDARD SNOWBOARD SET',
+     d:'初めての方から中級者まで使いやすいスタンダードスノーボードセットです。ゲレンデでの滑走を気軽に楽しみたい方におすすめです。',
+     dEn:'A standard snowboard set that is easy to use from first-timers to intermediates. Recommended for those who want to casually enjoy the slopes.',
+     set:'セット内容：スノーボード・ブーツ・バインディング', setEn:'Includes: snowboard, boots, bindings',
+     p:'6,500', unit:'1日（税込）', unitEn:'/ day (tax incl.)',
+     img:'/images/snowboard-powder.webp'},
+    {type:'snowboard', cat:'SNOWBOARD', name:'PREMIUM SNOWBOARD SET',
+     catch:'取扱ブランド：ARMADA / BURTON / CAPiTA / KORUA SHAPES', catchEn:'Brands: ARMADA / BURTON / CAPiTA / KORUA SHAPES',
+     d:'人気ブランドの高性能スノーボードを揃えたプレミアムセットです。カービングやパウダーなど、ワンランク上の滑りを楽しみたい方におすすめです。',
+     dEn:'A premium set of high-performance snowboards from popular brands. Recommended for those who want to take their carving or powder riding to the next level.',
+     set:'セット内容：スノーボード・バインディング・ブーツ', setEn:'Includes: snowboard, bindings, boots',
+     p:'8,000', unit:'1日（税込）', unitEn:'/ day (tax incl.)',
+     img:'/images/gear-sb-premium-set.webp'},
+    {type:'snowboard', cat:'SNOWBOARD', name:'PREMIUM SNOWBOARD',
+     catch:'取扱ブランド：ARMADA / BURTON / CAPiTA / KORUA SHAPES', catchEn:'Brands: ARMADA / BURTON / CAPiTA / KORUA SHAPES',
+     d:'人気ブランドの最新モデルや高性能スノーボードをレンタルできます。突然のパウダーデイに合わせた板選びや、気になっていたモデルのお試しにもおすすめ。カービングからパウダーまで、その日の雪質やスタイルに合わせて楽しめます。',
+     dEn:'Rent the latest models and high-performance snowboards from popular brands. Ideal for a surprise powder day or trying a model you have been curious about, from carving to powder.',
+     set:'レンタル内容：スノーボード・バインディング（ブーツなし）', setEn:'Includes: snowboard, bindings (no boots)',
+     p:'6,500', unit:'1日（税込）', unitEn:'/ day (tax incl.)',
+     img:'/images/armada-black.webp'},
+    {type:'snowboard', cat:'SNOWBOARD', name:'BURTON STEP ON SET',
+     d:'BURTONのStep Onシステムを採用したスノーボードセットです。ストラップを締める必要がなく、ブーツを踏み込むだけで簡単に装着可能。リフト降り場での着脱の手間を減らし、快適にスノーボードを楽しめます。',
+     dEn:'A snowboard set with the BURTON Step On system. No straps to tighten — just step in. Less hassle at the lift exit for a more comfortable day on the mountain.',
+     set:'セット内容：スノーボード・Step Onバインディング・専用ブーツ', setEn:'Includes: snowboard, Step On bindings, Step On boots',
+     p:'8,700', unit:'1日（税込）', unitEn:'/ day (tax incl.)',
+     img:'/images/gear-stepon.webp'},
+    {type:'all', cat:'RENTAL BASE', name:'WINTER レンタル料金表 PDF',
+     nameEn:'WINTER Rental Price List PDF',
+     d:'スキー・スノーボードのレンタル料金に加え、ウェア・ヘルメット・小物類の詳細や、長期レンタルの料金をご確認いただけます。詳しい料金・レンタル内容はPDFをご覧ください。',
+     dEn:'In addition to ski and snowboard rental prices, see details for wear, helmets and accessories, and long-term rental rates. Please see the PDF for full prices and rental contents.',
+     img:'/images/store-rentalbase.webp', isPdf:true,
      pdf:'/docs/winter_2024.pdf'}
   ]
 };
+
 
 /* ============================================================
    PRICE TABLES — 公式PDF準拠
@@ -262,24 +275,24 @@ const W_DURS = [
 ];
 
 const W_GEAR = [
-  {k:'pa_b', grp:'PREMIUM', n:'プレミアム 大人｜板/ボード＋ブーツ', nEn:'Premium Adult｜Skis or Board + Boots',
+  {k:'pa_b', grp:'PREMIUM', n:'プレミアム 大人｜スキー板・ブーツ・ポール／スノーボード・バインディング・ブーツ', nEn:'Premium Adult｜Skis, Boots & Poles / Snowboard, Bindings & Boots',
    s:'ARMADA / CAPiTA / KORUA 上位モデル', sEn:'ARMADA / CAPiTA / KORUA top models',
-   p:[7200,13400,13900,17280,23040,28800,34560,35280]},
-  {k:'pa',   grp:'PREMIUM', n:'プレミアム 大人｜板/ボードのみ', nEn:'Premium Adult｜Skis or Board only',
+   p:[8000,14890,15440,19200,25600,32000,38400,39200]},
+  {k:'pa',   grp:'PREMIUM', n:'プレミアム 大人｜スキー板・ポール／スノーボード・バインディング', nEn:'Premium Adult｜Skis & Poles / Snowboard & Bindings',
    s:'ブーツをお持ちの方', sEn:'For those with own boots',
-   p:[6000,11000,11500,14400,19200,24000,28800,29400]},
-  {k:'sa_b', grp:'STANDARD', n:'スタンダード 大人｜板/ボード＋ブーツ', nEn:'Standard Adult｜Skis or Board + Boots',
+   p:[6500,11920,12460,15600,20800,26000,31200,31850]},
+  {k:'sa_b', grp:'STANDARD', n:'スタンダード 大人｜スキー板・ブーツ・ポール／スノーボード・バインディング・ブーツ', nEn:'Standard Adult｜Skis, Boots & Poles / Snowboard, Bindings & Boots',
    s:'ARMADA / Burton 定番セット', sEn:'ARMADA / Burton standard set',
-   p:[5700,10400,10900,13680,18240,22800,27360,27930]},
-  {k:'sa',   grp:'STANDARD', n:'スタンダード 大人｜板/ボードのみ', nEn:'Standard Adult｜Skis or Board only',
+   p:[6500,11860,12430,15600,20800,26000,31200,31850]},
+  {k:'sa',   grp:'STANDARD', n:'スタンダード 大人｜スキー板・ポール／スノーボード・バインディング', nEn:'Standard Adult｜Skis & Poles / Snowboard & Bindings',
    s:'ブーツをお持ちの方', sEn:'For those with own boots',
-   p:[4500,8000,8500,10800,14400,18000,21600,22050]},
-  {k:'sk_b', grp:'STANDARD', n:'スタンダード 子供｜板/ボード＋ブーツ', nEn:'Standard Kids｜Skis or Board + Boots',
+   p:[5000,8890,9440,12000,16000,20000,24000,24500]},
+  {k:'sk_b', grp:'STANDARD', n:'スタンダード 子供｜スキー板・ブーツ・ポール／スノーボード・バインディング・ブーツ', nEn:'Standard Kids｜Skis, Boots & Poles / Snowboard, Bindings & Boots',
    s:'キッズサイズ', sEn:'Kids sizes',
-   p:[4000,7000,7500,9600,12800,16000,19200,19600]},
-  {k:'sk',   grp:'STANDARD', n:'スタンダード 子供｜板/ボードのみ', nEn:'Standard Kids｜Skis or Board only',
+   p:[4500,7880,8440,10800,14400,18000,21600,22050]},
+  {k:'sk',   grp:'STANDARD', n:'スタンダード 子供｜スキー板・ポール／スノーボード・バインディング', nEn:'Standard Kids｜Skis & Poles / Snowboard & Bindings',
    s:'キッズサイズ', sEn:'Kids sizes',
-   p:[2500,4000,4500,6000,8000,10000,12000,12250]},
+   p:[3000,4800,5400,7200,9600,12000,14400,14700]},
   {k:'so_b', grp:'STEP ON', n:'STEP ON 大人｜ボード＋ブーツ', nEn:'STEP ON Adult｜Board + Boots',
    s:'BURTON Step On システム', sEn:'BURTON Step On system',
    p:[8700,16400,16900,20880,27840,34800,41760,42630]},
@@ -294,20 +307,20 @@ const W_GEAR = [
    p:[15000,null,29500,36000,48000,60000,72000,73500]},
   {k:'bc_s', grp:'BACKCOUNTRY', n:'BC スタンダード｜板・ポール・シール', nEn:'BC Standard｜Skis, Poles, Skins',
    s:'標準セット', sEn:'Standard set',
-   p:[9000,null,17500,21600,28800,36000,43200,44100]},
+   p:[11000,null,21390,26400,35200,44000,52800,53900]},
   {k:'snsh', grp:'BACKCOUNTRY', n:'スノーシュー＋ポール', nEn:'Snow Shoes + Poles',
    s:'スノーハイク向け', sEn:'For snow hiking',
    p:[4000,null,7500,9600,12800,16000,19200,19600]}
 ];
 
 const W_ADDONS = [
-  {k:'ajp',  n:'ウェア 大人｜上下', nEn:'Wear Adult｜Jacket & Pants', p:[3500,null,6500,8400,11200,14000,16800,17150]},
-  {k:'kjp',  n:'ウェア 子供｜上下', nEn:'Wear Kids｜Jacket & Pants',  p:[3000,null,5500,7200,9600,12000,14400,14700]},
-  {k:'ajop', n:'ウェア 大人｜上または下', nEn:'Wear Adult｜Jacket or Pants', p:[3000,null,5500,7200,9600,12000,14400,14700]},
-  {k:'kjop', n:'ウェア 子供｜上または下', nEn:'Wear Kids｜Jacket or Pants',  p:[2500,null,4500,6000,8000,10000,12000,12250]},
-  {k:'helm', n:'ヘルメット', nEn:'Helmet',                    p:[1500,null,2500,3600,4800,6000,7200,7350]},
+  {k:'ajp',  n:'ウェア 大人｜上下', nEn:'Wear Adult｜Jacket & Pants', p:[4000,null,7430,9600,12800,16000,19200,19600]},
+  {k:'kjp',  n:'ウェア 子供｜上下', nEn:'Wear Kids｜Jacket & Pants',  p:[3500,null,6420,8400,11200,14000,16800,17150]},
+  {k:'ajop', n:'ウェア 大人｜上または下', nEn:'Wear Adult｜Jacket or Pants', p:[3500,null,6420,8400,11200,14000,16800,17150]},
+  {k:'kjop', n:'ウェア 子供｜上または下', nEn:'Wear Kids｜Jacket or Pants',  p:[3000,null,5400,7200,9600,12000,14400,14700]},
+  {k:'helm', n:'ヘルメット', nEn:'Helmet',                    p:[2000,null,3330,4800,6400,8000,9600,9800]},
   {k:'boot', n:'ブーツ単品（スキー / スノーボード）', nEn:'Boots only (Ski / Snowboard)', p:[2500,null,4500,6000,8000,10000,12000,12250]},
-  {k:'bind', n:'ビンディング単品', nEn:'Bindings only',        p:[3000,null,5500,7200,9600,12000,14400,14700]}
+  {k:'bind', n:'スノーボードバインディング単品', nEn:'Snowboard bindings only', p:[3500,null,6420,8400,11200,14000,16800,17150]}
 ];
 
 /* --- GREEN : 半日 / 1日 --- */
@@ -342,15 +355,15 @@ const G_GEAR = [
 
 /* ---------- ROUTES ---------- */
 const ROUTES = [
-  {n:'ROUTE 01', t:'準備中', tEn:'Coming soon', m:[], mEn:[], tbd:true,
-   d:'おすすめルートの情報をご提供いただき次第、この枠に掲載します。',
-   dEn:'Route details will be published here once provided.'},
-  {n:'ROUTE 02', t:'準備中', tEn:'Coming soon', m:[], mEn:[], tbd:true,
-   d:'おすすめルートの情報をご提供いただき次第、この枠に掲載します。',
-   dEn:'Route details will be published here once provided.'},
-  {n:'ROUTE 03', t:'準備中', tEn:'Coming soon', m:[], mEn:[], tbd:true,
-   d:'おすすめルートの情報をご提供いただき次第、この枠に掲載します。',
-   dEn:'Route details will be published here once provided.'}
+  {n:'ROUTE 01', t:'近日公開', tEn:'Coming soon', m:[], mEn:[], tbd:true,
+   d:'おすすめルートは近日公開予定です。',
+   dEn:'Recommended routes will be published soon.'},
+  {n:'ROUTE 02', t:'近日公開', tEn:'Coming soon', m:[], mEn:[], tbd:true,
+   d:'おすすめルートは近日公開予定です。',
+   dEn:'Recommended routes will be published soon.'},
+  {n:'ROUTE 03', t:'近日公開', tEn:'Coming soon', m:[], mEn:[], tbd:true,
+   d:'おすすめルートは近日公開予定です。',
+   dEn:'Recommended routes will be published soon.'}
 ];
 
 /* ---------- SHOP ---------- */
@@ -402,12 +415,12 @@ const REAL_STORES = [
 
 /* ---------- EVENTS ---------- */
 const EVENTS = [
-  {date:'COMING SOON', t:'イベント枠 01', tEn:'Event Slot 01',
-   m:['準備中','—'], mEn:['Preparing','—'], img:IMG.heroSummer},
-  {date:'COMING SOON', t:'イベント枠 02', tEn:'Event Slot 02',
-   m:['準備中','—'], mEn:['Preparing','—'], img:IMG.heroWinter},
-  {date:'COMING SOON', t:'イベント枠 03', tEn:'Event Slot 03',
-   m:['準備中','—'], mEn:['Preparing','—'], img:IMG.guide}
+  {date:'COMING SOON', t:'ウィンターイベント', tEn:'Winter Event',
+   m:['近日公開'], mEn:['Details coming soon'], img:'/images/event-1.webp'},
+  {date:'COMING SOON', t:'MTB・E-BIKEイベント', tEn:'MTB / E-BIKE Event',
+   m:['近日公開'], mEn:['Details coming soon'], img:'/images/event-2.webp'},
+  {date:'COMING SOON', t:'サイクリングイベント', tEn:'Cycling Event',
+   m:['近日公開'], mEn:['Details coming soon'], img:'/images/event-3.webp'}
 ];
 
 /* ---------- OFFICES / ACCESS ---------- */
@@ -482,11 +495,11 @@ const CT_TYPES = [
 
 /* ---------- TERMS TEXT ---------- */
 const TERMS_JA = `
-<div class="tbd">
-<b>利用規約は現在ご提供待ちです</b>
-<p>正式な規約文言をご提供いただき次第、この枠に全文を掲載します。<br>
-（要件シート「法的表記／利用規約」欄：フォームに載せる・規約はもらえる）</p>
-</div>
+<h4>ご利用にあたって</h4>
+<ul>
+<li>ツアー・レンタルのご利用は、各サービスページに記載の利用条件および下記キャンセルポリシーに基づきます。</li>
+<li>お客様の個人情報は、<a href="/policy">プライバシーポリシー</a>に基づき適切に取り扱います。</li>
+</ul>
 <h4>キャンセルポリシー</h4>
 <ul>
 <li>7〜4日前：ご利用料金の30%</li>
@@ -496,10 +509,11 @@ const TERMS_JA = `
 `;
 
 const TERMS_EN = `
-<div class="tbd">
-<b>Terms of Use — pending provision</b>
-<p>The full text will be published here once the official wording is provided.</p>
-</div>
+<h4>Terms of Use</h4>
+<ul>
+<li>Tours and rentals are subject to the conditions stated on each service page and to the cancellation policy below.</li>
+<li>Personal information is handled in accordance with our <a href="/policy">Privacy Policy</a>.</li>
+</ul>
 <h4>Cancellation Policy</h4>
 <ul>
 <li>7-4 days prior: 30% of the fee</li>
@@ -521,13 +535,11 @@ const POLICY_JA = `
 <p>本プライバシーポリシーは、当社が管理・運営する、「http://www.compasshouse.jp」から始まるURL（アドレス）を有するウェブサイト（以下当サイト）を通じて提供いただく、お客さまの個人情報（氏名・住所・生年月日・性別・電話番号・メールアドレスなど）に適用されます。</p>
 <h3>6. お問い合わせについて（プライバシーポリシー）</h3>
 <p>当社は、個人情報に関するお問い合わせ、苦情の適切な対応に努めます。お問い合わせ前に必ず「個人情報保護方針」の内容をご確認の上、同意をいたただける方のみ、メールでのお問い合わせを行ってください。電話でのお問い合わせは受け付けておりません。</p>
-<p style="margin-top:24px;font-size:11.5px;color:#8a807b">出典：既存サイト compasshouse.jp/policy/ の掲載内容</p>
 `;
 
 const POLICY_EN = `
-<div class="tbd"><b>English version — pending translation</b>
-<p>The Japanese Privacy Policy is quoted from the existing site (compasshouse.jp/policy/). An English translation will be added once the wording is confirmed.</p></div>
-`;
+<p style="margin-bottom:20px">The Privacy Policy is provided in Japanese. The Japanese text below is the official version.</p>
+` + POLICY_JA;
 
 const TOKUSHO = [
   ['販売業者','株式会社ドリームシップ','Seller','Dream Ship CO., Ltd.'],
@@ -536,13 +548,12 @@ const TOKUSHO = [
   ['電話番号','0269-67-0224','Phone','+81-269-67-0224'],
   ['メールアドレス','info@compasshouse.jp','E-mail','info@compasshouse.jp'],
   ['キャンセルについて（サービス）','7〜4日前：30%　3〜2日前：50%　前日・当日：100%','Cancellation (Services)','7-4 days prior: 30%. 3-2 days prior: 50%. Day before / same day: 100%.'],
-  ['販売価格','<span class="tbd-inline">要確認</span>','Price','<span class="tbd-inline">TBC</span>'],
-  ['商品代金以外の必要料金','<span class="tbd-inline">要確認</span>','Additional Fees','<span class="tbd-inline">TBC</span>'],
-  ['支払方法','<span class="tbd-inline">要確認</span>','Payment Methods','<span class="tbd-inline">TBC</span>'],
-  ['支払時期','<span class="tbd-inline">要確認</span>','Payment Timing','<span class="tbd-inline">TBC</span>'],
-  ['商品の引渡時期','<span class="tbd-inline">要確認</span>','Delivery','<span class="tbd-inline">TBC</span>'],
-  ['返品・交換について','<span class="tbd-inline">要確認</span>','Returns & Exchanges','<span class="tbd-inline">TBC</span>'],
-  ['適格請求書発行事業者登録番号','<span class="tbd-inline">要確認</span>','Qualified Invoice Number','<span class="tbd-inline">TBC</span>']
+  ['販売価格','各オンラインストア（COMPASS ONLINE STORE / ARMADA ONLINE）の表記に準じます','Price','As stated on each online store (COMPASS ONLINE STORE / ARMADA ONLINE)'],
+  ['商品代金以外の必要料金','各オンラインストア（COMPASS ONLINE STORE / ARMADA ONLINE）の表記に準じます','Additional Fees','As stated on each online store (COMPASS ONLINE STORE / ARMADA ONLINE)'],
+  ['支払方法','各オンラインストア（COMPASS ONLINE STORE / ARMADA ONLINE）の表記に準じます','Payment Methods','As stated on each online store (COMPASS ONLINE STORE / ARMADA ONLINE)'],
+  ['支払時期','各オンラインストア（COMPASS ONLINE STORE / ARMADA ONLINE）の表記に準じます','Payment Timing','As stated on each online store (COMPASS ONLINE STORE / ARMADA ONLINE)'],
+  ['商品の引渡時期','各オンラインストア（COMPASS ONLINE STORE / ARMADA ONLINE）の表記に準じます','Delivery','As stated on each online store (COMPASS ONLINE STORE / ARMADA ONLINE)'],
+  ['返品・交換について','各オンラインストア（COMPASS ONLINE STORE / ARMADA ONLINE）の表記に準じます','Returns & Exchanges','As stated on each online store (COMPASS ONLINE STORE / ARMADA ONLINE)']
 ];
 
 /* ---------- i18n ---------- */
@@ -598,7 +609,7 @@ const I18N = {
     'ss.w.r1m':'長野県下高井郡野沢温泉村豊郷7809 ／ 営業時間 8:00〜17:00 ／ レンタルに関するご予約・お問い合わせ 070-1403-0303',
     'ss.w.t1h':'COMPASS HOUSE WINTER TOUR',
     'ss.w.t1p':'野沢の大自然を滑るバックカントリーや、初心者から上級者までレベルや年齢に関係なく多くの人に参加していただけるイベント・ツアーを開催しています。ヘトヘトになるまで遊んで、心から「楽しかった！」と終える1日を、COMPASS HOUSEでぜひ体験してください。',
-    'ss.w.tbd':'冬季ツアーの個別プラン（プラン名・料金・所要時間）をご提供いただき次第、この枠に掲載します。',
+    'ss.w.tbd':'ウインターツアーの各プランは、ツアーページ（ウィンターシーズン）をご覧ください。',
     'gd.flow.h':'ご利用の流れ','gd.before.h':'ご利用前のご確認','ac.h.car':'BY CAR ／ お車','ac.h.train':'BY TRAIN ／ 電車',
     'gd.flow.sub':'ご予約から当日まで',
     'gd.s1t':'サービスを選ぶ','gd.s1d':'ツアー・レンタルの各ページから、ご希望のプランまたは機材をお選びください。レンタルは料金シミュレーターで概算料金をご確認いただけます。',
@@ -606,9 +617,9 @@ const I18N = {
     'gd.s3t':'予約システムで申し込む','gd.s3d':'ツアーは外部予約システム（STORES予約）へ、レンタルは各申込フォームへ移動します。日程・人数・機材をご入力ください。',
     'gd.s4t':'予約確定・当日ご来店','gd.s4d':'お申し込み後、確認のご連絡をいたします。当日は各拠点にお越しください。',
     'gd.form.mtb':'ペダルバイク','gd.form.ski':'スキー・スノーボード',
-    'gd.tbd.t':'持ち物・服装／当日の注意事項','gd.tbd.d':'ご案内内容をご提供いただき次第、この枠に掲載します。',
+    'gd.tbd.t':'持ち物・服装／当日の注意事項','gd.tbd.d':'持ち物・服装と当日の注意事項は、初回利用ガイドをご覧ください。',
     'gd.cta':'ご不明な点はお問い合わせへ',
-    'vd.note':'サービス別の動画は制作中のため、共通動画を掲載しています。',
+    
     'cta.contact':'お問い合わせ',
     'ct.exlbl':'EXAMPLES / お問い合わせ例','rt.custom.t':'カスタムツアーのご相談','rt.custom.s':'団体・法人・教育機関向けのオリジナルプランを承ります',
     'nav.home':'ホーム','nav.tour':'ツアー','nav.rental':'レンタル','nav.shop':'ショップ',
@@ -653,7 +664,7 @@ const I18N = {
     'ct.e3':'学校 / 団体向けカスタムパッケージツアー','ct.e4':'企業様向け（福利厚生）パッケージツアー',
     'tn.sub':'ご予約前のご確認',
     'tn.1t':'予約方法','tn.1d':'各ツアーの「予約へ進む」より、利用規約をご確認・ご同意のうえ外部予約システムへ進みます。',
-    'tn.2t':'持ち物・服装','tn.2d':'持ち物・服装に関するご案内は準備中です。',
+    'tn.2t':'持ち物・服装','tn.2d':'持ち物・服装は初回利用ガイドをご覧ください。',
     'tn.3t':'キャンセルポリシー','tn.3d':'7〜4日前：30%／3〜2日前：50%／前日・当日：100%',
     'rp.h':'野沢の極上コンディション<br>相応しい本物の遊び道具がここに',
     'rp.p':'Specialized の E-BIKE・MTB、ARMADA のスキー、Burton / CAPiTA / KORUA のスノーボード。プロショップが実際に使い込んだ道具を、そのままレンタルでご提供します。',
@@ -670,7 +681,7 @@ const I18N = {
     'sp.cat':'取扱カテゴリ・ブランド',
     'sp.store':'実店舗',
     'sp.store.link':'アクセス・営業時間の詳細',
-    'ep.sub':'自社イベント・タイアップ','ep.lead':'※ 掲載内容は準備中です。運用開始後、随時更新いたします。',
+    'ep.sub':'自社イベント・タイアップ','ep.lead':'最新のイベント情報は随時更新いたします。',
     'ep.local':'野沢温泉村のイベント情報',
     'gp.sub':'インスタグラム連携',
     'ac.car':'上信越自動車道・豊田飯山ICより約25分。',
@@ -694,14 +705,14 @@ const I18N = {
     'cm.h5':'',
     'cm.note':'',
     'dmo.h1':'DMO・地域連携について',
-    'dmo.p1':'掲載内容は準備中です。連携実績・取り組み領域の情報をご提供いただき次第、この枠に掲載します。',
+    'dmo.p1':'DMO・自治体・地域事業者との連携に取り組んでいます。詳細は順次公開いたします。',
     'dmo.p2':'',
     'dmo.s1':'','dmo.s2':'','dmo.s3':'','dmo.s4':'',
     'dmo.snote':'',
     'dmo.h2':'連携実績・取り組み領域',
-    'dmo.tbd':'連携実績・取り組み領域の情報をご提供いただき次第、この枠に掲載します。',
-    'tbd.h':'準備中',
-    'tbd.wait1':'ご提供待ち','tbd.wait2':'ご提供待ち','tbd.wait3':'ご提供待ち','tbd.wait4':'ご提供待ち',
+    'dmo.tbd':'連携実績・取り組み領域の詳細は近日公開予定です。',
+    'tbd.h':'近日公開',
+    'tbd.wait1':'お問い合わせください','tbd.wait2':'お問い合わせください','tbd.wait3':'お問い合わせください','tbd.wait4':'お問い合わせください',
     'ss.w.tbd.h':'ウインターツアー プラン一覧',
     'dmo.l1':'',
     'dmo.l2':'',
@@ -713,7 +724,7 @@ const I18N = {
     'dmo.p3':'自治体・DMO・企業の皆様からのご相談を承っております。お問い合わせフォームより「企業タイアップのお問い合わせ」を選択のうえご連絡ください。',
     'dmo.cta':'企業タイアップのお問い合わせ',
     'rc.h1':'採用について',
-    'rc.p1':'募集要項は準備中です。職種・業務内容・条件をご提供いただき次第、この枠に掲載します。',
+    'rc.p1':'採用に関するお問い合わせは、お問い合わせフォームよりご連絡ください。',
     'rc.p2':'',
     'rc.j1t':'','rc.j1s':'',
     'rc.j1d':'',
@@ -793,7 +804,7 @@ const I18N = {
     'ss.w.r1m':'7809 Toyosato, Nozawa Onsen, Shimotakai, Nagano / Hours 8:00-17:00 / Rental reservations & inquiries 070-1403-0303',
     'ss.w.t1h':'COMPASS HOUSE WINTER TOUR',
     'ss.w.t1p':'We have a variety of tours for riders, from those who want to explore Japanese wilderness to those who want to enjoy a fun ride in Japow. We suggest an awesome day for each and every rider !!',
-    'ss.w.tbd':'Individual winter tour plans (name, price, duration) will be published here once provided.',
+    'ss.w.tbd':'Please see the Tour page (Winter Season) for individual winter tour plans.',
     'gd.flow.h':'How It Works','gd.before.h':'Before You Book','ac.h.car':'BY CAR','ac.h.train':'BY TRAIN',
     'gd.flow.sub':'From booking to the day',
     'gd.s1t':'Choose a service','gd.s1d':'Select your plan or equipment from the Tour and Rental pages. For rentals, the price simulator gives you an estimate.',
@@ -801,9 +812,9 @@ const I18N = {
     'gd.s3t':'Apply via the booking system','gd.s3d':'Tours go to the external booking system (STORES); rentals go to the relevant application form. Enter your dates, party size and equipment.',
     'gd.s4t':'Confirmation and arrival','gd.s4d':'After applying, we will contact you to confirm. Please come to the relevant base on the day.',
     'gd.form.mtb':'Pedal Bike','gd.form.ski':'Ski & Snowboard',
-    'gd.tbd.t':'What to bring / notes for the day','gd.tbd.d':'Details will be published here once provided.',
+    'gd.tbd.t':'What to bring / notes for the day','gd.tbd.d':'Please see the First Time Guide for what to bring and notes for the day.',
     'gd.cta':'Contact us with any questions',
-    'vd.note':'The specified video (youtu.be/xqmio9N8OYs) is currently not public, so a public video from the official channel is shown provisionally.',
+    
     'cta.contact':'CONTACT',
     'ct.exlbl':'EXAMPLES','rt.custom.t':'Custom Tour Inquiry','rt.custom.s':'Original plans for groups, corporations and educational institutions',
     'nav.home':'Home','nav.tour':'Tour','nav.rental':'Rental','nav.shop':'Shop',
@@ -848,7 +859,7 @@ const I18N = {
     'ct.e3':'Custom package tours for schools / groups','ct.e4':'Corporate (employee welfare) package tours',
     'tn.sub':'Before You Book',
     'tn.1t':'How to Book','tn.1d':'From "Proceed to Booking" on each tour, review and agree to the terms, then continue to the external booking system.',
-    'tn.2t':'What to Bring','tn.2d':'Information on what to bring is in preparation.',
+    'tn.2t':'What to Bring','tn.2d':'Please see the First Time Guide for what to bring.',
     'tn.3t':'Cancellation Policy','tn.3d':'7-4 days prior: 30% / 3-2 days prior: 50% / day before &amp; same day: 100%',
     'rp.h':'Nozawa\'s finest conditions,<br>with genuine gear to match',
     'rp.p':'Specialized E-BIKEs and MTBs, ARMADA skis, and Burton / CAPiTA / KORUA snowboards. We rent out exactly the gear our pro shop actually rides.',
@@ -865,7 +876,7 @@ const I18N = {
     'sp.cat':'Product Categories & Brands',
     'sp.store':'Our Stores',
     'sp.store.link':'Access & Opening Hours',
-    'ep.sub':'Our Events & Tie-ups','ep.lead':'* Content is in preparation and will be updated once operations begin.',
+    'ep.sub':'Our Events & Tie-ups','ep.lead':'Event information is updated regularly.',
     'ep.local':'Events in Nozawa Onsen Village',
     'gp.sub':'Instagram Feed',
     'ac.car':'Approx. 25 min from Toyota-Iiyama IC on the Joshinetsu Expressway.',
@@ -889,14 +900,14 @@ const I18N = {
     'cm.h5':'',
     'cm.note':'',
     'dmo.h1':'DMO & Local Partnerships',
-    'dmo.p1':'Content is in preparation. Details will be published here once provided.',
+    'dmo.p1':'We work with DMOs, local governments and regional businesses. Details will be published progressively.',
     'dmo.p2':'',
     'dmo.s1':'','dmo.s2':'','dmo.s3':'','dmo.s4':'',
     'dmo.snote':'',
     'dmo.h2':'Track Record & Areas of Work',
-    'dmo.tbd':'Details of partnership track record and focus areas will be published here once provided.',
-    'tbd.h':'In preparation',
-    'tbd.wait1':'To be provided','tbd.wait2':'To be provided','tbd.wait3':'To be provided','tbd.wait4':'To be provided',
+    'dmo.tbd':'Details of our partnerships and focus areas will be published soon.',
+    'tbd.h':'Coming soon',
+    'tbd.wait1':'Please contact us','tbd.wait2':'Please contact us','tbd.wait3':'Please contact us','tbd.wait4':'Please contact us',
     'ss.w.tbd.h':'Winter Tour Plans',
     'dmo.l1':'',
     'dmo.l2':'',
@@ -908,7 +919,7 @@ const I18N = {
     'dmo.p3':'We welcome inquiries from local governments, DMOs and companies. Please select "Corporate tie-up inquiry" on the contact form.',
     'dmo.cta':'Corporate Tie-up Inquiry',
     'rc.h1':'Recruitment',
-    'rc.p1':'Job listings are in preparation. Positions, duties and conditions will be published here once provided.',
+    'rc.p1':'For recruitment inquiries, please contact us via the inquiry form.',
     'rc.p2':'',
     'rc.j1t':'','rc.j1s':'',
     'rc.j1d':'',
@@ -943,9 +954,12 @@ const I18N = {
 (function(){
   const hv = document.querySelector('.hero-fig video');
   if(!hv) return;
-  const load = () => { if(hv.src) return; hv.src = '/images/hero-pv.mp4'; const p = hv.play(); if(p && p.catch) p.catch(function(){}); };
-  if(document.readyState === 'complete') load();
-  else window.addEventListener('load', load);
+  const fallback = () => { const fig = hv.parentElement; if(fig && !fig.querySelector('img')){ hv.remove(); fig.insertAdjacentHTML('beforeend', '<img src="/images/hero-summer.webp" alt="" class="is-on">'); } };
+  hv.addEventListener('playing', () => hv.classList.add('is-on'), {once:true});
+  hv.addEventListener('error', fallback);
+  if(!hv.src) hv.src = '/images/hero-pv.mp4';
+  const p = hv.play();
+  if(p && p.catch) p.catch(fallback);
 })();
 
 /* 単一ファイル版：data URI化されたPDFリンクをBlob URLで開く（分割構成では無効） */
@@ -1009,11 +1023,31 @@ function renderGear(el, list){
         <h3 class="gear-n">${t(g.name, g.nameEn||g.name)}</h3>
         ${g.catch ? `<p class="gear-catch">${t(g.catch,g.catchEn)}</p>` : ''}
         <p class="gear-d">${t(g.d,g.dEn)}</p>
+        ${g.set ? `<p class="gear-set">${t(g.set,g.setEn)}</p>` : ''}
         ${g.isPdf
           ? `<a href="${g.pdf}" target="_blank" rel="noopener" class="btn btn-sm" style="margin-top:16px">${t('料金表PDFを見る','View Price PDF')}<span class="ar">&#8599;</span></a>`
           : `<div class="gear-p">&yen;${g.p}<small>${t(g.unit,g.unitEn)}</small></div>`}
       </div>
     </article>`).join('');
+}
+
+let WINTER_TYPE = 'ski';
+function renderRental(){
+  const grid = document.getElementById('rentalGrid');
+  const sub = document.getElementById('rentalSub');
+  if(!grid) return;
+  if(SIM.season === 'winter'){
+    if(sub){
+      sub.style.display = '';
+      sub.innerHTML = [['ski','SKI','スキー','Ski'],['snowboard','SNOWBOARD','スノーボード','Snowboard']].map(([k,en,jp,jpEn]) =>
+        `<button class="${WINTER_TYPE===k?'on':''}" data-wt="${k}">${en}<em>${t(jp,jpEn)}</em></button>`).join('');
+      sub.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { WINTER_TYPE = b.dataset.wt; renderRental(); setTimeout(observeReveal, 60); }));
+    }
+    renderGear(grid, GEAR.winter.filter(g => g.type === WINTER_TYPE || g.type === 'all'));
+  } else {
+    if(sub){ sub.style.display = 'none'; sub.innerHTML = ''; }
+    renderGear(grid, GEAR.green);
+  }
 }
 
 function renderRoutes(el){
@@ -1023,7 +1057,7 @@ function renderRoutes(el){
       <div class="route-n">${r.n}</div>
       <h3 class="route-t">${t(r.t,r.tEn)}</h3>
       ${(isEn()?r.mEn:r.m).length ? `<div class="route-m">${(isEn()?r.mEn:r.m).map(m=>`<span>${m}</span>`).join('')}</div>` : ''}
-      ${r.tbd ? `<div class="tbd" style="margin-top:12px"><b>${t("準備中","In preparation")}</b><p>${t(r.d,r.dEn)}</p></div>`
+      ${r.tbd ? `<div class="tbd" style="margin-top:12px"><b>${t("近日公開","Coming soon")}</b><p>${t(r.d,r.dEn)}</p></div>`
               : `<p class="route-d">${t(r.d,r.dEn)}</p>`}
     </div>`).join('');
 }
@@ -1071,7 +1105,7 @@ function renderEvents(el){
   if(!el) return;
   el.innerHTML = EVENTS.map(e => `
     <article class="ev">
-      <div class="ev-img"><img src="${e.img}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;opacity:.35"></div>
+      <div class="ev-img"><img src="${e.img}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>
       <div class="ev-b">
         <div class="ev-date">${e.date}</div>
         <h3 class="ev-t">${t(e.t,e.tEn)}</h3>
@@ -1080,7 +1114,7 @@ function renderEvents(el){
     </article>`).join('');
 }
 
-const IG_SET = [IMG.heroSummer,IMG.guide,IMG.bikes,IMG.heroWinter,IMG.ski,IMG.guide,IMG.heroSummer,IMG.bikes,IMG.ski,IMG.heroWinter];
+const IG_SET = ['/images/ig-1.webp','/images/ig-2.webp','/images/ig-3.webp','/images/ig-4.webp','/images/ig-5.webp','/images/ig-6.webp','/images/ig-7.webp','/images/ig-8.webp'];
 function renderIg(el, n, withBig){
   if(!el) return;
   let out = '';
@@ -1490,7 +1524,7 @@ function renderAll(){
   renderTours(document.getElementById('topTours'), TOURS.green.slice(0,2));
   renderTours(document.getElementById('tourList'), TOURS[TOUR_SEASON]);
   renderGear(document.getElementById('topGear'), GEAR.green.slice(0,3));
-  renderGear(document.getElementById('rentalGrid'), GEAR[SIM.season]);
+  renderRental();
   renderPdfBand(SIM.season);
   renderRoutes(document.getElementById('routeGrid'));
   renderShops(document.getElementById('shopCards'));
@@ -1586,7 +1620,7 @@ document.addEventListener('DOMContentLoaded', () => {
         SIM.season = b.dataset.rs;
         rt.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
         b.classList.add('on');
-        renderGear(document.getElementById('rentalGrid'), GEAR[SIM.season]);
+        renderRental();
         renderPdfBand(SIM.season);
         buildSim();
         setTimeout(observeReveal, 60);
@@ -1705,7 +1739,7 @@ document.addEventListener('DOMContentLoaded', () => {
       SIM.season = qkState.season;
       const rt = document.getElementById('rentalTabs');
       if(rt) rt.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.rs === qkState.season));
-      renderGear(document.getElementById('rentalGrid'), GEAR[qkState.season]);
+      renderRental();
       renderPdfBand(qkState.season);
       buildSim();
     }
@@ -1791,5 +1825,4 @@ document.addEventListener('DOMContentLoaded', () => {
   route();
 
   console.log('%cCOMPASS HOUSE', 'color:#820c00;font-family:"Roboto Condensed",sans-serif;font-size:26px;font-weight:700;letter-spacing:.1em');
-  console.log('%cRenewal Demo — Nozawa Onsen', 'color:#231815;font-size:12px;letter-spacing:.15em');
 });

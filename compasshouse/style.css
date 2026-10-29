@@ -1257,3 +1257,14 @@ body.is-contact .fab{display:none}
 
 /* お問い合わせフォーム：スパム対策用の不可視フィールド */
 .hp-field{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+
+/* ウィンターレンタル：SKI / SNOWBOARD サブタブ */
+.season-tabs.sub{margin-top:2px}
+.season-tabs.sub button{padding:13px 12px;font-size:11px}
+.season-tabs.sub button em{font-size:10.5px}
+/* レンタルカード：セット内容 */
+.gear-set{font-size:12px;color:var(--ink-2);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+/* ヒーロー動画：再生開始までは背景色のみ（静止画のちらつき防止） */
+.hero-fig video{opacity:0;transition:opacity .9s var(--ease);background:#111}
+.hero-fig video.is-on,.hero-fig img.is-on{opacity:1}
