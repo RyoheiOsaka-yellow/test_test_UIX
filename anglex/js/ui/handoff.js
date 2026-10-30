@@ -13,6 +13,13 @@ export function handoffMessage(app, est, to, link, { note = '', due = null, role
   const lines = [`【ANGLEX 見積 ${est.no} Rev.${est.revision}】${est.projectName}`, est.branch ? `営業所: ${branchName(est.branch)}` : null, '', `${WF.ROLES[to].name} ご担当者様`, '', `${WF.ROLES[role].name}（${user.name}）より見積を受け渡します。`, `下記リンクを開くと、貴社の権限で同じ見積を編集できます（ログイン不要・リンクが鍵です）。`, link, '', `■ お願い: ${ask}`, due ? `■ 回答期限: ${due}` : null, `■ 明細: ${est.lines.length} 行 / 総質量 ${fmt.kg(T.mass)}`, to !== 'C' ? `■ A社 提示 計: ${fmt.yen(T.a)}` : null, to === 'C' ? `■ 最長納期（現時点）: ${Math.max(0, ...est.lines.map(l => l.leadDays || 0)) || '—'} 日` : null, unanswered ? `■ 未入力の行: ${unanswered} 行` : null, note ? `\n${note}` : null, '', '— ANGLEX（図面に、語らせる）'];
   return lines.filter(x => x != null).join('\n');
 }
+// 催促文（期限超過・未回答が続くとき）
+export function reminderMessage(app, est) {
+  const dl = WF.deadlineInfo(est); const to = est.currentOrg; const link = est.tokens?.[to] ? location.origin + location.pathname + '?handoff=' + est.tokens[to] : '（リンクは業務フロー画面の「共有リンク」から）'; const T = WF.totals(est);
+  const pending = to === 'C' ? est.lines.filter(l => l.factoryCost == null || l.accepted == null).length : to === 'B' ? est.lines.filter(l => l.bMarginPct == null).length : 0;
+  const lines = [`【ANGLEX 見積 ${est.no} Rev.${est.revision}】${est.projectName} — ご回答のお願い（再送）`, '', `${WF.ROLES[to].name} ご担当者様`, '', dl?.overdue ? `回答期限 ${dl.due} を ${-dl.left} 日過ぎています。` : dl?.due ? `回答期限 ${dl.due}（残り ${dl.left} 日）が近づいています。` : `受け渡しから ${dl?.since ?? '—'} 日が経過しています。`, pending ? `未入力の行: ${pending} / ${est.lines.length} 行` : null, '', '下記リンクから入力をお願いします（ログイン不要・貴社の権限で同じ見積を編集できます）。', link, '', `■ 明細: ${est.lines.length} 行 / 総質量 ${fmt.kg(T.mass)}`, '', `${WF.ROLES[app.role()].name}（${app.user().name}）`, '— ANGLEX（図面に、語らせる）'];
+  return lines.filter(x => x != null).join('\n');
+}
 export function showMessage(text, title = '通知文（コピーして送付）') {
   const ta = h('textarea', { class: 'msg-text', rows: 14 }, text); const m = modal({ title, body: h('div', {}, h('div', { class: 'muted small', style: { marginBottom: '6px' } }, 'メール・チャットに貼り付けてください。リンクを開いた相手は自社の権限で同じ見積を編集できます。'), ta), footer: [h('button', { class: 'btn', onClick: () => m.close() }, '閉じる'), h('button', { class: 'btn', onClick: () => { const s = encodeURIComponent(text.split('\n')[0]), b = encodeURIComponent(text); location.href = `mailto:?subject=${s}&body=${b}`; } }, 'メールで開く'), h('button', { class: 'btn primary', onClick: async () => { try { await navigator.clipboard.writeText(ta.value); toast('コピーしました', 'ok'); } catch { ta.select(); document.execCommand('copy'); toast('コピーしました', 'ok'); } } }, 'コピー')] }); return m;
 }

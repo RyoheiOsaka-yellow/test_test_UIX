@@ -16,5 +16,8 @@ console.log('BOOT', JSON.stringify(await page.evaluate(() => ({ offline: !!globa
 await page.screenshot({ path: process.argv[3] || '/tmp/offline.png' });
 const dl1 = page.waitForEvent('download', { timeout: 60000 }); await page.evaluate(async () => { const r = await import('anglex:js/ui/reports.js'); await r.exportWeightPDF(app); }); const d1 = await dl1; const p1 = await d1.path(); console.log('PDF', d1.suggestedFilename(), fs.statSync(p1).size, 'bytes', fs.readFileSync(p1).slice(0, 5).toString());
 const dl2 = page.waitForEvent('download', { timeout: 60000 }); await page.evaluate(async () => { const r = await import('anglex:js/ui/reports.js'); await r.exportWeightXLSX(app); }); const d2 = await dl2; console.log('XLSX', d2.suggestedFilename(), fs.statSync(await d2.path()).size, 'bytes');
+// OCR（Tesseract 同梱）: 外部遮断のまま文字を読めるか
+const ocr = await page.evaluate(async () => { try { const O = await import('anglex:js/import/ocr.js'); const c = document.createElement('canvas'); c.width = 420; c.height = 60; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 420, 60); g.fillStyle = '#000'; g.font = '22px sans-serif'; g.fillText('L-50x50x6  L=600', 10, 38); const t0 = performance.now(); const r = await Promise.race([O.ocrRegions(c, [{ x0: 4, y0: 8, x1: 300, y1: 50 }]), new Promise((_, j) => setTimeout(() => j(new Error('timeout 120s')), 120000))]); return { ms: Math.round(performance.now() - t0), text: r[0]?.text, conf: r[0]?.conf }; } catch (e) { return { error: e.message }; } });
+console.log('OCR', JSON.stringify(ocr));
 console.log('BLOCKED (expected external only)', [...new Set(blocked)].slice(0, 10)); console.log('CONSOLE ERRORS', errs.slice(0, 6));
 await browser.close(); server.close();

@@ -143,3 +143,12 @@ tr.new td{background:rgba(29,78,216,.06)}tr.gone td{background:rgba(0,0,0,.04);t
 .dash-chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0 2px}
 
 .modal.admin{width:min(1100px,96vw);height:min(820px,92vh)}.admin-wrap .cell-edit{width:100%}
+/* v1: 2D 図面表示中は 3D のラベル・旗・HUD・指示入力を隠す */
+.stage.show-2d > :not(#drawing){visibility:hidden}
+/* 図面ビュー: ラスター修正モード */
+.dwg-tools{display:inline-flex;gap:8px;align-items:center;margin-left:auto}.dwg-tools .chk.small{font-size:12px;color:var(--ink-2, var(--ink-mute, #666))}
+.dwg-hint{margin:4px 0 6px;padding:6px 10px;border:1px dashed #d9a441;border-radius:8px;background:#fff8e8;font-size:12.5px;color:#6b4a00}
+.svg-host.editing .editable:hover{stroke:#2563eb;stroke-width:4;filter:drop-shadow(0 0 2px rgba(37,99,235,.5))}.svg-host.editing path.editable:hover{fill:rgba(37,99,235,.18)}.svg-host.editing text.editable:hover{fill:#2563eb;text-decoration:underline}
+/* 業務フロー: 次の一手バナー・受け渡しタイムライン */
+.flow-next{display:flex;align-items:center;gap:12px;padding:10px 14px;margin:0 0 10px;border-radius:10px;background:linear-gradient(90deg,#eaf2ff,#f6f9ff);border:1px solid #c7d9f7}.flow-next .fn-icon{font-size:20px}.flow-next .fn-title{font-weight:700}.flow-next .fn-sub{color:var(--ink-2, var(--ink-mute, #666));font-size:12.5px}.flow-next .spacer{flex:1}.flow-next.warn{background:linear-gradient(90deg,#fff3e6,#fff9f2);border-color:#f3c98b}.flow-next.bad{background:linear-gradient(90deg,#ffe9e6,#fff5f3);border-color:#f0b4ac}.flow-next.ok{background:linear-gradient(90deg,#e6f6ea,#f3fbf5);border-color:#b7dcc0}
+.flow-timeline{display:flex;align-items:flex-start;gap:0;margin:8px 0 4px;overflow-x:auto;padding:4px 0}.flow-tl{position:relative;min-width:120px;flex:1;padding:0 6px 0 0}.flow-tl .dot{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--line);margin-bottom:4px;position:relative;z-index:1}.flow-tl::before{content:"";position:absolute;left:14px;right:-6px;top:6px;height:2px;background:var(--line)}.flow-tl:last-child::before{display:none}.flow-tl .lbl{font-size:12.5px;font-weight:600}.flow-tl .sub{font-size:11.5px;color:var(--ink-2, var(--ink-mute, #666))}.flow-tl.A .dot{border-color:#1f5f8b}.flow-tl.B .dot{border-color:#8a5a1f}.flow-tl.C .dot{border-color:#3e6b4a}.flow-tl.reject .dot{border-color:#c0392b;background:#c0392b}.flow-tl.final .dot{border-color:#2e7d32;background:#2e7d32}.flow-tl.now .dot{box-shadow:0 0 0 4px rgba(37,99,235,.2)}.flow-tl.wait .dot{border-style:dashed}

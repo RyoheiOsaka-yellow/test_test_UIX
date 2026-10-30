@@ -17,6 +17,10 @@ VENDOR_URLS = {
     'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js': ('cdn.jsdelivr.net_npm_xlsx_0.18.5_dist_xlsx.full.min.js', 'text/javascript'),
     'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs': ('cdn.jsdelivr.net_npm_pdfjs-dist_4.6.82_build_pdf.min.mjs', 'text/javascript'),
     'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs': ('cdn.jsdelivr.net_npm_pdfjs-dist_4.6.82_build_pdf.worker.min.mjs', 'text/javascript'),
+    'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js': ('tesseract/tesseract.min.js', 'text/javascript'),
+    'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js': ('tesseract/worker.min.js', 'text/javascript'),
+    'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-simd-lstm.wasm.js': ('tesseract/tesseract-core-simd-lstm.wasm.js', 'text/javascript'),
+    'https://tessdata.projectnaptha.com/4.0.0_fast/eng.traineddata.gz': ('tesseract/eng.traineddata.gz', 'application/gzip'),
     'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr': ('dl.polyhaven.org_file_ph-assets_HDRIs_hdr_1k_studio_small_09_1k.hdr', 'application/octet-stream'),
 }
 vendor_data = {}

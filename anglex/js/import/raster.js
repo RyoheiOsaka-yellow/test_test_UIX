@@ -15,7 +15,7 @@ function loadImage(src) { return new Promise((res, rej) => { const im = new Imag
 // スキャンのごま塩ノイズ除去: 孤立した黒画素（8 近傍に黒が 1 以下）を白に、ほぼ囲まれた白画素（8 近傍に黒が 7 以上）を黒に。線（幅 2px 以上）は変わらない
 export function despeckle(bin, w, h) { const src = bin.slice(); let n = 0; for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const k = y * w + x; const c = src[k - w - 1] + src[k - w] + src[k - w + 1] + src[k - 1] + src[k + 1] + src[k + w - 1] + src[k + w] + src[k + w + 1]; if (src[k] && c <= 1) { bin[k] = 0; n++; } else if (!src[k] && c >= 7) { bin[k] = 1; n++; } } return n; }
 // 円環テスト: 中心から 16 方向に走査し、黒の帯 [rin, rout] が全方向でほぼ同じ（真円）かつ中心に穴がある
-function ringProfile(bin, w, h, cx, cy, rmax) { const rin = [], rout = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a); let i0 = -1, i1 = -1; for (let r = 0; r <= rmax + 2; r += 0.5) { const x = Math.round(cx + r * dx), y = Math.round(cy + r * dy); if (x < 0 || y < 0 || x >= w || y >= h) break; if (bin[y * w + x]) { if (i0 < 0) i0 = r; i1 = r; } else if (i0 >= 0) break; } if (i0 < 0) return null; rin.push(i0); rout.push(i1); } const mean = v => v.reduce((a, b) => a + b, 0) / v.length; const sd = v => { const m = mean(v); return Math.sqrt(mean(v.map(x => (x - m) ** 2))); }; return { rin: mean(rin), rout: mean(rout), sdIn: sd(rin), sdOut: sd(rout) }; }
+function ringProfile(bin, w, h, cx, cy, rmax) { const rin = [], rout = []; let miss = 0; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, dx = Math.cos(a), dy = Math.sin(a); let i0 = -1, i1 = -1; for (let r = 0; r <= rmax + 2; r += 0.5) { const x = Math.round(cx + r * dx), y = Math.round(cy + r * dy); if (x < 0 || y < 0 || x >= w || y >= h) break; if (bin[y * w + x]) { if (i0 < 0) i0 = r; i1 = r; } else if (i0 >= 0) break; } if (i0 < 0) { if (++miss > 2) return null; continue; } rin.push(i0); rout.push(i1); } const mean = v => v.reduce((a, b) => a + b, 0) / v.length; const sd = v => { const m = mean(v); return Math.sqrt(mean(v.map(x => (x - m) ** 2))); }; return { rin: mean(rin), rout: mean(rout), sdIn: sd(rin), sdOut: sd(rout) }; }
 function runs(bin, w, h, minLen, horizontal) {
   const out = []; const N = horizontal ? h : w, M = horizontal ? w : h; const at = (i, j) => horizontal ? bin[i * w + j] : bin[j * w + i];
   let open = []; // {a,b,i0,i1,sum}
@@ -46,7 +46,7 @@ function markRuns(used, w, lines, thick) { for (const l of lines) { const t = Ma
 function isAnnulus(bin, w, h, cx, cy, r) { let hit = 0, inner = 0; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; let ok = false; for (const dr of [-2.5, -1.5, -0.5, 0.5, 1.5]) { const x = Math.round(cx + (r + dr) * Math.cos(a)), y = Math.round(cy + (r + dr) * Math.sin(a)); if (x >= 0 && y >= 0 && x < w && y < h && bin[y * w + x]) { ok = true; break; } } if (ok) hit++; const ix = Math.round(cx + 0.3 * r * Math.cos(a)), iy = Math.round(cy + 0.3 * r * Math.sin(a)); if (ix >= 0 && iy >= 0 && ix < w && iy < h && bin[iy * w + ix]) inner++; } return hit >= 12 && inner <= 2; }
 // 直線（mm 座標）から矩形を復元（真値の作成や DXF にも使える汎用版）
 export function rectsFromLines(lines, tol = 2) { const H = lines.filter(l => Math.abs(l.a[1] - l.b[1]) <= tol).map(l => ({ a: [Math.min(l.a[0], l.b[0]), (l.a[1] + l.b[1]) / 2], b: [Math.max(l.a[0], l.b[0]), (l.a[1] + l.b[1]) / 2] })); const V = lines.filter(l => Math.abs(l.a[0] - l.b[0]) <= tol).map(l => ({ a: [(l.a[0] + l.b[0]) / 2, Math.min(l.a[1], l.b[1])], b: [(l.a[0] + l.b[0]) / 2, Math.max(l.a[1], l.b[1])] })); return rectangles(H, V, tol); }
-export function diagonalsAndCircles(bin, w, h, H, V, { minLen = 20, minD = 6, maxD = 90 } = {}) {
+export function diagonalsAndCircles(bin, w, h, H, V, { minLen = 20, minD = 6, maxD = 90, maxText = 60 } = {}) {
   // 1) 円（穴）: ラン除去の前に、生の連結成分から探す。太い小円の上下の弦は短い直線として拾われてしまうため、先に円を確定して該当するランを除外する
   const circles = []; const compsAll = components(bin, w, h, new Uint8Array(w * h), { maxComp: 20000 });
   for (const c of compsAll) { const bw = c.x1 - c.x0 + 1, bh = c.y1 - c.y0 + 1; if (c.n < 12 || bw < minD || bw > maxD || bh > maxD) continue;
@@ -55,21 +55,29 @@ export function diagonalsAndCircles(bin, w, h, H, V, { minLen = 20, minD = 6, ma
     const p = ringProfile(bin, w, h, cx, cy, r + 1); if (p && p.rin >= 1 && p.rin >= 0.12 * p.rout && p.sdIn <= Math.max(0.8, 0.12 * p.rout) && p.sdOut <= Math.max(0.7, 0.1 * p.rout)) circles.push({ c: [cx, cy], r: (p.rin + p.rout) / 2, rOut: p.rout, n: c.n, bbox: { x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1 } }); }
   // 2) 斜線: 水平・垂直ランと円を除いた残りの連結成分のうち、主軸方向に細長いもの
   const used = new Uint8Array(w * h); markRuns(used, w, H); markRuns(used, w, V); for (const c of circles) for (let y = c.bbox.y0; y <= c.bbox.y1; y++) for (let x = c.bbox.x0; x <= c.bbox.x1; x++) used[y * w + x] = 1;
-  const comps = components(bin, w, h, used); const diag = [];
-  for (const c of comps) { if (c.n < 12) continue;
+  const comps = components(bin, w, h, used); const diag = [], glyphs = [];
+  for (const c of comps) { const gh = c.y1 - c.y0 + 1, gw = c.x1 - c.x0 + 1; if (c.n >= 4 && gh >= 3 && gh <= maxText && gw <= maxText * 3) glyphs.push({ x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1, n: c.n }); if (c.n < 12) continue;
     const tr = c.sxx + c.syy, det = c.sxx * c.syy - c.sxy * c.sxy; const disc = Math.sqrt(Math.max(0, tr * tr / 4 - det)); const l1 = tr / 2 + disc, l2 = Math.max(1e-6, tr / 2 - disc); const len = Math.sqrt(l1) * 2 * Math.sqrt(3); if (len < minLen || l1 / l2 < 25) continue; const ang = 0.5 * Math.atan2(2 * c.sxy, c.sxx - c.syy); const dx = Math.cos(ang), dy = Math.sin(ang); if (Math.abs(dx) < 0.12 || Math.abs(dy) < 0.12) continue; // ほぼ水平／垂直はラン抽出に任せる
     diag.push({ a: [c.cx - dx * len / 2, c.cy - dy * len / 2], b: [c.cx + dx * len / 2, c.cy + dy * len / 2], len, thick: Math.round(Math.sqrt(l2) * 2 * Math.sqrt(3)) }); }
-  return { diag, circles };
+  return { diag, circles, glyphs };
+}
+// 文字領域: 残った小さな連結成分（文字の画）を、縦に重なり横に近いもの同士で 1 行にまとめる → OCR の対象
+export function textRegions(glyphs, { maxGapK = 2.2 } = {}) {
+  const gs = glyphs.slice().sort((a, b) => a.x0 - b.x0); const rows = [];
+  for (const g of gs) { const gh = g.y1 - g.y0 + 1; let best = null;
+    for (const r of rows) { const rh = r.y1 - r.y0 + 1; const ov = Math.min(g.y1, r.y1) - Math.max(g.y0, r.y0) + 1; if (ov < Math.min(gh, rh) * 0.4) continue; const gap = g.x0 - r.x1; if (gap > Math.max(8, maxGapK * Math.max(gh, rh))) continue; if (!best || gap < best.gap) best = { r, gap }; }
+    if (best) { const r = best.r; r.x1 = Math.max(r.x1, g.x1); r.y0 = Math.min(r.y0, g.y0); r.y1 = Math.max(r.y1, g.y1); r.n++; } else rows.push({ x0: g.x0, y0: g.y0, x1: g.x1, y1: g.y1, n: 1 }); }
+  return rows.filter(r => r.n >= 2 && r.x1 - r.x0 >= 12).sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
 }
 // 画像 → DXF 互換 entities（mm 座標、Y 上向き）
 export async function vectorizeImage(src, { mmPerPx = null, dpi = 200, scale = 10, minLenMm = 15 } = {}) {
   const { bin, w, h, scale: s, thr, speckles, canvas } = await imageToBinary(src); const mmpp = mmPerPx != null ? mmPerPx / s : (25.4 / dpi) * scale / s; const minLen = Math.max(8, Math.round(minLenMm / mmpp));
   const H = runs(bin, w, h, minLen, true), V = runs(bin, w, h, minLen, false); const tol = Math.max(3, Math.round(2 / mmpp) + 2); const rects = rectangles(H, V, tol);
   const toMm = ([x, y]) => [Math.round(x * mmpp * 10) / 10, Math.round((h - y) * mmpp * 10) / 10];
-  const { diag, circles: circles0 } = diagonalsAndCircles(bin, w, h, H, V, { minLen: minLen, minD: Math.max(5, Math.round(4 / mmpp)), maxD: Math.round(60 / mmpp) });
+  const { diag, circles: circles0, glyphs } = diagonalsAndCircles(bin, w, h, H, V, { minLen: minLen, minD: Math.max(5, Math.round(4 / mmpp)), maxD: Math.round(60 / mmpp), maxText: Math.max(12, Math.round(60 / mmpp)) }); const regions = textRegions(glyphs);
   const circles = circles0.filter(c => rects.some(r => c.c[0] > r.x0 + 2 && c.c[0] < r.x1 - 2 && c.c[1] > r.y0 + 2 && c.c[1] < r.y1 - 2)); // 穴は部材外形（矩形）の内側にある。文字の o / 0 を除外
   const inCircle = l => circles.some(c => l.a[0] >= c.bbox.x0 - 1 && l.b[0] <= c.bbox.x1 + 1 && l.a[1] >= c.bbox.y0 - 1 && l.b[1] <= c.bbox.y1 + 1); const Hl = H.filter(l => !inCircle(l)), Vl = V.filter(l => !inCircle(l)); // 円の弦として拾われた短いランを除く
   const entities = []; for (const l of [...Hl, ...Vl]) entities.push({ type: 'LINE', a: toMm(l.a), b: toMm(l.b), layer: 'RASTER' }); for (const l of diag) entities.push({ type: 'LINE', a: toMm(l.a), b: toMm(l.b), layer: 'RASTER_DIAG' }); for (const c of circles) entities.push({ type: 'CIRCLE', c: toMm(c.c), r: Math.round(c.r * mmpp * 10) / 10, layer: 'RASTER_HOLE' });
   for (const r of rects) entities.push({ type: 'LWPOLYLINE', pts: [toMm([r.x0, r.y0]), toMm([r.x1, r.y0]), toMm([r.x1, r.y1]), toMm([r.x0, r.y1])], closed: true, layer: 'RASTER_RECT' });
-  return { entities, layers: { RASTER: { on: true }, RASTER_RECT: { on: true }, RASTER_DIAG: { on: true }, RASTER_HOLE: { on: true } }, stats: { px: `${w}×${h}`, threshold: thr, speckles, lines: Hl.length + Vl.length, diagonals: diag.length, circles: circles.length, circlesRaw: circles0.length, rects: rects.length, mmPerPx: Math.round(mmpp * 1000) / 1000 }, mmPerPx: mmpp, canvas };
+  return { entities, layers: { RASTER: { on: true }, RASTER_RECT: { on: true }, RASTER_DIAG: { on: true }, RASTER_HOLE: { on: true } }, regions, stats: { px: `${w}×${h}`, threshold: thr, speckles, textRegions: regions.length, lines: Hl.length + Vl.length, diagonals: diag.length, circles: circles.length, circlesRaw: circles0.length, rects: rects.length, mmPerPx: Math.round(mmpp * 1000) / 1000 }, mmPerPx: mmpp, canvas };
 }

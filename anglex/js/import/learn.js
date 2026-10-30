@@ -14,8 +14,16 @@ export async function recordConfirmation(app, inst) {
   const params = {}; for (const k of keys) if (p[k] !== undefined) params[k] = p[k];
   await addLearn(app, [{ at: new Date().toISOString(), sig: inst.recogSig, familyId: t.familyId, params, status: 'confirmed', by: app.user().name, branch: app.project.branch || null }]); return 1;
 }
+// 図面上での修正を記録: 「部材ではない」(rejected) / 仕様・長さを直した (corrected)。同じ署名の候補に次回から効く
+export async function recordCorrection(app, sig, { kind, spec = null, length = null }) {
+  if (!sig) return 0; await addLearn(app, [{ at: new Date().toISOString(), sig, familyId: null, params: { spec, L: length }, status: kind, by: app.user?.().name || '', branch: app.project?.branch || null }]); return 1;
+}
 // 認識候補へ学習値を適用: 同じ署名の確定が 2 件以上 → 確信度 +0.2、直した値（ファミリ・パラメータ）を提案に使う
 export function applyLearned(hist, members, style = '') {
-  let n = 0; for (const m of members) { const sig = signature(m, style); m.recogSig = sig; const rows = hist.filter(r => r.sig === sig); if (rows.length < 2) continue; const last = rows[rows.length - 1]; m.learned = { n: rows.length, familyId: last.familyId, params: last.params }; m.confidence = Math.min(0.95, (m.confidence || 0) + 0.2); n++; }
+  let n = 0; for (const m of members) { const sig = signature(m, style); m.recogSig = sig; const all = hist.filter(r => r.sig === sig); if (all.length < 2) continue;
+    const rej = all.filter(r => r.status === 'rejected'), cor = all.filter(r => r.status === 'corrected'), rows = all.filter(r => r.status === 'confirmed');
+    if (rej.length >= 2 && !rows.length && !cor.length) { m.learnedReject = rej.length; m.confidence = Math.min(m.confidence || 0, 0.15); m.riskReasons = (m.riskReasons || []).concat(`同じ形状の候補が ${rej.length} 回「部材ではない」と修正されています`); n++; continue; }
+    if (cor.length >= 2 && !rows.length) { const last = cor[cor.length - 1]; if (last.params?.spec) m.spec = last.params.spec; if (last.params?.L) { m.length = last.params.L; m.lengthSource = '学習'; } m.learned = { n: cor.length, familyId: null, params: {} }; m.confidence = Math.min(0.9, (m.confidence || 0) + 0.2); n++; continue; }
+    if (rows.length < 2) continue; const last = rows[rows.length - 1]; m.learned = { n: rows.length, familyId: last.familyId, params: last.params }; m.confidence = Math.min(0.95, (m.confidence || 0) + 0.2); n++; }
   return n;
 }

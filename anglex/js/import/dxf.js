@@ -54,7 +54,7 @@ export function dxfToSVG(dxf, { width = 1200, height = 800, layersOn = null, fli
     else if (e.type === 'CIRCLE') s += `<circle cx="${e.c[0]}" cy="${Y(e.c[1])}" r="${e.r}" fill="none" stroke="${c}" stroke-width="${sw}" data-layer="${esc(e.layer)}"/>`;
     else if (e.type === 'ARC') { const a0 = e.a0 * Math.PI / 180, a1 = e.a1 * Math.PI / 180; let sweep = a1 - a0; while (sweep < 0) sweep += Math.PI * 2; const large = sweep > Math.PI ? 1 : 0; s += `<path d="M ${e.c[0] + Math.cos(a0) * e.r} ${Y(e.c[1] + Math.sin(a0) * e.r)} A ${e.r} ${e.r} 0 ${large} 0 ${e.c[0] + Math.cos(a1) * e.r} ${Y(e.c[1] + Math.sin(a1) * e.r)}" fill="none" stroke="${c}" stroke-width="${sw}"/>`; }
     else if (e.type === 'LWPOLYLINE') { const pts = polyPoints(e); s += `<path d="M ${pts.map(p => `${p[0]} ${Y(p[1])}`).join(' L ')}${e.closed ? ' Z' : ''}" fill="${e.hatch ? c + '22' : 'none'}" stroke="${c}" stroke-width="${sw}"${dash} data-layer="${esc(e.layer)}"/>`; }
-    else if (e.type === 'TEXT') s += `<text x="${e.pos[0]}" y="${Y(e.pos[1])}" font-size="${e.h * 1.3}" fill="${c}" transform="rotate(${-e.rot} ${e.pos[0]} ${Y(e.pos[1])})" data-layer="${esc(e.layer)}">${esc(e.text)}</text>`;
+    else if (e.type === 'TEXT') s += `<text x="${e.pos[0]}" y="${Y(e.pos[1])}" font-size="${e.h * 1.3}" fill="${c}" transform="rotate(${-(e.rot || 0)} ${e.pos[0]} ${Y(e.pos[1])})" data-layer="${esc(e.layer)}">${esc(e.text)}</text>`;
     else if (e.type === 'DIMENSION') s += `<text x="${e.pos[0]}" y="${Y(e.pos[1])}" font-size="${sw * 9}" fill="#2e5c8a" text-anchor="middle">${esc(e.text || (e.measure != null ? Math.round(e.measure) : ''))}</text>`; }
   return s + '</svg>';
 }

@@ -1,6 +1,7 @@
 // プロジェクト横断ダッシュボード: 見積状態・担当会社・合計・未確認・期限を並べ、「自分の番」を上に
 import { h, modal, fmt, toast, table } from './common.js';
 import * as WF from '../core/workflow.js';
+import { reminderMessage, showMessage } from './handoff.js';
 import { Model } from '../bim/model.js';
 import { buildChecklist, openCount } from '../bim/review.js';
 import { BRANCHES, branchName, branchShort, canSeeProject } from '../core/branches.js';
@@ -14,7 +15,7 @@ export async function openDashboard(app, { branch = 'mine' } = {}) {
     rows.push({ p, est, inst, open, dl, T, mine, sort: (mine ? 0 : est ? (est.status === 'final' ? 3 : 2) : 1) * 1e13 + (dl?.overdue ? 0 : 1e12) - new Date(p.updatedAt || 0).getTime() }); }
   rows.sort((a, b) => a.sort - b.sort);
   const chip = r => !r.est ? h('span', { class: 'chip ghost' }, '見積なし') : h('span', { class: 'chip ' + (r.est.status === 'final' ? 'ok' : r.mine ? 'bad' : 'warn') }, WF.STATUS[r.est.status]);
-  const due = r => { if (!r.dl) return '—'; const parts = []; if (r.dl.due) parts.push(h('span', { class: r.dl.overdue ? 'd up' : '' }, r.dl.overdue ? `期限超過 ${-r.dl.left} 日` : `残り ${r.dl.left} 日（${r.dl.due}）`)); if (r.dl.since != null && r.est.status !== 'final') parts.push(h('div', { class: 'muted small' }, `未回答 ${r.dl.since} 日`)); return h('div', {}, ...parts); };
+  const due = r => { if (!r.dl) return '—'; const parts = []; if (r.dl.due) parts.push(h('span', { class: r.dl.overdue ? 'd up' : '' }, r.dl.overdue ? `期限超過 ${-r.dl.left} 日` : `残り ${r.dl.left} 日（${r.dl.due}）`)); if (r.dl.since != null && r.est.status !== 'final') parts.push(h('div', { class: 'muted small' }, `未回答 ${r.dl.since} 日`)); if (!r.mine && r.est.status !== 'final' && (r.dl.overdue || (r.dl.since ?? 0) >= 3)) parts.push(h('button', { class: 'btn sm' + (r.dl.overdue ? ' danger' : ''), style: { marginTop: '4px' }, title: '催促文を表示（コピーして送付）', onClick: e => { e.stopPropagation(); showMessage(reminderMessage(app, r.est), '催促文（コピーして送付）'); } }, '催促文')); return h('div', {}, ...parts); };
   const money = r => !r.T ? '—' : role === 'C' ? fmt.yen(r.T.factory) : role === 'B' ? fmt.yen(r.T.b) : h('div', {}, h('b', {}, fmt.yen(r.T.b)), h('div', { class: 'muted small' }, `原価 ${fmt.yen(r.T.factory)}`));
   const kpis = h('div', { class: 'dash-kpis' }, kpi('自分の番', rows.filter(r => r.mine).length, 'bad'), kpi('期限超過', rows.filter(r => r.dl?.overdue).length, 'warn'), kpi('進行中', rows.filter(r => r.est && r.est.status !== 'final').length), kpi('確定', rows.filter(r => r.est?.status === 'final').length), role === 'A' ? kpi('未確認 合計', rows.reduce((a, r) => a + (r.open || 0), 0)) : null);
   const byBranch = BRANCHES.map(b => ({ b, n: allProjects.filter(p => p.branch === b.code).length, mine: rows.filter(r => r.p.branch === b.code && r.mine).length })).filter(x => x.n);

@@ -16,8 +16,8 @@ export function pipeFactor(risk, pipeOD) { if (!pipeOD) return 1; for (const [a,
 export function assessMember(m, risk = DEFAULT_RISK) {
   const reasons = []; const od = m.feat?.pipeOD || (typeof m.feat?.ubolt === 'string' ? parseInt(m.feat.ubolt) * 1.1 : 0); const pf = pipeFactor(risk, od);
   const items = [];
-  items.push({ op: 'spec', conf: m.spec ? m.confidence : risk.noEvidenceConfidence, label: '鋼材仕様' });
-  items.push({ op: 'length', conf: m.length ? (m.lengthSource === '寸法注記' ? 0.95 : 0.7) : risk.noEvidenceConfidence, label: '長さ' });
+  items.push({ op: 'spec', conf: m.user ? 0.98 : m.spec ? m.confidence : risk.noEvidenceConfidence, label: '鋼材仕様' });
+  items.push({ op: 'length', conf: m.length ? ({ '手入力': 0.98, '寸法注記': 0.95, '寸法注記(OCR)': 0.85, '学習': 0.85 }[m.lengthSource] ?? 0.7) : risk.noEvidenceConfidence, label: '長さ' });
   if (m.feat?.holeD || m.holes?.length) items.push({ op: m.feat?.slot ? 'slot' : 'hole', conf: m.holes?.length ? 0.9 : 0.7, label: '穴' }); else items.push({ op: 'hole', conf: risk.noEvidenceConfidence, label: '穴（注記なし）' });
   if (m.feat?.ubolt) items.push({ op: 'ubolt', conf: typeof m.feat.ubolt === 'string' ? 0.85 : 0.6, label: 'Uボルト' });
   if (m.feat?.weld) items.push({ op: 'weld', conf: 0.85, label: '溶接' }); else if (/L-|\[-|C-/.test(m.spec || '')) items.push({ op: 'weld', conf: risk.noEvidenceConfidence, label: '溶接（注記なし）' });
