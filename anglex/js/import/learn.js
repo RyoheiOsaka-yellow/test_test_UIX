@@ -39,11 +39,19 @@ export function applyLearned(hist, members, style = '') {
 
 // ---- 学習の見える化: 読込ごとの統計（候補数・要判断・学習が効いた数）を記録し、管理画面「学習の状態」で効果を示す ----
 const STATS_KEY = 'anglex.learnStats';
-export function recordImportStats(rec) { try { const rows = JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); rows.push({ at: new Date().toISOString(), name: rec.name, kind: rec.kind, members: rec.members, review: rec.review, learned: rec.learned, rejected: rec.rejected || 0 }); localStorage.setItem(STATS_KEY, JSON.stringify(rows.slice(-500))); } catch { } }
+export function recordImportStats(rec) { try { const rows = JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); rows.push({ at: new Date().toISOString(), name: rec.name, kind: rec.kind, branch: rec.branch || null, members: rec.members, review: rec.review, learned: rec.learned, rejected: rec.rejected || 0 }); localStorage.setItem(STATS_KEY, JSON.stringify(rows.slice(-500))); } catch { } }
 export function listImportStats() { try { return JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); } catch { return []; } }
 // 署名ごとの集計: 確定・修正・却下・返送（○/×）件数と「次回から効く」判定
 export function summarizeLearn(hist) {
   const by = new Map(); for (const r of hist) { const o = by.get(r.sig) || { sig: r.sig, confirmed: 0, corrected: 0, rejected: 0, fbOk: 0, fbFix: 0, fbReject: 0, last: null, lastSpec: null, lastL: null }; if (r.status === 'confirmed') o.confirmed++; else if (r.status === 'corrected') o.corrected++; else if (r.status === 'rejected') o.rejected++; if (r.feedback === 'ok') o.fbOk++; else if (r.feedback === 'fix') o.fbFix++; else if (r.feedback === 'reject') o.fbReject++; if (!o.last || r.at > o.last) { o.last = r.at; o.lastSpec = r.params?.spec || null; o.lastL = r.params?.L || null; } by.set(r.sig, o); }
   const rows = [...by.values()].map(o => ({ ...o, effect: o.rejected >= 2 && !o.confirmed && !o.corrected ? '却下（候補から外す）' : o.corrected >= 2 && !o.confirmed ? `修正値を初期値に（${o.lastSpec || ''}${o.lastL ? ' L=' + o.lastL : ''}）` : o.confirmed >= 2 ? '確信度 +0.2・確定値を初期値に' : `あと ${Math.max(0, 2 - Math.max(o.confirmed, o.corrected, o.rejected))} 件で有効` }));
   return rows.sort((a, b) => (b.last || '').localeCompare(a.last || ''));
+}
+
+// ---- 学習データの出し入れ（拠点間の共有・サーバー版への移行）: 認識の学習 + 読込統計。単価・利益率の履歴は pricing.js 側 ----
+export async function exportLearn(app) { return { version: 1, exportedAt: new Date().toISOString(), branch: app.project?.branch || null, learn: await listLearn(app), stats: listImportStats() }; }
+export async function importLearn(app, data) {
+  const cur = await listLearn(app); const key = r => `${r.at}|${r.sig}|${r.status}|${r.by || ''}`; const have = new Set(cur.map(key)); const rows = (data?.learn || []).filter(r => r && r.sig && !have.has(key(r))); if (rows.length) await addLearn(app, rows);
+  let st = 0; try { const curS = listImportStats(); const k2 = r => `${r.at}|${r.name}`; const haveS = new Set(curS.map(k2)); const add = (data?.stats || []).filter(r => r && !haveS.has(k2(r))); if (add.length) { localStorage.setItem(STATS_KEY, JSON.stringify(curS.concat(add).sort((a, b) => a.at.localeCompare(b.at)).slice(-500))); st = add.length; } } catch { }
+  return { learn: rows.length, stats: st };
 }

@@ -41,3 +41,7 @@ export async function recordMarginsFromEstimate(app, est) {
 }
 // 顧客一致 → 全顧客（ファミリ×寸法区分）→ 全体 の順に 2 件以上あれば中央値
 export function learnedMarginFor(hist, l, customer = '') { const mh = hist.filter(r => r.kind === 'margin' && r.bMarginPct != null); const exact = mh.filter(r => r.mkey === marginKey(l, customer)), fam = mh.filter(r => r.fkey === famKey(l)), all = mh; const use = exact.length >= 2 ? exact : fam.length >= 2 ? fam : all.length >= 2 ? all : null; if (!use) return null; return { n: use.length, level: exact.length >= 2 ? '同じ顧客・同じ区分' : fam.length >= 2 ? '同じ区分' : '全体', pct: median(use.map(r => r.bMarginPct)) }; }
+
+// 単価・利益率履歴の出し入れ
+export async function exportHistory(app) { return listHistory(app); }
+export async function importHistory(app, rows) { const cur = await listHistory(app); const key = r => `${r.tag || ''}|${r.at}|${r.key || r.mkey || ''}|${r.desc || ''}`; const have = new Set(cur.map(key)); const add = (rows || []).filter(r => r && (r.factoryCost != null || r.bMarginPct != null) && !have.has(key(r))); if (add.length) await addHistory(app, add); return add.length; }
