@@ -1007,3 +1007,29 @@ tr.new td{background:rgba(29,78,216,.06)}tr.gone td{background:rgba(0,0,0,.04);t
 .rv-pending{display:flex;align-items:center;gap:8px;margin:6px 0}.est-table tr.pending td{background:#fff8e8}.est-table tr.pending td:first-child{box-shadow:inset 3px 0 0 #d9a441}
 
 .flow-tl.meeting .dot{border-color:#5b6abf;background:#eef0fb}
+
+/* 操作ガイド オーバーレイ（3D 上） */
+.guide-ov{position:absolute;inset:0;z-index:30;background:rgba(20,22,26,.42);display:flex;align-items:center;justify-content:center;padding:16px}
+.guide-box{background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35);padding:14px 16px;max-width:900px;width:100%;color:#1a1a17}
+.guide-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}.guide-head .icon-btn{margin-left:auto}
+.guide-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.guide-card{border:1px solid #e3dfd2;border-radius:10px;padding:8px 10px;background:#fbfaf6}.guide-card b{display:block;margin:6px 0 2px;font-size:13px}
+.guide-anim{height:70px;background:#f1efe7;border-radius:8px;overflow:hidden}.guide-anim svg{width:100%;height:100%}
+.guide-foot{display:flex;align-items:center;gap:12px;margin-top:12px}.guide-foot .btn{margin-left:auto}
+.gd-obj{fill:#9aa8b8;stroke:#4c5a6b;stroke-width:1.5}.gd-obj.light{fill:#c7cfd8}.gd-obj.dark{fill:#4c5a6b}.gd-obj.sel{fill:#7aa2ea;stroke:#2563eb}.gd-ghost{fill:none;stroke:#2563eb;stroke-dasharray:3 3;stroke-width:1.2}
+.gd-arc{fill:none;stroke:#2563eb;stroke-width:1.5;stroke-dasharray:4 3}.gd-cross{fill:none;stroke:#c0392b;stroke-width:1.5}
+.gd-cursor path{fill:#fff;stroke:#111;stroke-width:1.2}.gd-cursor circle{fill:#fff;stroke:#111;stroke-width:1.5}
+.gd-rot{animation:gdRot 2.4s ease-in-out infinite}@keyframes gdRot{0%{transform:translate(30px,52px)}50%{transform:translate(85px,52px)}100%{transform:translate(30px,52px)}}
+.guide-card.rotate .gd-obj{transform-origin:60px 35px;animation:gdObjRot 2.4s ease-in-out infinite}@keyframes gdObjRot{0%{transform:scaleX(1)}50%{transform:scaleX(.6) skewX(8deg)}100%{transform:scaleX(1)}}
+.gd-pan{animation:gdPan 2.4s ease-in-out infinite}@keyframes gdPan{0%,10%{transform:translate(0,0)}50%,60%{transform:translate(22px,-8px)}100%{transform:translate(0,0)}}
+.gd-grab{animation:gdGrab 2.4s ease-in-out infinite}@keyframes gdGrab{0%,10%{transform:translate(48px,40px) scale(1)}15%{transform:translate(48px,40px) scale(.7)}50%,60%{transform:translate(70px,32px) scale(.7)}65%{transform:translate(70px,32px) scale(1)}100%{transform:translate(48px,40px) scale(1)}}
+.gd-center{animation:gdCenter 2.4s ease-in-out infinite}@keyframes gdCenter{0%,25%{transform:translate(0,0)}60%,100%{transform:translate(-33px,-15px)}}
+.gd-move{animation:gdMove 2.4s ease-in-out infinite}@keyframes gdMove{0%,15%{transform:translate(0,0)}60%,100%{transform:translate(40px,8px)}}
+.gd-movec{animation:gdMoveC 2.4s ease-in-out infinite}@keyframes gdMoveC{0%,15%{transform:translate(45px,36px)}60%,100%{transform:translate(85px,44px)}}
+.gd-ex.a{animation:gdExA 2.4s ease-in-out infinite}.gd-ex.b{animation:gdExB 2.4s ease-in-out infinite}.gd-ex.c{animation:gdExC 2.4s ease-in-out infinite}@keyframes gdExA{0%,20%{transform:translate(0,0)}60%,100%{transform:translate(0,-14px)}}@keyframes gdExB{0%,20%{transform:translate(0,0)}60%,100%{transform:translate(0,14px)}}@keyframes gdExC{0%,20%{transform:translate(0,0)}60%,100%{transform:translate(0,-28px)}}
+@media (prefers-reduced-motion: reduce){.guide-anim *{animation:none!important}}
+
+/* コンパクトモード: ウィンドウ高 700px 未満では 3D を優先（ディテール上部を詰め、カードは折りたたみ） */
+@media (max-height: 699px){.detail-wrap{padding:6px 14px 20px}.detail-top{margin-bottom:6px}.detail-top h2{font-size:16px}.detail-actions-top .q-btn{padding:6px 12px;font-size:12px}.d3-stage{height:max(340px,calc(100vh - 245px));min-height:340px}.sm-topbar{padding-top:4px;padding-bottom:4px}.wf-steps{margin-bottom:4px}.compact-hide{display:none!important}}
+
+body.compact .detail-grid{grid-template-columns:1fr}body.compact #card3d{order:-1}body.compact .dcard:not(#card3d) .dcard-body{display:none}body.compact .dcard:not(#card3d).open .dcard-body{display:block}body.compact .dcard:not(#card3d) .dcard-head{cursor:pointer}body.compact .dcard:not(#card3d) .dcard-head::after{content:"▸ 開く";margin-left:auto;font-size:11px;color:var(--ink-mute)}body.compact .dcard:not(#card3d).open .dcard-head::after{content:"▾ 閉じる"}

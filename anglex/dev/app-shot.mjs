@@ -6,7 +6,7 @@ const server = http.createServer((req, res) => { let p = decodeURIComponent(req.
 await new Promise(r => server.listen(+(process.env.PORT || 8124), r));
 const out = process.argv[2] || '/tmp/app.png'; const script = process.argv[3];
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await (await browser.newContext({ acceptDownloads: true })).newPage({ viewport: { width: +(process.env.VW || 1600), height: +(process.env.VH || 1000) } });
+const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: +(process.env.VW || 1280), height: +(process.env.VH || 720) } }); await ctx.addInitScript(() => { window.__anglexNoGuide = true; }); const page = await ctx.newPage();
 page.on('console', m => { if (m.type() !== 'warning' && !/404/.test(m.text())) console.log('[console]', m.type(), m.text().slice(0, 300)); }); page.on('pageerror', e => console.log('[pageerror]', e.message));
 await page.goto('http://localhost:' + (process.env.PORT || 8124) + (process.env.PAGE || '/index.html') + (process.env.QUALITY === '1' ? '?view=' + (process.env.VIEW || '3d') : '?quality=0&view=' + (process.env.VIEW || '3d')), { waitUntil: 'load' });
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 90000 }).catch(() => console.log('ready timeout'));

@@ -78,6 +78,9 @@ export function initShell(app) {
   sh.renderProjects = renderProjects;
   // ---------- ステッパー ----------
   sh.unlockFor = () => { const n = app.model.instances.length; const hasDwg = !!app.drawing; sh.maxStep = Math.max(sh.maxStep, n ? 5 : hasDwg ? 3 : 1); };
+  // コンパクトモード: ウィンドウ高 700px 未満では 3D カードを先頭・全幅にし、他のカードは見出しだけ（クリックで開閉）
+  const applyCompact = () => { const on = innerHeight < 700; document.body.classList.toggle('compact', on); }; applyCompact(); addEventListener('resize', applyCompact);
+  $$('.dcard-head').forEach(hd => hd.addEventListener('click', e => { if (!document.body.classList.contains('compact') || e.target.closest('button,input,select,a')) return; const card = hd.closest('.dcard'); if (card && card.id !== 'card3d') card.classList.toggle('open'); }));
   sh.goStep = n => {
     sh.unlockFor(); if (n > sh.maxStep) { toast(n <= 3 ? '図面を読み込むか、サンプルを選んでください' : '部材を配置するとディテール・見積へ進めます', 'warn'); return; }
     sh.step = n; $$('.wf-step').forEach(s => { const k = +s.dataset.step; s.classList.toggle('active', k === n); s.classList.toggle('done', k < n); s.classList.toggle('locked', k > sh.maxStep); });
