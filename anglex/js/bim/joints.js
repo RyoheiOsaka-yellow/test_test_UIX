@@ -47,8 +47,8 @@ export function weldPartsFromContact(c, size = 6, { allAround = true, sides = 1,
 export function boltPartsFromContact(c, { M = 'M12', count = 2, pitch = null, model, points = null } = {}) {
   // points: 既存の穴（ワールド座標）に合わせてボルトを立てる（穴の自動提案から）。接触面に投影し、穴は新たに作らない
   if (points && points.length) { const b = boltDims(M); const tA = c.a.thick || 6, tB = c.b.thick || 6; const grip = tA + tB; const Lb = Math.ceil((grip + b.wt * 2 + b.m + 3 * b.p + 2) / 5) * 5; const axisIdx = ['x', 'y', 'z'].indexOf(c.axis); const dirBolt = [0, 0, 0]; dirBolt[axisIdx] = -c.aSide; const parts = [];
-    for (const p0 of points) { const center = [...p0]; center[axisIdx] = c.plane; const head = [...center]; head[axisIdx] = c.plane + c.aSide * tA; parts.push({ kind: 'bolt', name: `接合ボルト ${M}×${Lb}`, M, L: Lb, grip, pl: place(head, dirBolt, axisIdx === 0 ? DIR.Y : DIR.X), group: '接合ボルト' }); }
-    return { parts, holes: [], bolt: { M, L: Lb, count: points.length } }; }
+    const holes = []; for (const p0 of points) { const center = [...p0]; center[axisIdx] = c.plane; const head = [...center]; head[axisIdx] = c.plane + c.aSide * tA; parts.push({ kind: 'bolt', name: `接合ボルト ${M}×${Lb}`, M, L: Lb, grip, pl: place(head, dirBolt, axisIdx === 0 ? DIR.Y : DIR.X), group: '接合ボルト' }); holes.push({ world: center, d: b.hole }); }
+    return { parts, holes, bolt: { M, L: Lb, count: points.length } }; }
   const ks = c.others; const r = c.rect; const b = boltDims(M); const long = (r.max[ks[0]] - r.min[ks[0]]) >= (r.max[ks[1]] - r.min[ks[1]]) ? ks[0] : ks[1]; const short = long === ks[0] ? ks[1] : ks[0];
   const L0 = r.min[long], L1 = r.max[long]; const span = L1 - L0; const pch = pitch || Math.min(100, Math.max(40, (span - 60) / Math.max(1, count - 1))); const start = (L0 + L1) / 2 - pch * (count - 1) / 2; const mid = (r.min[short] + r.max[short]) / 2;
   const tA = c.a.thick || 6, tB = c.b.thick || 6; const grip = tA + tB; const Lb = Math.ceil((grip + b.wt * 2 + b.m + 3 * b.p + 2) / 5) * 5;
@@ -70,7 +70,8 @@ export function evaluateJoint(model, j) {
   const cs = detectContacts(model, a, b); const c = cs[0]; if (!c) return { parts: [], holes: [], warning: '接触面が見つかりません（部材を接触させてください）' };
   if (j.type === 'fillet' || j.type === 'weld') return { parts: weldPartsFromContact(c, j.size || 6, { allAround: j.allAround !== false, sides: j.sides || 1, site: !!j.site }), holes: [], contact: c };
   if (j.type === 'butt') { const ks = c.others; const r = c.rect; const from = pt3(c.axis, c.plane, ks, r.min[ks[0]], (r.min[ks[1]] + r.max[ks[1]]) / 2), to = pt3(c.axis, c.plane, ks, r.max[ks[0]], (r.min[ks[1]] + r.max[ks[1]]) / 2); return { parts: [{ kind: 'weld', weldType: 'butt', size: j.size || 6, length: Math.hypot(...to.map((v, i) => v - from[i])), from, to, n1: unit[c.axis], n2: unit[c.axis], group: '突合せ溶接' }], holes: [], contact: c }; }
-  if (j.type === 'bolt') { const r = boltPartsFromContact(c, { M: j.M || 'M12', count: j.count || 2, pitch: j.pitch, points: j.points || null }); const holes = []; for (const h of r.holes) { const ha = worldToHole(c.a, h.world, h.d), hb = worldToHole(c.b, h.world, h.d); if (ha) holes.push({ instId: a.id, partIndex: c.a.partIndex, hole: ha }); if (hb) holes.push({ instId: b.id, partIndex: c.b.partIndex, hole: hb }); } return { parts: r.parts, holes, contact: c, bolt: r.bolt }; }
+  if (j.type === 'bolt') { const r = boltPartsFromContact(c, { M: j.M || 'M12', count: j.count || 2, pitch: j.pitch, points: j.points || null }); const holes = []; for (const h of r.holes) { const ha = worldToHole(c.a, h.world, h.d), hb = worldToHole(c.b, h.world, h.d); // points 指定（穴位置からの提案）のときは、穴の無い側（drill）だけに穴をあける
+      const drillA = !j.points || j.drill === a.id, drillB = !j.points || j.drill === b.id; if (ha && drillA) holes.push({ instId: a.id, partIndex: c.a.partIndex, hole: ha }); if (hb && drillB) holes.push({ instId: b.id, partIndex: c.b.partIndex, hole: hb }); } return { parts: r.parts, holes, contact: c, bolt: r.bolt }; }
   return { parts: [], holes: [] };
 }
 
@@ -113,7 +114,10 @@ export function suggestBoltJoints(model, partsOf, holePosFn, { tol = 4 } = {}) {
   const cache = new Map(); const holesOf = inst => { if (!cache.has(inst.id)) cache.set(inst.id, worldHoles(inst)); return cache.get(inst.id); };
   for (let i = 0; i < insts.length; i++) for (let k = i + 1; k < insts.length; k++) { const A = insts[i], B = insts[k]; const existing = model.joints.find(j => j.type === 'bolt' && ((j.a === A.id && j.b === B.id) || (j.a === B.id && j.b === A.id))); if (existing) continue;
     let cs = []; try { cs = detectContacts(model, A, B); } catch { } if (!cs.length) continue; const c = cs[0]; const axisIdx = ['x', 'y', 'z'].indexOf(c.axis); const ks = c.others.map(o => ['x', 'y', 'z'].indexOf(o));
-    const HA = holesOf(A), HB = holesOf(B); if (!HA.length || !HB.length) continue; const pairs = [];
+    const HA = holesOf(A), HB = holesOf(B); if (!HA.length && !HB.length) continue; const pairs = [];
+    // 片側だけに穴がある（取付板は穴あり・架台は現場穴あけ）: 接触矩形の内側にある穴を相手側へ写して提案（drill = 穴の無い側）
+    const inRect = hw => { const r = c.rect; return hw[ks[0]] >= r.min[c.others[0]] - 2 && hw[ks[0]] <= r.max[c.others[0]] + 2 && hw[ks[1]] >= r.min[c.others[1]] - 2 && hw[ks[1]] <= r.max[c.others[1]] + 2 && Math.abs(hw[axisIdx] - c.plane) <= 60; };
+    if (!HA.length || !HB.length) { const src = HA.length ? HA : HB; const drill = HA.length ? B : A; const pts = src.filter(h => inRect(h.w)); if (pts.length < 1) continue; const d = Math.max(...pts.map(p => p.d)); out.push({ a: A, b: B, contact: c, pairs: pts.map(p => ({ d: p.d, posA: p.w, posB: null, mid: p.w })), points: pts.map(p => p.w), M: dToM(d), d, oneSided: true, drill: drill.id, drillMark: drill.mark }); continue; }
     for (const ha of HA) { if (Math.abs(ha.w[axisIdx] - c.plane) > 60) continue; for (const hb of HB) { if (Math.abs(hb.w[axisIdx] - c.plane) > 60) continue; const dd = Math.hypot(ha.w[ks[0]] - hb.w[ks[0]], ha.w[ks[1]] - hb.w[ks[1]]); if (dd <= tol && Math.abs(ha.d - hb.d) <= 3) { pairs.push({ d: Math.max(ha.d, hb.d), posA: ha.w, posB: hb.w, mid: ha.w.map((v, q) => (v + hb.w[q]) / 2) }); break; } } }
     if (!pairs.length) continue; const d = Math.max(...pairs.map(p => p.d)); out.push({ a: A, b: B, contact: c, pairs, points: pairs.map(p => p.mid), M: dToM(d), d }); }
   return out;

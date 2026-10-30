@@ -28,6 +28,7 @@ export class LocalStore {
   async handoffEstimate(id, h) { const e = this.d.estimates[id]; const r = WF.handoff(e, h); this.save(); return r; }
   async finalizeEstimate(id, who) { const e = this.d.estimates[id]; WF.finalize(e, who); this.save(); return e; }
   async rejectEstimate(id, who) { const e = this.d.estimates[id]; WF.reject(e, who); this.save(); return e; }
+  async addMeeting(id, m) { const e = this.d.estimates[id]; const r = WF.addMeeting(e, m); this.save(); return r; }
   async byToken(token) { return Object.values(this.d.estimates).find(e => Object.values(e.tokens).includes(token)) || null; }
   async listBranches() { return this.d.branches || null; }
   async saveBranches(list) { this.d.branches = list; this.save(); return list; }
@@ -63,6 +64,7 @@ export class RestStore {
   async handoffEstimate(id, h) { return this.req('POST', `/api/estimates/${id}/handoff`, h); }
   async finalizeEstimate(id, who) { return this.req('POST', `/api/estimates/${id}/finalize`, who); }
   async rejectEstimate(id, who) { return this.req('POST', `/api/estimates/${id}/reject`, who); }
+  async addMeeting(id, m) { return this.req('POST', `/api/estimates/${id}/meeting`, m); }
   async byToken(token) { return this.req('GET', '/api/handoff/' + token); }
   async exportAll() { return this.req('GET', '/api/export'); }
   async importAll(d) { return this.req('POST', '/api/import', d); }

@@ -160,3 +160,5 @@ tr.new td{background:rgba(29,78,216,.06)}tr.gone td{background:rgba(0,0,0,.04);t
 
 /* B/C ビュー: 未入力行の強調と「残り n 行」 */
 .rv-pending{display:flex;align-items:center;gap:8px;margin:6px 0}.est-table tr.pending td{background:#fff8e8}.est-table tr.pending td:first-child{box-shadow:inset 3px 0 0 #d9a441}
+
+.flow-tl.meeting .dot{border-color:#5b6abf;background:#eef0fb}

@@ -2,6 +2,7 @@
 // サーバー版は /api/reminders（サーバーが 1 時間ごとに自動送信した記録も返す）、ローカル版は見積から同じルールで計算
 import { $, $$, h, toast, modal, table, fmt } from './common.js';
 import { remindersFor } from '../core/reminders.js';
+import { listImportStatsAsync, targetsOver, reviewTarget } from '../import/learn.js';
 import { openDashboard } from './dashboard.js';
 export async function collectReminders(app) {
   const role = app.role();
@@ -11,12 +12,12 @@ export async function collectReminders(app) {
 }
 let timer = null; let lastKey = '';
 export function installReminderBadge(app, { every = 10 * 60 * 1000, toastOnStart = true } = {}) {
-  const refresh = async (first) => { try { const r = await collectReminders(app); app.reminders = r; renderBadge(app, r.items); const key = r.items.map(x => x.estId + x.kind).join(','); if (first && toastOnStart && r.items.length) { const o = r.items.filter(x => x.kind === 'overdue').length; toast(`期限の通知: ${r.items.length} 件（超過 ${o}）— ダッシュボードで確認`, o ? 'bad' : 'warn', 6000); } lastKey = key; } catch (e) { console.warn('reminders', e); } };
+  const refresh = async (first) => { try { const r = await collectReminders(app); if (app.role() === 'A') { try { const st = await listImportStatsAsync(app); r.targets = targetsOver(st, { target: reviewTarget(), branch: app.user().scope === 'all' ? null : app.user().branch }); } catch { r.targets = []; } } app.reminders = r; renderBadge(app, r.items, r.targets || []); const key = r.items.map(x => x.estId + x.kind).join(','); if (first && toastOnStart && r.items.length) { const o = r.items.filter(x => x.kind === 'overdue').length; toast(`期限の通知: ${r.items.length} 件（超過 ${o}）— ダッシュボードで確認`, o ? 'bad' : 'warn', 6000); } lastKey = key; } catch (e) { console.warn('reminders', e); } };
   clearInterval(timer); timer = setInterval(() => refresh(false), every); setTimeout(() => refresh(true), 1500);
   app.refreshReminders = () => refresh(false);
 }
-function renderBadge(app, items) {
-  for (const id of ['btnDashboard', 'btnDashboard2']) { const b = $('#' + id); if (!b) continue; let badge = b.querySelector('.rem-badge'); if (!items.length) { badge?.remove(); continue; } if (!badge) { badge = h('span', { class: 'rem-badge' }); b.style.position = 'relative'; b.append(badge); } const o = items.filter(x => x.kind === 'overdue').length; badge.textContent = String(items.length); badge.classList.toggle('bad', o > 0); badge.title = items.map(x => `${x.no} ${x.label}（${x.waitingOn}社）`).join('\n'); }
+function renderBadge(app, items, targets = []) {
+  for (const id of ['btnDashboard', 'btnDashboard2']) { const b = $('#' + id); if (!b) continue; let badge = b.querySelector('.rem-badge'); const total = items.length + targets.length; if (!total) { badge?.remove(); continue; } if (!badge) { badge = h('span', { class: 'rem-badge' }); b.style.position = 'relative'; b.append(badge); } const o = items.filter(x => x.kind === 'overdue').length; badge.textContent = String(total); badge.classList.toggle('bad', o > 0); badge.title = items.map(x => `${x.no} ${x.label}（${x.waitingOn}社）`).concat(targets.map(t => `要判断率 目標未達: ${t.kind}（${t.branch}）${t.rate}%`)).join('\n'); }
 }
 // 期限一覧（ダッシュボードの KPI から）: 対象・種類・経過日数・サーバー自動送信の記録
 export function openReminders(app) {

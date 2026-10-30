@@ -39,7 +39,9 @@ export function applyLearned(hist, members, style = '') {
 
 // ---- 学習の見える化: 読込ごとの統計（候補数・要判断・学習が効いた数）を記録し、管理画面「学習の状態」で効果を示す ----
 const STATS_KEY = 'anglex.learnStats';
-export function recordImportStats(rec) { try { const rows = JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); rows.push({ at: new Date().toISOString(), name: rec.name, kind: rec.kind, branch: rec.branch || null, members: rec.members, review: rec.review, learned: rec.learned, rejected: rec.rejected || 0 }); localStorage.setItem(STATS_KEY, JSON.stringify(rows.slice(-500))); } catch { } }
+export function recordImportStats(rec, app = null) { const row = { at: new Date().toISOString(), name: rec.name, kind: rec.kind, branch: rec.branch || null, members: rec.members, review: rec.review, learned: rec.learned, rejected: rec.rejected || 0 }; try { const rows = JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); rows.push(row); localStorage.setItem(STATS_KEY, JSON.stringify(rows.slice(-500))); } catch { } if (app?.store?.mode === 'server' && app.store.req) app.store.req('POST', '/api/learnstats', [row]).catch(() => { }); }
+// サーバー版は全営業所の統計を API から（ローカル版はこの端末の統計）
+export async function listImportStatsAsync(app) { if (app?.store?.mode === 'server' && app.store.req) { try { const rows = await app.store.req('GET', '/api/learnstats'); if (Array.isArray(rows)) return rows; } catch { } } return listImportStats(); }
 export function listImportStats() { try { return JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); } catch { return []; } }
 // 署名ごとの集計: 確定・修正・却下・返送（○/×）件数と「次回から効く」判定
 export function summarizeLearn(hist) {
@@ -55,3 +57,7 @@ export async function importLearn(app, data) {
   let st = 0; try { const curS = listImportStats(); const k2 = r => `${r.at}|${r.name}`; const haveS = new Set(curS.map(k2)); const add = (data?.stats || []).filter(r => r && !haveS.has(k2(r))); if (add.length) { localStorage.setItem(STATS_KEY, JSON.stringify(curS.concat(add).sort((a, b) => a.at.localeCompare(b.at)).slice(-500))); st = add.length; } } catch { }
   return { learn: rows.length, stats: st };
 }
+
+// 目標未達の図面様式（営業所でまとめ）: ダッシュボードのバッジ・KPI 用
+export function targetsOver(stats, { target = 20, branch = null } = {}) { const groups = new Map(); for (const x of stats) { if (!x.members) continue; if (branch && x.branch && x.branch !== branch) continue; const k = `${x.kind || '—'}|${x.branch || '—'}`; const g = groups.get(k) || { kind: x.kind || '—', branch: x.branch || '—', n: 0, members: 0, review: 0 }; g.n++; g.members += x.members; g.review += x.review; groups.set(k, g); } return [...groups.values()].map(g => ({ ...g, rate: Math.round(g.review / g.members * 100) })).filter(g => g.rate > target).sort((a, b) => b.rate - a.rate); }
+export function reviewTarget() { try { return +(localStorage.getItem('anglex.reviewTarget') || 20) || 20; } catch { return 20; } }

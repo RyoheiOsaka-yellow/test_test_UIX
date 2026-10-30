@@ -1,6 +1,6 @@
 // 営業所・ユーザーの管理画面（A社）: 拠点マスタの追加・変更・削除、ユーザーの所属、CSV 一括取込（全国展開の初期設定用）
 import { h, modal, toast, table, download, csv, confirmDialog, fmt } from './common.js';
-import { recordFeedback, listLearn, summarizeLearn, listImportStats, exportLearn, importLearn } from '../import/learn.js';
+import { recordFeedback, listLearn, summarizeLearn, listImportStats, listImportStatsAsync, exportLearn, importLearn } from '../import/learn.js';
 import { exportHistory, importHistory } from '../core/pricing.js';
 import { branchShort } from '../core/branches.js';
 import { BRANCHES, setBranches, saveBranches, branchName } from '../core/branches.js';
@@ -52,7 +52,7 @@ async function feedbackPane(app, rerender, draft) {
 
 // ---- 学習の状態: 署名ごとの件数と「次回から効くか」、読込ごとの効果（要判断の推移） ----
 async function learnPane(app, rerender) {
-  const hist = await listLearn(app); const rows = summarizeLearn(hist); const stats = listImportStats(); const eff = rows.filter(r => !/あと \d 件/.test(r.effect)).length;
+  const hist = await listLearn(app); const rows = summarizeLearn(hist); const stats = await listImportStatsAsync(app); const eff = rows.filter(r => !/あと \d 件/.test(r.effect)).length;
   const first = stats.slice(0, Math.max(1, Math.floor(stats.length / 2))), last = stats.slice(Math.floor(stats.length / 2)); const rate = a => a.length ? Math.round(a.reduce((x, r) => x + (r.members ? r.review / r.members : 0), 0) / a.length * 100) : null; const r0 = rate(first), r1 = rate(last);
   const kpi = (k, v, cls = '') => h('div', { class: 'dash-kpi ' + cls }, h('span', {}, k), h('b', {}, String(v)));
   // 出し入れ: 学習（認識）+ 単価・利益率履歴 + 読込統計 を 1 つの JSON に
