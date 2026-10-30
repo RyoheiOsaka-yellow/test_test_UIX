@@ -3,7 +3,7 @@ import { $, h, modal, fmt, toast, confirmDialog, promptDialog, table } from './c
 import * as WF from '../core/workflow.js';
 import { summarize } from '../bim/weight.js';
 import { detectMisalignment } from '../bim/review.js';
-import { openAlerts, openAlign } from './review.js';
+import { openAlerts, openAlign, boltSuggestions, openBoltSuggest } from './review.js';
 import { openEstimate, createEstimate, reviewGate } from './estimate.js';
 import { exportWeightPDF, exportWeightCSV, exportWeightXLSX, exportEstimatePDF, exportWorkOrderPDF } from './reports.js';
 import { openSchedules } from './schedules.js';
@@ -24,7 +24,7 @@ export async function openFlow(app) {
 export async function buildFlow(app, rerender, m) {
   const role = app.role(); const user = app.user();
   const rows = app.model.explodeParts().filter(r => !r.ref); const s = summarize(rows); const nInst = app.model.instances.length;
-  const open = app.openReviewCount(); let align = []; try { align = detectMisalignment(app); } catch { }
+  const open = app.openReviewCount(); let align = []; try { align = detectMisalignment(app); } catch { } let bolts = []; try { bolts = boltSuggestions(app); } catch { }
   const list = await app.store.listEstimates(app.project.id); const est = (app.currentEstimateId && list.find(e => e.id === app.currentEstimateId)) || list[0] || null; const T = est ? WF.totals(est) : null;
   const mine = est && est.currentOrg === role && est.status !== 'final';
   // B社・C社: 役割専用の簡略ビュー（受け取り → 入力 → 返す）
@@ -52,7 +52,7 @@ export async function buildFlow(app, rerender, m) {
     dwg?.raster && dwgRev ? 'スキャン図面の要判断は、図面上で仕様・長さを直すと再認識され学習されます' : '3D・質量・集計・見積はこのモデルから自動で派生します');
   // ② 確認
   const c2 = card('review', '② 人が確認する箇所', h('div', { class: 'fc-grid' }, kv('未処理の確認事項', open + ' 件', open ? 'bad' : 'ok'), kv('ズレ（隙間・レベル・穴）', align.length + ' 件', align.length ? 'warn' : 'ok'), kv('現場溶接', rows.filter(r => r.kind === 'weld' && r.site).length + ' 箇所'), kv('アンカー', rows.filter(r => r.kind === 'anchor').length + ' 本')),
-    [h('button', { class: 'btn sm ' + (open ? 'primary' : ''), disabled: !open, title: '未確認をカード送りで処理。3D がその箇所へ寄ります', onClick: () => { m.close(); openReviewWizard(app); } }, `まとめて確認（${open}）`), h('button', { class: 'btn sm', onClick: () => { m.close(); openAlerts(app); } }, '確認リスト'), h('button', { class: 'btn sm' + (align.length ? ' primary' : ''), onClick: () => { m.close(); openAlign(app); } }, `ズレ補正（${align.length}）`)],
+    [h('button', { class: 'btn sm ' + (open ? 'primary' : ''), disabled: !open, title: '未確認をカード送りで処理。3D がその箇所へ寄ります', onClick: () => { m.close(); openReviewWizard(app); } }, `まとめて確認（${open}）`), h('button', { class: 'btn sm', onClick: () => { m.close(); openAlerts(app); } }, '確認リスト'), h('button', { class: 'btn sm' + (align.length ? ' primary' : ''), onClick: () => { m.close(); openAlign(app); } }, `ズレ補正（${align.length}）`), h('button', { class: 'btn sm' + (bolts.length ? ' on' : ''), title: '接触する 2 部材の穴が同じ位置にある箇所をボルト接合として提案', onClick: () => { m.close(); openBoltSuggest(app); } }, `ボルト接合の提案（${bolts.length}）`)],
     open ? '未確認のまま受け渡すと工場側で手戻りになります（受け渡し時にゲートが掛かります）' : 'すべて確認済み。受け渡しできます');
   // ③ 重量・集計
   const parts = [['鋼材（穴控除後）', s.steelNet], ['めっき付着', s.zinc], ['ボルト類', s.fasteners], ['溶接金属', s.welds]]; const max = Math.max(1, ...parts.map(p => p[1]));

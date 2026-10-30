@@ -1,5 +1,7 @@
 // 確認事項パネル / 全アラート一覧 / ズレ補正 / 作業履歴（スナップショット）
 import { h, modal, toast, promptDialog, fmt, confirmDialog, table } from './common.js';
+import { suggestBoltJoints } from '../bim/joints.js';
+import { holePos } from '../bim/review.js';
 import { buildChecklist, openCount, detectMisalignment, REVIEW_KINDS } from '../bim/review.js';
 import { parseSpec, holeFaces, FACE_LABEL } from '../geo/profiles.js';
 
@@ -44,4 +46,14 @@ export async function saveSnapshotDialog(app) { const r = await promptDialog('�
 export function openHistory(app) {
   const render = () => { const snaps = app.project.snapshots || []; body.innerHTML = ''; body.append(snaps.length ? table(['日時', '名前', 'メモ', 'インスタンス', '未確認', '操作'], snaps.slice().reverse().map(s => [fmt.date(s.at), s.name, s.note || '', s.stats?.instances ?? '', s.stats?.open ?? '', h('div', {}, h('button', { class: 'btn sm primary', onClick: async () => { if (!(await confirmDialog(`「${s.name}」の状態に戻しますか？（現在の状態は自動で「復元前」として保存されます）`))) return; await app.restoreSnapshot(s.id); m.close(); } }, '復元'), ' ', h('button', { class: 'btn sm danger', onClick: async () => { app.project.snapshots = snaps.filter(x => x.id !== s.id); await app.save(true); render(); } }, '削除'))])) : h('div', { class: 'pp-empty' }, '保存された作業はありません。「作業を保存」（Ctrl+Shift+S）で現在の状態に名前を付けて保存できます。自動保存は常時働いています。'), h('div', { class: 'muted small', style: { marginTop: '8px' } }, `自動保存: ${app.store.mode === 'server' ? 'サーバ' : 'このブラウザ（localStorage）'} ・ 最終保存 ${fmt.date(app.project.updatedAt)}`)); };
   const body = h('div', {}); const m = modal({ title: '作業履歴', wide: true, body }); render();
+}
+
+// ---- 穴の重なりからボルト接合を提案 ----
+export function boltSuggestions(app) { try { return suggestBoltJoints(app.model, inst => app.instanceParts(inst), holePos); } catch (e) { console.warn('bolt suggest', e); return []; } }
+export function openBoltSuggest(app) {
+  const cands = boltSuggestions(app); const sel = new Set(cands.map((_, i) => i));
+  const body = h('div', {}, h('p', { class: 'muted small' }, '接触している 2 部材の穴が同じ位置（±4 mm）にある箇所を、ボルト接合の候補として挙げています。適用すると、その穴位置にボルトを立てます（穴は新たに作りません）。ボルト径は穴径から（φ11→M10 / φ13.5〜15→M12 / φ17.5→M16）。'),
+    cands.length ? table(['', '部材 A', '部材 B', '穴の一致', 'ボルト', '接触面'], cands.map((c, i) => [h('input', { type: 'checkbox', checked: true, onChange: e => e.target.checked ? sel.add(i) : sel.delete(i) }), `${c.a.mark} ${c.a.name || ''}`, `${c.b.mark} ${c.b.name || ''}`, `${c.pairs.length} 組（φ${c.d}）`, `${c.M} × ${c.pairs.length}`, `${c.contact.axis} 面 ${Math.round(c.contact.w)}×${Math.round(c.contact.h)} mm`])) : h('div', { class: 'pp-empty' }, '穴が重なる接触面はありません（部材を接触させ、両方に穴があると提案されます）'));
+  const m = modal({ title: `ボルト接合の提案（${cands.length}）`, wide: true, body, footer: [h('button', { class: 'btn', onClick: () => m.close() }, '閉じる'), cands.length ? h('button', { class: 'btn primary', onClick: () => { let n = 0; for (const i of sel) { const c = cands[i]; app.model.addJoint({ type: 'bolt', a: c.a.id, b: c.b.id, M: c.M, count: c.pairs.length, points: c.points, sides: 1, allAround: true, site: false, status: 'inferred', label: `${c.a.mark}–${c.b.mark} ${c.M} ボルト（穴位置から提案）` }); n++; } app.rebuildAll(); app.refreshBrowser(); app.flowRefresh?.(); m.close(); toast(`ボルト接合を ${n} 件追加しました（状態: 推論。確認で確定）`, 'ok'); } }, `選択した ${sel.size} 件を適用`) : null] });
+  return m;
 }

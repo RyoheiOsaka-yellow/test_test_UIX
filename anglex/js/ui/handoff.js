@@ -3,7 +3,7 @@ import { h, modal, fmt, toast, promptDialog, table } from './common.js';
 import * as WF from '../core/workflow.js';
 import { reviewGate } from './estimate.js';
 import { branchName } from '../core/branches.js';
-import { recordFromEstimate } from '../core/pricing.js';
+import { recordFromEstimate, recordMarginsFromEstimate } from '../core/pricing.js';
 
 const plusDays = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 // 相手に送る本文（メール／チャット用）
@@ -28,7 +28,7 @@ export async function handoffDialog(app, est, to, rerender, { gate = true, warn 
   const role = app.role(); const user = app.user();
   if (gate && role === 'A') { const g = await reviewGate(app, '受け渡し'); if (!g.ok) return false; warn = [g.note, warn].filter(Boolean).join(' '); }
   const r = await promptDialog(`${WF.ROLES[to].name} へ受け渡し`, [{ key: 'note', label: 'メッセージ', type: 'textarea', value: '' }, { key: 'due', label: '回答期限', type: 'date', value: plusDays(to === 'C' ? 7 : 3) }]); if (!r) return false;
-  try { const res = await app.store.handoffEstimate(est.id, { from: role, to, who: user.name, note: [warn, r.note].filter(Boolean).join(' '), due: r.due || null }); const link = location.origin + location.pathname + '?handoff=' + res.token; const fresh = (await app.store.listEstimates(est.projectId)).find(e => e.id === est.id) || est; if (role === 'C') { try { const n = await recordFromEstimate(app, fresh); if (n) toast(`工場単価・納期 ${n} 行を単価マスタ（学習）に記録しました`, 'info'); } catch (e) { console.warn('price history', e); } } const text = handoffMessage(app, fresh, to, link, { note: r.note, due: r.due, role }); try { await navigator.clipboard.writeText(text); } catch { } toast(`${WF.ROLES[to].name} へ受け渡しました（通知文をコピー）`, 'ok', 4000); showMessage(text); rerender?.(); app.flowRefresh?.(); return true; } catch (e) { toast(e.message, 'bad'); return false; }
+  try { const res = await app.store.handoffEstimate(est.id, { from: role, to, who: user.name, note: [warn, r.note].filter(Boolean).join(' '), due: r.due || null }); const link = location.origin + location.pathname + '?handoff=' + res.token; const fresh = (await app.store.listEstimates(est.projectId)).find(e => e.id === est.id) || est; if (role === 'C') { try { const n = await recordFromEstimate(app, fresh); if (n) toast(`工場単価・納期 ${n} 行を単価マスタ（学習）に記録しました`, 'info'); } catch (e) { console.warn('price history', e); } } if (role === 'B') { try { const n = await recordMarginsFromEstimate(app, fresh); if (n) toast(`利益率 ${n} 行を履歴に記録しました（次回「前回の利益率を流用」）`, 'info'); } catch (e) { console.warn('margin history', e); } } const text = handoffMessage(app, fresh, to, link, { note: r.note, due: r.due, role }); try { await navigator.clipboard.writeText(text); } catch { } toast(`${WF.ROLES[to].name} へ受け渡しました（通知文をコピー）`, 'ok', 4000); showMessage(text); rerender?.(); app.flowRefresh?.(); return true; } catch (e) { toast(e.message, 'bad'); return false; }
 }
 // 確定前チェック: 受注不可・未回答・要求納期超過・利益率未入力 を一覧にして止める
 export function finalizeIssues(est, { requiredLead = null } = {}) {

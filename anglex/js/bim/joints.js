@@ -5,7 +5,7 @@ import { boltDims } from '../geo/fasteners.js';
 import { place, DIR } from './families.js';
 
 const V = a => new THREE.Vector3(...a);
-function instMatrix(inst) { const m = new THREE.Matrix4(); const e = new THREE.Euler(...(inst.rot || [0, 0, 0])); m.makeRotationFromEuler(e); m.setPosition(new THREE.Vector3(...inst.pos)); return m; }
+export function instMatrix(inst) { const m = new THREE.Matrix4(); const e = new THREE.Euler(...(inst.rot || [0, 0, 0])); m.makeRotationFromEuler(e); m.setPosition(new THREE.Vector3(...inst.pos)); return m; }
 function partMatrix(pt) { const [x, y, z] = pt.pl.basis; const m = new THREE.Matrix4().makeBasis(V(x), V(y), V(z)); m.setPosition(V(pt.pl.pos)); return m; }
 // 部材の各板 → ワールド AABB（インスタンス変換込み）と板情報
 export function plateBoxes(model, inst) {
@@ -44,7 +44,11 @@ export function weldPartsFromContact(c, size = 6, { allAround = true, sides = 1,
   if (!allAround) return parts.slice(0, sides); return parts;
 }
 // ボルト接合: 重ね部（接触矩形）にボルト n 本 + 両部材に穴
-export function boltPartsFromContact(c, { M = 'M12', count = 2, pitch = null, model } = {}) {
+export function boltPartsFromContact(c, { M = 'M12', count = 2, pitch = null, model, points = null } = {}) {
+  // points: 既存の穴（ワールド座標）に合わせてボルトを立てる（穴の自動提案から）。接触面に投影し、穴は新たに作らない
+  if (points && points.length) { const b = boltDims(M); const tA = c.a.thick || 6, tB = c.b.thick || 6; const grip = tA + tB; const Lb = Math.ceil((grip + b.wt * 2 + b.m + 3 * b.p + 2) / 5) * 5; const axisIdx = ['x', 'y', 'z'].indexOf(c.axis); const dirBolt = [0, 0, 0]; dirBolt[axisIdx] = -c.aSide; const parts = [];
+    for (const p0 of points) { const center = [...p0]; center[axisIdx] = c.plane; const head = [...center]; head[axisIdx] = c.plane + c.aSide * tA; parts.push({ kind: 'bolt', name: `接合ボルト ${M}×${Lb}`, M, L: Lb, grip, pl: place(head, dirBolt, axisIdx === 0 ? DIR.Y : DIR.X), group: '接合ボルト' }); }
+    return { parts, holes: [], bolt: { M, L: Lb, count: points.length } }; }
   const ks = c.others; const r = c.rect; const b = boltDims(M); const long = (r.max[ks[0]] - r.min[ks[0]]) >= (r.max[ks[1]] - r.min[ks[1]]) ? ks[0] : ks[1]; const short = long === ks[0] ? ks[1] : ks[0];
   const L0 = r.min[long], L1 = r.max[long]; const span = L1 - L0; const pch = pitch || Math.min(100, Math.max(40, (span - 60) / Math.max(1, count - 1))); const start = (L0 + L1) / 2 - pch * (count - 1) / 2; const mid = (r.min[short] + r.max[short]) / 2;
   const tA = c.a.thick || 6, tB = c.b.thick || 6; const grip = tA + tB; const Lb = Math.ceil((grip + b.wt * 2 + b.m + 3 * b.p + 2) / 5) * 5;
@@ -66,7 +70,7 @@ export function evaluateJoint(model, j) {
   const cs = detectContacts(model, a, b); const c = cs[0]; if (!c) return { parts: [], holes: [], warning: '接触面が見つかりません（部材を接触させてください）' };
   if (j.type === 'fillet' || j.type === 'weld') return { parts: weldPartsFromContact(c, j.size || 6, { allAround: j.allAround !== false, sides: j.sides || 1, site: !!j.site }), holes: [], contact: c };
   if (j.type === 'butt') { const ks = c.others; const r = c.rect; const from = pt3(c.axis, c.plane, ks, r.min[ks[0]], (r.min[ks[1]] + r.max[ks[1]]) / 2), to = pt3(c.axis, c.plane, ks, r.max[ks[0]], (r.min[ks[1]] + r.max[ks[1]]) / 2); return { parts: [{ kind: 'weld', weldType: 'butt', size: j.size || 6, length: Math.hypot(...to.map((v, i) => v - from[i])), from, to, n1: unit[c.axis], n2: unit[c.axis], group: '突合せ溶接' }], holes: [], contact: c }; }
-  if (j.type === 'bolt') { const r = boltPartsFromContact(c, { M: j.M || 'M12', count: j.count || 2, pitch: j.pitch }); const holes = []; for (const h of r.holes) { const ha = worldToHole(c.a, h.world, h.d), hb = worldToHole(c.b, h.world, h.d); if (ha) holes.push({ instId: a.id, partIndex: c.a.partIndex, hole: ha }); if (hb) holes.push({ instId: b.id, partIndex: c.b.partIndex, hole: hb }); } return { parts: r.parts, holes, contact: c, bolt: r.bolt }; }
+  if (j.type === 'bolt') { const r = boltPartsFromContact(c, { M: j.M || 'M12', count: j.count || 2, pitch: j.pitch, points: j.points || null }); const holes = []; for (const h of r.holes) { const ha = worldToHole(c.a, h.world, h.d), hb = worldToHole(c.b, h.world, h.d); if (ha) holes.push({ instId: a.id, partIndex: c.a.partIndex, hole: ha }); if (hb) holes.push({ instId: b.id, partIndex: c.b.partIndex, hole: hb }); } return { parts: r.parts, holes, contact: c, bolt: r.bolt }; }
   return { parts: [], holes: [] };
 }
 
@@ -97,5 +101,20 @@ export function toolClearanceIssues(model) {
       const ends = pt.kind === 'anchor' ? [['ナット側', L, L + clear]] : pt.kind === 'ubolt' ? [['ナット側', -(L + clear), -0.5 * L]] : [['頭側', -clear, 0], ['ナット側', L, L + clear]];
       for (const [label, z0, z1] of ends) { const box = new THREE.Box3(); for (const c of [[-half, -half, z0], [half, half, z0], [-half, -half, z1], [half, half, z1]]) box.expandByPoint(V(c).applyMatrix4(PM));
         for (const other of insts) { if (other.id === inst.id) continue; for (const pb of plates.get(other.id)) { const inter = box.clone().intersect(pb.box); if (inter.isEmpty()) continue; const sz = inter.getSize(new THREE.Vector3()); if (sz.x > 2 && sz.y > 2 && sz.z > 2) out.push({ inst, part: pt, other, otherPart: pb.part, end: label, need: Math.round(clear), c: inter.getCenter(new THREE.Vector3()), label: `${inst.mark} ${pt.name || (pt.kind + ' ' + (pt.M || ''))} の${label}に工具スペース ${Math.round(clear)} mm が取れません（${other.mark} ${pb.part.name || pb.part.spec} と干渉）` }); } } } } }
+  return out;
+}
+
+// ---------- 穴からボルト接合を提案 ----------
+// 接触している 2 部材の既存の穴（単材/板の DSL・extraHoles）が、接触面上で同じ位置（許容 tol mm）にあれば、その穴列をボルト接合の候補にする。
+// partsOf(inst) は穴つき部品（instanceParts）を返す関数。戻り値: [{ a, b, contact, points:[world], pairs:[{d, posA, posB}], M }]
+export function suggestBoltJoints(model, partsOf, holePosFn, { tol = 4 } = {}) {
+  const insts = model.instances; const out = []; const dToM = d => d >= 17 ? 'M16' : d >= 13 ? 'M12' : d >= 11 ? 'M10' : 'M8';
+  const worldHoles = inst => { const M = instMatrix(inst); const res = []; let parts = []; try { parts = partsOf(inst); } catch { return res; } parts.forEach((pt, pi) => { if (!pt.holes || pt.ref) return; for (const h of pt.holes) { if (h.id) continue; const loc = holePosFn(pt, h); if (!loc) continue; const w = loc.clone().applyMatrix4(M); res.push({ w: [w.x, w.y, w.z], d: h.d, partIndex: pi, h }); } }); return res; };
+  const cache = new Map(); const holesOf = inst => { if (!cache.has(inst.id)) cache.set(inst.id, worldHoles(inst)); return cache.get(inst.id); };
+  for (let i = 0; i < insts.length; i++) for (let k = i + 1; k < insts.length; k++) { const A = insts[i], B = insts[k]; const existing = model.joints.find(j => j.type === 'bolt' && ((j.a === A.id && j.b === B.id) || (j.a === B.id && j.b === A.id))); if (existing) continue;
+    let cs = []; try { cs = detectContacts(model, A, B); } catch { } if (!cs.length) continue; const c = cs[0]; const axisIdx = ['x', 'y', 'z'].indexOf(c.axis); const ks = c.others.map(o => ['x', 'y', 'z'].indexOf(o));
+    const HA = holesOf(A), HB = holesOf(B); if (!HA.length || !HB.length) continue; const pairs = [];
+    for (const ha of HA) { if (Math.abs(ha.w[axisIdx] - c.plane) > 60) continue; for (const hb of HB) { if (Math.abs(hb.w[axisIdx] - c.plane) > 60) continue; const dd = Math.hypot(ha.w[ks[0]] - hb.w[ks[0]], ha.w[ks[1]] - hb.w[ks[1]]); if (dd <= tol && Math.abs(ha.d - hb.d) <= 3) { pairs.push({ d: Math.max(ha.d, hb.d), posA: ha.w, posB: hb.w, mid: ha.w.map((v, q) => (v + hb.w[q]) / 2) }); break; } } }
+    if (!pairs.length) continue; const d = Math.max(...pairs.map(p => p.d)); out.push({ a: A, b: B, contact: c, pairs, points: pairs.map(p => p.mid), M: dToM(d), d }); }
   return out;
 }

@@ -36,3 +36,14 @@ export function applyLearned(hist, members, style = '') {
     if (rows.length < 2) continue; const last = rows[rows.length - 1]; m.learned = { n: rows.length, familyId: last.familyId, params: last.params }; m.confidence = Math.min(0.95, (m.confidence || 0) + 0.2); n++; }
   return n;
 }
+
+// ---- 学習の見える化: 読込ごとの統計（候補数・要判断・学習が効いた数）を記録し、管理画面「学習の状態」で効果を示す ----
+const STATS_KEY = 'anglex.learnStats';
+export function recordImportStats(rec) { try { const rows = JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); rows.push({ at: new Date().toISOString(), name: rec.name, kind: rec.kind, members: rec.members, review: rec.review, learned: rec.learned, rejected: rec.rejected || 0 }); localStorage.setItem(STATS_KEY, JSON.stringify(rows.slice(-500))); } catch { } }
+export function listImportStats() { try { return JSON.parse(localStorage.getItem(STATS_KEY) || '[]'); } catch { return []; } }
+// 署名ごとの集計: 確定・修正・却下・返送（○/×）件数と「次回から効く」判定
+export function summarizeLearn(hist) {
+  const by = new Map(); for (const r of hist) { const o = by.get(r.sig) || { sig: r.sig, confirmed: 0, corrected: 0, rejected: 0, fbOk: 0, fbFix: 0, fbReject: 0, last: null, lastSpec: null, lastL: null }; if (r.status === 'confirmed') o.confirmed++; else if (r.status === 'corrected') o.corrected++; else if (r.status === 'rejected') o.rejected++; if (r.feedback === 'ok') o.fbOk++; else if (r.feedback === 'fix') o.fbFix++; else if (r.feedback === 'reject') o.fbReject++; if (!o.last || r.at > o.last) { o.last = r.at; o.lastSpec = r.params?.spec || null; o.lastL = r.params?.L || null; } by.set(r.sig, o); }
+  const rows = [...by.values()].map(o => ({ ...o, effect: o.rejected >= 2 && !o.confirmed && !o.corrected ? '却下（候補から外す）' : o.corrected >= 2 && !o.confirmed ? `修正値を初期値に（${o.lastSpec || ''}${o.lastL ? ' L=' + o.lastL : ''}）` : o.confirmed >= 2 ? '確信度 +0.2・確定値を初期値に' : `あと ${Math.max(0, 2 - Math.max(o.confirmed, o.corrected, o.rejected))} 件で有効` }));
+  return rows.sort((a, b) => (b.last || '').localeCompare(a.last || ''));
+}

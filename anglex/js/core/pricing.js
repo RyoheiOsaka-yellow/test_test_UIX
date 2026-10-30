@@ -31,3 +31,13 @@ export function reviewCandidates(hist, { minN = 3, threshold = 10 } = {}) {
   const out = []; for (const [k, rs] of groups) { const dev = rs.map(r => (r.factoryCost - r.baseCost) / r.baseCost * 100); const md = median(dev); out.push({ key: k, family: rs[0].family, bucket: k.split('|')[1], n: rs.length, medianDev: Math.round(md * 10) / 10, perKg: median(rs.filter(r => r.perKg).map(r => r.perKg)), lead: median(rs.filter(r => r.leadDays != null).map(r => r.leadDays)), accept: rs.filter(r => r.accepted === false).length, last: rs[rs.length - 1].at, branches: [...new Set(rs.map(r => r.branch).filter(Boolean))], flag: rs.length >= minN && Math.abs(md) >= threshold }); }
   return out.sort((a, b) => Math.abs(b.medianDev) - Math.abs(a.medianDev));
 }
+
+// ---- B社の利益率履歴: 受け渡し時に 顧客・ファミリ×寸法区分 ごとの利益率を記録し、次回は「前回の利益率を流用」 ----
+export function marginKey(l, customer = '') { return `${(customer || '').trim()}|${famKey(l)}`; }
+export async function recordMarginsFromEstimate(app, est) {
+  const hist = await listHistory(app); const tag = `${est.id}#${est.revision}#margin`; if (hist.some(r => r.tag === tag)) return 0; const customer = est.meta?.customer || '';
+  const rows = est.lines.filter(l => l.bMarginPct != null).map(l => ({ kind: 'margin', tag, at: new Date().toISOString(), estNo: est.no, branch: est.branch || null, customer, familyId: l.familyId || null, family: l.family, spec: l.spec || '', mass: l.mass || 0, bMarginPct: l.bMarginPct, mkey: marginKey(l, customer), fkey: famKey(l) }));
+  await addHistory(app, rows); return rows.length;
+}
+// 顧客一致 → 全顧客（ファミリ×寸法区分）→ 全体 の順に 2 件以上あれば中央値
+export function learnedMarginFor(hist, l, customer = '') { const mh = hist.filter(r => r.kind === 'margin' && r.bMarginPct != null); const exact = mh.filter(r => r.mkey === marginKey(l, customer)), fam = mh.filter(r => r.fkey === famKey(l)), all = mh; const use = exact.length >= 2 ? exact : fam.length >= 2 ? fam : all.length >= 2 ? all : null; if (!use) return null; return { n: use.length, level: exact.length >= 2 ? '同じ顧客・同じ区分' : fam.length >= 2 ? '同じ区分' : '全体', pct: median(use.map(r => r.bMarginPct)) }; }

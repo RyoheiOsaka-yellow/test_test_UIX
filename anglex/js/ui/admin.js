@@ -1,6 +1,6 @@
 // 営業所・ユーザーの管理画面（A社）: 拠点マスタの追加・変更・削除、ユーザーの所属、CSV 一括取込（全国展開の初期設定用）
 import { h, modal, toast, table, download, csv, confirmDialog, fmt } from './common.js';
-import { recordFeedback, listLearn } from '../import/learn.js';
+import { recordFeedback, listLearn, summarizeLearn, listImportStats } from '../import/learn.js';
 import { BRANCHES, setBranches, saveBranches, branchName } from '../core/branches.js';
 import * as WF from '../core/workflow.js';
 
@@ -10,7 +10,7 @@ const pickFile = accept => new Promise(res => { const i = h('input', { type: 'fi
 export async function openAdmin(app, { tab = 'branches' } = {}) {
   if (app.role() !== 'A') { toast('営業所・ユーザーの管理は A社（見積作成）のみ', 'warn'); return; }
   const host = h('div', { class: 'admin-wrap' }); const m = modal({ title: '営業所・ユーザーの管理', wide: true, cls: 'admin', body: host });
-  let cur = tab; const draft = { users: null }; const render = async () => { host.innerHTML = ''; host.append(h('div', { class: 'seg', style: { marginBottom: '10px' } }, h('button', { class: 'btn sm' + (cur === 'branches' ? ' on' : ''), onClick: () => { cur = 'branches'; render(); } }, `営業所（${BRANCHES.length}）`), h('button', { class: 'btn sm' + (cur === 'users' ? ' on' : ''), onClick: () => { cur = 'users'; render(); } }, 'ユーザー'), h('button', { class: 'btn sm' + (cur === 'feedback' ? ' on' : ''), onClick: () => { cur = 'feedback'; render(); } }, '検証結果の取込')), cur === 'branches' ? await branchesPane(app, render) : cur === 'feedback' ? await feedbackPane(app, render, draft) : await usersPane(app, render, draft)); };
+  let cur = tab; const draft = { users: null }; const render = async () => { host.innerHTML = ''; host.append(h('div', { class: 'seg', style: { marginBottom: '10px' } }, h('button', { class: 'btn sm' + (cur === 'branches' ? ' on' : ''), onClick: () => { cur = 'branches'; render(); } }, `営業所（${BRANCHES.length}）`), h('button', { class: 'btn sm' + (cur === 'users' ? ' on' : ''), onClick: () => { cur = 'users'; render(); } }, 'ユーザー'), h('button', { class: 'btn sm' + (cur === 'feedback' ? ' on' : ''), onClick: () => { cur = 'feedback'; render(); } }, '検証結果の取込'), h('button', { class: 'btn sm' + (cur === 'learn' ? ' on' : ''), onClick: () => { cur = 'learn'; render(); } }, '学習の状態')), cur === 'branches' ? await branchesPane(app, render) : cur === 'feedback' ? await feedbackPane(app, render, draft) : cur === 'learn' ? await learnPane(app, render) : await usersPane(app, render, draft)); };
   await render(); return m;
 }
 
@@ -46,4 +46,15 @@ async function feedbackPane(app, rerender, draft) {
   return h('div', {}, h('p', { class: 'muted small' }, '検証キット（dev/raster-real.mjs）が出力した feedback_template.csv に、正誤（○/×）と正しい仕様・長さを記入して取り込みます。○ は正例、× に正しい値があれば「仕様を直した」、× のみは「部材ではない」として署名ごとに学習され、同じ様式の図面で 2 件以上たまると次回の候補に効きます。'),
     h('div', { class: 'form-row' }, h('span', {}, 'CSV'), file), ta, preview, h('div', { style: { marginTop: '8px' } }, h('button', { class: 'btn primary', onClick: apply }, '学習に反映')),
     h('h4', { style: { marginTop: '14px' } }, `取り込み済みの検証結果（${fb.length}）`), fb.length ? table(['日時', '署名', '結果', '仕様', '長さ'], fb.slice(-50).reverse().map(r => [fmt.date(r.at), h('code', { class: 'small' }, r.sig), { ok: '○ 正しい', fix: '× 修正', reject: '× 部材ではない' }[r.feedback] || r.feedback, r.params?.spec || '', r.params?.L || ''])) : h('div', { class: 'pp-empty' }, 'まだありません'));
+}
+
+// ---- 学習の状態: 署名ごとの件数と「次回から効くか」、読込ごとの効果（要判断の推移） ----
+async function learnPane(app, rerender) {
+  const hist = await listLearn(app); const rows = summarizeLearn(hist); const stats = listImportStats(); const eff = rows.filter(r => !/あと \d 件/.test(r.effect)).length;
+  const first = stats.slice(0, Math.max(1, Math.floor(stats.length / 2))), last = stats.slice(Math.floor(stats.length / 2)); const rate = a => a.length ? Math.round(a.reduce((x, r) => x + (r.members ? r.review / r.members : 0), 0) / a.length * 100) : null; const r0 = rate(first), r1 = rate(last);
+  const kpi = (k, v, cls = '') => h('div', { class: 'dash-kpi ' + cls }, h('span', {}, k), h('b', {}, String(v)));
+  return h('div', {}, h('div', { class: 'dash-kpis' }, kpi('学習データ', hist.length), kpi('署名', rows.length), kpi('次回から効く署名', eff, eff ? 'ok' : ''), kpi('読込回数', stats.length), stats.length >= 2 && r0 != null && r1 != null ? kpi('要判断率 前半→後半', `${r0}% → ${r1}%`, r1 < r0 ? 'ok' : r1 > r0 ? 'warn' : '') : kpi('要判断率', stats.length ? `${rate(stats)}%` : '—')),
+    h('p', { class: 'muted small' }, '署名 = 仕様（正規化）× 長さ区分 × 穴数 × 特徴 × 図面様式。同じ署名の 確定／修正／却下 が 2 件以上たまると、次回の候補に 確信度・初期値・除外 として効きます。返送 CSV の ○/× もここに数えられます。'),
+    rows.length ? table(['署名', '確定', '修正', '却下', '返送 ○/×', '最終', '次回の効果'], rows.slice(0, 100).map(r => [h('code', { class: 'small' }, r.sig), r.confirmed, r.corrected, r.rejected, `${r.fbOk + r.fbFix} / ${r.fbReject}`, fmt.date(r.last), h('span', { class: /あと/.test(r.effect) ? 'muted' : 'ok' }, r.effect)])) : h('div', { class: 'pp-empty' }, 'まだ学習データがありません（確認ウィザードの「部材を確定」、図面上の修正、返送 CSV の取込で増えます）'),
+    h('h4', { style: { marginTop: '14px' } }, `読込の履歴（${stats.length}）`), stats.length ? table(['日時', '図面', '種別', '候補', '要判断', '学習が効いた', '除外'], stats.slice(-30).reverse().map(x => [fmt.date(x.at), x.name, x.kind, x.members, h('span', { class: x.review ? 'warn' : 'ok' }, x.review), x.learned, x.rejected])) : h('div', { class: 'pp-empty' }, 'まだ読込がありません'));
 }
