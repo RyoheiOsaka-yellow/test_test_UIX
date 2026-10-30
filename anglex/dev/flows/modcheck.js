@@ -1,0 +1,2 @@
+const r = await page.evaluate(async () => { const out = {}; for (const m of ['./js/import/ocr.js', './js/import/recognize.js', './js/import/raster.js', './js/ui/roleview.js', './js/ui/reminders.js', './js/core/reminders.js', './js/ui/dashboard.js', './js/ui/importer.js', './js/ui/flow.js']) { try { await import(m); out[m] = 'ok'; } catch (e) { out[m] = e.message; } } return out; });
+console.log('MODS:', JSON.stringify(r));

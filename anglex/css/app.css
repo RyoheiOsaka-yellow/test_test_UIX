@@ -157,3 +157,6 @@ tr.new td{background:rgba(29,78,216,.06)}tr.gone td{background:rgba(0,0,0,.04);t
 .rem-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:#d9a441;color:#fff;font-size:10.5px;font-weight:700;line-height:16px;text-align:center;pointer-events:none}.rem-badge.bad{background:#c0392b}
 .rv-deadline{padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;margin-bottom:8px;font-size:13px}.rv-deadline.warn{background:#fff8e8;border-color:#e8c27a}.rv-deadline.bad{background:#fdecea;border-color:#f0b4ac;color:#8a1c12}
 .dash-kpi.clickable{cursor:pointer}.dash-kpi.clickable:hover{box-shadow:0 0 0 2px rgba(37,99,235,.25)}
+
+/* B/C ビュー: 未入力行の強調と「残り n 行」 */
+.rv-pending{display:flex;align-items:center;gap:8px;margin:6px 0}.est-table tr.pending td{background:#fff8e8}.est-table tr.pending td:first-child{box-shadow:inset 3px 0 0 #d9a441}

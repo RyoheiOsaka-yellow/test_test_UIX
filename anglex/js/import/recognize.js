@@ -25,7 +25,7 @@ export function featuresInText(text) {
 export function recognizeDXF(dxf) {
   const texts = dxf.entities.filter(e => e.type === 'TEXT' && e.text); const polys = dxf.entities.filter(e => e.type === 'LWPOLYLINE' && e.pts.length >= 4); const lines = dxf.entities.filter(e => e.type === 'LINE'); const circles = dxf.entities.filter(e => e.type === 'CIRCLE');
   const members = []; const notes = []; let seq = 1;
-  for (const t of texts) { const specs = specsInText(t.text); const feat = featuresInText(t.text); if (!specs.length) { if (Object.keys(feat).length) notes.push({ text: t.text, pos: t.pos, layer: t.layer, feat }); continue; }
+  for (const t of texts) { const specs = specsInText(t.text); const feat = featuresInText(t.text); if (!specs.length) { if (Object.keys(feat).length) notes.push({ text: t.text, pos: t.pos, layer: t.layer, feat, ocr: !!t.ocr }); continue; }
     for (const sp of specs) { // 最寄りの矩形ポリライン or 平行線ペアから長さを推定
       let best = null, bd = Infinity; for (const p of polys) { const bb = bboxPts(p.pts); const cx = (bb.x0 + bb.x1) / 2, cy = (bb.y0 + bb.y1) / 2; let d = Math.hypot(cx - t.pos[0], cy - t.pos[1]); if (feat.length && Math.abs(Math.max(bb.w, bb.h) - feat.length) <= Math.max(10, feat.length * 0.03)) d *= 0.35; // 注記の長さと外形が一致する矩形を優先
         if (d < bd && d < Math.max(bb.w, bb.h) * 1.5 + 200) { bd = d; best = { bb, p }; } }
@@ -36,7 +36,9 @@ export function recognizeDXF(dxf) {
   for (const p of polys) { const bb = bboxPts(p.pts); const ar = Math.max(bb.w, bb.h) / Math.max(1, Math.min(bb.w, bb.h)); const L0 = Math.max(bb.w, bb.h), cx0 = (bb.x0 + bb.x1) / 2, cy0 = (bb.y0 + bb.y1) / 2; const explained = members.some(m => (m.bbox && m.bbox.x0 === bb.x0 && m.bbox.y0 === bb.y0) || (m.length && Math.abs(L0 - m.length) <= Math.max(10, m.length * 0.03) && Math.hypot(((m.bbox ? (m.bbox.x0 + m.bbox.x1) / 2 : m.pos[0]) - cx0), ((m.bbox ? (m.bbox.y0 + m.bbox.y1) / 2 : m.pos[1]) - cy0)) < 600));
     if (ar > 6 && Math.min(bb.w, bb.h) >= 20 && Math.min(bb.w, bb.h) <= 150 && !explained) { const w = Math.round(Math.min(bb.w, bb.h)); members.push({ id: 'D' + seq++, spec: `L-${w}x${w}x${w <= 40 ? 3 : w <= 65 ? 5 : 6}`, length: Math.round(Math.max(bb.w, bb.h)), lengthSource: '図形外形', holes: [], feat: {}, text: '（仕様注記なし・形状から推定）', pos: [bb.x0, bb.y0], layer: p.layer, bbox: bb, confidence: 0.4, status: 'review' }); } }
   // 近傍注記の特徴（穴・Uボルト・仕上げ）を部材へ紐付け
-  for (const m of members) for (const nt of notes) { const d = Math.hypot(nt.pos[0] - m.pos[0], nt.pos[1] - m.pos[1]); if (d < 400) { m.feat = { ...nt.feat, ...m.feat }; m.linkedNotes = (m.linkedNotes || []).concat(nt.text); } }
+  const distTo = (m, pt) => { if (!m.bbox) return Math.hypot(pt[0] - m.pos[0], pt[1] - m.pos[1]); const dx = Math.max(m.bbox.x0 - pt[0], 0, pt[0] - m.bbox.x1), dy = Math.max(m.bbox.y0 - pt[1], 0, pt[1] - m.bbox.y1); return Math.hypot(dx, dy); };
+  // 注記は最寄りの部材 1 つに紐付ける（外形からの距離 < 400mm。穴注記は穴数・径として 3D の穴になり、アンカー・仕上げ・溶接は確認事項に）
+  for (const nt of notes) { let best = null, bd = 400; for (const m of members) { const d = distTo(m, nt.pos); if (d < bd) { bd = d; best = m; } } if (best) { best.feat = { ...nt.feat, ...best.feat }; best.linkedNotes = (best.linkedNotes || []).concat(nt.text); if (nt.ocr) best.noteOcr = true; } }
   applyRisk(members);
   return { members, notes, stats: { texts: texts.length, polylines: polys.length, lines: lines.length, circles: circles.length, layers: Object.keys(dxf.layers).length } };
 }
