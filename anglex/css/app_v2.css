@@ -847,7 +847,7 @@ table.grid{width:100%;border-collapse:collapse;font-size:12px;background:#fff}ta
 .dcard-icon{font-size:13px}
 .dcard.wide .dcard-head{flex-wrap:wrap;gap:8px}
 .d3-body{padding:10px}
-.d3-stage{height:600px;min-height:420px;background:#f4f5f7}
+.d3-stage{height:max(380px,calc(100vh - 320px));min-height:380px;background:#f4f5f7} /* 3D はウィンドウに収める（ノート PC の 720px 高でも下端が隠れない） */
 .d3-stage .viewport{position:absolute;inset:0}.viewport canvas.gl{display:block;width:100%;height:100%}
 .d3-stage .hud{top:60px;left:12px}
 .d3-zoom{top:12px}
@@ -901,7 +901,7 @@ table.grid{width:100%;border-collapse:collapse;font-size:12px;background:#fff}ta
 .fab-launch{bottom:34px}
 .fab-launch.on{background:var(--accent)}
 #btnEstimate[hidden]{display:none}
-@media (max-width:1080px){.d3-stage{height:460px}.cost-kpis{grid-template-columns:repeat(2,1fr)}.tpop.wide{min-width:300px}}
+@media (max-width:1080px){.d3-stage{height:max(340px,calc(100vh - 300px))}.cost-kpis{grid-template-columns:repeat(2,1fr)}.tpop.wide{min-width:300px}}
 @media print{.topbar,.workflow,.statusbar,.fab-launch,.toolstrip,.detail-actions-top{display:none!important}}
 
 /* コンテキストバー（3D 内で触った部材・部品に「足す」） */

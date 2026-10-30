@@ -196,7 +196,15 @@ export class Viewer {
     this.explodeTarget = target; this.syncEdges();
   }
   // ラベル（CSS2D）
-  label(text, pos, cls = 'tag') { this.invalidate(); const el = document.createElement('div'); el.className = 'v-label ' + cls; el.innerHTML = text; const o = new CSS2DObject(el); o.position.copy(pos); this.overlayRoot.add(o); return o; }
+  label(text, pos, cls = 'tag') { this.invalidate(); const el = document.createElement('div'); el.className = 'v-label ' + cls; el.innerHTML = text; if (/\b(alert|balloon-lbl|hotspot)\b/.test(cls)) this._forwardDrag(el); const o = new CSS2DObject(el); o.position.copy(pos); this.overlayRoot.add(o); return o; }
+  // クリックできるラベル（旗・バルーン・ホットスポット）の上からドラッグを始めても、画面の回転・パンが効くように canvas へ転送する（4px 動いたらドラッグ扱い、クリックは抑止）
+  _forwardDrag(el) {
+    el.addEventListener('pointerdown', e => { const sx = e.clientX, sy = e.clientY, id = e.pointerId; let fwd = false; const canvas = this.renderer.domElement;
+      const mv = ev => { if (fwd || ev.pointerId !== id) return; if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return; fwd = true; el.__drag = true; const init = { bubbles: true, cancelable: true, pointerId: id, pointerType: e.pointerType || 'mouse', button: e.button, buttons: e.buttons || 1, clientX: sx, clientY: sy, screenX: e.screenX, screenY: e.screenY, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, altKey: e.altKey, metaKey: e.metaKey, isPrimary: true }; canvas.dispatchEvent(new PointerEvent('pointerdown', init)); canvas.dispatchEvent(new PointerEvent('pointermove', { ...init, clientX: ev.clientX, clientY: ev.clientY })); };
+      const up = () => { document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); setTimeout(() => { el.__drag = false; }, 0); };
+      document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up); });
+    el.addEventListener('click', e => { if (el.__drag) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  }
   // 寸法線（3D ライン + ラベル）
   dimension(a, b, offset = new THREE.Vector3(0, 0, 0), text = null) {
     const g = new THREE.Group(); const A = a.clone().add(offset), B = b.clone().add(offset); const mat = new THREE.LineBasicMaterial({ color: 0x2e5c8a });
