@@ -18,6 +18,15 @@ export async function recordConfirmation(app, inst) {
 export async function recordCorrection(app, sig, { kind, spec = null, length = null }) {
   if (!sig) return 0; await addLearn(app, [{ at: new Date().toISOString(), sig, familyId: null, params: { spec, L: length }, status: kind, by: app.user?.().name || '', branch: app.project?.branch || null }]); return 1;
 }
+// 検証レポートの返送（CSV）を学習に取り込む: 行 = {sig, ok:'○'|'×', spec, length, originalSpec, originalLength}
+//  ○ → その仕様・長さを正例（corrected と同じ扱いで 2 件以上あれば確信度 +0.2 と初期値）、× で正しい値あり → corrected、× のみ → rejected
+export async function recordFeedback(app, rows, { by = 'feedback' } = {}) {
+  const out = []; for (const r of rows) { if (!r.sig) continue; const ok = /^[○o○OＯ◯yY1]/.test(String(r.ok || '').trim()); const bad = /^[×xX✕✗nN0]/.test(String(r.ok || '').trim()); if (!ok && !bad) continue;
+    if (ok) out.push({ at: new Date().toISOString(), sig: r.sig, familyId: null, params: { spec: r.originalSpec || null, L: r.originalLength || null }, status: 'corrected', by, branch: app.project?.branch || null, feedback: 'ok' });
+    else if (r.spec || r.length) out.push({ at: new Date().toISOString(), sig: r.sig, familyId: null, params: { spec: r.spec || r.originalSpec || null, L: r.length || null }, status: 'corrected', by, branch: app.project?.branch || null, feedback: 'fix' });
+    else out.push({ at: new Date().toISOString(), sig: r.sig, familyId: null, params: {}, status: 'rejected', by, branch: app.project?.branch || null, feedback: 'reject' }); }
+  await addLearn(app, out); return out;
+}
 // 認識候補へ学習値を適用: 同じ署名の確定が 2 件以上 → 確信度 +0.2、直した値（ファミリ・パラメータ）を提案に使う
 export function applyLearned(hist, members, style = '') {
   let n = 0; for (const m of members) { const sig = signature(m, style); m.recogSig = sig; const all = hist.filter(r => r.sig === sig); if (all.length < 2) continue;

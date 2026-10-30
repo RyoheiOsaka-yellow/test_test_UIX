@@ -1,6 +1,7 @@
 // 部材認識: 図面テキスト（鋼材仕様・穴・ピッチ・Uボルト・仕上げ）と幾何（閉じた矩形・長手方向）から部材候補を抽出し、確信度を付ける
 import { parseSpec } from '../geo/profiles.js';
 import { assessMember, DEFAULT_RISK } from '../bim/risk.js';
+import { rectsFromLines } from './raster.js';
 import { pipeOD } from '../data/sections.js';
 export const SPEC_RE = /(?:L|Ｌ)[-‐－]?\s*(\d{2,3})\s*[x×X＊*]\s*(\d{2,3})\s*[x×X＊*]\s*(\d(?:\.\d)?)|(?:\[|C|Ｃ|\[-)[-‐－]?\s*(\d{2,3})\s*[x×X＊*]\s*(\d{2,3})\s*[x×X＊*]\s*(\d(?:\.\d)?)(?:\s*[x×X＊*]\s*(\d{1,2}(?:\.\d)?))?|(?:FB|ＦＢ|平鋼)[-‐－]?\s*(\d(?:\.\d)?)\s*[x×X＊*]\s*(\d{2,3})|(?:PL|ＰＬ)[-‐－]?\s*(\d{1,2}(?:\.\d)?)(?:\s*[x×X＊*]\s*(\d{2,4})\s*[x×X＊*]\s*(\d{2,4}))?|(?:SGP|STPG|白ガス管|黒ガス管)?\s*(\d{2,3})\s*A\b|(?:□|口|STKR)[-‐－]?\s*(\d{2,3})\s*[x×X＊*]\s*(\d{2,3})\s*[x×X＊*]\s*(\d(?:\.\d)?)|(?:H|Ｈ)[-‐－]?\s*(\d{3})\s*[x×X＊*]\s*(\d{2,3})\s*[x×X＊*]\s*(\d{1,2})\s*[x×X＊*]\s*(\d{1,2})/g;
 export function specsInText(text) {
@@ -24,6 +25,8 @@ export function featuresInText(text) {
 // DXF エンティティ群から部材候補を抽出
 export function recognizeDXF(dxf) {
   const texts = dxf.entities.filter(e => e.type === 'TEXT' && e.text); const polys = dxf.entities.filter(e => e.type === 'LWPOLYLINE' && e.pts.length >= 4); const lines = dxf.entities.filter(e => e.type === 'LINE'); const circles = dxf.entities.filter(e => e.type === 'CIRCLE');
+  // 4 本の LINE で描かれた矩形（CAD では一般的）もポリライン同様に部材外形の候補にする（既存ポリラインと同じ外形は除く）
+  try { for (const r of rectsFromLines(lines.filter(l => !/FRAME|TITLE|BORDER|枠/i.test(l.layer || '')), 1)) { if (polys.some(p => { const bb = bboxPts(p.pts); return Math.abs(bb.x0 - r.x0) < 1 && Math.abs(bb.y0 - r.y0) < 1 && Math.abs(bb.x1 - r.x1) < 1 && Math.abs(bb.y1 - r.y1) < 1; })) continue; polys.push({ type: 'LWPOLYLINE', pts: [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]], closed: true, layer: 'LINES', fromLines: true }); } } catch { }
   const members = []; const notes = []; let seq = 1;
   for (const t of texts) { const specs = specsInText(t.text); const feat = featuresInText(t.text); if (!specs.length) { if (Object.keys(feat).length) notes.push({ text: t.text, pos: t.pos, layer: t.layer, feat, ocr: !!t.ocr }); continue; }
     for (const sp of specs) { // 最寄りの矩形ポリライン or 平行線ペアから長さを推定
@@ -56,8 +59,11 @@ export function applyRisk(members, risk = (globalThis.__anglexRisk || DEFAULT_RI
 export function proposeType(m) {
   const p = parseSpec(m.spec); const finish = m.feat.finish || 'HDZ';
   if (!p) return null;
-  if (p.kind === 'PL') return { familyId: 'plate', name: `PL-${p.t} 加工板`, params: { t: p.t, W: p.w || m.feat.width || 150, H: p.h || m.length || 150, holeD: m.feat.holeD || 15, cols: 2, rows: Math.max(1, Math.round((m.feat.holeCount || 2) / 2)), finish } };
+  if (p.kind === 'PL') { const W = p.w || m.feat.width || 150, H = p.h || m.length || 150;
+    // 図面に円があればその位置をそのまま穴に（extraHoles: 部品 0・face、z=H 方向、s=W 方向）。無ければ注記の穴数で等ピッチ（位置は要確認）
+    if (m.holes.length) { const sx = m.bbox ? W / Math.max(1, m.bbox.w) : 1, sy = m.bbox ? H / Math.max(1, m.bbox.h) : 1; const dsl = m.holes.map(h => `0|face:z${Math.round(h.y * sy)} s${Math.round(h.x * sx)} d${h.d}`).join('\n'); return { familyId: 'plate', name: `PL-${p.t} 加工板`, holePos: 'drawing', params: { t: p.t, W, H, holeD: m.holes[0].d, cols: 0, rows: 0, extraHoles: dsl, finish } }; }
+    return { familyId: 'plate', name: `PL-${p.t} 加工板`, holePos: m.feat.holeD ? 'note' : null, params: { t: p.t, W, H, holeD: m.feat.holeD || 15, cols: 2, rows: Math.max(1, Math.round((m.feat.holeCount || 2) / 2)), finish } }; }
   if (m.feat.ubolt && (p.kind === 'L' || p.kind === 'C')) return { familyId: 'hanger_support', name: `${p.label} サポート`, params: { profile: p.kind, spec: m.spec, L: m.length || 600, pipes: typeof m.feat.ubolt === 'string' ? m.feat.ubolt : '50A', finish } };
   const holesDSL = m.holes.length ? m.holes.map(h => `${p.kind === 'C' ? 'web' : p.kind === 'PL' || p.kind === 'FB' ? 'face' : 'A'}:z${Math.round(Math.max(h.x, h.y))} s${Math.round(Math.min(h.x, h.y) || (p.A || 25) / 2)} d${h.d}`).join('; ') : (m.feat.holeD ? Array.from({ length: m.feat.holeCount || 2 }, (_, i) => `${p.kind === 'C' ? 'web' : 'A'}:z${50 + i * (m.feat.pitch || 100)} s${(p.A || p.H || 50) / 2} d${m.feat.holeD}${m.feat.slot ? ' slot' + m.feat.slot.len + 'z' : ''}`).join('; ') : '');
-  return { familyId: 'member', name: p.label, params: { spec: m.spec, L: m.length || 1000, holes: holesDSL, finish, axis: 'x' } };
+  return { familyId: 'member', name: p.label, holePos: m.holes.length ? 'drawing' : m.feat.holeD ? 'note' : null, params: { spec: m.spec, L: m.length || 1000, holes: holesDSL, finish, axis: 'x' } };
 }
