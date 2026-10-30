@@ -18,6 +18,7 @@ import { openSchedules } from './ui/schedules.js';
 import { openEstimate } from './ui/estimate.js';
 import { openFlow } from './ui/flow.js';
 import { openDashboard } from './ui/dashboard.js';
+import { installReminderBadge } from './ui/reminders.js';
 import { BRANCHES, branchName, branchShort, canSeeProject, loadBranches } from './core/branches.js';
 import { openAdmin } from './ui/admin.js';
 import { importFiles, renderDrawingView, ACCEPT } from './ui/importer.js';
@@ -52,7 +53,7 @@ class App {
     this.viewer.onPick = (hit, e) => this.onPick(hit, e); this.viewer.onSelect = () => { }; this.viewer.onTransformEnd = obj => this.onGizmoEnd(obj);
     this.model.on('change', () => { this.updateStatus(); this.scheduleAutosave(); this.shell?.onModelChange(); this.viewer?.invalidate(); this.flowRefresh?.(); });
     await loadBranches(this); if (!this.project.branch && this.user().branch) this.project.branch = this.user().branch;
-    this.bindUI(); this.renderUser(); this.shell = $('#sm-root') ? initShell(this) : null;
+    this.bindUI(); this.renderUser(); this.shell = $('#sm-root') ? initShell(this) : null; installReminderBadge(this);
     this.viewer.onDblClick = hit => { this.viewer.focusOn(hit.instance); const id = hit.instance.userData.instId; if (id) this.select(id); };
     // ホバーの吹き出し（部材記号・タイプ名・触れている部品）。ドラッグ中・ギズモ操作中は出さない
     this.viewer.onHover = (hit, e) => { const stage = $('#d3stage') || $('#stage'); if (!stage) return; let tip = stage.querySelector('.hover-tip'); if (!hit || e.buttons || this.viewer.gizmo?.dragging || this.viewer.panMode) { if (tip) tip.classList.remove('show'); return; } const id = hit.instance.userData.instId; const inst = id ? this.model.getInstance(id) : null; if (!inst) { if (tip) tip.classList.remove('show'); return; } const pt = this.viewer._partOf(hit.object); const key = inst.id + '|' + (pt ? pt.name + pt.spec : ''); if (!tip) { tip = h('div', { class: 'hover-tip' }); stage.append(tip); } if (tip._key !== key) { tip._key = key; tip.innerHTML = ''; tip.append(h('b', {}, inst.mark), ' ', h('span', { class: 'muted' }, this.model.getType(inst.typeId)?.name || ''), pt ? h('div', { class: 'ht-part' }, `${pt.name || pt.kind}${pt.spec ? ' ' + pt.spec : ''}${pt.length ? ' L=' + Math.round(pt.length) : ''}${pt.site ? ' 現場' : ''}`) : null); } const r = stage.getBoundingClientRect(); let x = e.clientX - r.left + 16, y = e.clientY - r.top + 18; if (x + tip.offsetWidth > r.width - 8) x = e.clientX - r.left - tip.offsetWidth - 12; if (y + tip.offsetHeight > r.height - 8) y = e.clientY - r.top - tip.offsetHeight - 12; tip.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`; tip.classList.add('show'); };

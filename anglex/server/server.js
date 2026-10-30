@@ -3,6 +3,8 @@
 // 使い方: node server/server.js [--port 8080] [--data ./server/data]   変換: ANGLEX_CONVERTER_URL=https://converter.example/convert
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import crypto from 'node:crypto'; import { fileURLToPath } from 'node:url';
 import * as WF from '../js/core/workflow.js';
+import { remindersFor, shouldSend, reminderSubject } from '../js/core/reminders.js';
+import { sendMail, smtpConfigured } from './mail.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url)); const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2); const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const PORT = +(opt('--port', process.env.PORT || 8080)); const DATA = path.resolve(opt('--data', path.join(__dirname, 'data'))); fs.mkdirSync(DATA, { recursive: true });
@@ -22,6 +24,21 @@ function send(res, code, obj, headers = {}) { const body = typeof obj === 'strin
 function readBody(req) { return new Promise((res, rej) => { const chunks = []; req.on('data', c => chunks.push(c)); req.on('end', () => res(Buffer.concat(chunks))); req.on('error', rej); }); }
 function auth(req) { const h = req.headers.authorization || ''; const t = h.replace(/^Bearer\s+/i, ''); const s = db.sessions[t]; if (!s) return null; const u = db.users.find(x => x.id === s.userId); return u ? { user: pub(u), token: t } : null; }
 const pub = u => ({ id: u.id, name: u.name, org: u.org, company: u.company, email: u.email, branch: u.branch || null, scope: u.scope || null });
+// 催促の自動送信: 1 時間ごとに 期限超過／期限 1 日以内／未回答 3 日以上 の見積を探し、担当会社のユーザー宛に送る（同じ見積・種類は 24 時間に 1 通）。
+// SMTP 未設定なら送らず outbox（data/reminders.log）に本文を残す。/api/reminders で一覧、/api/reminders/run で手動実行（A社）
+const REM_LOG = path.join(DATA, 'reminders.log');
+function reminderText(est, r) { const to = est.currentOrg; const link = est.tokens?.[to] ? `${process.env.ANGLEX_PUBLIC_URL || 'http://localhost:' + PORT}/?handoff=${est.tokens[to]}` : '（業務フロー画面の共有リンク）'; const pending = to === 'C' ? est.lines.filter(l => l.factoryCost == null || l.accepted == null).length : to === 'B' ? est.lines.filter(l => l.bMarginPct == null).length : 0;
+  return [`【ANGLEX 見積 ${est.no} Rev.${est.revision}】${est.projectName} — ご回答のお願い（自動送信）`, '', `${WF.ROLES[to].name} ご担当者様`, '', r.kind === 'overdue' ? `回答期限 ${est.due} を ${r.days} 日過ぎています。` : r.kind === 'due_soon' ? `回答期限 ${est.due} が${r.days <= 0 ? '本日' : '明日'}です。` : `受け渡しから ${r.days} 日が経過しています。`, pending ? `未入力の行: ${pending} / ${est.lines.length} 行` : null, '', '下記リンクから入力をお願いします（ログイン不要・貴社の権限で同じ見積を編集できます）。', link, '', '— ANGLEX（図面に、語らせる）自動通知'].filter(x => x != null).join('\n'); }
+async function runReminders({ force = false } = {}) {
+  const now = new Date(); db.reminders = db.reminders || []; const sent = []; const skipped = [];
+  for (const r of remindersFor(Object.values(db.estimates), 'A', now)) { const est = r.est; if (!force && !shouldSend(est, r.kind, db.reminders, now)) { skipped.push({ estId: est.id, kind: r.kind }); continue; }
+    const rcpts = db.users.filter(u => u.org === est.currentOrg && u.email && (u.scope === 'all' || !u.branch || !est.branch || u.branch === est.branch)).map(u => u.email); const subject = reminderSubject(est, r); const text = reminderText(est, r);
+    let via = 'outbox', error = null; if (smtpConfigured() && rcpts.length) { try { await sendMail({ to: rcpts, subject, text }); via = 'smtp'; } catch (e) { error = e.message; } }
+    const rec = { at: now.toISOString(), estId: est.id, no: est.no, kind: r.kind, days: r.days, to: rcpts, via, error }; db.reminders.push(rec); sent.push(rec);
+    try { fs.appendFileSync(REM_LOG, `=== ${rec.at} ${subject}\nTo: ${rcpts.join(', ') || '(宛先なし)'}  via: ${via}${error ? '  error: ' + error : ''}\n${text}\n\n`); } catch { } }
+  if (sent.length) { db.reminders = db.reminders.slice(-2000); persist(); } return { at: now.toISOString(), sent, skipped: skipped.length, smtp: smtpConfigured() };
+}
+if (process.env.ANGLEX_REMINDERS !== '0') setInterval(() => runReminders().then(r => { if (r.sent.length) console.log(`[reminders] ${r.sent.length} 件を ${r.smtp ? 'SMTP' : 'outbox'} へ`); }).catch(e => console.error('[reminders]', e.message)), 60 * 60 * 1000).unref();
 function canAccessEstimate(user, e) { if (!user) return false; if (user.org === 'A') return true; return e.currentOrg === user.org || e.handoffs.some(h => h.to === user.org); }
 
 const server = http.createServer(async (req, res) => {
@@ -52,6 +69,8 @@ const server = http.createServer(async (req, res) => {
       if (p === '/api/users/bulk' && req.method === 'POST' && me.user.org === 'A') { const list = JSON.parse(await readBody(req) || '[]'); const next = list.map(u => { const ex = db.users.find(x => x.id === u.id || x.email === u.email); return { id: u.id || ex?.id || ('u_' + crypto.randomBytes(4).toString('hex')), name: u.name, org: u.org, company: u.company, email: u.email, branch: u.branch || null, scope: u.scope || null, pw: ex?.pw || hash('anglex') }; }); if (!next.some(u => u.id === me.user.id)) return send(res, 400, { error: '自分自身は削除できません' }); db.users = next; persist(); return send(res, 200, db.users.map(pub)); }
       if (p === '/api/learn' && req.method === 'GET') return send(res, 200, db.learn || []);
       if (p === '/api/learn' && req.method === 'POST') { const rows = JSON.parse(await readBody(req) || '[]'); db.learn = (db.learn || []).concat(rows).slice(-20000); persist(); return send(res, 200, { ok: true, n: db.learn.length }); }
+      if (p === '/api/reminders' && req.method === 'GET') return send(res, 200, { items: remindersFor(Object.values(db.estimates).filter(e => canAccessEstimate(me.user, e)), me.user.org).map(r => ({ estId: r.est.id, no: r.est.no, projectName: r.est.projectName, kind: r.kind, days: r.days, label: r.label, waitingOn: r.waitingOn, due: r.est.due })), log: me.user.org === 'A' ? (db.reminders || []).slice(-50) : [], smtp: smtpConfigured() });
+      if (p === '/api/reminders/run' && req.method === 'POST' && me.user.org === 'A') return send(res, 200, await runReminders({ force: url.searchParams.get('force') === '1' }));
       if (p === '/api/export' && me.user.org === 'A') return send(res, 200, db);
       if (p === '/api/import' && req.method === 'POST' && me.user.org === 'A') { const b = JSON.parse(await readBody(req)); Object.assign(db.projects, b.projects || {}); Object.assign(db.estimates, b.estimates || {}); persist(); return send(res, 200, { ok: true }); }
       if (p === '/api/users' && req.method === 'GET' && me.user.org === 'A') return send(res, 200, db.users.map(pub));
@@ -64,4 +83,4 @@ const server = http.createServer(async (req, res) => {
     fs.readFile(f, (err, data) => { if (err) { res.writeHead(404); res.end('not found'); return; } res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' }); res.end(data); });
   } catch (e) { console.error(e); send(res, 500, { error: e.message }); }
 });
-server.listen(PORT, () => console.log(`ANGLEX server  http://localhost:${PORT}  data=${DATA}  converter=${process.env.ANGLEX_CONVERTER_URL || '(none)'}`));
+server.listen(PORT, () => console.log(`ANGLEX server  http://localhost:${PORT}  data=${DATA}  converter=${process.env.ANGLEX_CONVERTER_URL || '(none)'}  reminders=${process.env.ANGLEX_REMINDERS === '0' ? 'off' : (smtpConfigured() ? 'smtp ' + process.env.SMTP_HOST : 'outbox')}`));

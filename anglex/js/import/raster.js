@@ -2,13 +2,23 @@
 // 寸法注記は読めないので、縮尺（1:n）と解像度（dpi）から mm/px を決める。斜線（方杖）と円（穴）は連結成分の形状から抽出
 export function otsu(hist, total) { let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i]; let sumB = 0, wB = 0, max = 0; const vs = new Float64Array(256); for (let t = 0; t < 256; t++) { wB += hist[t]; if (!wB) continue; const wF = total - wB; if (!wF) break; sumB += t * hist[t]; const mB = sumB / wB, mF = (sum - sumB) / wF; const v = wB * wF * (mB - mF) * (mB - mF); vs[t] = v; if (v > max) max = v; } // 二峰（0 / 255 のみ）では分散が平坦になるため、最大値の台地の中央を取る
   const ts = []; for (let t = 0; t < 256; t++) if (vs[t] >= max * (1 - 1e-6)) ts.push(t); return ts.length ? ts[Math.floor(ts.length / 2)] : 128; }
-export async function imageToBinary(src, { maxPx = 2200 } = {}) {
+// 傾き推定（デスキュー）: 黒画素を −4°〜+4° の角度で回し、行方向の投影ヒストグラムの分散が最大になる角度を探す（紙の置きずれは 0.5〜2° 程度）
+export function estimateSkew(bin, w, h, { range = 4, step = 0.25, maxPts = 60000 } = {}) {
+  const pts = []; const stride = Math.max(1, Math.floor(w * h / (maxPts * 8))); for (let k = 0; k < w * h; k += stride) if (bin[k]) { pts.push(k % w, (k - k % w) / w); if (pts.length >= maxPts * 2) break; } if (pts.length < 400) return 0;
+  const cx = w / 2, cy = h / 2; let best = 0, bestV = -1; const hist = new Float64Array(h + 2);
+  for (let a = -range; a <= range + 1e-9; a += step) { const r = a * Math.PI / 180, sn = Math.sin(r), cs = Math.cos(r); hist.fill(0); for (let i = 0; i < pts.length; i += 2) { const y = Math.round((pts[i] - cx) * sn + (pts[i + 1] - cy) * cs + cy); if (y >= 0 && y < h) hist[y]++; } let m = 0; for (let y = 0; y < h; y++) m += hist[y]; m /= h; let v = 0; for (let y = 0; y < h; y++) v += (hist[y] - m) * (hist[y] - m); if (v > bestV) { bestV = v; best = a; } }
+  return Math.round(best * 100) / 100;
+}
+export async function imageToBinary(src, { maxPx = 2200, deskew = true, _rot = 0 } = {}) {
   const img = src instanceof HTMLCanvasElement ? src : await loadImage(src); const s = Math.min(1, maxPx / Math.max(img.width, img.height)); const w = Math.max(1, Math.round(img.width * s)), hgt = Math.max(1, Math.round(img.height * s));
-  const c = document.createElement('canvas'); c.width = w; c.height = hgt; const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, hgt); ctx.drawImage(img, 0, 0, w, hgt);
+  const c = document.createElement('canvas'); c.width = w; c.height = hgt; const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, hgt); if (_rot) { ctx.save(); ctx.translate(w / 2, hgt / 2); ctx.rotate(_rot * Math.PI / 180); ctx.drawImage(img, -w / 2, -hgt / 2, w, hgt); ctx.restore(); } else ctx.drawImage(img, 0, 0, w, hgt);
   const d = ctx.getImageData(0, 0, w, hgt).data; const g = new Uint8Array(w * hgt); const hist = new Uint32Array(256); for (let i = 0, k = 0; i < d.length; i += 4, k++) { const v = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000 | 0; g[k] = v; hist[v]++; }
   // 図面はインク率 1〜5% 程度。Otsu が薄い線を白側に落とした（インク率 < 0.4%）場合は、暗い方から 1% に達する輝度まで閾値を上げる
   let thr = Math.min(Math.max(otsu(hist, w * hgt), 40), 200); const total = w * hgt; let cum = 0; for (let t = 0; t <= thr; t++) cum += hist[t]; if (cum / total < 0.004) { let acc = 0; for (let t = 0; t < 256; t++) { acc += hist[t]; if (acc / total >= 0.01) { thr = Math.min(Math.max(thr, t), 225); break; } } }
-  const bin = new Uint8Array(total); for (let k = 0; k < g.length; k++) bin[k] = g[k] <= thr ? 1 : 0; const speckles = despeckle(bin, w, hgt); return { bin, w, h: hgt, scale: s, thr, speckles, canvas: c };
+  const bin = new Uint8Array(total); for (let k = 0; k < g.length; k++) bin[k] = g[k] <= thr ? 1 : 0; const speckles = despeckle(bin, w, hgt);
+  // 傾きが 0.3° 以上なら、元画像を回して二値化し直す（1 回だけ）
+  if (deskew && !_rot) { const a = estimateSkew(bin, w, hgt); if (Math.abs(a) >= 0.3 && Math.abs(a) <= 4) { const r = await imageToBinary(src, { maxPx, deskew: false, _rot: a }); r.skew = a; return r; } }
+  return { bin, w, h: hgt, scale: s, thr, speckles, skew: _rot || 0, canvas: c };
 }
 function loadImage(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('画像を読めません')); im.src = typeof src === 'string' ? src : URL.createObjectURL(src); }); }
 // 行方向・列方向のラン（連続した黒）を抽出し、隣接する行のランを束ねて 1 本の線にする
@@ -71,7 +81,7 @@ export function textRegions(glyphs, { maxGapK = 2.2 } = {}) {
 }
 // 画像 → DXF 互換 entities（mm 座標、Y 上向き）
 export async function vectorizeImage(src, { mmPerPx = null, dpi = 200, scale = 10, minLenMm = 15 } = {}) {
-  const { bin, w, h, scale: s, thr, speckles, canvas } = await imageToBinary(src); const mmpp = mmPerPx != null ? mmPerPx / s : (25.4 / dpi) * scale / s; const minLen = Math.max(8, Math.round(minLenMm / mmpp));
+  const { bin, w, h, scale: s, thr, speckles, skew, canvas } = await imageToBinary(src); const mmpp = mmPerPx != null ? mmPerPx / s : (25.4 / dpi) * scale / s; const minLen = Math.max(8, Math.round(minLenMm / mmpp));
   const H = runs(bin, w, h, minLen, true), V = runs(bin, w, h, minLen, false); const tol = Math.max(3, Math.round(2 / mmpp) + 2); const rects = rectangles(H, V, tol);
   const toMm = ([x, y]) => [Math.round(x * mmpp * 10) / 10, Math.round((h - y) * mmpp * 10) / 10];
   const { diag, circles: circles0, glyphs } = diagonalsAndCircles(bin, w, h, H, V, { minLen: minLen, minD: Math.max(5, Math.round(4 / mmpp)), maxD: Math.round(60 / mmpp), maxText: Math.max(12, Math.round(60 / mmpp)) }); const regions = textRegions(glyphs);
@@ -79,5 +89,5 @@ export async function vectorizeImage(src, { mmPerPx = null, dpi = 200, scale = 1
   const inCircle = l => circles.some(c => l.a[0] >= c.bbox.x0 - 1 && l.b[0] <= c.bbox.x1 + 1 && l.a[1] >= c.bbox.y0 - 1 && l.b[1] <= c.bbox.y1 + 1); const Hl = H.filter(l => !inCircle(l)), Vl = V.filter(l => !inCircle(l)); // 円の弦として拾われた短いランを除く
   const entities = []; for (const l of [...Hl, ...Vl]) entities.push({ type: 'LINE', a: toMm(l.a), b: toMm(l.b), layer: 'RASTER' }); for (const l of diag) entities.push({ type: 'LINE', a: toMm(l.a), b: toMm(l.b), layer: 'RASTER_DIAG' }); for (const c of circles) entities.push({ type: 'CIRCLE', c: toMm(c.c), r: Math.round(c.r * mmpp * 10) / 10, layer: 'RASTER_HOLE' });
   for (const r of rects) entities.push({ type: 'LWPOLYLINE', pts: [toMm([r.x0, r.y0]), toMm([r.x1, r.y0]), toMm([r.x1, r.y1]), toMm([r.x0, r.y1])], closed: true, layer: 'RASTER_RECT' });
-  return { entities, layers: { RASTER: { on: true }, RASTER_RECT: { on: true }, RASTER_DIAG: { on: true }, RASTER_HOLE: { on: true } }, regions, stats: { px: `${w}×${h}`, threshold: thr, speckles, textRegions: regions.length, lines: Hl.length + Vl.length, diagonals: diag.length, circles: circles.length, circlesRaw: circles0.length, rects: rects.length, mmPerPx: Math.round(mmpp * 1000) / 1000 }, mmPerPx: mmpp, canvas };
+  return { entities, layers: { RASTER: { on: true }, RASTER_RECT: { on: true }, RASTER_DIAG: { on: true }, RASTER_HOLE: { on: true } }, regions, stats: { px: `${w}×${h}`, threshold: thr, speckles, skew, textRegions: regions.length, lines: Hl.length + Vl.length, diagonals: diag.length, circles: circles.length, circlesRaw: circles0.length, rects: rects.length, mmPerPx: Math.round(mmpp * 1000) / 1000 }, mmPerPx: mmpp, canvas };
 }

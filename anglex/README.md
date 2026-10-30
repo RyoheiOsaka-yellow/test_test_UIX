@@ -90,7 +90,7 @@ python3 tools/build_single.py --offline index.html css/app.css dist/ANGLEX_v1_of
 python3 tools/build_single.py --offline v2.html css/app_v2.css dist/ANGLEX_v2_offline.html
 node dev/offline-check.mjs dist/ANGLEX_v1_offline.html           # 外部通信を全遮断して起動・3D・PDF/XLSX を検証
 ```
-three.js（本体＋使用する addons）、pdf-lib、fontkit、HarfBuzz サブセッタ、SheetJS、pdf.js、日本語フォント、スタジオ環境光を同梱した単一 HTML（約 32 MB）。外部通信なしで 3D・帳票・図面 PDF 読込が動作します（倉庫／工場／屋外の環境光、Poly Haven テクスチャ、Web フォント、IFC 読込、外部 LLM は要インターネット）。
+three.js（本体＋使用する addons）、pdf-lib、fontkit、HarfBuzz サブセッタ、SheetJS、pdf.js、日本語フォント、スタジオ環境光を同梱した単一 HTML（約 35 MB）。外部通信なしで 3D・帳票・図面 PDF 読込が動作します（倉庫／工場／屋外の環境光、Poly Haven テクスチャ、Web フォント、IFC 読込、外部 LLM は要インターネット）。
 
 ## ドキュメント（PDF）
 `node dev/render-docs.mjs` で `docs/spec/*.html` を `docs/pdf/` に PDF 化します（同梱の日本語フォントで印刷）。
@@ -124,16 +124,19 @@ three.js（本体＋使用する addons）、pdf-lib、fontkit、HarfBuzz サブ
 
 ## ラスター図面（スキャン PDF・画像）と認識の学習ループ
 - PNG / JPG / BMP / WebP / TIFF と、文字情報のないスキャン PDF を **ブラウザ内でベクタ化**（二値化 → 行・列のラン抽出 → 直線・矩形）し、既存の認識器に通します。縮尺 1:n と dpi を入力（mm/px を決定）。仕様注記は読めないため、仕様・長さは形状からの推定で「要判断」になります。斜線（方杖など）は軸方向の線を除いた残りの連結成分の主軸から、円（穴）は中空で正方形に近い成分から抽出します。二値化のあとに 3×3 近傍のごま塩ノイズ除去を行い、円（穴）はラン除去の前に生の連結成分から判定します（太い小円の上下の弦が短い直線として拾われるのを防ぐため）。
-- **認識率（合成スキャンでの実測、乱数固定）**: `node dev/app-shot.mjs out.png dev/flows/raster_bench.js` がデモ DXF（直線 24・矩形 6・穴 10・仕様注記 5）を 150〜300 dpi 相当に画像化（ぼかし・ごま塩ノイズ付き）して計測します。現状: きれいな画像 200 / 300 dpi は直線・矩形・穴 100%・OCR 仕様注記 5/5、スキャン相当（ノイズ 2%）は直線・矩形 100%・穴 70%（200 dpi）／90%（300 dpi）・OCR 仕様注記 0/5（200 dpi）／3/5（300 dpi）、劣化スキャン 150 dpi（ノイズ 4%）は直線 88%・矩形 83%・穴 60%・OCR 0、円の誤検出 0〜1。数値は回答書・仕様書に転記しています。
+- **認識率（合成スキャンでの実測、乱数固定）**: `node dev/app-shot.mjs out.png dev/flows/raster_bench.js` がデモ DXF（直線 24・矩形 6・穴 10・仕様注記 5）を 150〜300 dpi 相当に画像化（ぼかし・ごま塩ノイズ付き）して計測します。現状: きれいな画像 200 / 300 dpi は直線・矩形・穴 100%・OCR 仕様注記 5/5、スキャン相当（ノイズ 2%）は直線・矩形 100%・穴 70%（200 dpi）／90%（300 dpi）・OCR 仕様注記 0/5（200 dpi）／3/5（300 dpi）、劣化スキャン 150 dpi（ノイズ 4%）は直線 88%・矩形 83%・穴 60%・OCR 0、円の誤検出 0〜1。日本語注記（5 語彙）はきれいな画像で 4/5、1.5° 傾けた画像はデスキュー後に無回転と同成績。数値は回答書・仕様書に転記しています。
 - **限定 OCR**（`js/import/ocr.js`）: ベクタ化で残った文字の画を行単位の領域にまとめ、Tesseract.js（WASM）で **部材仕様・穴注記・長さ** だけを読みます。φ→9/o、`[` の脱落などを正規化し、読めた注記を TEXT として認識器へ。注記の長さと外形が一致する矩形に紐付け、OCR 由来は確信度を下げて「寸法注記(OCR)」と表示。初回のみ worker 初期化に数秒。単一ファイル（オフライン）版には worker・コア・英語データを同梱（`vendor/tesseract/`、`tools/build_single.py` の VENDOR_URLS）。
+- **日本語 OCR（限定語彙）**: 英数で仕様・穴・長さが読めなかった領域だけを日本語モデル（`vendor/tesseract/jpn.traineddata.gz`、同梱）で読み、仕上げ（溶融亜鉛めっき / HDZ / 電気亜鉛 / SUS）・溶接（▷n 全周 / 隅肉）・長穴 n×m・Uボルト nA・アンカー Mn の語彙に当たる語だけを採用（`JPN_VOCAB`、`normalizeJpn`）。`ocrRegions(..., { jpn: false })` で無効化。
+- **デスキュー**: 二値化後に黒画素の行投影分散で傾き（±4°）を推定し、0.3° 以上なら元画像を回して二値化し直します（`estimateSkew`、stats.skew に角度）。
 - **図面上で修正**: スキャン画像を薄く重ねた図面ビュー（読込結果の「✎ 図面上で修正」、業務フロー ①、図面ビューのツール）で、矩形（部材）→ 仕様・長さ／部材ではない、円（穴）→ 穴径／穴ではない、文字（OCR）→ 読み直し。修正は即再認識（手入力は確信度 0.98）、「部材ではない」「仕様を直した」は署名ごとに学習されます。↶ 元に戻す対応。
-- **実スキャン検証キット**: `node dev/raster-real.mjs <フォルダ> [--scale 10] [--dpi 300] [--no-ocr] [--demo]` がフォルダ内の PNG/JPG を順にベクタ化＋OCR し、`out/<名前>_overlay.png`（青=直線 緑=矩形 赤=円 紫=斜線 橙=文字領域と OCR）と `out/report.md` / `report.json` を出力します。`--demo` でデモ図面のスキャン画像を生成して動作確認できます。
+- **実スキャン検証キット**: `node dev/raster-real.mjs <フォルダ> [--scale 10] [--dpi 300] [--no-ocr] [--demo]` がフォルダ内の PNG/JPG（スキャン PDF は 1 ページ目を dpi で描画）を順にデスキュー＋ベクタ化＋OCR し、`out/<名前>_overlay.png`（青=直線 緑=矩形 赤=円 紫=斜線 橙=文字領域と OCR）と `out/report.md` / `report.json` を出力します。`--demo` でデモ図面のスキャン画像を生成して動作確認できます。
 - **学習ループ**: 読込部材を「確定」（まとめて確認ウィザードの「部材を確定」）すると、認識時の署名（仕様 × 長さ区分 × 穴数 × 特徴 × 図面様式）と直した値（ファミリ・仕様・寸法・仕上げ）を記録。同じ署名の確定が 2 件以上あると、次回の候補は確信度 +0.2 と「学習済 n」チップ、直した値が初期値になります（`js/import/learn.js`、サーバー `/api/learn`）。
 
 ## 業務フローの磨き込み（次の一手・タイムライン・催促）
 - **次の一手バナー**: 業務フロー最上部に「いま何をすべきか」を 1 行と、そのボタンを 1 つだけ表示（部材なし → 図面を読込、スキャン要判断 → 図面上で修正、確認残 → まとめて確認、見積なし → 作成、未受け渡し → C社へ、相手の回答待ち → 期限と催促文、回答済 → 確定）。期限超過は赤、問題なしは緑。B社・C社ビューにも同じバナー。
 - **タイムライン**: 共有カードに 作成 → 受け渡し → 差戻し → 確定 を一列で表示（会社色・日付・期限、いまの位置を強調、回答待ちは点線）。
 - **催促文**: 期限超過または未回答 3 日以上で、業務フローとダッシュボードに「催促文」ボタン。期限・経過日数・未入力行数・リンクを含む本文をコピーして送付。
+- **期限通知の自動化**: 判定（期限超過／期限 1 日以内／未回答 3 日以上）は `js/core/reminders.js` に一本化。クライアントは起動時と 10 分ごとに数え、ダッシュボード ボタンにバッジ（超過は赤）と起動時トースト、ダッシュボードの「期限超過」KPI から通知一覧（種類・経過日数・サーバーの送信記録）。B社・C社ビューの最上部に期限帯。サーバー版は 1 時間ごとに担当会社のユーザー（所属営業所が一致 or scope=all）へメールを自動送信します（`server/mail.js`: 依存なしの SMTP、`SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` / `SMTP_SECURE=1`、`ANGLEX_PUBLIC_URL` でリンクのホスト名。同じ見積・種類は 24 時間に 1 通。未設定なら `server/data/reminders.log` に本文を残す。`ANGLEX_REMINDERS=0` で停止、`POST /api/reminders/run?force=1` で手動実行）。
 - **v1 の図面ビュー**: 「2D」ビュー切替で図面（DXF / PDF / スキャン）を表示するように修正（従来は表示されなかった）。
 
 ## 複数選択とまとめ操作
@@ -255,5 +258,5 @@ node dev/app-shot.mjs out.png dev/flows/estimate.js             # UI フロー
 ```bash
 cd anglex/vendor && for u in "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js" "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.min.js" "https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js" "https://cdn.jsdelivr.net/npm/harfbuzzjs@0.4.6/hb-subset.wasm" "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs" "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs" "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr"; do f=$(echo "$u" | sed 's#https://##; s#[/@]#_#g'); curl -sSL -o "$f" "$u"; done; cd .. && python3 tools/vendor_three.py
 # OCR（Tesseract.js）: 本体・worker・コア（wasm 同梱 .wasm.js）・英語データ（fast）を vendor/tesseract/ へ
-mkdir -p vendor/tesseract && cd vendor/tesseract && for u in "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js" "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-simd-lstm.wasm.js" "https://tessdata.projectnaptha.com/4.0.0_fast/eng.traineddata.gz"; do curl -sSL -o "$(basename "$u")" "$u"; done; cd ../..
+mkdir -p vendor/tesseract && cd vendor/tesseract && for u in "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js" "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-simd-lstm.wasm.js" "https://tessdata.projectnaptha.com/4.0.0_fast/eng.traineddata.gz" "https://tessdata.projectnaptha.com/4.0.0_fast/jpn.traineddata.gz"; do curl -sSL -o "$(basename "$u")" "$u"; done; cd ../..
 ```
