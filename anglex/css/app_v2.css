@@ -1055,3 +1055,11 @@ body.compact .detail-grid{grid-template-columns:1fr}body.compact #card3d{order:-
 .minimap .mm-canvas{display:block;cursor:crosshair;touch-action:none}.minimap.closed .mm-canvas{display:none}
 .minimap .mm-toggle{position:absolute;left:4px;top:4px;font:11px var(--font, sans-serif);padding:1px 6px;border:1px solid #c9c3ad;border-radius:10px;background:#fff;cursor:pointer}.minimap.closed{width:auto}.minimap.closed .mm-toggle{position:static;margin:4px}
 .stage.show-2d .minimap,.sim-panel ~ .minimap{display:none}
+/* 掴んだ部材のピル（左下）と回転中心の十字 */
+.focus-pill{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:12;display:none;align-items:center;gap:6px;padding:4px 6px 4px 10px;border:1px solid var(--line, #e0dccf);border-radius:999px;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(0,0,0,.12);font:12px var(--font, sans-serif);color:#333;pointer-events:auto}
+.focus-pill.on{display:flex}.focus-pill .fp-dot{color:#c0392b;font-weight:700}.focus-pill b{font-weight:700}.focus-pill .fp-text{color:#666}
+.focus-pill .fp-clear{font:11px var(--font, sans-serif);padding:2px 8px;border:1px solid #d9d4c5;border-radius:999px;background:#fff;cursor:pointer}.focus-pill .fp-clear:hover{background:#f6f3ea}
+.stage.show-2d .focus-pill,.sim-panel ~ .focus-pill{display:none}body.compact .focus-pill{top:8px;font-size:11px}
+.orbit-cross{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:11;opacity:0;transition:opacity .25s ease}.orbit-cross.on{opacity:1}
+.orbit-cross i{position:absolute;background:rgba(192,57,43,.85);box-shadow:0 0 0 1px rgba(255,255,255,.7)}.orbit-cross i:first-child{left:-11px;top:-1px;width:22px;height:2px}.orbit-cross i:nth-child(2){left:-1px;top:-11px;width:2px;height:22px}
+.orbit-cross b{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border:1.5px solid rgba(192,57,43,.6);border-radius:50%}

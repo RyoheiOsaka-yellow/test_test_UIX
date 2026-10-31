@@ -12,7 +12,7 @@ const RELATED = { column: /^(H|L|colSpec|spec|t)$/, beam: /^(W|L|beamSpec|spec|o
 
 export function hideContextBar(app) { const el = document.querySelector('.ctx-bar'); if (el) el.remove(); app.ctx = null; app.hideAttachGhost?.(); }
 
-export function showContextBar(app, { inst, partIndex = null, part = null, x = 0, y = 0 }) {
+export function showContextBar(app, { inst, partIndex = null, part = null, x = 0, y = 0, anchor = null, avoid = null }) {
   hideContextBar(app); const stage = $('#d3stage') || $('#stage'); if (!stage || !inst) return; const editable = app.role() === 'A';
   const fam = app.model.familyOf(inst); const type = app.model.getType(inst.typeId); const p = app.model.resolved(inst); const parts = app.instanceParts(inst); const pt = part || (partIndex != null ? parts[partIndex] : null);
   const role = pt ? cadRole(pt) : null; app.ctx = { inst, partIndex, part: pt };
@@ -44,7 +44,12 @@ export function showContextBar(app, { inst, partIndex = null, part = null, x = 0
   if (alerts.length) row3.append(h('button', { class: 'btn sm danger', title: alerts.map(a => a.label).join('\n'), onClick: () => openAlign(app) }, `ズレ ${alerts.length} → 補正`));
   bar.append(row3);
   // 位置: クリック位置の右下。はみ出しは補正
-  stage.append(bar); const r = stage.getBoundingClientRect(); const bw = bar.offsetWidth, bh = bar.offsetHeight; let left = x + 14, top = y + 14; if (left + bw > r.width - 8) left = Math.max(8, x - bw - 14); if (top + bh > r.height - 8) top = Math.max(8, r.height - bh - 8); bar.style.left = left + 'px'; bar.style.top = top + 'px';
+  stage.append(bar); const r = stage.getBoundingClientRect(); const bw = bar.offsetWidth, bh = bar.offsetHeight; let left = x + 14, top = y + 14; if (anchor === 'center') { /* 中央へ寄せた部材の外側に置く（部材に被せない）: 右 → 左 → 下 → 上 の順で収まる場所、なければ下に寄せて収める */
+    const a = avoid || { x0: r.width / 2 - 40, y0: r.height / 2 - 40, x1: r.width / 2 + 40, y1: r.height / 2 + 40 }; const cx = (a.x0 + a.x1) / 2, cy = (a.y0 + a.y1) / 2; const M = 8, G = 14;
+    const cands = [[a.x1 + G, cy - bh / 2], [a.x0 - G - bw, cy - bh / 2], [cx - bw / 2, a.y1 + G], [cx - bw / 2, a.y0 - G - bh]]; let pick = null;
+    for (const [l, t] of cands) { if (l >= M && t >= M && l + bw <= r.width - M && t + bh <= r.height - M) { pick = [l, t]; break; } }
+    if (!pick) pick = [Math.max(M, Math.min(r.width - bw - M, cx - bw / 2)), Math.max(M, Math.min(r.height - bh - M, a.y1 + G))];
+    bar.style.left = Math.round(pick[0]) + 'px'; bar.style.top = Math.round(pick[1]) + 'px'; return bar; } if (left + bw > r.width - 8) left = Math.max(8, x - bw - 14); if (top + bh > r.height - 8) top = y - bh - 14 >= 8 ? y - bh - 14 : Math.max(8, r.height - bh - 8); /* 下にはみ出すときはカーソルの上へ（カーソルの真下に被せない: ダブルクリックが届くように） */ bar.style.left = left + 'px'; bar.style.top = top + 'px';
 }
 
 // ファミリ固有の「足す」: bool を ON / 個数 +1 / 配管を追加 / 段数 +1 など
