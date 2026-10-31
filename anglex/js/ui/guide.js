@@ -14,7 +14,7 @@ export function showGuide(app, { auto = false } = {}) {
   const close = () => { ov.remove(); try { localStorage.setItem(KEY, '1'); } catch { } };
   const ov = h('div', { class: 'guide-ov', onClick: e => { if (e.target === ov) close(); } }, h('div', { class: 'guide-box' }, h('div', { class: 'guide-head' }, h('b', {}, '3D の操作'), h('span', { class: 'muted small' }, auto ? '初回だけ表示します（「?」キーからいつでも再表示）' : '「?」キーのショートカット一覧からも開けます'), h('button', { class: 'icon-btn', title: '閉じる', onClick: close }, '✕')),
     h('div', { class: 'guide-cards' }, ...CARDS.map(c => h('div', { class: 'guide-card ' + c.k }, (() => { const a = h('div', { class: 'guide-anim' }); a.innerHTML = c.svg; return a; })(), h('b', {}, c.t), h('div', { class: 'muted small' }, c.d)))),
-    h('div', { class: 'guide-foot' }, h('span', { class: 'muted small' }, 'ホイール: カーソル位置でズーム ／ F: 全体表示 ／ Space 長押し: 掴む⇄回す を一時入替 ／ Esc: 選択解除' ), h('button', { class: 'btn sm primary', onClick: close }, 'はじめる'))));
+    h('div', { class: 'guide-foot' }, h('span', { class: 'muted small' }, 'ホイール: カーソル位置でズーム ／ F: 全体表示 ／ Space 長押し: 掴む⇄回す を一時入替 ／ Esc: 選択解除 ／ タッチ: 1 本指で掴む・2 本指で回す／ズーム・長押しで部材を掴む ／ 右下の地図で移動' ), h('button', { class: 'btn sm primary', onClick: close }, 'はじめる'))));
   stage.append(ov); return ov;
 }
 export function maybeShowGuide(app) { if (guideSeen() || globalThis.__anglexNoGuide) return; setTimeout(() => { if (app.model.instances.length && !document.querySelector('.modal-back')) showGuide(app, { auto: true }); }, 1800); }
