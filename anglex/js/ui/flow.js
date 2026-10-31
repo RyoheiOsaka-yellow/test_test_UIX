@@ -15,6 +15,7 @@ import { branchName } from '../core/branches.js';
 import { openPriceMaster } from './priceMaster.js';
 import { handoffDialog, finalizeDialog, handoffMessage, showMessage, finalizeIssues, reminderMessage } from './handoff.js';
 import { meetingDialog } from './meeting.js';
+import { openSimulator } from './simulator.js';
 
 const STAGE_ORDER = ['model', 'review', 'weight', 'estimate', 'share', 'final'];
 export async function openFlow(app) {
@@ -49,7 +50,7 @@ export async function buildFlow(app, rerender, m) {
   const dwg = app.drawing; const dwgRev = dwg?.rec ? dwg.rec.members.filter(x => x.status === 'review').length : 0;
   const c1 = card('model', '① 3D モデル（単一ソース）', h('div', {}, h('div', { class: 'fc-grid' }, kv('インスタンス', nInst + ' 体'), kv('タイプ', app.model.types.length), kv('接合', app.model.joints.length), kv('要判断（推論）', app.model.instances.filter(i => i.status === 'review').length, app.model.instances.some(i => i.status === 'review') ? 'warn' : '')),
       dwg?.rec ? h('div', { class: 'fc-grid', style: { marginTop: '6px' } }, kv('図面', (dwg.raster ? 'スキャン ' : '') + dwg.name), kv('認識候補', `${dwg.rec.members.length} 件`), kv('要判断', `${dwgRev} 件`, dwgRev ? 'warn' : 'ok'), dwg.raster ? kv('OCR 注記', `${dwg.ocr?.length || 0} 件${dwg.edits?.length ? ' / 修正 ' + dwg.edits.length : ''}`) : null) : null),
-    [h('button', { class: 'btn sm primary', onClick: () => { m.close(); openShowroom(app); } }, 'ショールームから配置'), h('button', { class: 'btn sm', onClick: () => { m.close(); $('#btnCatalog')?.click(); } }, 'カタログ'), h('button', { class: 'btn sm', onClick: () => { m.close(); $('#btnImport')?.click(); } }, '図面を読込（DXF / PDF / IFC / スキャン）'), dwg?.raster ? h('button', { class: 'btn sm' + (dwgRev ? ' primary' : ''), title: 'スキャン画像の上で矩形・円・文字をクリックして修正', onClick: () => { m.close(); app.drawingEdit = true; app.setView('2d'); } }, `✎ 図面上で修正${dwgRev ? '（要判断 ' + dwgRev + '）' : ''}`) : null],
+    [h('button', { class: 'btn sm primary', onClick: () => { m.close(); openShowroom(app); } }, 'ショールームから配置'), h('button', { class: 'btn sm', onClick: () => { m.close(); $('#btnCatalog')?.click(); } }, 'カタログ'), h('button', { class: 'btn sm', onClick: () => { m.close(); $('#btnImport')?.click(); } }, '図面を読込（DXF / PDF / IFC / スキャン）'), nInst ? h('button', { class: 'btn sm', title: '部品ボタン・ライブゲージ・分解・限界探索・ストーリー再生', onClick: () => { m.close(); if (app.shell && app.shell.step !== 4) app.shell.goStep(4); openSimulator(app); } }, '⚙ シミュレータ v3') : null, dwg?.raster ? h('button', { class: 'btn sm' + (dwgRev ? ' primary' : ''), title: 'スキャン画像の上で矩形・円・文字をクリックして修正', onClick: () => { m.close(); app.drawingEdit = true; app.setView('2d'); } }, `✎ 図面上で修正${dwgRev ? '（要判断 ' + dwgRev + '）' : ''}`) : null],
     dwg?.raster && dwgRev ? 'スキャン図面の要判断は、図面上で仕様・長さを直すと再認識され学習されます' : '3D・質量・集計・見積はこのモデルから自動で派生します');
   // ② 確認
   const c2 = card('review', '② 人が確認する箇所', h('div', { class: 'fc-grid' }, kv('未処理の確認事項', open + ' 件', open ? 'bad' : 'ok'), kv('ズレ（隙間・レベル・穴）', align.length + ' 件', align.length ? 'warn' : 'ok'), kv('現場溶接', rows.filter(r => r.kind === 'weld' && r.site).length + ' 箇所'), kv('アンカー', rows.filter(r => r.kind === 'anchor').length + ' 本')),

@@ -1,0 +1,23 @@
+const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
+const T = '/tmp/anglex-tmp';
+await page.evaluate(() => { document.querySelectorAll('.modal-back,.guide-ov').forEach(m => m.remove()); app.setView('3d'); }); await page.waitForTimeout(400);
+// 1) シミュレータを開く → 部品ボタン・ゲージ・計算方法
+const r1 = await page.evaluate(async () => { const S = await import('./js/ui/simulator.js'); S.openSimulator(app); await new Promise(r => setTimeout(r, 800)); const p = document.querySelector('.sim-panel'); if (!p) return { error: 'no panel' };
+  const gauges = [...p.querySelectorAll('.sim-g')].map(g => g.querySelector('.sim-g-l').textContent + '=' + g.querySelector('.sim-g-v b').textContent); return { parts: p.querySelectorAll('.sim-pbtn').length, groups: p.querySelectorAll('.sim-left details').length, gauges, worst: p.querySelector('.sim-worst')?.textContent, how: p.querySelectorAll('.sim-how li').length, scale: p.querySelector('.sim-scale-l')?.textContent, last: { P: app.sim.last.P, items: app.sim.last.items.length, worst: app.sim.last.worst && [app.sim.last.worst.label, Math.round(app.sim.last.worst.ratio * 100)] } }; });
+log('SIM_OPEN', r1);
+await page.screenshot({ path: T + '/u18_sim.png' });
+// 2) 部品ボタン → 情報カード（役割・確認点・照査）、荷重 ×4 でゲージが変わる、限界まで
+const r2 = await page.evaluate(async () => { const p = document.querySelector('.sim-panel'); const btn = [...p.querySelectorAll('.sim-pbtn')].find(b => /L-|形鋼|\[-/.test(b.title)) || p.querySelector('.sim-pbtn'); btn.click(); await new Promise(r => setTimeout(r, 500)); const info = p.querySelector('.sim-info').textContent.slice(0, 120); const checks = p.querySelectorAll('.sim-check').length;
+  const k = p.querySelector('.sim-modes input[type=range][min="0.5"]'); const before = app.sim.last.worst?.ratio; k.value = 4; k.dispatchEvent(new Event('input')); await new Promise(r => setTimeout(r, 300)); const after = app.sim.last.worst?.ratio; [...p.querySelectorAll('.sim-modes .btn')].find(b => b.textContent === '限界まで').click(); await new Promise(r => setTimeout(r, 400)); const kAfter = app.sim.k; const worst = app.sim.last.worst; return { info, checks, before: Math.round((before || 0) * 100), after: Math.round((after || 0) * 100), scaled: after > before, kLimit: kAfter, worstAtLimit: worst && [worst.inst.mark, worst.label, Math.round(worst.ratio * 100)], highlighted: !!app.selection }; });
+log('SIM_PART', r2);
+// 3) モード: X線・応力の色・ラベル・スロー組立
+const r3 = await page.evaluate(async () => { const p = document.querySelector('.sim-panel'); const click = t => [...p.querySelectorAll('.sim-modes .btn')].find(b => b.textContent === t)?.click(); click('X 線'); await new Promise(r => setTimeout(r, 200)); const xray = app.viewer.displayStyle; click('X 線'); click('応力の色'); await new Promise(r => setTimeout(r, 300)); let colored = 0; app.viewer.modelRoot.traverse(o => { if (o.userData._simc) colored++; }); click('応力の色'); click('ラベル'); await new Promise(r => setTimeout(r, 300)); const labels = document.querySelectorAll('.v-label.sim-lbl').length; click('ラベル'); click('スロー組立'); await new Promise(r => setTimeout(r, 200)); let hidden = 0; app.viewer.modelRoot.traverse(o => { if (o.parent === app.viewer.modelRoot) for (const ch of o.children) if (ch.userData.part && !ch.visible) hidden++; }); await new Promise(r => setTimeout(r, 3000)); click('■'); let hidden2 = 0; app.viewer.modelRoot.traverse(o => { if (o.parent === app.viewer.modelRoot) for (const ch of o.children) if (ch.userData.part && !ch.visible && ch.userData.part.kind !== 'weld') hidden2++; }); return { xray, colored, labels, hiddenDuringSlow: hidden, hiddenAfterStop: hidden2 }; });
+log('SIM_MODES', r3);
+// 4) 動画書き出し（ストーリー 25 秒を録画 → webm ダウンロード）
+const dl = page.waitForEvent('download', { timeout: 60000 }).catch(() => null);
+await page.evaluate(() => { [...document.querySelectorAll('.sim-modes .btn')].find(b => b.textContent === '● 動画')?.click(); });
+await page.waitForTimeout(12000); await page.screenshot({ path: T + '/u18_story.png' });
+const d = await dl; const r4 = d ? { file: d.suggestedFilename(), size: (await (await import('node:fs')).promises.stat(await d.path())).size } : { file: null }; log('SIM_VIDEO', r4);
+// 5) Esc で閉じる → 元に戻る
+const r5 = await page.evaluate(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await new Promise(r => setTimeout(r, 300)); let colored = 0; app.viewer.modelRoot.traverse(o => { if (o.userData._simc) colored++; }); return { closed: !document.querySelector('.sim-panel'), sim: !!app.sim, style: app.viewer.displayStyle, exploded: app.viewer.exploded, colored }; });
+log('SIM_CLOSE', r5);

@@ -127,6 +127,7 @@
 <tr><td>期限・催促の自動通知</td><td>クライアント: 期限超過／期限 1 日以内／未回答 3 日以上 をバッジと一覧で表示。B社・C社の画面は未入力行を上に並べ「未入力だけ表示」で短時間に回答できる。C社は過去回答の流用、B社は過去の利益率の流用でほぼワンクリック。サーバー版: 1 時間ごとに担当会社へメール自動送信、7 日に 1 回は要判断率が目標を超える図面様式の週次まとめを A社へ（社内 SMTP、STARTTLS / 465 対応、依存ライブラリなし）。SMTP 未設定時は outbox ログ</td><td><span class="tag ok">対応済</span></td></tr>
 <tr><td>スキャン図面の日本語注記（限定）とデスキュー</td><td>仕上げ・溶接・長穴・Uボルト・アンカーの語彙だけを日本語 OCR で読む（同梱 約 2 MB 増）。±4° の傾きを自動補正</td><td><span class="tag ok">対応済</span></td></tr>
 <tr><td>カレンダー・会議ツール連携（Google / Outlook・Teams）</td><td>打合せの予約をリンク方式で対応済（Google カレンダー・Outlook 予定＋Teams 会議・Teams 直接作成・.ics。受け渡しリンクを本文に、見積に記録）。Meet URL の自動発行・空き時間の参照は、サーバー版で貴社の Google Workspace / Microsoft 365 の OAuth クライアントを登録して対応</td><td><span class="tag ok">対応済</span>／<span class="tag todo">OAuth は要検討</span></td></tr>
+<tr><td>シミュレータ v3（部品ボタン・ライブゲージ・限界探索・ストーリー動画）</td><td>既存の 3D モデルから、部品ごとのボタンと役割・確認点、配管荷重に基づく簡易照査のライブゲージ、荷重倍率による限界探索、分解・X 線・スロー組立、ストーリー再生と WebM 録画。追加のサーバーや GPU は不要（内蔵 GPU で動作）</td><td><span class="tag ok">対応済</span></td></tr>
 <tr><td>社内 LLM との連携</td><td>日本語指示入力は内蔵パーサーで動作。社内ホスト LLM を使う場合は API 接続先の設定を追加</td><td><span class="tag todo">要検討</span></td></tr>
 </table>
 <h3>スキャン図面の認識率（合成スキャンでの実測）</h3>
