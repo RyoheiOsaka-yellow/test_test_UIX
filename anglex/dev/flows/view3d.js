@@ -3,16 +3,19 @@ const canvasBox = async () => page.evaluate(() => { const c = app.viewer.rendere
 await page.evaluate(() => { document.querySelectorAll('.modal-back').forEach(m => m.remove()); app.setView('3d'); }); await page.waitForTimeout(500);
 const cb = await canvasBox(); log('CANVAS', cb);
 const tgt = () => page.evaluate(() => ({ t: app.viewer.controls.target.toArray().map(Math.round), p: app.viewer.camera.position.toArray().map(Math.round), enabled: app.viewer.controls.enabled, pan: app.viewer.panMode, btns: app.viewer.controls.mouseButtons }));
-// a) 右ドラッグ（パン）
+// a) 既定は「掴む」: 左ドラッグで画面全体がパンする（空白から開始）
 const t0 = await tgt(); const cx = cb.x + cb.w / 2, cy = cb.y + cb.h / 2;
-await page.mouse.move(cx, cy); await page.mouse.down({ button: 'right' }); await page.mouse.move(cx + 150, cy + 60, { steps: 8 }); await page.mouse.up({ button: 'right' }); await page.waitForTimeout(300);
-const t1 = await tgt(); log('PAN_RIGHT', { before: t0.t, after: t1.t, moved: t0.t.join() !== t1.t.join(), btns: t1.btns });
-// b) 手のひらモード 左ドラッグ
-await page.evaluate(() => app.togglePan()); await page.waitForTimeout(200); const t2 = await tgt();
-await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx - 160, cy - 40, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300);
-const t3 = await tgt(); log('PAN_HAND', { before: t2.t, after: t3.t, moved: t2.t.join() !== t3.t.join(), panMode: t3.pan, enabled: t3.enabled }); await page.evaluate(() => app.togglePan());
-// c) 左ドラッグ回転（通常）
-const t4 = await tgt(); await page.mouse.move(cx, cy); await page.mouse.down(); await page.mouse.move(cx + 120, cy, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300); const t5 = await tgt(); log('ROTATE', { before: t4.p, after: t5.p, moved: t4.p.join() !== t5.p.join() });
+const emptyPt = await page.evaluate(([cx, cy]) => { const r = app.viewer.renderer.domElement.getBoundingClientRect(); for (const [dx, dy] of [[0, 0], [-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4], [0, -0.45]]) { const x = r.left + r.width / 2 + dx * r.width, y = r.top + r.height / 2 + dy * r.height; if (!app.viewer.pick({ clientX: x, clientY: y })) return [x, y]; } return [cx, cy]; }, [cx, cy]);
+await page.mouse.move(emptyPt[0], emptyPt[1]); await page.mouse.down(); await page.mouse.move(emptyPt[0] + 150, emptyPt[1] + 60, { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300);
+const t1 = await tgt(); log('PAN_RIGHT', { before: t0.t, after: t1.t, moved: t0.t.join() !== t1.t.join(), panDefault: t0.pan, btns: t1.btns, note: '左ドラッグ=掴む（既定）' });
+// b) 右ドラッグで回る（掴むモード）
+const t2 = await tgt(); await page.mouse.move(emptyPt[0], emptyPt[1]); await page.mouse.down({ button: 'right' }); await page.mouse.move(emptyPt[0] + 120, emptyPt[1], { steps: 8 }); await page.mouse.up({ button: 'right' }); await page.waitForTimeout(300);
+const t3 = await tgt(); log('PAN_HAND', { before: t2.p, after: t3.p, moved: t2.p.join() !== t3.p.join(), panMode: t3.pan, enabled: t3.enabled, note: '右ドラッグ=回す' });
+// c) 空白をダブルクリック → 全体が中央へ（fit）
+const t4 = await tgt(); const empty2 = await page.evaluate(([cx, cy]) => { const r = app.viewer.renderer.domElement.getBoundingClientRect(); for (const [dx, dy] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45], [0, -0.45], [-0.45, 0], [0.45, 0]]) { const x = r.left + r.width / 2 + dx * r.width, y = r.top + r.height / 2 + dy * r.height; if (!app.viewer.pick({ clientX: x, clientY: y })) return [x, y]; } return [cx, cy]; }, [cx, cy]); await page.mouse.move(empty2[0], empty2[1]); await page.waitForTimeout(250); await page.mouse.dblclick(empty2[0], empty2[1]); await page.waitForTimeout(1000); const fitDbg = await page.evaluate(() => ({ pan: app.viewer.panMode, tween: !!app.viewer._tween })); const t5 = await tgt(); const ctr = await page.evaluate(async () => { const THREE = await import('three'); return new THREE.Box3().setFromObject(app.viewer.modelRoot).getCenter(new THREE.Vector3()).toArray().map(Math.round); });
+log('ROTATE', { before: t4.t, after: t5.t, moved: t4.t.join() !== t5.t.join(), modelCenter: ctr, centered: Math.hypot(t5.t[0] - ctr[0], t5.t[1] - ctr[1], t5.t[2] - ctr[2]) < 60, empty2, fitDbg, note: '空白ダブルクリック=全体を中央へ' });
+// 切替ボタン: 回すモードにして左ドラッグが回転になる → 戻す
+const sw = await page.evaluate(() => { app.togglePan(); const b = document.querySelector('#btnPan, #btnPan2'); return { pan: app.viewer.panMode, label: b?.textContent, pref: localStorage.getItem('anglex.dragDefault') }; }); const t6 = await tgt(); await page.mouse.move(emptyPt[0], emptyPt[1]); await page.mouse.down(); await page.mouse.move(emptyPt[0] + 120, emptyPt[1], { steps: 8 }); await page.mouse.up(); await page.waitForTimeout(300); const t7 = await tgt(); await page.evaluate(() => app.togglePan()); log('SWITCH', { ...sw, rotatedByLeft: t6.p.join() !== t7.p.join(), backToPan: await page.evaluate(() => app.viewer.panMode) });
 // d) 部材を選択 → 中央へ（C）/ ダブルクリック
 const r = await page.evaluate(async () => { const inst = app.model.instances[1] || app.model.instances[0]; app.select(inst.id); const g = app.groups.get(inst.id); const c = new (await import('three')).Box3().setFromObject(g).getCenter(new (await import('three')).Vector3()); app.centerSelected(); await new Promise(r => setTimeout(r, 700)); const t = app.viewer.controls.target; return { inst: inst.mark, center: c.toArray().map(Math.round), target: t.toArray().map(Math.round), dist: Math.round(t.distanceTo(c)) }; }); log('CENTER', r);
 // e) 分解図（選択部材）

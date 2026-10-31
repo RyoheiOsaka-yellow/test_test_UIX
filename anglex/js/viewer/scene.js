@@ -172,6 +172,9 @@ export class Viewer {
   // 任意の点を画面中央へ（距離は指定 or 現状維持）
   focusPoint(pt, { dist = null, ms = 380 } = {}) { const ctl = this.controls, cam = this.camera; const dir = cam.position.clone().sub(ctl.target).normalize(); const d = dist || cam.position.distanceTo(ctl.target); const p1 = pt.clone().add(dir.multiplyScalar(d)); this.orthoControls.target.copy(pt); this.animateTo(p1, pt, { ms }); }
   // 手のひら（パン）モード: 左ドラッグで画面を掴んで移動
+  // 既定の左ドラッグ: 'pan'（掴む）か 'rotate'（回す）。localStorage に保存
+  static dragDefault() { try { return localStorage.getItem('anglex.dragDefault') || 'pan'; } catch { return 'pan'; } }
+  applyDragDefault() { this.setPanMode(this.constructor.dragDefault() === 'pan'); }
   setPanMode(on) { this.panMode = !!on; const M = THREE.MOUSE; for (const c of [this.controls, this.orthoControls]) { c.mouseButtons = { LEFT: on ? M.PAN : M.ROTATE, MIDDLE: M.DOLLY, RIGHT: on ? M.ROTATE : M.PAN }; c.touches = { ONE: on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }; c.screenSpacePanning = true; } this.renderer.domElement.style.cursor = on ? 'grab' : ''; }
   syncEdges() { this.invalidate(); this.syncSelection(); for (const ln of this.edgeRoot.children) { const o = ln.userData.src; if (o) { o.updateWorldMatrix(true, false); ln.matrix.copy(o.matrixWorld); ln.visible = o.visible && this._visibleUp(o); } } }
   _visibleUp(o) { let p = o; while (p) { if (!p.visible) return false; p = p.parent; } return true; }
@@ -218,7 +221,7 @@ export class Viewer {
     let drag = null; const plane = new THREE.Plane(), ray = new THREE.Raycaster(), pt = new THREE.Vector3(), ndc = new THREE.Vector2();
     const rayAt = (ev) => { const r = el.getBoundingClientRect(); ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, this.activeCamera); return ray.ray.intersectPlane(plane, pt) ? pt.clone() : null; };
     el.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; this._tween = null; drag = null;
-      if (e.button === 0 && !this.panMode && !this.gizmo.axis && !this.gizmo.dragging && this.canDirectDrag) { const hit = this.pick(e); if (hit && this.canDirectDrag(hit)) { const g = hit.instance; const p0 = new THREE.Vector3().setFromMatrixPosition(g.matrixWorld); plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), hit.point ? hit.point.clone() : p0); const start = rayAt(e); if (start) drag = { g, start, home: g.position.clone(), moving: false, pointerId: e.pointerId }; } } });
+      if (e.button === 0 && !this.gizmo.axis && !this.gizmo.dragging && this.canDirectDrag) { /* 掴むモードでも、選択中の部材の上なら部材を動かす */ const hit = this.pick(e); if (hit && this.canDirectDrag(hit)) { const g = hit.instance; const p0 = new THREE.Vector3().setFromMatrixPosition(g.matrixWorld); plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), hit.point ? hit.point.clone() : p0); const start = rayAt(e); if (start) drag = { g, start, home: g.position.clone(), moving: false, pointerId: e.pointerId }; } } });
     el.addEventListener('pointermove', e => {
       if (drag && drag.pointerId === e.pointerId) { const dx = e.clientX - down[0], dy = e.clientY - down[1]; if (!drag.moving && dx * dx + dy * dy < 16) return; if (!drag.moving) { drag.moving = true; this.controls.enabled = false; this.orthoControls.enabled = false; el.style.cursor = 'grabbing'; try { el.setPointerCapture(e.pointerId); } catch { } } const cur = rayAt(e); if (!cur) return; let d = cur.sub(drag.start); if (e.shiftKey) { if (Math.abs(d.x) >= Math.abs(d.z)) d.z = 0; else d.x = 0; } d.y = 0; const np = drag.home.clone().add(d); np.x = Math.round(np.x / 5) * 5; np.z = Math.round(np.z / 5) * 5; drag.g.position.copy(np); this.syncEdges(); this.invalidate(); if (this.onDirectDragMove) this.onDirectDragMove(drag.g); return; }
       if (this.opts.hover === false) return; const hit = this.pick(e); this.setHover(hit ? hit.instance : null); if (this.onHover) this.onHover(hit, e); });
@@ -226,7 +229,8 @@ export class Viewer {
     el.addEventListener('pointerup', e => { const wasDrag = endDrag(e); if (!down) return; const dx = e.clientX - down[0], dy = e.clientY - down[1]; down = null; if (wasDrag || dx * dx + dy * dy > 16) return; const hit = this.pick(e); if (this.onPick) this.onPick(hit, e); });
     el.addEventListener('pointercancel', e => { endDrag(e); down = null; });
     el.addEventListener('wheel', () => { this._tween = null; }, { passive: true });
-    el.addEventListener('dblclick', e => { const hit = this.pick(e); if (!hit) return; if (this.onDblClick) this.onDblClick(hit); else this.focusOn(hit.instance); });
+    // ダブルクリック: 部材ならその部材を中央へ、空白なら全体を中央へ（掴んで動かした画面を戻す）
+    el.addEventListener('dblclick', e => { const hit = this.pick(e); if (!hit) { this.fit(this.modelRoot, 1.35, { animate: true }); return; } if (this.onDblClick) this.onDblClick(hit); else this.focusOn(hit.instance); });
   }
   pick(e) {
     const r = this.renderer.domElement.getBoundingClientRect(); this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
