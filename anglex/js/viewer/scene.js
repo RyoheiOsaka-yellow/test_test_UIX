@@ -108,7 +108,7 @@ export class Viewer {
   clearEdges() { while (this.edgeRoot.children.length) this.edgeRoot.remove(this.edgeRoot.children[0]); }
   // 影カメラをモデルに合わせる
   fitShadow() { const box = new THREE.Box3().setFromObject(this.modelRoot); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() * 0.6 + 200; const sc = this.sun.shadow.camera; sc.left = sc.bottom = -r; sc.right = sc.top = r; sc.updateProjectionMatrix(); this.sun.target.position.copy(c); this.sun.position.copy(c).add(new THREE.Vector3(1800, 3200, 1400).normalize().multiplyScalar(r * 2.2)); this.sun.shadow.camera.far = r * 6; }
-  fit(obj = this.modelRoot, pad = 1.35, { animate = null, ms = 420 } = {}) { this.invalidate();
+  fit(obj = this.modelRoot, pad = 1.35, { animate = null, ms = 420 } = {}) { this.invalidate(); if (obj === this.modelRoot) this._focusObj = null; clearTimeout(this._kivT);
     const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()); const r = Math.max(size.x, size.y, size.z) * 0.5 * pad + 50;
     const dir = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize(); const dist = r / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2));
     const p1 = c.clone().add(dir.multiplyScalar(dist)); const near = Math.max(1, dist / 500), far = dist * 50;
@@ -122,10 +122,14 @@ export class Viewer {
     this.animateTo(p1, c, { ms, onDone: () => { this.camera.near = near; this.camera.far = far; this.camera.updateProjectionMatrix(); } });
   }
   // カメラのスムーズ移動（位置・注視点を同時に補間）。操作中は中断される
-  animateTo(pos, target, { ms = 420, onDone = null } = {}) {
-    const cam = this.camera, ctl = this.controls; this._tween = { t0: performance.now(), ms, p0: cam.position.clone(), t0v: ctl.target.clone(), p1: pos.clone(), t1: target.clone(), onDone }; this.invalidate(2);
+  // 慣性の残りを捨てる: アニメーション（中央へ・全体表示）の開始時に、直前のドラッグの減衰分が目標点を引きずらないようにする
+  flushInertia() { for (const c of [this.controls, this.orthoControls]) { const d = c.dampingFactor; c.dampingFactor = 1; try { c.update(); } catch { } c.dampingFactor = d; } }
+  animateTo(pos, target, { ms = 420, onDone = null, ortho = null } = {}) { this.flushInertia();
+    const cam = this.camera, ctl = this.controls; this._tween = { t0: performance.now(), ms, p0: cam.position.clone(), t0v: ctl.target.clone(), p1: pos.clone(), t1: target.clone(), onDone, ortho: ortho ? { p0: this.ortho.position.clone(), t0: this.orthoControls.target.clone(), p1: ortho.pos.clone(), t1: ortho.target.clone() } : null }; this.invalidate(2);
   }
-  _stepTween(now) { const tw = this._tween; if (!tw) return; const k = Math.min(1, (now - tw.t0) / tw.ms); const e = 1 - Math.pow(1 - k, 3); this.camera.position.lerpVectors(tw.p0, tw.p1, e); this.controls.target.lerpVectors(tw.t0v, tw.t1, e); this.invalidate(2); if (k >= 1) { this._tween = null; tw.onDone && tw.onDone(); } }
+  _stepTween(now) { const tw = this._tween; if (!tw) return; const k = Math.min(1, (now - tw.t0) / tw.ms); const e = 1 - Math.pow(1 - k, 3); this.camera.position.lerpVectors(tw.p0, tw.p1, e); this.controls.target.lerpVectors(tw.t0v, tw.t1, e); if (tw.ortho) { this.ortho.position.lerpVectors(tw.ortho.p0, tw.ortho.p1, e); this.orthoControls.target.lerpVectors(tw.ortho.t0, tw.ortho.t1, e); } this.invalidate(2); if (k >= 1) { this._tween = null; tw.onDone && tw.onDone(); } }
+  // アニメーション中か（テスト・UI が完了を待つため）
+  get animating() { return !!this._tween; }
   cancelTween() { this._tween = null; }
   // ビュープリセット: 3d | plan | front | side | back | left | iso
   setView(name) { this.invalidate(3);
@@ -163,21 +167,21 @@ export class Viewer {
   _partOf(o) { let p = o; while (p && p !== this.modelRoot) { if (p.userData && p.userData.part) return p.userData.part; p = p.parent; } return null; }
   // 任意のオブジェクトを画面中央へ（距離は維持・アニメーション）
   focusOn(obj, { animate = true, ms = 380 } = {}) {
-    if (!obj) return; const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3());
-    const ctl = this.controls, cam = this.camera; const t0 = ctl.target.clone(), p0 = cam.position.clone(); const d = c.clone().sub(t0); const p1 = p0.clone().add(d);
-    const ot0 = this.orthoControls.target.clone(), op0 = this.ortho.position.clone(); const op1 = op0.clone().add(c.clone().sub(ot0));
-    if (!animate) { ctl.target.copy(c); cam.position.copy(p1); this.orthoControls.target.copy(c); this.ortho.position.copy(op1); ctl.update(); this.orthoControls.update(); this.invalidate(2); return; }
-    const start = performance.now(); const ease = x => 1 - Math.pow(1 - x, 3); const step = () => { const k = Math.min(1, (performance.now() - start) / ms); const e = ease(k); ctl.target.lerpVectors(t0, c, e); cam.position.lerpVectors(p0, p1, e); this.orthoControls.target.lerpVectors(ot0, c, e); this.ortho.position.lerpVectors(op0, op1, e); ctl.update(); this.orthoControls.update(); this.invalidate(2); if (k < 1) requestAnimationFrame(step); }; step();
+    if (!obj) return; this.flushInertia(); clearTimeout(this._kivT); const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()); this._focusObj = obj; /* 以後の境界チェックはこの部材を基準にする（全体ではなく、見たい部材が画面から外れたら戻す） */
+    const ctl = this.controls, cam = this.camera; const p1 = cam.position.clone().add(c.clone().sub(ctl.target)); const op1 = this.ortho.position.clone().add(c.clone().sub(this.orthoControls.target));
+    if (!animate) { this._tween = null; ctl.target.copy(c); cam.position.copy(p1); this.orthoControls.target.copy(c); this.ortho.position.copy(op1); ctl.update(); this.orthoControls.update(); this.invalidate(2); return; }
+    // 全体表示と同じ 1 本のトゥイーンで動かす（2 つのアニメーションが目標点を取り合わないように）
+    this.animateTo(p1, c, { ms, ortho: { pos: op1, target: c } });
   }
   // 任意の点を画面中央へ（距離は指定 or 現状維持）
-  focusPoint(pt, { dist = null, ms = 380 } = {}) { const ctl = this.controls, cam = this.camera; const dir = cam.position.clone().sub(ctl.target).normalize(); const d = dist || cam.position.distanceTo(ctl.target); const p1 = pt.clone().add(dir.multiplyScalar(d)); this.orthoControls.target.copy(pt); this.animateTo(p1, pt, { ms }); }
+  focusPoint(pt, { dist = null, ms = 380 } = {}) { this.flushInertia(); const ctl = this.controls, cam = this.camera; const dir = cam.position.clone().sub(ctl.target).normalize(); const d = dist || cam.position.distanceTo(ctl.target); const p1 = pt.clone().add(dir.multiplyScalar(d)); this.orthoControls.target.copy(pt); this.animateTo(p1, pt, { ms }); }
   // 境界: 掴んで動かしてモデルが画面外に出たら、自動で画面内へ戻す（中心が視野の 1.05 倍の外に出たとき）
-  keepInView() { if (this.keepInViewOff || this._tween || this.gizmo.dragging) return; const box = new THREE.Box3().setFromObject(this.modelRoot); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()); const cam = this.activeCamera; const p = c.clone().project(cam); const out = Math.abs(p.x) > 1.05 || Math.abs(p.y) > 1.05 || p.z > 1; if (!out) return;
+  keepInView() { if (this.keepInViewOff || this._tween || this.gizmo.dragging) return; let ref = this._focusObj; if (ref) { let ok = false; for (let p = ref; p; p = p.parent) if (p === this.modelRoot) { ok = true; break; } if (!ok || !ref.visible) { ref = null; this._focusObj = null; } } const box = new THREE.Box3().setFromObject(ref || this.modelRoot); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()); const cam = this.activeCamera; const p = c.clone().project(cam); const out = Math.abs(p.x) > 1.05 || Math.abs(p.y) > 1.05 || p.z > 1; if (!out) return;
     // 中心が画面の端（0.8）に来る位置まで戻す: 目標点を中心へ寄せる
     const ctl = this.controls; const t0 = ctl.target.clone(); const dir = c.clone().sub(t0); const k = 1 - 0.8 / Math.max(Math.abs(p.x), Math.abs(p.y), 1e-6); const tNew = t0.clone().add(dir.multiplyScalar(Math.min(1, Math.max(0.2, k)))); const pNew = this.camera.position.clone().add(tNew.clone().sub(t0)); this.animateTo(pNew, tNew, { ms: 360 }); this.onKeepInView?.(); }
   // 手のひら（パン）モード: 左ドラッグで画面を掴んで移動
   // 既定の左ドラッグ: 'pan'（掴む）か 'rotate'（回す）。localStorage に保存
-  static dragDefault() { try { return localStorage.getItem('anglex.dragDefault') || 'pan'; } catch { return 'pan'; } }
+  static dragDefault() { try { return localStorage.getItem('anglex.dragDefault') || 'rotate'; } catch { return 'rotate'; } }
   applyDragDefault() { this.setPanMode(this.constructor.dragDefault() === 'pan'); }
   setPanMode(on) { this.panMode = !!on; const M = THREE.MOUSE; for (const c of [this.controls, this.orthoControls]) { c.mouseButtons = { LEFT: on ? M.PAN : M.ROTATE, MIDDLE: M.DOLLY, RIGHT: on ? M.ROTATE : M.PAN }; c.touches = { ONE: on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE, TWO: on ? THREE.TOUCH.DOLLY_ROTATE : THREE.TOUCH.DOLLY_PAN }; /* タッチ: 掴むモードは 1 本指で掴む・2 本指で回す／ズーム */ c.screenSpacePanning = true; } this.renderer.domElement.style.cursor = on ? 'grab' : ''; }
   syncEdges() { this.invalidate(); this.syncSelection(); for (const ln of this.edgeRoot.children) { const o = ln.userData.src; if (o) { o.updateWorldMatrix(true, false); ln.matrix.copy(o.matrixWorld); ln.visible = o.visible && this._visibleUp(o); } } }
