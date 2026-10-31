@@ -213,3 +213,9 @@ tr.new td{background:rgba(29,78,216,.06)}tr.gone td{background:rgba(0,0,0,.04);t
 .orbit-cross{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:11;opacity:0;transition:opacity .25s ease}.orbit-cross.on{opacity:1}
 .orbit-cross i{position:absolute;background:rgba(192,57,43,.85);box-shadow:0 0 0 1px rgba(255,255,255,.7)}.orbit-cross i:first-child{left:-11px;top:-1px;width:22px;height:2px}.orbit-cross i:nth-child(2){left:-1px;top:-11px;width:2px;height:22px}
 .orbit-cross b{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border:1.5px solid rgba(192,57,43,.6);border-radius:50%}
+/* 見どころ表示（寄ったとき）: 他部材のラベルを隠す。ピルの履歴・自動回りボタン */
+.v-label.spot-hide{display:none!important}
+.focus-pill .fp-nav{font:13px/1 var(--font, sans-serif);width:20px;height:20px;padding:0;border:1px solid #c9c3ad;border-radius:50%;background:#fff;cursor:pointer;color:#333}.focus-pill .fp-nav:disabled{opacity:.35;cursor:default}
+.focus-pill .fp-counts{color:#555;font-size:11px;margin-left:4px;padding-left:8px;border-left:1px solid #ddd}.focus-pill .fp-counts:empty{display:none}
+.focus-pill .fp-tt{font:11px var(--font, sans-serif);padding:2px 7px;border:1px solid #c9c3ad;border-radius:999px;background:#fff;cursor:pointer;color:#777}.focus-pill .fp-tt.on{color:#333;border-color:#999}.focus-pill .fp-tt.live{background:#fff4d6;border-color:#d9a441;color:#7a5200}
+.focus-pill,.focus-pill>*{white-space:nowrap}.focus-pill{max-width:calc(100% - 24px);overflow:hidden}.focus-pill .fp-counts{overflow:hidden;text-overflow:ellipsis;max-width:40vw}

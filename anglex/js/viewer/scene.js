@@ -84,6 +84,17 @@ export class Viewer {
     this.controls.addEventListener('change', () => { if (on || el.classList.contains('on')) place(); });
     this.controls.addEventListener('end', () => { if (!on) return; on = false; hideT = setTimeout(() => el.classList.remove('on'), 420); });
     this.showOrbitCross = (ms = 900) => { clearTimeout(hideT); place(); el.classList.add('on'); el.style.opacity = ''; hideT = setTimeout(() => { if (!on) el.classList.remove('on'); }, ms); }; }
+  // ---- 視点の履歴: 中央へ・寄る・全体へ・ミニマップ移動の直前の視点を積む。back/forward で行き来（Alt+← / Alt+→）
+  _viewState() { return { p: this.camera.position.clone(), t: this.controls.target.clone(), f: this._focusObj || null, m: this.focusMode || null }; }
+  pushView() { if (this._restoring) return; const st = this._viewState(); const last = this._hist?.[this._hist.length - 1]; if (last && last.p.distanceTo(st.p) < 1 && last.t.distanceTo(st.t) < 1) return; (this._hist ||= []).push(st); if (this._hist.length > 40) this._hist.shift(); this._fwd = []; this.onHistoryChange?.(); }
+  get canBack() { return !!(this._hist && this._hist.length); } get canForward() { return !!(this._fwd && this._fwd.length); }
+  _restoreView(st) { this._restoring = true; try { const f = st.f; let ok = false; if (f) { for (let p = f; p; p = p.parent) if (p === this.modelRoot) { ok = true; break; } } this._setFocus(ok ? f : null, ok ? st.m : null); this.animateTo(st.p, st.t, { ms: 360 }); this.orthoControls.target.copy(st.t); } finally { this._restoring = false; } this.onHistoryChange?.(); }
+  viewBack() { if (!this.canBack) return false; const st = this._hist.pop(); (this._fwd ||= []).push(this._viewState()); this._restoreView(st); return true; }
+  viewForward() { if (!this.canForward) return false; const st = this._fwd.pop(); (this._hist ||= []).push(this._viewState()); this._restoreView(st); return true; }
+  // ---- 自動回り込み（ターンテーブル）: 寄った状態で 3 秒操作がなければ、その部材を中心にゆっくり自転。何か操作すると止まり、また 3 秒後に再開
+  setTurntable(on) { this.turntable = !!on; if (!on) { this.controls.autoRotate = false; clearTimeout(this._ttT); } else this.armTurntable(); }
+  armTurntable(ms = 3000) { clearTimeout(this._ttT); this.controls.autoRotate = false; if (!this.turntable || this.noAnim) return; this._ttT = setTimeout(() => { if (!this.turntable || this._tween || this.gizmo.dragging) { this.armTurntable(ms); return; } this.controls.autoRotateSpeed = 0.9; this.controls.autoRotate = true; this.invalidate(2); this.onTurntable?.(true); }, ms); }
+  stopTurntable(rearm = true) { const was = this.controls.autoRotate; this.controls.autoRotate = false; clearTimeout(this._ttT); if (was) this.onTurntable?.(false); if (rearm && this.turntable) this.armTurntable(); }
   setTheme(t) { if (this.invalidate) this.invalidate();
     this.theme = t; this.scene.backgroundBlurriness = 0;
     if (t === 'dark') { this.scene.background = new THREE.Color(0x0d1117); this.scene.fog = new THREE.Fog(0x0d1117, 9000, 30000); this.grid.material.color.set(0x30363d); this.grid.material.opacity = 0.5; this.ground.material.opacity = 0.45; this.hemi.color.set(0x9fb8d8); this.hemi.groundColor.set(0x2a2f36); this.renderer.toneMappingExposure = 1.12; }
@@ -116,7 +127,7 @@ export class Viewer {
   clearEdges() { while (this.edgeRoot.children.length) this.edgeRoot.remove(this.edgeRoot.children[0]); }
   // 影カメラをモデルに合わせる
   fitShadow() { const box = new THREE.Box3().setFromObject(this.modelRoot); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() * 0.6 + 200; const sc = this.sun.shadow.camera; sc.left = sc.bottom = -r; sc.right = sc.top = r; sc.updateProjectionMatrix(); this.sun.target.position.copy(c); this.sun.position.copy(c).add(new THREE.Vector3(1800, 3200, 1400).normalize().multiplyScalar(r * 2.2)); this.sun.shadow.camera.far = r * 6; }
-  fit(obj = this.modelRoot, pad = 1.35, { animate = null, ms = 420 } = {}) { this.invalidate(); if (obj === this.modelRoot) this._setFocus(null); clearTimeout(this._kivT);
+  fit(obj = this.modelRoot, pad = 1.35, { animate = null, ms = 420 } = {}) { this.invalidate(); if (obj === this.modelRoot) { this.pushView(); this._setFocus(null); } clearTimeout(this._kivT);
     const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()); const r = Math.max(size.x, size.y, size.z) * 0.5 * pad + 50;
     const dir = new THREE.Vector3().subVectors(this.camera.position, this.controls.target).normalize(); const dist = r / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2));
     const p1 = c.clone().add(dir.multiplyScalar(dist)); const near = Math.max(1, dist / 500), far = dist * 50;
@@ -177,10 +188,10 @@ export class Viewer {
   // オブジェクトの画面上の外接矩形（コンテナ座標、px）。UI をその外側に置くために使う
   screenRect(obj) { const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return null; const cam = this.activeCamera; const w = this.container.clientWidth, h = this.container.clientHeight; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; const v = new THREE.Vector3(); for (let i = 0; i < 8; i++) { v.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(cam); const sx = (v.x + 1) / 2 * w, sy = (1 - v.y) / 2 * h; x0 = Math.min(x0, sx); y0 = Math.min(y0, sy); x1 = Math.max(x1, sx); y1 = Math.max(y1, sy); } return { x0, y0, x1, y1, w, h }; }
   // 「見ている部材」を記録して UI に知らせる（ピル表示・境界チェックの基準）
-  _setFocus(obj) { if (this._focusObj === obj) return; this._focusObj = obj || null; this.onFocusChange?.(this._focusObj); }
+  _setFocus(obj, mode = null) { const m = obj ? (mode || 'center') : null; if (this._focusObj === obj && this.focusMode === m) return; this._focusObj = obj || null; this.focusMode = m; this.onFocusChange?.(this._focusObj, m); }
   get focusObj() { return this._focusObj || null; }
   focusOn(obj, { animate = true, ms = 380, zoom = false, fill = 0.6 } = {}) {
-    if (!obj) return; this.flushInertia(); clearTimeout(this._kivT); const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()); this._setFocus(obj); /* 以後の境界チェックはこの部材を基準にする（全体ではなく、見たい部材が画面から外れたら戻す） */
+    if (!obj) return; this.flushInertia(); clearTimeout(this._kivT); const box = new THREE.Box3().setFromObject(obj); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()); this.pushView(); this._setFocus(obj, zoom ? 'zoom' : 'center'); /* 以後の境界チェックはこの部材を基準にする（全体ではなく、見たい部材が画面から外れたら戻す） */
     const ctl = this.controls, cam = this.camera; let p1 = cam.position.clone().add(c.clone().sub(ctl.target)); const op1 = this.ortho.position.clone().add(c.clone().sub(this.orthoControls.target));
     if (zoom) { /* ズーム: その部材が画面の fill（既定 6 割）を占める距離まで寄る（向きは維持） */ const size = box.getSize(new THREE.Vector3()); const r = Math.max(size.x, size.y, size.z, 20) * 0.5 / fill; const dist = r / Math.sin(THREE.MathUtils.degToRad(cam.fov / 2)); const dir = cam.position.clone().sub(ctl.target).normalize(); p1 = c.clone().add(dir.multiplyScalar(dist)); const a = this.container.clientWidth / Math.max(1, this.container.clientHeight); this.ortho.top = r; this.ortho.bottom = -r; this.ortho.left = -r * a; this.ortho.right = r * a; this.ortho.updateProjectionMatrix(); cam.near = Math.min(cam.near, Math.max(1, dist / 500)); cam.updateProjectionMatrix(); }
     if (!animate) { this._tween = null; ctl.target.copy(c); cam.position.copy(p1); this.orthoControls.target.copy(c); this.ortho.position.copy(op1); ctl.update(); this.orthoControls.update(); this.invalidate(2); return; }
@@ -242,7 +253,7 @@ export class Viewer {
     // 直接ドラッグ: 選択中の部材を左ボタンで掴んでそのまま動かす（水平面上、5mm スナップ、Shift で主軸ロック）。4px 動くまでは通常のクリック
     let drag = null; const plane = new THREE.Plane(), ray = new THREE.Raycaster(), pt = new THREE.Vector3(), ndc = new THREE.Vector2();
     const rayAt = (ev) => { const r = el.getBoundingClientRect(); ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, this.activeCamera); return ray.ray.intersectPlane(plane, pt) ? pt.clone() : null; };
-    el.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; this._tween = null; drag = null;
+    el.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; this._tween = null; this.stopTurntable(true); drag = null;
       if (e.button === 0 && !this.gizmo.axis && !this.gizmo.dragging && this.canDirectDrag) { /* 掴むモードでも、選択中の部材の上なら部材を動かす */ const hit = this.pick(e); const beginDrag = () => { const g = hit.instance; const p0 = new THREE.Vector3().setFromMatrixPosition(g.matrixWorld); plane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), hit.point ? hit.point.clone() : p0); const start = rayAt(e); if (start) drag = { g, start, home: g.position.clone(), moving: false, pointerId: e.pointerId }; };
         if (hit && this.canDirectDrag(hit)) beginDrag();
         else if (hit && e.pointerType === 'touch' && this.onLongPress) { // タッチ: 長押し（450 ms、8 px 以内）でその部材を選んで掴む
@@ -254,7 +265,7 @@ export class Viewer {
     const endDrag = e => { if (!drag) return; const d = drag; drag = null; if (d.moving) { this.controls.enabled = true; this.orthoControls.enabled = true; el.style.cursor = this.panMode ? 'grab' : ''; try { el.releasePointerCapture(e.pointerId); } catch { } if (this.onTransformEnd) this.onTransformEnd(d.g); return true; } return false; };
     el.addEventListener('pointerup', e => { const wasDrag = endDrag(e); if (!down) return; const dx = e.clientX - down[0], dy = e.clientY - down[1]; down = null; if (wasDrag || dx * dx + dy * dy > 16) return; const hit = this.pick(e); if (this.onPick) this.onPick(hit, e); });
     el.addEventListener('pointercancel', e => { endDrag(e); down = null; });
-    el.addEventListener('wheel', () => { this._tween = null; }, { passive: true });
+    el.addEventListener('wheel', () => { this._tween = null; this.stopTurntable(true); }, { passive: true });
     // ダブルクリック: 部材ならその部材を中央へ、空白なら全体を中央へ（掴んで動かした画面を戻す）
     el.addEventListener('dblclick', e => { const hit = this.pick(e); if (!hit) { this.fit(this.modelRoot, 1.35, { animate: true }); return; } if (this.onDblClick) this.onDblClick(hit); else this.focusOn(hit.instance); });
   }
