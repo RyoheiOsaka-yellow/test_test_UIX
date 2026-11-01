@@ -60,8 +60,11 @@ export async function exportEstimatePDF(app, est) {
       sections: [{ kv: [['御見積金額（税込）', fmt.yen(total + tax)], ['税抜', fmt.yen(total)], ['消費税 10%', fmt.yen(tax)], ['総質量', fmt.kg(T.mass)]] },
         { heading: '明細', table: { cols: [{ label: 'No', w: 5, align: 'right' }, { label: '品名 / 仕様', w: 40 }, { label: '符号', w: 16 }, { label: '数量', w: 8, align: 'right' }, { label: '単位', w: 6 }, { label: '質量 kg', w: 10, align: 'right' }, { label: '単価', w: 12, align: 'right' }, { label: '金額', w: 14, align: 'right' }], rows: rows.map(r => [r.no, r.desc + '\n' + r.spec, r.marks, r.qty, r.unit, r.massTotal, r.unitPrice.toLocaleString(), r.amount.toLocaleString()]), totals: [['小計（税別）', fmt.yen(total)], ['消費税', fmt.yen(tax)], ['合計（税込）', fmt.yen(total + tax), true]] } },
         { heading: '備考', text: est.meta.notes || '溶融亜鉛めっき仕上げ。アンカー・現場溶接は別途。図面に記載のない加工指示は ANGLEX による推論値（要判断項目は打合せにて確定）。' },
-        est.snapshot3d ? { heading: '3D モデル', image: { dataUrl: est.snapshot3d, w: 320 } } : null].filter(Boolean), footer: 'ANGLEX 見積書' }); t.remove(); toast('見積書 PDF を書き出しました', 'ok'); } catch (e) { t.remove(); console.error(e); toast('PDF 生成に失敗: ' + e.message, 'bad', 6000); }
+        est.snapshot3d ? { heading: '3D モデル', image: { dataUrl: est.snapshot3d, w: 320 } } : null, ...reviewSections(app, est)].filter(Boolean), footer: 'ANGLEX 見積書' }); t.remove(); toast('見積書 PDF を書き出しました', 'ok'); } catch (e) { t.remove(); console.error(e); toast('PDF 生成に失敗: ' + e.message, 'bad', 6000); }
 }
+// 確認リストのセクション（見積書・加工指示書）: 受け渡し時の要約（reviewSummary）か、A社なら今の状態
+export function reviewSections(app, est) { const rs = est?.reviewSummary || (app.role() === 'A' && app.reviewSummary ? { ...app.reviewSummary(), at: new Date().toISOString(), by: app.user().name } : null); if (!rs || !rs.items.length) return []; const ST = { ok: '✓ 確認済', fixed: '対応済', open: '未確認' }; const KIND = { weld: '溶接', hole: '穴', anchor: 'アンカー', ubolt: 'Uボルト', rod: '吊ボルト', finish: '仕上げ', origin: '図面根拠', risk: 'リスク' };
+  return [{ heading: `確認リスト（A社）　確認済 ✓ ${rs.ok} / 対応済 ${rs.fixed} / 未確認 ${rs.open}`, text: `${rs.by || ''} ${rs.at ? new Date(rs.at).toLocaleString('ja-JP') : ''}。人が確認すべき箇所（溶接・穴・アンカー・図面根拠）の状態。未確認の項目は加工前に要確認`, table: { cols: [{ label: '部材', w: 10 }, { label: '種類', w: 10 }, { label: '項目', w: 44 }, { label: '状態', w: 10 }, { label: '確認者', w: 12 }, { label: '日時', w: 14 }], rows: rs.items.map(it => [it.mark, KIND[it.kind] || it.kind, it.label, ST[it.status] || it.status, it.by || '—', it.at ? new Date(it.at).toLocaleDateString('ja-JP') : '—']) } }]; }
 // ---------- 加工指示書 PDF ----------
 // 分解図セクション（画像＋バルーン＋部品表）: 加工指示書・単体 PDF で共用
 // 組立順: ベース → 柱 → 梁・腕 → ブレース → 配管・U ボルト → ボルト類 → アンカー（現場）
@@ -105,5 +108,6 @@ export async function exportWorkOrderPDF(app, est) {
       sections.push({ heading: `${l.desc}　${l.marks.join(' ')}　数量 ${l.qty} ${l.unit}`, kv: [['ファミリ', fam.name], ['パラメータ', Object.entries(p).filter(([k]) => !k.startsWith('__')).map(([k, v]) => `${k}=${v}`).join('  ')], ['質量', `${s.total} kg（鋼材 ${s.steelNet} / めっき ${s.zinc} / ボルト ${s.fasteners} / 溶接 ${s.welds}）`], ['穴', `丸穴 ${s.holeCount} / 長穴 ${s.slotCount}`], ['溶接', Object.values(welds).map(x => `${x.g || ''} ${x.t === 'butt' ? '突合せ' : '隅肉'} ▷${x.s} L=${Math.round(x.L)}（${x.n}箇所）`).join(' / ') || '—'], ['ボルト類', Object.entries(fast).map(([k, v]) => `${k} ×${v.n}${v.site ? '（現場）' : ''}`).join(' / ') || '—']] });
       if (shot) sections.push({ image: { dataUrl: shot, w: 300 } });
       sections.push(...explodedSections(app, inst)); }
+    sections.push(...reviewSections(app, est));
     await downloadPdf(`${est.no}_加工指示書.pdf`, { title: '加工指示書', subtitle: `${est.no}  ${est.projectName}`, meta: [['作成', new Date().toLocaleDateString('ja-JP')], ['溶接記号', 'JIS Z 3021'], ['穴位置', '各面の端部基準（z: 長さ方向, s: 幅方向）'], ['仕上げ', '記載の通り']], sections, footer: 'ANGLEX 加工指示書' }); t.remove(); toast('加工指示書 PDF を書き出しました', 'ok'); } catch (e) { t.remove(); console.error(e); toast('PDF 生成に失敗: ' + e.message, 'bad', 6000); }
 }

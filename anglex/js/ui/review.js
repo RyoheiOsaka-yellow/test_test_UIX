@@ -5,7 +5,7 @@ import { holePos } from '../bim/review.js';
 import { buildChecklist, openCount, detectMisalignment, REVIEW_KINDS } from '../bim/review.js';
 import { parseSpec, holeFaces, FACE_LABEL } from '../geo/profiles.js';
 
-export function setReview(app, inst, itemId, status, note) { const r = { ...(inst.review || {}) }; r[itemId] = { status, note: note ?? r[itemId]?.note ?? '', at: new Date().toISOString(), by: app.user().name }; app.model.updateInstance(inst.id, { review: r }); app.drawLevels(); app.updateStatus(); }
+export function setReview(app, inst, itemId, status, note, extra = null) { const r = { ...(inst.review || {}) }; r[itemId] = { status, note: note ?? r[itemId]?.note ?? '', at: new Date().toISOString(), by: app.user().name, ...(extra || {}) }; app.model.updateInstance(inst.id, { review: r }); app.drawLevels(); app.updateStatus(); }
 export function renderReviewSection(app, inst, parts) {
   const items = buildChecklist(inst, parts); const open = openCount(items); if (!items.length) return null;
   const box = h('div', { class: 'pp-group review' }, h('div', { class: 'pp-group-title' }, `確認事項（未確認 ${open} / ${items.length}）`, open ? h('span', { class: 'chip bad', style: { marginLeft: '6px' } }, '要確認') : h('span', { class: 'chip ok', style: { marginLeft: '6px' } }, '確認済')));

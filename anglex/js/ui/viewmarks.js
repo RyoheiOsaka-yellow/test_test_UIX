@@ -1,6 +1,6 @@
 // 視点ブックマーク: 今の視点に名前を付けて案件に保存（project.views）。一覧から戻れる。
 // 「PDF」を付けた視点は、見積・加工指示書の 3D スナップ／分解図の撮影角度にそのまま使われる（部材に寄った視点はその部材の、全体の視点は全体スナップの角度）
-import { $, h, toast, promptDialog } from './common.js';
+import { $, h, toast, promptDialog, download } from './common.js';
 import * as THREE from 'three';
 const uid = () => 'V' + Math.random().toString(36).slice(2, 8);
 export function listViewmarks(app) { return (app.project.views ||= []); }
@@ -15,12 +15,29 @@ export function pdfViewFor(app, instId) { return listViewmarks(app).find(v => v.
 export function toggleViewmarks(app, anchorEl) { const old = document.querySelector('.vm-pop'); if (old) { old.remove(); app.viewmarksRefresh = null; return; }
   const stage = $('#d3stage') || $('#stage'); if (!stage) return; const pop = h('div', { class: 'vm-pop', onClick: e => e.stopPropagation() }); stage.append(pop);
   const render = () => { pop.innerHTML = ''; pop.append(h('div', { class: 'vm-head' }, h('b', {}, '☆ 視点ブックマーク'), h('button', { class: 'btn sm primary', title: '今の視点に名前を付けて保存（Shift+B）', onClick: () => saveViewmark(app) }, '＋ 今の視点を保存'), h('button', { class: 'icon-btn', onClick: () => toggleViewmarks(app) }, '✕')));
+    if (listViewmarks(app).length) pop.append(h('div', { class: 'vm-tools' }, h('button', { class: 'btn sm', title: 'ブックマークの順に 2 秒ずつ寄っていく（打合せ用）。Esc で停止', onClick: () => { toggleViewmarks(app); playViewmarks(app); } }, '▶ 再生'), h('button', { class: 'btn sm', title: '再生しながら WebM に録画して保存', onClick: () => { toggleViewmarks(app); playViewmarks(app, { record: true }); } }, '● 録画'), h('span', { class: 'muted small' }, '▲▼ で並べ替え、✎ でメモ')));
     const list = listViewmarks(app); if (!list.length) { pop.append(h('div', { class: 'muted small', style: { padding: '6px 2px' } }, 'まだありません。部材に寄って「＋ 今の視点を保存」。PDF を付けると見積・指示書のスナップがその角度になります')); return; }
-    for (const vm of list) { const inst = vm.focus ? app.model.getInstance(vm.focus) : null; pop.append(h('div', { class: 'vm-row' + (vm.pdf ? ' pdf' : ''), 'data-id': vm.id }, h('button', { class: 'vm-go', title: 'この視点へ', onClick: () => gotoViewmark(app, vm) }, h('b', {}, vm.name), h('span', { class: 'muted small' }, inst ? ` ${inst.mark}${vm.mode === 'zoom' ? '（寄る）' : ''}` : ' 全体')),
+    for (const vm of list) { const inst = vm.focus ? app.model.getInstance(vm.focus) : null; pop.append(h('div', { class: 'vm-row' + (vm.pdf ? ' pdf' : ''), 'data-id': vm.id }, h('button', { class: 'vm-go', title: 'この視点へ', onClick: () => gotoViewmark(app, vm) }, h('b', {}, vm.name), h('span', { class: 'muted small' }, inst ? ` ${inst.mark}${vm.mode === 'zoom' ? '（寄る）' : ''}` : ' 全体'), vm.note ? h('div', { class: 'vm-note' }, vm.note) : null),
       h('button', { class: 'chip' + (vm.pdf ? ' on' : ''), title: vm.pdf ? 'PDF の撮影角度に使っています（押して解除）' : '見積・指示書の 3D スナップ／分解図をこの角度で撮る', onClick: () => setViewmarkPdf(app, vm.id, !vm.pdf) }, '📷 PDF'),
-      h('button', { class: 'icon-btn', title: '名前を変更', onClick: async () => { const r = await promptDialog('名前を変更', [{ key: 'name', label: '名前', value: vm.name }]); if (r && r.name) { vm.name = r.name; app.scheduleAutosave?.(); render(); } } }, '✎'),
+      h('button', { class: 'icon-btn', title: '上へ', onClick: () => moveViewmark(app, vm.id, -1) }, '▲'), h('button', { class: 'icon-btn', title: '下へ', onClick: () => moveViewmark(app, vm.id, 1) }, '▼'),
+      h('button', { class: 'icon-btn', title: '名前・メモを変更（メモは再生中に表示）', onClick: async () => { const r = await promptDialog('名前・メモ', [{ key: 'name', label: '名前', value: vm.name }, { key: 'note', label: 'メモ', type: 'textarea', value: vm.note || '' }]); if (r && r.name) { vm.name = r.name; vm.note = r.note || ''; app.scheduleAutosave?.(); render(); } } }, '✎'),
       h('button', { class: 'icon-btn', title: '削除', onClick: () => removeViewmark(app, vm.id) }, '✕'))); } };
   app.viewmarksRefresh = render; render();
   if (anchorEl) { const r = anchorEl.getBoundingClientRect(), s = stage.getBoundingClientRect(); pop.style.left = Math.max(8, Math.min(s.width - 320, r.left - s.left)) + 'px'; pop.style.top = '10px'; }
   setTimeout(() => document.addEventListener('click', function off(e) { if (!pop.contains(e.target)) { pop.remove(); app.viewmarksRefresh = null; } document.removeEventListener('click', off); }), 0);
 }
+
+// 並べ替え（▲▼）
+export function moveViewmark(app, id, dir) { const list = listViewmarks(app); const i = list.findIndex(x => x.id === id); const j = i + dir; if (i < 0 || j < 0 || j >= list.length) return false; [list[i], list[j]] = [list[j], list[i]]; app.scheduleAutosave?.(); app.viewmarksRefresh?.(); return true; }
+// ---- ツアー再生: ブックマークの順に 1 つずつ寄っていく（打合せ用）。各視点に 2 秒（app.vmDwell）止まる。⏸ で一時停止、■ / Esc で停止。録画つきは WebM を保存
+export function playViewmarks(app, { record = false, dwell = null } = {}) {
+  const list = listViewmarks(app); if (!list.length) { toast('ブックマークがありません。Shift+B で今の視点を保存', 'info'); return null; } stopViewmarks(app);
+  const stage = $('#d3stage') || $('#stage'); const st = { i: -1, paused: false, timer: null, rec: null, keep: null, dwell: dwell ?? app.vmDwell ?? 2000 }; app.vmPlay = st;
+  const pos = h('span', { class: 'vp-pos' }); const name = h('b'); const note = h('span', { class: 'vp-note' }); const pauseBtn = h('button', { class: 'btn sm', title: '一時停止／再開', onClick: () => { st.paused = !st.paused; pauseBtn.textContent = st.paused ? '▶' : '⏸'; if (!st.paused) next(); } }, '⏸');
+  const bar = h('div', { class: 'vm-play', role: 'status' }, h('span', { class: 'vp-dot' }, record ? '● 録画' : '▶ 再生'), pos, name, note, pauseBtn, h('button', { class: 'btn sm', title: '停止（Esc）', onClick: () => stopViewmarks(app) }, '■')); stage.append(bar); st.bar = bar;
+  const show = () => { const vm = list[st.i]; if (!vm) return; pos.textContent = `${st.i + 1}/${list.length}`; name.textContent = vm.name; note.textContent = vm.note ? ' — ' + vm.note : ''; };
+  const next = () => { clearTimeout(st.timer); if (st.paused || app.vmPlay !== st) return; st.i++; if (st.i >= list.length) { toast('ツアー再生が終わりました', 'ok'); stopViewmarks(app); return; } gotoViewmark(app, list[st.i]); show(); st.timer = setTimeout(next, 420 + st.dwell); };
+  if (record) { const canvas = app.viewer.renderer.domElement; if (!canvas.captureStream || typeof MediaRecorder === 'undefined') { toast('このブラウザは録画に対応していません', 'bad'); } else { const stream = canvas.captureStream(30); const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || ''; const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : undefined); const chunks = []; rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); }; rec.onstop = () => { const blob = new Blob(chunks, { type: 'video/webm' }); download(`anglex_views_${app.project.name || 'project'}.webm`, blob, 'video/webm'); toast(`録画を保存しました（${Math.round(blob.size / 1024)} KB）`, 'ok'); }; st.rec = rec; app.viewer.noAnim = false; st.keep = setInterval(() => app.viewer.invalidate(2), 33); rec.start(250); } }
+  next(); return st;
+}
+export function stopViewmarks(app) { const st = app.vmPlay; if (!st) return; clearTimeout(st.timer); st.bar?.remove(); if (st.keep) clearInterval(st.keep); if (st.rec) { const r = st.rec; st.rec = null; setTimeout(() => { try { r.stop(); } catch { } }, 300); } app.vmPlay = null; }

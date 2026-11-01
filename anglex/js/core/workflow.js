@@ -33,13 +33,13 @@ export function applyEdit(est, { role, who, lineId, field, value }) {
   est.updatedAt = now; est.audit.push({ at: now, who, org: role, action: 'edit', field: f, lineId, before, after: value }); return est;
 }
 // 受け渡し: 現段階の内容を改訂として凍結し、次の会社へ
-export function handoff(est, { from, to, who, note = '', due = null }) {
+export function handoff(est, { from, to, who, note = '', due = null, review = null }) {
   if (est.currentOrg !== from) throw new Error('受け渡し元が現在の担当と一致しません'); if (!ROLES[from].handoffTo.includes(to)) throw new Error(`${from} → ${to} の受け渡しは定義されていません`);
   const now = new Date().toISOString(); const snap = JSON.parse(JSON.stringify({ lines: est.lines, meta: est.meta, totals: totals(est) }));
   est.revisions.push({ rev: est.revision, org: from, who, at: now, note, snapshot: snap }); est.revision += 1; est.currentOrg = to;
   est.status = to === 'B' ? 'to_B' : to === 'C' ? 'to_C' : (from === 'C' ? 'from_C' : 'draft');
   const token = 'h_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); est.tokens[to] = token; est.handoffs.push({ at: now, from, to, who, note, token, due: due || null }); est.due = due || null;
-  est.audit.push({ at: now, who, org: from, action: 'handoff', note: `${ROLES[from].name} → ${ROLES[to].name}` + (note ? '：' + note : '') }); est.updatedAt = now; return { est, token };
+  est.audit.push({ at: now, who, org: from, action: 'handoff', note: `${ROLES[from].name} → ${ROLES[to].name}` + (note ? '：' + note : '') }); if (review && from === 'A') { est.reviewSummary = { ...review, at: now, by: who }; est.audit.push({ at: now, who, org: from, action: 'review', note: `確認リスト: 確認済 ✓ ${review.ok} / 対応済 ${review.fixed} / 未確認 ${review.open}（${review.items.length} 項目）` }); } est.updatedAt = now; return { est, token };
 }
 export function finalize(est, { who, org, note = '' }) { if (org !== 'A') throw new Error('確定は A社のみ'); est.status = 'final'; est.currentOrg = 'A'; est.due = null; const now = new Date().toISOString(); est.audit.push({ at: now, who, org, action: 'finalize', note: '見積を確定' + (note ? '：' + note : '') }); est.updatedAt = now; return est; }
 // 打合せの記録（どの会社でも追加可。監査ログにも残す）
