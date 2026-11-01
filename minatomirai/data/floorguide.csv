@@ -1,408 +1,477 @@
-building,floor,zone,name,category,share,source
-MARK IS minatomirai,B4,1,ファミリーマート,物販,1,official
-MARK IS minatomirai,B4,2,きもの鈴乃屋,物販,1,official
-MARK IS minatomirai,B4,3,くまざわ書店,物販,1,official
-MARK IS minatomirai,B4,4,アイシティ,物販,1,official
-MARK IS minatomirai,B4,5,ペコちゃんmilkyドーナツ,飲食,1,official
-MARK IS minatomirai,B4,6,UNI COFFEE ROASTERY,物販,1,official
-MARK IS minatomirai,B4,7,上島珈琲店,物販,1,official
-MARK IS minatomirai,B4,8,ALBA歯科 & 矯正歯科,医療,1,official
-MARK IS minatomirai,B4,9,ワイモバイル,物販,1,official
-MARK IS minatomirai,B4,10,ベビーパーク,物販,1,official
-MARK IS minatomirai,B4,11,I feeling,物販,1,official
-MARK IS minatomirai,B4,12,ラフィネ,物販,1,official
-MARK IS minatomirai,B4,13,TRU EYELASH,物販,1,official
-MARK IS minatomirai,B4,14,Dr.ストレッチ,物販,1,official
-MARK IS minatomirai,B4,15,ドコモショップ,物販,1,official
-MARK IS minatomirai,B4,16,青山ネイル,サービス,1,official
-MARK IS minatomirai,B2,1,スポーツデポフラッグシップストア,物販,1,official
-MARK IS minatomirai,B2,2,ハックドラッグ,医療,1,official
-MARK IS minatomirai,B2,3,お直しコンシェルジュ ビック・ママ,物販,1,official
-MARK IS minatomirai,B2,4,ポニークリーニング,サービス,1,official
-MARK IS minatomirai,B2,5,ATM/銀行,サービス,1,official
-MARK IS minatomirai,B1,1,Foodway,物販,1,official
-MARK IS minatomirai,B1,2,ソウル市場,物販,1,official
-MARK IS minatomirai,B1,3,お肉処 牛蔵,物販,1,official
-MARK IS minatomirai,B1,4,山助,物販,1,official
-MARK IS minatomirai,B1,5,大東青果,飲食,1,official
-MARK IS minatomirai,B1,6,R Baker,物販,1,official
-MARK IS minatomirai,B1,7,CRISP SALAD WORKS,物販,1,official
-MARK IS minatomirai,B1,8,おめで鯛焼き本舗,物販,1,official
-MARK IS minatomirai,B1,9,中華惣菜 東方紅,飲食,1,official
-MARK IS minatomirai,B1,10,やきとり 鶏陣,物販,1,official
-MARK IS minatomirai,B1,11,BISTRO石川亭DELI,物販,1,official
-MARK IS minatomirai,B1,13,カルディコーヒーファーム,飲食,1,official
-MARK IS minatomirai,B1,15,丼処 山助,飲食,1,official
-MARK IS minatomirai,B1,12,青山フラワーマーケット,物販,1,official
-MARK IS minatomirai,B1,14,ダイソー,物販,1,official
-MARK IS minatomirai,1F,2,ACTUS,物販,1,official
-MARK IS minatomirai,1F,3,モンベル,物販,1,official
-MARK IS minatomirai,1F,4,snow peak,物販,1,official
-MARK IS minatomirai,1F,5,コロンビアスポーツウェア,物販,1,official
-MARK IS minatomirai,1F,6,DESCENTE,物販,1,official
-MARK IS minatomirai,1F,7,キーン ガラージ,物販,1,official
-MARK IS minatomirai,1F,8,サロモンストア,物販,1,official
-MARK IS minatomirai,1F,9,アークテリクス,物販,1,official
-MARK IS minatomirai,1F,10,HOKA Yokohama,物販,1,official
-MARK IS minatomirai,1F,11,THE NORTH FACE,物販,1,official
-MARK IS minatomirai,1F,12,HELLY HANSEN,物販,1,official
-MARK IS minatomirai,1F,13,BRIEFING,物販,1,official
-MARK IS minatomirai,1F,14,フレッドペリー,物販,1,official
-MARK IS minatomirai,1F,15,ニューバランス,物販,1,official
-MARK IS minatomirai,1F,16,MARLMARL,物販,1,official
-MARK IS minatomirai,1F,18,POTR YOKOHAMA,物販,1,official
-MARK IS minatomirai,1F,19,BEAMS,物販,1,official
-MARK IS minatomirai,1F,20,BEAUTY & YOUTH UNITED ARROWS,物販,1,official
-MARK IS minatomirai,1F,21,アニエスベー,物販,1,official
-MARK IS minatomirai,1F,22,MARcourt,物販,1,official
-MARK IS minatomirai,1F,23,tandey mooi,物販,1,official
-MARK IS minatomirai,1F,24,PAL’LAS PALACE,物販,1,official
-MARK IS minatomirai,1F,25,Jouete,物販,1,official
-MARK IS minatomirai,1F,26,IL BISONTE,物販,1,official
-MARK IS minatomirai,1F,27,NANGA SHOP YOKOHAMA,物販,1,official
-MARK IS minatomirai,1F,28,金子眼鏡店,物販,1,official
-MARK IS minatomirai,1F,29,TENTIAL,物販,1,official
-MARK IS minatomirai,1F,30,GARMIN,物販,1,official
-MARK IS minatomirai,1F,31,カンペール,物販,1,official
-MARK IS minatomirai,1F,32,Bshop,物販,1,official
-MARK IS minatomirai,1F,33,RHC Ron Herman,物販,1,official
-MARK IS minatomirai,1F,34,JOURNAL STANDARD FURNITURE,物販,1,official
-MARK IS minatomirai,1F,35,JOURNAL STANDARD relume,物販,1,official
-MARK IS minatomirai,1F,17,レダラッハ,物販,1,official
-MARK IS minatomirai,1F,36,AMALFI CAFFE,物販,1,official
-MARK IS minatomirai,1F,37,RHC CAFE,物販,1,official
-MARK IS minatomirai,1F,38,J.S. PANCAKE CAFE,物販,1,official
-MARK IS minatomirai,1F,39,BLUE BOTTLE COFFEE,物販,1,official
-MARK IS minatomirai,1F,1,ペットパラダイスＤＸ,物販,1,official
-MARK IS minatomirai,1F,40,ポピンズナーサリースクール,サービス,1,official
-MARK IS minatomirai,2F,1,ユニクロ,物販,1,official
-MARK IS minatomirai,2F,2,3COINS +plus,物販,1,official
-MARK IS minatomirai,2F,3,靴下屋,物販,1,official
-MARK IS minatomirai,2F,4,ＬＯＶＯＴ ストア,物販,1,official
-MARK IS minatomirai,2F,5,deux C（ドゥ・セー）,物販,1,official
-MARK IS minatomirai,2F,6,トリンプ,物販,1,official
-MARK IS minatomirai,2F,7,BEAMS HEART,物販,1,official
-MARK IS minatomirai,2F,8,アーバンリサーチ ドアーズ,物販,1,official
-MARK IS minatomirai,2F,9,グラニフ,物販,1,official
-MARK IS minatomirai,2F,10,DESERTSNOW,物販,1,official
-MARK IS minatomirai,2F,11,Afternoon Tea LIVING,物販,1,official
-MARK IS minatomirai,2F,12,Dr.Martens,物販,1,official
-MARK IS minatomirai,2F,13,PATRICK LABO,物販,1,official
-MARK IS minatomirai,2F,14,RED WING SHOE STORE 横浜,物販,1,official
-MARK IS minatomirai,2F,15,TAKEO KIKUCHI,物販,1,official
-MARK IS minatomirai,2F,16,フリースピリッツ,物販,1,official
-MARK IS minatomirai,2F,17,SOUVENIRS,物販,1,official
-MARK IS minatomirai,2F,18,Puretre,物販,1,official
-MARK IS minatomirai,2F,19,GREGORY,物販,1,official
-MARK IS minatomirai,2F,20,GRAPEFRUIT MOON,物販,1,official
-MARK IS minatomirai,2F,21,UNITED ARROWS green label relaxing,物販,1,official
-MARK IS minatomirai,2F,22,ABC-MART GRAND STAGE,物販,1,official
-MARK IS minatomirai,2F,23,ABC-MART,物販,1,official
-MARK IS minatomirai,2F,24,ORIHICA,物販,1,official
-MARK IS minatomirai,2F,25,Yogibo Store,物販,1,official
-MARK IS minatomirai,2F,26,オンデーズ,物販,1,official
-MARK IS minatomirai,2F,27,アンダーアーマー ブランドハウス,物販,1,official
-MARK IS minatomirai,2F,28,OSHMAN’S,物販,1,official
-MARK IS minatomirai,2F,31,プラステ,物販,1,official
-MARK IS minatomirai,2F,29,Afternoon Tea TEAROOM,物販,1,official
-MARK IS minatomirai,2F,30,UNIX Beauty Innovation,物販,1,official
-MARK IS minatomirai,3F,1,ノジマ,物販,1,official
-MARK IS minatomirai,3F,2,トイザらス・ベビーザらス,物販,1,official
-MARK IS minatomirai,3F,3,BREEZE,物販,1,official
-MARK IS minatomirai,3F,4,OVERRIDE,物販,1,official
-MARK IS minatomirai,3F,5,moncheri,物販,1,official
-MARK IS minatomirai,3F,6,キシル,物販,1,official
-MARK IS minatomirai,3F,7,LOWYA,物販,1,official
-MARK IS minatomirai,3F,8,OKAIDI,物販,1,official
-MARK IS minatomirai,3F,10,minimal,物販,1,official
-MARK IS minatomirai,3F,11,fafa,物販,1,official
-MARK IS minatomirai,3F,12,moimoln,物販,1,official
-MARK IS minatomirai,3F,13,じぶんまくら,物販,1,official
-MARK IS minatomirai,3F,14,OLYMPIA,物販,1,official
-MARK IS minatomirai,3F,15,coen,物販,1,official
-MARK IS minatomirai,3F,16,サーモス スタイリングストア,物販,1,official
-MARK IS minatomirai,3F,17,212 KITCHEN STORE,物販,1,official
-MARK IS minatomirai,3F,18,#C-pla,物販,1,official
-MARK IS minatomirai,3F,19,タオル美術館,物販,1,official
-MARK IS minatomirai,3F,20,move,物販,1,official
-MARK IS minatomirai,3F,21,grirose,物販,1,official
-MARK IS minatomirai,3F,22,GLOBAL WORK,物販,1,official
-MARK IS minatomirai,3F,23,島村楽器,物販,1,official
-MARK IS minatomirai,3F,24,petit main,物販,1,official
-MARK IS minatomirai,3F,25,MOMO natural,物販,1,official
-MARK IS minatomirai,3F,26,AMERICAN HOLIC,物販,1,official
-MARK IS minatomirai,3F,27,ゾフ,物販,1,official
-MARK IS minatomirai,3F,32,THE NORTH FACE / HELLY HANSEN kids,物販,1,official
-MARK IS minatomirai,3F,28,カフェ コクテル堂,飲食,1,official
-MARK IS minatomirai,3F,9,保険見直し本舗/あそラボ,サービス,1,official
-MARK IS minatomirai,3F,29,こども写真城 スタジオアリス,サービス,1,official
-MARK IS minatomirai,3F,30,ボーネルンド あそびのせかい,物販,1,official
-MARK IS minatomirai,3F,31,トイズアカデミー,物販,1,official
-MARK IS minatomirai,4F,1,CAPCOM STORE MINATOMIRAI,物販,1,official
-MARK IS minatomirai,4F,2,タリーズコーヒー,飲食,1,official
-MARK IS minatomirai,4F,3,生麺専門　鎌倉パスタ,飲食,1,official
-MARK IS minatomirai,4F,4,元天ねぎ蛸,物販,1,official
-MARK IS minatomirai,4F,5,リンガーハット,物販,1,official
-MARK IS minatomirai,4F,6,福満園,物販,1,official
-MARK IS minatomirai,4F,7,らんまん食堂,飲食,1,official
-MARK IS minatomirai,4F,8,丸亀製麺,物販,1,official
-MARK IS minatomirai,4F,9,FRESHNESS BURGER,物販,1,official
-MARK IS minatomirai,4F,10,博多だるま JAPAN,物販,1,official
-MARK IS minatomirai,4F,11,NATURAL CREPE,物販,1,official
-MARK IS minatomirai,4F,12,サーティワンアイスクリーム,飲食,1,official
-MARK IS minatomirai,4F,13,おぼんdeごはん,物販,1,official
-MARK IS minatomirai,4F,14,焼肉食堂605,飲食,1,official
-MARK IS minatomirai,4F,15,インド料理ムンバイ,飲食,1,official
-MARK IS minatomirai,4F,16,築地食堂 源ちゃん,飲食,1,official
-MARK IS minatomirai,4F,17,梅蘭,物販,1,official
-MARK IS minatomirai,4F,18,鎌倉かつ亭 あら珠,物販,1,official
-MARK IS minatomirai,4F,19,まぐろ問屋 めぐみ水産,物販,1,official
-MARK IS minatomirai,4F,20,LA SALSA SOUTHERN CALIFORNIA RESTAURANT,物販,1,official
-MARK IS minatomirai,4F,21,浅草 キッチン大宮,物販,1,official
-MARK IS minatomirai,4F,22,Mano-e-Mano,物販,1,official
-MARK IS minatomirai,4F,23,いしがまやハンバーグ,物販,1,official
-MARK IS minatomirai,4F,24,KollaBo,物販,1,official
-MARK IS minatomirai,4F,25,そばと天ぷら 石楽,飲食,1,official
-MARK IS minatomirai,4F,26,横濱こてがえし,物販,1,official
-MARK IS minatomirai,4F,27,東京ガス横浜ショールーム,物販,1,official
-MARK IS minatomirai,4F,28,CAPCOMIX,物販,1,official
-MARK IS minatomirai,4F,29,Crazy BANeT/Kids BANeT,物販,1,official
-MARK IS minatomirai,5F,1,みんなの庭,物販,1,official
-MARK IS minatomirai,5F,2,ローソン・ユナイテッドシネマ STYLE-S みなとみらい,公共,1,official
-ランドマークプラザ,1F,1,キィニョン,飲食,1,official
-ランドマークプラザ,1F,2,galbe yokohama みなとみらい店,飲食,1,official
-ランドマークプラザ,1F,3,日本葡萄館　みなとみらい食堂,飲食,1,official
-ランドマークプラザ,1F,4,OTRA CASALINA,飲食,1,official
-ランドマークプラザ,1F,5,マロリーポークステーキ みなとみらい店,飲食,1,official
-ランドマークプラザ,1F,6,HAMAFLORIST,物販,1,official
-ランドマークプラザ,1F,7,ゴンチャ,飲食,1,official
-ランドマークプラザ,1F,8,サワダ飯店,飲食,1,official
-ランドマークプラザ,1F,9,CHOPPED SALAD DAY 横浜みなとみらい店,飲食,1,official
-ランドマークプラザ,1F,10,CHOCOLABO,飲食,1,official
-ランドマークプラザ,1F,11,はまやカレー,飲食,1,official
-ランドマークプラザ,1F,12,コメダ珈琲店／おかげ庵　横浜ランドマークプラザ店,飲食,1,official
-ランドマークプラザ,1F,13,日産レンタカー,サービス,1,official
-ランドマークプラザ,1F,14,洋麺屋 五右衛門,飲食,1,official
-ランドマークプラザ,1F,15,薬・ドラッグハロー＋MCS,医療,1,official
-ランドマークプラザ,1F,16,AFURI,飲食,1,official
-ランドマークプラザ,1F,17,味の牛たん喜助,飲食,1,official
-ランドマークプラザ,1F,18,大阪ぼてぢゅう,飲食,1,official
-ランドマークプラザ,1F,19,成城石井,サービス,1,official
-ランドマークプラザ,1F,20,湘南パンケーキ,飲食,1,official
-ランドマークプラザ,1F,21,三菱UFJ銀行 ATMコーナー,サービス,1,official
-ランドマークプラザ,1F,22,崎陽軒,飲食,1,official
-ランドマークプラザ,1F,23,鶏三和,飲食,1,official
-ランドマークプラザ,1F,24,巻き鮨・中華そば　うおがしや,飲食,1,official
-ランドマークプラザ,1F,25,横浜中華街 華正樓,飲食,1,official
-ランドマークプラザ,1F,26,永坂更科,飲食,1,official
-ランドマークプラザ,1F,27,ラ・メゾン アンソレイユターブル,飲食,1,official
-ランドマークプラザ,1F,28,ローストビーフYOSHIMI,飲食,1,official
-ランドマークプラザ,1F,29,ミセスエリザベスマフィン,飲食,1,official
-ランドマークプラザ,1F,30,とんかつ和幸,飲食,1,official
-ランドマークプラザ,1F,31,つけめん TETSU,飲食,1,official
-ランドマークプラザ,1F,32,タクシー・ハイヤー案内所,サービス,1,official
-ランドマークプラザ,1F,33,ソフトバンク,サービス,1,official
-ランドマークプラザ,1F,34,セブン-イレブン,サービス,1,official
-ランドマークプラザ,1F,35,スターバックス,飲食,1,official
-ランドマークプラザ,1F,36,スープストックトーキョー,飲食,1,official
-ランドマークプラザ,1F,37,シズラー,飲食,1,official
-ランドマークプラザ,1F,38,こめらく 贅沢な、お茶漬け日和。,飲食,1,official
-ランドマークプラザ,1F,39,ヴィ・ド・フランス,飲食,1,official
-ランドマークプラザ,1F,40,WP PIZZA,飲食,1,official
-ランドマークプラザ,1F,41,POSTAL HARBOR,サービス,1,official
-ランドマークプラザ,1F,42,PATISSERIE YUKINOSHITA KAMAKURA,飲食,1,official
-ランドマークプラザ,1F,43,GODIVA,飲食,1,official
-ランドマークプラザ,1F,44,Bubby’s (バビーズ),飲食,1,official
-ランドマークプラザ,1F,45,医療法人社団アスクレピオス LANDMARK横浜国際クリニック,医療,1,official
-ランドマークプラザ,1F,46,ローソン＋スリーエフ,サービス,1,official
-ランドマークプラザ,2F,1,LOWARD SHOP,物販,1,official
-ランドマークプラザ,2F,2,Pandora,物販,1,official
-ランドマークプラザ,2F,3,PINK HOUSE・INGEBORG,物販,1,official
-ランドマークプラザ,2F,4,PELLE MORBIDA,物販,1,official
-ランドマークプラザ,2F,5,ハリー・ポッター　マホウドコロ　ランドマークプラザ店,物販,1,official
-ランドマークプラザ,2F,6,ROCKPORT　横浜ランドマークプラザ,物販,1,official
-ランドマークプラザ,2F,7,muta MARINE YOKOHAMA,物販,1,official
-ランドマークプラザ,2F,8,ジャストカーテン,物販,1,official
-ランドマークプラザ,2F,9,ピンフィッティングスタジオ みなとみらい,物販,1,official
-ランドマークプラザ,2F,10,パンジー直営SHOP　横浜ランドマークプラザ店,飲食,1,official
-ランドマークプラザ,2F,11,レゴ(R) ストア,物販,1,official
-ランドマークプラザ,2F,12,LIB,物販,1,official
-ランドマークプラザ,2F,13,くまざわ書店,物販,1,official
-ランドマークプラザ,2F,14,サムソナイト,物販,1,official
-ランドマークプラザ,2F,15,JUMP SHOP,物販,1,official
-ランドマークプラザ,2F,16,ロペピクニック,物販,1,official
-ランドマークプラザ,2F,17,リーガルシューズ,物販,1,official
-ランドマークプラザ,2F,18,ユニバーサルランゲージ,物販,1,official
-ランドマークプラザ,2F,19,メーカーズシャツ鎌倉,物販,1,official
-ランドマークプラザ,2F,20,ミハエル ネグリン,物販,1,official
-ランドマークプラザ,2F,21,マクドナルド,飲食,1,official
-ランドマークプラザ,2F,22,ビクトリノックス,物販,1,official
-ランドマークプラザ,2F,23,SPINGLE,物販,1,official
-ランドマークプラザ,2F,24,カフェ マウカメドウズ,飲食,1,official
-ランドマークプラザ,2F,25,アデュー トリステス,物販,1,official
-ランドマークプラザ,2F,26,WACOAL The Store,物販,1,official
-ランドマークプラザ,2F,27,JINS,物販,1,official
-ランドマークプラザ,2F,28,Gap/GapKids,物販,1,official
-ランドマークプラザ,2F,29,ABC Cooking Studio／Bodies,サービス,1,official
-ランドマークプラザ,3F,1,cui-cui,物販,1,official
-ランドマークプラザ,3F,2,エクセルコ ダイヤモンド,物販,1,official
-ランドマークプラザ,3F,3,銀座ダイヤモンドシライシ,物販,1,official
-ランドマークプラザ,3F,4,TASAKI,物販,1,official
-ランドマークプラザ,3F,5,ミキモト,物販,1,official
-ランドマークプラザ,3F,6,ハーブス,飲食,1,official
-ランドマークプラザ,3F,7,トゥミ,物販,1,official
-ランドマークプラザ,3F,8,ティファニー,物販,1,official
-ランドマークプラザ,3F,9,スワロフスキー,物販,1,official
-ランドマークプラザ,3F,10,スタージュエリー,物販,1,official
-ランドマークプラザ,3F,11,ジェラート フィレンツェ,飲食,1,official
-ランドマークプラザ,3F,12,キタムラ,物販,1,official
-ランドマークプラザ,3F,13,４℃,物販,1,official
-ランドマークプラザ,3F,14,ヴァンドーム青山,物販,1,official
-ランドマークプラザ,3F,15,アンティコカフェ アルアビス,飲食,1,official
-ランドマークプラザ,3F,16,TWG Tea,飲食,1,official
-ランドマークプラザ,3F,17,H&M（3F・4F）,物販,1,official
-ランドマークプラザ,3F,18,Aesop,飲食,1,official
-ランドマークプラザ,4F,1,わくわくはまっこひろば みなとみらい,サービス,1,official
-ランドマークプラザ,4F,2,null2 Shop,物販,1,official
-ランドマークプラザ,4F,3,B-COMPANY OUTLET,物販,1,official
-ランドマークプラザ,4F,4,YOSHIZAWA Inc. PREMIUM YOKOHAMA,飲食,1,official
-ランドマークプラザ,4F,5,Lord Handmade Gallery,物販,1,official
-ランドマークプラザ,4F,6,ステッキ工房シナノ,物販,1,official
-ランドマークプラザ,4F,7,マネードクタープレミア,サービス,1,official
-ランドマークプラザ,4F,8,eyelash salon PHYLIS,飲食,1,official
-ランドマークプラザ,4F,9,MIRROR MIRROR 横浜,サービス,1,official
-ランドマークプラザ,4F,10,KASHIWA,物販,1,official
-ランドマークプラザ,4F,11,KJUS SHOP YOKOHAMA,物販,1,official
-ランドマークプラザ,4F,12,ネイラ,飲食,1,official
-ランドマークプラザ,4F,13,NEEL 横浜ランドマークプラザ店,物販,1,official
-ランドマークプラザ,4F,14,夢工房,サービス,1,official
-ランドマークプラザ,4F,15,幼児教室コペル,サービス,1,official
-ランドマークプラザ,4F,16,京懐石　美濃吉,飲食,1,official
-ランドマークプラザ,4F,17,ファーストスタジオ,サービス,1,official
-ランドマークプラザ,4F,18,どんぐり共和国,物販,1,official
-ランドマークプラザ,4F,19,Quol,飲食,1,official
-ランドマークプラザ,4F,20,H&M（4F・3F）,物販,1,official
-ランドマークプラザ,5F,1,null2n,サービス,1,official
-ランドマークプラザ,5F,2,Pilates KASANE,サービス,1,official
-ランドマークプラザ,5F,3,iCracked Store,サービス,1,official
-ランドマークプラザ,5F,4,Cafe Fan Base,飲食,1,official
-ランドマークプラザ,5F,5,リージャス横浜ランドマークプラザビジネスセンター,サービス,1,official
-ランドマークプラザ,5F,6,鼎泰豐（ディンタイフォン）,飲食,1,official
-ランドマークプラザ,5F,7,果実園　リーベル,飲食,1,official
-ランドマークプラザ,5F,8,目の美容院,飲食,1,official
-ランドマークプラザ,5F,9,伝統横濱スカーフ Marca,物販,1,official
-ランドマークプラザ,5F,10,代官山セレスの館,サービス,1,official
-ランドマークプラザ,5F,11,沼津 魚がし鮨,飲食,1,official
-ランドマークプラザ,5F,12,ヨコハマ メモリーズ,飲食,1,official
-ランドマークプラザ,5F,13,コラントッテオフィシャルショップ,物販,1,official
-ランドマークプラザ,5F,14,カツミ,物販,1,official
-ランドマークプラザ,5F,15,エドム,物販,1,official
-ランドマークプラザ,5F,16,イワキメガネ,物販,1,official
-ランドマークプラザ,5F,17,Re.Ra.Ku,飲食,1,official
-ランドマークプラザ,5F,18,KAHALA ROOM,飲食,1,official
-ランドマークプラザ,5F,19,DOURAKU CORRIDA,飲食,1,official
-ランドマークプラザ,5F,20,アクセア,サービス,1,official
-ランドマークプラザ,5F,21,nail salon PHYLIS,飲食,1,official
-クイーンズスクエア横浜,1F,1,魚がし日本一,飲食,1,official
-クイーンズスクエア横浜,1F,2,ペッシェドーロ,飲食,1,official
-クイーンズスクエア横浜,1F,3,ハードロックカフェ横浜（グッズショップ）,飲食,1,official
-クイーンズスクエア横浜,1F,4,ハードロックカフェ横浜（レストランカフェ）,飲食,1,official
-クイーンズスクエア横浜,1F,5,カフェ・ベローチェ,飲食,1,official
-クイーンズスクエア横浜,2F,1,パティスリー ウイッシュボン　横濱レンガ通りオフィシャルショップ,飲食,1,official
-クイーンズスクエア横浜,2F,2,NEEL クイーンズスクエア横浜店,物販,1,official
-クイーンズスクエア横浜,2F,3,Eggs ’n Things 横浜みなとみらい店,飲食,1,official
-クイーンズスクエア横浜,2F,4,ドクターベリークイーンズ,物販,1,official
-クイーンズスクエア横浜,2F,5,minato coffee,飲食,1,official
-クイーンズスクエア横浜,3F,1,横浜シモンズギャラリー,公共,1,official
-クイーンズスクエア横浜,3F,2,H1Tみなとみらい THE GARDEN,サービス,1,official
-クイーンズスクエア横浜,3F,3,フォーシス アンド カンパニー,サービス,1,official
-クイーンズスクエア横浜,3F,4,カンディハウス横浜,物販,1,official
-クイーンズスクエア横浜,B1F,①-1,clapp vintage,物販,1,official
-クイーンズスクエア横浜,B1F,①-2,SEYMOUR,物販,1,official
-クイーンズスクエア横浜,B1F,①-3,ダイソー,物販,1,official
-クイーンズスクエア横浜,B1F,①-4,一風堂,飲食,1,official
-クイーンズスクエア横浜,B1F,①-5,香川一福,飲食,1,official
-クイーンズスクエア横浜,B1F,①-6,軽井沢とりまる 唐揚げ専門,飲食,1,official
-クイーンズスクエア横浜,B1F,①-7,ゲウチャイ,飲食,1,official
-クイーンズスクエア横浜,B1F,①-8,極上担々麺 香家,飲食,1,official
-クイーンズスクエア横浜,B1F,①-9,東京純豆腐,飲食,1,official
-クイーンズスクエア横浜,B1F,①-10,練りたて茹でたて自家製麺　横浜スパゲティand CAFE,飲食,1,official
-クイーンズスクエア横浜,1F,①-1,ete,物販,1,official
-クイーンズスクエア横浜,1F,①-2,gelato pique,物販,1,official
-クイーンズスクエア横浜,1F,①-3,G-Star RAW,物販,1,official
-クイーンズスクエア横浜,1F,①-4,ナイキ　みなとみらい,物販,1,official
-クイーンズスクエア横浜,1F,①-5,パタゴニア 横浜・みなとみらい（期間限定ストア）,物販,1,official
-クイーンズスクエア横浜,1F,①-6,Wailea,物販,1,official
-クイーンズスクエア横浜,1F,①-7,SHEL'TTER GREEN,物販,1,official
-クイーンズスクエア横浜,1F,①-8,葉山家具,物販,1,official
-クイーンズスクエア横浜,1F,①-9,BoConcept,物販,1,official
-クイーンズスクエア横浜,1F,①-10,Madu,物販,1,official
-クイーンズスクエア横浜,1F,①-11,ロクシタン,物販,1,official
-クイーンズスクエア横浜,2F,①-1,ZARA,物販,1,official
-クイーンズスクエア横浜,2F,①-2,SHAKE SHACK,飲食,1,official
-クイーンズスクエア横浜,3F,①-1,ABC-MART Premier Stage,物販,1,official
-クイーンズスクエア横浜,3F,①-2,丸善,物販,1,official
-クイーンズスクエア横浜,3F,①-3,タリーズコーヒー,飲食,1,official
-クイーンズスクエア横浜,3F,①-4,占い ルルドの部屋,サービス,1,official
-クイーンズスクエア横浜,3F,①-5,Juno,サービス,1,official
-クイーンズスクエア横浜,4F,①-1,MARKEY'S,物販,1,official
-クイーンズスクエア横浜,4F,①-2,カ・ラ・ダ ファクトリー,サービス,1,official
-クイーンズスクエア横浜,4F,①-3,ガシャポンバンダイオフィシャルショップ,サービス,1,official
-クイーンズスクエア横浜,4F,①-4,個別教室のトライ,サービス,1,official
-クイーンズスクエア横浜,4F,①-5,小学館の幼児教室 ドラキッズ,サービス,1,official
-クイーンズスクエア横浜,4F,①-6,スティーム キャンパス,サービス,1,official
-クイーンズスクエア横浜,4F,①-7,namcoあそびパークPLUS,サービス,1,official
-クイーンズスクエア横浜,4F,①-8,happily photo studio,サービス,1,official
-クイーンズスクエア横浜,B1F,②-1,スーパースポーツゼビオ,物販,1,official
-クイーンズスクエア横浜,1F,②-1,Thingsly,物販,1,official
-クイーンズスクエア横浜,1F,②-2,CHARLES ＆ KEITH,物販,1,official
-クイーンズスクエア横浜,1F,②-3,AINZ＆TULPE,物販,1,official
-クイーンズスクエア横浜,1F,②-4,HITOHACHI,物販,1,official
-クイーンズスクエア横浜,1F,②-5,Flying Tiger Copenhagen,物販,1,official
-クイーンズスクエア横浜,1F,②-6,スターバックス コーヒー,飲食,1,official
-クイーンズスクエア横浜,2F,②-1,SWEAT.jp,物販,1,official
-クイーンズスクエア横浜,2F,②-2,YOKOHAMA  HONMOKU-YA,物販,1,official
-クイーンズスクエア横浜,2F,②-3,Ripo trenta anni,物販,1,official
-クイーンズスクエア横浜,2F,②-4,Levi's®Store,物販,1,official
-クイーンズスクエア横浜,2F,②-5,Lunetterie,物販,1,official
-クイーンズスクエア横浜,2F,②-6,CANDY A☆GO☆GO!,飲食,1,official
-クイーンズスクエア横浜,2F,②-7,J PASTA terrace,飲食,1,official
-クイーンズスクエア横浜,2F,②-8,ル サロン ド ニナス,飲食,1,official
-クイーンズスクエア横浜,2F,②-9,WINE STAND BASIL,飲食,1,official
-クイーンズスクエア横浜,2F,②-10,みずほ銀行ATMコーナー,サービス,1,official
-クイーンズスクエア横浜,3F,②-1,coca,物販,1,official
-クイーンズスクエア横浜,4F,②-1,L.L.Bean,物販,1,official
-クイーンズスクエア横浜,4F,②-2,横浜家具工房,物販,1,official
-クイーンズスクエア横浜,1F,③-1,アメリカンハウス,飲食,1,official
-クイーンズスクエア横浜,1F,③-2,ケンタッキー・フライド・チキン,飲食,1,official
-クイーンズスクエア横浜,1F,③-3,サブウェイ,飲食,1,official
-クイーンズスクエア横浜,1F,③-4,マクドナルド,飲食,1,official
-クイーンズスクエア横浜,1F,③-5,ネイルズユニークアス,サービス,1,official
-クイーンズスクエア横浜,1F,③-6,ファミリーマート,サービス,1,official
-クイーンズスクエア横浜,1F,③-7,保険クリニック,サービス,1,official
-クイーンズスクエア横浜,1F,③-8,横浜銀行ATMコーナー,サービス,1,official
-クイーンズスクエア横浜,2F,③-1,TAKANASHI Milk RESTAURANT,飲食,1,official
-クイーンズスクエア横浜,2F,③-2,FISHERMAN'S MARKET,飲食,1,official
-クイーンズスクエア横浜,3F,③-1,さかえや,飲食,1,official
-クイーンズスクエア横浜,3F,③-2,24/7 restaurant,飲食,1,official
-クイーンズスクエア横浜,4F,③-1,橙家,飲食,1,official
-クイーンズスクエア横浜,5F,③-1,D.U.M.B.O,飲食,1,official
-クイーンズスクエア横浜,1F,④-1,AZUL BY MOUSSY,物販,1,official
-クイーンズスクエア横浜,1F,④-2,POMPADOUR,飲食,1,official
-クイーンズスクエア横浜,1F,④-3,トモズ,サービス,1,official
-クイーンズスクエア横浜,1F,④-4,郵便局,サービス,1,official
-クイーンズスクエア横浜,2F,④-1,【10/31オープン】ムラサキスポーツ　クロックス　POP UP STORE,物販,1,official
-クイーンズスクエア横浜,2F,④-2,Sanrio,物販,1,official
-クイーンズスクエア横浜,2F,④-3,スヌーピータウンショップ,物販,1,official
-クイーンズスクエア横浜,2F,④-4,ディズニーストア,物販,1,official
-クイーンズスクエア横浜,3F,④-1,ムラサキスポーツ,物販,1,official
-クイーンズスクエア横浜,B3F,SC-1,池田屋,物販,1,official
-クイーンズスクエア横浜,B3F,SC-2,GODIVA café Minatomirai,飲食,1,official
-クイーンズスクエア横浜,B2F,SC-1,インドアゴルフスクール E-swing -PREMIUM-,サービス,1,official
-クイーンズスクエア横浜,B2F,SC-2,振袖ハクビ,サービス,1,official
-クイーンズスクエア横浜,B1F,SC-1,足柄牛焼肉　もり次,飲食,1,official
-クイーンズスクエア横浜,B1F,SC-2,カザーナ,飲食,1,official
-クイーンズスクエア横浜,B1F,SC-3,GARLIC JO'S,飲食,1,official
-クイーンズスクエア横浜,B1F,SC-4,下高井戸旭鮨総本店,飲食,1,official
-クイーンズスクエア横浜,B1F,SC-5,陳麻婆豆腐,飲食,1,official
-クイーンズスクエア横浜,B1F,SC-6,とんかつ 新宿 さぼてん,飲食,1,official
+building,floor,zone,name,category,share,source,url,hours,tel,website,genre
+MARK IS minatomirai,B4,1,ファミリーマート,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10293,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,2,きもの鈴乃屋,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8058,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,3,くまざわ書店,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8053,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,4,アイシティ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8019,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,5,ペコちゃんmilkyドーナツ,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10835,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,6,UNI COFFEE ROASTERY,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=9258,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,7,上島珈琲店,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7975,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,8,ALBA歯科 & 矯正歯科,医療,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8032,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,9,ワイモバイル,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8028,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,10,ベビーパーク,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8341,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,11,I feeling,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8889,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,12,ラフィネ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8024,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,13,TRU EYELASH,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8034,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,14,Dr.ストレッチ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8029,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,15,ドコモショップ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8008,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B4,16,青山ネイル,サービス,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7898,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B2,1,スポーツデポフラッグシップストア,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10850,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B2,2,ハックドラッグ,医療,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7901,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B2,3,お直しコンシェルジュ ビック・ママ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8009,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B2,4,ポニークリーニング,サービス,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8010,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B2,5,ATM/銀行,サービス,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8051,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,1,Foodway,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10190,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,2,ソウル市場,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10194,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,3,お肉処 牛蔵,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10191,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,4,山助,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8050,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,5,大東青果,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10193,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,6,R Baker,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8064,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,7,CRISP SALAD WORKS,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10991,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,8,おめで鯛焼き本舗,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=11202,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,9,中華惣菜 東方紅,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7907,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,10,やきとり 鶏陣,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7908,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,11,BISTRO石川亭DELI,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8022,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,13,カルディコーヒーファーム,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7911,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,15,丼処 山助,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10195,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,12,青山フラワーマーケット,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8025,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,B1,14,ダイソー,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7897,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,2,ACTUS,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7917,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,3,モンベル,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7918,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,4,snow peak,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7919,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,5,コロンビアスポーツウェア,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8048,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,6,DESCENTE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=9638,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,7,キーン ガラージ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8070,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,8,サロモンストア,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10270,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,9,アークテリクス,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8026,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,10,HOKA Yokohama,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7921,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,11,THE NORTH FACE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7922,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,12,HELLY HANSEN,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8060,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,13,BRIEFING,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8042,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,14,フレッドペリー,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10969,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,15,ニューバランス,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10790,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,16,MARLMARL,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8035,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,18,POTR YOKOHAMA,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8564,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,19,BEAMS,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8065,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,20,BEAUTY & YOUTH UNITED ARROWS,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7927,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,21,アニエスベー,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10750,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,22,MARcourt,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7929,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,23,tandey mooi,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10125,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,24,PAL’LAS PALACE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8041,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,25,Jouete,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8890,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,26,IL BISONTE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10753,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,27,NANGA SHOP YOKOHAMA,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10779,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,28,金子眼鏡店,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7932,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,29,TENTIAL,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10781,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,30,GARMIN,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=11220,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,31,カンペール,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7934,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,32,Bshop,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7935,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,33,RHC Ron Herman,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7936,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,34,JOURNAL STANDARD FURNITURE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8017,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,35,JOURNAL STANDARD relume,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7937,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,17,レダラッハ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10854,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,36,AMALFI CAFFE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7979,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,37,RHC CAFE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8004,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,38,J.S. PANCAKE CAFE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8005,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,39,BLUE BOTTLE COFFEE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8563,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,1,ペットパラダイスＤＸ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7916,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,1F,40,ポピンズナーサリースクール,サービス,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8011,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,1,ユニクロ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7949,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,2,3COINS +plus,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7938,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,3,靴下屋,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7951,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,4,ＬＯＶＯＴ ストア,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10689,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,5,deux C（ドゥ・セー）,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=9898,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,6,トリンプ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10800,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,7,BEAMS HEART,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7926,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,8,アーバンリサーチ ドアーズ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7954,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,9,グラニフ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7952,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,10,DESERTSNOW,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10199,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,11,Afternoon Tea LIVING,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7940,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,12,Dr.Martens,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8057,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,13,PATRICK LABO,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8049,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,14,RED WING SHOE STORE 横浜,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10801,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,15,TAKEO KIKUCHI,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8170,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,16,フリースピリッツ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10802,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,17,SOUVENIRS,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10198,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,18,Puretre,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7941,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,19,GREGORY,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8040,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,20,GRAPEFRUIT MOON,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=9701,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,21,UNITED ARROWS green label relaxing,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8061,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,22,ABC-MART GRAND STAGE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=9456,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,23,ABC-MART,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7944,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,24,ORIHICA,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7945,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,25,Yogibo Store,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=9462,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,26,オンデーズ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8031,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,27,アンダーアーマー ブランドハウス,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10669,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,28,OSHMAN’S,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=11197,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,31,プラステ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10695,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,29,Afternoon Tea TEAROOM,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7980,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,2F,30,UNIX Beauty Innovation,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8012,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,1,ノジマ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7955,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,2,トイザらス・ベビーザらス,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7956,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,3,BREEZE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7957,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,4,OVERRIDE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7958,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,5,moncheri,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=11203,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,6,キシル,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8802,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,7,LOWYA,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10638,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,8,OKAIDI,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8561,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,10,minimal,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10668,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,11,fafa,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7961,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,12,moimoln,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10269,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,13,じぶんまくら,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8044,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,14,OLYMPIA,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10970,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,15,coen,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7964,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,16,サーモス スタイリングストア,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8054,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,17,212 KITCHEN STORE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7965,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,18,#C-pla,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10196,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,19,タオル美術館,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7966,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,20,move,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7967,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,21,grirose,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10267,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,22,GLOBAL WORK,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7968,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,23,島村楽器,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7969,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,24,petit main,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8023,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,25,MOMO natural,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7970,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,26,AMERICAN HOLIC,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7971,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,27,ゾフ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7972,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,32,THE NORTH FACE / HELLY HANSEN kids,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8560,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,28,カフェ コクテル堂,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7981,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,9,保険見直し本舗/あそラボ,サービス,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8173,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,29,こども写真城 スタジオアリス,サービス,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8013,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,30,ボーネルンド あそびのせかい,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8014,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,3F,31,トイズアカデミー,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=9050,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,1,CAPCOM STORE MINATOMIRAI,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=11224,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,2,タリーズコーヒー,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7982,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,3,生麺専門　鎌倉パスタ,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7983,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,4,元天ねぎ蛸,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7997,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,5,リンガーハット,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8073,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,6,福満園,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7998,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,7,らんまん食堂,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7999,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,8,丸亀製麺,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8000,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,9,FRESHNESS BURGER,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8056,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,10,博多だるま JAPAN,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8001,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,11,NATURAL CREPE,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10052,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,12,サーティワンアイスクリーム,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8003,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,13,おぼんdeごはん,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7984,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,14,焼肉食堂605,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10222,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,15,インド料理ムンバイ,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=9971,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,16,築地食堂 源ちゃん,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7987,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,17,梅蘭,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8803,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,18,鎌倉かつ亭 あら珠,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7989,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,19,まぐろ問屋 めぐみ水産,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7990,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,20,LA SALSA SOUTHERN CALIFORNIA RESTAURANT,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8074,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,21,浅草 キッチン大宮,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7991,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,22,Mano-e-Mano,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7992,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,23,いしがまやハンバーグ,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7993,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,24,KollaBo,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8956,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,25,そばと天ぷら 石楽,飲食,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7995,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,26,横濱こてがえし,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=7996,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,27,東京ガス横浜ショールーム,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8015,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,28,CAPCOMIX,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=11223,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,4F,29,Crazy BANeT/Kids BANeT,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=11225,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,5F,1,みんなの庭,物販,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=8055,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+MARK IS minatomirai,5F,2,ローソン・ユナイテッドシネマ STYLE-S みなとみらい,公共,1,official,https://www.mec-markis.jp/mm/shop/detail/?act=10271,ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）,,,
+ランドマークプラザ,1F,1,キィニョン,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11207,11:00～20:00(L.O.19:45),045-228-8167,https://quignon.co.jp/,グルメ＆フード
+ランドマークプラザ,1F,2,galbe yokohama みなとみらい店,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11185,11：00～20：00,045-900-4812,https://galbe.net/,グルメ＆フード
+ランドマークプラザ,1F,3,日本葡萄館　みなとみらい食堂,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11184,11：00～23：00,045-228-7610,,グルメ＆フード
+ランドマークプラザ,1F,4,OTRA CASALINA,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11183,11：00～23：00,045-307-3070,,グルメ＆フード
+ランドマークプラザ,1F,5,マロリーポークステーキ みなとみらい店,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11182,11：00～23：00,045-307-3077,,グルメ＆フード
+ランドマークプラザ,1F,6,HAMAFLORIST,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11181,11：00～20：00,045-225-0007,https://www.hamaflorist.co.jp/,ライフスタイル・ホビー
+ランドマークプラザ,1F,7,ゴンチャ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11180,11：00～21：00,045-323-9870,https://www.gongcha.co.jp/,グルメ＆フード
+ランドマークプラザ,1F,8,サワダ飯店,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11179,"11：00～22：00（LO.21：30）
+ランチ11：00～17：00",045-264-6606, https://www.instagram.com/sawadahanten123/,グルメ＆フード
+ランドマークプラザ,1F,9,CHOPPED SALAD DAY 横浜みなとみらい店,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11177,10：00～21：00,045-305-6579,https://www.choppedsaladdays.com/,グルメ＆フード
+ランドマークプラザ,1F,10,CHOCOLABO,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11176,11：00～19：00,045-507-8648,https://chocolabo-group.com/,グルメ＆フード
+ランドマークプラザ,1F,11,はまやカレー,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11175,11：00～22：00(L.O.21：30),045-264-8163,,グルメ＆フード
+ランドマークプラザ,1F,12,コメダ珈琲店／おかげ庵　横浜ランドマークプラザ店,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11174,"7：00～23：00（LO.22：00）
+※モーニングメニュー：7：00～11：00
+※ランチメニュー：平日のみ11：30～14：00",045-777-5577,https://www.komeda.co.jp/,グルメ＆フード
+ランドマークプラザ,1F,13,日産レンタカー,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11173,9：00～20：00,045-227-8523,https://nissan-rentacar.com/,サービス・その他
+ランドマークプラザ,1F,14,洋麺屋 五右衛門,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11172,"11：00～22：00（L.O. 21：00）
+※ランチメニュー：平日のみ15：00まで",045-222-5197,https://www.yomenya-goemon.com/,グルメ＆フード
+ランドマークプラザ,1F,15,薬・ドラッグハロー＋MCS,医療,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11171,"【平日】8：00～20：00　
+【土日祝】11：00～20：00",045-222-5140,https://cosmetics-medical.com/,クリニック・薬局
+ランドマークプラザ,1F,16,AFURI,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11170,11：00～23：00　※ラストオーダー 22：30,045-307-0787,https://afuri.com/,グルメ＆フード
+ランドマークプラザ,1F,17,味の牛たん喜助,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11169,"11：00～22：00（L.O. 21：30）
+※ランチメニュー：平日11：00～14：00のみ",045-228-7835,https://www.kisuke.co.jp/,グルメ＆フード
+ランドマークプラザ,1F,18,大阪ぼてぢゅう,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11168,"11：00～23：00（L.O.22：00）
+※ランチメニュー：11：00～15：00",045-222-5122,https://botejyu.co.jp/?view=group,グルメ＆フード
+ランドマークプラザ,1F,19,成城石井,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11167,"【平日】8：00～23：00
+【土日祝】10：00～23：00",045-227-9744,https://corporate.seijoishii.com/,コンビニ・ATM・郵便局
+ランドマークプラザ,1F,20,湘南パンケーキ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11166,"【平日】11：00～21：00(L.O.20：00)　
+【土日祝】 10：00～21：00(L.O.20：00)
+※ランチメニュー：平日11：00～14：00",045-222-7761,https://shounan-pancake.jp/,グルメ＆フード
+ランドマークプラザ,1F,21,三菱UFJ銀行 ATMコーナー,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11165,"7：00～23：00
+※毎月第2土曜日の21：00～翌朝7：00はご利用いただけません。",,https://www.bk.mufg.jp/tsukau/atm_con/atm/btm_btm.html,コンビニ・ATM・郵便局
+ランドマークプラザ,1F,22,崎陽軒,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11164,10：00～20：00,045-222-5172,https://kiyoken.com/,グルメ＆フード
+ランドマークプラザ,1F,23,鶏三和,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11163,11：00～22：00（L.O. 21：00）,045-263-8180,https://www.sanwa-grp.co.jp/,グルメ＆フード
+ランドマークプラザ,1F,24,巻き鮨・中華そば　うおがしや,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11162,11：00～22：00,045-306-5367,https://firstdrop.jp/,グルメ＆フード
+ランドマークプラザ,1F,25,横浜中華街 華正樓,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11161,10：00～20：00,045-222-5132,https://www.kaseiro.com/,グルメ＆フード
+ランドマークプラザ,1F,26,永坂更科,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11160,11：00～22：00（L.O. 21:00),045‐232‐4578,https://www.nagasakasarasina.co.jp/index.html,グルメ＆フード
+ランドマークプラザ,1F,27,ラ・メゾン アンソレイユターブル,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11159,"日～木・祝 11：00～21：00
+金・土・祝前日 11：00～22：00",045-226-5839,https://la-maison.jp/,グルメ＆フード
+ランドマークプラザ,1F,28,ローストビーフYOSHIMI,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11158,"11：00～22：00(L.O.21：00)
+※ランチタイム：14：00まで",045-228-8008,http://www.yoshimi-ism.com/,グルメ＆フード
+ランドマークプラザ,1F,29,ミセスエリザベスマフィン,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11157,11：00～20：00,045-222-5115,https://www.mrs-elizabeth-muffin.jp,グルメ＆フード
+ランドマークプラザ,1F,30,とんかつ和幸,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11156,"11：00～22：00（L.O.21：00）　
+※ランチ11：00～16：00",045-222-5124,https://wako-group.co.jp/,グルメ＆フード
+ランドマークプラザ,1F,31,つけめん TETSU,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11155,11：00～23：00（L.O. 22：45）,045-670-7877,https://www.tetsu102.com/,グルメ＆フード
+ランドマークプラザ,1F,32,タクシー・ハイヤー案内所,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11154,"【平日】9：30～17：30
+【土曜（不定期）】9：30～14：00
+【日祝】休",045-224-1234,,サービス・その他
+ランドマークプラザ,1F,33,ソフトバンク,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11153,10：00～20：00,045-264-9277,https://www.softbank.jp/shop/search/detail/T2E1/,サービス・その他
+ランドマークプラザ,1F,34,セブン-イレブン,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11152,"7：00～23：00
+イートイン利用可能時間：平日のみ（7：00～14：00）
+
+Eat-in Area Hours
+ Weekdays: 7:00 AM - 2:00 PM
+ Closed on Weekends and Public Holidays",045-222-5711,https://www.sej.co.jp/,コンビニ・ATM・郵便局
+ランドマークプラザ,1F,35,スターバックス,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11151,7：00～22：30,045-225-0317,https://www.starbucks.co.jp/,グルメ＆フード
+ランドマークプラザ,1F,36,スープストックトーキョー,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11150,11：00～22：00（L.O. 21:30）,045-224-6855,https://www.soup-stock-tokyo.com/,グルメ＆フード
+ランドマークプラザ,1F,37,シズラー,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11149,"【平日】 11：00～22：00（LO 21：30）　
+【土日祝】8：00～22：00（LO 21：30）",045-222-5316,https://www.sizzler.jp/,グルメ＆フード
+ランドマークプラザ,1F,38,こめらく 贅沢な、お茶漬け日和。,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11148,11：00～22：00(LO 21：30）,045-640-5088,https://komeraku.jp/,グルメ＆フード
+ランドマークプラザ,1F,39,ヴィ・ド・フランス,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11147,"【月～土】7：30～21：00　
+【日祝】 8：00～21：00
+※モーニングメニュー：月～土7：30～11：00、日祝8：00～11：00",045-222-5116,,グルメ＆フード
+ランドマークプラザ,1F,40,WP PIZZA,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11146,"11：00～22：00（L.O.21：30)
+※ランチメニュー：平日11：00～16：00のみ（土日祝はなし）",045-228-9396,https://www.wp-japan.jp/,グルメ＆フード
+ランドマークプラザ,1F,41,POSTAL HARBOR,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11145,"【貯金・保険窓口】9：00～16：00、土・日・祝 休
+【郵便窓口】9：00～17：00、土・日・祝 休
+【ATM】8：00～21：00、日・祝 8：00～20：00",045-222-5110,,コンビニ・ATM・郵便局
+ランドマークプラザ,1F,42,PATISSERIE YUKINOSHITA KAMAKURA,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11144,11：00～20：00,045-414-5622,https://yukino-shita.jp,グルメ＆フード
+ランドマークプラザ,1F,43,GODIVA,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11143,11：00～20：00,045-222-5168,https://www.godiva.co.jp/,グルメ＆フード
+ランドマークプラザ,1F,44,Bubby’s (バビーズ),飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11142,"10：00～22：00(L.O. 21：00)
+※ランチ（平日）10：00～16：00　
+※ブランチ（土日祝）10：00～16：00",045-681-0306,https://bubbys.jp/,グルメ＆フード
+ランドマークプラザ,1F,45,医療法人社団アスクレピオス LANDMARK横浜国際クリニック,医療,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11141,"診察時間
+【午前】9:15～12:45
+【午後】14:00～18:00
+※受付時間は診療開始から診療終了の30分前となります。
+詳しくはクリニックホームページをご覧ください。
+休診日：日・月・祝・年末年始",045-224-2111,https://yokohamakokusaiclinic.com/,クリニック・薬局
+ランドマークプラザ,1F,46,ローソン＋スリーエフ,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11140,7：00～23：00,045-222-5130,https://www.lawson.co.jp/,コンビニ・ATM・郵便局
+ランドマークプラザ,2F,1,LOWARD SHOP,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11194,11：00～20：00,080-6339-1507,http://www.loward.jp/,ファッション雑貨
+ランドマークプラザ,2F,2,Pandora,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11139,11：00～20：00,050-8893-4242,https://jp.pandora.net/ja,ジュエリー・ウォッチ
+ランドマークプラザ,2F,3,PINK HOUSE・INGEBORG,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11138,11：00～20：00,045-264-7678,,ファッション
+ランドマークプラザ,2F,4,PELLE MORBIDA,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11137,11：00～20：00,045-211-6869,https://www.pellemorbida.com/,ファッション雑貨
+ランドマークプラザ,2F,5,ハリー・ポッター　マホウドコロ　ランドマークプラザ店,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11136,11：00～20：00,045-306-9667,https://www.harrypotter-mahou-dokoro-benelic.com/,ライフスタイル・ホビー
+ランドマークプラザ,2F,6,ROCKPORT　横浜ランドマークプラザ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11135,11：00～20：00,080-2180-7989,https://shop.rockport.jp/,ファッション雑貨
+ランドマークプラザ,2F,7,muta MARINE YOKOHAMA,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11134,11：00～20：00,045-319-4682,https://muta-japan.com/,ライフスタイル・ホビー
+ランドマークプラザ,2F,8,ジャストカーテン,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11133,"11：00～20：00
+水曜日定休（祝日の場合は営業、翌木曜日休み）",045-232-4625,https://www.justcurtain.com/about?utm_source=gm1118&utm_medium=tt&utm.can,ライフスタイル・ホビー
+ランドマークプラザ,2F,9,ピンフィッティングスタジオ みなとみらい,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11132,11：00～20：00,050-2018-7750,https://clubping.jp/pfs/minatomirai/,ライフスタイル・ホビー
+ランドマークプラザ,2F,10,パンジー直営SHOP　横浜ランドマークプラザ店,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11131,11：00～20：00,045-212-1680,https://www.pansy.co.jp/,ファッション雑貨
+ランドマークプラザ,2F,11,レゴ(R) ストア,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11130,11：00～20：00,045-670-0505,https://benelic.com/lego_certified_store/,ライフスタイル・ホビー
+ランドマークプラザ,2F,12,LIB,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11129,11：00～20：00,045-225-8078,https://l-i-b.shop/,ファッション雑貨
+ランドマークプラザ,2F,13,くまざわ書店,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11128,10：00～21：00,045-683-1021,https://www.kumabook.com/,ライフスタイル・ホビー
+ランドマークプラザ,2F,14,サムソナイト,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11127,11：00～20：00,045-222-5470,https://www.samsonite.co.jp/,ファッション雑貨
+ランドマークプラザ,2F,15,JUMP SHOP,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11126,11：00～20：00,045-222-5454,https://jumpshop-benelic.com/,ライフスタイル・ホビー
+ランドマークプラザ,2F,16,ロペピクニック,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11125,11：00～20：00,045-681-1070,https://www.ropepicnic.com/,ファッション
+ランドマークプラザ,2F,17,リーガルシューズ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11124,11：00～20：00,045-222-5244,https://www.regal.co.jp/shop/default.aspx,ファッション雑貨
+ランドマークプラザ,2F,18,ユニバーサルランゲージ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11123,11：00～20：00,045-640-1775,https://www.uktsc.com/ec/shop/pages/universal-language.aspx,ファッション
+ランドマークプラザ,2F,19,メーカーズシャツ鎌倉,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11122,11：00～20：00,045-222-5442,https://shop.shirt.co.jp/shop/,ファッション
+ランドマークプラザ,2F,20,ミハエル ネグリン,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11121,11：00～20：00,045-228-8440,https://www.michalnegrin.co.jp/,ジュエリー・ウォッチ
+ランドマークプラザ,2F,21,マクドナルド,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11120,7：00～22：30,045-222-5318,"http://www.mcdonalds.co.jp/
+",グルメ＆フード
+ランドマークプラザ,2F,22,ビクトリノックス,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11119,11：00～20：00,045-222-5255,,ファッション雑貨
+ランドマークプラザ,2F,23,SPINGLE,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11118,11：00～20：00,045-319-6560,https://www.spingle.jp/,ファッション雑貨
+ランドマークプラザ,2F,24,カフェ マウカメドウズ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11117,"【平日】8：00～21：00（L.O.フード20：00、ドリンク20：30）
+【土日祝】8：00～22：00（L.O.フード21：00、ドリンク21：30）",045-222-5225,,グルメ＆フード
+ランドマークプラザ,2F,25,アデュー トリステス,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11116,11：00～20：00,045-222-5236,http://www.adieu-tristesse.jp/adieu.html,ファッション
+ランドマークプラザ,2F,26,WACOAL The Store,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11115,11：00～20：00,045-222-5204,https://www.wacoal.jp/,ファッション
+ランドマークプラザ,2F,27,JINS,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11114,11：00～20：00,045-225-6515,"https://www.jins.com/jp/
+",ファッション雑貨
+ランドマークプラザ,2F,28,Gap/GapKids,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11113,10：00～21：00,045-210-9071,https://www.gap.co.jp,ファッション
+ランドマークプラザ,2F,29,ABC Cooking Studio／Bodies,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11112,"ABC Cooking Studio
+【月～金】10：00～22：00
+【土】10：00～20：00
+【日】10：00～19：00
+Bodies
+10：00～20：00",ABCクッキングスタジオ：050-1753-3955,https://www.abc-cooking.co.jp/,サービス・その他
+ランドマークプラザ,3F,1,cui-cui,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11097,11：00～20：00,045-226-0208,https://cui-cui.co.jp/,ジュエリー・ウォッチ
+ランドマークプラザ,3F,2,エクセルコ ダイヤモンド,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11096,11：00～20：00,045-227-8286,https://www.exelco.com/,ジュエリー・ウォッチ
+ランドマークプラザ,3F,3,銀座ダイヤモンドシライシ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11095,11：00～20：00,045-227-8277,https://www.diamond-shiraishi.jp/,ジュエリー・ウォッチ
+ランドマークプラザ,3F,4,TASAKI,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11094,11：00～20：00,,https://www.tasaki.co.jp/,ジュエリー・ウォッチ
+ランドマークプラザ,3F,5,ミキモト,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11093,11：00～20：00,045-222-5155,https://www.mikimoto.com/,ジュエリー・ウォッチ
+ランドマークプラザ,3F,6,ハーブス,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11092,11：00～20：00（L.O.19：30）,045-263-9027,https://www.harbs.co.jp/,グルメ＆フード
+ランドマークプラザ,3F,7,トゥミ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11091,11：00～20：00,045-305-4560,https://www.tumi.co.jp/,ファッション雑貨
+ランドマークプラザ,3F,8,ティファニー,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11090,11：00～20：00,045-222-5145,,ジュエリー・ウォッチ
+ランドマークプラザ,3F,9,スワロフスキー,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11089,11：00～20：00,045-222-5405,https://www.swarovski.com/ja-JP/,ジュエリー・ウォッチ
+ランドマークプラザ,3F,10,スタージュエリー,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11088,11：00～20：00,045-222-5362,https://www.star-jewelry.com/,ジュエリー・ウォッチ
+ランドマークプラザ,3F,11,ジェラート フィレンツェ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11087,11：00～20：00（L.O.20：00）,045-650-6050,,グルメ＆フード
+ランドマークプラザ,3F,12,キタムラ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11086,11：00～20：00,045-222-5376,"https://www.motomachi-kitamura.com/
+",ファッション雑貨
+ランドマークプラザ,3F,13,４℃,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11084,11：00～20：00（L.O.19:45）,045-651-2781,https://www.fdcp.co.jp/DefaultBrandTop.aspx?bid=4c-jewelry,ジュエリー・ウォッチ
+ランドマークプラザ,3F,14,ヴァンドーム青山,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11083,11：00～20：00,045-222-5320,https://vendome.co.jp/,ジュエリー・ウォッチ
+ランドマークプラザ,3F,15,アンティコカフェ アルアビス,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11082,10：00～20：00（L.O.19：30）,045-263-6969,https://www.anticocaffe.ne.jp/,グルメ＆フード
+ランドマークプラザ,3F,16,TWG Tea,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11081,11：00～20：00,045-681-1837,https://www.tokyugf-twg-tea.com/,グルメ＆フード
+ランドマークプラザ,3F,17,H&M（3F・4F）,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11080,11：00～20：00,,https://www2.hm.com/ja_jp/,ファッション
+ランドマークプラザ,3F,18,Aesop,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11079,11：00～20：00,045-225-8137,,ビューティー・コスメ
+ランドマークプラザ,4F,1,わくわくはまっこひろば みなとみらい,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11315,11:00～19:00（最終受付18:30）,080-2900-3628,https://pamatoco.city.yokohama.lg.jp/ctz/contents/a04Nn00000ZRPUPIA5,サービス・その他
+ランドマークプラザ,4F,2,null2 Shop,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11307,9:30～21:00,,https://null2.nexus/,ライフスタイル・ホビー
+ランドマークプラザ,4F,3,B-COMPANY OUTLET,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11050,"11：00～20：00
+定休日：毎週水曜日",0422-21-3277,https://www.b-company.co.jp/,ライフスタイル・ホビー
+ランドマークプラザ,4F,4,YOSHIZAWA Inc. PREMIUM YOKOHAMA,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11049,"【平日】10：00～最終受付20：00
+【土日祝】9：00～最終受付18：30",045-225-0307,https://yoshizawa-inc.com/,ビューティー・コスメ
+ランドマークプラザ,4F,5,Lord Handmade Gallery,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11048,11：00～20：00,080-4340-8422,https://www.lordtokyo.com/,ライフスタイル・ホビー
+ランドマークプラザ,4F,6,ステッキ工房シナノ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11046,11：00～20：00,045-263-9820,https://sinano.co.jp/news/shop.php,ファッション雑貨
+ランドマークプラザ,4F,7,マネードクタープレミア,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11045,11：00～20：00,045-225-8827,https://fp-moneydoctor.com/lp/premier/,サービス・その他
+ランドマークプラザ,4F,8,eyelash salon PHYLIS,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11043,"【月～土】10：00～21：00
+【日】10：00～20：00",045-225-8849,,ビューティー・コスメ
+ランドマークプラザ,4F,9,MIRROR MIRROR 横浜,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11042,"【平日】11：00～19：00（電話受付時間 11：00～18：00）
+【土日祝】10：00～20：00（電話受付時間 10：00～19：00）
+定休日：火曜（祝日の場合を除く）
+※全日完全予約制",045-226-5091,https://mirrormirror.jp/,サービス・その他
+ランドマークプラザ,4F,10,KASHIWA,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11041,"11：00～20：00
+※定休日：毎月第2・4水曜日",045-264-4480,https://www.kashiwa.gr.jp/,ライフスタイル・ホビー
+ランドマークプラザ,4F,11,KJUS SHOP YOKOHAMA,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11040,11：00～20：00,045-264-8312,https://www.kjus.jp/,ライフスタイル・ホビー
+ランドマークプラザ,4F,12,ネイラ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11039,11：00～20：00　定休日：火曜,045-664-1213,https://www.naila.jp/,ビューティー・コスメ
+ランドマークプラザ,4F,13,NEEL 横浜ランドマークプラザ店,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11038,11：00～20：00,045-225-8226,https://www.neel.jp/,ジュエリー・ウォッチ
+ランドマークプラザ,4F,14,夢工房,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11037,11：00～20：00,045-670-7475,https://yumekoubou.net/,サービス・その他
+ランドマークプラザ,4F,15,幼児教室コペル,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11036,【日～土曜日 週7日】9：30～18：30,0800-777-8777,https://copel.co.jp/,サービス・その他
+ランドマークプラザ,4F,16,京懐石　美濃吉,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11035,"11：00～22：00（L.O.20：00）
+※ランチ11：00～14：00",045-222-5420,https://www.minokichi.co.jp/shops/32,グルメ＆フード
+ランドマークプラザ,4F,17,ファーストスタジオ,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11034,"10：00～19：00　定休日：毎週木曜日
+※祝日の場合は営業し、翌金曜日休業いたします。",045-306-5533,https://first-studio.jp/,サービス・その他
+ランドマークプラザ,4F,18,どんぐり共和国,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11033,11：00～20：00,045-222-5490,https://benelic.com/donguri/,ライフスタイル・ホビー
+ランドマークプラザ,4F,19,Quol,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11032,"【平日】10：00～21：00
+【土日祝】10：00～20：00",045-222-5404,https://www.quol-salon.com/,ビューティー・コスメ
+ランドマークプラザ,4F,20,H&M（4F・3F）,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11031,11：00～20：00,,https://www2.hm.com/ja_jp/,ファッション
+ランドマークプラザ,5F,1,null2n,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11306,9:30～21:00,,https://null2.nexus/,サービス・その他
+ランドマークプラザ,5F,2,Pilates KASANE,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11232,8：00～21：00,045-211-9782,https://pilates-kasane.jp/,サービス・その他
+ランドマークプラザ,5F,3,iCracked Store,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11196,11：00～20：00,045-577-0707,https://www.icracked.jp/,サービス・その他
+ランドマークプラザ,5F,4,Cafe Fan Base,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11022,11：00～21：30,045-263-6691,https://cafefanbase.com/,グルメ＆フード
+ランドマークプラザ,5F,5,リージャス横浜ランドマークプラザビジネスセンター,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11021,8：30～18：00（土日祝日除く）,0120-965-075,https://www.regus-office.jp/area-serch/landmark-plaza/,サービス・その他
+ランドマークプラザ,5F,6,鼎泰豐（ディンタイフォン）,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11020,"【平日】ランチ 11：00～15：00(L.O.14：30)／ディナー 17：00～22：00(L.O.21：00)　
+【土】11：00～22：00(L.O.21：00)　
+【日・祝】11：00～21：00(L.O.20：00)",045-225-8772,https://www.rt-c.co.jp/,グルメ＆フード
+ランドマークプラザ,5F,7,果実園　リーベル,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11019,"9：00～20：00
+L.O.19：00 (ケーキ・カフェのご利用は、最終来店19：30まで)",045-225-8878,https://kajitsuen.jp/,グルメ＆フード
+ランドマークプラザ,5F,8,目の美容院,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11018,11：00～20：00,045-222-5574,https://www.menobiyouin.com/salonlist/yokohama.html,ビューティー・コスメ
+ランドマークプラザ,5F,9,伝統横濱スカーフ Marca,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11017,11：00～20：00,045-222-5370,https://www.marca-scarf.jp/,ファッション雑貨
+ランドマークプラザ,5F,10,代官山セレスの館,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11016,11：00～20：00,045-222-5521,https://ceres-yokohama.com/,サービス・その他
+ランドマークプラザ,5F,11,沼津 魚がし鮨,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11015,"11：00～22：00（L.O.21：30）　
+※ランチメニュー：14：00頃まで。食材無くなり次第終了。",045-222-5550,https://www.uogashizushi.co.jp/shop/o-shop/yokohama-landmark/,グルメ＆フード
+ランドマークプラザ,5F,12,ヨコハマ メモリーズ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11014,10：00～20：00,045-222-5360,,グルメ＆フード
+ランドマークプラザ,5F,13,コラントッテオフィシャルショップ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11013,11:00～20:00,045-212-0054,https://www.colantotte.jp/,ライフスタイル・ホビー
+ランドマークプラザ,5F,14,カツミ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11012,11：00～20：00,045-222-5510,http://www.ktm-models.co.jp/,ライフスタイル・ホビー
+ランドマークプラザ,5F,15,エドム,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11011,11：00～20：00,070-9300-3191,https://www.edom.co.jp/,ライフスタイル・ホビー
+ランドマークプラザ,5F,16,イワキメガネ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11010,11：00～20：00,045-222-5540,https://www.iwakioptic.co.jp/,ファッション雑貨
+ランドマークプラザ,5F,17,Re.Ra.Ku,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11009,"【月～土】11：00～21：00　
+【日・祝】11：00～20：00",045-670-7880,https://reraku.jp/studio/landmark,ビューティー・コスメ
+ランドマークプラザ,5F,18,KAHALA ROOM,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11008,11：00～22：00(L.O.21：00),045-226-1850,https://americanhouse.co.jp/,グルメ＆フード
+ランドマークプラザ,5F,19,DOURAKU CORRIDA,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11007,11：00～23：00（LO. 22：00）,045-323-9029,,グルメ＆フード
+ランドマークプラザ,5F,20,アクセア,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11006,8：00～20：00　土・日・祝 10：00～19：00,045-228-2805,https://www.accea.co.jp/,サービス・その他
+ランドマークプラザ,5F,21,nail salon PHYLIS,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11005,"【月～土曜】10：00～21：00
+【日曜・祝日】10：00～20：00",045-228-9211,,ビューティー・コスメ
+クイーンズスクエア横浜,1F,1,魚がし日本一,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11066,"11：00～22：00
+※ランチメニュー：平日・土日祝11：00～17：00",045-264-8728,,グルメ＆フード
+クイーンズスクエア横浜,1F,2,ペッシェドーロ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11065,"11：00～23：00(L.O.22：15)　
+※ランチ 11：00～16：00",045-682-5635,,グルメ＆フード
+クイーンズスクエア横浜,1F,3,ハードロックカフェ横浜（グッズショップ）,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11064,11：00～21：00,045-682-5625,https://hardrockjapan.com/,ファッション雑貨
+クイーンズスクエア横浜,1F,4,ハードロックカフェ横浜（レストランカフェ）,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11063,"11：00～22：00
+（L.O. フード21：00、ドリンク21：30）
+※ランチメニュー：平日11：00～16：00まで",045-682-5626,https://cafe.hardrock.com/yokohama/jp/,グルメ＆フード
+クイーンズスクエア横浜,1F,5,カフェ・ベローチェ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11062,"【平日・土】7：00～22：00
+【日祝】7：00～21：00",045-682-0550,,グルメ＆フード
+クイーンズスクエア横浜,2F,1,パティスリー ウイッシュボン　横濱レンガ通りオフィシャルショップ,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11061,11：00～20：00,045-225-9344,https://wishbon.co.jp/,グルメ＆フード
+クイーンズスクエア横浜,2F,2,NEEL クイーンズスクエア横浜店,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11060,11：00～20：00,045-264-4371,https://www.neel.jp/,ジュエリー・ウォッチ
+クイーンズスクエア横浜,2F,3,Eggs ’n Things 横浜みなとみらい店,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11059,9：00～22：00（LO.21：00）,045-211-4511,https://www.eggsnthingsjapan.com/,グルメ＆フード
+クイーンズスクエア横浜,2F,4,ドクターベリークイーンズ,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11058,11：00～20：00,045-682-5605,https://www.doctorbelee.co.jp/,ファッション
+クイーンズスクエア横浜,2F,5,minato coffee,飲食,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11057,"【平日】8：00～18：00
+※モーニングメニュー：平日のみ8：00～11：00まで
+【土日祝】10：00～19：00",045-682-5501,https://minatocoffee.yokohama/,グルメ＆フード
+クイーンズスクエア横浜,3F,1,横浜シモンズギャラリー,公共,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11056,10：00～19：00,080-6537-5776,https://www.simmons.co.jp/store/gallery/,ライフスタイル・ホビー
+クイーンズスクエア横浜,3F,2,H1Tみなとみらい THE GARDEN,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11055,8：30～21：30,0120-836-039,https://www.h1t-web.com/,サービス・その他
+クイーンズスクエア横浜,3F,3,フォーシス アンド カンパニー,サービス,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11054,"10：30～20：30
+土・日・祝 9：30～20：30
+火休（ただし祝祭日の場合は営業）",045-680-0300,https://www.foursis-co.com/,サービス・その他
+クイーンズスクエア横浜,3F,4,カンディハウス横浜,物販,1,official,https://www.yokohama-landmark.jp/shop/detail.html?act=11053,11：00～18：00,045-682-5588,https://yokohama.condehouse.co.jp,ライフスタイル・ホビー
+クイーンズスクエア横浜,B1F,①-1,clapp vintage,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000440,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,080-4755-6766,,家具/照明/雑貨
+クイーンズスクエア横浜,B1F,①-2,SEYMOUR,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000380,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,070-8950-9760,,家具 / インテリア雑貨
+クイーンズスクエア横浜,B1F,①-3,ダイソー,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000343,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,082-420-0100,,100円ショップ
+クイーンズスクエア横浜,B1F,①-4,一風堂,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000087,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-227-6305,,博多ラーメン
+クイーンズスクエア横浜,B1F,①-5,香川一福,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000328,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-8722,,うどん専門店
+クイーンズスクエア横浜,B1F,①-6,軽井沢とりまる 唐揚げ専門,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000090,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-651-9010,,唐揚げ専門店
+クイーンズスクエア横浜,B1F,①-7,ゲウチャイ,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000089,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2679,,タイ屋台料理
+クイーンズスクエア横浜,B1F,①-8,極上担々麺 香家,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000088,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-7358,,担々麺/点心/香港スイーツ
+クイーンズスクエア横浜,B1F,①-9,東京純豆腐,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000091,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-640-1077,,韓国鍋スンドゥブ
+クイーンズスクエア横浜,B1F,①-10,練りたて茹でたて自家製麺　横浜スパゲティand CAFE,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000095,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-307-3533,,パスタカフェ
+クイーンズスクエア横浜,1F,①-1,ete,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000025,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2531,,アクセサリー
+クイーンズスクエア横浜,1F,①-2,gelato pique,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000030,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-7889,,レディス/メンズ/ベビー/キッズ/ペット用品
+クイーンズスクエア横浜,1F,①-3,G-Star RAW,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000032,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-263-6840,,メンズ/レディス
+クイーンズスクエア横浜,1F,①-4,ナイキ　みなとみらい,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000455,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-211-8659,,スポーツアパレル／フットウェア
+クイーンズスクエア横浜,1F,①-5,パタゴニア 横浜・みなとみらい（期間限定ストア）,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000454,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-664-0855,,アウトドアウェア
+クイーンズスクエア横浜,1F,①-6,Wailea,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000021,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-3370,,アクセサリー
+クイーンズスクエア横浜,1F,①-7,SHEL'TTER GREEN,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000378,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-306-9225,,観葉植物 / 園芸資材 / ライフスタイル雑貨 / 衣料品
+クイーンズスクエア横浜,1F,①-8,葉山家具,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000059,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-640-1710,,家具/インテリア雑貨
+クイーンズスクエア横浜,1F,①-9,BoConcept,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000046,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-224-6050,,家具/インテリア雑貨
+クイーンズスクエア横浜,1F,①-10,Madu,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000056,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2486,,生活雑貨
+クイーンズスクエア横浜,1F,①-11,ロクシタン,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000055,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2484,,自然派化粧品
+クイーンズスクエア横浜,2F,①-1,ZARA,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000029,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,0120-257-100,,レディス/メンズ
+クイーンズスクエア横浜,2F,①-2,SHAKE SHACK,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000085,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-232-4032,,ハンバーガーレストラン
+クイーンズスクエア横浜,3F,①-1,ABC-MART Premier Stage,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000013,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-640-1036,,メンズ・レディス・キッズシューズ / ウェア
+クイーンズスクエア横浜,3F,①-2,丸善,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000054,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-323-9660,,書籍/文具
+クイーンズスクエア横浜,3F,①-3,タリーズコーヒー,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000093,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-225-8670,,スペシャルティコーヒーショップ
+クイーンズスクエア横浜,3F,①-4,占い ルルドの部屋,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000373,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,090-4623-0229,,占い
+クイーンズスクエア横浜,3F,①-5,Juno,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000112,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-227-6301,,ブライダルコスチューム
+クイーンズスクエア横浜,4F,①-1,MARKEY'S,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000010,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-651-2221,,キッズ/レディス/メンズ
+クイーンズスクエア横浜,4F,①-2,カ・ラ・ダ ファクトリー,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000104,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2583,,トータル整体・骨盤サロン
+クイーンズスクエア横浜,4F,①-3,ガシャポンバンダイオフィシャルショップ,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000427,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-8531,,カプセルトイ
+クイーンズスクエア横浜,4F,①-4,個別教室のトライ,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000333,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,0120-555-202,,マンツーマン個別指導塾
+クイーンズスクエア横浜,4F,①-5,小学館の幼児教室 ドラキッズ,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000109,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,0120-415-255,,幼児教室
+クイーンズスクエア横浜,4F,①-6,スティーム キャンパス,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000105,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-232-4393,,子ども向け教室
+クイーンズスクエア横浜,4F,①-7,namcoあそびパークPLUS,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000108,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-8531,,キッズプレイパーク
+クイーンズスクエア横浜,4F,①-8,happily photo studio,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000107,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-227-3773,,フォトスタジオ
+クイーンズスクエア横浜,B1F,②-1,スーパースポーツゼビオ,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000034,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-650-1680,,総合スポーツ専門店
+クイーンズスクエア横浜,1F,②-1,Thingsly,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000044,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-7308,,レディス/アクセサリー/生活雑貨
+クイーンズスクエア横浜,1F,②-2,CHARLES ＆ KEITH,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000319,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-900-4329,,シューズ/バッグ/ファッション雑貨
+クイーンズスクエア横浜,1F,②-3,AINZ＆TULPE,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000337,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-263-8391,,化粧品
+クイーンズスクエア横浜,1F,②-4,HITOHACHI,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000051,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-264-8567,,観葉植物/鉢
+クイーンズスクエア横浜,1F,②-5,Flying Tiger Copenhagen,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000050,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-323-9703,,雑貨
+クイーンズスクエア横浜,1F,②-6,スターバックス コーヒー,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000082,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2755,,コーヒーストア
+クイーンズスクエア横浜,2F,②-1,SWEAT.jp,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000038,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-263-6110,,オリジナルプリント専門店
+クイーンズスクエア横浜,2F,②-2,YOKOHAMA  HONMOKU-YA,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000456,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,080-6011-9921,,レザー関連商品・帆布バッグ・服飾雑貨・衣料品・ペット用品
+クイーンズスクエア横浜,2F,②-3,Ripo trenta anni,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000039,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,080-9793-4720,,メンズ/レディス/服飾雑貨
+クイーンズスクエア横浜,2F,②-4,Levi's®Store,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000005,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-227-6020,,メンズ/レディス/服飾雑貨
+クイーンズスクエア横浜,2F,②-5,Lunetterie,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000009,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-9477,,サングラス/メガネ
+クイーンズスクエア横浜,2F,②-6,CANDY A☆GO☆GO!,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000045,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-307-0310,,量り売り菓子/菓子/雑貨
+クイーンズスクエア横浜,2F,②-7,J PASTA terrace,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000065,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-641-6336,,スパゲティ専門店
+クイーンズスクエア横浜,2F,②-8,ル サロン ド ニナス,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000074,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2740,,ティーサロン＆レストラン
+クイーンズスクエア横浜,2F,②-9,WINE STAND BASIL,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000080,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-263-8638,,ワインバル
+クイーンズスクエア横浜,2F,②-10,みずほ銀行ATMコーナー,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000115,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,,,無人出張所
+クイーンズスクエア横浜,3F,②-1,coca,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000433,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,070-1413-5382,,レディス／キッズ／メンズ／服飾雑貨
+クイーンズスクエア横浜,4F,②-1,L.L.Bean,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000001,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2727,,メンズ/レディス/キッズ/アウトドアグッズ
+クイーンズスクエア横浜,4F,②-2,横浜家具工房,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000451,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-330-1111,,家具 / 雑貨
+クイーンズスクエア横浜,1F,③-1,アメリカンハウス,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000073,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2860,,ハンバーグ＆ステーキ専門店
+クイーンズスクエア横浜,1F,③-2,ケンタッキー・フライド・チキン,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000083,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-650-1012,,フライドチキン
+クイーンズスクエア横浜,1F,③-3,サブウェイ,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000066,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2813,,サンドイッチ＆コーヒー
+クイーンズスクエア横浜,1F,③-4,マクドナルド,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000067,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-3158,,ハンバーガー
+クイーンズスクエア横浜,1F,③-5,ネイルズユニークアス,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000097,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2880,,ネイルサロン/ネイルグッズ販売
+クイーンズスクエア横浜,1F,③-6,ファミリーマート,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000102,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-222-8032,,コンビニエンスストア
+クイーンズスクエア横浜,1F,③-7,保険クリニック,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000453,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,0120,,保険
+クイーンズスクエア横浜,1F,③-8,横浜銀行ATMコーナー,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000101,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,,,無人出張所
+クイーンズスクエア横浜,2F,③-1,TAKANASHI Milk RESTAURANT,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000092,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2801,,洋食
+クイーンズスクエア横浜,2F,③-2,FISHERMAN'S MARKET,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000370,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-2067,,シーフードビュッフェ
+クイーンズスクエア横浜,3F,③-1,さかえや,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000068,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2700,,炭火焼と旬の手作り料理・水炊き
+クイーンズスクエア横浜,3F,③-2,24/7 restaurant,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000069,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-222-6522,,カフェ・レストラン
+クイーンズスクエア横浜,4F,③-1,橙家,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000075,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-5035,,創作和食
+クイーンズスクエア横浜,5F,③-1,D.U.M.B.O,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000084,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-5037,,肉バル
+クイーンズスクエア横浜,1F,④-1,AZUL BY MOUSSY,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000316,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-319-4908,,レディス / メンズ
+クイーンズスクエア横浜,1F,④-2,POMPADOUR,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000076,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2868,,ベーカリー
+クイーンズスクエア横浜,1F,④-3,トモズ,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000096,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2863,,ドラッグストア
+クイーンズスクエア横浜,1F,④-4,郵便局,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000098,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-0280,,郵便局
+クイーンズスクエア横浜,2F,④-1,【10/31オープン】ムラサキスポーツ　クロックス　POP UP STORE,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000460,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2840,,シューズ／シューズアクセサリー／バッグ
+クイーンズスクエア横浜,2F,④-2,Sanrio,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000049,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-228-2680,,キャラクターグッズ
+クイーンズスクエア横浜,2F,④-3,スヌーピータウンショップ,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000047,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-640-1032,,キャラクターグッズ
+クイーンズスクエア横浜,2F,④-4,ディズニーストア,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000048,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-0222,,キャラクターグッズ
+クイーンズスクエア横浜,3F,④-1,ムラサキスポーツ,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000042,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2840,,アクションスポーツグッズ/ウェア/シューズ/雑貨
+クイーンズスクエア横浜,B3F,SC-1,池田屋,物販,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000061,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-305-6611,,ランドセル/バッグ/財布･革小物
+クイーンズスクエア横浜,B3F,SC-2,GODIVA café Minatomirai,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000329,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-232-4665,,カフェ
+クイーンズスクエア横浜,B2F,SC-1,インドアゴルフスクール E-swing -PREMIUM-,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000376,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,0120-022-562,,シミュレーションゴルフ練習場
+クイーンズスクエア横浜,B2F,SC-2,振袖ハクビ,サービス,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000114,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-211-4423,,成人式振袖の販売・レンタル/卒業袴のレンタル
+クイーンズスクエア横浜,B1F,SC-1,足柄牛焼肉　もり次,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000081,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-225-8029,,焼肉
+クイーンズスクエア横浜,B1F,SC-2,カザーナ,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000071,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2873,,インド料理
+クイーンズスクエア横浜,B1F,SC-3,GARLIC JO'S,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000078,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2870,,ガーリッククィズィーン
+クイーンズスクエア横浜,B1F,SC-4,下高井戸旭鮨総本店,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000072,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2877,,寿司
+クイーンズスクエア横浜,B1F,SC-5,陳麻婆豆腐,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000070,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-682-2866,,中国四川料理
+クイーンズスクエア横浜,B1F,SC-6,とんかつ 新宿 さぼてん,飲食,1,official,https://www.minatomirai-square.com/floor/detail/?cd=000079,ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）,045-683-6104,,とんかつ専門店

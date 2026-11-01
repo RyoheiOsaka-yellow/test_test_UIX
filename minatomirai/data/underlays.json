@@ -1,0 +1,314 @@
+[
+ {
+  "building": "MARK IS minatomirai",
+  "floor": "B4",
+  "file": "markis_B4.jpg",
+  "w": 380,
+  "h": 263,
+  "box": [
+   0.0,
+   0.1521,
+   0.9579,
+   0.9278
+  ],
+  "anchor": {
+   "name": "横浜美術館",
+   "u": 0.5,
+   "v": 1.8
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "MARK IS minatomirai",
+  "floor": "B2",
+  "file": "markis_B2.jpg",
+  "w": 380,
+  "h": 225,
+  "box": [
+   0.0053,
+   0.0178,
+   0.95,
+   0.9289
+  ],
+  "anchor": {
+   "name": "横浜美術館",
+   "u": 0.5,
+   "v": 1.8
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "MARK IS minatomirai",
+  "floor": "B1",
+  "file": "markis_B1.jpg",
+  "w": 380,
+  "h": 310,
+  "box": [
+   0.0053,
+   0.0677,
+   0.9947,
+   0.9903
+  ],
+  "anchor": {
+   "name": "横浜美術館",
+   "u": 0.5,
+   "v": 1.8
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "MARK IS minatomirai",
+  "floor": "1F",
+  "file": "markis_1F.jpg",
+  "w": 1005,
+  "h": 360,
+  "box": [
+   0.0,
+   0.0917,
+   0.8975,
+   0.9472
+  ],
+  "anchor": {
+   "name": "横浜美術館",
+   "u": 0.5,
+   "v": 1.8
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "MARK IS minatomirai",
+  "floor": "2F",
+  "file": "markis_2F.jpg",
+  "w": 750,
+  "h": 243,
+  "box": [
+   0.0,
+   0.0,
+   0.968,
+   0.9877
+  ],
+  "anchor": {
+   "name": "横浜美術館",
+   "u": 0.5,
+   "v": 1.8
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "MARK IS minatomirai",
+  "floor": "3F",
+  "file": "markis_3F.jpg",
+  "w": 750,
+  "h": 210,
+  "box": [
+   0.0253,
+   0.0,
+   0.9253,
+   1.0
+  ],
+  "anchor": {
+   "name": "横浜美術館",
+   "u": 0.5,
+   "v": 1.8
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "MARK IS minatomirai",
+  "floor": "4F",
+  "file": "markis_4F.jpg",
+  "w": 737,
+  "h": 230,
+  "box": [
+   0.0312,
+   0.0348,
+   0.9254,
+   1.0
+  ],
+  "anchor": {
+   "name": "横浜美術館",
+   "u": 0.5,
+   "v": 1.8
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "MARK IS minatomirai",
+  "floor": "5F",
+  "file": "markis_5F.jpg",
+  "w": 550,
+  "h": 248,
+  "box": [
+   0.0418,
+   0.0403,
+   1.0,
+   0.8589
+  ],
+  "anchor": {
+   "name": "横浜美術館",
+   "u": 0.5,
+   "v": 1.8
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "ランドマークプラザ",
+  "floor": "5F",
+  "file": "lmp_5F.jpg",
+  "w": 688,
+  "h": 535,
+  "box": [
+   0.0073,
+   0.0,
+   0.9884,
+   0.9813
+  ],
+  "anchor": {
+   "name": "横浜ランドマークタワー",
+   "u": 0.38,
+   "v": 0.82
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "ランドマークプラザ",
+  "floor": "4F",
+  "file": "lmp_4F.jpg",
+  "w": 688,
+  "h": 518,
+  "box": [
+   0.016,
+   0.0849,
+   0.9898,
+   0.9517
+  ],
+  "anchor": {
+   "name": "横浜ランドマークタワー",
+   "u": 0.38,
+   "v": 0.82
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "ランドマークプラザ",
+  "floor": "3F",
+  "file": "lmp_3F.jpg",
+  "w": 688,
+  "h": 485,
+  "box": [
+   0.016,
+   0.0062,
+   0.9811,
+   0.9711
+  ],
+  "anchor": {
+   "name": "横浜ランドマークタワー",
+   "u": 0.38,
+   "v": 0.82
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "ランドマークプラザ",
+  "floor": "2F",
+  "file": "lmp_2F.jpg",
+  "w": 688,
+  "h": 543,
+  "box": [
+   0.0,
+   0.0,
+   0.9913,
+   0.8858
+  ],
+  "anchor": {
+   "name": "横浜ランドマークタワー",
+   "u": 0.38,
+   "v": 0.82
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "ランドマークプラザ",
+  "floor": "1F",
+  "file": "lmp_1F.jpg",
+  "w": 813,
+  "h": 593,
+  "box": [
+   0.0357,
+   0.0,
+   0.9865,
+   0.968
+  ],
+  "anchor": {
+   "name": "横浜ランドマークタワー",
+   "u": 0.38,
+   "v": 0.82
+  },
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "source": "公式フロアガイド PDF"
+ }
+]

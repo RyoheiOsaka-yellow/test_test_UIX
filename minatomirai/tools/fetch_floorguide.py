@@ -51,7 +51,9 @@ def fetch_markis():
             name = re.search(r'class="fMGDName">(.*?)</div>', body, re.S); cate = re.search(r'class="fMGDCate">(.*?)</div>', body, re.S)
             name = clean(name.group(1)) if name else ""; cate = clean(cate.group(1)) if cate else ""
             if not name: continue
-            rows.append({"building": "MARK IS minatomirai", "floor": label, "zone": clean(num), "name": name, "category": category(cate + " " + name), "share": "1", "source": "official"})
+            href = re.search(r'href="(/mm/shop/detail/\?act=\d+)"', body)
+            rows.append({"building": "MARK IS minatomirai", "floor": label, "zone": clean(num), "name": name, "category": category(cate + " " + name), "share": "1", "source": "official",
+                         "url": "https://www.mec-markis.jp" + href.group(1) if href else "", "hours": "", "tel": "", "website": "", "genre": cate})
         print(f"  MARK IS {label}: {len(items)}")
     return rows
 
@@ -61,13 +63,14 @@ def fetch_landmark(b_flg, building, floors):
         s = get(f"https://www.yokohama-landmark.jp/shop/floor.html?b_flg={b_flg}&f_flg={f}")
         n = 0
         for m in re.finditer(r'<li class="shopBox[^"]*">(.*?)</li>', s, re.S):
-            body = m.group(1)
+            body = m.group(1); href = re.search(r'href="(/shop/detail\.html\?act=\d+)"', body)
             fl = re.search(r'class="shopFloor">(.*?)</p>', body); name = re.search(r'class="shopName">(.*?)</p>', body); cate = re.search(r'class="shopCategory">(.*?)</p>', body)
             if not (fl and name): continue
             fl = clean(fl.group(1)); name = clean(name.group(1)); cate = clean(cate.group(1)) if cate else ""
             if building.split("／")[0] not in fl: continue
             fm = re.search(r"(B?\d+F)", fl); flabel = fm.group(1) if fm else floor_norm(str(f))
-            rows.append({"building": building.split("／")[-1], "floor": flabel, "zone": str(n + 1), "name": name, "category": category(cate + " " + name), "share": "1", "source": "official"}); n += 1
+            rows.append({"building": building.split("／")[-1], "floor": flabel, "zone": str(n + 1), "name": name, "category": category(cate + " " + name), "share": "1", "source": "official",
+                         "url": "https://www.yokohama-landmark.jp" + href.group(1) if href else "", "hours": "", "tel": "", "website": "", "genre": cate}); n += 1
         print(f"  {building} f{f}: {n}")
     return rows
 
@@ -81,14 +84,26 @@ def fetch_tokyu_square():
             n = 0
             for box in re.finditer(r'<div class="article-box ([^"]*)">(.*?)<!-- \.article-box -->', page, re.S):
                 head = re.search(r'<h3 class="mds-ttl">(.*?)</h3>', box.group(2)); head = clean(head.group(1)) if head else ""
-                for m in re.finditer(r'<div class="shopname">(.*?)</div>\s*<div class="item">(.*?)</div>', box.group(2), re.S):
-                    nm = clean(m.group(1)); it = clean(m.group(2))
+                for m in re.finditer(r'<a href="(/floor/detail/\?cd=\d+)">.*?<div class="shopname">(.*?)</div>\s*<div class="item">(.*?)</div>(.*?)</a>', box.group(2), re.S):
+                    nm = clean(m.group(2)); it = clean(m.group(3)); tel = re.search(r'TEL[：:]\s*([\d\-]+)', m.group(4)); href = m.group(1)
                     if not nm: continue
                     cat = "飲食" if re.search(r"レストラン|カフェ|グルメ|フード", head) else "サービス" if "サービス" in head else category(it + " " + nm)
                     n += 1
-                    rows.append({"building": "クイーンズスクエア横浜", "floor": fl.upper(), "zone": f"{mark}-{n}", "name": nm, "category": cat, "share": "1", "source": "official"})
+                    rows.append({"building": "クイーンズスクエア横浜", "floor": fl.upper(), "zone": f"{mark}-{n}", "name": nm, "category": cat, "share": "1", "source": "official",
+                                 "url": "https://www.minatomirai-square.com" + href, "hours": "", "tel": tel.group(1) if tel else "", "website": "", "genre": it})
             print(f"  Tokyu Square {area} {fl}: {n}")
     return rows
+
+def enrich_landmark(rows):
+    """ランドマークプラザ系の詳細ページから 営業時間・電話番号・公式サイト を取得 (並列)。"""
+    import concurrent.futures as cf
+    targets = [r for r in rows if r.get("url", "").startswith("https://www.yokohama-landmark.jp")]
+    def one(r):
+        page = get(r["url"])
+        h = re.search(r'shopInfoTime">\s*<h4>営業時間</h4>\s*<p>(.*?)</p>', page, re.S); t = re.search(r'shopInfoPhone">\s*<h4>電話番号</h4>\s*<p>(.*?)</p>', page, re.S); w = re.search(r'shopInfoWebsite">.*?<a href="([^"]+)"', page, re.S)
+        r["hours"] = clean(h.group(1)) if h else ""; r["tel"] = clean(t.group(1)) if t else ""; r["website"] = w.group(1) if w else ""
+    with cf.ThreadPoolExecutor(6) as ex: list(ex.map(one, targets))
+    print("  enriched landmark rows:", len(targets))
 
 def main():
     keep = []
@@ -100,6 +115,12 @@ def main():
     print("ランドマークプラザ"); rows += fetch_landmark(1, "ランドマークプラザ", [1, 2, 3, 4, 5, 7])
     print("クイーンズタワーA"); rows += fetch_landmark(3, "クイーンズタワーA／クイーンズスクエア横浜", [1, 2, 3])
     print("みなとみらい東急スクエア"); rows += fetch_tokyu_square()
+    enrich_landmark(rows)
+    for r in rows:  # 施設共通の営業時間 (個別が無い場合)
+        if not r.get("hours"):
+            if r["building"].startswith("MARK IS"): r["hours"] = "ショップ 10:00～20:00／レストラン 11:00～23:00（店舗により異なる）"
+            elif r["building"].startswith("クイーンズスクエア"): r["hours"] = "ショップ 11:00～20:00／レストラン 11:00～22:00（店舗により異なる）"
+        for k in ("url", "hours", "tel", "website", "genre"): r.setdefault(k, "")
     # 重複除去 (建物, 階, 店名)
     seen = set(); uniq = []
     for r in keep + rows:
@@ -107,7 +128,10 @@ def main():
         if k in seen: continue
         seen.add(k); uniq.append(r)
     with open(OUT, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["building", "floor", "zone", "name", "category", "share", "source"]); w.writeheader(); w.writerows(uniq)
+        w = csv.DictWriter(f, fieldnames=["building", "floor", "zone", "name", "category", "share", "source", "url", "hours", "tel", "website", "genre"], extrasaction="ignore"); w.writeheader()
+        for r in uniq:
+            for k in ("url", "hours", "tel", "website", "genre"): r.setdefault(k, "")
+        w.writerows(uniq)
     print("wrote", OUT, len(uniq), "rows")
 
 if __name__ == "__main__":

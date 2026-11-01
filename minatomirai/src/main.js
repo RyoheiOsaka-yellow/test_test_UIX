@@ -645,7 +645,13 @@ function buildPointsAndVoxels(g) {
 // ---- 断面キャップ: ステンシルで切り口を塗る (前面+1, 背面-1 → 0 でない場所が内部) ------
 let capPlane = null;
 function buildSectionCap(g) {
-  const mk = (side, op) => new THREE.MeshBasicMaterial({ side, colorWrite: false, depthWrite: false, depthTest: false, stencilWrite: true, stencilFunc: THREE.AlwaysStencilFunc, stencilFail: op, stencilZFail: op, stencilZPass: op, clippingPlanes: sectionPlanes });
+  const mk = (side, op) => {
+    const m = new THREE.MeshBasicMaterial({ side, colorWrite: false, depthWrite: false, depthTest: false, stencilWrite: true, stencilFunc: THREE.AlwaysStencilFunc, stencilFail: op, stencilZFail: op, stencilZPass: op, clippingPlanes: sectionPlanes });
+    // 選択中 (階分解表示中) の建物はキャップ対象から外す
+    m.onBeforeCompile = sh => { sh.uniforms.uHide = dispUniforms.uHide; sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float bid; varying float vBidC;').replace('#include <begin_vertex>', 'vBidC = bid;\n#include <begin_vertex>'); sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uHide; varying float vBidC;').replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vBidC - uHide) < 0.5) discard;'); };
+    m.customProgramCacheKey = () => 'cap' + side;
+    return m;
+  };
   const back = new THREE.Mesh(g, mk(THREE.BackSide, THREE.IncrementWrapStencilOp)); back.renderOrder = 20;
   const front = new THREE.Mesh(g, mk(THREE.FrontSide, THREE.DecrementWrapStencilOp)); front.renderOrder = 21;
   const capMat = new THREE.ShaderMaterial({
@@ -745,7 +751,7 @@ function loadFloorGuide(text) {
     const fl = parseFloor(r.floor); if (!r.building || fl == null || !r.name) continue;
     if (!floorGuide.has(r.building)) floorGuide.set(r.building, new Map());
     const fm = floorGuide.get(r.building); if (!fm.has(fl)) fm.set(fl, []);
-    fm.get(fl).push({ zone: r.zone || '', name: r.name, category: r.category || 'その他', share: Math.max(0.05, parseFloat(r.share) || 1), source: r.source || '' }); n++;
+    fm.get(fl).push({ zone: r.zone || '', name: r.name, category: r.category || 'その他', share: Math.max(0.05, parseFloat(r.share) || 1), source: r.source || '', url: r.url || '', hours: r.hours || '', tel: r.tel || '', website: r.website || '', genre: r.genre || '' }); n++;
   }
   return n;
 }
@@ -840,7 +846,60 @@ function stripPartition(hull, zones) {
 }
 
 // ---- 建物の選択・階分解 (選択した建物をフロアごとにスライスして分解) -------------------
-const sel = { bid: -1, mesh: null, lines: null, markers: [], gap: 0, floors: 0, zones: [], hull: null };
+const sel = { bid: -1, mesh: null, lines: null, markers: [], gap: 0, floors: 0, zones: [], hull: null, underlays: [] };
+const UNDERLAYS = (window.__UNDERLAYS || []).map(u => ({ ...u, fl: parseFloor(u.floor) }));
+const texLoader = new THREE.TextureLoader(); const texCache = new Map();
+let underlayOn = true, labelMode = 'auto';
+const underlaysFor = name => UNDERLAYS.filter(u => name && (name.includes(u.building) || u.building.includes(name)));
+function buildUnderlays(name) {
+  const list = underlaysFor(name); if (!list.length || !sel.hull) return;
+  const A = hullAxis(sel.hull);
+  for (const u of list) {
+    if (!texCache.has(u.file)) { const t = texLoader.load(u.data); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; texCache.set(u.file, t); }
+    const mat = new THREE.MeshBasicMaterial({ map: texCache.get(u.file), transparent: true, opacity: u.opacity ?? 0.8, depthWrite: false, side: THREE.DoubleSide, clippingPlanes: sectionPlanes });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); mesh.renderOrder = 4; mesh.userData.u = u; mesh.userData.A = A;
+    selGroup.add(mesh); sel.underlays.push(mesh);
+  }
+  layoutUnderlays();
+}
+// 画像内の図面範囲 (box) を建物主軸に合わせ、アンカー地物の方向で 0°/180° を自動判定する
+function autoRotation(u, A) {
+  if (!u.anchor) return 0;
+  const bm = buildingMeta.find(m => m.n && m.n.includes(u.anchor.name)); if (!bm) return 0;
+  const tx = bm.c[0] / 10 - A.cx, ty = bm.c[1] / 10 - A.cy;                 // 建物中心 → アンカー (世界)
+  const box = u.box || [0, 0, 1, 1]; const iu = u.anchor.u - (box[0] + box[2]) / 2, iv = -(u.anchor.v - (box[1] + box[3]) / 2); // 画像中心 → アンカー (画像: 右+, 上+)
+  const ax = A.ax, ay = A.ay, nx = A.nx, ny = A.ny;
+  const d0 = (iu * ax + iv * nx) * tx + (iu * ay + iv * ny) * ty;            // rot 0 のとき
+  return d0 >= 0 ? 0 : 180;
+}
+function layoutUnderlays() {
+  const gap = selUniforms.uGap.value;
+  for (const m of sel.underlays) {
+    const u = m.userData.u, A = m.userData.A;
+    const box = u.box || [0, 0, 1, 1];
+    const bw = (box[2] - box[0]) * u.w, bh = (box[3] - box[1]) * u.h;         // 図面範囲 (px)
+    const L = (A.a1 - A.a0) * (u.scale ?? 1);
+    const k = L / Math.max(1, bw);                                              // 世界 m / px
+    const w = u.w * k, h = u.h * k;
+    const rotDeg = autoRotation(u, A) + (u.rot ?? 0); const ang = Math.atan2(A.ay, A.ax) + rotDeg * Math.PI / 180;
+    const rx = Math.cos(ang), ry = Math.sin(ang), ux = -Math.sin(ang), uy = Math.cos(ang);   // 画像の右・上 (世界 東,北)
+    const offR = ((box[0] + box[2]) / 2 - 0.5) * u.w * k, offD = ((box[1] + box[3]) / 2 - 0.5) * u.h * k; // 図面中心の画像中心からのずれ
+    const tx = A.cx + A.ax * (u.dx ?? 0) + A.nx * (u.dy ?? 0), ty = A.cy + A.ay * (u.dx ?? 0) + A.ny * (u.dy ?? 0);
+    const cx = tx - (offR * rx - offD * ux), cy = ty - (offR * ry - offD * uy);
+    m.scale.set(w, h, 1);
+    m.rotation.order = 'YXZ'; m.rotation.y = ang; m.rotation.x = -Math.PI / 2;
+    m.position.set(cx, sel.base + u.fl * FLOOR_H + 0.28 + Math.max(0, u.fl) * gap, -cy);
+    m.material.opacity = u.opacity ?? 0.8; m.visible = underlayOn && (u.fl >= 0 || gap > 0.5 || sectionPlane.constant < sel.base);
+  }
+  // 断面カット中で階が重なっている (展開なし) ときは、切断面直下の 1 枚だけを見せる
+  if (sectionPlane.constant < 4000 && gap < 0.5) {
+    let top = null;
+    for (const m of sel.underlays) if (m.visible && m.position.y <= sectionPlane.constant && (!top || m.position.y > top.position.y)) top = m;
+    for (const m of sel.underlays) if (m.visible && m !== top) m.visible = false;
+  }
+}
+const underlayJSON = () => JSON.stringify(UNDERLAYS.map(({ data, fl, ...u }) => u), null, 1);
+const underlaysFor_ = underlaysFor;
 let floorCatMode = false;  // 階を用途色で塗る
 const selGroup = new THREE.Group(); scene.add(selGroup);
 const infoEl = document.getElementById('info'), infoBody = document.getElementById('info-body'), infoTitle = document.getElementById('info-title');
@@ -849,7 +908,9 @@ function showZoneDetail(zi) {
   const z = zi.zone; const src = z.source === 'official' ? '公式フロアガイド' : z.source === 'osm' ? 'OpenStreetMap' : z.source || '手入力';
   const osm = poiData.find(q => q.n === z.name && q.b === sel.bid);
   zoneDetail.innerHTML = `<div class="zd-head"><span class="tag" style="border-color:${catColor(z.category)};background:${catColor(z.category)}33">${z.category}</span> <b>${z.name}</b></div>
-    <div>${zi.building ?? ''} ${floorName(zi.fl)}${z.zone ? ' ／ 区画 ' + z.zone : ''}</div>
+    <div>${zi.building ?? ''} ${floorName(zi.fl)}${z.zone ? ' ／ 区画 ' + z.zone : ''}${z.genre ? ' ／ ' + z.genre : ''}</div>
+    ${z.hours ? `<div class="zd-row">営業時間: ${z.hours}</div>` : ''}${z.tel ? `<div class="zd-row">TEL: ${z.tel}</div>` : ''}
+    <div class="zd-row">${z.url ? `<a href="${z.url}" target="_blank" rel="noopener">施設の店舗ページ ↗</a>` : ''}${z.website ? ` ／ <a href="${z.website}" target="_blank" rel="noopener">店舗公式サイト ↗</a>` : ''}</div>
     <div class="info-sub">出典: ${src}${osm ? ' ／ OSM 種別: ' + osm.k : ''}</div>
     <div class="btn-row" style="margin:6px 0 0"><button id="btn-zone-cat">同じ用途だけ表示</button><button id="btn-zone-close">閉じる</button></div>`;
   zoneDetail.style.display = 'block';
@@ -927,9 +988,17 @@ function selectBuilding(bid) {
   geo.setAttribute('fc', new THREE.BufferAttribute(fc, 3));
   const fmat = new THREE.ShaderMaterial({
     uniforms: { uFace: { value: hex(t.face) }, uLine: { value: hex(t.faceLine) }, uGap: selUniforms.uGap, uHoverFl: selUniforms.uHoverFl, uCat: selUniforms.uCat },
-    vertexShader: `attribute float fl; attribute vec3 fc; uniform float uGap; varying float vFl; varying vec3 vW, vFc; void main(){ vFl = fl; vFc = fc; vec4 wp = modelMatrix * vec4(position + vec3(0.0, fl * uGap, 0.0), 1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    clipping: true, clippingPlanes: sectionPlanes,
+    vertexShader: `attribute float fl; attribute vec3 fc; uniform float uGap; varying float vFl; varying vec3 vW, vFc;
+      #include <clipping_planes_pars_vertex>
+      void main(){ vFl = fl; vFc = fc; vec4 wp = modelMatrix * vec4(position + vec3(0.0, fl * uGap, 0.0), 1.0); vW = wp.xyz; vec4 mvPosition = viewMatrix * wp; gl_Position = projectionMatrix * mvPosition;
+      #include <clipping_planes_vertex>
+      }`,
     fragmentShader: `uniform vec3 uFace, uLine; uniform float uHoverFl, uCat; varying float vFl; varying vec3 vW, vFc;
-      void main(){ vec3 fn = normalize(cross(dFdx(vW), dFdy(vW))); vec3 col = uFace * (0.92 + 0.08 * abs(fn.x) + 0.04 * abs(fn.z));
+      #include <clipping_planes_pars_fragment>
+      void main(){
+        #include <clipping_planes_fragment>
+        vec3 fn = normalize(cross(dFdx(vW), dFdy(vW))); vec3 col = uFace * (0.92 + 0.08 * abs(fn.x) + 0.04 * abs(fn.z));
         // 偶数階/奇数階でごく薄く色分け
         col = mix(col, uLine, mod(vFl, 2.0) * 0.06);
         if (uCat > 0.5 && vFc.x >= 0.0) col = mix(col, vFc, 0.55);
@@ -938,7 +1007,7 @@ function selectBuilding(bid) {
     polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 1.5,
   });
   sel.mesh = new THREE.Mesh(geo, fmat); selGroup.add(sel.mesh);
-  const lmat = new THREE.LineBasicMaterial({ color: t.edge, transparent: true, opacity: 0.9 });
+  const lmat = new THREE.LineBasicMaterial({ color: t.edge, transparent: true, opacity: 0.9, clippingPlanes: sectionPlanes });
   lmat.onBeforeCompile = sh => { sh.uniforms.uGap = selUniforms.uGap; sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float fl; uniform float uGap;').replace('#include <begin_vertex>', 'vec3 transformed = vec3(position) + vec3(0.0, fl * uGap, 0.0);'); };
   lmat.customProgramCacheKey = () => 'selLines';
   sel.lines = new THREE.LineSegments(lgeo, lmat); selGroup.add(sel.lines);
@@ -961,8 +1030,8 @@ function selectBuilding(bid) {
         const shape = new THREE.Shape(poly.map(p => new THREE.Vector2(p[0], p[1])));
         const g = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false }); g.applyMatrix4(ROT_XZ);
         const isCor = kind === 'corridor'; const col = isCor ? '#9aa3b5' : catColor(zone.category);
-        const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.18 : 0.55, depthWrite: false }));
-        const edge = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.4 : 0.9 }));
+        const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.18 : 0.55, depthWrite: false, clippingPlanes: sectionPlanes }));
+        const edge = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.4 : 0.9, clippingPlanes: sectionPlanes }));
         let zx = 0, zy = 0; for (const q of poly) { zx += q[0]; zy += q[1]; } zx /= poly.length; zy /= poly.length;
         const label = isCor ? null : makeTextSprite(zone.name, col, { scale: 0.12, themeColor: tt => tt.labelGlow === false ? col : '#ffe9b0' }); if (label) label.userData.fadeFrom = 1000;
         mesh.renderOrder = 5; mesh.userData.zoneInfo = { fl, zone, building: m.n }; selGroup.add(mesh, edge); if (label) selGroup.add(label);
@@ -970,6 +1039,7 @@ function selectBuilding(bid) {
       }
     }
   }
+  buildUnderlays(m.n);
   updateSelectionLayout();
   // 情報パネル
   const h = m.h ?? Math.round(m.z[1] - m.z[0]);
@@ -984,12 +1054,37 @@ function selectBuilding(bid) {
   const nGuide = guide ? [...guide.values()].reduce((a, v) => a + v.length, 0) : 0;
   infoBody.innerHTML = `<div>高さ ${h} m ／ 推定 ${nFloors} 階（階高 ${FLOOR_H} m）${m.parts > 1 ? ` ／ ${m.parts} 部位を統合` : ''}</div>
     <label class="row" style="padding:4px 0"><input type="checkbox" id="chk-floorcat" ${floorCatMode ? 'checked' : ''} /> 階を用途色で塗る</label>
+    ${underlaysFor(m.n).length ? `<label class="row" style="padding:4px 0"><input type="checkbox" id="chk-underlay" ${underlayOn ? 'checked' : ''} /> 公式フロアマップを下敷き表示（${underlaysFor(m.n).length} 階）</label>
+    <details id="underlay-cal"><summary class="info-sub" style="cursor:pointer">下敷きの位置合わせ（階ごと）</summary>
+      <select id="ul-floor" style="width:100%;margin:4px 0;font-size:11px">${underlaysFor(m.n).map((u, i) => `<option value="${i}">${u.floor}</option>`).join('')}</select>
+      <div class="cal-row"><span>回転</span><input type="range" id="ul-rot" min="-180" max="180" step="0.5" /><b id="ul-rot-v"></b></div>
+      <div class="cal-row"><span>拡縮</span><input type="range" id="ul-scale" min="0.4" max="2.5" step="0.005" /><b id="ul-scale-v"></b></div>
+      <div class="cal-row"><span>主軸方向</span><input type="range" id="ul-dx" min="-120" max="120" step="0.5" /><b id="ul-dx-v"></b></div>
+      <div class="cal-row"><span>直交方向</span><input type="range" id="ul-dy" min="-120" max="120" step="0.5" /><b id="ul-dy-v"></b></div>
+      <div class="cal-row"><span>不透明度</span><input type="range" id="ul-op" min="0" max="1" step="0.02" /><b id="ul-op-v"></b></div>
+      <div class="btn-row"><button id="btn-ul-copy">設定を JSON でコピー</button><button id="btn-ul-dl">underlays.json 保存</button></div>
+      <div class="info-sub">保存した JSON を data/underlays.json に置いて再ビルドすると既定値になります。</div>
+    </details>` : ''}
+    <div class="sec-title">名札</div>
+    <div class="seg-row" id="label-presets"><button data-lm="auto" class="${labelMode === 'auto' ? 'active' : ''}">自動間引き</button><button data-lm="floor" class="${labelMode === 'floor' ? 'active' : ''}">カーソルの階</button><button data-lm="all" class="${labelMode === 'all' ? 'active' : ''}">すべて</button><button data-lm="none" class="${labelMode === 'none' ? 'active' : ''}">なし</button></div>
     <div class="sec-title">区画の割り付け</div>
     <div class="seg-row" id="part-presets"><button data-part="corridor" class="${partitionMode === 'corridor' ? 'active' : ''}">通路＋両側</button><button data-part="grid" class="${partitionMode === 'grid' ? 'active' : ''}">グリッド</button><button data-part="strip" class="${partitionMode === 'strip' ? 'active' : ''}">帯</button></div>
     <div class="legend" style="margin:2px 0 6px">${legend}</div>
     <div class="info-sub">フロアガイド ${nGuide} 区画（CSV）／ OSM 店舗 ${tenants.length} 件</div>${rows}${unknown}${tenants.length || nGuide ? '' : '<div class="info-sub">この建物に登録された店舗・施設はありません</div>'}
     <div class="btn-row" style="margin-top:8px"><button id="btn-guide-template">この建物の CSV 雛形</button><button id="btn-guide-load">CSV 読み込み</button></div>
     <div class="info-sub">※ 区画は CSV の share 比で主軸方向に帯分割した近似。正式な階数・区画形状はオープンデータに含まれません。</div>`;
+  document.querySelectorAll('#label-presets button').forEach(b => b.addEventListener('click', () => { labelMode = b.dataset.lm; document.querySelectorAll('#label-presets button').forEach(x => x.classList.toggle('active', x === b)); }));
+  const ulChk = document.getElementById('chk-underlay');
+  if (ulChk) {
+    ulChk.addEventListener('change', e => { underlayOn = e.target.checked; layoutUnderlays(); });
+    const list = underlaysFor(m.n); const sel$ = document.getElementById('ul-floor');
+    const ids = { rot: 'ul-rot', scale: 'ul-scale', dx: 'ul-dx', dy: 'ul-dy', opacity: 'ul-op' };
+    const sync = () => { const u = list[Number(sel$.value)]; for (const [k, id] of Object.entries(ids)) { const el = document.getElementById(id); el.value = u[k] ?? (k === 'scale' ? 1 : k === 'opacity' ? 0.8 : 0); document.getElementById(id + '-v').textContent = String(el.value); } };
+    sel$.addEventListener('change', sync); sync();
+    for (const [k, id] of Object.entries(ids)) document.getElementById(id).addEventListener('input', e => { const u = list[Number(sel$.value)]; u[k] = parseFloat(e.target.value); document.getElementById(id + '-v').textContent = e.target.value; layoutUnderlays(); });
+    document.getElementById('btn-ul-copy').addEventListener('click', () => navigator.clipboard?.writeText(underlayJSON()).then(() => { routeResult.textContent = '下敷き設定をクリップボードにコピーしました'; }));
+    document.getElementById('btn-ul-dl').addEventListener('click', () => download(new Blob([underlayJSON()], { type: 'application/json' }), 'underlays.json'));
+  }
   document.querySelectorAll('#part-presets button').forEach(b => b.addEventListener('click', () => { partitionMode = b.dataset.part; const g = selUniforms.uGap.value; selectBuilding(bid); selUniforms.uGap.value = g; updateSelectionLayout(); }));
   document.getElementById('chk-floorcat').addEventListener('change', e => { floorCatMode = e.target.checked; selUniforms.uCat.value = floorCatMode ? 1 : 0; });
   document.getElementById('btn-guide-template').addEventListener('click', () => download(new Blob(['\ufeff' + floorGuideTemplate(m.n ?? '', nFloors)], { type: 'text/csv' }), `floorguide_${(m.n ?? 'building').replace(/[\\/:*?"<>|]/g, '_')}.csv`));
@@ -1001,13 +1096,34 @@ function updateSelectionLayout() {
   const gap = selUniforms.uGap.value;
   for (const sp of sel.markers) { const q = sp.userData.q; const fl = Math.max(0, Math.min(sel.floors - 1, q.lv ?? 0)); sp.position.set(q.x, sel.base + fl * FLOOR_H + 1.8 + fl * gap, -q.y); layoutSprite(sp); }
   for (const z of sel.zones) { const y = sel.base + z.fl * FLOOR_H + 0.5 + Math.max(0, z.fl) * gap; z.mesh.position.y = y; z.edge.position.y = y; if (z.label) { z.label.position.set(z.zx, y + 2.2, -z.zy); layoutSprite(z.label); } }
-  applyCategoryFilter();
+  applyCategoryFilter(); layoutUnderlays();
+}
+// 名札の間引き: 画面上で重なる名札を優先度順 (カーソルの階 > 手前) に間引く
+const _lab = new THREE.Vector3();
+function declutterLabels() {
+  const items = [];
+  for (const sp of sel.markers) if (sp.visible) items.push({ sp, fl: Math.max(0, sp.userData.q.lv ?? 0) });
+  for (const z of sel.zones) if (z.label && z.label.visible) items.push({ sp: z.label, fl: z.fl });
+  if (!items.length) return;
+  if (labelMode === 'none') { for (const it of items) it.sp.visible = false; return; }
+  if (labelMode === 'all') return;
+  const hf = selUniforms.uHoverFl.value;
+  if (labelMode === 'floor') { for (const it of items) it.sp.visible = hf >= 0 ? it.fl === hf : false; if (hf >= 0) return; for (const it of items) it.sp.visible = true; }
+  for (const it of items) { _lab.copy(it.sp.position).project(activeCamera); it.x = (_lab.x + 1) / 2 * innerWidth; it.y = (1 - _lab.y) / 2 * innerHeight; it.d = _lab.z; it.w = it.sp.userData.px * it.sp.userData.aspect; it.h = it.sp.userData.px; it.pri = (it.fl === hf ? 0 : 1); }
+  items.sort((a, b) => a.pri - b.pri || a.d - b.d);
+  const placed = [];
+  for (const it of items) {
+    if (it.d > 1) { it.sp.visible = false; continue; }
+    const ok = placed.every(p => Math.abs(p.x - it.x) * 2 > p.w + it.w + 14 || Math.abs(p.y - it.y) * 2 > p.h + it.h + 6);
+    it.sp.visible = ok; if (ok) placed.push(it);
+  }
 }
 function clearSelection() {
   if (sel.mesh) { selGroup.remove(sel.mesh); sel.mesh.geometry.dispose(); sel.mesh.material.dispose(); sel.mesh = null; }
   if (sel.lines) { selGroup.remove(sel.lines); sel.lines.geometry.dispose(); sel.lines.material.dispose(); sel.lines = null; }
   for (const sp of sel.markers) { selGroup.remove(sp); sp.material.map.dispose(); sp.material.dispose(); }
   for (const z of sel.zones) { selGroup.remove(z.mesh, z.edge); z.mesh.geometry.dispose(); z.mesh.material.dispose(); z.edge.geometry.dispose(); z.edge.material.dispose(); if (z.label) { selGroup.remove(z.label); z.label.material.map.dispose(); z.label.material.dispose(); } }
+  for (const u of sel.underlays) { selGroup.remove(u); u.geometry.dispose(); u.material.dispose(); } sel.underlays = [];
   zoneDetail.style.display = 'none';
   sel.zones = []; sel.markers = []; sel.bid = -1; dispUniforms.uHide.value = -1; infoEl.style.display = 'none'; selUniforms.uHoverFl.value = -1;
 }
@@ -1389,7 +1505,7 @@ document.getElementById('btn-city-rebuild').addEventListener('click', () => {
   dispAnim = { from: 1, to: 0, start: performance.now(), ms: 5200, rebuild: true };
 });
 const secChk = document.getElementById('chk-section'), secInput = document.getElementById('section-h'), secValue = document.getElementById('section-value');
-const applySection = () => { const on = secChk.checked; const h = parseFloat(secInput.value); sectionPlane.constant = on ? h : 5000; secValue.textContent = on ? `${h.toFixed(0)}m` : 'オフ'; updateSectionCap(); };
+const applySection = () => { const on = secChk.checked; const h = parseFloat(secInput.value); sectionPlane.constant = on ? h : 5000; secValue.textContent = on ? `${h.toFixed(0)}m` : 'オフ'; updateSectionCap(); layoutUnderlays(); };
 secChk.addEventListener('change', applySection); secInput.addEventListener('input', () => { if (!secChk.checked) secChk.checked = true; applySection(); });
 const densInput = document.getElementById('point-density');
 densInput.addEventListener('input', () => { if (pointsObj) pointsObj.material.uniforms.uDensity.value = parseFloat(densInput.value); });
@@ -1492,12 +1608,21 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { const i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { const i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
 const easeOut = t => 1 - Math.pow(1 - t, 3);
 const clock = new THREE.Clock(); let elapsed = 0;
+function updateLabels() {
+  activeCamera.updateMatrixWorld();
+  if (groups.labels.visible) for (const sp of groups.labels.children) layoutSprite(sp);
+  for (const sp of floorLabelSprites) layoutSprite(sp);
+  const cut = sectionPlane.constant;
+  for (const sp of sel.markers) { layoutSprite(sp); if (sp.userData.filtered || sp.position.y > cut) sp.visible = false; }
+  for (const z of sel.zones) if (z.label && (z.mesh.visible === false || z.label.position.y > cut)) z.label.visible = false;
+  declutterLabels();
+}
 function animate() {
   requestAnimationFrame(animate);
   if (window.__app?.paused) return;
@@ -1514,10 +1639,7 @@ function animate() {
     if (t >= 1) dispAnim = null;
   }
   stepFlow(dt); stepRouteFlow(dt); updateHover(performance.now());
-  if (groups.labels.visible) for (const sp of groups.labels.children) layoutSprite(sp);
-  for (const sp of floorLabelSprites) layoutSprite(sp);
-  for (const sp of sel.markers) { layoutSprite(sp); if (sp.userData.filtered) sp.visible = false; }
-  for (const z of sel.zones) if (z.label && z.mesh.visible === false) z.label.visible = false;
+  updateLabels();
   composer.render();
 }
 init().catch(e => { loadingText.textContent = `読み込みエラー: ${e.message}`; console.error(e); });

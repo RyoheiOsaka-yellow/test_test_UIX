@@ -17,8 +17,13 @@ const result = await build({
 const js = result.outputFiles[0].text;
 const pack = readFileSync(join(root, 'data/minatomirai.pack')).toString('base64');
 let guide = ''; try { guide = readFileSync(join(root, 'data/floorguide.csv'), 'utf8'); } catch (e) { }
+// 下敷き画像 (公式フロアマップ) を data URL で埋め込む
+let underlays = [];
+try {
+  underlays = JSON.parse(readFileSync(join(root, 'data/underlays.json'), 'utf8')).map(u => ({ ...u, data: 'data:image/jpeg;base64,' + readFileSync(join(root, 'data/underlays', u.file)).toString('base64') }));
+} catch (e) { }
 const html = readFileSync(join(root, 'src/index.html'), 'utf8')
-  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};`)
+  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};window.__UNDERLAYS=${JSON.stringify(underlays)};`)
   .replace('/*__APP__*/', () => js);
 mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(join(root, 'dist/index.html'), html);
