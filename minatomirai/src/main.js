@@ -683,6 +683,8 @@ function applyRepMode() {
 
 // ---- テナント・店舗 POI (OSM) -----------------------------------------------------
 let poiData = [], poiPoints = null, poiByBuilding = new Map();
+const CAT_COLOR = { '飲食': '#e0652f', '物販': '#e8a33d', 'サービス': '#8c5ae0', 'オフィス': '#5a6b8c', '医療': '#d04a7a', '公共': '#2fb27a', '宿泊': '#2f7fe0', 'その他': '#9aa3b5' };
+const catColor = c => CAT_COLOR[c] ?? CAT_COLOR['その他'];
 const POI_GROUP_COLOR = { shop: '#e0652f', amenity: '#2f7fe0', office: '#5a6b8c', craft: '#8c5ae0', tourism: '#2fb27a', leisure: '#2fb27a', healthcare: '#d04a7a' };
 const FLOOR_H = 3.6;
 const poiY = q => { const b = q.b >= 0 ? buildingMeta[q.b] : null; const base = b ? b.z[0] : terrainSampler(q.x, q.y); return base + (q.lv ?? 0) * FLOOR_H + 1.6; };
@@ -690,7 +692,7 @@ function buildPOI(list) {
   poiData = (list || []).map(q => ({ ...q, x: q.x / 10, y: q.y / 10 }));
   for (const q of poiData) if (q.b >= 0) { if (!poiByBuilding.has(q.b)) poiByBuilding.set(q.b, []); poiByBuilding.get(q.b).push(q); }
   const pos = new Float32Array(poiData.length * 3), col = new Float32Array(poiData.length * 3);
-  poiData.forEach((q, i) => { pos[i * 3] = q.x; pos[i * 3 + 1] = poiY(q); pos[i * 3 + 2] = -q.y; const c = hex(POI_GROUP_COLOR[q.g] ?? '#888'); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; });
+  poiData.forEach((q, i) => { pos[i * 3] = q.x; pos[i * 3 + 1] = poiY(q); pos[i * 3 + 2] = -q.y; const c = hex(catColor(q.c)); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; });
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const mat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: innerHeight / 2 }, uPR: { value: renderer.getPixelRatio() }, uSize: { value: 2.2 }, uMin: { value: 3 }, uMax: { value: 7 }, uOpacity: { value: 0.95 }, uColor: { value: new THREE.Color() } },
@@ -713,8 +715,79 @@ const pickPOI = (sx, sy) => {
 };
 const lvLabel = lv => lv == null ? '階不明' : lv >= 0 ? `${lv + 1}F` : `B${-lv}`;
 
+// ---- フロアガイド CSV (building,floor,zone,name,category,share,source) -------------------
+let floorGuide = new Map();   // building name -> Map(fl -> [{zone,name,category,share}])
+const parseFloor = f => { f = String(f || '').trim().toUpperCase(); if (!f) return null; const b = f.match(/^B(\d+)/); if (b) return -Number(b[1]); if (f === 'GL' || f === 'G') return 0; const n = parseFloat(f); return isNaN(n) ? null : Math.round(n) - 1; };
+const parseCSV = text => {
+  const rows = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += ch; }
+    else if (ch === '"') q = true; else if (ch === ',') { row.push(field); field = ''; } else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; } else field += ch;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  const head = (rows.shift() || []).map(h => h.trim().replace(/^\ufeff/, ''));
+  return rows.filter(r => r.some(v => v.trim())).map(r => Object.fromEntries(head.map((h, i) => [h, (r[i] ?? '').trim()])));
+};
+function loadFloorGuide(text) {
+  floorGuide = new Map(); let n = 0;
+  for (const r of parseCSV(text)) {
+    const fl = parseFloor(r.floor); if (!r.building || fl == null || !r.name) continue;
+    if (!floorGuide.has(r.building)) floorGuide.set(r.building, new Map());
+    const fm = floorGuide.get(r.building); if (!fm.has(fl)) fm.set(fl, []);
+    fm.get(fl).push({ zone: r.zone || '', name: r.name, category: r.category || 'その他', share: Math.max(0.05, parseFloat(r.share) || 1), source: r.source || '' }); n++;
+  }
+  return n;
+}
+const guideFor = name => { if (!name) return null; if (floorGuide.has(name)) return floorGuide.get(name); for (const [k, v] of floorGuide) if (name.includes(k) || k.includes(name)) return v; return null; };
+const floorName = fl => fl < 0 ? `B${-fl}` : `${fl + 1}F`;
+const floorGuideTemplate = (name, nFloors) => {
+  const g = guideFor(name); const lines = ['building,floor,zone,name,category,share,source'];
+  for (let fl = nFloors - 1; fl >= -2; fl--) {
+    const zs = g?.get(fl) ?? [];
+    if (zs.length) for (const z of zs) lines.push([name, floorName(fl), z.zone, z.name, z.category, z.share, z.source].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    else lines.push(`"${name}",${floorName(fl)},,,,1,`);
+  }
+  return lines.join('\n');
+};
+
+// 2D 凸包 (Andrew's monotone chain) と帯状分割
+const convexHull = pts => {
+  pts = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]); if (pts.length < 3) return pts;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], hi = [];
+  for (const p of pts) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop(); hi.push(p); }
+  return lo.slice(0, -1).concat(hi.slice(0, -1));
+};
+const clipHalf = (poly, nx, ny, c, keepLess) => { // n·p <= c (keepLess) を残す
+  const out = []; const f = p => nx * p[0] + ny * p[1] - c;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length]; const fa = f(a), fb = f(b);
+    const ia = keepLess ? fa <= 0 : fa >= 0, ib = keepLess ? fb <= 0 : fb >= 0;
+    if (ia) out.push(a);
+    if (ia !== ib) { const t = fa / (fa - fb); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+  }
+  return out;
+};
+function stripPartition(hull, zones) {
+  // 主軸 (最長方向) に沿って share 比で帯に分ける
+  let cx = 0, cy = 0; for (const p of hull) { cx += p[0]; cy += p[1]; } cx /= hull.length; cy /= hull.length;
+  let sxx = 0, sxy = 0, syy = 0; for (const p of hull) { const dx = p[0] - cx, dy = p[1] - cy; sxx += dx * dx; sxy += dx * dy; syy += dy * dy; }
+  const ang = 0.5 * Math.atan2(2 * sxy, sxx - syy); const ax = Math.cos(ang), ay = Math.sin(ang);
+  const proj = hull.map(p => (p[0] - cx) * ax + (p[1] - cy) * ay); const lo = Math.min(...proj), hi = Math.max(...proj);
+  const total = zones.reduce((a, z) => a + z.share, 0); let acc = lo; const out = [];
+  for (const z of zones) {
+    const w = (hi - lo) * z.share / total; const c0 = acc, c1 = acc + w; acc = c1;
+    let poly = clipHalf(hull, ax, ay, cx * ax + cy * ay + c0, false); if (poly.length >= 3) poly = clipHalf(poly, ax, ay, cx * ax + cy * ay + c1, true);
+    if (poly.length >= 3) out.push({ zone: z, poly });
+  }
+  return out;
+}
+
 // ---- 建物の選択・階分解 (選択した建物をフロアごとにスライスして分解) -------------------
-const sel = { bid: -1, mesh: null, lines: null, markers: [], gap: 0, floors: 0 };
+const sel = { bid: -1, mesh: null, lines: null, markers: [], gap: 0, floors: 0, zones: [], hull: null };
+let floorCatMode = false;  // 階を用途色で塗る
 const selGroup = new THREE.Group(); scene.add(selGroup);
 const infoEl = document.getElementById('info'), infoBody = document.getElementById('info-body'), infoTitle = document.getElementById('info-title');
 function sliceBuilding(bid, floorH) {
@@ -770,7 +843,7 @@ function sliceBuilding(bid, floorH) {
   const lgeo = new THREE.BufferGeometry(); lgeo.setAttribute('position', new THREE.Float32BufferAttribute(lpos, 3)); lgeo.setAttribute('fl', new THREE.Float32BufferAttribute(lfl, 1));
   return { geo, lgeo, triFloor, nFloors, base };
 }
-const selUniforms = { uGap: { value: 0 }, uHoverFl: { value: -1 } };
+const selUniforms = { uGap: { value: 0 }, uHoverFl: { value: -1 }, uCat: { value: 0 } };
 function selectBuilding(bid) {
   clearSelection();
   if (bid < 0 || bid == null) return;
@@ -778,18 +851,24 @@ function selectBuilding(bid) {
   const { geo, lgeo, triFloor, nFloors, base } = sliceBuilding(bid, FLOOR_H);
   sel.floors = nFloors; sel.base = base; sel.triFloor = triFloor;
   const t = T();
+  // 階ごとの用途色 (フロアガイド優先、無ければ OSM POI の多数決)
+  const guide = guideFor(m.n); const tenantsAll = poiByBuilding.get(bid) ?? [];
+  const floorCat = fl => { const zs = guide?.get(fl); const list = zs?.length ? zs.map(z => z.category) : tenantsAll.filter(q => (q.lv ?? 0) === fl).map(q => q.c); if (!list.length) return null; const cnt = {}; for (const c of list) cnt[c] = (cnt[c] || 0) + 1; return Object.entries(cnt).sort((a, b) => b[1] - a[1])[0][0]; };
+  const fc = new Float32Array(geo.attributes.fl.count * 3); const flA = geo.attributes.fl; const catCache = new Map();
+  for (let i = 0; i < flA.count; i++) { const fl = flA.getX(i); if (!catCache.has(fl)) { const c = floorCat(fl); catCache.set(fl, c ? hex(catColor(c)) : null); } const c = catCache.get(fl); if (c) { fc[i * 3] = c.r; fc[i * 3 + 1] = c.g; fc[i * 3 + 2] = c.b; } else { fc[i * 3] = -1; } }
+  geo.setAttribute('fc', new THREE.BufferAttribute(fc, 3));
   const fmat = new THREE.ShaderMaterial({
-    uniforms: { uFace: { value: hex(t.face) }, uLine: { value: hex(t.faceLine) }, uGap: selUniforms.uGap, uHoverFl: selUniforms.uHoverFl, uHover: { value: hex(t.hover.map(v => v).join ? '#ffffff' : '#ffffff') } },
-    vertexShader: `attribute float fl; uniform float uGap; varying float vFl; varying vec3 vW; void main(){ vFl = fl; vec4 wp = modelMatrix * vec4(position + vec3(0.0, fl * uGap, 0.0), 1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
-    fragmentShader: `uniform vec3 uFace, uLine; uniform float uHoverFl; varying float vFl; varying vec3 vW;
+    uniforms: { uFace: { value: hex(t.face) }, uLine: { value: hex(t.faceLine) }, uGap: selUniforms.uGap, uHoverFl: selUniforms.uHoverFl, uCat: selUniforms.uCat },
+    vertexShader: `attribute float fl; attribute vec3 fc; uniform float uGap; varying float vFl; varying vec3 vW, vFc; void main(){ vFl = fl; vFc = fc; vec4 wp = modelMatrix * vec4(position + vec3(0.0, fl * uGap, 0.0), 1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `uniform vec3 uFace, uLine; uniform float uHoverFl, uCat; varying float vFl; varying vec3 vW, vFc;
       void main(){ vec3 fn = normalize(cross(dFdx(vW), dFdy(vW))); vec3 col = uFace * (0.92 + 0.08 * abs(fn.x) + 0.04 * abs(fn.z));
         // 偶数階/奇数階でごく薄く色分け
         col = mix(col, uLine, mod(vFl, 2.0) * 0.06);
+        if (uCat > 0.5 && vFc.x >= 0.0) col = mix(col, vFc, 0.55);
         if (abs(vFl - uHoverFl) < 0.5) col = mix(col, vec3(0.2, 0.7, 1.0), 0.35);
         gl_FragColor = vec4(col, 1.0); }`,
     polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 1.5,
   });
-  sel.uHoverCol = fmat.uniforms.uHover;
   sel.mesh = new THREE.Mesh(geo, fmat); selGroup.add(sel.mesh);
   const lmat = new THREE.LineBasicMaterial({ color: t.edge, transparent: true, opacity: 0.9 });
   lmat.onBeforeCompile = sh => { sh.uniforms.uGap = selUniforms.uGap; sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float fl; uniform float uGap;').replace('#include <begin_vertex>', 'vec3 transformed = vec3(position) + vec3(0.0, fl * uGap, 0.0);'); };
@@ -798,30 +877,66 @@ function selectBuilding(bid) {
   dispUniforms.uHide.value = bid;
   // テナントマーカー
   const tenants = poiByBuilding.get(bid) ?? [];
+  const guided = new Set(); if (guide) for (const zs of guide.values()) for (const z of zs) guided.add(z.name);
   for (const q of tenants) {
-    const sp = makeTextSprite(q.n, '#1f2a44', { scale: 0.13, themeColor: tt => tt.labelGlow === false ? '#1b2f55' : '#ffe9b0' }); sp.userData.q = q; sp.userData.fadeFrom = 1200; selGroup.add(sp); sel.markers.push(sp);
+    if (guided.has(q.n)) continue;  // フロアガイドにある店は区画プレート側でラベル表示
+    const sp = makeTextSprite(q.n, catColor(q.c), { scale: 0.13, themeColor: tt => tt.labelGlow === false ? catColor(q.c) : '#ffe9b0' }); sp.userData.q = q; sp.userData.fadeFrom = 1200; selGroup.add(sp); sel.markers.push(sp);
+  }
+  // 区画プレート: フロアガイドの各階を凸包の帯分割で区画化
+  if (guide) {
+    const P = buildingMesh.geometry.attributes.position; const pts = [];
+    for (let tr = buildingStarts[bid]; tr < buildingStarts[bid + 1]; tr++) for (let k = 0; k < 3; k++) { const vi = buildingMesh.geometry.index.array[tr * 3 + k]; pts.push([P.getX(vi), -P.getZ(vi)]); }
+    sel.hull = convexHull(pts);
+    for (const [fl, zs] of guide) {
+      const parts = stripPartition(sel.hull, zs);
+      for (const { zone, poly } of parts) {
+        const shape = new THREE.Shape(poly.map(p => new THREE.Vector2(p[0], p[1])));
+        const g = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false }); g.applyMatrix4(ROT_XZ);
+        const col = catColor(zone.category);
+        const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, depthWrite: false }));
+        const edge = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.9 }));
+        let zx = 0, zy = 0; for (const q of poly) { zx += q[0]; zy += q[1]; } zx /= poly.length; zy /= poly.length;
+        const label = makeTextSprite(zone.name, col, { scale: 0.12, themeColor: tt => tt.labelGlow === false ? col : '#ffe9b0' }); label.userData.fadeFrom = 1000;
+        mesh.renderOrder = 5; selGroup.add(mesh, edge, label);
+        sel.zones.push({ fl, mesh, edge, label, zx, zy, zone });
+      }
+    }
   }
   updateSelectionLayout();
   // 情報パネル
   const h = m.h ?? Math.round(m.z[1] - m.z[0]);
   const byFl = new Map(); for (const q of tenants) { const k = q.lv == null ? 'unknown' : q.lv; if (!byFl.has(k)) byFl.set(k, []); byFl.get(k).push(q); }
   const keys = [...byFl.keys()].filter(k => k !== 'unknown').sort((a, b) => b - a);
-  const rows = keys.map(k => `<div class="info-floor"><b>${lvLabel(k)}</b> ${byFl.get(k).map(q => `<span class="tag" style="border-color:${POI_GROUP_COLOR[q.g] ?? '#888'}">${q.n}</span>`).join(' ')}</div>`).join('');
-  const unknown = byFl.get('unknown') ? `<div class="info-floor"><b>階不明</b> ${byFl.get('unknown').map(q => `<span class="tag" style="border-color:${POI_GROUP_COLOR[q.g] ?? '#888'}">${q.n}</span>`).join(' ')}</div>` : '';
+  const tag = (n, c, src) => `<span class="tag" style="border-color:${catColor(c)};${src === 'osm' || !src ? '' : 'background:' + catColor(c) + '33'}">${n}</span>`;
+  const allFl = new Set([...keys, ...(guide ? [...guide.keys()] : [])]); const flKeys = [...allFl].sort((a, b) => b - a);
+  const rows = flKeys.map(k => { const gz = guide?.get(k) ?? []; const gnames = new Set(gz.map(z => z.name)); const os = (byFl.get(k) ?? []).filter(q => !gnames.has(q.n)); return `<div class="info-floor"><b>${lvLabel(k)}</b> ${gz.map(z => tag((z.zone ? z.zone + ' ' : '') + z.name, z.category, z.source || 'guide')).join(' ')} ${os.map(q => tag(q.n, q.c, 'osm')).join(' ')}</div>`; }).join('');
+  const unknown = byFl.get('unknown') ? `<div class="info-floor"><b>階不明</b> ${byFl.get('unknown').map(q => tag(q.n, q.c, 'osm')).join(' ')}</div>` : '';
+  const legend = Object.entries(CAT_COLOR).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join('');
   infoTitle.textContent = m.n ?? '（名称なし）';
-  infoBody.innerHTML = `<div>高さ ${h} m ／ 推定 ${nFloors} 階（階高 ${FLOOR_H} m で算出）</div><div class="info-sub">テナント・施設（OpenStreetMap 登録分 ${tenants.length} 件）</div>${rows}${unknown}${tenants.length ? '' : '<div class="info-sub">この建物に登録された店舗・施設はありません</div>'}<div class="info-sub">※ 区画形状・正式な階数はオープンデータに含まれないため、階は高さからの推定です。</div>`;
+  const nGuide = guide ? [...guide.values()].reduce((a, v) => a + v.length, 0) : 0;
+  infoBody.innerHTML = `<div>高さ ${h} m ／ 推定 ${nFloors} 階（階高 ${FLOOR_H} m）${m.parts > 1 ? ` ／ ${m.parts} 部位を統合` : ''}</div>
+    <label class="row" style="padding:4px 0"><input type="checkbox" id="chk-floorcat" ${floorCatMode ? 'checked' : ''} /> 階を用途色で塗る</label>
+    <div class="legend" style="margin:2px 0 6px">${legend}</div>
+    <div class="info-sub">フロアガイド ${nGuide} 区画（CSV）／ OSM 店舗 ${tenants.length} 件</div>${rows}${unknown}${tenants.length || nGuide ? '' : '<div class="info-sub">この建物に登録された店舗・施設はありません</div>'}
+    <div class="btn-row" style="margin-top:8px"><button id="btn-guide-template">この建物の CSV 雛形</button><button id="btn-guide-load">CSV 読み込み</button></div>
+    <div class="info-sub">※ 区画は CSV の share 比で主軸方向に帯分割した近似。正式な階数・区画形状はオープンデータに含まれません。</div>`;
+  document.getElementById('chk-floorcat').addEventListener('change', e => { floorCatMode = e.target.checked; selUniforms.uCat.value = floorCatMode ? 1 : 0; });
+  document.getElementById('btn-guide-template').addEventListener('click', () => download(new Blob(['\ufeff' + floorGuideTemplate(m.n ?? '', nFloors)], { type: 'text/csv' }), `floorguide_${(m.n ?? 'building').replace(/[\\/:*?"<>|]/g, '_')}.csv`));
+  document.getElementById('btn-guide-load').addEventListener('click', () => guideFileInput.click());
   infoEl.style.display = 'block';
   document.getElementById('floor-gap').value = selUniforms.uGap.value;
 }
 function updateSelectionLayout() {
   const gap = selUniforms.uGap.value;
   for (const sp of sel.markers) { const q = sp.userData.q; const fl = Math.max(0, Math.min(sel.floors - 1, q.lv ?? 0)); sp.position.set(q.x, sel.base + fl * FLOOR_H + 1.8 + fl * gap, -q.y); layoutSprite(sp); }
+  for (const z of sel.zones) { const y = sel.base + z.fl * FLOOR_H + 0.5 + Math.max(0, z.fl) * gap; z.mesh.position.y = y; z.edge.position.y = y; z.label.position.set(z.zx, y + 2.2, -z.zy); layoutSprite(z.label); }
 }
 function clearSelection() {
   if (sel.mesh) { selGroup.remove(sel.mesh); sel.mesh.geometry.dispose(); sel.mesh.material.dispose(); sel.mesh = null; }
   if (sel.lines) { selGroup.remove(sel.lines); sel.lines.geometry.dispose(); sel.lines.material.dispose(); sel.lines = null; }
   for (const sp of sel.markers) { selGroup.remove(sp); sp.material.map.dispose(); sp.material.dispose(); }
-  sel.markers = []; sel.bid = -1; dispUniforms.uHide.value = -1; infoEl.style.display = 'none'; selUniforms.uHoverFl.value = -1;
+  for (const z of sel.zones) { selGroup.remove(z.mesh, z.edge, z.label); z.mesh.geometry.dispose(); z.mesh.material.dispose(); z.edge.geometry.dispose(); z.edge.material.dispose(); z.label.material.map.dispose(); z.label.material.dispose(); }
+  sel.zones = []; sel.markers = []; sel.bid = -1; dispUniforms.uHide.value = -1; infoEl.style.display = 'none'; selUniforms.uHoverFl.value = -1;
 }
 onTheme(t => { if (sel.mesh) { sel.mesh.material.uniforms.uFace.value.set(t.face); sel.mesh.material.uniforms.uLine.value.set(t.faceLine); sel.lines.material.color.set(t.edge); } });
 
@@ -1220,6 +1335,9 @@ recBtn.addEventListener('click', () => {
 });
 const lineInput = document.getElementById('line-scale'), lineValue = document.getElementById('line-scale-value');
 lineInput.addEventListener('input', () => { lineScale = parseFloat(lineInput.value); lineValue.textContent = `×${lineScale.toFixed(2)}`; for (const fn of themed) fn(T()); });
+const guideFileInput = document.createElement('input'); guideFileInput.type = 'file'; guideFileInput.accept = '.csv,text/csv'; guideFileInput.style.display = 'none'; document.body.appendChild(guideFileInput);
+guideFileInput.addEventListener('change', async () => { const f = guideFileInput.files[0]; if (!f) return; const n = loadFloorGuide(await f.text()); guideFileInput.value = ''; const b = sel.bid; if (b >= 0) selectBuilding(b); routeResult.textContent = `フロアガイド CSV を読み込みました（${n} 区画）`; });
+if (window.__FLOORGUIDE) loadFloorGuide(window.__FLOORGUIDE);
 document.getElementById('floor-gap').addEventListener('input', e => { selUniforms.uGap.value = parseFloat(e.target.value); updateSelectionLayout(); });
 document.getElementById('btn-info-close').addEventListener('click', () => clearSelection());
 document.getElementById('chk-poi').addEventListener('change', e => { if (poiPoints) poiPoints.visible = e.target.checked; });
@@ -1290,7 +1408,7 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), selectByName: n => { const i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { const i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();

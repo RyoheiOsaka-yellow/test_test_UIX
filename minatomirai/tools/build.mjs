@@ -16,8 +16,9 @@ const result = await build({
 });
 const js = result.outputFiles[0].text;
 const pack = readFileSync(join(root, 'data/minatomirai.pack')).toString('base64');
+let guide = ''; try { guide = readFileSync(join(root, 'data/floorguide.csv'), 'utf8'); } catch (e) { }
 const html = readFileSync(join(root, 'src/index.html'), 'utf8')
-  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};`)
+  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};`)
   .replace('/*__APP__*/', () => js);
 mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(join(root, 'dist/index.html'), html);

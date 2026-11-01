@@ -157,12 +157,35 @@ def load_meshes(decfn, idxfn, geoid_fn=None):
             feats[g] = {"tris": tris[b], "meta": meta}
     return feats
 
+# 複数の部位 (PLATEAU では別地物) に分かれている大型施設を 1 棟として扱う名称
+MERGE_NAMES = {"クイーンズスクエア横浜", "MARK IS minatomirai", "ランドマークプラザ", "横浜ランドマークタワー", "パシフィコ横浜", "パシフィコ横浜ノース",
+               "Yokohama World Porters", "横浜美術館", "横浜市役所", "横浜ハンマーヘッド", "横浜ベイクォーター", "そごう横浜店", "横浜スカイビル", "コレットマーレ", "横浜ワールドポーターズ"}
+
 def pack_meshes(feats, zoff, order=None, name_fn=None):
-    """溶接・量子化し、地物ごとに三角形を並べたメッシュを作る。"""
+    """溶接・量子化し、地物ごとに三角形を並べたメッシュを作る。MERGE_NAMES の同名部位は 1 地物に統合する。"""
     vmap = {}; verts = []; idx = []; starts = []; metas = []
     keys = order or list(feats.keys())
+    # 名前解決と統合グループ化
+    names = {}
     for g in keys:
         f = feats[g]
+        xs = [p[0] for t in f["tris"] for p in t]; ys = [p[1] for t in f["tris"] for p in t]
+        names[g] = name_fn(g, f, sum(xs) / len(xs), sum(ys) / len(ys)) if name_fn else f["meta"].get("gml:name")
+    groups = []; seen = {}
+    for g in keys:
+        n = names[g]
+        if n in MERGE_NAMES:
+            if n in seen: groups[seen[n]].append(g); continue
+            seen[n] = len(groups)
+        groups.append([g])
+    merged = 0
+    for grp in groups:
+        if len(grp) > 1: merged += 1
+        g = grp[0]
+        f = {"tris": [t for k in grp for t in feats[k]["tris"]],
+             "meta": {"gml:name": names[g], "bldg:measuredHeight": max((feats[k]["meta"].get("bldg:measuredHeight") or 0) for k in grp) or None,
+                      "brid:function": feats[g]["meta"].get("brid:function"), "brid:class": feats[g]["meta"].get("brid:class")},
+             "parts": len(grp)}
         starts.append(len(idx) // 3)
         xs = []; ys = []; zmin = 1e9; zmax = -1e9
         for tri in f["tris"]:
@@ -177,13 +200,14 @@ def pack_meshes(feats, zoff, order=None, name_fn=None):
         cx = sum(xs) / len(xs); cy = sum(ys) / len(ys)
         m = f["meta"]
         metas.append({
-            "n": name_fn(g, f, cx, cy) if name_fn else m.get("gml:name"),
+            "n": m.get("gml:name"), "parts": f.get("parts", 1),
             "h": m.get("bldg:measuredHeight"),
             "fn": m.get("brid:function"),
             "c": [dm(cx), dm(cy)], "z": [round(zmin, 1), round(zmax, 1)],
             "bb": [dm(min(xs)), dm(min(ys)), dm(max(xs)), dm(max(ys))],
         })
     starts.append(len(idx) // 3)
+    if merged: print("  merged multi-part buildings:", merged)
     return verts, idx, starts, metas
 
 # ---- OSM --------------------------------------------------------------------
@@ -284,6 +308,23 @@ def build_roads_from_mvt():
 
 POI_KEYS = ("shop", "amenity", "office", "craft", "tourism", "leisure", "healthcare")
 POI_SKIP = {"parking", "bicycle_parking", "bicycle_rental", "information", "artwork", "toilets", "vending_machine", "atm", "bench", "waste_basket", "parking_entrance", "motorcycle_parking", "charging_station", "viewpoint", "pitch", "park", "garden", "playground", "fountain", "drinking_water", "post_box", "telephone", "taxi", "bus_station", "ferry_terminal", "shelter", "car_sharing", "loading_dock", "smoking_area", "bicycle_repair_station", "apartment", "apartments", "yes"}
+CATEGORY = {  # (OSM キー, 値) -> 用途カテゴリ
+    "飲食": {"restaurant", "cafe", "pub", "bar", "fast_food", "bakery", "ice_cream", "food_court", "biergarten", "confectionery", "pastry", "tea", "coffee", "wine", "alcohol", "beverages", "seafood", "deli"},
+    "医療": {"doctors", "dentist", "pharmacy", "clinic", "hospital", "optician", "chemist", "veterinary", "massage", "physiotherapist"},
+    "公共": {"government", "townhall", "post_office", "police", "library", "museum", "community_centre", "public_building", "courthouse", "fire_station", "embassy", "social_facility", "university", "college", "school", "kindergarten", "place_of_worship", "theatre", "cinema", "arts_centre", "gallery", "attraction", "zoo", "aquarium", "exhibition_centre", "conference_centre", "events_venue", "fitness_centre", "sports_centre"},
+    "宿泊": {"hotel", "hostel", "guest_house", "motel", "apartment"},
+    "サービス": {"hairdresser", "beauty", "bank", "estate_agent", "travel_agency", "dry_cleaning", "laundry", "car_rental", "insurance", "lawyer", "accountant", "tattoo", "nails", "photo", "copyshop", "money_lender", "bureau_de_change", "driving_school", "language_school", "music_school", "childcare", "coworking", "fitness", "gym", "yoga"},
+}
+def poi_category(g, k):
+    for cat, vals in CATEGORY.items():
+        if k in vals: return cat
+    if g == "shop": return "物販"
+    if g == "office": return "オフィス"
+    if g == "craft": return "サービス"
+    if g in ("tourism", "leisure"): return "公共"
+    if g == "healthcare": return "医療"
+    return "その他"
+
 def build_poi(nodes, ways, cache):
     """OSM の名前つき店舗・施設 POI。level タグがあれば階層 (整数) を持つ。"""
     out = []
@@ -303,7 +344,7 @@ def build_poi(nodes, ways, cache):
         if not k: continue
         x, y = to_local(lon, lat)
         if not inbox(x, y): continue
-        out.append({"n": t["name"], "k": v, "g": k, "lv": lv_of(t), "x": dm(x), "y": dm(y)})
+        out.append({"n": t["name"], "k": v, "g": k, "c": poi_category(k, v), "lv": lv_of(t), "x": dm(x), "y": dm(y)})
     for w, (nd, t) in ways.items():
         if not t.get("name") or "building" in t: continue
         k, v = kind(t)
@@ -312,7 +353,7 @@ def build_poi(nodes, ways, cache):
         if not pts: continue
         x = sum(p[0] for p in pts) / len(pts); y = sum(p[1] for p in pts) / len(pts)
         if not inbox(x, y): continue
-        out.append({"n": t["name"], "k": v, "g": k, "lv": lv_of(t), "x": dm(x), "y": dm(y)})
+        out.append({"n": t["name"], "k": v, "g": k, "c": poi_category(k, v), "lv": lv_of(t), "x": dm(x), "y": dm(y)})
     return out
 
 def assign_poi_to_buildings(pois, bmetas):

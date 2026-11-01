@@ -67,6 +67,22 @@ npm run build                            # -> dist/index.html
 座標を平面直角座標 IX 系（EPSG:6677、原点＝みなとみらい駅）へ変換し、頂点を 10 cm 単位で量子化・溶接して格納する。
 標高は、建物最下点の楕円体高と DEM 標高の差の中央値からジオイド高を推定して揃えている。
 
+## フロアガイド CSV（区画の手入力）
+
+`data/floorguide.csv` に「建物名, 階, 区画記号, テナント名, 用途, 幅比, 出典」を書くと、建物選択時に各階を
+主軸方向の帯で区画分けして描画し、用途色（飲食／物販／サービス／オフィス／医療／公共／宿泊）で塗る。
+画面右パネルの「この建物の CSV 雛形」で階数ぶんの空行入り CSV を書き出し、編集後に「CSV 読み込み」で即時反映できる
+（ビルド不要）。`tools/make_floorguide_seed.py` は OSM の階層つき店舗 POI から雛形を生成する。
+
+```
+building,floor,zone,name,category,share,source
+MARK IS minatomirai,4F,A,KAMAKURA,飲食,1,osm
+MARK IS minatomirai,4F,B,HONOLULU COFFEE,飲食,1,osm
+```
+
+クイーンズスクエア横浜・ランドマークプラザ・MARK IS など、PLATEAU で複数部位に分かれる大型施設は
+`MERGE_NAMES`（build_data.py）で 1 棟に統合している。
+
 ## テナント・区画データについて
 
 - 区画（テナント境界ポリゴン）やフロア構成は PLATEAU にも OSM にも含まれないため、本ツールでは
