@@ -15,7 +15,7 @@ page.on('pageerror', e => logs.push(`[pageerror] ${e.message}`));
 await page.goto('file://' + resolve('dist/index.html'));
 await page.waitForFunction(() => !document.getElementById('loading') || /エラー/.test(document.getElementById('loading-text')?.textContent || ''), null, { timeout: 180000 });
 await page.waitForTimeout(3500);
-console.log(logs.filter(l => !/\[log\]/.test(l)).join('\n') || '(no console errors)');
+console.log(logs.filter(l => !/\[log\]/.test(l) || /edges/.test(l)).join('\n') || '(no console errors)');
 const info = await page.evaluate(() => {
   const a = window.__app; if (!a) return null;
   return { buildings: a.header.buildings.meta.length, bridges: a.header.bridges.meta.length, nodes: a.graph.nodes.length, links: a.graph.links.length, stations: a.header.stations.length, labels: a.header.labels.length, bench: a.benchmark(3) };
@@ -50,9 +50,9 @@ const route = await page.evaluate(() => {
   return { from: [from.x, from.y, from.lv], to: [to.x, to.y, to.lv], len: r && Math.round(r.length), moves: r && r.moves.map(m => `${m.vt}:${m.from}>${m.to}`), lenBF: r2 && Math.round(r2.length), movesBF: r2 && r2.moves.map(m => `${m.vt}:${m.from}>${m.to}`), stairsBF: r2 && r2.usedStairs };
 });
 console.log('route test', JSON.stringify(route));
-await shot('10_paper', `a.applyTheme('paper'); a.setExpand(1); a.camera.position.set(-520, 260, 420); a.controls.target.set(-40, 80, 300);`);
+await shot('10_line', `a.applyTheme('line'); a.setExpand(1); a.camera.position.set(-520, 260, 420); a.controls.target.set(-40, 80, 300);`);
 await shot('11_night', `a.applyTheme('night');`);
-await page.evaluate(() => { window.__app.applyTheme('line'); document.getElementById('btn-blueprint').click(); });
+await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });
 await shot('08_blueprint', ``);
 await page.screenshot({ path: `${out}/09_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
 await browser.close();

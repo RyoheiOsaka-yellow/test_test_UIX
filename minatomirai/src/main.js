@@ -67,36 +67,36 @@ async function loadPack() {
 const THEMES = {
   line: {  // 細線の BIM 風線画 (暗背景)
     bg: '#05070f', fog: '#05070f', fogDensity: 0.00030, skyTop: '#05070f', skyHorizon: '#05070f', far: '#05070f', bloom: false, tone: false,
-    face: '#090d1c', faceLine: '#9cc4ff', faceLineAlpha: 0.42, edge: '#b9d4ff', edgeAlpha: 0.78, edgeAdd: false,
+    face: '#090d1c', faceLine: '#9cc4ff', faceLineAlpha: 0.42, edge: '#b9d4ff', edgeAlpha: 0.78, edgeAdd: false, edgeWidth: 1.6, thinAlpha: 0.45, hatch: 0.10,
     brFace: '#0a1226', brEdge: '#a8dcff', brEdgeAlpha: 0.75,
     terrain: '#04060d', terrainAlpha: 0.9, wire: '#1c2c52', wireAlpha: 0.08,
     sea: '#061226', seaAlpha: 0.9, inland: '#081a33', water: '#3f7fd0', waterLineAlpha: 0.55,
     road: '#070b16', roadAlpha: 0.9, roadLine: '#6d87b8', roadLineAlpha: 0.5,
     green: '#07140f', greenLine: '#2f8f5a', greenLineAlpha: 0.5,
-    net: '#39e1ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0],
+    net: '#39e1ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0], label: '#7ef0ff',
   },
   paper: { // 白図面
-    bg: '#f4f6fa', fog: '#f4f6fa', fogDensity: 0.00018, skyTop: '#f4f6fa', skyHorizon: '#e3e9f3', far: '#f0f3f8', bloom: false, tone: false,
-    face: '#ffffff', faceLine: '#35466b', faceLineAlpha: 0.55, edge: '#1f2a44', edgeAlpha: 0.85, edgeAdd: false,
+    bg: '#f4f6fa', fog: '#f4f6fa', fogDensity: 0.00026, skyTop: '#f4f6fa', skyHorizon: '#e3e9f3', far: '#f0f3f8', bloom: false, tone: false,
+    face: '#ffffff', faceLine: '#35466b', faceLineAlpha: 0.5, edge: '#1a2340', edgeAlpha: 0.9, edgeAdd: false, edgeWidth: 1.9, thinAlpha: 0.5, hatch: 0.2,
     brFace: '#f7f9fc', brEdge: '#2a3a5c', brEdgeAlpha: 0.8,
     terrain: '#f0f3f8', terrainAlpha: 0.95, wire: '#c8d2e2', wireAlpha: 0.25,
     sea: '#dfe9f6', seaAlpha: 0.95, inland: '#d5e3f4', water: '#6f9bd3', waterLineAlpha: 0.7,
     road: '#eaeef4', roadAlpha: 0.95, roadLine: '#6d7fa3', roadLineAlpha: 0.6,
     green: '#e4efe7', greenLine: '#5e9b79', greenLineAlpha: 0.6,
-    net: '#0a7fc4', netPts: '#0a5f9a', hover: [0.1, 0.55, 1.0],
+    net: '#0a7fc4', netPts: '#0a5f9a', hover: [0.1, 0.55, 1.0], label: '#163f7a', labelGlow: false,
   },
   night: { // 夜景 (窓明かり)
     bg: '#04050c', fog: '#070a18', fogDensity: 0.0003, skyTop: '#02030a', skyHorizon: '#0d1a3a', far: '#060912', bloom: true, tone: true,
-    face: '#2b3e6c', faceLine: '#9cc4ff', faceLineAlpha: 0.0, edge: '#6fa0ff', edgeAlpha: 0.2, edgeAdd: true,
+    face: '#2b3e6c', faceLine: '#9cc4ff', faceLineAlpha: 0.0, edge: '#6fa0ff', edgeAlpha: 0.25, edgeAdd: true, edgeWidth: 1.0, thinAlpha: 0.12, hatch: 0.0,
     brFace: '#2d5a8a', brEdge: '#8fd0ff', brEdgeAlpha: 0.25,
     terrain: '#0b1020', terrainAlpha: 0.62, wire: '#1a2b52', wireAlpha: 0.12,
     sea: '#0d3b6e', seaAlpha: 0.72, inland: '#124a86', water: '#3f7fd0', waterLineAlpha: 0.0,
     road: '#151c33', roadAlpha: 0.7, roadLine: '#c466ff', roadLineAlpha: 0.22,
     green: '#0f3a2a', greenLine: '#2f8f5a', greenLineAlpha: 0.0,
-    net: '#00e5ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0],
+    net: '#00e5ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0], label: '#7ef0ff',
   },
 };
-let styleName = 'line';
+let styleName = 'paper';
 const T = () => THEMES[styleName];
 const themed = [];   // { apply(theme) } を登録し、スタイル切替時に一括適用
 const onTheme = fn => { themed.push(fn); fn(T()); };
@@ -199,16 +199,24 @@ const flatGeometry = (shape, depth) => {
 };
 const fixNorth = g => g;
 
-const makeTextSprite = (text, color, { font = 'bold 56px "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif', pad = 24, scale = 0.28 } = {}) => {
+const LABEL_FONT = 'bold 56px "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif';
+const textTexture = (text, color, { glow = true, pad = 24 } = {}) => {
   const c = document.createElement('canvas'); const ctx = c.getContext('2d');
-  ctx.font = font; const w = Math.ceil(ctx.measureText(text).width) + pad * 2; c.width = w; c.height = 96;
-  ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.shadowColor = color; ctx.shadowBlur = 18; ctx.fillStyle = color; ctx.fillText(text, w / 2, 48);
-  ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillText(text, w / 2, 48);
+  ctx.font = LABEL_FONT; const w = Math.ceil(ctx.measureText(text).width) + pad * 2; c.width = w; c.height = 96;
+  ctx.font = LABEL_FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (glow) { ctx.shadowColor = color; ctx.shadowBlur = 18; ctx.fillStyle = color; ctx.fillText(text, w / 2, 48); ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,0.85)'; }
+  else { ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineJoin = 'round'; ctx.strokeText(text, w / 2, 48); ctx.fillStyle = color; }
+  ctx.fillText(text, w / 2, 48);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return { tex, w };
+};
+const makeTextSprite = (text, color, { scale = 0.28, themeColor = null } = {}) => {
+  const { tex, w } = textTexture(text, color);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.92, depthWrite: false, sizeAttenuation: false, depthTest: false }));
   sp.userData.aspect = w / 96; sp.userData.px = scale * 96; // scale = 画面上の高さ(px)相当
   sp.renderOrder = 12;
+  // テーマ切替で文字色を差し替える (themeColor: テーマ -> 色 を返す関数)
+  onTheme(t => { const col = themeColor ? themeColor(t) : color; const r = textTexture(text, col, { glow: t.labelGlow !== false }); sp.material.map.dispose(); sp.material.map = r.tex; sp.material.needsUpdate = true; });
   return sp;
 };
 
@@ -380,10 +388,10 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c' }) {
 // 線画用: 隠線処理のための面 (背景色に近い塗り) + 階ライン・方立ラインを細線で描く
 function drawingMaterial({ floors = true } = {}) {
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uFace: { value: hex('#090d1c') }, uLine: { value: hex('#9cc4ff') }, uLineAlpha: { value: 0.42 }, uHover: bldUniforms.uHover, uHoverCol: { value: new THREE.Vector3(0.35, 0.85, 1.0) }, uFloors: { value: floors ? 1 : 0 }, fogColor: { value: new THREE.Color() }, fogDensity: { value: 0 } },
+    uniforms: { uFace: { value: hex('#090d1c') }, uLine: { value: hex('#9cc4ff') }, uLineAlpha: { value: 0.42 }, uHover: bldUniforms.uHover, uHoverCol: { value: new THREE.Vector3(0.35, 0.85, 1.0) }, uFloors: { value: floors ? 1 : 0 }, uHatch: { value: 0.1 }, fogColor: { value: new THREE.Color() }, fogDensity: { value: 0 } },
     vertexShader: `attribute float bid; varying float vBid; varying vec3 vWPos; varying float vFogDepth;
       void main(){ vBid = bid; vec4 wp = modelMatrix * vec4(position, 1.0); vWPos = wp.xyz; vec4 mv = viewMatrix * wp; vFogDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `uniform vec3 uFace, uLine, uHoverCol, fogColor; uniform float uLineAlpha, uHover, uFloors, fogDensity;
+    fragmentShader: `uniform vec3 uFace, uLine, uHoverCol, fogColor; uniform float uLineAlpha, uHover, uFloors, uHatch, fogDensity;
       varying float vBid; varying vec3 vWPos; varying float vFogDepth;
       void main(){
         vec3 fn = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
@@ -401,6 +409,14 @@ function drawingMaterial({ floors = true } = {}) {
           float l = max(floorLine, mullion * 0.45) * uLineAlpha * fade;
           col = mix(col, uLine, l);
         }
+        // ハッチング: 面の向きに合わせた世界座標の 45° 斜線 (1.2m ピッチ)。屋根・床面は濃く、壁面は薄く
+        if (uHatch > 0.001) {
+          float hc = abs(fn.y) > 0.5 ? (vWPos.x + vWPos.z) : ((abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x) + vWPos.y);
+          float hf = hc / 1.6; float hd = min(fract(hf), 1.0 - fract(hf)); float hw = fwidth(hf);
+          float hatch = (1.0 - smoothstep(hw * 0.5, hw * 1.4, hd)) * clamp(1.0 - (vFogDepth - 500.0) / 1200.0, 0.0, 1.0);
+          float hs = abs(fn.y) > 0.5 ? 1.0 : 0.45;
+          col = mix(col, uLine, hatch * uHatch * hs);
+        }
         if (abs(vBid - uHover) < 0.5) col = mix(col, uHoverCol, 0.45);
         float f = 1.0 - exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);
         col = mix(col, fogColor, clamp(f, 0.0, 1.0));
@@ -416,17 +432,32 @@ function addBidAttribute(g, starts) {
   g.setAttribute('bid', new THREE.BufferAttribute(bid, 1));
 }
 let bldFaces = true;   // 面を描く (隠線処理) か、線のみか
-const styledMeshes = []; // { mesh, drawing, night, edges, kind }
-function setupStyledMesh(mesh, drawing, night, edges, kind) {
-  styledMeshes.push({ mesh, drawing, night, edges, kind });
+const styledMeshes = []; // { mesh, drawing, night, thick, thin, kind }
+// 外形線 (折れ角 thickDeg 以上) は太線、補助線 (thinDeg 以上) は 1px の細線で描く
+function makeEdgeLines(g, thinDeg, thickDeg, group) {
+  const thinGeo = new THREE.EdgesGeometry(g, thinDeg);
+  const thin = new THREE.LineSegments(thinGeo, new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.5 }));
+  const thickGeo = new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(g, thickDeg));
+  const thickMat = new LineMaterial({ color: 0xffffff, linewidth: 1.8, worldUnits: false, transparent: true, opacity: 0.9, depthWrite: true }); thickMat.fog = true;
+  thickMat.resolution.set(innerWidth, innerHeight);
+  const thick = new LineSegments2(thickGeo, thickMat); thick.computeLineDistances();
+  group.add(thin, thick);
+  return { thin, thick, thinCount: thinGeo.attributes.position.count / 2, thickCount: thickGeo.attributes.instanceStart.count };
+}
+function setupStyledMesh(mesh, drawing, night, lines, kind) {
+  styledMeshes.push({ mesh, drawing, night, lines, kind });
   onTheme(t => {
     const isNight = t.bloom;
     mesh.material = isNight ? night : drawing;
     mesh.visible = isNight || bldFaces;
     drawing.uniforms.uFace.value.set(kind === 'brid' ? t.brFace : t.face); drawing.uniforms.uLine.value.set(t.faceLine); drawing.uniforms.uLineAlpha.value = kind === 'brid' ? t.faceLineAlpha * 0.5 : t.faceLineAlpha;
+    drawing.uniforms.uHatch.value = kind === 'brid' ? t.hatch * 0.6 : t.hatch;
     drawing.uniforms.uHoverCol.value.set(...t.hover); drawing.uniforms.fogColor.value.set(t.fog); drawing.uniforms.fogDensity.value = t.fogDensity;
-    edges.material.color.set(kind === 'brid' ? t.brEdge : t.edge); edges.material.opacity = kind === 'brid' ? t.brEdgeAlpha : t.edgeAlpha;
-    edges.material.blending = t.edgeAdd ? THREE.AdditiveBlending : THREE.NormalBlending; edges.material.depthWrite = !t.edgeAdd; edges.material.needsUpdate = true;
+    const col = kind === 'brid' ? t.brEdge : t.edge;
+    lines.thin.material.color.set(col); lines.thin.material.opacity = (kind === 'brid' ? t.brEdgeAlpha : t.edgeAlpha) * t.thinAlpha / 0.5;
+    lines.thin.material.blending = t.edgeAdd ? THREE.AdditiveBlending : THREE.NormalBlending; lines.thin.material.depthWrite = !t.edgeAdd; lines.thin.material.needsUpdate = true;
+    lines.thick.material.color.set(col); lines.thick.material.opacity = kind === 'brid' ? t.brEdgeAlpha : t.edgeAlpha; lines.thick.material.linewidth = t.edgeWidth;
+    lines.thick.material.blending = t.edgeAdd ? THREE.AdditiveBlending : THREE.NormalBlending; lines.thick.material.depthWrite = !t.edgeAdd; lines.thick.material.needsUpdate = true;
   });
 }
 function buildBuildings(blobs, header) {
@@ -435,21 +466,18 @@ function buildBuildings(blobs, header) {
   addBidAttribute(g, buildingStarts);
   buildingMesh = new THREE.Mesh(g, drawingMaterial()); buildingMesh.name = 'bldg';
   groups.buildings.add(buildingMesh);
-  // 輪郭線: 折れ角 14° 以上の辺をすべて拾う (曲面のファセットも線として出る)
-  const eg = new THREE.EdgesGeometry(g, 14);
-  const edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#b9d4ff', transparent: true, opacity: 0.78 }));
-  groups.edges.add(edges);
-  setupStyledMesh(buildingMesh, buildingMesh.material, cityMaterial({ windows: true }), edges, 'bldg');
+  // 輪郭線: 折れ角 14° 以上を細線、60° 以上 (外形・コーナー) を太線で描く
+  const lines = makeEdgeLines(g, 14, 60, groups.edges);
+  console.log(`building edges: thin ${lines.thinCount}, thick ${lines.thickCount}`);
+  setupStyledMesh(buildingMesh, buildingMesh.material, cityMaterial({ windows: true }), lines, 'bldg');
 }
 function buildBridges(blobs, header) {
   const g = meshFromPack(blobs.brid_pos, blobs.brid_idx);
   bridgeMesh = new THREE.Mesh(g, drawingMaterial({ floors: false })); bridgeMesh.name = 'brid';
   groups.bridges.add(bridgeMesh);
   bridgeMeta = header.bridges.meta; bridgeStarts = header.bridges.starts;
-  const eg = new THREE.EdgesGeometry(g, 20);
-  const edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#a8dcff', transparent: true, opacity: 0.75 }));
-  groups.bridges.add(edges);
-  setupStyledMesh(bridgeMesh, bridgeMesh.material, cityMaterial({ windows: false, color: '#2d5a8a', emissive: '#0f2a4a' }), edges, 'brid');
+  const lines = makeEdgeLines(g, 20, 65, groups.bridges);
+  setupStyledMesh(bridgeMesh, bridgeMesh.material, cityMaterial({ windows: false, color: '#2d5a8a', emissive: '#0f2a4a' }), lines, 'brid');
 }
 
 // ---- 鉄道 -----------------------------------------------------------------
@@ -715,7 +743,7 @@ function buildStations(spaces) {
       const fm = new THREE.Mesh(merged, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false })); fm.userData.isFill = true; g.add(fm); fillMeshes.push(fm); fillRanges.set(fm, ranges);
     }
     // 階層ラベル (みなとみらい駅の北西側)
-    const sp = makeTextSprite(`${f?.label ?? lv}`, f?.color ?? '#fff', { scale: 0.16 });
+    const sp = makeTextSprite(`${f?.label ?? lv}`, f?.color ?? '#fff', { scale: 0.16, themeColor: t => t.labelGlow === false ? '#1b2f55' : (f?.color ?? '#fff') });
     sp.position.set(-120, terrainSampler(-120, -40) + 4, 40); sp.userData.fadeFrom = 900; g.add(sp); floorLabelSprites.push(sp);
   }
   updateFloorPositions();
@@ -728,8 +756,7 @@ function updateFloorPositions() {
 function buildLabels(labels) {
   for (const l of labels) {
     if (l.kind !== 'station') continue;   // 建物名はホバー表示のみ
-    const color = '#7ef0ff';
-    const sp = makeTextSprite(l.n, color, { scale: l.kind === 'station' ? 0.2 : 0.17 });
+    const sp = makeTextSprite(l.n, '#7ef0ff', { scale: 0.2, themeColor: t => t.label });
     sp.position.set(l.p[0], terrainSampler(l.p[0], l.p[1]) + l.h, -l.p[1]);
     sp.userData.kind = l.kind; sp.userData.fadeFrom = l.kind === 'station' ? 2600 : 1500; groups.labels.add(sp);
   }
