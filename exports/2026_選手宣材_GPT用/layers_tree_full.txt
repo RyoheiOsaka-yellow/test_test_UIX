@@ -1,0 +1,428 @@
+size 951 1195 mode 3 channels 3 depth 8
+has composite: True
+[group] '背景' vis=True bbox=(-263, -411, 3147, 1508)
+  [pixel] 'レイヤー 1' vis=True bbox=(0, 0, 951, 1195)
+  [pixel] 'title-1718667966913' vis=True bbox=(-263, -411, 3147, 1508)
+  [pixel] 'unnamed' vis=True bbox=(-149, -78, 1350, 1046)
+  [pixel] 'グラデーション 41' vis=True bbox=(0, 0, 951, 1195)
+  [solidcolorfill] 'べた塗り 2' vis=True bbox=(0, 0, 951, 1195)
+  [solidcolorfill] 'べた塗り 1' vis=True bbox=(0, 946, 951, 1195)
+  [pixel] 'グラデーション 21' vis=True bbox=(0, 437, 951, 1205)
+  [pixel] '大森FCエンブレム_wh' vis=True bbox=(77, 12, 904, 838)
+  [type] 'OHMORI FC' vis=True bbox=(-4, 6, 179, 851) TEXT='OHMORI FC'
+  [pixel] 'グラデーション 34' vis=True bbox=(0, 684, 951, 1065)
+[group] '#81' vis=False bbox=(0, 0, 0, 0)
+  [type] '81' vis=True bbox=(621, 6, 931, 190) TEXT='81'
+  [pixel] 'レイヤー 13' vis=False bbox=(140, 7, 809, 1026)
+  [smartobject] '31_LINE_ALBUM_2026 TOP_260407_7' vis=False bbox=(-148, -395, 1100, 1268) SO=31_LINE_ALBUM_2026 TOP_260407_7.jpg jpeg 168128B
+  [smartobject] '81_LINE_ALBUM_2026 TOP_260407_9' vis=True bbox=(-1, -202, 950, 1066) SO=81_LINE_ALBUM_2026 TOP_260407_9.jpg jpeg 202072B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '79' vis=False bbox=(0, 0, 0, 0)
+  [type] '79' vis=True bbox=(587, 6, 933, 190) TEXT='79'
+  [smartobject] '79_神田悠成_LINE_ALBUM_20261006_261006_9' vis=False bbox=(27, 0, 924, 1195) SO=79_神田悠成_LINE_ALBUM_20261006_261006_9.jpg jpeg 4949158B
+  [pixel] 'レイヤー 44' vis=True bbox=(184, 7, 767, 1176)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '69' vis=False bbox=(0, 0, 0, 0)
+  [type] '69' vis=True bbox=(579, 6, 933, 190) TEXT='69'
+  [smartobject] '69_徳本郁登_LINE_ALBUM_20261006_261006_2' vis=False bbox=(27, 0, 924, 1195) SO=69_徳本郁登_LINE_ALBUM_20261006_261006_2.jpg jpeg 5027127B
+  [pixel] 'レイヤー 43' vis=True bbox=(110, 12, 744, 1094)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#46' vis=False bbox=(0, 0, 0, 0)
+  [type] '46' vis=True bbox=(584, 6, 933, 190) TEXT='46'
+  [smartobject] '46_平良悠辰_LINE_ALBUM_20261006_261006_8' vis=False bbox=(27, 0, 924, 1195) SO=46_平良悠辰_LINE_ALBUM_20261006_261006_8.jpg jpeg 4921466B
+  [pixel] 'レイヤー 42' vis=True bbox=(115, -2, 766, 1186)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#44' vis=False bbox=(0, 0, 0, 0)
+  [type] '44' vis=True bbox=(588, 7, 939, 189) TEXT='44'
+  [smartobject] '44_平山彪我_LINE_ALBUM_20261006_261006_3' vis=False bbox=(27, 0, 924, 1195) SO=44_平山彪我_LINE_ALBUM_20261006_261006_3.jpg jpeg 4775478B
+  [pixel] 'レイヤー 41' vis=True bbox=(123, 43, 766, 1065)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#40' vis=False bbox=(0, 0, 0, 0)
+  [type] '40' vis=True bbox=(583, 6, 933, 190) TEXT='40'
+  [pixel] 'レイヤー 12' vis=True bbox=(90, -10, 880, 1004)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=True bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#37' vis=False bbox=(0, 0, 0, 0)
+  [type] '37' vis=True bbox=(595, 5, 938, 190) TEXT='37'
+  [smartobject] '37_小林真虎_LINE_ALBUM_20261006_261006_5' vis=False bbox=(27, 0, 924, 1195) SO=37_小林真虎_LINE_ALBUM_20261006_261006_5.jpg jpeg 5065083B
+  [pixel] 'レイヤー 40' vis=True bbox=(101, 2, 744, 1128)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#33' vis=False bbox=(0, 0, 0, 0)
+  [type] '33' vis=True bbox=(592, 5, 934, 190) TEXT='33'
+  [smartobject] '33_京増蓮_LINE_ALBUM_20261006_261006_4' vis=False bbox=(27, 0, 924, 1195) SO=33_京増蓮_LINE_ALBUM_20261006_261006_4.jpg jpeg 5018132B
+  [pixel] 'レイヤー 39' vis=True bbox=(27, 23, 874, 1122)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#31' vis=False bbox=(0, 0, 0, 0)
+  [type] '31' vis=True bbox=(627, 5, 931, 190) TEXT='31'
+  [pixel] 'レイヤー 13' vis=False bbox=(140, 7, 809, 1026)
+  [smartobject] '31_LINE_ALBUM_2026 TOP_260407_7' vis=True bbox=(-148, -395, 1100, 1268) SO=31_LINE_ALBUM_2026 TOP_260407_7.jpg jpeg 168128B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#30' vis=True bbox=(0, -2, 951, 1487)
+  [type] '30' vis=True bbox=(586, 5, 933, 190) TEXT='30'
+  [smartobject] '30_田中虎太郎_LINE_ALBUM_20261006_261006_7' vis=False bbox=(27, 0, 924, 1195) SO=30_田中虎太郎_LINE_ALBUM_20261006_261006_7.jpg jpeg 5253006B
+  [pixel] 'レイヤー 38' vis=True bbox=(14, -2, 848, 1487)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#27' vis=False bbox=(0, 0, 0, 0)
+  [type] '27' vis=True bbox=(596, 6, 938, 189) TEXT='27'
+  [smartobject] '27_岩崎晄芽LINE_ALBUM_20261006_261006_6' vis=False bbox=(27, 0, 924, 1195) SO=27_岩崎晄芽LINE_ALBUM_20261006_261006_6.jpg jpeg 5049327B
+  [pixel] 'レイヤー 37' vis=True bbox=(108, -10, 843, 1437)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 684, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#26' vis=False bbox=(0, 0, 0, 0)
+  [type] '26' vis=True bbox=(588, 6, 933, 190) TEXT='26'
+  [pixel] 'レイヤー 36' vis=True bbox=(1, -29, 864, 1456)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#25' vis=False bbox=(0, 0, 0, 0)
+  [type] '25' vis=True bbox=(591, 6, 935, 190) TEXT='25'
+  [pixel] 'レイヤー 14' vis=False bbox=(126, 8, 884, 1027)
+  [smartobject] '25_LINE_ALBUM_2026 TOP_260407_42' vis=True bbox=(-99, -329, 1050, 1203) SO=25_LINE_ALBUM_2026 TOP_260407_42.jpg jpeg 206029B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#24' vis=False bbox=(0, 0, 0, 0)
+  [type] '24' vis=True bbox=(592, 6, 939, 189) TEXT='24'
+  [pixel] 'レイヤー 14' vis=False bbox=(126, 8, 884, 1027)
+  [smartobject] '23_LINE_ALBUM_2026 TOP_260407_55' vis=False bbox=(-88, -287, 1068, 1255) SO=23_LINE_ALBUM_2026 TOP_260407_55.jpg jpeg 198179B
+  [smartobject] '24_LINE_ALBUM_2026 TOP_260407_52' vis=True bbox=(-96, -371, 1046, 1151) SO=24_LINE_ALBUM_2026 TOP_260407_52.jpg jpeg 211850B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#23' vis=False bbox=(0, 0, 0, 0)
+  [type] '23' vis=True bbox=(594, 5, 933, 190) TEXT='23'
+  [pixel] 'レイヤー 14' vis=False bbox=(126, 8, 884, 1027)
+  [smartobject] '23_LINE_ALBUM_2026 TOP_260407_55' vis=True bbox=(-88, -287, 1068, 1255) SO=23_LINE_ALBUM_2026 TOP_260407_55.jpg jpeg 198179B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#22' vis=False bbox=(0, 0, 0, 0)
+  [type] '22' vis=True bbox=(597, 6, 937, 189) TEXT='22'
+  [pixel] 'レイヤー 14' vis=False bbox=(126, 8, 884, 1027)
+  [smartobject] '23_LINE_ALBUM_2026 TOP_260407_55' vis=False bbox=(-88, -287, 1068, 1255) SO=23_LINE_ALBUM_2026 TOP_260407_55.jpg jpeg 198179B
+  [smartobject] '22_LINE_ALBUM_2026 TOP_260407_45' vis=True bbox=(-80, -331, 1059, 1188) SO=22_LINE_ALBUM_2026 TOP_260407_45.jpg jpeg 217193B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#21' vis=False bbox=(0, 0, 0, 0)
+  [type] '21' vis=True bbox=(629, 6, 931, 189) TEXT='21'
+  [pixel] 'レイヤー 14' vis=False bbox=(126, 8, 884, 1027)
+  [smartobject] '21_LINE_ALBUM_2026 TOP_260407_49' vis=True bbox=(-102, -411, 1082, 1168) SO=21_LINE_ALBUM_2026 TOP_260407_49.jpg jpeg 210910B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#20' vis=False bbox=(0, 0, 0, 0)
+  [type] '20' vis=True bbox=(587, 6, 933, 190) TEXT='20'
+  [pixel] 'レイヤー 15' vis=False bbox=(100, -6, 771, 1001)
+  [smartobject] 'ベクトルスマートオブジェクト' vis=False bbox=(142, -2, 839, 1037) SO=ベクトルスマートオブジェクト.ai pdf 2008426B
+  [smartobject] '20_LINE_ALBUM_2026 TOP_260407_41' vis=True bbox=(-70, -265, 1025, 1195) SO=20_LINE_ALBUM_2026 TOP_260407_41.jpg jpeg 218133B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [levels] 'レベル補正 1' vis=False bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=False bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#18' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 8' vis=False bbox=(145, -2, 843, 1009)
+  [smartobject] '10_LINE_ALBUM_2026 TOP_260407_30' vis=False bbox=(-224, -367, 1082, 1375) SO=10_LINE_ALBUM_2026 TOP_260407_30.jpg jpeg 168109B
+  [pixel] 'レイヤー 34' vis=True bbox=(42, -17, 816, 1195)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '18' vis=True bbox=(621, 6, 935, 190) TEXT='18'
+[group] '#17' vis=False bbox=(0, 0, 0, 0)
+  [type] '17' vis=True bbox=(629, 7, 938, 189) TEXT='17'
+  [pixel] 'レイヤー 26' vis=False bbox=(152, -13, 751, 1046)
+  [pixel] 'レイヤー 27' vis=False bbox=(179, -6, 808, 1103)
+  [pixel] 'レイヤー 33' vis=True bbox=(110, -23, 752, 1218)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#14' vis=False bbox=(0, 0, 0, 0)
+  [type] '14' vis=True bbox=(625, 7, 939, 189) TEXT='14'
+  [pixel] 'レイヤー 16' vis=False bbox=(149, 7, 800, 1139)
+  [pixel] 'レイヤー 16 のコピー' vis=False bbox=(149, 7, 800, 1139)
+  [pixel] 'レイヤー 35' vis=True bbox=(89, -2, 748, 1335)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#13' vis=False bbox=(0, 0, 0, 0)
+  [type] '13' vis=True bbox=(627, 5, 933, 190) TEXT='13'
+  [pixel] 'レイヤー 17' vis=False bbox=(120, -10, 849, 1004)
+  [smartobject] '13_LINE_ALBUM_2026 TOP_260407_34' vis=True bbox=(-24, -411, 1045, 1013) SO=13_LINE_ALBUM_2026 TOP_260407_34.jpg jpeg 187761B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#12' vis=False bbox=(0, 0, 0, 0)
+  [type] '12' vis=True bbox=(629, 6, 937, 189) TEXT='12'
+  [pixel] 'レイヤー 18' vis=False bbox=(125, -13, 884, 1235)
+  [smartobject] '12_LINE_ALBUM_2026 TOP_260407_4' vis=True bbox=(-93, -187, 1011, 1284) SO=12_LINE_ALBUM_2026 TOP_260407_4.jpg jpeg 208612B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#11' vis=False bbox=(0, 0, 0, 0)
+  [type] '11' vis=True bbox=(662, 7, 931, 189) TEXT='11'
+  [pixel] 'レイヤー 19' vis=False bbox=(142, -13, 867, 1185)
+  [smartobject] '11_LINE_ALBUM_2026 TOP_260407_36' vis=True bbox=(-149, -446, 1059, 1165) SO=11_LINE_ALBUM_2026 TOP_260407_36.jpg jpeg 191783B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+[group] '#10' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 8' vis=False bbox=(145, -2, 843, 1009)
+  [smartobject] '10_LINE_ALBUM_2026 TOP_260407_30' vis=True bbox=(-224, -367, 1082, 1375) SO=10_LINE_ALBUM_2026 TOP_260407_30.jpg jpeg 168109B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '10' vis=True bbox=(620, 6, 933, 190) TEXT='10'
+[group] 'HERE WE GO #10' vis=False bbox=(0, 0, 0, 0)
+  [group] '背景 のコピー' vis=True bbox=(0, 0, 0, 0)
+    [pixel] 'レイヤー 1' vis=True bbox=(0, 0, 951, 1195)
+    [pixel] 'title-1718667966913' vis=True bbox=(-263, -411, 3147, 1508)
+    [pixel] 'unnamed' vis=True bbox=(-149, -78, 1350, 1046)
+    [pixel] 'グラデーション 41' vis=True bbox=(0, 0, 951, 1195)
+    [solidcolorfill] 'べた塗り 2' vis=True bbox=(0, 0, 951, 1195)
+    [solidcolorfill] 'べた塗り 1' vis=True bbox=(0, 946, 951, 1195)
+    [pixel] 'グラデーション 21' vis=True bbox=(0, 437, 951, 1205)
+    [pixel] '大森FCエンブレム_wh' vis=True bbox=(77, 12, 904, 838)
+    [pixel] 'グラデーション 34' vis=True bbox=(0, 684, 951, 1065)
+  [pixel] 'レイヤー 8' vis=False bbox=(429, -7, 1132, 1012)
+  [pixel] 'レイヤー 30' vis=True bbox=(80, 90, 870, 1104)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'レイヤー 28' vis=True bbox=(27, 50, 504, 937)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'OHMORI FC' vis=False bbox=(401, 22, 580, 946) TEXT='OHMORI FC'
+  [type] 'OHMORI FC のコピー 2' vis=False bbox=(401, 22, 580, 946) TEXT='OHMORI FC'
+  [pixel] 'OHMORI FC のコピー' vis=False bbox=(389, 10, 592, 958)
+  [solidcolorfill] 'べた塗り 3' vis=True bbox=(389, 10, 592, 958)
+  [type] 'HERE WE GO!' vis=True bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '10' vis=True bbox=(26, 762, 339, 946) TEXT='10'
+[group] 'HERE WE GO #40' vis=False bbox=(0, 0, 0, 0)
+  [group] '背景 のコピー' vis=True bbox=(0, 0, 0, 0)
+    [pixel] 'レイヤー 1' vis=True bbox=(0, 0, 951, 1195)
+    [pixel] 'title-1718667966913' vis=True bbox=(-263, -411, 3147, 1508)
+    [pixel] 'unnamed' vis=True bbox=(-149, -78, 1350, 1046)
+    [pixel] 'グラデーション 41' vis=True bbox=(0, 0, 951, 1195)
+    [solidcolorfill] 'べた塗り 2' vis=True bbox=(0, 0, 951, 1195)
+    [solidcolorfill] 'べた塗り 1' vis=True bbox=(0, 946, 951, 1195)
+    [pixel] 'グラデーション 21' vis=True bbox=(0, 437, 951, 1205)
+    [pixel] '大森FCエンブレム_wh' vis=True bbox=(77, 12, 904, 838)
+    [pixel] 'グラデーション 34' vis=True bbox=(0, 684, 951, 1065)
+  [pixel] 'レイヤー 8' vis=False bbox=(429, -7, 1132, 1012)
+  [pixel] 'レイヤー 31' vis=True bbox=(454, -8, 1448, 1267)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'レイヤー 28' vis=False bbox=(27, 50, 504, 937)
+  [pixel] 'レイヤー 29' vis=True bbox=(0, 52, 445, 937)
+  [curves] 'トーンカーブ 2' vis=True bbox=(0, 0, 0, 0)
+  [colorbalance] 'カラーバランス 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'OHMORI FC' vis=False bbox=(401, 22, 580, 946) TEXT='OHMORI FC'
+  [type] 'OHMORI FC のコピー 2' vis=False bbox=(401, 22, 580, 946) TEXT='OHMORI FC'
+  [pixel] 'OHMORI FC のコピー' vis=False bbox=(389, 10, 592, 958)
+  [solidcolorfill] 'べた塗り 3' vis=True bbox=(389, 10, 592, 958)
+  [type] 'HERE WE GO!' vis=True bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '40' vis=True bbox=(-11, 762, 339, 946) TEXT='40'
+[group] '#9' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 20' vis=False bbox=(124, -8, 846, 1081)
+  [smartobject] '9_LINE_ALBUM_2026 TOP_260407_28' vis=True bbox=(-92, -363, 1061, 1174) SO=9_LINE_ALBUM_2026 TOP_260407_28.jpg jpeg 204288B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '9' vis=True bbox=(685, 6, 933, 190) TEXT='9'
+[group] '#8' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 21' vis=False bbox=(140, -7, 849, 1136)
+  [smartobject] '8_LINE_ALBUM_2026 TOP_260407_26' vis=True bbox=(-123, -423, 1073, 1172) SO=8_LINE_ALBUM_2026 TOP_260407_26.jpg jpeg 170031B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '8' vis=True bbox=(686, 6, 935, 190) TEXT='8'
+[group] '#7' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 22' vis=False bbox=(119, -13, 871, 1110)
+  [smartobject] '7_LINE_ALBUM_2026 TOP_260407_23' vis=True bbox=(-104, -470, 1130, 1175) SO=7_LINE_ALBUM_2026 TOP_260407_23.jpg jpeg 190890B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '7' vis=True bbox=(694, 7, 938, 189) TEXT='7'
+[group] '#6' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 23' vis=False bbox=(145, 0, 852, 1128)
+  [smartobject] '6_LINE_ALBUM_2026 TOP_260407_21' vis=True bbox=(-107, -310, 1058, 1243) SO=6_LINE_ALBUM_2026 TOP_260407_21.jpg jpeg 200030B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '6' vis=True bbox=(686, 6, 933, 190) TEXT='6'
+[group] '#5' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 24' vis=False bbox=(114, -25, 902, 1114)
+  [smartobject] '5_LINE_ALBUM_2026 TOP_260407_18' vis=True bbox=(-98, -273, 1068, 1282) SO=5_LINE_ALBUM_2026 TOP_260407_18.jpg jpeg 208540B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '5' vis=True bbox=(690, 7, 935, 190) TEXT='5'
+[group] '#4' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 25' vis=False bbox=(108, 7, 861, 1176)
+  [smartobject] '4_LINE_ALBUM_2026 TOP_260407_15' vis=True bbox=(-68, -242, 1039, 1235) SO=4_LINE_ALBUM_2026 TOP_260407_15.jpg jpeg 204490B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '4' vis=True bbox=(690, 7, 939, 189) TEXT='4'
+[group] '#3' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 25' vis=False bbox=(108, 7, 861, 1176)
+  [smartobject] '4_LINE_ALBUM_2026 TOP_260407_15' vis=True bbox=(-68, -242, 1039, 1235) SO=4_LINE_ALBUM_2026 TOP_260407_15.jpg jpeg 204490B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '3' vis=True bbox=(692, 5, 933, 190) TEXT='3'
+[group] '#2' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'レイヤー 10' vis=False bbox=(105, 9, 864, 1024)
+  [smartobject] '2_LINE_ALBUM_2026 TOP_260407_12' vis=True bbox=(-149, -426, 1147, 1302) SO=2_LINE_ALBUM_2026 TOP_260407_12.jpg jpeg 196476B
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=False bbox=(0, 641, 951, 1175)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '2' vis=True bbox=(694, 6, 937, 189) TEXT='2'
+  [type] 'レイヤー 11' vis=True bbox=(0, 0, 0, 0) TEXT=''
+  [type] 'Mr.器用貧乏' vis=False bbox=(189, 856, 780, 955) TEXT='Mr.器用貧乏'
+  [type] '佐野日大高校→富士大学→大森FC' vis=False bbox=(168, 1134, 784, 1173) TEXT='佐野日大高校→富士大学→大森FC'
+[group] '#1' vis=False bbox=(0, 0, 0, 0)
+  [pixel] 'レイヤー 9' vis=False bbox=(115, -16, 887, 1104)
+  [levels] 'レベル補正 1' vis=False bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=False bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=False bbox=(0, 0, 0, 0)
+  [pixel] '1_LINE_ALBUM_2026 TOP_260407_1' vis=True bbox=(4, 16, 965, 1112)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28' vis=True bbox=(0, 484, 951, 1295)
+  [pixel] 'グラデーション 28 のコピー' vis=True bbox=(0, 761, 951, 1295)
+  [type] 'HERE WE GO!' vis=False bbox=(117, 981, 833, 1132) TEXT='HERE WE GO!'
+  [type] '1' vis=True bbox=(727, 7, 931, 189) TEXT='1'
+[group] 'base' vis=True bbox=(0, 0, 0, 0)
+  [levels] 'レベル補正 1' vis=True bbox=(0, 0, 0, 0)
+  [vibrance] '自然な彩度 1' vis=True bbox=(0, 0, 0, 0)
+  [curves] 'トーンカーブ 1' vis=True bbox=(0, 0, 0, 0)
+  [pixel] 'グラデーション 28 のコピー' vis=False bbox=(0, 531, 951, 1065)
+[pixel] 'レイヤー 32' vis=False bbox=(365, 62, 604, 445)
+total layers 425
