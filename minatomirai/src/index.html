@@ -74,6 +74,8 @@ canvas { display: block; }
             <button data-style="paper" class="active">白図面</button>
             <button data-style="night">夜景</button>
         </div>
+        <div class="sec-title" style="margin-top:6px">線の太さ <span id="line-scale-value" style="color:#00e5ff;font-size:10px;margin-left:4px">×1.00</span></div>
+        <input type="range" id="line-scale" min="0.4" max="3" step="0.05" value="1" style="width:100%;accent-color:#00b7d9;cursor:pointer;margin:2px 0 4px" />
         <div class="panel-sep"></div>
         <div class="sec-title">視点</div>
         <div class="seg-row" id="view-presets">

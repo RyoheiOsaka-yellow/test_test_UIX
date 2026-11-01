@@ -67,7 +67,7 @@ async function loadPack() {
 const THEMES = {
   line: {  // 細線の BIM 風線画 (暗背景)
     bg: '#05070f', fog: '#05070f', fogDensity: 0.00030, skyTop: '#05070f', skyHorizon: '#05070f', far: '#05070f', bloom: false, tone: false,
-    face: '#090d1c', faceLine: '#9cc4ff', faceLineAlpha: 0.42, edge: '#b9d4ff', edgeAlpha: 0.78, edgeAdd: false, edgeWidth: 1.6, thinAlpha: 0.45, hatch: 0.10,
+    face: '#090d1c', faceLine: '#9cc4ff', faceLineAlpha: 0.3, edge: '#b9d4ff', edgeAlpha: 0.78, edgeAdd: false, edgeWidth: 1.0, thinAlpha: 0.32, hatch: 0.07,
     brFace: '#0a1226', brEdge: '#a8dcff', brEdgeAlpha: 0.75,
     terrain: '#04060d', terrainAlpha: 0.9, wire: '#1c2c52', wireAlpha: 0.08,
     sea: '#061226', seaAlpha: 0.9, inland: '#081a33', water: '#3f7fd0', waterLineAlpha: 0.55,
@@ -77,7 +77,7 @@ const THEMES = {
   },
   paper: { // 白図面
     bg: '#f4f6fa', fog: '#f4f6fa', fogDensity: 0.00026, skyTop: '#f4f6fa', skyHorizon: '#e3e9f3', far: '#f0f3f8', bloom: false, tone: false,
-    face: '#ffffff', faceLine: '#35466b', faceLineAlpha: 0.5, edge: '#1a2340', edgeAlpha: 0.9, edgeAdd: false, edgeWidth: 1.9, thinAlpha: 0.5, hatch: 0.2,
+    face: '#ffffff', faceLine: '#35466b', faceLineAlpha: 0.3, edge: '#1a2340', edgeAlpha: 0.85, edgeAdd: false, edgeWidth: 1.0, thinAlpha: 0.3, hatch: 0.1,
     brFace: '#f7f9fc', brEdge: '#2a3a5c', brEdgeAlpha: 0.8,
     terrain: '#f0f3f8', terrainAlpha: 0.95, wire: '#c8d2e2', wireAlpha: 0.25,
     sea: '#dfe9f6', seaAlpha: 0.95, inland: '#d5e3f4', water: '#6f9bd3', waterLineAlpha: 0.7,
@@ -432,6 +432,7 @@ function addBidAttribute(g, starts) {
   g.setAttribute('bid', new THREE.BufferAttribute(bid, 1));
 }
 let bldFaces = true;   // 面を描く (隠線処理) か、線のみか
+let lineScale = 1.0;   // 線の太さ倍率 (UI スライダー)
 const styledMeshes = []; // { mesh, drawing, night, thick, thin, kind }
 // 外形線 (折れ角 thickDeg 以上) は太線、補助線 (thinDeg 以上) は 1px の細線で描く
 function makeEdgeLines(g, thinDeg, thickDeg, group) {
@@ -451,12 +452,13 @@ function setupStyledMesh(mesh, drawing, night, lines, kind) {
     mesh.material = isNight ? night : drawing;
     mesh.visible = isNight || bldFaces;
     drawing.uniforms.uFace.value.set(kind === 'brid' ? t.brFace : t.face); drawing.uniforms.uLine.value.set(t.faceLine); drawing.uniforms.uLineAlpha.value = kind === 'brid' ? t.faceLineAlpha * 0.5 : t.faceLineAlpha;
-    drawing.uniforms.uHatch.value = kind === 'brid' ? t.hatch * 0.6 : t.hatch;
+    drawing.uniforms.uHatch.value = (kind === 'brid' ? t.hatch * 0.6 : t.hatch) * Math.min(1.5, lineScale);
+    drawing.uniforms.uLineAlpha.value *= Math.min(1.5, lineScale);
     drawing.uniforms.uHoverCol.value.set(...t.hover); drawing.uniforms.fogColor.value.set(t.fog); drawing.uniforms.fogDensity.value = t.fogDensity;
     const col = kind === 'brid' ? t.brEdge : t.edge;
-    lines.thin.material.color.set(col); lines.thin.material.opacity = (kind === 'brid' ? t.brEdgeAlpha : t.edgeAlpha) * t.thinAlpha / 0.5;
+    lines.thin.material.color.set(col); lines.thin.material.opacity = Math.min(1, (kind === 'brid' ? t.brEdgeAlpha : t.edgeAlpha) * t.thinAlpha / 0.5 * Math.min(1, lineScale));
     lines.thin.material.blending = t.edgeAdd ? THREE.AdditiveBlending : THREE.NormalBlending; lines.thin.material.depthWrite = !t.edgeAdd; lines.thin.material.needsUpdate = true;
-    lines.thick.material.color.set(col); lines.thick.material.opacity = kind === 'brid' ? t.brEdgeAlpha : t.edgeAlpha; lines.thick.material.linewidth = t.edgeWidth;
+    lines.thick.material.color.set(col); lines.thick.material.opacity = (kind === 'brid' ? t.brEdgeAlpha : t.edgeAlpha) * Math.min(1, 0.6 + lineScale * 0.4); lines.thick.material.linewidth = t.edgeWidth * lineScale;
     lines.thick.material.blending = t.edgeAdd ? THREE.AdditiveBlending : THREE.NormalBlending; lines.thick.material.depthWrite = !t.edgeAdd; lines.thick.material.needsUpdate = true;
   });
 }
@@ -828,6 +830,8 @@ bindToggle('chk-bridge', groups.bridges); bindToggle('chk-road', groups.roads); 
 document.getElementById('chk-windows').addEventListener('change', e => { bldUniforms.uWindows.value = e.target.checked ? 1 : 0; });
 const applyTheme = name => { styleName = name; const t = T(); for (const fn of themed) fn(t); document.querySelectorAll('#style-presets button').forEach(b => b.classList.toggle('active', b.dataset.style === name)); document.getElementById('row-windows').style.display = t.bloom ? '' : 'none'; };
 document.querySelectorAll('#style-presets button').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.style)));
+const lineInput = document.getElementById('line-scale'), lineValue = document.getElementById('line-scale-value');
+lineInput.addEventListener('input', () => { lineScale = parseFloat(lineInput.value); lineValue.textContent = `×${lineScale.toFixed(2)}`; for (const fn of themed) fn(T()); });
 document.getElementById('chk-faces').addEventListener('change', e => { bldFaces = e.target.checked; for (const m of styledMeshes) m.mesh.visible = T().bloom || bldFaces; });
 document.getElementById('chk-network').addEventListener('change', e => { flowPoints.visible = e.target.checked && flow.count > 0; });
 
