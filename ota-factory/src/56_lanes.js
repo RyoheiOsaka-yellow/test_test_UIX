@@ -4,14 +4,15 @@ let activeLane = null, activeModule = null;
 
 const BUILDERS = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, robotcell:()=>makeRobotCell(true),
   load:makeLoadStation, wash:makeWash, store:makeStore, asmA:()=>makeAssembly("A"), asmB:()=>makeAssembly("B"), panel:makePanelStation, wiring:makeWiringStation, ptest:makePowerTest,
-  laser:makeLaserCutter, brake:makePressBrake, weld:makeWeldCell, finish:makeFinishBooth, mask:makeMaskStation, booth:makePaintBooth, oven:makeOven, demoPrep:makeDemoPrep, demo:makeDemoStage, tcell:makeTestCellStation };
+  laser:makeLaserCutter, brake:makePressBrake, weld:makeWeldCell, finish:makeFinishBooth, mask:makeMaskStation, booth:makePaintBooth, oven:makeOven, demoPrep:makeDemoPrep, demo:makeDemoStage, tcell:()=>{ const g = makeTestCellStation(); g.scale.set(0.76, 0.85, 0.8); return g; } };
 
 // レシピ＋パラメータ → ステーション配列（[type, n] を展開）
 function expandStations(lane){
   const R = LANE_RECIPES[lane.recipe]; const ov = lane.override || {};
   // 注意: STATION_TYPES の n は表示名なので、台数 n は spread の後で上書きする
   const so = lane.stationOv || {};   // { type: { ct, n, auto, ppl } }
-  const sts = R.stations.map(([t, n], i) => ({ ...STATION_TYPES[t], idx:i+1, type:t, n: so[t]?.n ?? ov[t] ?? n, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {},
+  const off = lane.offload || [];   // 他レーンへ外出しした工程（例: 組立の試験）
+  const sts = R.stations.filter(([t]) => !off.includes(t)).map(([t, n], i) => ({ ...STATION_TYPES[t], idx:i+1, type:t, n: so[t]?.n ?? ov[t] ?? n, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {},
     ...(so[t]?.ct !== undefined ? { ct:so[t].ct } : {}), ...(so[t]?.auto ? { auto:so[t].auto } : {}), ...(so[t]?.ppl !== undefined ? { ppl:so[t].ppl } : {}) }));
   const aux = (R.aux||[]).map(([t,n], i) => ({ ...STATION_TYPES[t], idx:"A"+(i+1), type:t, n, aux:true, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {} }));
   return { sts, aux };
@@ -80,7 +81,7 @@ function generateLane(lane){
     else if (k==="crane"){ /* 既設 CR-01/02 を使用 */ }
   }
   // 区画内に残る固定設備（ラック等）は転用に伴い非表示にし、レーン削除時に復元
-  const hidden = []; for (const id in EQ_OBJ){ const o = EQ_OBJ[id]; if (o.data.generated || !["rack","bench"].includes(o.data.kind)) continue; const [x0,x1,z0,z1] = lane.area; const f = ZONES.find(z=>z[0]===o.data.zone)?.[2] ?? 1;
+  const hidden = []; for (const id in EQ_OBJ){ const o = EQ_OBJ[id]; if (o.data.generated || !["rack","bench","testcell"].includes(o.data.kind)) continue; const [x0,x1,z0,z1] = lane.area; const f = ZONES.find(z=>z[0]===o.data.zone)?.[2] ?? 1;
     if (f===lane.floor && o.data.x>x0 && o.data.x<x1 && o.data.z>z0 && o.data.z<z1 && o.group.visible){ o.group.visible = false; hidden.push(id); } }
   const obj = { lane, group:g, sts, aux, lay, stationPos, overlay:ov, eqIds, anim: ANIM.slice(animStart), strips, hidden };
   obj.kpi = computeLaneKPI(lane, sts); LANE_OBJ[lane.id] = obj; return obj;
@@ -130,8 +131,8 @@ ANIM.push({ update(t){ FLOW_UNI.t.value = t; } });
 // ================= 工場全体ライン：需要（台/月）→ 必要供給量 → 稼働率・全体ボトルネック =================
 const LANE_LINK_LINES = new THREE.Group(); LANE_LINK_LINES.name = "laneLinks";
 function monthlyOut(o){ const R = LANE_RECIPES[o.lane.recipe]; const k = o.kpi; return R.mode==="flow" ? k.out*WORK_DAYS : R.mode==="project" ? k.out : k.out*WORK_WEEKS; }
-function computePlant(){
-  const lanes = Object.values(LANE_OBJ); const asm = lanes.filter(o => LANE_RECIPES[o.lane.recipe].consumes);
+function computePlant(entries){
+  const lanes = entries || Object.values(LANE_OBJ).map(o=>({ lane:o.lane, kpi:o.kpi })); const asm = lanes.filter(o => LANE_RECIPES[o.lane.recipe].consumes);
   const asmCap = asm.reduce((a,o)=>a+o.kpi.out, 0);                       // 台/月
   const items = {}; for (const key in BOM) items[key] = { ...BOM[key], key, cap:0, lanes:[] };
   for (const o of lanes){ const R = LANE_RECIPES[o.lane.recipe]; if (!R.supplies || !items[R.supplies]) continue; const m = monthlyOut(o); items[R.supplies].cap += m; items[R.supplies].lanes.push({ id:o.lane.id, out:m, color:R.color }); }
@@ -154,3 +155,32 @@ function refreshLinkLines(){
       const lb = makeLabel(`${r.key}  ${r.need.toFixed(0)} / ${r.cap.toFixed(0)} ${r.unit}/月  ${isFinite(util)? (util*100).toFixed(0)+"%" : "供給なし"}`, { scale:0.6, bg: util>1? "rgba(120,20,20,0.85)" : "rgba(13,17,23,0.8)", accent:"#"+ln.color.toString(16).padStart(6,"0") }); lb.position.copy(mid); lb.position.y += 0.8; lb.userData.kind = "link"; LANE_LINK_LINES.add(lb); } }
   return P;
 }
+
+// ================= 3D を作らずにレーン定義を評価（what-if 用） =================
+function evalLane(laneDef){ const { sts } = expandStations(laneDef); const lay = layoutLane(laneDef, sts); const kpi = computeLaneKPI(laneDef, sts);
+  const fp = sts.filter(x=>x.kind!=="ref").reduce((a,x)=>a+x.fp[0]*x.fp[1]*x.n, 0); const capex = sts.filter(x=>x.kind!=="ref").reduce((a,x)=>a+(x.capex||0)*x.n, 0);
+  return { lane:laneDef, kpi, sts, footprint: fp*1.6, capex, overflow: lay.overflow }; }
+function cloneLane(L, patch){ return Object.assign(JSON.parse(JSON.stringify(L)), patch||{}); }
+// ---- 社内化 vs 外注 ----
+function compareInhouse(key, slot, target){ const k0 = key.replace(/^_/, ""); const it = BOM[k0], ih = INHOUSE[k0]; if (!it || !ih || !slot) return null; target = target ?? DEMAND.target; const need = target*it.perUnit; const os = it.outsource;
+  // 必要量をぎりぎり満たすシフト構成を選ぶ（1直 → 1直＋無人4h → 2直＋無人6h → 3直＋無人8h）
+  const cfgs = [[1,0],[1,4],[2,6],[3,8]]; let ev, capM, cfg;
+  for (const [sh, un] of cfgs){ cfg = [sh, un]; const L = { id:"試算", recipe:ih.recipe, zone:slot.zone, floor:slot.floor, area:slot.area.slice(), shifts:{ hours:8, shifts:sh, unattended:un, days:5 }, oee:{ avail:0.85, perf:0.92, qual:0.98 } }; ev = evalLane(L); capM = monthlyOut(ev); if (capM >= need) break; }
+  const util = capM>0 ? need/capM : Infinity;
+  const outsourceYear = need*12*os.unitCost/100;                                          // 百万円/年
+  const laborFull = ev.kpi.ppl*COST.laborPerPerson, laborYear = laborFull*Math.min(1, Math.max(util, 0.25)); // 要員は稼働率に応じて他レーンと共有（下限 25%）
+  const areaYear = ev.footprint*COST.areaRentPerM2, maintYear = ev.capex*0.05;
+  const inhouseYear = laborYear + areaYear + maintYear; const saving = outsourceYear - inhouseYear; const payback = saving>0 ? ev.capex/saving : Infinity;
+  const leadIn = ev.kpi.unit==="min" ? Math.max(1, Math.ceil(ev.kpi.lead/60/8)) : Math.ceil(ev.kpi.lead/8);
+  // 損益分岐となる需要（台/月）：回収 7 年以内になる最小の目標
+  let breakeven = null; if (target !== undefined && !key.startsWith("_")){ for (let t=0.5; t<=12; t+=0.5){ const c = compareInhouse("_"+key, slot, t); if (c && isFinite(c.payback) && c.payback <= 7){ breakeven = t; break; } } }
+  return { key:key.replace(/^_/, ""), it, os, need, L:ev.lane, ev, capM, cfg, util, outsourceYear, laborYear, laborFull, areaYear, maintYear, inhouseYear, saving, payback, leadIn, slot, breakeven }; }
+// ---- 組立シナリオ ----
+function assemblyScenarios(){ const asmO = Object.values(LANE_OBJ).find(o => LANE_RECIPES[o.lane.recipe].consumes); if (!asmO) return [];
+  const base = asmO.lane; const others = Object.values(LANE_OBJ).filter(o => o !== asmO && o.lane.recipe !== "testing").map(o=>({ lane:o.lane, kpi:o.kpi }));
+  const tslot = LANE_SLOTS.find(s=>s.id==="tcell"); const testLane = { id:"LT", recipe:"testing", zone:tslot.zone, floor:tslot.floor, area:tslot.area.slice(), shifts:{ hours:8, shifts:2, unattended:8, days:21 }, oee:{ avail:0.9, perf:0.95, qual:1 } };
+  const mk = (n, patch, withTest) => { const L = cloneLane(base, patch); const ev = evalLane(L); const entries = [...others, { lane:L, kpi:ev.kpi }]; let tev = null; if (withTest){ tev = evalLane(testLane); entries.push({ lane:testLane, kpi:tev.kpi }); }
+    const P = computePlant(entries); return { n, L, ev, tev, P, capex: ev.capex - asmO.kpi.capex0 + (tev? tev.capex : 0), ppl: ev.kpi.ppl + (tev? tev.kpi.ppl : 0) }; };
+  const cur = evalLane(base); asmO.kpi.capex0 = cur.capex;
+  const so2 = cloneLane(base.stationOv || {}); so2.asmMech = Object.assign({}, so2.asmMech, { n:2 });
+  return [ mk("現状", {}, false), mk("組立ベイ 2 並列（機械組立 ×2）", { stationOv: so2, override:{ asmMech:2 } }, false), mk("試験を試験レーンへ外出し（試験セル ×2）", { offload:["test"] }, true), mk("両方", { stationOv: so2, override:{ asmMech:2 }, offload:["test"] }, true) ]; }

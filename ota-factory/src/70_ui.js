@@ -8,6 +8,8 @@ const VIEWS = [
   ["俯瞰",      { yaw:-0.2, pitch:1.35, dist:210, target:[0,0,0] }, "ext"],
   ["東ドック",  { yaw:2.0, pitch:0.5, dist:60, target:[44,6,-14] }, "ext"],
   ["前庭・ロビー",{ yaw:-0.55, pitch:0.18, dist:70, target:[-30,4,24] }, "ext"],
+  ["西面 夕景",  { yaw:-0.78, pitch:0.26, dist:32, target:[-44,5,-16] }, "ext", "dusk"],
+  ["夜景",      { yaw:-0.5, pitch:0.3, dist:110, target:[0,6,10] }, "ext", "night"],
   ["ホール全景",{ yaw:-0.5, pitch:0.5, dist:140, target:[0,5,-12] }, 1],
   ["機械加工",  { yaw:-2.5, pitch:0.55, dist:50, target:[-28,3,-14] }, 1],
   ["組立ベイ",  { yaw:-0.7, pitch:0.45, dist:42, target:[-2,4,-16] }, 1],
@@ -24,7 +26,7 @@ function setMode(m, keepCam=false){
   $("crumb").innerHTML = m === "ext" ? "<b>外観</b> · 敷地全体" : `<b>${m}F</b> · 上階と屋根を外して表示（ドールハウス）`;
   dirtyShadow();
 }
-{ const v = $("views"); VIEWS.forEach(([n, cam, md]) => { const b = document.createElement("button"); b.className = "btn sm"; b.textContent = n; b.onclick = () => { if (walk.on) toggleWalk(false); setMode(md); setCam(cam); }; v.appendChild(b); }); }
+{ const v = $("views"); VIEWS.forEach(([n, cam, md, day]) => { const b = document.createElement("button"); b.className = "btn sm"; b.textContent = n; b.onclick = () => { if (walk.on) toggleWalk(false); setMode(md); setCam(cam); if (day){ document.querySelectorAll("#tools [data-day]").forEach(x => x.classList.toggle("on", x.dataset.day===day)); setDay(day); } }; v.appendChild(b); }); }
 document.querySelectorAll("#nav [data-mode]").forEach(b => b.onclick = () => { if (walk.on) toggleWalk(false); setMode(b.dataset.mode === "ext" ? "ext" : Number(b.dataset.mode)); const v = VIEWS.find(x => String(x[2]) === b.dataset.mode) ; if (v) setCam(v[1]); });
 document.querySelectorAll("#tools [data-day]").forEach(b => b.onclick = () => { document.querySelectorAll("#tools [data-day]").forEach(x => x.classList.remove("on")); b.classList.add("on"); setDay(b.dataset.day); });
 
@@ -117,7 +119,9 @@ const LANE_SLOTS = [
   { id:"asm",    n:"大型組立ベイ A＋B（1F）",   zone:"asm1", floor:1, area:[-11,19,-29,1] },
   { id:"elab",   n:"電子・制御ラボ（1F）",      zone:"elab", floor:1, area:[-5.5,5.5,3,17] },
   { id:"recv",   n:"受入・資材置場を転用（1F）",zone:"recv", floor:1, area:[20.5,35.5,-29.5,-14.5] },
-  { id:"yard",   n:"北側 屋外庇下ヤード",       zone:"north",floor:1, area:[8,32,-39,-33.5] },
+  { id:"yard",   n:"北側 屋外庇下ヤード 東",    zone:"north",floor:1, area:[2,44,-39.8,-30.5] },
+  { id:"yard2",  n:"北側 屋外ヤード 西",        zone:"north",floor:1, area:[-44,0,-39.8,-30.5] },
+  { id:"tcell",  n:"試運転・試験セル区画（1F）", zone:"tcell",floor:1, area:[20.5,43,-14,1] },
   { id:"sw",     n:"ソフトウェア開発フロア（2F）",zone:"sw",  floor:2, area:[-36,34,3,17] },
 ];
 const MAIN_STATION = { precision:"mc5", heavy:"gantry", assembly:"asmMech", panel:"panel", software:"hil", sheet:"weld", paint:"booth", demo:"demo", testing:"tcell" };
@@ -173,7 +177,32 @@ function renderPlant(){ const P = refreshLinkLines(); LANE_LINK_LINES.visible = 
   <div class="sub" style="margin:6px 0 4px">供給レーン → 組立（必要量 / 能力 ・月）</div>`;
   for (const r of P.rows){ const supplied = r.lanes.length; h += `<div class="plant-row${P.bott.key===r.key?" bott":""}"><div class="lh"><span>${pe(r.n)}</span><b>${r.need.toFixed(0)} / ${supplied? r.cap.toFixed(0):"—"} ${r.unit}</b></div>${bar(r.util)}<div class="sub">${r.perUnit} ${r.unit}/台 × ${P.target} 台 ／ ${supplied? r.lanes.map(l=>`<span class="chip" style="border-color:#${l.color.toString(16).padStart(6,"0")}">${l.id} ${l.out.toFixed(0)}</span>`).join(" ") : '<span style="color:var(--bad)">供給レーンなし（外注前提）</span>'}${isFinite(r.util)&&r.util>1? ` <span style="color:var(--bad)">不足 ${(r.need-r.cap).toFixed(0)} ${r.unit}</span>`:""}</div></div>`; }
   h += `<div class="ctl" style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px"><button class="btn sm${linksOn?" on":""}" id="linksBtn">3D に供給リンクを表示</button></div>`;
-  el.innerHTML = h; $("demand").oninput = ev => { DEMAND.target = +ev.target.value; renderPlant(); renderStats(); }; $("linksBtn").onclick = () => { linksOn = !linksOn; LANE_LINK_LINES.visible = linksOn; renderPlant(); if (linksOn){ if (mode==="ext") setMode(1); } }; }
+  // ---- 社内化 vs 外注 ----
+  const M_ = v => isFinite(v) ? v.toFixed(v<10? 1:0) : "—";
+  h += `<div class="sep"></div><h3>社内化 vs 外注（外注前提の品目）</h3><div class="sub" style="margin-bottom:6px">社内レーンを置いた場合の能力・要員・面積・投資と、外注の年間費用を比較。単価・設備費は想定値（<code>COST / capex / outsource</code>）。</div>`;
+  const cmpItems = P.rows.filter(r => r.cap<=0 && INHOUSE[r.key]);
+  if (!cmpItems.length) h += `<div class="sub">すべての品目に社内レーンがあります。</div>`;
+  for (const r of cmpItems){ const ih = INHOUSE[r.key]; const slot = LANE_SLOTS.find(s=>s.id===ih.slot); const c = compareInhouse(r.key, slot); if (!c) continue;
+    h += `<div class="plant-row"><div class="lh"><span>${pe(r.n)}</span><b>${c.need.toFixed(0)} ${r.unit}/月</b></div><table class="ptbl" style="margin-top:4px"><tr><th></th><th style="text-align:right">外注</th><th style="text-align:right">社内（${pe(LANE_RECIPES[ih.recipe].n)}）</th></tr>
+    <tr><td>能力 / 稼働率</td><td class="n" style="color:var(--txt)">—</td><td class="n">${c.capM.toFixed(0)} ${r.unit}/月 ・ ${isFinite(c.util)? (c.util*100).toFixed(0)+"%":"—"}</td></tr>
+    <tr><td>リードタイム</td><td class="n" style="color:var(--txt)">${c.os.leadDays} 日</td><td class="n">${c.leadIn} 日</td></tr>
+    <tr><td>年間費用</td><td class="n" style="color:var(--txt)">${c.outsourceYear.toFixed(1)} 百万円</td><td class="n">${c.inhouseYear.toFixed(1)} 百万円<br><small style="color:var(--sub);font-weight:400">人件 ${c.laborYear.toFixed(1)} ・ 面積 ${c.areaYear.toFixed(1)} ・ 保守 ${c.maintYear.toFixed(1)}</small></td></tr>
+    <tr><td>設備投資 / 面積 / 要員</td><td class="n" style="color:var(--txt)">0</td><td class="n">${c.ev.capex.toFixed(0)} 百万円 / ${c.ev.footprint.toFixed(0)} ㎡ / ${c.ev.kpi.ppl.toFixed(1)} 人</td></tr>
+    <tr><td>年間差額 / 回収</td><td class="n" style="color:var(--txt)">—</td><td class="n" style="color:${c.saving>0?"var(--good)":"var(--bad)"}">${c.saving>=0?"+":""}${c.saving.toFixed(1)} 百万円 / ${isFinite(c.payback)? c.payback.toFixed(1)+" 年" : "回収不能"}</td></tr></table>
+    <div class="sub" style="margin-top:4px">${pe(c.os.n)} ／ 社内案: ${c.cfg[0]} 直${c.cfg[1]? "＋無人 "+c.cfg[1]+" h":""}、区画 ${pe(slot.n)}${c.ev.overflow>0? ` <span style="color:var(--bad)">（${c.ev.overflow.toFixed(1)} m はみ出し）</span>`:""}。要員費は稼働率 ${isFinite(c.util)? (c.util*100).toFixed(0):"—"}% 換算（他レーンと共有）。${c.breakeven? `<b style="color:var(--acc)">需要 ${c.breakeven} 台/月以上で 7 年以内に回収。</b>` : "需要 12 台/月でも 7 年以内の回収に届かない。"}</div>
+    <div class="ctl" style="display:flex;justify-content:flex-end;margin-top:5px"><button class="btn sm" data-inhouse="${r.key}">社内化する（レーンを追加）</button></div></div>`; }
+  // ---- 組立シナリオ ----
+  const SC = assemblyScenarios();
+  if (SC.length){ h += `<div class="sep"></div><h3>組立の what-if シナリオ</h3><div class="sub" style="margin-bottom:6px">制約になりやすい大型機組立を、ベイ並列化と試験工程の外出しで比較。適用すると 3D とレーン定義が置き換わります。</div><table class="ptbl"><tr><th>案</th><th style="text-align:right">組立 台/月</th><th style="text-align:right">工場能力</th><th style="text-align:right">LT（日）</th><th style="text-align:right">要員</th><th style="text-align:right">追加投資</th><th></th></tr>`;
+    SC.forEach((sc, i) => { const bott = sc.P.bott.n; h += `<tr><td>${pe(sc.n)}</td><td class="n">${sc.ev.kpi.out.toFixed(1)}</td><td class="n" style="color:${sc.P.plantCap>=P.target?"var(--good)":"var(--acc)"}">${M_(sc.P.plantCap)} <small style="color:var(--sub);font-weight:400">${pe(bott.replace("大型機 組立","組立"))}</small></td><td class="n">${(sc.ev.kpi.lead/8).toFixed(0)}${sc.tev? "+"+(sc.tev.kpi.lead/8).toFixed(0):""}</td><td class="n">${sc.ppl.toFixed(1)}</td><td class="n">${i? (sc.capex>=0?"+":"")+sc.capex.toFixed(0) : "—"}</td><td>${i? `<button class="btn sm" data-scn="${i}">適用</button>` : '<span class="sub">現状</span>'}</td></tr>`; });
+    h += `</table><div class="sub" style="margin-top:4px">LT＝組立レーンのリードタイム（＋試験レーン）。投資は百万円。試験外出しは試験セル区画（既存 TC-01 を置換）に試験レーンを追加します。</div>`; }
+  el.innerHTML = h; $("demand").oninput = ev => { DEMAND.target = +ev.target.value; renderPlant(); renderStats(); }; $("linksBtn").onclick = () => { linksOn = !linksOn; LANE_LINK_LINES.visible = linksOn; renderPlant(); if (linksOn){ if (mode==="ext") setMode(1); } };
+  el.querySelectorAll("[data-inhouse]").forEach(b => b.onclick = () => { const key = b.dataset.inhouse; const ih = INHOUSE[key]; let n = 6; while (LANE_OBJ["L"+n]) n++; applyLaneForm("L"+n, new Map([["recipe", ih.recipe],["main", String((LANE_RECIPES[ih.recipe].stations.find(x=>x[0]===MAIN_STATION[ih.recipe])||[0,1])[1])],["shifts","2"],["unattended","6"],["slot", ih.slot]])); document.querySelector('[data-tab="plant"]').click(); });
+  el.querySelectorAll("[data-scn]").forEach(b => b.onclick = () => applyScenario(SC[+b.dataset.scn])); }
+function applyScenario(sc){ const asmO = Object.values(LANE_OBJ).find(o => LANE_RECIPES[o.lane.recipe].consumes); if (!asmO) return; const L = asmO.lane; Object.assign(L, { stationOv: sc.L.stationOv || {}, override: sc.L.override || {}, offload: sc.L.offload || [] }); generateLane(L);
+  for (const id in LANE_OBJ) if (LANE_OBJ[id].lane.recipe === "testing") removeLane(id);
+  if (sc.tev){ const T = cloneLane(sc.tev.lane); LANES.push(T); generateLane(T); }
+  afterLaneChange(); document.querySelector('[data-tab="plant"]').click(); focusLane(L.id); linksOn = true; renderPlant(); }
 
 // ---- Factory OS パネル ----
 function renderOS(){ const el = $("osList"); let h = "";
@@ -243,4 +272,4 @@ function loop(){
 }
 $("loadMsg").textContent = "敷地・建屋・設備を生成しています…";
 setTimeout(() => { try { build(); } catch (err) { $("loadMsg").textContent = "構築エラー: " + err.message; console.error(err); throw err; } loop(); }, 30);
-window.__factory = { scene, camera, renderer, EQUIP, ZONES, BLD, SITE, DEMAND, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
+window.__factory = { scene, camera, renderer, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };

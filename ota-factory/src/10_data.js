@@ -292,8 +292,8 @@ Object.assign(STATION_TYPES, {
   demo:    { n:"デモステージ（実演）",  kind:"demo",   fp:[10.0,7.0], ct:3,  unit:"h",   auto:"manual", ppl:2,
              spec:{ 仕様:"可動ステージ＋大型ディスプレイ＋来客席 12", 演出:"稼働データを Digital Twin にライブ表示" } },
   accept:  { n:"立会い検収・契約",      kind:"ref",    ref:"@zone:mtg2", ct:2, unit:"h", auto:"manual", ppl:1 },
-  tcell:   { n:"試験セル（防音・計測）", kind:"tcell",  fp:[13.5,11.5], ct:40, unit:"h", auto:"semi",   ppl:2,
-             spec:{ 仕様:"防音ガラス囲い 13×11×6 m", 計測:"振動/騒音/熱/電力", 連成:"HIL ラボとリアルタイム接続", 電源:"200 kVA" } },
+  tcell:   { n:"試験セル（防音・計測）", kind:"tcell",  fp:[10.2,9.4], ct:40, unit:"h", auto:"semi",   ppl:2,
+             spec:{ 仕様:"防音ガラス囲い 10×9×5 m", 計測:"振動/騒音/熱/電力", 連成:"HIL ラボとリアルタイム接続", 電源:"200 kVA" } },
   report:  { n:"試験報告・判定",        kind:"ref",    ref:"HIL-1", ct:4, unit:"h", auto:"auto", ppl:0.5 },
 });
 Object.assign(LANE_RECIPES, {
@@ -329,3 +329,22 @@ const BOM = {
 };
 const DEMAND = { target: 2.0 };   // 目標：大型機 台/月
 const WORK_DAYS = 21, WORK_WEEKS = 4.3;
+
+// ================= v0.4: 社内化 vs 外注の比較・組立シナリオ =================
+// 想定値（百万円）。設備投資 capex は据付・基礎込みの概算。人件費は 1 人あたり年 8 百万円（製造）。
+const COST = { laborPerPerson: 8, areaRentPerM2: 0.036, opHoursPerYear: 1900 };   // 面積は坪 1 万円/月 相当
+Object.assign(STATION_TYPES.laser,  { capex:120 }); Object.assign(STATION_TYPES.brake, { capex:35 }); Object.assign(STATION_TYPES.weld, { capex:45 });
+Object.assign(STATION_TYPES.finish, { capex:6 });   Object.assign(STATION_TYPES.mask,  { capex:4 });  Object.assign(STATION_TYPES.booth,{ capex:60 });
+Object.assign(STATION_TYPES.oven,   { capex:25 });  Object.assign(STATION_TYPES.store, { capex:5 });  Object.assign(STATION_TYPES.load, { capex:3 });
+Object.assign(STATION_TYPES.mc5, { capex:90 }); Object.assign(STATION_TYPES.hmc, { capex:110 }); Object.assign(STATION_TYPES.lathe, { capex:45 }); Object.assign(STATION_TYPES.gantry, { capex:380 });
+Object.assign(STATION_TYPES.edm, { capex:40 }); Object.assign(STATION_TYPES.grind, { capex:25 }); Object.assign(STATION_TYPES.robotcell, { capex:35 }); Object.assign(STATION_TYPES.wash, { capex:12 });
+Object.assign(STATION_TYPES.tcell, { capex:80 }); Object.assign(STATION_TYPES.panel, { capex:3 }); Object.assign(STATION_TYPES.wiring, { capex:4 }); Object.assign(STATION_TYPES.ptest, { capex:8 });
+Object.assign(STATION_TYPES.asmMech, { capex:40 }); Object.assign(STATION_TYPES.asmWire, { capex:10 }); Object.assign(STATION_TYPES.demoPrep, { capex:3 }); Object.assign(STATION_TYPES.demo, { capex:25 });
+// 外注の想定：単価（万円/個）とリードタイム（日）
+BOM["板金部品"].outsource = { unitCost:1.8, leadDays:14, n:"町工場（大田区内）へ外注" };
+BOM["塗装部品"].outsource = { unitCost:1.2, leadDays:7,  n:"塗装業者へ外注" };
+BOM["精密部品"].outsource = { unitCost:4.5, leadDays:21, n:"精密加工業者へ外注" };
+BOM["大型構造部品"].outsource = { unitCost:120, leadDays:45, n:"大物加工業者へ外注" };
+BOM["制御盤"].outsource = { unitCost:180, leadDays:30, n:"盤メーカーへ外注" };
+// 社内化の候補レシピと推奨区画
+const INHOUSE = { "板金部品":{ recipe:"sheet", slot:"yard" }, "塗装部品":{ recipe:"paint", slot:"yard2" }, "精密部品":{ recipe:"precision", slot:"mach-N" }, "大型構造部品":{ recipe:"heavy", slot:"mach-S" }, "制御盤":{ recipe:"panel", slot:"elab" } };

@@ -33,6 +33,7 @@ function buildSite(){
   const rnd = sRand("ota-neighbors");
   const nb = new Merger();
   function block(x, z, w, d, h, kind){
+    if (Math.abs(x) - w/2 < hw + 3 && Math.abs(z) - d/2 < hd + 3) return;   // 敷地・外周道路に食い込む街区は置かない
     const mat = kind===0? M.neighbor : kind===1? M.neighbor2 : std(0xdedbd3,{roughness:0.85});
     nb.box(w, h, d, mat, x, 0, z);
     if (kind===0){ // 鋸屋根工場

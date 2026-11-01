@@ -64,6 +64,11 @@ function buildBuilding(){
     const m = new THREE.Mesh(geo, mat); m.rotation.y = Math.PI/2; m.position.x = xa; m.castShadow = true; m.receiveShadow = true; target.add(m); return m;
   }
   roofExtrude(0, 0.45, M.roofMetal, z0-1, eaveZ, x0-1.2, x1+1.2, gr).name = "roofTop";
+  // 折板のリブ（山）：プロファイル各区間に沿って 0.5 m ピッチ
+  { const ribM = std(0xe3e7ea, { roughness:0.4, metalness:0.45 }); const segs = [[z0-1, prof[0][1]], ...prof.slice(1)]; const RB = new Merger();
+    for (let i=0;i<segs.length-1;i++){ const [za,ya]=segs[i], [zb,yb]=segs[i+1]; const L = Math.hypot(zb-za, yb-ya); const ang = Math.atan2(yb-ya, zb-za);
+      for (let x=x0-1.0; x<=x1+1.0; x+=0.5) RB.boxC(0.14, 0.09, L-0.05, ribM, x, (ya+yb)/2+0.04, (za+zb)/2, [-ang,0,0]); }
+    RB.flush(gr, { name:"roofRibs", layer:"envelope", cast:false }); }
   // ホール内側 デッキ（薄グレー）と、ストリップ・キャンチ部の木天井
   roofExtrude(-0.5, 0.05, M.hallGlow, z0-0.5, zh, x0, x1, gr);
   const soffit = mesh(G.plane(W+2.4, eaveZ - zh), M.timber, (x0+x1)/2, 13.65, (zh+eaveZ)/2, { rot:[Math.PI/2,0,0], cast:false }); soffit.material = M.timber.clone(); soffit.material.map = TEX.timber([1, 44]); gr.add(soffit);

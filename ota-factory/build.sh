@@ -11,3 +11,15 @@ out=index.html
   cat src/99_tail.html
 } > "$out"
 echo "built $out ($(wc -c < "$out") bytes, $(wc -l < "$out") lines)"
+# 画像を base64 で埋め込んだ単体配布版も生成する
+python3 -I - <<'PY'
+import base64, re, os
+s = open("index.html", encoding="utf-8").read()
+def rep(m):
+    p = m.group(1)
+    if not os.path.exists(p): return m.group(0)
+    return '"data:image/jpeg;base64,' + base64.b64encode(open(p,"rb").read()).decode() + '"'
+s = re.sub(r'"(img/[^"]+\.jpg)"', rep, s)
+open("yellow-ota-factory-standalone.html", "w", encoding="utf-8").write(s)
+print("built yellow-ota-factory-standalone.html (%d bytes)" % os.path.getsize("yellow-ota-factory-standalone.html"))
+PY
