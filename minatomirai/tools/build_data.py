@@ -181,6 +181,7 @@ def pack_meshes(feats, zoff, order=None, name_fn=None):
             "h": m.get("bldg:measuredHeight"),
             "fn": m.get("brid:function"),
             "c": [dm(cx), dm(cy)], "z": [round(zmin, 1), round(zmax, 1)],
+            "bb": [dm(min(xs)), dm(min(ys)), dm(max(xs)), dm(max(ys))],
         })
     starts.append(len(idx) // 3)
     return verts, idx, starts, metas
@@ -280,6 +281,51 @@ def build_roads_from_mvt():
                         if p.is_empty or p.area < 4 or p.geom_type != "Polygon": continue
                         polys.append([ring_dm(p.exterior.coords[:-1])] + [ring_dm(i.coords[:-1]) for i in p.interiors])
     return polys
+
+POI_KEYS = ("shop", "amenity", "office", "craft", "tourism", "leisure", "healthcare")
+POI_SKIP = {"parking", "bicycle_parking", "bicycle_rental", "information", "artwork", "toilets", "vending_machine", "atm", "bench", "waste_basket", "parking_entrance", "motorcycle_parking", "charging_station", "viewpoint", "pitch", "park", "garden", "playground", "fountain", "drinking_water", "post_box", "telephone", "taxi", "bus_station", "ferry_terminal", "shelter", "car_sharing", "loading_dock", "smoking_area", "bicycle_repair_station", "apartment", "apartments", "yes"}
+def build_poi(nodes, ways, cache):
+    """OSM の名前つき店舗・施設 POI。level タグがあれば階層 (整数) を持つ。"""
+    out = []
+    def kind(t):
+        for k in POI_KEYS:
+            v = t.get(k)
+            if v and v not in POI_SKIP: return k, v
+        return None, None
+    def lv_of(t):
+        v = t.get("level")
+        if v is None: return None
+        try: return int(float(v.split(";")[0].split("-")[0]))
+        except Exception: return None
+    for nid, (lon, lat, t) in nodes.items():
+        if not t.get("name"): continue
+        k, v = kind(t)
+        if not k: continue
+        x, y = to_local(lon, lat)
+        if not inbox(x, y): continue
+        out.append({"n": t["name"], "k": v, "g": k, "lv": lv_of(t), "x": dm(x), "y": dm(y)})
+    for w, (nd, t) in ways.items():
+        if not t.get("name") or "building" in t: continue
+        k, v = kind(t)
+        if not k: continue
+        pts = way_coords(nodes, ways, w, cache)
+        if not pts: continue
+        x = sum(p[0] for p in pts) / len(pts); y = sum(p[1] for p in pts) / len(pts)
+        if not inbox(x, y): continue
+        out.append({"n": t["name"], "k": v, "g": k, "lv": lv_of(t), "x": dm(x), "y": dm(y)})
+    return out
+
+def assign_poi_to_buildings(pois, bmetas):
+    """POI を、その位置を含む最小 bbox の建物に割り当てる (b: 建物番号, 無ければ -1)。"""
+    for p in pois:
+        best = -1; barea = 1e18
+        for i, m in enumerate(bmetas):
+            bb = m["bb"]
+            if bb[0] <= p["x"] <= bb[2] and bb[1] <= p["y"] <= bb[3]:
+                a = (bb[2] - bb[0]) * (bb[3] - bb[1])
+                if a < barea: barea = a; best = i
+        p["b"] = best
+    return pois
 
 def build_green(nodes, ways, rels, cache):
     """公園・緑地 (OSM leisure=park/garden, landuse=grass/recreation_ground, natural=wood/scrub)。"""
@@ -698,6 +744,8 @@ def main():
     print("roads ..."); roads = build_roads_from_mvt(); print("  polygons", len(roads))
     print("water ..."); water = build_water(nodes, ways, rels, cache); print("  sea", len(water["sea"]), "inland", len(water["inland"]))
     print("green ..."); green = build_green(nodes, ways, rels, cache); print("  polygons", len(green))
+    print("poi ..."); pois = assign_poi_to_buildings(build_poi(nodes, ways, cache), bmetas)
+    print("  pois", len(pois), "with level", sum(1 for q in pois if q["lv"] is not None), "assigned", sum(1 for q in pois if q["b"] >= 0))
     print("rails ..."); rails = build_rails(nodes, ways, cache); print("  ways", len(rails))
 
     print("network ..."); nnodes, nlinks = build_network(nodes, ways, cache, tsample)
@@ -767,7 +815,7 @@ def main():
         "terrain": tmeta,
         "buildings": {"starts": bstarts, "meta": bmetas},
         "bridges": {"starts": rstarts, "meta": rmetas},
-        "roads": roads, "water": water, "green": green, "rails": rails,
+        "roads": roads, "water": water, "green": green, "rails": rails, "poi": pois,
         "network": {"nodes": nnodes, "links": nlinks, "vtypes": {v: k for k, v in VTYPE.items() if k}},
         "stations": [{"st": s["st"], "lv": s["lv"], "cat": s["cat"], "n": s["n"], "r": ring_dm(s["r"])} for s in spaces],
         "labels": labels,

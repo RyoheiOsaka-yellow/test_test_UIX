@@ -56,7 +56,17 @@ await shot('14_explode', `a.setRep('line'); a.setDisp('explode', 0.6);`);
 await shot('15_stack', `a.setDisp('stack', 1);`);
 await shot('16_build', `a.setDisp('build', 0.55);`);
 await shot('17_section', `a.setDisp('explode', 0); a.section(30); a.camera.position.set(-300, 420, 300); a.controls.target.set(-40, 0, 300);`);
+await shot('18_section_cap', `a.section(60); a.camera.position.set(-200, 520, 420); a.controls.target.set(-40, 0, 300);`);
 await page.evaluate(() => { window.__app.section(null); });
+// 建物選択 + 階分解 (ランドマークタワー = 最も高い建物 = bid 0)
+await shot('19_floors', `a.select(0); a.setGap(9); a.poi(true); a.camera.position.set(-700, 520, 760); a.controls.target.set(-56, 260, 361);`);
+await shot('20_tenants', `const i = a.selectByName('MARK IS'); a.setGap(7); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 260, 230, cz + 220); a.controls.target.set(cx, 40, cz);`);
+await shot('20b_queens', `const i = a.selectByName('クイーンズタワーA'); a.setGap(5); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 420, 420, cz + 380); a.controls.target.set(cx, 120, cz);`);
+await page.screenshot({ path: `${out}/20c_tenant_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
+await page.evaluate(() => { const a = window.__app; a.select(-1); a.poi(false); });
+await shot('21_points_height', `a.setRep('points'); a.setPMode(1); a.camera.position.set(-520, 260, 420); a.controls.target.set(-40, 80, 300);`);
+await shot('22_points_size', `a.setPMode(2);`);
+await page.evaluate(() => { window.__app.setRep('line'); window.__app.setPMode(0); });
 await shot('10_line', `a.applyTheme('line'); a.setExpand(1); a.camera.position.set(-520, 260, 420); a.controls.target.set(-40, 80, 300);`);
 await shot('11_night', `a.applyTheme('night');`);
 await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });

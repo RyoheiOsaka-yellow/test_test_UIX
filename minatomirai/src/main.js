@@ -73,7 +73,7 @@ const THEMES = {
     sea: '#061226', seaAlpha: 0.9, inland: '#081a33', water: '#3f7fd0', waterLineAlpha: 0.55,
     road: '#070b16', roadAlpha: 0.9, roadLine: '#6d87b8', roadLineAlpha: 0.5,
     green: '#07140f', greenLine: '#2f8f5a', greenLineAlpha: 0.5,
-    net: '#39e1ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0], label: '#7ef0ff', pointColor: '#b9d4ff', voxel: '#101a36', voxelEmissive: '#0a1024',
+    net: '#39e1ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0], label: '#7ef0ff', pointColor: '#b9d4ff', pointColor2: '#ffb648', voxel: '#101a36', voxelEmissive: '#0a1024',
   },
   paper: { // 白図面
     bg: '#f4f6fa', fog: '#f4f6fa', fogDensity: 0.00026, skyTop: '#f4f6fa', skyHorizon: '#e3e9f3', far: '#f0f3f8', bloom: false, tone: false,
@@ -83,7 +83,7 @@ const THEMES = {
     sea: '#dfe9f6', seaAlpha: 0.95, inland: '#d5e3f4', water: '#6f9bd3', waterLineAlpha: 0.7,
     road: '#eaeef4', roadAlpha: 0.95, roadLine: '#6d7fa3', roadLineAlpha: 0.6,
     green: '#e4efe7', greenLine: '#5e9b79', greenLineAlpha: 0.6,
-    net: '#0a7fc4', netPts: '#0a5f9a', hover: [0.1, 0.55, 1.0], label: '#163f7a', labelGlow: false, pointColor: '#1f2a44', voxel: '#eef1f6',
+    net: '#0a7fc4', netPts: '#0a5f9a', hover: [0.1, 0.55, 1.0], label: '#163f7a', labelGlow: false, pointColor: '#1f2a44', pointColor2: '#c8553d', voxel: '#eef1f6',
   },
   night: { // 夜景 (窓明かり)
     bg: '#04050c', fog: '#070a18', fogDensity: 0.0003, skyTop: '#02030a', skyHorizon: '#0d1a3a', far: '#060912', bloom: true, tone: true,
@@ -93,7 +93,7 @@ const THEMES = {
     sea: '#0d3b6e', seaAlpha: 0.72, inland: '#124a86', water: '#3f7fd0', waterLineAlpha: 0.0,
     road: '#151c33', roadAlpha: 0.7, roadLine: '#c466ff', roadLineAlpha: 0.22,
     green: '#0f3a2a', greenLine: '#2f8f5a', greenLineAlpha: 0.0,
-    net: '#00e5ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0], label: '#7ef0ff', pointColor: '#9fc8ff', voxel: '#24365f', voxelEmissive: '#0c142c',
+    net: '#00e5ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0], label: '#7ef0ff', pointColor: '#9fc8ff', pointColor2: '#ffd9a0', voxel: '#24365f', voxelEmissive: '#0c142c',
   },
 };
 let styleName = 'paper';
@@ -135,7 +135,7 @@ const fitOrtho = () => { const a = innerWidth / innerHeight; ortho.left = -ORTHO
 fitOrtho(); ortho.up.set(0, 0, -1); ortho.position.set(0, 1500, 0); ortho.lookAt(0, 0, 0); scene.add(ortho);
 
 const pixelRatio = () => { const cap = Math.min(devicePixelRatio * 1.25, 3); const budget = Math.sqrt(9.5e6 / (innerWidth * innerHeight)); return Math.max(1, Math.min(cap, budget)); };
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(pixelRatio());
 renderer.toneMapping = THREE.NoToneMapping;
@@ -159,7 +159,7 @@ scene.add(new THREE.HemisphereLight('#9fb8ff', '#0a0c18', 0.9));
 const sun = new THREE.DirectionalLight('#dfe8ff', 1.6); sun.position.set(-900, 1400, -600); scene.add(sun);
 const fill = new THREE.DirectionalLight('#7fb2ff', 0.5); fill.position.set(900, 500, 900); scene.add(fill);
 
-const renderTarget = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { samples: 4 });
+const renderTarget = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { samples: 4, stencilBuffer: true });
 const composer = new EffectComposer(renderer, renderTarget);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.28, 0.3, 0.5);
@@ -350,7 +350,7 @@ const findRange = (starts, faceIndex) => { // starts: 三角形開始インデ�
 
 const bldUniforms = { uHover: { value: -1 }, uWindows: { value: 1 }, uTime: { value: 0 } };
 // 建物ごとの変位 (分解・組立・高さ順浮上)。建物情報 (高さ, 重心x, 重心y) は DataTexture で渡す
-const dispUniforms = { uDMode: { value: 0 }, uDT: { value: 0 }, uDSeed: { value: 1.7 }, uBldTex: { value: null }, uBldW: { value: 1 } };
+const dispUniforms = { uDMode: { value: 0 }, uDT: { value: 0 }, uDSeed: { value: 1.7 }, uBldTex: { value: null }, uBldW: { value: 1 }, uHide: { value: -1 } };
 const DISP_PARS = `
   uniform float uDMode, uDT, uDSeed, uBldW; uniform sampler2D uBldTex;
   float dhash(float n) { return fract(sin(n * 12.9898 + uDSeed) * 43758.5453); }
@@ -389,8 +389,9 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displa
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvBid = bid; vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform float uHover, uWindows, uTime; varying float vBid; varying vec3 vWPos;
+        uniform float uHover, uWindows, uTime, uHide; varying float vBid; varying vec3 vWPos;
         float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }`)
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vBid - uHide) < 0.5) discard;')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         {
           vec3 fn = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
@@ -426,11 +427,12 @@ function drawingMaterial({ floors = true, displace = true } = {}) {
       void main(){ vBid = bid; vec4 wp = modelMatrix * vec4(position + disp(bid), 1.0); vWPos = wp.xyz; vec4 mvPosition = viewMatrix * wp; vFogDepth = -mvPosition.z; gl_Position = projectionMatrix * mvPosition;
         #include <clipping_planes_vertex>
       }`,
-    fragmentShader: `uniform vec3 uFace, uLine, uHoverCol, fogColor; uniform float uLineAlpha, uHover, uFloors, uHatch, fogDensity;
+    fragmentShader: `uniform vec3 uFace, uLine, uHoverCol, fogColor; uniform float uLineAlpha, uHover, uFloors, uHatch, fogDensity, uHide;
       varying float vBid; varying vec3 vWPos; varying float vFogDepth;
       #include <clipping_planes_pars_fragment>
       void main(){
         #include <clipping_planes_fragment>
+        if (abs(vBid - uHide) < 0.5) discard;
         vec3 fn = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
         float vert = 1.0 - abs(fn.y);
         // 面ごとのごく薄い陰影 (向きで僅かに変える)
@@ -489,15 +491,17 @@ function makeEdgeLines(g, thinDeg, thickDeg, group, displace = false) {
     thickGeo.setAttribute('bidInst', new THREE.InstancedBufferAttribute(ib, 1));
     thinMat.onBeforeCompile = shader => {
       addDispUniforms(shader);
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute float bid;\n' + DISP_PARS).replace('#include <begin_vertex>', 'vec3 transformed = vec3(position) + disp(bid);');
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute float bid; varying float vBidL;\n' + DISP_PARS).replace('#include <begin_vertex>', 'vBidL = bid; vec3 transformed = vec3(position) + disp(bid);');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uHide; varying float vBidL;').replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vBidL - uHide) < 0.5) discard;');
     };
     thinMat.customProgramCacheKey = () => 'thinDisp';
     thickMat.onBeforeCompile = shader => {
       addDispUniforms(shader);
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float bidInst;\n' + DISP_PARS)
-        .replace('void main() {', 'void main() {\n\tvec3 dOff = disp(bidInst);')
+        .replace('#include <common>', '#include <common>\nattribute float bidInst; varying float vBidL;\n' + DISP_PARS)
+        .replace('void main() {', 'void main() {\n\tvBidL = bidInst; vec3 dOff = disp(bidInst);')
         .replaceAll('vec4( instanceStart, 1.0 )', 'vec4( instanceStart + dOff, 1.0 )').replaceAll('vec4( instanceEnd, 1.0 )', 'vec4( instanceEnd + dOff, 1.0 )');
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uHide; varying float vBidL;').replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vBidL - uHide) < 0.5) discard;');
     };
     thickMat.customProgramCacheKey = () => 'thickDisp';
   }
@@ -543,6 +547,7 @@ function buildBuildings(blobs, header) {
   console.log(`building edges: thin ${lines.thinCount}, thick ${lines.thickCount}`);
   setupStyledMesh(buildingMesh, buildingMesh.material, cityMaterial({ windows: true }), lines, 'bldg');
   buildPointsAndVoxels(g);
+  buildSectionCap(g);
 }
 function buildBridges(blobs, header) {
   const g = meshFromPack(blobs.brid_pos, blobs.brid_idx);
@@ -588,26 +593,33 @@ function buildPointsAndVoxels(g) {
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.BufferAttribute(P, 3)); pg.setAttribute('bid', new THREE.BufferAttribute(PB, 1)); pg.setAttribute('shade', new THREE.BufferAttribute(PS, 1)); pg.setAttribute('rnd', new THREE.BufferAttribute(PR, 1));
   const pm = new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: hex('#1f2a44') }, uSize: { value: 1.0 }, uDensity: { value: 0.7 }, uScale: { value: innerHeight / 2 }, uPR: { value: renderer.getPixelRatio() }, fogColor: { value: new THREE.Color() }, fogDensity: { value: 0 }, ...dispUniforms },
+    uniforms: { uColor: { value: hex('#1f2a44') }, uColor2: { value: hex('#c8553d') }, uPMode: { value: 0 }, uSize: { value: 1.0 }, uDensity: { value: 0.7 }, uScale: { value: innerHeight / 2 }, uPR: { value: renderer.getPixelRatio() }, fogColor: { value: new THREE.Color() }, fogDensity: { value: 0 }, ...dispUniforms },
     clipping: true, clippingPlanes: sectionPlanes, transparent: true, depthWrite: true,
-    vertexShader: `attribute float bid, shade, rnd; uniform float uSize, uDensity, uScale, uPR; varying float vKeep, vFog;
+    vertexShader: `attribute float bid, shade, rnd; uniform float uSize, uDensity, uScale, uPR, uPMode; varying float vKeep, vFog, vH, vB;
       #include <clipping_planes_pars_vertex>
       ${DISP_PARS}
       void main(){
         vec4 mvPosition = modelViewMatrix * vec4(position + disp(bid), 1.0);
-        // 陰側ほど点を密に (点描の陰影)
-        vKeep = step(rnd, uDensity * mix(0.25, 1.0, shade));
+        vB = bid; vH = position.y;
         float s = uSize * uScale / max(1.0, -mvPosition.z) * 4.0;
-        gl_PointSize = clamp(s, 0.9, 2.1) * uPR; vFog = -mvPosition.z; gl_Position = projectionMatrix * mvPosition;
+        if (uPMode > 1.5) {       // 大小点: 陰側ほど大きい点 (密度は一定)
+          vKeep = step(rnd, uDensity * 0.7); s *= mix(0.5, 2.2, shade);
+          gl_PointSize = clamp(s, 0.8, 4.5) * uPR;
+        } else {                   // 陰側ほど点を密に (点描の陰影)
+          vKeep = step(rnd, uDensity * mix(0.25, 1.0, shade));
+          gl_PointSize = clamp(s, 0.9, 2.1) * uPR;
+        }
+        vFog = -mvPosition.z; gl_Position = projectionMatrix * mvPosition;
         #include <clipping_planes_vertex>
       }`,
-    fragmentShader: `uniform vec3 uColor, fogColor; uniform float fogDensity; varying float vKeep, vFog;
+    fragmentShader: `uniform vec3 uColor, uColor2, fogColor; uniform float fogDensity, uPMode, uHide; varying float vKeep, vFog, vH, vB;
       #include <clipping_planes_pars_fragment>
       void main(){
         #include <clipping_planes_fragment>
-        if (vKeep < 0.5) discard; vec2 d = gl_PointCoord - 0.5; if (dot(d, d) > 0.25) discard;
+        if (vKeep < 0.5 || abs(vB - uHide) < 0.5) discard; vec2 d = gl_PointCoord - 0.5; if (dot(d, d) > 0.25) discard;
+        vec3 c = uPMode > 0.5 && uPMode < 1.5 ? mix(uColor, uColor2, clamp(vH / 160.0, 0.0, 1.0)) : uColor;
         float f = 1.0 - exp(-fogDensity * fogDensity * vFog * vFog);
-        gl_FragColor = vec4(mix(uColor, fogColor, clamp(f, 0.0, 1.0)), 1.0);
+        gl_FragColor = vec4(mix(c, fogColor, clamp(f, 0.0, 1.0)), 1.0);
       }`,
   });
   pointsObj = new THREE.Points(pg, pm); pointsObj.frustumCulled = false; pointsObj.visible = false; groups.buildings.add(pointsObj);
@@ -617,7 +629,8 @@ function buildPointsAndVoxels(g) {
   const vb = new Float32Array(n); const vm = new THREE.MeshStandardMaterial({ color: '#dfe6f2', roughness: 0.9, metalness: 0, flatShading: true, clippingPlanes: sectionPlanes });
   vm.onBeforeCompile = shader => {
     addDispUniforms(shader);
-    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute float bid;\n' + DISP_PARS).replace('#include <begin_vertex>', 'vec3 transformed = vec3(position) + disp(bid);');
+    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute float bid; varying float vBidV;\n' + DISP_PARS).replace('#include <begin_vertex>', 'vBidV = bid; vec3 transformed = vec3(position) + disp(bid);');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uHide; varying float vBidV;').replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vBidV - uHide) < 0.5) discard;');
   };
   vm.customProgramCacheKey = () => 'voxelDisp';
   voxelMesh = new THREE.InstancedMesh(box, vm, n);
@@ -626,9 +639,37 @@ function buildPointsAndVoxels(g) {
   box.setAttribute('bid', new THREE.InstancedBufferAttribute(vb, 1));
   voxelMesh.instanceMatrix.needsUpdate = true; voxelMesh.frustumCulled = false; voxelMesh.visible = false; groups.buildings.add(voxelMesh);
   console.log(`points ${POINT_COUNT}, voxels ${n}`);
-  onTheme(t => { pm.uniforms.uColor.value.set(t.pointColor ?? t.edge); pm.uniforms.fogColor.value.set(t.fog); pm.uniforms.fogDensity.value = t.fogDensity; vm.color.set(t.voxel ?? t.face); vm.emissive.set(t.voxelEmissive ?? '#000000'); });
+  onTheme(t => { pm.uniforms.uColor.value.set(t.pointColor ?? t.edge); pm.uniforms.uColor2.value.set(t.pointColor2 ?? '#c8553d'); pm.uniforms.fogColor.value.set(t.fog); pm.uniforms.fogDensity.value = t.fogDensity; vm.color.set(t.voxel ?? t.face); vm.emissive.set(t.voxelEmissive ?? '#000000'); });
   applyRepMode();
 }
+// ---- 断面キャップ: ステンシルで切り口を塗る (前面+1, 背面-1 → 0 でない場所が内部) ------
+let capPlane = null;
+function buildSectionCap(g) {
+  const mk = (side, op) => new THREE.MeshBasicMaterial({ side, colorWrite: false, depthWrite: false, depthTest: false, stencilWrite: true, stencilFunc: THREE.AlwaysStencilFunc, stencilFail: op, stencilZFail: op, stencilZPass: op, clippingPlanes: sectionPlanes });
+  const back = new THREE.Mesh(g, mk(THREE.BackSide, THREE.IncrementWrapStencilOp)); back.renderOrder = 20;
+  const front = new THREE.Mesh(g, mk(THREE.FrontSide, THREE.DecrementWrapStencilOp)); front.renderOrder = 21;
+  const capMat = new THREE.ShaderMaterial({
+    uniforms: { uFace: { value: hex('#ffffff') }, uLine: { value: hex('#35466b') }, uAlpha: { value: 0.5 } },
+    stencilWrite: true, stencilRef: 0, stencilFunc: THREE.NotEqualStencilFunc, stencilFail: THREE.ReplaceStencilOp, stencilZFail: THREE.ReplaceStencilOp, stencilZPass: THREE.ReplaceStencilOp,
+    vertexShader: 'varying vec3 vW; void main(){ vec4 wp = modelMatrix * vec4(position, 1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }',
+    fragmentShader: `uniform vec3 uFace, uLine; uniform float uAlpha; varying vec3 vW;
+      void main(){ float h1 = (vW.x + vW.z) / 2.4; float d1 = min(fract(h1), 1.0 - fract(h1)); float w1 = fwidth(h1);
+        float h2 = (vW.x - vW.z) / 2.4; float d2 = min(fract(h2), 1.0 - fract(h2)); float w2 = fwidth(h2);
+        float l = max(1.0 - smoothstep(w1 * 0.5, w1 * 1.4, d1), 1.0 - smoothstep(w2 * 0.5, w2 * 1.4, d2));
+        gl_FragColor = vec4(mix(uFace * 0.93, uLine, l * uAlpha), 1.0); }`,
+  });
+  capPlane = new THREE.Mesh(new THREE.PlaneGeometry(4200, 4200), capMat); capPlane.rotation.x = -Math.PI / 2; capPlane.renderOrder = 22;
+  capPlane.onAfterRender = r => r.clearStencil();
+  const grp = new THREE.Group(); grp.add(back, front, capPlane); grp.visible = false; groups.buildings.add(grp);
+  capPlane.userData.group = grp;
+  onTheme(t => { capMat.uniforms.uFace.value.set(t.face); capMat.uniforms.uLine.value.set(t.faceLine); capMat.uniforms.uAlpha.value = t.bloom ? 0.2 : 0.55; });
+}
+function updateSectionCap() {
+  if (!capPlane) return;
+  const on = sectionPlane.constant < 4000 && dispUniforms.uDMode.value === 0 && repMode === 'line';
+  capPlane.userData.group.visible = on; capPlane.position.y = sectionPlane.constant - 0.02;
+}
+
 // 表現モード: 線画 / 点描 / ボクセル
 let repMode = 'line';
 function applyRepMode() {
@@ -637,7 +678,152 @@ function applyRepMode() {
   groups.edges.visible = repMode === 'line' && document.getElementById('chk-edges').checked;
   if (pointsObj) pointsObj.visible = repMode === 'points';
   if (voxelMesh) voxelMesh.visible = repMode === 'voxel';
+  updateSectionCap();
 }
+
+// ---- テナント・店舗 POI (OSM) -----------------------------------------------------
+let poiData = [], poiPoints = null, poiByBuilding = new Map();
+const POI_GROUP_COLOR = { shop: '#e0652f', amenity: '#2f7fe0', office: '#5a6b8c', craft: '#8c5ae0', tourism: '#2fb27a', leisure: '#2fb27a', healthcare: '#d04a7a' };
+const FLOOR_H = 3.6;
+const poiY = q => { const b = q.b >= 0 ? buildingMeta[q.b] : null; const base = b ? b.z[0] : terrainSampler(q.x, q.y); return base + (q.lv ?? 0) * FLOOR_H + 1.6; };
+function buildPOI(list) {
+  poiData = (list || []).map(q => ({ ...q, x: q.x / 10, y: q.y / 10 }));
+  for (const q of poiData) if (q.b >= 0) { if (!poiByBuilding.has(q.b)) poiByBuilding.set(q.b, []); poiByBuilding.get(q.b).push(q); }
+  const pos = new Float32Array(poiData.length * 3), col = new Float32Array(poiData.length * 3);
+  poiData.forEach((q, i) => { pos[i * 3] = q.x; pos[i * 3 + 1] = poiY(q); pos[i * 3 + 2] = -q.y; const c = hex(POI_GROUP_COLOR[q.g] ?? '#888'); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; });
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uScale: { value: innerHeight / 2 }, uPR: { value: renderer.getPixelRatio() }, uSize: { value: 2.2 }, uMin: { value: 3 }, uMax: { value: 7 }, uOpacity: { value: 0.95 }, uColor: { value: new THREE.Color() } },
+    vertexShader: `attribute vec3 color; varying vec3 vC; uniform float uSize, uMin, uMax, uScale, uPR; void main(){ vC = color; vec4 mv = modelViewMatrix * vec4(position, 1.0); float s = uSize * uScale / max(1.0, -mv.z); gl_PointSize = clamp(s, uMin, uMax) * uPR; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying vec3 vC; uniform float uOpacity; void main(){ vec2 d = gl_PointCoord - 0.5; float r = length(d) * 2.0; if (r > 1.0) discard; float ring = smoothstep(0.55, 0.7, r); gl_FragColor = vec4(mix(vC, vec3(1.0), ring * 0.9), uOpacity * (1.0 - smoothstep(0.85, 1.0, r))); }`,
+    transparent: true, depthWrite: false, depthTest: false,
+  });
+  pointMaterials.push(mat);
+  poiPoints = new THREE.Points(geo, mat); poiPoints.renderOrder = 15; poiPoints.frustumCulled = false; poiPoints.visible = false; scene.add(poiPoints);
+}
+const updatePOIPositions = () => { if (!poiPoints) return; const p = poiPoints.geometry.attributes.position; poiData.forEach((q, i) => p.setY(i, poiY(q))); p.needsUpdate = true; };
+const pickPOI = (sx, sy) => {
+  if (!poiPoints || !poiPoints.visible) return null;
+  let best = null, bd = 9;
+  for (const q of poiData) {
+    tmpV.set(q.x, poiY(q), -q.y).project(activeCamera); if (tmpV.z > 1) continue;
+    const d = Math.hypot((tmpV.x + 1) / 2 * innerWidth - sx, (1 - tmpV.y) / 2 * innerHeight - sy); if (d < bd) { bd = d; best = q; }
+  }
+  return best;
+};
+const lvLabel = lv => lv == null ? '階不明' : lv >= 0 ? `${lv + 1}F` : `B${-lv}`;
+
+// ---- 建物の選択・階分解 (選択した建物をフロアごとにスライスして分解) -------------------
+const sel = { bid: -1, mesh: null, lines: null, markers: [], gap: 0, floors: 0 };
+const selGroup = new THREE.Group(); scene.add(selGroup);
+const infoEl = document.getElementById('info'), infoBody = document.getElementById('info-body'), infoTitle = document.getElementById('info-title');
+function sliceBuilding(bid, floorH) {
+  const g = buildingMesh.geometry, P = g.attributes.position, I = g.index.array;
+  const base = buildingMeta[bid].z[0], top = buildingMeta[bid].z[1];
+  const nFloors = Math.max(1, Math.ceil((top - base - 0.3) / floorH));
+  const tris = []; // [{fl, pts:[[x,y,z],...]}]
+  const cuts = []; // 切断線 [fl, x1,y1,z1, x2,y2,z2]
+  const clipPoly = (poly, yc) => { // 凸多角形を平面 y=yc で下/上に分割
+    const below = [], above = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length];
+      const da = a[1] - yc, db = b[1] - yc;
+      (da <= 0 ? below : above).push(a);
+      if ((da < 0 && db > 0) || (da > 0 && db < 0)) { const t = da / (da - db); const m = [a[0] + (b[0] - a[0]) * t, yc, a[2] + (b[2] - a[2]) * t]; below.push(m); above.push(m); }
+    }
+    return [below, above];
+  };
+  for (let t = buildingStarts[bid]; t < buildingStarts[bid + 1]; t++) {
+    let polys = [[0, 1, 2].map(k => [P.getX(I[t * 3 + k]), P.getY(I[t * 3 + k]), P.getZ(I[t * 3 + k])])];
+    const ys = polys[0].map(p => p[1]); const k0 = Math.max(1, Math.floor((Math.min(...ys) - base) / floorH) + 1), k1 = Math.min(nFloors - 1, Math.floor((Math.max(...ys) - base) / floorH));
+    for (let k = k0; k <= k1; k++) {
+      const yc = base + k * floorH; const next = [];
+      for (const poly of polys) {
+        const ys2 = poly.map(p => p[1]);
+        if (Math.max(...ys2) <= yc + 1e-6) { tris.push({ fl: k - 1, pts: poly }); continue; }
+        if (Math.min(...ys2) >= yc - 1e-6) { next.push(poly); continue; }
+        const [lo, hi] = clipPoly(poly, yc);
+        if (lo.length >= 3) tris.push({ fl: k - 1, pts: lo });
+        if (hi.length >= 3) next.push(hi);
+        const onCut = lo.filter(p => Math.abs(p[1] - yc) < 1e-6);
+        if (onCut.length >= 2) cuts.push([k - 1, ...onCut[0], ...onCut[1]]);
+      }
+      polys = next;
+    }
+    for (const poly of polys) { const fl = Math.min(nFloors - 1, Math.max(0, Math.floor((poly.reduce((a, p) => a + p[1], 0) / poly.length - base) / floorH))); tris.push({ fl, pts: poly }); }
+  }
+  // 三角形化 (扇状) + フロア属性
+  const pos = [], fl = [], triFloor = [];
+  for (const tr of tris) for (let i = 1; i < tr.pts.length - 1; i++) { for (const p of [tr.pts[0], tr.pts[i], tr.pts[i + 1]]) { pos.push(p[0], p[1], p[2]); fl.push(tr.fl); } triFloor.push(tr.fl); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('fl', new THREE.Float32BufferAttribute(fl, 1));
+  // 輪郭線: フロアごとに EdgesGeometry、切断線は両フロア側に
+  const lpos = [], lfl = [];
+  const byFloor = new Map(); tris.forEach((tr, i) => { if (!byFloor.has(tr.fl)) byFloor.set(tr.fl, []); byFloor.get(tr.fl).push(tr); });
+  for (const [f, list] of byFloor) {
+    const fp = []; for (const tr of list) for (let i = 1; i < tr.pts.length - 1; i++) for (const p of [tr.pts[0], tr.pts[i], tr.pts[i + 1]]) fp.push(p[0], p[1], p[2]);
+    const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
+    const eg = new THREE.EdgesGeometry(fg, 14); const ep = eg.attributes.position;
+    for (let i = 0; i < ep.count; i++) { lpos.push(ep.getX(i), ep.getY(i), ep.getZ(i)); lfl.push(f); }
+    fg.dispose(); eg.dispose();
+  }
+  for (const c of cuts) { lpos.push(c[1], c[2], c[3], c[4], c[5], c[6]); lfl.push(c[0], c[0]); lpos.push(c[1], c[2], c[3], c[4], c[5], c[6]); lfl.push(c[0] + 1, c[0] + 1); }
+  const lgeo = new THREE.BufferGeometry(); lgeo.setAttribute('position', new THREE.Float32BufferAttribute(lpos, 3)); lgeo.setAttribute('fl', new THREE.Float32BufferAttribute(lfl, 1));
+  return { geo, lgeo, triFloor, nFloors, base };
+}
+const selUniforms = { uGap: { value: 0 }, uHoverFl: { value: -1 } };
+function selectBuilding(bid) {
+  clearSelection();
+  if (bid < 0 || bid == null) return;
+  const m = buildingMeta[bid]; sel.bid = bid;
+  const { geo, lgeo, triFloor, nFloors, base } = sliceBuilding(bid, FLOOR_H);
+  sel.floors = nFloors; sel.base = base; sel.triFloor = triFloor;
+  const t = T();
+  const fmat = new THREE.ShaderMaterial({
+    uniforms: { uFace: { value: hex(t.face) }, uLine: { value: hex(t.faceLine) }, uGap: selUniforms.uGap, uHoverFl: selUniforms.uHoverFl, uHover: { value: hex(t.hover.map(v => v).join ? '#ffffff' : '#ffffff') } },
+    vertexShader: `attribute float fl; uniform float uGap; varying float vFl; varying vec3 vW; void main(){ vFl = fl; vec4 wp = modelMatrix * vec4(position + vec3(0.0, fl * uGap, 0.0), 1.0); vW = wp.xyz; gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `uniform vec3 uFace, uLine; uniform float uHoverFl; varying float vFl; varying vec3 vW;
+      void main(){ vec3 fn = normalize(cross(dFdx(vW), dFdy(vW))); vec3 col = uFace * (0.92 + 0.08 * abs(fn.x) + 0.04 * abs(fn.z));
+        // 偶数階/奇数階でごく薄く色分け
+        col = mix(col, uLine, mod(vFl, 2.0) * 0.06);
+        if (abs(vFl - uHoverFl) < 0.5) col = mix(col, vec3(0.2, 0.7, 1.0), 0.35);
+        gl_FragColor = vec4(col, 1.0); }`,
+    polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 1.5,
+  });
+  sel.uHoverCol = fmat.uniforms.uHover;
+  sel.mesh = new THREE.Mesh(geo, fmat); selGroup.add(sel.mesh);
+  const lmat = new THREE.LineBasicMaterial({ color: t.edge, transparent: true, opacity: 0.9 });
+  lmat.onBeforeCompile = sh => { sh.uniforms.uGap = selUniforms.uGap; sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float fl; uniform float uGap;').replace('#include <begin_vertex>', 'vec3 transformed = vec3(position) + vec3(0.0, fl * uGap, 0.0);'); };
+  lmat.customProgramCacheKey = () => 'selLines';
+  sel.lines = new THREE.LineSegments(lgeo, lmat); selGroup.add(sel.lines);
+  dispUniforms.uHide.value = bid;
+  // テナントマーカー
+  const tenants = poiByBuilding.get(bid) ?? [];
+  for (const q of tenants) {
+    const sp = makeTextSprite(q.n, '#1f2a44', { scale: 0.13, themeColor: tt => tt.labelGlow === false ? '#1b2f55' : '#ffe9b0' }); sp.userData.q = q; sp.userData.fadeFrom = 1200; selGroup.add(sp); sel.markers.push(sp);
+  }
+  updateSelectionLayout();
+  // 情報パネル
+  const h = m.h ?? Math.round(m.z[1] - m.z[0]);
+  const byFl = new Map(); for (const q of tenants) { const k = q.lv == null ? 'unknown' : q.lv; if (!byFl.has(k)) byFl.set(k, []); byFl.get(k).push(q); }
+  const keys = [...byFl.keys()].filter(k => k !== 'unknown').sort((a, b) => b - a);
+  const rows = keys.map(k => `<div class="info-floor"><b>${lvLabel(k)}</b> ${byFl.get(k).map(q => `<span class="tag" style="border-color:${POI_GROUP_COLOR[q.g] ?? '#888'}">${q.n}</span>`).join(' ')}</div>`).join('');
+  const unknown = byFl.get('unknown') ? `<div class="info-floor"><b>階不明</b> ${byFl.get('unknown').map(q => `<span class="tag" style="border-color:${POI_GROUP_COLOR[q.g] ?? '#888'}">${q.n}</span>`).join(' ')}</div>` : '';
+  infoTitle.textContent = m.n ?? '（名称なし）';
+  infoBody.innerHTML = `<div>高さ ${h} m ／ 推定 ${nFloors} 階（階高 ${FLOOR_H} m で算出）</div><div class="info-sub">テナント・施設（OpenStreetMap 登録分 ${tenants.length} 件）</div>${rows}${unknown}${tenants.length ? '' : '<div class="info-sub">この建物に登録された店舗・施設はありません</div>'}<div class="info-sub">※ 区画形状・正式な階数はオープンデータに含まれないため、階は高さからの推定です。</div>`;
+  infoEl.style.display = 'block';
+  document.getElementById('floor-gap').value = selUniforms.uGap.value;
+}
+function updateSelectionLayout() {
+  const gap = selUniforms.uGap.value;
+  for (const sp of sel.markers) { const q = sp.userData.q; const fl = Math.max(0, Math.min(sel.floors - 1, q.lv ?? 0)); sp.position.set(q.x, sel.base + fl * FLOOR_H + 1.8 + fl * gap, -q.y); layoutSprite(sp); }
+}
+function clearSelection() {
+  if (sel.mesh) { selGroup.remove(sel.mesh); sel.mesh.geometry.dispose(); sel.mesh.material.dispose(); sel.mesh = null; }
+  if (sel.lines) { selGroup.remove(sel.lines); sel.lines.geometry.dispose(); sel.lines.material.dispose(); sel.lines = null; }
+  for (const sp of sel.markers) { selGroup.remove(sp); sp.material.map.dispose(); sp.material.dispose(); }
+  sel.markers = []; sel.bid = -1; dispUniforms.uHide.value = -1; infoEl.style.display = 'none'; selUniforms.uHoverFl.value = -1;
+}
+onTheme(t => { if (sel.mesh) { sel.mesh.material.uniforms.uFace.value.set(t.face); sel.mesh.material.uniforms.uLine.value.set(t.faceLine); sel.lines.material.color.set(t.edge); } });
 
 // ---- 鉄道 -----------------------------------------------------------------
 const railLines = [];
@@ -930,6 +1116,13 @@ function updateHover(now) {
   if (!pointerMoved || now - lastHover < 120) return; lastHover = now; pointerMoved = false;
   raycaster.setFromCamera(pointer, activeCamera);
   let html = null;
+  const q = pickPOI(pointerPx.x, pointerPx.y);
+  if (q) html = `<span class="tt-floor">${lvLabel(q.lv)}</span>${q.n}<span class="tt-sub">${q.k}${q.b >= 0 && buildingMeta[q.b].n ? '｜' + buildingMeta[q.b].n : ''}</span>`;
+  if (!html && sel.mesh) {
+    const hit = raycaster.intersectObject(sel.mesh, false)[0];
+    if (hit) { const fl = sel.triFloor[hit.faceIndex]; selUniforms.uHoverFl.value = fl; const names = (poiByBuilding.get(sel.bid) ?? []).filter(x => (x.lv ?? 0) === fl).map(x => x.n); html = `<span class="tt-floor">${lvLabel(fl)}</span>${buildingMeta[sel.bid].n ?? ''}<span class="tt-sub">${names.length ? names.join('・') : 'テナント登録なし'}</span>`; }
+    else selUniforms.uHoverFl.value = -1;
+  }
   // 駅構内
   const fills = fillMeshes.filter(m => m.parent.visible && groups.station.visible);
   for (const hit of raycaster.intersectObjects(fills, false)) {
@@ -1006,12 +1199,30 @@ document.getElementById('btn-city-rebuild').addEventListener('click', () => {
   dispAnim = { from: 1, to: 0, start: performance.now(), ms: 5200, rebuild: true };
 });
 const secChk = document.getElementById('chk-section'), secInput = document.getElementById('section-h'), secValue = document.getElementById('section-value');
-const applySection = () => { const on = secChk.checked; const h = parseFloat(secInput.value); sectionPlane.constant = on ? h : 5000; secValue.textContent = on ? `${h.toFixed(0)}m` : 'オフ'; };
+const applySection = () => { const on = secChk.checked; const h = parseFloat(secInput.value); sectionPlane.constant = on ? h : 5000; secValue.textContent = on ? `${h.toFixed(0)}m` : 'オフ'; updateSectionCap(); };
 secChk.addEventListener('change', applySection); secInput.addEventListener('input', () => { if (!secChk.checked) secChk.checked = true; applySection(); });
 const densInput = document.getElementById('point-density');
 densInput.addEventListener('input', () => { if (pointsObj) pointsObj.material.uniforms.uDensity.value = parseFloat(densInput.value); });
+document.querySelectorAll('#pmode-presets button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#pmode-presets button').forEach(x => x.classList.remove('active')); b.classList.add('active'); if (pointsObj) pointsObj.material.uniforms.uPMode.value = Number(b.dataset.pmode); }));
+const download = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
+const stamp = () => new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+document.getElementById('btn-png').addEventListener('click', () => { composer.render(); canvas.toBlob(b => download(b, `minatomirai_${stamp()}.png`), 'image/png'); });
+let recorder = null, recChunks = [];
+const recBtn = document.getElementById('btn-rec');
+recBtn.addEventListener('click', () => {
+  if (recorder) { recorder.stop(); return; }
+  const stream = canvas.captureStream(30);
+  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+  recorder = new MediaRecorder(stream, { mimeType: mime || undefined, videoBitsPerSecond: 12e6 }); recChunks = [];
+  recorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+  recorder.onstop = () => { download(new Blob(recChunks, { type: 'video/webm' }), `minatomirai_${stamp()}.webm`); recorder = null; recBtn.textContent = '● 録画開始 (WebM)'; recBtn.classList.remove('active'); };
+  recorder.start(200); recBtn.textContent = '■ 録画停止・保存'; recBtn.classList.add('active');
+});
 const lineInput = document.getElementById('line-scale'), lineValue = document.getElementById('line-scale-value');
 lineInput.addEventListener('input', () => { lineScale = parseFloat(lineInput.value); lineValue.textContent = `×${lineScale.toFixed(2)}`; for (const fn of themed) fn(T()); });
+document.getElementById('floor-gap').addEventListener('input', e => { selUniforms.uGap.value = parseFloat(e.target.value); updateSelectionLayout(); });
+document.getElementById('btn-info-close').addEventListener('click', () => clearSelection());
+document.getElementById('chk-poi').addEventListener('change', e => { if (poiPoints) poiPoints.visible = e.target.checked; });
 document.getElementById('chk-faces').addEventListener('change', e => { bldFaces = e.target.checked; for (const m of styledMeshes) m.mesh.visible = T().bloom || bldFaces; applyRepMode(); });
 document.getElementById('chk-network').addEventListener('change', e => { flowPoints.visible = e.target.checked && flow.count > 0; });
 
@@ -1046,6 +1257,13 @@ document.getElementById('chk-barrier').addEventListener('change', refreshRoute);
 let downPos = null;
 canvas.addEventListener('pointerdown', e => { downPos = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener('pointerup', e => {
+  if (!routeMode && downPos && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) <= 6 && e.button === 0) {
+    raycaster.setFromCamera(pointer, activeCamera);
+    const hit = buildingMesh && buildingMesh.visible ? raycaster.intersectObject(buildingMesh, false)[0] : null;
+    if (hit) { const bid = findRange(buildingStarts, hit.faceIndex); if (bid !== sel.bid) selectBuilding(bid); }
+    else if (sel.mesh && !raycaster.intersectObject(sel.mesh, false).length) clearSelection();
+    return;
+  }
   if (!routeMode || !downPos || Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 6) return;
   const n = pickNode(e.clientX, e.clientY); if (n == null) return;
   if (routeStart === null) {
@@ -1064,7 +1282,7 @@ async function init() {
   setProgress(0.45, `建物 ${header.buildings.meta.length.toLocaleString()} 棟を生成中…`); await nextFrame(); buildBuildings(blobs, header);
   setProgress(0.65, 'デッキ・橋梁を生成中…'); await nextFrame(); buildBridges(blobs, header);
   setProgress(0.75, '鉄道・歩行者ネットワークを生成中…'); await nextFrame(); buildRails(header.rails); buildNetwork(header.network);
-  setProgress(0.9, '駅構内モデルを生成中…'); await nextFrame(); buildStations(header.stations); buildLabels(header.labels);
+  setProgress(0.9, '駅構内モデルを生成中…'); await nextFrame(); buildStations(header.stations); buildLabels(header.labels); buildPOI(header.poi);
   applyFlowPreset();
   applyTheme(styleName);
   setProgress(1, '完了');
@@ -1072,7 +1290,7 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), selectByName: n => { const i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
@@ -1096,6 +1314,7 @@ function animate() {
   stepFlow(dt); stepRouteFlow(dt); updateHover(performance.now());
   if (groups.labels.visible) for (const sp of groups.labels.children) layoutSprite(sp);
   for (const sp of floorLabelSprites) layoutSprite(sp);
+  for (const sp of sel.markers) layoutSprite(sp);
   composer.render();
 }
 init().catch(e => { loadingText.textContent = `読み込みエラー: ${e.message}`; console.error(e); });
