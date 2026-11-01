@@ -56,6 +56,7 @@
   .bar { height:7px; background:#0d1117; border-radius:4px; overflow:hidden; margin-top:3px; } .bar i { display:block; height:100%; background:var(--good); } .bar i.warn { background:var(--acc); } .bar i.bad { background:var(--bad); }
   .plant-row { border:1px solid var(--line); border-radius:8px; padding:7px 9px; margin-bottom:6px; background:#161b22; } .plant-row .lh { display:flex; justify-content:space-between; font-size:11.5px; } .plant-row .lh b { font-variant-numeric:tabular-nums; }
   .plant-row.bott { border-color:var(--bad); } .stTbl { width:100%; border-collapse:collapse; font-size:10.5px; margin-top:6px; } .stTbl th { color:var(--sub); font-weight:500; text-align:left; padding:2px 2px; } .stTbl td { padding:2px 2px; } .stTbl input, .stTbl select { width:100%; background:#161b22; color:var(--txt); border:1px solid var(--line); border-radius:4px; padding:2px 3px; font-size:10.5px; }
+  #tip { position:fixed; z-index:50; pointer-events:none; display:none; background:rgba(13,17,23,.9); border:1px solid var(--line); border-left:3px solid var(--acc); border-radius:6px; padding:5px 9px; font-size:12px; line-height:1.4; max-width:320px; } #tip span { color:var(--sub); font-size:11px; }
   #hint { bottom:12px; left:364px; right:292px; color:var(--sub); font-size:10.5px; line-height:1.5; pointer-events:none; text-align:center; }
   body.tour #hint, body.info #hint { display:none; }
   kbd { background:#21262d; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:10px; }
@@ -90,7 +91,7 @@
 <div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div></div>
 <div id="bim" class="panel"><h3>BIM・MEP 系統 <span class="sub" id="bimSum"></span></h3><div id="bimSys"></div><div class="sep"></div>
   <div class="row"><span class="sub">幹線高さの調整（選択系統）</span><select id="bimSysSel" class="btn sm"></select></div><input id="bimH" type="range" min="-3" max="3" step="0.1" value="0"><div class="sub" id="bimHLabel">±0.0 m</div>
-  <div class="sep"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="clashBtn">干渉チェック</button><button class="btn sm" id="xrayBtn">X線表示</button><button class="btn sm" id="mepCsv">数量 CSV</button></div><div id="clashList" style="margin-top:6px"></div></div>
+  <div class="sep"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="clashBtn">干渉チェック</button><button class="btn sm" id="clearBtn">保守スペース</button><button class="btn sm" id="xrayBtn">X線表示</button><button class="btn sm" id="mepCsv">数量 CSV</button></div><div id="clashList" style="margin-top:6px"></div><div id="clearList" style="margin-top:6px"></div></div>
 <div id="section" class="panel"><h3>断面カット</h3>
   <div class="row"><span>方向</span><span><button class="btn sm on" data-ax="y">水平（高さ）</button> <button class="btn sm" data-ax="z">南北</button> <button class="btn sm" data-ax="x">東西</button></span></div>
   <input id="secRange" type="range" min="0" max="100" value="55">
@@ -216,7 +217,7 @@ const EQUIP = [
   { id:"TC-01", kind:"testcell", name:"試運転・性能試験セル", x:28, z:-6, rot:0, zone:"tcell",
     spec:{ 仕様:"防音ガラス囲い 14×12m・H6m", 計測:"振動/騒音/熱/消費電力", 連成:"HILラボとリアルタイム接続", 電源:"200 kVA" } },
   { id:"RK-R1", kind:"rack",   name:"資材パレットラック 1", x:38.5, z:-25, rot:Math.PI/2, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"購入部品・鋼材" } },
-  { id:"RK-R2", kind:"rack",   name:"資材パレットラック 2", x:38.5, z:-16.5, rot:Math.PI/2, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"梱包材・治具" } },
+  { id:"RK-R2", kind:"rack",   name:"資材パレットラック 2", x:38.5, z:-15.5, rot:Math.PI/2, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"梱包材・治具" } },
   { id:"DK-01", kind:"dock",   name:"ドックレベラー #1", x:43, z:-24, rot:0, zone:"ship", spec:{ 仕様:"油圧式 2.0×2.5m 6t", 扉:"電動オーバースライダー W3.5×H4.5" } },
   { id:"DK-02", kind:"dock",   name:"ドックレベラー #2", x:43, z:-16, rot:0, zone:"ship", spec:{ 仕様:"油圧式 2.0×2.5m 6t", 扉:"電動オーバースライダー W3.5×H4.5" } },
   { id:"DK-03", kind:"bigdoor",name:"大型機搬出大扉", x:43, z:-5, rot:0, zone:"ship", spec:{ 仕様:"W8.0×H7.0 電動ハンガードア", 用途:"大型機のトレーラー積込（低床）" } },
@@ -1067,6 +1068,17 @@ function buildBuilding(){
   // テラス手摺・植栽プランター
   E2.box(W, 1.1, 0.04, M.glassTint, (x0+x1)/2, lv[1], terraceZ-0.1); E2.box(W, 0.06, 0.08, M.darkSteel, (x0+x1)/2, lv[1]+1.1, terraceZ-0.1);
   E2.box(W-2, 0.6, 1.4, M.curb, (x0+x1)/2, lv[1], terraceZ-1.0);
+  // テラス：木デッキ（板割り）・足元灯・テラスへの出入口（各コア脇）・日除けの木製パーゴラ梁
+  for (let z = z1 + 0.3; z < terraceZ - 1.9; z += 0.3) E2.box(W - 2, 0.03, 0.22, M.timber, (x0+x1)/2, lv[1] + 0.02, z);
+  for (let x = x0 + 6; x < x1 - 4; x += 12) E2.box(0.25, 0.08, 0.25, M.bollardLight, x, lv[1] + 0.05, terraceZ - 1.9);
+  for (const x of [x0 + 10, x1 - 10]) { E2.box(2.0, 2.4, 0.1, M.glassTint, x, lv[1], z1 + 0.15); E2.box(0.08, 2.4, 0.16, M.mullion, x - 1.0, lv[1], z1 + 0.15); E2.box(0.08, 2.4, 0.16, M.mullion, x + 1.0, lv[1], z1 + 0.15); }
+  for (let x = x0 + 2; x < x1; x += 4) E2.box(0.12, 0.25, terraceZ - z1 - 0.6, M.timberDark, x, lv[2] - 0.95, (z1 + terraceZ) / 2 - 0.2);
+  // 屋上：点検用歩廊（グレーチング）と転落防止手摺・タラップ・ハッチ
+  { const RW = new Merger(); const zw = -3.6; for (let x = x0 + 2; x < x1 - 2; x += 1.0) RW.box(0.98, 0.04, 0.8, M.steel, x + 0.5, roofY(zw) + 0.32, zw + 3.0); for (let x = x0 + 2; x <= x1 - 2; x += 2.0) { RW.box(0.04, 1.0, 0.04, M.darkSteel, x, roofY(zw) + 0.34, zw + 3.45); RW.box(0.04, 1.0, 0.04, M.darkSteel, x, roofY(zw) + 0.34, zw + 2.55); }
+    RW.box(W - 4, 0.03, 0.03, M.darkSteel, (x0+x1)/2, roofY(zw) + 1.3, zw + 3.45); RW.box(W - 4, 0.03, 0.03, M.darkSteel, (x0+x1)/2, roofY(zw) + 1.3, zw + 2.55);
+    RW.box(1.2, 0.5, 1.2, M.darkSteel, x1 - 3, roofY(-27) + 0.3, -27); RW.box(1.1, 0.06, 1.1, M.steel, x1 - 3, roofY(-27) + 0.8, -27);   // 屋上ハッチ
+    for (let y = 1; y < 13.5; y += 0.3) RW.box(0.5, 0.03, 0.03, M.steel, x1 + 0.45, y, -27); RW.box(0.03, 13, 0.03, M.steel, x1 + 0.2, 0.8, -27); RW.box(0.03, 13, 0.03, M.steel, x1 + 0.7, 0.8, -27);   // タラップ
+    RW.flush(gr, { name:"roofWalk", layer:"envelope" }); }
   // バルコニー手摺（ホール側）
   E2.box(W, 1.1, 0.04, M.glassTint, (x0+x1)/2, lv[1], zh-2.0); E2.box(W, 0.06, 0.08, M.darkSteel, (x0+x1)/2, lv[1]+1.1, zh-2.0);
   // 3F スラブ
@@ -1666,7 +1678,8 @@ const BUILDERS = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry,
 const FP_CACHE = {};
 function measuredFp(t){ const S = STATION_TYPES[t]; if (!S.fp) return undefined; if (FP_CACHE[t]) return FP_CACHE[t]; const b = BUILDERS[S.kind]; if (!b) return FP_CACHE[t] = S.fp.slice();
   const g = b(); g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse(m => { if (m.isMesh && !m.isSprite) bb.union(new THREE.Box3().setFromObject(m)); }); g.traverse(m => { if (m.isMesh) m.geometry.dispose?.(); });
-  const w = bb.isEmpty() ? 0 : bb.max.x - bb.min.x + 0.4, d = bb.isEmpty() ? 0 : bb.max.z - bb.min.z + 0.4; return FP_CACHE[t] = [Math.max(S.fp[0], +w.toFixed(1)), Math.max(S.fp[1], +d.toFixed(1))]; }
+  const w = bb.isEmpty() ? 0 : bb.max.x - bb.min.x + 0.4, d = bb.isEmpty() ? 0 : bb.max.z - bb.min.z + 0.4; FP_OFF[t] = bb.isEmpty() ? [0,0] : [(bb.min.x + bb.max.x)/2, (bb.min.z + bb.max.z)/2]; return FP_CACHE[t] = [Math.max(S.fp[0], +w.toFixed(1)), Math.max(S.fp[1], +d.toFixed(1))]; }
+const FP_OFF = {};   // モデル原点に対する箱中心のずれ（配置時に補正）
 // レシピ＋パラメータ → ステーション配列（[type, n] を展開）
 function expandStations(lane){
   const R = LANE_RECIPES[lane.recipe]; const ov = lane.override || {};
@@ -1681,10 +1694,10 @@ function expandStations(lane){
 
 // ---- 配置（蛇行）：区画内で左→右、はみ出したら次の行で右→左 ----
 function layoutLane(lane, sts){
-  const [x0, x1, z0, z1] = lane.area; const usable = x1 - x0 - 1.0; const gap = 0.6;
+  const [x0, x1, z0, z1] = lane.area; const usable = x1 - x0 - 1.0; const sideC = k => (typeof CLEARANCE !== "undefined" && CLEARANCE[k]) ? CLEARANCE[k][1] : 0.6; let gap = 0.6;
   const rows = [[]]; let cur = 0, row = 0;
   const units = []; for (const s of sts){ if (s.kind === "ref") { units.push({ s, ref:true }); continue; } for (let k=0;k<s.n;k++) units.push({ s, k, w:s.fp[0], d:s.fp[1] }); }
-  for (const u of units){ if (u.ref) continue; if (cur + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } rows[row].push(u); u.row = row; u.off = cur; cur += u.w + gap; }
+  let prevKind = null; for (const u of units){ if (u.ref) continue; gap = Math.max(0.6, sideC(u.s.kind), prevKind ? sideC(prevKind) : 0); if (cur + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } rows[row].push(u); u.row = row; u.off = cur; cur += u.w + gap; prevKind = u.s.kind; }
   // 行ごとの奥行とピッチ（行0-1 間は 4 m 通路、以降は 2.5 m）
   let zTop = z0 + 0.5; const rowInfo = [];
   rows.forEach((r, i) => { const d = Math.max(...r.map(u=>u.d), 2); const aisle = i===0? 0 : (i%2===1? 2.6 : 1.8); zTop += aisle; rowInfo.push({ zTop, d, len: r.length? r[r.length-1].off + r[r.length-1].w : 0 }); zTop += d; });
@@ -1713,7 +1726,7 @@ function generateLane(lane){
     if (s.kind === "ref"){ const p = resolveRef(s.ref, lane, prev); s.pos = p; if (!s.aux) stationPos.push({ ...p, s }); prev = p; continue; }
     const us = lay.units.filter(u=>u.s===s); const cx = us.reduce((a,u)=>a+u.x,0)/us.length, cz = us.reduce((a,u)=>a+u.z,0)/us.length;
     s.pos = { x:cx, z:cz, floor:lane.floor }; s.units = us; if (!s.aux) stationPos.push({ x:cx, z:cz, floor:lane.floor, s }); prev = s.pos;
-    us.forEach((u, k) => { const b = BUILDERS[s.kind]; if (!b) return; const grp = b(); compactGroup(grp); const ex = makeMachineExtras(s.kind, s.fp[0], s.fp[1]); ex.userData.extra = true; compactGroup(ex); grp.add(ex); grp.position.set(u.x, yF, u.z); grp.rotation.y = u.rot;
+    us.forEach((u, k) => { const b = BUILDERS[s.kind]; if (!b) return; const grp = b(); compactGroup(grp); const ex = makeMachineExtras(s.kind, s.fp[0], s.fp[1]); ex.userData.extra = true; compactGroup(ex); grp.add(ex); const off = FP_OFF[s.type] || [0,0]; const sgn = Math.abs(u.rot) > 1 ? -1 : 1; grp.position.set(u.x - sgn*off[0], yF, u.z - sgn*off[1]); grp.rotation.y = u.rot;
       const id = `${lane.id}-S${s.idx}${s.n>1? String.fromCharCode(97+k) : ""}`; const e = { id, kind:s.kind, name: s.n > 1 ? `${STATION_TYPES[s.type].n} #${k+1}` : STATION_TYPES[s.type].n, x:+u.x.toFixed(1), z:+u.z.toFixed(1), rot:u.rot, zone:lane.zone, lane:lane.id, station:s.idx, generated:true,
         spec:{ レーン:`${lane.id} ${R.n}`, 工程:`S${s.idx}${s.aux? "（補助）":""} ${s.n>1? s.n+" 台並列" : ""}`, 標準時間:`${s.ct} ${s.unit}/${R.unitName}`, 自動化:s.auto==="auto"? "無人運転可" : s.auto==="semi"? "監視付き自動" : "手作業", ...s.spec } };
       EQUIP.push(e); tagEq(grp, e); eqIds.push(id); g.add(grp);
@@ -1727,7 +1740,7 @@ function generateLane(lane){
     const mat = new THREE.MeshBasicMaterial({ map:tex, color:col, transparent:true, opacity:0.55, depthWrite:false, side:THREE.DoubleSide });
     const m = new THREE.Mesh(G.plane(L, 1.2), mat); m.rotation.x = -Math.PI/2; m.rotation.z = -Math.atan2(b.z-a.z, b.x-a.x); m.position.set((a.x+b.x)/2, yF+0.08, (a.z+b.z)/2); m.renderOrder = 3; ov.add(m); strips.push(m); }
   stationPos.forEach((p, i) => { if (p.floor !== lane.floor) return; const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 28), new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.8, depthWrite:false })); ring.rotation.x = -Math.PI/2; ring.position.set(p.x, yF+0.085, p.z); ring.renderOrder = 4; ov.add(ring);
-    const s = p.s; const tag = makeLabel(`S${s.idx}  ${s.n>1? "×"+s.n+" " : ""}${s.ct? s.ct+" "+s.unit : ""}`, { scale:0.55, bg:"rgba(20,24,30,0.8)", accent:"#"+R.color.toString(16).padStart(6,"0") }); tag.position.set(p.x, yF+1.2, p.z); tag.userData.kind = "eq"; tag.userData.floor = lane.floor; ov.add(tag); });
+    const s = p.s; const tag = makeLabel(`S${s.idx}  ${s.n>1? "×"+s.n+" " : ""}${s.ct? s.ct+" "+s.unit : ""}`, { scale:0.55, bg:"rgba(20,24,30,0.8)", accent:"#"+R.color.toString(16).padStart(6,"0") }); tag.position.set(p.x, yF+1.2, p.z); tag.userData.kind = "tag"; tag.userData.laneId = lane.id; tag.userData.floor = lane.floor; ov.add(tag); });
   const anim = { update(t){ for (const m of strips) m.material.map.offset.x = -t*0.35; } }; ANIM.push(anim);
   // ---- 天井設備 ----
   const oh = new THREE.Group(); oh.name = "overhead"; oh.userData.layer = "overhead"; g.add(oh); const ceilY = lane.zone==="north" ? 5.9 : lane.floor===1 ? (lane.zone==="mach"||lane.zone==="asm1"||lane.zone==="asm2" ? 12.6 : BLD.lv[1]-0.8) : BLD.lv[lane.floor]-0.8;
@@ -1858,8 +1871,8 @@ function assemblyScenarios(){ const asmO = Object.values(LANE_OBJ).find(o => LAN
 // ================= BIM：MEP 系統（配管・ダクト・ケーブルラック・消火・床トレンチ）・属性・干渉チェック =================
 // 系統定義。kind: pipe(円管) duct(角ダクト) tray(ケーブルラック) trench(床トレンチ)
 const SYSTEMS = {
-  SA: { n:"給気ダクト",            kind:"duct",  color:0x9fd3ff, size:[0.9,0.6], y:14.0, src:"屋上 AHU（北側）",           unit:"m" },
-  EA: { n:"排気・集塵ダクト",      kind:"duct",  color:0xb8c0c8, size:[0.7,0.5], y:13.4, src:"集塵機（北壁 x=-20）→ 排気筒", unit:"m" },
+  SA: { n:"給気ダクト",            kind:"duct",  color:0x9fd3ff, size:[0.9,0.6], y:13.6, src:"屋上 AHU（北側）",           unit:"m" },
+  EA: { n:"排気・集塵ダクト",      kind:"duct",  color:0xb8c0c8, size:[0.7,0.5], y:13.3, src:"集塵機（北壁 x=-20）→ 排気筒", unit:"m" },
   CA: { n:"圧縮空気 0.7 MPa",      kind:"pipe",  color:0x2f6fd0, size:[0.08],    y:7.4,  src:"コンプレッサ室（北西）",     unit:"m" },
   CW: { n:"クーラント・工業用水",  kind:"pipe",  color:0x2ec4b6, size:[0.1],     y:7.1,  src:"クーラント集中タンク（南西）", unit:"m" },
   FP: { n:"消火（スプリンクラー）",kind:"pipe",  color:0xd13b3b, size:[0.1],     y:13.1, src:"消火ポンプ室（東コア）",     unit:"m" },
@@ -1872,14 +1885,27 @@ const NEEDS = { mc5:["CA","CW","EL","IT","EA"], hmc:["CA","CW","EL","IT","EA"], 
   asmA:["CA","EL","IT"], asmB:["CA","EL","IT"], bench:["CA","EL"], testcell:["EL","IT","EA"], tcell:["EL","IT","EA"], cmm:["EL","IT"], elab:["EL","IT"], panel:["EL","IT"], wiring:["CA","EL"], ptest:["EL","IT"], hil:["EL","IT"], server:["EL","IT","CH"], toolroom:["CA","EL"],
   laser:["CA","EL","IT","EA"], brake:["EL","IT"], weld:["CA","EL","IT","EA"], finish:["CA","EA"], mask:["CW"], booth:["CA","EL","EA"], oven:["EL","EA"], demo:["EL","IT"], crane:["EL"], agv:[] };
 
-const MEP = { groups:{}, segs:[], mats:{}, offsets:{ y:{} }, visible:{} };
+// 設備種別ごとの設計負荷：EL kVA / CA L/min(ANR) / CW L/min / EA m³/h / IT ポート
+const LOADS = { mc5:{EL:30,CA:300,CW:60,EA:900,IT:2}, hmc:{EL:35,CA:350,CW:80,EA:900,IT:2}, lathe:{EL:25,CA:200,CW:50,EA:600,IT:1}, gantry:{EL:80,CA:400,CW:120,EA:1500,IT:2}, edm:{EL:15,CW:30,IT:1}, grind:{EL:10,CW:40,EA:800,IT:1}, robotcell:{EL:6,CA:150,IT:2}, wash:{EL:12,CW:80}, store:{EL:2,IT:1}, load:{IT:1},
+  asmA:{EL:20,CA:400,IT:4}, asmB:{EL:15,CA:300,IT:4}, bench:{EL:3,CA:100}, testcell:{EL:200,IT:4,EA:2000}, tcell:{EL:200,IT:4,EA:2000}, cmm:{EL:5,IT:1}, elab:{EL:20,IT:4}, panel:{EL:3,IT:1}, wiring:{EL:4,CA:120}, ptest:{EL:8,IT:1}, hil:{EL:30,IT:8}, server:{EL:150,IT:48,CH:60}, toolroom:{EL:5,CA:100},
+  laser:{EL:60,CA:600,IT:1,EA:3000}, brake:{EL:25,IT:1}, weld:{EL:45,CA:150,IT:1,EA:2500}, finish:{CA:200,EA:2000}, mask:{CW:40}, booth:{EL:40,CA:800,EA:12000}, oven:{EL:30,EA:1500}, demo:{EL:15,IT:2}, crane:{EL:40} };
+const LOAD_UNIT = { EL:"kVA", CA:"L/min", CW:"L/min", EA:"m³/h", IT:"port", CH:"kW", SA:"m³/h", FP:"—" };
+// 負荷 → サイズ（簡易）: 配管は流量から呼び径、ダクトは風速 12 m/s の角ダクト、ラックは電流から幅
+function sizeFor(sys, load){ const S = SYSTEMS[sys];
+  if (sys === "CA"){ const dn = load <= 300 ? 25 : load <= 800 ? 32 : load <= 1500 ? 40 : load <= 3000 ? 50 : load <= 6000 ? 65 : 80; return { r: dn/2000, label:`φ${dn}` }; }
+  if (sys === "CW"){ const dn = load <= 60 ? 25 : load <= 150 ? 32 : load <= 300 ? 40 : load <= 600 ? 50 : 65; return { r: dn/2000, label:`φ${dn}` }; }
+  if (sys === "EA" || sys === "SA"){ const a = Math.max(0.04, load/3600/12); const side = Math.ceil(Math.sqrt(a)*20)/20; return { w: Math.max(0.3, side*1.3), h: Math.max(0.25, side*0.8), label:`${Math.round(Math.max(0.3, side*1.3)*1000)}×${Math.round(Math.max(0.25, side*0.8)*1000)}` }; }
+  if (sys === "EL"){ const A = load*1000/(1.732*400); const w = A <= 100 ? 0.3 : A <= 300 ? 0.4 : A <= 600 ? 0.6 : A <= 1000 ? 0.8 : 1.0; return { w, h:0.1, label:`W${Math.round(w*1000)} · ${Math.round(A)} A` }; }
+  if (sys === "IT"){ return { w: load <= 8 ? 0.15 : load <= 32 ? 0.3 : 0.4, h:0.08, label:`${load} port` }; }
+  return { r:S.size[0], label:"" }; }
+const MEP = { groups:{}, segs:[], mats:{}, offsets:{ y:{} }, visible:{}, loads:{} };
 function mepMat(sys){ if (!MEP.mats[sys]) { const S = SYSTEMS[sys]; MEP.mats[sys] = new THREE.MeshStandardMaterial({ color:S.color, roughness: S.kind==="tray"? 0.5 : 0.35, metalness: S.kind==="tray"? 0.6 : 0.5 }); } return MEP.mats[sys]; }
 function sysGroup(sys, floorG){ const key = sys + "@" + floorG.name; if (!MEP.groups[key]){ const g = new THREE.Group(); g.name = "mep_" + sys; g.userData.layer = "mep"; g.userData.sys = sys; floorG.add(g); MEP.groups[key] = g; } return MEP.groups[key]; }
 
 // ---- 経路 → 形状 ----
 // pts: [[x,y,z],...] の折れ線。系統の kind で円管／角ダクト／ラック／トレンチを生成し、継手（エルボ・スリーブ）を置く。
 function routeMesh(sys, pts, meta, floorG){
-  const S = SYSTEMS[sys]; const m = mepMat(sys); const g = new THREE.Group(); g.userData.mep = { sys, ...meta }; let len = 0;
+  const S0 = SYSTEMS[sys]; const sz = meta.size || {}; const S = { ...S0, size: S0.kind === "pipe" ? [sz.r ?? S0.size[0]] : [sz.w ?? S0.size[0], sz.h ?? S0.size[1]] }; if (sz.label) meta.sizeLabel = sz.label; const m = mepMat(sys); const g = new THREE.Group(); g.userData.mep = { sys, ...meta }; let len = 0;
   const v = pts.map(p => new THREE.Vector3(...p));
   for (let i=0;i<v.length-1;i++){ const a = v[i], b = v[i+1]; const d = b.clone().sub(a); const L = d.length(); if (L < 0.01) continue; len += L; const mid = a.clone().add(b).multiplyScalar(0.5);
     let mesh; const kind = meta.trench ? "trench" : S.kind;
@@ -1909,24 +1935,31 @@ function buildMEP(){
   for (const k in MEP.groups) MEP.groups[k].parent?.remove(MEP.groups[k]); MEP.groups = {}; MEP.segs = [];
   const { x0, x1, z0, zh, z1, lv } = BLD; const g1 = floorGroup(1), g2 = floorGroup(2), g3 = floorGroup(3); const W = x1 - x0; const Y = sys => SYSTEMS[sys].y + (MEP.offsets.y[sys] || 0);
   const zN = z0 + 2.2, zS = zh - 2.2;   // 北・南の幹線位置（壁際、クレーン走行範囲の外ではないが高さで回避）
+  // ---- 負荷集計：設備ごとの設計負荷を北幹線／南幹線／ストリップ別に合計し、幹線サイズを算定 ----
+  const L = { N:{}, S:{}, total:{}, bySys:{} }; for (const k in SYSTEMS){ L.N[k] = 0; L.S[k] = 0; L.total[k] = 0; }
+  for (const e of EQUIP){ const ld = LOADS[e.kind]; if (!ld) continue; const zone = ZONES.find(z=>z[0]===e.zone); const f = zone? zone[2] : 1; const side = (f === 1 && e.zone !== "north" && e.z < -14) ? "N" : "S";
+    for (const k in ld){ if (!(k in L.total)) continue; L.total[k] += ld[k]; if (f === 1 && e.zone !== "north") L[side][k] += ld[k]; } }
+  MEP.loads = L; const trunk = (sys, side) => sizeFor(sys, side === "N" ? L.N[sys] : side === "S" ? L.S[sys] : L.N[sys] + L.S[sys]);
+  const eqSize = (sys, e) => sizeFor(sys, (LOADS[e.kind]||{})[sys] || 0);
+  const diversity = 0.7;   // 需要率
   // 幹線：給気ダクトは北幹線（トラス内 14.0）、排気は南幹線（13.4）、消火は両幹線（13.1）、圧空・クーラント・電源・LAN は壁際の低い位置（7〜8.5）
-  routeMesh("SA", [[22, 18.5, -40], [22, Y("SA"), -40], [22, Y("SA"), zN], [x0+4, Y("SA"), zN]], { name:"給気 主ダクト 北", from:"屋上 AHU", floor:1 }, g1);
-  routeMesh("SA", [[22, Y("SA"), zN], [x1-4, Y("SA"), zN]], { name:"給気 主ダクト 北（東）", from:"屋上 AHU", floor:1 }, g1);
+  routeMesh("SA", [[22, 18.5, -40], [22, Y("SA"), -40], [22, Y("SA"), zN], [x0+4, Y("SA"), zN]], { name:"給気 主ダクト 北", from:"屋上 AHU", floor:1, size: sizeFor("SA", 18000), load:"18,000 m³/h" }, g1);
+  routeMesh("SA", [[22, Y("SA"), zN], [x1-4, Y("SA"), zN]], { name:"給気 主ダクト 北（東）", from:"屋上 AHU", floor:1, size: sizeFor("SA", 9000), load:"9,000 m³/h" }, g1);
   for (let x = x0+6; x < x1-4; x += 8) addFitting("SA", [x, Y("SA")-0.55, zN], "diffuser", g1, { name:"吹出口 φ350" });
-  for (const z of [-12]) { routeMesh("SA", [[-28, Y("SA"), zN], [-28, Y("SA"), z], [x1-8, Y("SA"), z]], { name:"給気 枝ダクト 中央", from:"主ダクト", floor:1 }, g1); for (let x=-24; x<x1-8; x+=8) addFitting("SA", [x, Y("SA")-0.55, z], "diffuser", g1, { name:"吹出口 φ350" }); }
-  routeMesh("EA", [[-18, 13.0, z0-0.4], [-18, Y("EA"), z0-0.4], [-18, Y("EA"), zS], [x0+4, Y("EA"), zS]], { name:"集塵 主ダクト", from:"集塵機", to:"排気筒 x=-20", floor:1 }, g1);
-  routeMesh("EA", [[-18, Y("EA"), zS], [x1-10, Y("EA"), zS]], { name:"集塵 主ダクト（東）", from:"集塵機", floor:1 }, g1);
-  for (const z of [zN, zS]){ const zr = z<-10 ? z0+0.95 : zh-0.95; routeMesh("FP", [[x1-4.5, 0.5, zr], [x1-4.5, Y("FP"), zr], [x1-4.5, Y("FP"), z], [x0+2, Y("FP"), z]], { name:"消火 主管 " + (z<-10?"北":"南"), from:"消火ポンプ", floor:1 }, g1); addFitting("FP", [x1-4.5, 1.2, zr], "valve", g1, { name:"制御弁" }); }
-  for (let x = x0+4; x < x1; x += 8){ routeMesh("FP", [[x, Y("FP"), zN], [x, Y("FP"), zS]], { name:`消火 枝管 x=${x}`, from:"主管", floor:1 }, g1); for (let z = zN+2; z < zS; z += 3) addFitting("FP", [x, Y("FP")-0.08, z], "sprinkler", g1, { name:"SP ヘッド" }); }
-  routeMesh("CA", [[-47, 1.2, -36], [-47, Y("CA"), -36], [-47, Y("CA"), zN], [x0+1.2, Y("CA"), zN], [x1-1.2, Y("CA"), zN]], { name:"圧空 主管 北", from:"コンプレッサ室", floor:1 }, g1);
-  routeMesh("CA", [[x0+1.2, Y("CA"), zN], [x0+1.2, Y("CA"), zS], [x1-1.2, Y("CA"), zS]], { name:"圧空 主管 南", from:"主管 北", floor:1 }, g1);
-  routeMesh("CW", [[x0-1, 0.8, -28], [x0+1.4, 0.8, -28], [x0+1.4, Y("CW"), -28], [x0+1.4, Y("CW"), zS], [x1-1.4, Y("CW"), zS]], { name:"クーラント 往管", from:"集中タンク", floor:1 }, g1);
-  routeMesh("CW", [[x0+1.4, Y("CW"), -28], [x0+1.4, Y("CW"), zN], [x1-1.4, Y("CW"), zN]], { name:"クーラント 往管 北", from:"集中タンク", floor:1 }, g1);
-  routeMesh("EL", [[-52, 1.0, -31.2], [-52, Y("EL"), -31.2], [x0+1.6, Y("EL"), -31.2], [x0+1.6, Y("EL"), zN], [x1-1.6, Y("EL"), zN]], { name:"電源幹線 北（600A）", from:"キュービクル", floor:1 }, g1);
-  routeMesh("EL", [[x0+1.6, Y("EL"), zN], [x0+1.6, Y("EL"), zS], [x1-1.6, Y("EL"), zS]], { name:"電源幹線 南", from:"幹線 北", floor:1 }, g1);
+  for (const z of [-12]) { routeMesh("SA", [[-28, Y("SA"), zN], [-28, Y("SA"), z], [x1-8, Y("SA"), z]], { name:"給気 枝ダクト 中央", from:"主ダクト", floor:1, size: sizeFor("SA", 6000), load:"6,000 m³/h" }, g1); for (let x=-24; x<x1-8; x+=8) addFitting("SA", [x, Y("SA")-0.55, z], "diffuser", g1, { name:"吹出口 φ350" }); }
+  routeMesh("EA", [[-18, 13.0, z0-0.4], [-18, Y("EA"), z0-0.4], [-18, Y("EA"), zS], [x0+4, Y("EA"), zS]], { name:"集塵 主ダクト", from:"集塵機", to:"排気筒 x=-20", floor:1, size: trunk("EA","all"), load:`${Math.round(L.N.EA+L.S.EA).toLocaleString()} m³/h` }, g1);
+  routeMesh("EA", [[-18, Y("EA"), zS], [x1-10, Y("EA"), zS]], { name:"集塵 主ダクト（東）", from:"集塵機", floor:1, size: trunk("EA","S"), load:`${Math.round(L.S.EA).toLocaleString()} m³/h` }, g1);
+  for (const z of [zN-0.9, zS+0.9]){ const zr = z<-10 ? z0+0.95 : zh-0.95; routeMesh("FP", [[x1-2.2, 0.5, zr], [x1-2.2, Y("FP"), zr], [x1-2.2, Y("FP"), z], [x0+2, Y("FP"), z]], { name:"消火 主管 " + (z<-10?"北":"南"), from:"消火ポンプ", floor:1 }, g1); addFitting("FP", [x1-2.2, 1.2, zr], "valve", g1, { name:"制御弁" }); }
+  for (let x = x0+4; x < x1; x += 8){ routeMesh("FP", [[x, Y("FP"), zN-0.9], [x, Y("FP"), zS+0.9]], { name:`消火 枝管 x=${x}`, from:"主管", floor:1 }, g1); for (let z = zN+2; z < zS; z += 3) addFitting("FP", [x, Y("FP")-0.08, z], "sprinkler", g1, { name:"SP ヘッド" }); }
+  routeMesh("CA", [[-47, 1.2, -36], [-47, Y("CA"), -36], [-47, Y("CA"), zN], [x0+1.2, Y("CA"), zN], [x1-1.2, Y("CA"), zN]], { name:"圧空 主管 北", from:"コンプレッサ室", floor:1, size: sizeFor("CA", (L.N.CA+L.S.CA)*diversity), load:`${Math.round((L.N.CA+L.S.CA)*diversity).toLocaleString()} L/min（需要率 ${diversity}）` }, g1);
+  routeMesh("CA", [[x0+1.2, Y("CA"), zN], [x0+1.2, Y("CA"), zS], [x1-1.2, Y("CA"), zS]], { name:"圧空 主管 南", from:"主管 北", floor:1, size: sizeFor("CA", L.S.CA*diversity), load:`${Math.round(L.S.CA*diversity).toLocaleString()} L/min` }, g1);
+  routeMesh("CW", [[x0-1, 0.8, -31.4], [x0+1.4, 0.8, -31.4], [x0+1.4, Y("CW"), -31.4], [x0+1.4, Y("CW"), zS], [x1-1.4, Y("CW"), zS]], { name:"クーラント 往管", from:"集中タンク", floor:1, size: sizeFor("CW", L.N.CW+L.S.CW), load:`${Math.round(L.N.CW+L.S.CW)} L/min` }, g1);
+  routeMesh("CW", [[x0+1.4, Y("CW"), -31.4], [x0+1.4, Y("CW"), zN], [x1-1.4, Y("CW"), zN]], { name:"クーラント 往管 北", from:"集中タンク", floor:1, size: sizeFor("CW", L.N.CW), load:`${Math.round(L.N.CW)} L/min` }, g1);
+  routeMesh("EL", [[-52, 1.0, -31.2], [-52, Y("EL"), -31.2], [x0+1.6, Y("EL"), -31.2], [x0+1.6, Y("EL"), zN], [x1-1.6, Y("EL"), zN]], { name:"電源幹線 北", from:"キュービクル", floor:1, size: sizeFor("EL", (L.N.EL+L.S.EL)*diversity), load:`${Math.round((L.N.EL+L.S.EL)*diversity)} kVA（需要率 ${diversity}）` }, g1);
+  routeMesh("EL", [[x0+1.6, Y("EL"), zN], [x0+1.6, Y("EL"), zS], [x1-1.6, Y("EL"), zS]], { name:"電源幹線 南", from:"幹線 北", floor:1, size: sizeFor("EL", L.S.EL*diversity), load:`${Math.round(L.S.EL*diversity)} kVA` }, g1);
   routeMesh("EL", [[x1-1.6, Y("EL"), zS], [x1-1.6, lv[1]-1.0, zS], [x1-1.6, lv[1]-1.0, 10], [29, lv[1]-1.0, 10]], { name:"電源 立上り → 2F サーバー室", from:"幹線 南", to:"SV-01", floor:1 }, g1);
-  routeMesh("IT", [[29, lv[1]+0.3, 10], [29, lv[1]-0.95, 10], [x1-2.0, lv[1]-0.95, 10], [x1-2.0, lv[1]-0.95, zS], [x1-2.0, Y("IT"), zS], [x0+2.0, Y("IT"), zS]], { name:"光ファイバー幹線 南", from:"サーバー室", to:"SV-01", floor:1 }, g1);
-  routeMesh("IT", [[x0+2.0, Y("IT"), zS], [x0+2.0, Y("IT"), zN], [x1-2.0, Y("IT"), zN]], { name:"光ファイバー幹線 北", from:"幹線 南", floor:1 }, g1);
+  routeMesh("IT", [[29, lv[1]+0.3, 10], [29, lv[1]-0.95, 10], [x1-2.0, lv[1]-0.95, 10], [x1-2.0, lv[1]-0.95, zS], [x1-2.0, Y("IT"), zS], [x0+2.0, Y("IT"), zS]], { name:"光ファイバー幹線 南", from:"サーバー室", to:"SV-01", floor:1, size: sizeFor("IT", L.N.IT+L.S.IT), load:`${L.N.IT+L.S.IT} port` }, g1);
+  routeMesh("IT", [[x0+2.0, Y("IT"), zS], [x0+2.0, Y("IT"), zN], [x1-2.0, Y("IT"), zN]], { name:"光ファイバー幹線 北", from:"幹線 南", floor:1, size: sizeFor("IT", L.N.IT), load:`${L.N.IT} port` }, g1);
   // 2F/3F：冷温水（天井内）とスプリンクラー、LAN
   for (const [g, y, f] of [[g2, lv[1], 2], [g3, lv[2], 3]]){ const yc = (f===2? lv[2] : 13.5) - 0.95; routeMesh("CH", [[26, 18.2, -3.6], [26, yc, -3.6], [26, yc, 10], [x0+2, yc, 10]], { name:`冷温水 ${f}F 幹線`, from:"屋上 空調機", floor:f }, g);
     for (let x = x0+5; x < x1-5; x += 10) addFitting("CH", [x, yc-0.3, 10], "outlet", g, { name:"ファンコイル" });
@@ -1947,18 +1980,23 @@ function buildMEP(){
     needs.forEach((sys, i) => { const S = SYSTEMS[sys]; if (!["CA","CW","EL","IT","EA"].includes(sys)) return; const y = Y(sys);
       if (sys === "EA"){ if (!["mc5","hmc","lathe","grind","laser","weld","finish","booth","oven","tcell","testcell"].includes(e.kind)) return; if (e.z > -14 && e.z < 0) return;
         const xd = midSpan(e.x), zd = north ? z0 + 0.6 : zh - 0.6, zh2 = e.z + (north ? -1.3 : 1.3); const yh = (e.kind === "gantry" || e.kind === "testcell" || e.kind === "tcell") ? 7.0 : 4.3;
-        routeMesh("EA", [[xd, y, zt], [xd, y, zd], [xd, yh, zd], [xd, yh, zh2], [e.x + 1.0, yh, zh2], [e.x + 1.0, 3.3, zh2]], { name:`集塵 枝 ${e.id}`, to:e.id, floor:1 }, g1); addFitting("EA", [e.x + 1.0, 3.05, zh2], "hood", g1, { name:"吸込フード", to:e.id }); return; }
+        routeMesh("EA", [[xd, y, zt], [xd, y, zd], [xd, yh, zd], [xd, yh, zh2], [e.x + 1.0, yh, zh2], [e.x + 1.0, 3.3, zh2]], { name:`集塵 枝 ${e.id}`, to:e.id, floor:1, size: eqSize("EA", e), load:`${(LOADS[e.kind]||{}).EA||0} m³/h` }, g1); addFitting("EA", [e.x + 1.0, 3.05, zh2], "hood", g1, { name:"吸込フード", to:e.id }); return; }
       const idx = ["CA","CW","EL","IT"].indexOf(sys);
-      if (far){ const dx = avoidCol(dxFar) + idx*0.18; routeMesh(sys, [[dx, y, zt], [dx, 0.08, zt]], { name:`${S.n} 立下り ${e.id}`, to:e.id, floor:1 }, g1); routeMesh(sys, [[dx, 0.06, zt], [dx, 0.06, e.z], [e.x, 0.06, e.z]], { name:`${S.n} 床トレンチ ${e.id}`, to:e.id, floor:1, trench:true }, g1); }
+      if (far){ const dx = avoidCol(dxFar) + idx*0.18; routeMesh(sys, [[dx, y, zt], [dx, 0.08, zt]], { name:`${S.n} 立下り ${e.id}`, to:e.id, floor:1, size: eqSize(sys, e), load:`${(LOADS[e.kind]||{})[sys]||0} ${LOAD_UNIT[sys]}` }, g1); routeMesh(sys, [[dx, 0.06, zt], [dx, 0.06, e.z], [e.x, 0.06, e.z]], { name:`${S.n} 床トレンチ ${e.id}`, to:e.id, floor:1, trench:true, load:`${(LOADS[e.kind]||{})[sys]||0} ${LOAD_UNIT[sys]}` }, g1); }
       else if (e.z > zh){ const dx = avoidCol(dxNear) + idx*0.14; const zEnd = bb ? bb.max.z - 0.6 : e.z; const yc = lv[1] - 1.0 - idx*0.12;   // 南側ストリップ：1F 天井内を通す
-        routeMesh(sys, [[dx, y, zt], [dx, yc, zt], [dx, yc, zEnd], [dx, 1.6, zEnd]], { name:`${S.n} 枝 ${e.id}`, to:e.id, floor:1 }, g1); if (sys === "EL") addFitting("EL", [dx, 1.4, zEnd], "outlet", g1, { name:"動力盤 " + e.id, to:e.id }); }
-      else { const dx = avoidCol(dxNear) + idx*0.14; const zEnd = bb ? (north ? bb.min.z + 0.8 : bb.max.z - 0.8) : e.z; routeMesh(sys, [[dx, y, zt], [dx, y, zEnd], [dx, 1.6, zEnd]], { name:`${S.n} 枝 ${e.id}`, to:e.id, floor:1 }, g1); if (sys === "EL") addFitting("EL", [dx, 1.4, zEnd], "outlet", g1, { name:"動力盤 " + e.id, to:e.id }); } }); }
+        routeMesh(sys, [[dx, y, zt], [dx, yc, zt], [dx, yc, zEnd], [dx, 1.6, zEnd]], { name:`${S.n} 枝 ${e.id}`, to:e.id, floor:1, size: eqSize(sys, e), load:`${(LOADS[e.kind]||{})[sys]||0} ${LOAD_UNIT[sys]}` }, g1); if (sys === "EL") addFitting("EL", [dx, 1.4, zEnd], "outlet", g1, { name:"動力盤 " + e.id, to:e.id }); }
+      else { const cl = (typeof CLEARANCE !== "undefined" && CLEARANCE[e.kind]) ? CLEARANCE[e.kind][1] : 0.6; const gapOK = bb && (dxNear - bb.max.x) > cl + 0.3 + idx*0.14;
+        if (gapOK || !bb){ const dx = avoidCol(dxNear) + idx*0.14; const zEnd = bb ? (north ? bb.min.z + 0.8 : bb.max.z - 0.8) : e.z; routeMesh(sys, [[dx, y, zt], [dx, y, zEnd], [dx, 1.6, zEnd]], { name:`${S.n} 枝 ${e.id}`, to:e.id, floor:1, size: eqSize(sys, e), load:`${(LOADS[e.kind]||{})[sys]||0} ${LOAD_UNIT[sys]}` }, g1); if (sys === "EL") addFitting("EL", [dx, 1.4, zEnd], "outlet", g1, { name:"動力盤 " + e.id, to:e.id }); }
+        else { // 隙間が足りない：壁側で立下り、床トレンチで設備背面へ
+          const dx = avoidCol(bb.min.x + 0.6 + idx*0.18); const zb = north ? bb.min.z - 0.3 : bb.max.z + 0.3;
+          routeMesh(sys, [[dx, y, zt], [dx, 0.08, zt]], { name:`${S.n} 立下り ${e.id}`, to:e.id, floor:1, size: eqSize(sys, e), load:`${(LOADS[e.kind]||{})[sys]||0} ${LOAD_UNIT[sys]}` }, g1);
+          routeMesh(sys, [[dx, 0.06, zt], [dx, 0.06, zb], [e.x, 0.06, zb]], { name:`${S.n} 床トレンチ ${e.id}`, to:e.id, floor:1, trench:true, load:`${(LOADS[e.kind]||{})[sys]||0} ${LOAD_UNIT[sys]}` }, g1); } } }); }
   applyMepVisibility();
 }
-function applyMepVisibility(){ for (const k in MEP.groups){ const g = MEP.groups[k]; const office = g.parent && g.parent.name !== "floor_1"; g.visible = (MEP.visible[g.userData.sys] ?? true) && (layerState?.mep ?? true) && (!office || MEP.office); } }
+function applyMepVisibility(){ for (const k in MEP.groups){ const g = MEP.groups[k]; const office = g.parent && g.parent.name !== "floor_1"; g.visible = (MEP.visible[g.userData.sys] ?? true) && (layerState?.mep ?? true) && (!office || MEP.office || MEP.walk); } }
 
 // ---- 数量表 ----
-function mepSchedule(){ const t = {}; for (const k in SYSTEMS) t[k] = { n:SYSTEMS[k].n, len:0, runs:0, fittings:0 }; for (const k in MEP.groups) MEP.groups[k].children.forEach(c => { const m = c.userData.mep; if (!m) return; if (m.length !== undefined){ t[m.sys].len += m.length; t[m.sys].runs++; } else t[m.sys].fittings++; }); return t; }
+function mepSchedule(){ const t = {}; for (const k in SYSTEMS) t[k] = { n:SYSTEMS[k].n, len:0, runs:0, fittings:0, load: MEP.loads.total ? MEP.loads.total[k] : 0, unit: LOAD_UNIT[k] }; for (const k in MEP.groups) MEP.groups[k].children.forEach(c => { const m = c.userData.mep; if (!m) return; if (m.length !== undefined){ t[m.sys].len += m.length; t[m.sys].runs++; } else t[m.sys].fittings++; }); return t; }
 
 // ---- 干渉チェック（MEP セグメント vs 架構・クレーン走行範囲・設備）----
 function clashCheck(){
@@ -1974,6 +2012,24 @@ function clashCheck(){
       res.push({ sys:s.sys, seg:s.meta.name, obstacle:o.n, kind:o.kind, at:center, obj:s.obj }); } }
   return res;
 }
+
+// ---- 保守スペース（設備周りの開放寸法）チェック ----
+const CLEARANCE = { mc5:[1.0,0.8], hmc:[1.2,0.8], lathe:[1.0,0.6], gantry:[1.5,1.0], edm:[0.8,0.6], grind:[0.8,0.6], robotcell:[0.6,0.6], wash:[0.8,0.6], store:[1.0,0.3], load:[0.8,0.3],
+  asmA:[2.0,1.5], asmB:[2.0,1.5], testcell:[1.0,1.0], tcell:[1.0,1.0], cmm:[1.0,0.8], panel:[1.0,0.5], wiring:[0.8,0.5], ptest:[0.8,0.5], laser:[1.2,1.0], brake:[1.5,0.6], weld:[0.8,0.6], finish:[0.8,0.5], mask:[0.8,0.5], booth:[1.5,1.0], oven:[1.5,0.8], demo:[1.0,1.0], hil:[1.0,0.6], server:[1.2,0.8], rack:[1.2,0.3], dock:[0,0], bigdoor:[0,0], crane:[0,0], agv:[0,0] };
+// [前後, 左右] m。箱を拡張した「保守ゾーン」が他設備のコア箱や MEP 立下りと交差すれば違反
+function clearanceCheck(){ const boxes = {}; for (const id in EQ_OBJ){ const o = EQ_OBJ[id]; if (!o.group.visible || ["crane","agv","bigdoor","dock"].includes(o.data.kind)) continue; const b = new THREE.Box3(); o.group.updateMatrixWorld(true); o.group.traverse(m => { if (!m.isMesh || m.isSprite) return; let p = m; while (p && p !== o.group){ if (p.userData.extra) return; p = p.parent; } b.union(new THREE.Box3().setFromObject(m)); }); if (!b.isEmpty()) boxes[id] = b; }
+  const res = []; const ids = Object.keys(boxes);
+  for (const id of ids){ const e = EQ_OBJ[id].data; const c = CLEARANCE[e.kind] || [0.6,0.6]; if (!c[0] && !c[1]) continue; const rot = Math.abs(Math.sin(e.rot||0)) > 0.5; const dx = rot ? c[0] : c[1], dz = rot ? c[1] : c[0];
+    const zone = boxes[id].clone(); zone.min.x -= dx; zone.max.x += dx; zone.min.z -= dz; zone.max.z += dz; zone.min.y += 0.3; zone.max.y = zone.min.y + 2.0;
+    for (const other of ids){ if (other === id) continue; const ob = boxes[other].clone().expandByScalar(-0.15); if (zone.intersectsBox(ob)){ const c2 = zone.clone().intersect(ob); const sz = c2.getSize(new THREE.Vector3()); if (sz.x < 0.1 || sz.z < 0.1) continue; res.push({ kind:"equipment", id, other, obstacle:`${other} ${EQ_OBJ[other].data.name}`, at:c2.getCenter(new THREE.Vector3()), need:`${c[0]}/${c[1]} m` }); } }
+    const zoneFB = zone.clone(); zoneFB.min.x += dx; zoneFB.max.x -= dx;
+    for (const sg of MEP.segs){ if (sg.meta.trench || sg.floor !== 1) continue; if (Math.abs(sg.b.y - sg.a.y) < 0.5) continue; if (sg.meta.to === id) continue; const bb = new THREE.Box3().setFromPoints([sg.a, sg.b]).expandByScalar(sg.r); if (zoneFB.intersectsBox(bb)) res.push({ kind:"mep", id, obstacle:`${sg.sys} ${sg.meta.name}`, at:bb.getCenter(new THREE.Vector3()), need:`${c[0]}/${c[1]} m` }); } }
+  const seen = new Set(); return res.filter(r => { const k = [r.id, r.other||r.obstacle].sort().join("|"); if (seen.has(k)) return false; seen.add(k); return true; }); }
+let clearanceGroup = null;
+function showClearanceZones(on){ if (clearanceGroup){ scene.remove(clearanceGroup); clearanceGroup = null; } if (!on) return; clearanceGroup = new THREE.Group(); const mat = new THREE.MeshBasicMaterial({ color:0xf2c744, transparent:true, opacity:0.12, depthWrite:false, side:THREE.DoubleSide });
+  for (const id in EQ_OBJ){ const o = EQ_OBJ[id]; const c = CLEARANCE[o.data.kind]; if (!o.group.visible || !c || (!c[0] && !c[1])) continue; const b = new THREE.Box3(); o.group.traverse(m => { if (!m.isMesh || m.isSprite) return; let p = m; while (p && p !== o.group){ if (p.userData.extra) return; p = p.parent; } b.union(new THREE.Box3().setFromObject(m)); }); if (b.isEmpty()) continue;
+    const rot = Math.abs(Math.sin(o.data.rot||0)) > 0.5; const dx = rot ? c[0] : c[1], dz = rot ? c[1] : c[0]; const sz = b.getSize(new THREE.Vector3()); const ctr = b.getCenter(new THREE.Vector3()); const m = new THREE.Mesh(G.box(sz.x + 2*dx, 0.05, sz.z + 2*dz), mat); m.position.set(ctr.x, b.min.y + 0.12, ctr.z); clearanceGroup.add(m); const ed = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color:0xf2c744, transparent:true, opacity:0.6 })); ed.position.copy(m.position); clearanceGroup.add(ed); }
+  scene.add(clearanceGroup); }
 
 // ===== src/58_detail.js =====
 // ================= 外観・内観のディテール =================
@@ -2279,10 +2335,10 @@ document.querySelectorAll("#topbar [data-day]").forEach(b => b.onclick = () => {
 $("playBtn").onclick = () => { playing = !playing; $("playBtn").textContent = playing ? "⏸ 稼働" : "▶ 稼働"; $("playBtn").classList.toggle("on", playing); };
 
 // ---- レイヤー ----
-const LAYER_DEFS = [["structure","鉄骨架構・トラス"],["envelope","外皮・ガラス・間仕切り"],["equipment","機械設備"],["furniture","什器・オフィス"],["mep","MEP（ダクト・配管・照明）"],["overhead","天井工具（ガントリー・ツールレール・ブーム）"],["markings","床ライン・安全表示"],["people","人・車両（稼働）"],["labels","名称ラベル"],["green","植栽"],["context","周辺街区・道路"]];
+const LAYER_DEFS = [["structure","鉄骨架構・トラス"],["envelope","外皮・ガラス・間仕切り"],["equipment","機械設備"],["furniture","什器・オフィス"],["mep","MEP（ダクト・配管・照明）"],["overhead","天井工具（ガントリー・ツールレール・ブーム）"],["markings","床ライン・安全表示"],["people","人・車両（稼働）"],["labels","名称ラベルを常時表示（OFF＝ホバー時のみ）"],["green","植栽"],["context","周辺街区・道路"]];
 const layerState = {};
 function applyLayers(){ scene.traverse(o => { const l = o.userData.layer; if (l && layerState[l] !== undefined) o.visible = layerState[l]; }); applyMepVisibility(); if (LAYERS.green) LAYERS.green.visible = layerState.green; if (LAYERS.context) LAYERS.context.visible = layerState.context; dirtyShadow(); }
-{ const list = $("layerList"); for (const [k, n] of LAYER_DEFS){ layerState[k] = true; const lb = document.createElement("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = true; cb.onchange = () => { layerState[k] = cb.checked; applyLayers(); }; lb.appendChild(cb); lb.appendChild(document.createTextNode(n)); list.appendChild(lb); } }
+{ const list = $("layerList"); for (const [k, n] of LAYER_DEFS){ layerState[k] = k !== "labels"; const lb = document.createElement("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = layerState[k]; cb.onchange = () => { layerState[k] = cb.checked; applyLayers(); }; lb.appendChild(cb); lb.appendChild(document.createTextNode(n)); list.appendChild(lb); } }
 function leftPanel(id){ for (const [pid, bid] of [["layers","layersBtn"],["section","secBtn"],["bim","bimBtn"]]){ const on = pid === id; $(pid).style.display = on ? "block" : "none"; $(bid).classList.toggle("on", on); } document.body.classList.toggle("leftopen", !!id); MEP.office = id === "bim"; applyMepVisibility(); }
 $("layersBtn").onclick = () => leftPanel($("layers").style.display === "block" ? null : "layers");
 
@@ -2301,11 +2357,11 @@ $("secBtn").onclick = () => { secOn = $("section").style.display !== "block"; le
 $("secOff").onclick = () => { secOn = false; leftPanel(null); applySection(); };
 
 // ---- 歩行モード ----
-function toggleWalk(on){
+let toggleWalk = function(on){
   walk.on = on; document.body.classList.toggle("walk", on); $("walkBtn").classList.toggle("on", on);
   if (on){ const t = camGoal.target; walk.pos.set(clamp(t.x, -58, 58), (mode === "ext" ? 0 : BLD.lv[Math.max(0, Number(mode) - 1)] || 0) + 1.65, clamp(t.z, -38, 38)); walk.yaw = camGoal.yaw + Math.PI; walk.pitch = -0.05; cvsEl.requestPointerLock?.(); }
   else { document.exitPointerLock?.(); camDirty = true; }
-}
+};
 $("walkBtn").onclick = () => toggleWalk(!walk.on);
 document.addEventListener("pointerlockchange", () => { if (walk.on && document.pointerLockElement !== cvsEl) toggleWalk(false); });
 cvsEl.addEventListener("click", () => { if (walk.on && document.pointerLockElement !== cvsEl) cvsEl.requestPointerLock?.(); });
@@ -2377,7 +2433,7 @@ function laneCard(o){ const L = o.lane, R = LANE_RECIPES[L.recipe], k = o.kpi; c
   return `<div class="lane${activeLane===L.id?" on":""}" data-id="${L.id}" style="--c:${c}"><div class="lh"><b>${pe(L.id)}</b>${pe(R.n)}<small>${pe(sl? sl.n : L.zone)}</small></div><div class="desc">${pe(R.desc)}</div>
   <div class="kpi"><div><small>生産量</small><b class="big">${pe(k.outLabel)}</b></div><div><small>タクト（ボトルネック）</small><b>${pe(k.taktLabel)}</b></div><div><small>OEE</small><b>${(k.oee*100).toFixed(0)}%</b></div>
   <div><small>自動化率（時間）</small><b>${(k.autoRatio*100).toFixed(0)}%</b></div><div><small>要員 / 機械</small><b>${k.ppl.toFixed(1)} 人 / ${k.machines} 台</b></div><div><small>リードタイム</small><b>${pe(k.leadLabel)}</b></div></div>
-  <div class="sub" style="margin-top:5px">ボトルネック: ${pe(k.bottleneck)} ／ 無人運転 ${k.unattended} h/日 ／ ${L.shifts.shifts} 直 × ${L.shifts.hours} h${o.lay.overflow>0.05? ` ／ <span class="warn" style="color:var(--bad)">区画を ${o.lay.overflow.toFixed(1)} m はみ出し</span>`:""}</div>
+  <div class="sub" style="margin-top:5px">${(()=>{ const n = clearanceCache ? clearanceCache.filter(r => (EQ_OBJ[r.id]?.data.lane) === L.id).length : 0; return n ? `<span style="color:var(--acc)">保守スペース侵害 ${n} 件</span> ／ ` : ""; })()}ボトルネック: ${pe(k.bottleneck)} ／ 無人運転 ${k.unattended} h/日 ／ ${L.shifts.shifts} 直 × ${L.shifts.hours} h${o.lay.overflow>0.05? ` ／ <span class="warn" style="color:var(--bad)">区画を ${o.lay.overflow.toFixed(1)} m はみ出し</span>`:""}</div>
   <div class="chips">${chips}</div><div class="ctl"><button class="btn sm" data-act="view">3Dで見る</button><button class="btn sm" data-act="cfg">構成を変える</button><button class="btn sm" data-act="del">削除</button></div>
   <form class="cfg" hidden><label>レシピ<select name="recipe">${Object.keys(LANE_RECIPES).map(r=>`<option value="${r}"${r===L.recipe?" selected":""}>${pe(LANE_RECIPES[r].n)}</option>`).join("")}</select></label>
   <label>主要機械の台数<input name="main" type="number" min="1" max="6" value="${mainN}"></label><label>シフト数<input name="shifts" type="number" min="1" max="3" value="${L.shifts.shifts}"></label>
@@ -2402,7 +2458,7 @@ function applyLaneForm(id, fd){ const o = LANE_OBJ[id]; const L = o ? o.lane : {
   const so = {}; const keys = typeof fd.keys === "function" ? [...fd.keys()] : []; for (const k of keys){ const [f, t] = k.split(":"); if (!t || !STATION_TYPES[t]) continue; so[t] = so[t] || {}; const v = fd.get(k); if (f==="ct") so[t].ct = +v; else if (f==="n") so[t].n = Math.max(1, +v|0); else if (f==="auto") so[t].auto = v; else if (f==="ppl") so[t].ppl = +v; }
   L.stationOv = (recipe === (o? o.lane.recipe : recipe) && keys.length) ? so : {}; if (L.override && L.stationOv[MAIN_STATION[recipe]]) L.stationOv[MAIN_STATION[recipe]].n = L.override[MAIN_STATION[recipe]];
   generateLane(L); if (!LANES.includes(L)) LANES.push(L); setActiveLane(L.id); afterLaneChange(); focusLane(L.id); }
-function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); buildMEP(); if ($("bim").style.display === "block") renderBim(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
+function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); buildMEP(); if ($("bim").style.display === "block") renderBim(); if (clrOn) runClearance(); if (clashMarks) runClash(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
 function focusLane(id){ const o = LANE_OBJ[id]; if (!o) return; const L = o.lane; if (walk.on) toggleWalk(false); setMode(L.floor); const [x0,x1,z0,z1] = L.area; const w = Math.max(x1-x0, z1-z0);
   setCam({ yaw: L.floor===2? -0.9 : -0.6, pitch:0.62, dist: w*1.35, target:[(x0+x1)/2, BLD.lv[L.floor-1]+2, (z0+z1)/2] }); setActiveLane(id); renderLanes(); renderOS(); }
 $("laneAdd").onclick = () => { let n = 6; while (LANE_OBJ["L"+n]) n++; const id = "L"+n; const fd = new Map([["recipe","precision"],["main","3"],["shifts","2"],["unattended","8"],["slot","recv"]]); applyLaneForm(id, fd); const card = document.querySelector(`.lane[data-id="${id}"] form`); if (card) card.hidden = false; };
@@ -2464,7 +2520,11 @@ function pickAt(x, y){ ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 
   for (const h of hits){ if (h.object.isSprite) continue; let o = h.object; if (o.userData.mep) return { mep:o.userData.mep, obj:o }; while (o){ if (o.userData.eqId) return o.userData.eqId; o = o.parent; } return null; } return null; }
 cvsEl.addEventListener("pointerup", e => { if (walk.on || drag.moved > 6 || e.button !== 0) return; const id = pickAt(e.clientX, e.clientY); if (id && id.mep) { selectEq(null); showMepInfo(id.mep); } else if (id) { selectEq(id); } else selectEq(null); });
 let hoverTimer = 0;
-cvsEl.addEventListener("pointermove", e => { if (walk.on || drag.on) return; const now = performance.now(); if (now - hoverTimer < 80) return; hoverTimer = now; const id0 = pickAt(e.clientX, e.clientY); const id = (id0 && id0.mep) ? null : id0; cvsEl.style.cursor = id0 ? "pointer" : ""; if (id !== hoverId){ if (hoverId && hoverId !== selectedId) setHighlight(hoverId, false); hoverId = id; if (id && id !== selectedId) setHighlight(id, true); } });
+cvsEl.addEventListener("pointermove", e => { if (walk.on || drag.on) return; const now = performance.now(); if (now - hoverTimer < 80) return; hoverTimer = now; const id0 = pickAt(e.clientX, e.clientY); const id = (id0 && id0.mep) ? null : id0; cvsEl.style.cursor = id0 ? "pointer" : ""; hoverUpdate(e, id0); if (id !== hoverId){ if (hoverId && hoverId !== selectedId) setHighlight(hoverId, false); hoverId = id; if (id && id !== selectedId) setHighlight(id, true); } });
+
+// ---- 歩行モード：天井内の設備（2F/3F の MEP）も見えるようにし、ホール内では名称を近距離だけ表示 ----
+const _toggleWalk0 = toggleWalk;
+toggleWalk = function(on){ _toggleWalk0(on); MEP.walk = on; applyMepVisibility(); };
 
 // ---- BIM・MEP パネル ----
 let xray = false, clashMarks = null;
@@ -2473,9 +2533,9 @@ function setXray(on){ xray = on; for (const m of XRAY_MATS()){ if (!m) continue;
 function showMepInfo(m){ const p = $("info"); document.body.classList.add("info"); const S = SYSTEMS[m.sys]; p.innerHTML = `<div class="sub">MEP · ${pe(S.n)}</div><h2>${pe(m.name || m.kind || "")}</h2><table>
   <tr><td>系統</td><td>${pe(m.sys)} ${pe(S.n)}</td></tr><tr><td>種別</td><td>${S.kind==="pipe"?"配管":S.kind==="duct"?"ダクト":S.kind==="tray"?"ケーブルラック":"床トレンチ"}${m.trench?"（床トレンチ）":""}</td></tr>
   <tr><td>寸法</td><td>${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000)+" mm" : S.size.map(v=>Math.round(v*1000)).join("×")+" mm"}</td></tr>${m.length!==undefined? `<tr><td>延長</td><td>${m.length.toFixed(1)} m</td></tr>`:""}
-  <tr><td>供給元</td><td>${pe(m.from || S.src)}</td></tr>${m.to? `<tr><td>接続先</td><td>${pe(m.to)}</td></tr>`:""}<tr><td>設計高さ</td><td>${(S.y + (MEP.offsets.y[m.sys]||0)).toFixed(1)} m${MEP.offsets.y[m.sys]? "（調整 "+MEP.offsets.y[m.sys].toFixed(1)+" m）":""}</td></tr></table>
+  ${m.load? `<tr><td>設計負荷</td><td>${pe(m.load)}</td></tr>`:""}${m.sizeLabel? `<tr><td>算定サイズ</td><td>${pe(m.sizeLabel)}</td></tr>`:""}<tr><td>供給元</td><td>${pe(m.from || S.src)}</td></tr>${m.to? `<tr><td>接続先</td><td>${pe(m.to)}</td></tr>`:""}<tr><td>設計高さ</td><td>${(S.y + (MEP.offsets.y[m.sys]||0)).toFixed(1)} m${MEP.offsets.y[m.sys]? "（調整 "+MEP.offsets.y[m.sys].toFixed(1)+" m）":""}</td></tr></table>
   <div class="sep"></div><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" id="infoClose">閉じる</button></div>`; p.style.display = "block"; $("infoClose").onclick = () => showInfo(null); }
-function renderBim(){ const sch = mepSchedule(); const el = $("bimSys"); let total = 0; el.innerHTML = Object.keys(SYSTEMS).map(k => { const S = SYSTEMS[k]; total += sch[k].len; return `<label class="sysrow"><input type="checkbox" data-sys="${k}" ${MEP.visible[k]===false?"":"checked"}><i style="background:#${S.color.toString(16).padStart(6,"0")}"></i>${pe(k)} ${pe(S.n)}<span class="len">${sch[k].len.toFixed(0)} m · ${sch[k].fittings} 器具</span></label>`; }).join("");
+function renderBim(){ const sch = mepSchedule(); const el = $("bimSys"); let total = 0; el.innerHTML = Object.keys(SYSTEMS).map(k => { const S = SYSTEMS[k]; total += sch[k].len; return `<label class="sysrow"><input type="checkbox" data-sys="${k}" ${MEP.visible[k]===false?"":"checked"}><i style="background:#${S.color.toString(16).padStart(6,"0")}"></i>${pe(k)} ${pe(S.n)}<span class="len">${sch[k].len.toFixed(0)} m · ${sch[k].fittings} 器具${sch[k].load? "<br>負荷 "+Math.round(sch[k].load).toLocaleString()+" "+pe(sch[k].unit) : ""}</span></label>`; }).join("");
   $("bimSum").textContent = `延長 ${total.toFixed(0)} m`; el.querySelectorAll("input").forEach(cb => cb.onchange = () => { MEP.visible[cb.dataset.sys] = cb.checked; applyMepVisibility(); });
   const sel = $("bimSysSel"); if (!sel.options.length){ for (const k in SYSTEMS){ const o = document.createElement("option"); o.value = k; o.textContent = k + " " + SYSTEMS[k].n; sel.appendChild(o); } }
   $("bimH").value = MEP.offsets.y[sel.value] || 0; $("bimHLabel").textContent = `${(MEP.offsets.y[sel.value]||0) >= 0 ? "+" : ""}${(MEP.offsets.y[sel.value]||0).toFixed(1)} m（設計 ${SYSTEMS[sel.value].y} m）`; }
@@ -2488,6 +2548,11 @@ function runClash(){ const res = clashCheck(); if (clashMarks) scene.remove(clas
   el.innerHTML = `<div class="sub" style="margin-bottom:4px"><b style="color:var(--bad)">${res.length} 件</b>：架構 ${byKind.structure} ／ クレーン走行範囲 ${byKind.crane} ／ 設備 ${byKind.equipment}。クリックで寄る。</div>` + res.slice(0, 40).map((r, i) => `<div class="clash ${r.kind}" data-i="${i}"><b>${pe(r.sys)}</b> ${pe(r.seg)}<br><span class="sub">× ${pe(r.obstacle)} @ (${r.at.x.toFixed(1)}, ${r.at.y.toFixed(1)}, ${r.at.z.toFixed(1)})</span></div>`).join("") + (res.length > 40 ? `<div class="sub">…他 ${res.length-40} 件</div>` : "");
   el.querySelectorAll(".clash").forEach(d => d.onclick = () => { const r = res[+d.dataset.i]; if (mode === "ext") setMode(1); setCam({ yaw: camGoal.yaw, pitch:0.35, dist:14, target:[r.at.x, r.at.y, r.at.z] }); showMepInfo(r.obj.userData.mep); }); }
 $("clashBtn").onclick = () => { if (clashMarks){ scene.remove(clashMarks); clashMarks = null; $("clashList").innerHTML = ""; $("clashBtn").classList.remove("on"); return; } $("clashBtn").classList.add("on"); runClash(); };
+let clrOn = false, clearanceCache = null;
+function runClearance(){ const res = clearanceCheck(); clearanceCache = res; renderLanes(); showClearanceZones(true); const el = $("clearList"); if (!res.length){ el.innerHTML = `<div class="sub" style="color:var(--good)">保守スペースの侵害なし（${Object.keys(EQ_OBJ).length} 設備）</div>`; return; }
+  el.innerHTML = `<div class="sub" style="margin-bottom:4px"><b style="color:var(--acc)">${res.length} 件</b>：設備間 ${res.filter(r=>r.kind==="equipment").length} ／ MEP 立下り ${res.filter(r=>r.kind==="mep").length}。黄の枠が保守ゾーン（前後/左右）。</div>` + res.slice(0, 30).map((r, i) => `<div class="clash equipment" data-i="${i}"><b>${pe(r.id)}</b> ${pe(EQ_OBJ[r.id].data.name)} <span class="sub">必要 ${pe(r.need)}</span><br><span class="sub">× ${pe(r.obstacle)}</span></div>`).join("");
+  el.querySelectorAll(".clash").forEach(d => d.onclick = () => { const r = res[+d.dataset.i]; if (mode === "ext") setMode(1); setCam({ yaw: camGoal.yaw, pitch:0.5, dist:16, target:[r.at.x, r.at.y, r.at.z] }); selectEq(r.id); }); }
+$("clearBtn").onclick = () => { clrOn = !clrOn; $("clearBtn").classList.toggle("on", clrOn); if (clrOn) runClearance(); else { showClearanceZones(false); $("clearList").innerHTML = ""; } };
 $("xrayBtn").onclick = () => setXray(!xray);
 $("mepCsv").onclick = () => { const sch = mepSchedule(); let csv = "系統,名称,種別,寸法,延長 m,区間数,器具数\n"; for (const k in sch){ const S = SYSTEMS[k]; csv += `${k},${S.n},${S.kind},${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000) : S.size.map(v=>Math.round(v*1000)).join("x")},${sch[k].len.toFixed(1)},${sch[k].runs},${sch[k].fittings}\n`; } const a = document.createElement("a"); a.download = "yellow-ota-mep.csv"; a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type:"text/csv" })); a.click(); };
 
@@ -2526,12 +2591,29 @@ function build(){
   $("loading").style.display = "none";
 }
 const clock = new THREE.Clock(); let frame = 0;
+let hoverLabel = null, hoverZone = null;
 function updateLabels(){
-  const d = walk.on ? 12 : camGoal.dist; const f = mode === "ext" ? 0 : Number(mode);
-  for (const sp of LABELS){ const k = sp.userData.kind; if (!k){ sp.visible = layerState.labels; continue; } if (k === "link"){ sp.visible = layerState.labels && linksOn; continue; } if (k === "sign"){ sp.visible = true; continue; }
-    if (k === "zone") sp.visible = layerState.labels && !walk.on && d > 28 && (sp.userData.floor === 0 ? (d > 60 && mode === "ext") : (mode !== "ext" && sp.userData.floor === f));
-    else sp.visible = layerState.labels && d < 90 && (walk.on || mode !== "ext") && (mode === "ext" || sp.userData.floor <= f); }
+  const d = walk.on ? 12 : camGoal.dist; const f = mode === "ext" ? 0 : Number(mode); const all = layerState.labels;   // レイヤー「名称ラベル」ON で全表示
+  for (const sp of LABELS){ const k = sp.userData.kind; if (k === "sign"){ sp.visible = true; continue; } if (k === "link"){ sp.visible = linksOn; continue; }
+    if (!all){ sp.visible = (sp === hoverLabel) || (k === "zone" && sp.userData.zone === hoverZone) || (k === "tag" && sp.userData.laneId === activeLane); continue; }
+    if (!k){ sp.visible = true; continue; }
+    if (k === "zone") sp.visible = !walk.on && d > 28 && (sp.userData.floor === 0 ? (d > 60 && mode === "ext") : (mode !== "ext" && sp.userData.floor === f));
+    else sp.visible = d < 90 && (walk.on || mode !== "ext") && (mode === "ext" || sp.userData.floor <= f); }
 }
+// ---- ホバーツールチップ（設備・MEP・ゾーン） ----
+const tip = document.createElement("div"); tip.id = "tip"; document.body.appendChild(tip);
+function zoneAt(x, z, f){ for (const zn of ZONES){ if (zn[2] !== f) continue; if (x >= zn[4] && x <= zn[5] && z >= zn[6] && z <= zn[7]) return zn; } return null; }
+const floorPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+function hoverUpdate(e, id0){
+  let html = "", lb = null; hoverZone = null;
+  if (id0 && id0.mep){ const m = id0.mep, S = SYSTEMS[m.sys]; html = `<b>${pe(S.n)}</b><br>${pe(m.name || m.kind || "")}${m.length? ` · ${m.length.toFixed(1)} m` : ""}${m.sizeLabel? ` · ${pe(m.sizeLabel)}` : ""}`; }
+  else if (id0){ const eq = EQUIP.find(x => x.id === id0); if (eq){ html = `<b>${pe(eq.id)}</b> ${pe(eq.name)}<br><span>${pe(zoneName(eq.zone))}${eq.lane? " · "+pe(eq.lane) : ""}</span>`; const o = EQ_OBJ[id0]; if (o) o.group.traverse(c => { if (c.isSprite && c.userData.kind === "eq" && !lb) lb = c; }); } }
+  else if (!walk.on){ // 床のゾーン
+    ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const f = mode === "ext" ? 1 : Number(mode); floorPlane.constant = -BLD.lv[f-1]; const pt = new THREE.Vector3();
+    if (ray.ray.intersectPlane(floorPlane, pt)){ const zn = zoneAt(pt.x, pt.z, f) || (mode === "ext" ? zoneAt(pt.x, pt.z, 0) : null); if (zn){ hoverZone = zn[0]; const hc = ZONES.filter(z => z[0] === zn[0]); html = `<b>${pe(zn[1])}</b><br><span>${pe(ZTYPE[zn[3]].n)}${zn[8]? " · "+zn[8]+" 名" : ""}</span>`; } } }
+  hoverLabel = lb; tip.style.display = html ? "block" : "none"; if (html){ tip.innerHTML = html; tip.style.left = (e.clientX + 14) + "px"; tip.style.top = (e.clientY + 16) + "px"; }
+}
+cvsEl.addEventListener("pointerleave", () => { tip.style.display = "none"; hoverLabel = null; hoverZone = null; });
 function loop(){
   requestAnimationFrame(loop); const dt = Math.min(0.05, clock.getDelta()); frame++;
   updateLabels();
@@ -2542,7 +2624,7 @@ function loop(){
 }
 $("loadMsg").textContent = "敷地・建屋・設備を生成しています…";
 setTimeout(() => { try { build(); } catch (err) { $("loadMsg").textContent = "構築エラー: " + err.message; console.error(err); throw err; } loop(); }, 30);
-window.THREE = THREE; window.__factory = { scene, camera, renderer, buildMEP, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
+window.THREE = THREE; window.__factory = { scene, camera, renderer, buildMEP, clearanceCheck, LOADS, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
 </script>
 </body>
 </html>

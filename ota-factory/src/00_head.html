@@ -56,6 +56,7 @@
   .bar { height:7px; background:#0d1117; border-radius:4px; overflow:hidden; margin-top:3px; } .bar i { display:block; height:100%; background:var(--good); } .bar i.warn { background:var(--acc); } .bar i.bad { background:var(--bad); }
   .plant-row { border:1px solid var(--line); border-radius:8px; padding:7px 9px; margin-bottom:6px; background:#161b22; } .plant-row .lh { display:flex; justify-content:space-between; font-size:11.5px; } .plant-row .lh b { font-variant-numeric:tabular-nums; }
   .plant-row.bott { border-color:var(--bad); } .stTbl { width:100%; border-collapse:collapse; font-size:10.5px; margin-top:6px; } .stTbl th { color:var(--sub); font-weight:500; text-align:left; padding:2px 2px; } .stTbl td { padding:2px 2px; } .stTbl input, .stTbl select { width:100%; background:#161b22; color:var(--txt); border:1px solid var(--line); border-radius:4px; padding:2px 3px; font-size:10.5px; }
+  #tip { position:fixed; z-index:50; pointer-events:none; display:none; background:rgba(13,17,23,.9); border:1px solid var(--line); border-left:3px solid var(--acc); border-radius:6px; padding:5px 9px; font-size:12px; line-height:1.4; max-width:320px; } #tip span { color:var(--sub); font-size:11px; }
   #hint { bottom:12px; left:364px; right:292px; color:var(--sub); font-size:10.5px; line-height:1.5; pointer-events:none; text-align:center; }
   body.tour #hint, body.info #hint { display:none; }
   kbd { background:#21262d; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:10px; }
@@ -90,7 +91,7 @@
 <div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div></div>
 <div id="bim" class="panel"><h3>BIM・MEP 系統 <span class="sub" id="bimSum"></span></h3><div id="bimSys"></div><div class="sep"></div>
   <div class="row"><span class="sub">幹線高さの調整（選択系統）</span><select id="bimSysSel" class="btn sm"></select></div><input id="bimH" type="range" min="-3" max="3" step="0.1" value="0"><div class="sub" id="bimHLabel">±0.0 m</div>
-  <div class="sep"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="clashBtn">干渉チェック</button><button class="btn sm" id="xrayBtn">X線表示</button><button class="btn sm" id="mepCsv">数量 CSV</button></div><div id="clashList" style="margin-top:6px"></div></div>
+  <div class="sep"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="clashBtn">干渉チェック</button><button class="btn sm" id="clearBtn">保守スペース</button><button class="btn sm" id="xrayBtn">X線表示</button><button class="btn sm" id="mepCsv">数量 CSV</button></div><div id="clashList" style="margin-top:6px"></div><div id="clearList" style="margin-top:6px"></div></div>
 <div id="section" class="panel"><h3>断面カット</h3>
   <div class="row"><span>方向</span><span><button class="btn sm on" data-ax="y">水平（高さ）</button> <button class="btn sm" data-ax="z">南北</button> <button class="btn sm" data-ax="x">東西</button></span></div>
   <input id="secRange" type="range" min="0" max="100" value="55">

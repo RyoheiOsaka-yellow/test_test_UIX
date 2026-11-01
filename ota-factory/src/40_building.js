@@ -146,6 +146,17 @@ function buildBuilding(){
   // テラス手摺・植栽プランター
   E2.box(W, 1.1, 0.04, M.glassTint, (x0+x1)/2, lv[1], terraceZ-0.1); E2.box(W, 0.06, 0.08, M.darkSteel, (x0+x1)/2, lv[1]+1.1, terraceZ-0.1);
   E2.box(W-2, 0.6, 1.4, M.curb, (x0+x1)/2, lv[1], terraceZ-1.0);
+  // テラス：木デッキ（板割り）・足元灯・テラスへの出入口（各コア脇）・日除けの木製パーゴラ梁
+  for (let z = z1 + 0.3; z < terraceZ - 1.9; z += 0.3) E2.box(W - 2, 0.03, 0.22, M.timber, (x0+x1)/2, lv[1] + 0.02, z);
+  for (let x = x0 + 6; x < x1 - 4; x += 12) E2.box(0.25, 0.08, 0.25, M.bollardLight, x, lv[1] + 0.05, terraceZ - 1.9);
+  for (const x of [x0 + 10, x1 - 10]) { E2.box(2.0, 2.4, 0.1, M.glassTint, x, lv[1], z1 + 0.15); E2.box(0.08, 2.4, 0.16, M.mullion, x - 1.0, lv[1], z1 + 0.15); E2.box(0.08, 2.4, 0.16, M.mullion, x + 1.0, lv[1], z1 + 0.15); }
+  for (let x = x0 + 2; x < x1; x += 4) E2.box(0.12, 0.25, terraceZ - z1 - 0.6, M.timberDark, x, lv[2] - 0.95, (z1 + terraceZ) / 2 - 0.2);
+  // 屋上：点検用歩廊（グレーチング）と転落防止手摺・タラップ・ハッチ
+  { const RW = new Merger(); const zw = -3.6; for (let x = x0 + 2; x < x1 - 2; x += 1.0) RW.box(0.98, 0.04, 0.8, M.steel, x + 0.5, roofY(zw) + 0.32, zw + 3.0); for (let x = x0 + 2; x <= x1 - 2; x += 2.0) { RW.box(0.04, 1.0, 0.04, M.darkSteel, x, roofY(zw) + 0.34, zw + 3.45); RW.box(0.04, 1.0, 0.04, M.darkSteel, x, roofY(zw) + 0.34, zw + 2.55); }
+    RW.box(W - 4, 0.03, 0.03, M.darkSteel, (x0+x1)/2, roofY(zw) + 1.3, zw + 3.45); RW.box(W - 4, 0.03, 0.03, M.darkSteel, (x0+x1)/2, roofY(zw) + 1.3, zw + 2.55);
+    RW.box(1.2, 0.5, 1.2, M.darkSteel, x1 - 3, roofY(-27) + 0.3, -27); RW.box(1.1, 0.06, 1.1, M.steel, x1 - 3, roofY(-27) + 0.8, -27);   // 屋上ハッチ
+    for (let y = 1; y < 13.5; y += 0.3) RW.box(0.5, 0.03, 0.03, M.steel, x1 + 0.45, y, -27); RW.box(0.03, 13, 0.03, M.steel, x1 + 0.2, 0.8, -27); RW.box(0.03, 13, 0.03, M.steel, x1 + 0.7, 0.8, -27);   // タラップ
+    RW.flush(gr, { name:"roofWalk", layer:"envelope" }); }
   // バルコニー手摺（ホール側）
   E2.box(W, 1.1, 0.04, M.glassTint, (x0+x1)/2, lv[1], zh-2.0); E2.box(W, 0.06, 0.08, M.darkSteel, (x0+x1)/2, lv[1]+1.1, zh-2.0);
   // 3F スラブ

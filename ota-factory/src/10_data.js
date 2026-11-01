@@ -93,7 +93,7 @@ const EQUIP = [
   { id:"TC-01", kind:"testcell", name:"試運転・性能試験セル", x:28, z:-6, rot:0, zone:"tcell",
     spec:{ 仕様:"防音ガラス囲い 14×12m・H6m", 計測:"振動/騒音/熱/消費電力", 連成:"HILラボとリアルタイム接続", 電源:"200 kVA" } },
   { id:"RK-R1", kind:"rack",   name:"資材パレットラック 1", x:38.5, z:-25, rot:Math.PI/2, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"購入部品・鋼材" } },
-  { id:"RK-R2", kind:"rack",   name:"資材パレットラック 2", x:38.5, z:-16.5, rot:Math.PI/2, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"梱包材・治具" } },
+  { id:"RK-R2", kind:"rack",   name:"資材パレットラック 2", x:38.5, z:-15.5, rot:Math.PI/2, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"梱包材・治具" } },
   { id:"DK-01", kind:"dock",   name:"ドックレベラー #1", x:43, z:-24, rot:0, zone:"ship", spec:{ 仕様:"油圧式 2.0×2.5m 6t", 扉:"電動オーバースライダー W3.5×H4.5" } },
   { id:"DK-02", kind:"dock",   name:"ドックレベラー #2", x:43, z:-16, rot:0, zone:"ship", spec:{ 仕様:"油圧式 2.0×2.5m 6t", 扉:"電動オーバースライダー W3.5×H4.5" } },
   { id:"DK-03", kind:"bigdoor",name:"大型機搬出大扉", x:43, z:-5, rot:0, zone:"ship", spec:{ 仕様:"W8.0×H7.0 電動ハンガードア", 用途:"大型機のトレーラー積込（低床）" } },

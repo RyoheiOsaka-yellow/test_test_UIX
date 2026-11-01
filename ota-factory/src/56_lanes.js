@@ -10,7 +10,8 @@ const BUILDERS = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry,
 const FP_CACHE = {};
 function measuredFp(t){ const S = STATION_TYPES[t]; if (!S.fp) return undefined; if (FP_CACHE[t]) return FP_CACHE[t]; const b = BUILDERS[S.kind]; if (!b) return FP_CACHE[t] = S.fp.slice();
   const g = b(); g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse(m => { if (m.isMesh && !m.isSprite) bb.union(new THREE.Box3().setFromObject(m)); }); g.traverse(m => { if (m.isMesh) m.geometry.dispose?.(); });
-  const w = bb.isEmpty() ? 0 : bb.max.x - bb.min.x + 0.4, d = bb.isEmpty() ? 0 : bb.max.z - bb.min.z + 0.4; return FP_CACHE[t] = [Math.max(S.fp[0], +w.toFixed(1)), Math.max(S.fp[1], +d.toFixed(1))]; }
+  const w = bb.isEmpty() ? 0 : bb.max.x - bb.min.x + 0.4, d = bb.isEmpty() ? 0 : bb.max.z - bb.min.z + 0.4; FP_OFF[t] = bb.isEmpty() ? [0,0] : [(bb.min.x + bb.max.x)/2, (bb.min.z + bb.max.z)/2]; return FP_CACHE[t] = [Math.max(S.fp[0], +w.toFixed(1)), Math.max(S.fp[1], +d.toFixed(1))]; }
+const FP_OFF = {};   // モデル原点に対する箱中心のずれ（配置時に補正）
 // レシピ＋パラメータ → ステーション配列（[type, n] を展開）
 function expandStations(lane){
   const R = LANE_RECIPES[lane.recipe]; const ov = lane.override || {};
@@ -25,10 +26,10 @@ function expandStations(lane){
 
 // ---- 配置（蛇行）：区画内で左→右、はみ出したら次の行で右→左 ----
 function layoutLane(lane, sts){
-  const [x0, x1, z0, z1] = lane.area; const usable = x1 - x0 - 1.0; const gap = 0.6;
+  const [x0, x1, z0, z1] = lane.area; const usable = x1 - x0 - 1.0; const sideC = k => (typeof CLEARANCE !== "undefined" && CLEARANCE[k]) ? CLEARANCE[k][1] : 0.6; let gap = 0.6;
   const rows = [[]]; let cur = 0, row = 0;
   const units = []; for (const s of sts){ if (s.kind === "ref") { units.push({ s, ref:true }); continue; } for (let k=0;k<s.n;k++) units.push({ s, k, w:s.fp[0], d:s.fp[1] }); }
-  for (const u of units){ if (u.ref) continue; if (cur + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } rows[row].push(u); u.row = row; u.off = cur; cur += u.w + gap; }
+  let prevKind = null; for (const u of units){ if (u.ref) continue; gap = Math.max(0.6, sideC(u.s.kind), prevKind ? sideC(prevKind) : 0); if (cur + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } rows[row].push(u); u.row = row; u.off = cur; cur += u.w + gap; prevKind = u.s.kind; }
   // 行ごとの奥行とピッチ（行0-1 間は 4 m 通路、以降は 2.5 m）
   let zTop = z0 + 0.5; const rowInfo = [];
   rows.forEach((r, i) => { const d = Math.max(...r.map(u=>u.d), 2); const aisle = i===0? 0 : (i%2===1? 2.6 : 1.8); zTop += aisle; rowInfo.push({ zTop, d, len: r.length? r[r.length-1].off + r[r.length-1].w : 0 }); zTop += d; });
@@ -57,7 +58,7 @@ function generateLane(lane){
     if (s.kind === "ref"){ const p = resolveRef(s.ref, lane, prev); s.pos = p; if (!s.aux) stationPos.push({ ...p, s }); prev = p; continue; }
     const us = lay.units.filter(u=>u.s===s); const cx = us.reduce((a,u)=>a+u.x,0)/us.length, cz = us.reduce((a,u)=>a+u.z,0)/us.length;
     s.pos = { x:cx, z:cz, floor:lane.floor }; s.units = us; if (!s.aux) stationPos.push({ x:cx, z:cz, floor:lane.floor, s }); prev = s.pos;
-    us.forEach((u, k) => { const b = BUILDERS[s.kind]; if (!b) return; const grp = b(); compactGroup(grp); const ex = makeMachineExtras(s.kind, s.fp[0], s.fp[1]); ex.userData.extra = true; compactGroup(ex); grp.add(ex); grp.position.set(u.x, yF, u.z); grp.rotation.y = u.rot;
+    us.forEach((u, k) => { const b = BUILDERS[s.kind]; if (!b) return; const grp = b(); compactGroup(grp); const ex = makeMachineExtras(s.kind, s.fp[0], s.fp[1]); ex.userData.extra = true; compactGroup(ex); grp.add(ex); const off = FP_OFF[s.type] || [0,0]; const sgn = Math.abs(u.rot) > 1 ? -1 : 1; grp.position.set(u.x - sgn*off[0], yF, u.z - sgn*off[1]); grp.rotation.y = u.rot;
       const id = `${lane.id}-S${s.idx}${s.n>1? String.fromCharCode(97+k) : ""}`; const e = { id, kind:s.kind, name: s.n > 1 ? `${STATION_TYPES[s.type].n} #${k+1}` : STATION_TYPES[s.type].n, x:+u.x.toFixed(1), z:+u.z.toFixed(1), rot:u.rot, zone:lane.zone, lane:lane.id, station:s.idx, generated:true,
         spec:{ レーン:`${lane.id} ${R.n}`, 工程:`S${s.idx}${s.aux? "（補助）":""} ${s.n>1? s.n+" 台並列" : ""}`, 標準時間:`${s.ct} ${s.unit}/${R.unitName}`, 自動化:s.auto==="auto"? "無人運転可" : s.auto==="semi"? "監視付き自動" : "手作業", ...s.spec } };
       EQUIP.push(e); tagEq(grp, e); eqIds.push(id); g.add(grp);
@@ -71,7 +72,7 @@ function generateLane(lane){
     const mat = new THREE.MeshBasicMaterial({ map:tex, color:col, transparent:true, opacity:0.55, depthWrite:false, side:THREE.DoubleSide });
     const m = new THREE.Mesh(G.plane(L, 1.2), mat); m.rotation.x = -Math.PI/2; m.rotation.z = -Math.atan2(b.z-a.z, b.x-a.x); m.position.set((a.x+b.x)/2, yF+0.08, (a.z+b.z)/2); m.renderOrder = 3; ov.add(m); strips.push(m); }
   stationPos.forEach((p, i) => { if (p.floor !== lane.floor) return; const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 28), new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.8, depthWrite:false })); ring.rotation.x = -Math.PI/2; ring.position.set(p.x, yF+0.085, p.z); ring.renderOrder = 4; ov.add(ring);
-    const s = p.s; const tag = makeLabel(`S${s.idx}  ${s.n>1? "×"+s.n+" " : ""}${s.ct? s.ct+" "+s.unit : ""}`, { scale:0.55, bg:"rgba(20,24,30,0.8)", accent:"#"+R.color.toString(16).padStart(6,"0") }); tag.position.set(p.x, yF+1.2, p.z); tag.userData.kind = "eq"; tag.userData.floor = lane.floor; ov.add(tag); });
+    const s = p.s; const tag = makeLabel(`S${s.idx}  ${s.n>1? "×"+s.n+" " : ""}${s.ct? s.ct+" "+s.unit : ""}`, { scale:0.55, bg:"rgba(20,24,30,0.8)", accent:"#"+R.color.toString(16).padStart(6,"0") }); tag.position.set(p.x, yF+1.2, p.z); tag.userData.kind = "tag"; tag.userData.laneId = lane.id; tag.userData.floor = lane.floor; ov.add(tag); });
   const anim = { update(t){ for (const m of strips) m.material.map.offset.x = -t*0.35; } }; ANIM.push(anim);
   // ---- 天井設備 ----
   const oh = new THREE.Group(); oh.name = "overhead"; oh.userData.layer = "overhead"; g.add(oh); const ceilY = lane.zone==="north" ? 5.9 : lane.floor===1 ? (lane.zone==="mach"||lane.zone==="asm1"||lane.zone==="asm2" ? 12.6 : BLD.lv[1]-0.8) : BLD.lv[lane.floor]-0.8;
