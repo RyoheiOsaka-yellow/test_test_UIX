@@ -19,16 +19,16 @@ const VIEWS = [
 ];
 let mode = "ext";   // ext | 1 | 2 | 3
 function setMode(m, keepCam=false){
-  mode = m; document.querySelectorAll("#nav [data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === String(m)));
+  mode = m; document.querySelectorAll("#topbar [data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === String(m)));
   const f = m === "ext" ? 99 : Number(m);
   FL[1].visible = true; FL[2].visible = f >= 2; FL[3].visible = f >= 3; FL.roof.visible = f >= 4 || m === "ext";
   // 屋根は 1〜3F 表示時に外す。外観では全表示。
   $("crumb").innerHTML = m === "ext" ? "<b>外観</b> · 敷地全体" : `<b>${m}F</b> · 上階と屋根を外して表示（ドールハウス）`;
   dirtyShadow();
 }
-{ const v = $("views"); VIEWS.forEach(([n, cam, md, day]) => { const b = document.createElement("button"); b.className = "btn sm"; b.textContent = n; b.onclick = () => { if (walk.on) toggleWalk(false); setMode(md); setCam(cam); if (day){ document.querySelectorAll("#tools [data-day]").forEach(x => x.classList.toggle("on", x.dataset.day===day)); setDay(day); } }; v.appendChild(b); }); }
-document.querySelectorAll("#nav [data-mode]").forEach(b => b.onclick = () => { if (walk.on) toggleWalk(false); setMode(b.dataset.mode === "ext" ? "ext" : Number(b.dataset.mode)); const v = VIEWS.find(x => String(x[2]) === b.dataset.mode) ; if (v) setCam(v[1]); });
-document.querySelectorAll("#tools [data-day]").forEach(b => b.onclick = () => { document.querySelectorAll("#tools [data-day]").forEach(x => x.classList.remove("on")); b.classList.add("on"); setDay(b.dataset.day); });
+{ const v = $("views"); VIEWS.forEach(([n, cam, md, day]) => { const b = document.createElement("button"); b.className = "btn sm"; b.textContent = n; b.onclick = () => { if (walk.on) toggleWalk(false); setMode(md); setCam(cam); if (day){ document.querySelectorAll("#topbar [data-day]").forEach(x => x.classList.toggle("on", x.dataset.day===day)); setDay(day); } }; v.appendChild(b); }); }
+document.querySelectorAll("#topbar [data-mode]").forEach(b => b.onclick = () => { if (walk.on) toggleWalk(false); setMode(b.dataset.mode === "ext" ? "ext" : Number(b.dataset.mode)); const v = VIEWS.find(x => String(x[2]) === b.dataset.mode) ; if (v) setCam(v[1]); });
+document.querySelectorAll("#topbar [data-day]").forEach(b => b.onclick = () => { document.querySelectorAll("#topbar [data-day]").forEach(x => x.classList.remove("on")); b.classList.add("on"); setDay(b.dataset.day); });
 
 // ---- 稼働 再生/停止 ----
 $("playBtn").onclick = () => { playing = !playing; $("playBtn").textContent = playing ? "⏸ 稼働" : "▶ 稼働"; $("playBtn").classList.toggle("on", playing); };
@@ -36,9 +36,10 @@ $("playBtn").onclick = () => { playing = !playing; $("playBtn").textContent = pl
 // ---- レイヤー ----
 const LAYER_DEFS = [["structure","鉄骨架構・トラス"],["envelope","外皮・ガラス・間仕切り"],["equipment","機械設備"],["furniture","什器・オフィス"],["mep","MEP（ダクト・配管・照明）"],["overhead","天井工具（ガントリー・ツールレール・ブーム）"],["markings","床ライン・安全表示"],["people","人・車両（稼働）"],["labels","名称ラベル"],["green","植栽"],["context","周辺街区・道路"]];
 const layerState = {};
-function applyLayers(){ scene.traverse(o => { const l = o.userData.layer; if (l && layerState[l] !== undefined) o.visible = layerState[l]; }); if (LAYERS.green) LAYERS.green.visible = layerState.green; if (LAYERS.context) LAYERS.context.visible = layerState.context; dirtyShadow(); }
+function applyLayers(){ scene.traverse(o => { const l = o.userData.layer; if (l && layerState[l] !== undefined) o.visible = layerState[l]; }); applyMepVisibility(); if (LAYERS.green) LAYERS.green.visible = layerState.green; if (LAYERS.context) LAYERS.context.visible = layerState.context; dirtyShadow(); }
 { const list = $("layerList"); for (const [k, n] of LAYER_DEFS){ layerState[k] = true; const lb = document.createElement("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = true; cb.onchange = () => { layerState[k] = cb.checked; applyLayers(); }; lb.appendChild(cb); lb.appendChild(document.createTextNode(n)); list.appendChild(lb); } }
-$("layersBtn").onclick = () => { const p = $("layers"); const on = p.style.display !== "block"; p.style.display = on ? "block" : "none"; $("section").style.display = "none"; $("secBtn").classList.remove("on"); $("layersBtn").classList.toggle("on", on); };
+function leftPanel(id){ for (const [pid, bid] of [["layers","layersBtn"],["section","secBtn"],["bim","bimBtn"]]){ const on = pid === id; $(pid).style.display = on ? "block" : "none"; $(bid).classList.toggle("on", on); } document.body.classList.toggle("leftopen", !!id); MEP.office = id === "bim"; applyMepVisibility(); }
+$("layersBtn").onclick = () => leftPanel($("layers").style.display === "block" ? null : "layers");
 
 // ---- 断面 ----
 const secPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 10); let secAxis = "y", secOn = false;
@@ -51,8 +52,8 @@ function applySection(){
 }
 $("secRange").oninput = applySection;
 document.querySelectorAll("#section [data-ax]").forEach(b => b.onclick = () => { document.querySelectorAll("#section [data-ax]").forEach(x => x.classList.remove("on")); b.classList.add("on"); secAxis = b.dataset.ax; applySection(); });
-$("secBtn").onclick = () => { const p = $("section"); secOn = p.style.display !== "block"; p.style.display = secOn ? "block" : "none"; $("layers").style.display = "none"; $("layersBtn").classList.remove("on"); $("secBtn").classList.toggle("on", secOn); applySection(); };
-$("secOff").onclick = () => { secOn = false; $("section").style.display = "none"; $("secBtn").classList.remove("on"); applySection(); };
+$("secBtn").onclick = () => { secOn = $("section").style.display !== "block"; leftPanel(secOn ? "section" : null); applySection(); };
+$("secOff").onclick = () => { secOn = false; leftPanel(null); applySection(); };
 
 // ---- 歩行モード ----
 function toggleWalk(on){
@@ -94,7 +95,7 @@ let selectedId = null, hoverId = null; const hiCache = new Map();
 function setHighlight(id, on){ const o = EQ_OBJ[id]; if (!o) return; o.group.traverse(m => { if (!m.isMesh || !m.material || !m.material.emissive) return; if (on){ if (!hiCache.has(m)) hiCache.set(m, [m.material, m.material.clone()]); const mat = hiCache.get(m)[1]; mat.emissive.set(0xf2c744); mat.emissiveIntensity = 0.45; m.material = mat; } else if (hiCache.has(m)){ m.material = hiCache.get(m)[0]; } }); }
 function zoneName(id){ const z = ZONES.find(z => z[0] === id); return z ? z[1] : id; }
 function showInfo(e){
-  const p = $("info"); if (!e){ p.style.display = "none"; return; }
+  const p = $("info"); document.body.classList.toggle("info", !!e); if (!e){ p.style.display = "none"; return; }
   const z = ZONES.find(z => z[0] === e.zone); let h = `<div class="sub">${pe(e.id)} · ${pe(zoneName(e.zone))}${z ? ` · ${z[2] ? z[2]+"F" : "屋外"}` : ""}</div><h2>${pe(e.name)}</h2><table>`;
   if (e.lane && LANE_OBJ[e.lane]) h += `<tr><td>レーン</td><td><a href="#" id="infoLane" style="color:var(--acc)">${pe(e.lane)} ${pe(LANE_RECIPES[LANE_OBJ[e.lane].lane.recipe].n)}</a></td></tr>`;
   for (const k in e.spec) h += `<tr><td>${pe(k)}</td><td>${pe(e.spec[k])}</td></tr>`;
@@ -114,12 +115,12 @@ document.querySelectorAll("#ledger [data-tab]").forEach(b => b.onclick = () => {
 
 // ---- レーン：区画スロット・カード・再構成フォーム ----
 const LANE_SLOTS = [
-  { id:"mach-N", n:"機械加工エリア 北側（1F）", zone:"mach", floor:1, area:[-43,-13,-29.5,-12] },
-  { id:"mach-S", n:"機械加工エリア 南側（1F）", zone:"mach", floor:1, area:[-43,-13,-11,1] },
+  { id:"mach-N", n:"機械加工エリア 北側（1F）", zone:"mach", floor:1, area:[-43,-13,-29.5,-6.4] },
+  { id:"mach-S", n:"機械加工エリア 南側（1F）", zone:"mach", floor:1, area:[-43,-13,-6.0,1.5] },
   { id:"asm",    n:"大型組立ベイ 1〜4（1F）",    zone:"asm1", floor:1, area:[-11,35,-29,1] },
-  { id:"elab",   n:"電子・制御ラボ（1F）",      zone:"elab", floor:1, area:[-5.5,5.5,3,17] },
-  { id:"yard",   n:"北側 屋外庇下ヤード 東",    zone:"north",floor:1, area:[2,44,-39.8,-30.5] },
-  { id:"yard2",  n:"北側 屋外ヤード 西",        zone:"north",floor:1, area:[-44,0,-39.8,-30.5] },
+  { id:"elab",   n:"電子・制御ラボ（1F）",      zone:"elab", floor:1, area:[-5.5,5.5,3,17.6] },
+  { id:"yard",   n:"北側 屋外庇下ヤード 東",    zone:"north",floor:1, area:[-13,44,-39.8,-30.5] },
+  { id:"yard2",  n:"北側 屋外ヤード 西",        zone:"north",floor:1, area:[-44,-14,-39.8,-30.5] },
   { id:"tcell",  n:"試運転・試験セル区画（1F）", zone:"tcell",floor:1, area:[20.5,43,-14,1] },
   { id:"sw",     n:"ソフトウェア開発フロア（2F）",zone:"sw",  floor:2, area:[-36,34,3,17] },
 ];
@@ -131,7 +132,7 @@ function laneCard(o){ const L = o.lane, R = LANE_RECIPES[L.recipe], k = o.kpi; c
   return `<div class="lane${activeLane===L.id?" on":""}" data-id="${L.id}" style="--c:${c}"><div class="lh"><b>${pe(L.id)}</b>${pe(R.n)}<small>${pe(sl? sl.n : L.zone)}</small></div><div class="desc">${pe(R.desc)}</div>
   <div class="kpi"><div><small>生産量</small><b class="big">${pe(k.outLabel)}</b></div><div><small>タクト（ボトルネック）</small><b>${pe(k.taktLabel)}</b></div><div><small>OEE</small><b>${(k.oee*100).toFixed(0)}%</b></div>
   <div><small>自動化率（時間）</small><b>${(k.autoRatio*100).toFixed(0)}%</b></div><div><small>要員 / 機械</small><b>${k.ppl.toFixed(1)} 人 / ${k.machines} 台</b></div><div><small>リードタイム</small><b>${pe(k.leadLabel)}</b></div></div>
-  <div class="sub" style="margin-top:5px">ボトルネック: ${pe(k.bottleneck)} ／ 無人運転 ${k.unattended} h/日 ／ ${L.shifts.shifts} 直 × ${L.shifts.hours} h${o.lay.overflow>0? ` ／ <span class="warn" style="color:var(--bad)">区画を ${o.lay.overflow.toFixed(1)} m はみ出し</span>`:""}</div>
+  <div class="sub" style="margin-top:5px">ボトルネック: ${pe(k.bottleneck)} ／ 無人運転 ${k.unattended} h/日 ／ ${L.shifts.shifts} 直 × ${L.shifts.hours} h${o.lay.overflow>0.05? ` ／ <span class="warn" style="color:var(--bad)">区画を ${o.lay.overflow.toFixed(1)} m はみ出し</span>`:""}</div>
   <div class="chips">${chips}</div><div class="ctl"><button class="btn sm" data-act="view">3Dで見る</button><button class="btn sm" data-act="cfg">構成を変える</button><button class="btn sm" data-act="del">削除</button></div>
   <form class="cfg" hidden><label>レシピ<select name="recipe">${Object.keys(LANE_RECIPES).map(r=>`<option value="${r}"${r===L.recipe?" selected":""}>${pe(LANE_RECIPES[r].n)}</option>`).join("")}</select></label>
   <label>主要機械の台数<input name="main" type="number" min="1" max="6" value="${mainN}"></label><label>シフト数<input name="shifts" type="number" min="1" max="3" value="${L.shifts.shifts}"></label>
@@ -156,7 +157,7 @@ function applyLaneForm(id, fd){ const o = LANE_OBJ[id]; const L = o ? o.lane : {
   const so = {}; const keys = typeof fd.keys === "function" ? [...fd.keys()] : []; for (const k of keys){ const [f, t] = k.split(":"); if (!t || !STATION_TYPES[t]) continue; so[t] = so[t] || {}; const v = fd.get(k); if (f==="ct") so[t].ct = +v; else if (f==="n") so[t].n = Math.max(1, +v|0); else if (f==="auto") so[t].auto = v; else if (f==="ppl") so[t].ppl = +v; }
   L.stationOv = (recipe === (o? o.lane.recipe : recipe) && keys.length) ? so : {}; if (L.override && L.stationOv[MAIN_STATION[recipe]]) L.stationOv[MAIN_STATION[recipe]].n = L.override[MAIN_STATION[recipe]];
   generateLane(L); if (!LANES.includes(L)) LANES.push(L); setActiveLane(L.id); afterLaneChange(); focusLane(L.id); }
-function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
+function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); buildMEP(); if ($("bim").style.display === "block") renderBim(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
 function focusLane(id){ const o = LANE_OBJ[id]; if (!o) return; const L = o.lane; if (walk.on) toggleWalk(false); setMode(L.floor); const [x0,x1,z0,z1] = L.area; const w = Math.max(x1-x0, z1-z0);
   setCam({ yaw: L.floor===2? -0.9 : -0.6, pitch:0.62, dist: w*1.35, target:[(x0+x1)/2, BLD.lv[L.floor-1]+2, (z0+z1)/2] }); setActiveLane(id); renderLanes(); renderOS(); }
 $("laneAdd").onclick = () => { let n = 6; while (LANE_OBJ["L"+n]) n++; const id = "L"+n; const fd = new Map([["recipe","precision"],["main","3"],["shifts","2"],["unattended","8"],["slot","recv"]]); applyLaneForm(id, fd); const card = document.querySelector(`.lane[data-id="${id}"] form`); if (card) card.hidden = false; };
@@ -215,10 +216,35 @@ function renderOS(){ const el = $("osList"); let h = "";
 const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
 function pickAt(x, y){ ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
   const targets = [FL[1], FL[2], FL[3]].filter(g => g.visible); const hits = ray.intersectObjects(targets, true);
-  for (const h of hits){ if (h.object.isSprite) continue; let o = h.object; while (o){ if (o.userData.eqId) return o.userData.eqId; o = o.parent; } return null; } return null; }
-cvsEl.addEventListener("pointerup", e => { if (walk.on || drag.moved > 6 || e.button !== 0) return; const id = pickAt(e.clientX, e.clientY); if (id) { selectEq(id); } else selectEq(null); });
+  for (const h of hits){ if (h.object.isSprite) continue; let o = h.object; if (o.userData.mep) return { mep:o.userData.mep, obj:o }; while (o){ if (o.userData.eqId) return o.userData.eqId; o = o.parent; } return null; } return null; }
+cvsEl.addEventListener("pointerup", e => { if (walk.on || drag.moved > 6 || e.button !== 0) return; const id = pickAt(e.clientX, e.clientY); if (id && id.mep) { selectEq(null); showMepInfo(id.mep); } else if (id) { selectEq(id); } else selectEq(null); });
 let hoverTimer = 0;
-cvsEl.addEventListener("pointermove", e => { if (walk.on || drag.on) return; const now = performance.now(); if (now - hoverTimer < 80) return; hoverTimer = now; const id = pickAt(e.clientX, e.clientY); if (id !== hoverId){ if (hoverId && hoverId !== selectedId) setHighlight(hoverId, false); hoverId = id; if (id && id !== selectedId) setHighlight(id, true); cvsEl.style.cursor = id ? "pointer" : ""; } });
+cvsEl.addEventListener("pointermove", e => { if (walk.on || drag.on) return; const now = performance.now(); if (now - hoverTimer < 80) return; hoverTimer = now; const id0 = pickAt(e.clientX, e.clientY); const id = (id0 && id0.mep) ? null : id0; cvsEl.style.cursor = id0 ? "pointer" : ""; if (id !== hoverId){ if (hoverId && hoverId !== selectedId) setHighlight(hoverId, false); hoverId = id; if (id && id !== selectedId) setHighlight(id, true); } });
+
+// ---- BIM・MEP パネル ----
+let xray = false, clashMarks = null;
+const XRAY_MATS = () => [M.gypsum, M.concrete, M.roofMetal, M.wallMetal, M.timber, M.timberDark, M.concreteWhite, M.spandrel, M.ceiling, M.ceilingGlow, M.hallGlow, M.epoxy, M.carpet, M.woodFloor, M.mullion, M.paving, M.asphalt, ...Object.values(FIN_MAT)];
+function setXray(on){ xray = on; for (const m of XRAY_MATS()){ if (!m) continue; if (on){ m.userData._op = m.opacity; m.userData._tr = m.transparent; m.transparent = true; m.opacity = 0.12; m.depthWrite = false; } else if (m.userData._op !== undefined){ m.opacity = m.userData._op; m.transparent = m.userData._tr; m.depthWrite = true; } m.needsUpdate = true; } $("xrayBtn").classList.toggle("on", on); dirtyShadow(); }
+function showMepInfo(m){ const p = $("info"); document.body.classList.add("info"); const S = SYSTEMS[m.sys]; p.innerHTML = `<div class="sub">MEP · ${pe(S.n)}</div><h2>${pe(m.name || m.kind || "")}</h2><table>
+  <tr><td>系統</td><td>${pe(m.sys)} ${pe(S.n)}</td></tr><tr><td>種別</td><td>${S.kind==="pipe"?"配管":S.kind==="duct"?"ダクト":S.kind==="tray"?"ケーブルラック":"床トレンチ"}${m.trench?"（床トレンチ）":""}</td></tr>
+  <tr><td>寸法</td><td>${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000)+" mm" : S.size.map(v=>Math.round(v*1000)).join("×")+" mm"}</td></tr>${m.length!==undefined? `<tr><td>延長</td><td>${m.length.toFixed(1)} m</td></tr>`:""}
+  <tr><td>供給元</td><td>${pe(m.from || S.src)}</td></tr>${m.to? `<tr><td>接続先</td><td>${pe(m.to)}</td></tr>`:""}<tr><td>設計高さ</td><td>${(S.y + (MEP.offsets.y[m.sys]||0)).toFixed(1)} m${MEP.offsets.y[m.sys]? "（調整 "+MEP.offsets.y[m.sys].toFixed(1)+" m）":""}</td></tr></table>
+  <div class="sep"></div><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" id="infoClose">閉じる</button></div>`; p.style.display = "block"; $("infoClose").onclick = () => showInfo(null); }
+function renderBim(){ const sch = mepSchedule(); const el = $("bimSys"); let total = 0; el.innerHTML = Object.keys(SYSTEMS).map(k => { const S = SYSTEMS[k]; total += sch[k].len; return `<label class="sysrow"><input type="checkbox" data-sys="${k}" ${MEP.visible[k]===false?"":"checked"}><i style="background:#${S.color.toString(16).padStart(6,"0")}"></i>${pe(k)} ${pe(S.n)}<span class="len">${sch[k].len.toFixed(0)} m · ${sch[k].fittings} 器具</span></label>`; }).join("");
+  $("bimSum").textContent = `延長 ${total.toFixed(0)} m`; el.querySelectorAll("input").forEach(cb => cb.onchange = () => { MEP.visible[cb.dataset.sys] = cb.checked; applyMepVisibility(); });
+  const sel = $("bimSysSel"); if (!sel.options.length){ for (const k in SYSTEMS){ const o = document.createElement("option"); o.value = k; o.textContent = k + " " + SYSTEMS[k].n; sel.appendChild(o); } }
+  $("bimH").value = MEP.offsets.y[sel.value] || 0; $("bimHLabel").textContent = `${(MEP.offsets.y[sel.value]||0) >= 0 ? "+" : ""}${(MEP.offsets.y[sel.value]||0).toFixed(1)} m（設計 ${SYSTEMS[sel.value].y} m）`; }
+$("bimBtn").onclick = () => { const on = $("bim").style.display !== "block"; leftPanel(on ? "bim" : null); if (on){ renderBim(); if (mode === "ext") setMode(1); } };
+$("bimSysSel").onchange = renderBim;
+$("bimH").oninput = ev => { const k = $("bimSysSel").value; MEP.offsets.y[k] = +ev.target.value; buildMEP(); renderBim(); if (clashMarks) runClash(); };
+function runClash(){ const res = clashCheck(); if (clashMarks) scene.remove(clashMarks); clashMarks = new THREE.Group(); const mat = new THREE.MeshBasicMaterial({ color:0xff3b3b, transparent:true, opacity:0.75, depthTest:false }); res.forEach(r => { const m = new THREE.Mesh(G.sph(0.45, 10), mat); m.position.copy(r.at); m.renderOrder = 60; clashMarks.add(m); }); scene.add(clashMarks);
+  const el = $("clashList"); if (!res.length){ el.innerHTML = `<div class="sub" style="color:var(--good)">干渉なし（MEP ${MEP.segs.length} 区間 vs 架構・クレーン走行範囲・設備）</div>`; return; }
+  const byKind = { structure:0, crane:0, equipment:0 }; res.forEach(r => byKind[r.kind]++);
+  el.innerHTML = `<div class="sub" style="margin-bottom:4px"><b style="color:var(--bad)">${res.length} 件</b>：架構 ${byKind.structure} ／ クレーン走行範囲 ${byKind.crane} ／ 設備 ${byKind.equipment}。クリックで寄る。</div>` + res.slice(0, 40).map((r, i) => `<div class="clash ${r.kind}" data-i="${i}"><b>${pe(r.sys)}</b> ${pe(r.seg)}<br><span class="sub">× ${pe(r.obstacle)} @ (${r.at.x.toFixed(1)}, ${r.at.y.toFixed(1)}, ${r.at.z.toFixed(1)})</span></div>`).join("") + (res.length > 40 ? `<div class="sub">…他 ${res.length-40} 件</div>` : "");
+  el.querySelectorAll(".clash").forEach(d => d.onclick = () => { const r = res[+d.dataset.i]; if (mode === "ext") setMode(1); setCam({ yaw: camGoal.yaw, pitch:0.35, dist:14, target:[r.at.x, r.at.y, r.at.z] }); showMepInfo(r.obj.userData.mep); }); }
+$("clashBtn").onclick = () => { if (clashMarks){ scene.remove(clashMarks); clashMarks = null; $("clashList").innerHTML = ""; $("clashBtn").classList.remove("on"); return; } $("clashBtn").classList.add("on"); runClash(); };
+$("xrayBtn").onclick = () => setXray(!xray);
+$("mepCsv").onclick = () => { const sch = mepSchedule(); let csv = "系統,名称,種別,寸法,延長 m,区間数,器具数\n"; for (const k in sch){ const S = SYSTEMS[k]; csv += `${k},${S.n},${S.kind},${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000) : S.size.map(v=>Math.round(v*1000)).join("x")},${sch[k].len.toFixed(1)},${sch[k].runs},${sch[k].fittings}\n`; } const a = document.createElement("a"); a.download = "yellow-ota-mep.csv"; a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type:"text/csv" })); a.click(); };
 
 // ---- 構想イメージ ----
 { const g = $("photoGrid"); PHOTOS.forEach(p => { const f = document.createElement("figure"); f.style.margin = 0; f.innerHTML = `<img src="${p.f}" alt="${pe(p.t)}" loading="lazy"><figcaption>${pe(p.t)}</figcaption>`; f.querySelector("img").onclick = () => { $("lbImg").src = p.f; $("lbCap").textContent = p.t; $("lightbox").style.display = "flex"; }; g.appendChild(f); }); }
@@ -231,9 +257,9 @@ function tourGo(i){ if (i < 0 || i >= TOUR.length){ tourStop(); return; } tourId
   if (s.mode === "ext") setMode("ext"); else setMode(s.floor); setCam(s.cam);
   if (s.lane) setActiveLane(s.lane); else if (s.module) setActiveModule(s.module); else setActiveLane(null); linksOn = !!s.plant; renderPlant(); renderLanes(); renderOS();
   if (s.module) document.querySelector('[data-tab="os"]').click(); else if (s.plant) document.querySelector('[data-tab="plant"]').click(); else if (s.lane) document.querySelector('[data-tab="lanes"]').click();
-  $("tourStep").textContent = `ガイドツアー ${i + 1} / ${TOUR.length}`; $("tourTitle").textContent = s.title; $("tourText").textContent = s.text; $("tourCard").style.display = "block";
+  document.body.classList.add("tour"); $("tourStep").textContent = `ガイドツアー ${i + 1} / ${TOUR.length}`; $("tourTitle").textContent = s.title; $("tourText").textContent = s.text; $("tourCard").style.display = "block";
   clearTimeout(tourTimer); tourTimer = setTimeout(() => tourGo(i + 1), 11000); }
-function tourStop(){ clearTimeout(tourTimer); tourTimer = null; tourIdx = -1; $("tourCard").style.display = "none"; $("tourBtn").classList.remove("on"); setActiveLane(null); linksOn = false; renderPlant(); renderLanes(); renderOS(); }
+function tourStop(){ document.body.classList.remove("tour"); clearTimeout(tourTimer); tourTimer = null; tourIdx = -1; $("tourCard").style.display = "none"; $("tourBtn").classList.remove("on"); setActiveLane(null); linksOn = false; renderPlant(); renderLanes(); renderOS(); }
 $("tourBtn").onclick = () => { if (tourIdx >= 0) tourStop(); else { $("tourBtn").classList.add("on"); tourGo(0); } };
 $("tourNext").onclick = () => tourGo(tourIdx + 1); $("tourPrev").onclick = () => tourGo(Math.max(0, tourIdx - 1)); $("tourStop").onclick = tourStop;
 
@@ -247,7 +273,7 @@ addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; con
 
 // ================= 構築 & メインループ =================
 function build(){
-  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildMovers();
+  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildFloorDetail(); buildMEP(); buildMovers();
   for (const k in LAYERS) { if (k === "green" || k === "context") LAYERS[k].userData.layer = k; }
   // 人・車両レイヤー：階グループ内の作業者にも付与
   scene.traverse(o => { if (o.userData.legs) o.userData.layer = "people"; });
@@ -271,4 +297,4 @@ function loop(){
 }
 $("loadMsg").textContent = "敷地・建屋・設備を生成しています…";
 setTimeout(() => { try { build(); } catch (err) { $("loadMsg").textContent = "構築エラー: " + err.message; console.error(err); throw err; } loop(); }, 30);
-window.__factory = { scene, camera, renderer, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
+window.THREE = THREE; window.__factory = { scene, camera, renderer, buildMEP, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };

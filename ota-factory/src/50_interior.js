@@ -19,8 +19,8 @@ function pendant(g, x, y, z, ry=0){ const a = new THREE.Group(); a.position.set(
   boxAt(a, 0.08, 0.08, 0.6, M.darkSteel, 0, 0, 0.3); boxAt(a, 0.08, 0.9, 0.08, M.darkSteel, 0, -0.9, 0.6);
   const p = boxAt(a, 0.45, 0.6, 0.08, M.machineDark, 0, -0.6, 0.62); boxAt(a, 0.36, 0.3, 0.02, M.screen, 0, -0.35, 0.67); boxAt(a, 0.36, 0.18, 0.02, std(0x8d939a), 0, -0.58, 0.67); g.add(a); return a; }
 function chipConveyor(g, x, y, z, ry=0){ const c = new THREE.Group(); c.position.set(x,y,z); c.rotation.y = ry;
-  const incl = boxAt(c, 0.5, 0.35, 2.2, M.machineDark, 0, 0.3, 1.1); incl.rotation.x = -0.35; incl.position.y = 0.95;
-  boxAt(c, 0.5, 0.35, 1.4, M.machineDark, 0, 0.2, 0.2); boxAt(c, 0.9, 0.8, 0.9, std(0x5a6066,{metalness:0.5,roughness:0.5}), 0, 0, 2.3); g.add(c); }
+  const incl = boxAt(c, 0.5, 0.35, 1.5, M.machineDark, 0, 0.3, 0.75); incl.rotation.x = -0.4; incl.position.y = 0.85;
+  boxAt(c, 0.5, 0.35, 1.0, M.machineDark, 0, 0.2, 0.1); boxAt(c, 0.8, 0.75, 0.8, std(0x5a6066,{metalness:0.5,roughness:0.5}), 0, 0, 1.5); g.add(c); }
 function cabinet(g, w,h,d, x, z, ry=0, mat=M.machineWhite){ const c = new THREE.Group(); c.position.set(x,0,z); c.rotation.y=ry; boxAt(c, w,h,d, mat, 0,0,0); boxAt(c, w*0.9, 0.02, 0.02, M.darkSteel, 0, h*0.55, d/2+0.01); boxAt(c, 0.04, 0.25, 0.03, M.darkSteel, w*0.35, h*0.5, d/2+0.02); g.add(c); return c; }
 function hazardBase(g, w, d, x, z){ for (let i=0;i<4;i++) boxAt(g, w, 0.03, d, i%2? M.blackMatte : M.safetyYellow, x, 0.001+i*0.0, z).scale.set(1-i*0.22,1,1-i*0.22); }
 
@@ -323,11 +323,6 @@ function buildInterior(){
 
   // ---- MEP（ダクト・ケーブルラック・配管・照明）----
   const P = new Merger(); const W = x1-x0;
-  for (const z of [-22, -6]){ P.cyl(0.45, W-4, M.duct, 0, 12.3, z, 20, [0,0,Math.PI/2]); for (let x=x0+6; x<x1-4; x+=8){ P.cyl(0.2, 0.8, M.duct, x, 11.5, z, 12); P.box(0.9, 0.08, 0.9, M.duct, x, 11.4, z); } }
-  for (const z of [z0+1.9, zh-1.9]){ P.box(W-2, 0.1, 0.5, M.tray, 0, 11.6, z); P.box(W-2, 0.1, 0.5, M.tray, 0, 12.4, z); }
-  P.cyl(0.06, W-2, M.pipeBlue, 0, 9.0, z0+2.0, 8, [0,0,Math.PI/2]); P.cyl(0.06, W-2, M.pipeBlue, 0, 9.0, zh-2.0, 8, [0,0,Math.PI/2]);
-  P.cyl(0.08, W-2, M.pipeRed, 0, 12.9, z0+2.4, 8, [0,0,Math.PI/2]); P.cyl(0.08, W-2, M.pipeRed, 0, 12.9, zh-2.4, 8, [0,0,Math.PI/2]);
-  for (const e of EQUIP.filter(e=>["mc5","hmc","lathe","gantry","edm","grind","robotcell"].includes(e.kind))) { const zr = e.z<-14? z0+2.0 : zh-2.0; P.cyl(0.03, 9.0-2.5, M.pipeBlue, e.x+1.5, 2.5, zr, 6); P.cyl(0.03, Math.abs(e.z-zr), M.pipeBlue, e.x+1.5, 2.5, (e.z+zr)/2, 6, [Math.PI/2,0,0]); }
   // 照明（ホール：ハイベイ列 ／ オフィス：ライン照明）
   const lampI = []; for (const z of [-26, -19, -12, -5]) for (let x=x0+4; x<x1; x+=6) lampI.push([x, 11.2, z, 1.2, 0.08, 0.3]);
   for (let x=x0+3; x<x1; x+=4) for (const z of [5, 9, 13]) { lampI.push([x, lv[1]-0.72, z, 3.0, 0.05, 0.15]); lampI.push([x, lv[2]-0.72, z, 3.0, 0.05, 0.15]); lampI.push([x, 13.4, z, 3.0, 0.05, 0.15]); }

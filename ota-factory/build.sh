@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 out=index.html
 {
   cat src/00_head.html
-  for f in src/10_data.js src/20_core.js src/30_site.js src/40_building.js src/50_interior.js src/55_overhead.js src/56_lanes.js src/58_detail.js src/60_movers.js src/70_ui.js; do
+  for f in src/10_data.js src/20_core.js src/30_site.js src/40_building.js src/50_interior.js src/55_overhead.js src/56_lanes.js src/57_mep.js src/58_detail.js src/59_floors.js src/60_movers.js src/70_ui.js; do
     printf '\n// ===== %s =====\n' "$f"; cat "$f"
   done
   cat src/99_tail.html

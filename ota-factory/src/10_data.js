@@ -18,7 +18,7 @@ const BLD = {
   eaveZ: 24,           // 屋根 南側キャンチ先端
   lv: [0, 5.0, 9.5],   // 1F / 2F / 3F FL
   eave: 14.0,          // 軒高
-  craneRail: 10.5,     // クレーンレール天端
+  craneRail: 9.3,      // クレーンレール天端（クレーン上端 ≈ 11.7、トラス下弦 12.8）
   grid: 8,             // 柱スパン（東西）
   // 折板屋根 断面プロファイル (z, y)  北軒 → 棟1 → 谷 → 棟2 → 南軒
   roofProfile: [[-31, 13.6], [-16, 18.2], [-4, 15.6], [6, 17.6], [24, 14.2]],
@@ -188,26 +188,26 @@ const OS_LAYERS = [[1,"現場制御"],[2,"協調・計画"],[3,"品質・デー�
 // ---- ステーション種別（レーン生成の部品）----
 // fp:[レーン方向の幅, 奥行] m / ct:標準作業時間 / unit: min|h / auto: auto(無人可) semi(監視付) manual / ppl:要員
 const STATION_TYPES = {
-  load:    { n:"素材投入・段取",     kind:"load",     fp:[2.6,2.4], ct:5,   unit:"min", auto:"semi",   ppl:1,
+  load:    { n:"素材投入・段取",     kind:"load",     fp:[3.2,2.6], ct:5,   unit:"min", auto:"semi",   ppl:1,
              spec:{ 仕様:"素材パレット台＋ツールプリセット端末", 連携:"Scheduler が投入順を指示" } },
-  lathe:   { n:"CNC旋盤",            kind:"lathe",    fp:[3.6,2.2], ct:18,  unit:"min", auto:"semi",   ppl:0.5,
+  lathe:   { n:"CNC旋盤",            kind:"lathe",    fp:[5.0,2.4], ct:18,  unit:"min", auto:"semi",   ppl:0.5,
              spec:{ 型式:"CNC旋盤 Y軸付（想定）", 最大加工径:"φ450", 電源:"25 kVA", 質量:"6 t" } },
-  mc5:     { n:"5軸マシニングセンタ", kind:"mc5",      fp:[4.6,5.0], ct:42,  unit:"min", auto:"auto",   ppl:0.3,
+  mc5:     { n:"5軸マシニングセンタ", kind:"mc5",      fp:[6.0,5.0], ct:42,  unit:"min", auto:"auto",   ppl:0.3,
              spec:{ 型式:"5軸立形MC（想定）", 加工範囲:"X800×Y800×Z600", 主軸:"15,000 min⁻¹", 電源:"30 kVA", 質量:"12 t", 供給:"天井ガントリーローダ" } },
-  hmc:     { n:"横型マシニングセンタ", kind:"hmc",      fp:[5.6,6.4], ct:25,  unit:"min", auto:"auto",   ppl:0.3,
+  hmc:     { n:"横型マシニングセンタ", kind:"hmc",      fp:[6.9,6.2], ct:25,  unit:"min", auto:"auto",   ppl:0.3,
              spec:{ 型式:"横型MC パレット2面（想定）", パレット:"630×630", 主軸:"12,000 min⁻¹", 電源:"35 kVA", 質量:"16 t" } },
-  gantry:  { n:"門型マシニングセンタ", kind:"gantry",   fp:[12.0,7.0], ct:240, unit:"min", auto:"semi",  ppl:1,
+  gantry:  { n:"門型マシニングセンタ", kind:"gantry",   fp:[12.0,6.8], ct:240, unit:"min", auto:"semi",  ppl:1,
              spec:{ 型式:"門型5面加工機（想定）", 加工範囲:"X4000×Y2500×Z1200", テーブル:"4×2.5 m 耐荷重 15 t", 電源:"80 kVA", 質量:"45 t", 基礎:"独立基礎 深さ1.5 m" } },
-  edm:     { n:"ワイヤ放電加工機",    kind:"edm",      fp:[3.2,3.0], ct:90,  unit:"min", auto:"auto",   ppl:0.2,
+  edm:     { n:"ワイヤ放電加工機",    kind:"edm",      fp:[3.8,3.0], ct:90,  unit:"min", auto:"auto",   ppl:0.2,
              spec:{ 型式:"ワイヤEDM（想定）", 加工範囲:"X600×Y400", 電源:"15 kVA", 質量:"4 t" } },
   grind:   { n:"平面研削盤",          kind:"grind",    fp:[3.0,2.2], ct:60,  unit:"min", auto:"semi",   ppl:0.5,
              spec:{ 型式:"平面研削盤（想定）", テーブル:"600×300", 電源:"10 kVA", 質量:"3 t" } },
-  robotcell:{ n:"ロボット段取セル",    kind:"robotcell",fp:[6.4,6.4], ct:3,   unit:"min", auto:"auto",   ppl:0,
+  robotcell:{ n:"ロボット段取セル",    kind:"robotcell",fp:[5.3,5.3], ct:3,   unit:"min", auto:"auto",   ppl:0,
              spec:{ 構成:"6軸ロボット 可搬50 kg＋ワークストッカ", 役割:"夜間無人運転の素材・治具段取", 安全柵:"H2.0 m メッシュ" } },
-  wash:    { n:"洗浄・エアブロー",    kind:"wash",     fp:[2.8,2.2], ct:6,   unit:"min", auto:"auto",   ppl:0,
+  wash:    { n:"洗浄・エアブロー",    kind:"wash",     fp:[4.0,2.2], ct:6,   unit:"min", auto:"auto",   ppl:0,
              spec:{ 仕様:"高圧温水洗浄機 バスケット式", 排水:"油水分離→再生" } },
   cmm:     { n:"三次元測定（計測室）", kind:"ref",      ref:"CM-01",  ct:12,  unit:"min", auto:"auto",   ppl:0.3 },
-  store:   { n:"完成品ストア",        kind:"store",    fp:[3.2,1.4], ct:2,   unit:"min", auto:"auto",   ppl:0,
+  store:   { n:"完成品ストア",        kind:"store",    fp:[4.0,1.4], ct:2,   unit:"min", auto:"auto",   ppl:0,
              spec:{ 仕様:"ライトガイド棚 4段×8間口", 連携:"MES が棚番を発行、AGV が組立へ供給" } },
   asmMech: { n:"機械組立（ベイ）",    kind:"asmA",     fp:[14,9],    ct:160, unit:"h",   auto:"manual", ppl:4,
              spec:{ 機種:"大型門型加工システム（開発中）", 寸法:"L9.0×W4.5×H5.2 m", 質量:"38 t", 工具:"天井ツールレール（ナットランナ）・エネルギーブーム", 位置決め:"レーザー投影で据付基準を床に表示" } },
@@ -257,27 +257,27 @@ const LANE_RECIPES = {
 // ---- 配置するレーン（区画・シフト・レシピ）----
 // area:[x0,x1,z0,z1] 生成範囲 / rows: 蛇行配置の行数上限 / shifts: {hours, shifts, unattended(無人運転 h/日)}
 const LANES = [
-  { id:"L1", recipe:"precision", zone:"mach", floor:1, area:[-43,-13,-29.5,-12], flowDir:1,
+  { id:"L1", recipe:"precision", zone:"mach", floor:1, area:[-43,-13,-29.5,-6.4], flowDir:1,
     shifts:{ hours:8, shifts:2, unattended:8 }, oee:{ avail:0.88, perf:0.95, qual:0.985 } },
-  { id:"L2", recipe:"heavy",     zone:"mach", floor:1, area:[-43,-13,-11,1],    flowDir:1,
+  { id:"L2", recipe:"heavy",     zone:"mach", floor:1, area:[-43,-13,-6.0,1.5],   flowDir:1,
     shifts:{ hours:8, shifts:2, unattended:6 }, oee:{ avail:0.85, perf:0.9, qual:0.98 } },
   { id:"L3", recipe:"assembly",  zone:"asm1", floor:1, area:[-11,35,-29,1],     flowDir:1, override:{ asmMech:4 },
     shifts:{ hours:8, shifts:1, unattended:0, days:21 }, oee:{ avail:0.9, perf:0.9, qual:1 } },
-  { id:"L4", recipe:"panel",     zone:"elab", floor:1, area:[-5.5,5.5,3,17],    flowDir:1,
+  { id:"L4", recipe:"panel",     zone:"elab", floor:1, area:[-5.5,5.5,3,17.6],  flowDir:1,
     shifts:{ hours:8, shifts:2, unattended:0 }, oee:{ avail:0.92, perf:0.95, qual:0.99 } },
   { id:"L5", recipe:"software",  zone:"sw",   floor:2, area:[-36,34,3,17],      flowDir:1,
     shifts:{ hours:8, shifts:1, unattended:16, days:5 }, oee:{ avail:0.97, perf:1, qual:0.95 } },
-  { id:"L6", recipe:"sheet",     zone:"north",floor:1, area:[2,44,-39.8,-30.5],  flowDir:1,
+  { id:"L6", recipe:"sheet",     zone:"north",floor:1, area:[-13,44,-39.8,-30.5], flowDir:1,
     shifts:{ hours:8, shifts:1, unattended:6, days:5 }, oee:{ avail:0.85, perf:0.92, qual:0.98 } },
-  { id:"L7", recipe:"paint",     zone:"north",floor:1, area:[-44,0,-39.8,-30.5], flowDir:1,
+  { id:"L7", recipe:"paint",     zone:"north",floor:1, area:[-44,-14,-39.8,-30.5], flowDir:1,
     shifts:{ hours:8, shifts:1, unattended:4, days:5 }, oee:{ avail:0.85, perf:0.92, qual:0.98 } },
 ];
 
 // ================= v0.3: 追加レシピ・レーン間の物量リンク・需要 =================
 Object.assign(STATION_TYPES, {
-  laser:   { n:"ファイバーレーザー加工機", kind:"laser",  fp:[7.0,4.2], ct:9,   unit:"min", auto:"auto",   ppl:0.3,
+  laser:   { n:"ファイバーレーザー加工機", kind:"laser",  fp:[8.0,4.2], ct:9,   unit:"min", auto:"auto",   ppl:0.3,
              spec:{ 型式:"ファイバーレーザー 6 kW（想定）", 加工範囲:"3000×1500", 材料:"SS400/SUS/AL t25まで", 供給:"自動パレットチェンジャ", 電源:"60 kVA" } },
-  brake:   { n:"プレスブレーキ",        kind:"brake",  fp:[4.4,2.6], ct:12,  unit:"min", auto:"semi",   ppl:1,
+  brake:   { n:"プレスブレーキ",        kind:"brake",  fp:[5.0,2.8], ct:12,  unit:"min", auto:"semi",   ppl:1,
              spec:{ 型式:"油圧プレスブレーキ 220 t（想定）", 曲げ長:"4,000 mm", 支援:"曲げ順序を Edge 端末へ配信、角度センサ補正" } },
   weld:    { n:"溶接ロボットセル",      kind:"weld",   fp:[6.4,6.4], ct:35,  unit:"min", auto:"auto",   ppl:0.5,
              spec:{ 構成:"6軸溶接ロボット＋2軸ポジショナ＋ヒューム集塵", 方式:"MAG/TIG 切替", 安全:"遮光パネル・光線式安全装置" } },
@@ -285,9 +285,9 @@ Object.assign(STATION_TYPES, {
              spec:{ 仕様:"集塵ブース・ベルトサンダ・歪取り定盤", 品質:"溶接外観をカメラで自動判定" } },
   mask:    { n:"マスキング・前処理",    kind:"mask",   fp:[3.4,2.6], ct:20,  unit:"min", auto:"manual", ppl:1,
              spec:{ 仕様:"脱脂槽・マスキング台・吊り治具", 連携:"塗装レシピ（色・膜厚）は MES から取得" } },
-  booth:   { n:"塗装ブース",            kind:"booth",  fp:[8.0,5.0], ct:30,  unit:"min", auto:"semi",   ppl:1,
+  booth:   { n:"塗装ブース",            kind:"booth",  fp:[9.2,5.0], ct:30,  unit:"min", auto:"semi",   ppl:1,
              spec:{ 仕様:"給排気ブース 8×5×4 m、塗装ロボット＋手吹き", 排気:"活性炭フィルタ、消防法 指定数量以下", 電源:"40 kVA" } },
-  oven:    { n:"乾燥炉",                kind:"oven",   fp:[6.0,3.6], ct:40,  unit:"min", auto:"auto",   ppl:0,
+  oven:    { n:"乾燥炉",                kind:"oven",   fp:[6.4,6.0], ct:40,  unit:"min", auto:"auto",   ppl:0,
              spec:{ 仕様:"熱風循環炉 80℃、台車式", 熱源:"ヒートポンプ＋電気" } },
   demoPrep:{ n:"デモ準備・段取",        kind:"demoPrep", fp:[4.0,3.0], ct:4, unit:"h",  auto:"manual", ppl:2,
              spec:{ 仕様:"デモ用ワーク・治具の準備台、搬入経路確保", 連携:"デモシナリオを Scheduler に登録" } },

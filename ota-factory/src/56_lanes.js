@@ -6,27 +6,32 @@ const BUILDERS = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry,
   load:makeLoadStation, wash:makeWash, store:makeStore, asmA:()=>makeAssembly("A"), asmB:()=>makeAssembly("B"), panel:makePanelStation, wiring:makeWiringStation, ptest:makePowerTest,
   laser:makeLaserCutter, brake:makePressBrake, weld:makeWeldCell, finish:makeFinishBooth, mask:makeMaskStation, booth:makePaintBooth, oven:makeOven, demoPrep:makeDemoPrep, demo:makeDemoStage, tcell:()=>{ const g = makeTestCellStation(); g.scale.set(0.76, 0.85, 0.8); return g; } };
 
+// 実際のモデル寸法から占有寸法を測る（宣言値より大きければ上書き）
+const FP_CACHE = {};
+function measuredFp(t){ const S = STATION_TYPES[t]; if (!S.fp) return undefined; if (FP_CACHE[t]) return FP_CACHE[t]; const b = BUILDERS[S.kind]; if (!b) return FP_CACHE[t] = S.fp.slice();
+  const g = b(); g.updateMatrixWorld(true); const bb = new THREE.Box3(); g.traverse(m => { if (m.isMesh && !m.isSprite) bb.union(new THREE.Box3().setFromObject(m)); }); g.traverse(m => { if (m.isMesh) m.geometry.dispose?.(); });
+  const w = bb.isEmpty() ? 0 : bb.max.x - bb.min.x + 0.4, d = bb.isEmpty() ? 0 : bb.max.z - bb.min.z + 0.4; return FP_CACHE[t] = [Math.max(S.fp[0], +w.toFixed(1)), Math.max(S.fp[1], +d.toFixed(1))]; }
 // レシピ＋パラメータ → ステーション配列（[type, n] を展開）
 function expandStations(lane){
   const R = LANE_RECIPES[lane.recipe]; const ov = lane.override || {};
   // 注意: STATION_TYPES の n は表示名なので、台数 n は spread の後で上書きする
   const so = lane.stationOv || {};   // { type: { ct, n, auto, ppl } }
   const off = lane.offload || [];   // 他レーンへ外出しした工程（例: 組立の試験）
-  const sts = R.stations.filter(([t]) => !off.includes(t)).map(([t, n], i) => ({ ...STATION_TYPES[t], idx:i+1, type:t, n: so[t]?.n ?? ov[t] ?? n, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {},
+  const sts = R.stations.filter(([t]) => !off.includes(t)).map(([t, n], i) => ({ ...STATION_TYPES[t], fp: measuredFp(t), idx:i+1, type:t, n: so[t]?.n ?? ov[t] ?? n, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {},
     ...(so[t]?.ct !== undefined ? { ct:so[t].ct } : {}), ...(so[t]?.auto ? { auto:so[t].auto } : {}), ...(so[t]?.ppl !== undefined ? { ppl:so[t].ppl } : {}) }));
-  const aux = (R.aux||[]).map(([t,n], i) => ({ ...STATION_TYPES[t], idx:"A"+(i+1), type:t, n, aux:true, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {} }));
+  const aux = (R.aux||[]).map(([t,n], i) => ({ ...STATION_TYPES[t], fp: measuredFp(t), idx:"A"+(i+1), type:t, n, aux:true, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {} }));
   return { sts, aux };
 }
 
 // ---- 配置（蛇行）：区画内で左→右、はみ出したら次の行で右→左 ----
 function layoutLane(lane, sts){
-  const [x0, x1, z0, z1] = lane.area; const usable = x1 - x0 - 1.0; const gap = 0.8;
+  const [x0, x1, z0, z1] = lane.area; const usable = x1 - x0 - 1.0; const gap = 0.6;
   const rows = [[]]; let cur = 0, row = 0;
   const units = []; for (const s of sts){ if (s.kind === "ref") { units.push({ s, ref:true }); continue; } for (let k=0;k<s.n;k++) units.push({ s, k, w:s.fp[0], d:s.fp[1] }); }
   for (const u of units){ if (u.ref) continue; if (cur + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } rows[row].push(u); u.row = row; u.off = cur; cur += u.w + gap; }
   // 行ごとの奥行とピッチ（行0-1 間は 4 m 通路、以降は 2.5 m）
   let zTop = z0 + 0.5; const rowInfo = [];
-  rows.forEach((r, i) => { const d = Math.max(...r.map(u=>u.d), 2); const aisle = i===0? 0 : (i%2===1? 4.0 : 2.5); zTop += aisle; rowInfo.push({ zTop, d, len: r.length? r[r.length-1].off + r[r.length-1].w : 0 }); zTop += d; });
+  rows.forEach((r, i) => { const d = Math.max(...r.map(u=>u.d), 2); const aisle = i===0? 0 : (i%2===1? 2.6 : 1.8); zTop += aisle; rowInfo.push({ zTop, d, len: r.length? r[r.length-1].off + r[r.length-1].w : 0 }); zTop += d; });
   const over = zTop - z1; // 区画をはみ出す場合は圧縮（警告）
   for (const u of units){ if (u.ref) continue; const ri = rowInfo[u.row]; const dir = (u.row % 2 === 0) ? 1 : -1;
     const xs = dir === 1 ? (x0 + 0.5 + u.off + u.w/2) : (x0 + 0.5 + ri.len - u.off - u.w/2);
@@ -52,7 +57,7 @@ function generateLane(lane){
     if (s.kind === "ref"){ const p = resolveRef(s.ref, lane, prev); s.pos = p; if (!s.aux) stationPos.push({ ...p, s }); prev = p; continue; }
     const us = lay.units.filter(u=>u.s===s); const cx = us.reduce((a,u)=>a+u.x,0)/us.length, cz = us.reduce((a,u)=>a+u.z,0)/us.length;
     s.pos = { x:cx, z:cz, floor:lane.floor }; s.units = us; if (!s.aux) stationPos.push({ x:cx, z:cz, floor:lane.floor, s }); prev = s.pos;
-    us.forEach((u, k) => { const b = BUILDERS[s.kind]; if (!b) return; const grp = b(); grp.add(makeMachineExtras(s.kind, s.fp[0], s.fp[1])); compactGroup(grp); grp.position.set(u.x, yF, u.z); grp.rotation.y = u.rot;
+    us.forEach((u, k) => { const b = BUILDERS[s.kind]; if (!b) return; const grp = b(); compactGroup(grp); const ex = makeMachineExtras(s.kind, s.fp[0], s.fp[1]); ex.userData.extra = true; compactGroup(ex); grp.add(ex); grp.position.set(u.x, yF, u.z); grp.rotation.y = u.rot;
       const id = `${lane.id}-S${s.idx}${s.n>1? String.fromCharCode(97+k) : ""}`; const e = { id, kind:s.kind, name: s.n > 1 ? `${STATION_TYPES[s.type].n} #${k+1}` : STATION_TYPES[s.type].n, x:+u.x.toFixed(1), z:+u.z.toFixed(1), rot:u.rot, zone:lane.zone, lane:lane.id, station:s.idx, generated:true,
         spec:{ レーン:`${lane.id} ${R.n}`, 工程:`S${s.idx}${s.aux? "（補助）":""} ${s.n>1? s.n+" 台並列" : ""}`, 標準時間:`${s.ct} ${s.unit}/${R.unitName}`, 自動化:s.auto==="auto"? "無人運転可" : s.auto==="semi"? "監視付き自動" : "手作業", ...s.spec } };
       EQUIP.push(e); tagEq(grp, e); eqIds.push(id); g.add(grp);
