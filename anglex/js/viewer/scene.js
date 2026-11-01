@@ -199,7 +199,7 @@ export class Viewer {
     this.animateTo(p1, c, { ms, ortho: { pos: op1, target: c } }); this.showOrbitCross?.(ms + 700); /* 寄せた先が回転中心だと目で分かるように十字を少し出す */
   }
   // 任意の点を画面中央へ（距離は指定 or 現状維持）
-  focusPoint(pt, { dist = null, ms = 380 } = {}) { this.flushInertia(); const ctl = this.controls, cam = this.camera; const dir = cam.position.clone().sub(ctl.target).normalize(); const d = dist || cam.position.distanceTo(ctl.target); const p1 = pt.clone().add(dir.multiplyScalar(d)); this.orthoControls.target.copy(pt); this.animateTo(p1, pt, { ms }); }
+  focusPoint(pt, { dist = null, ms = 380 } = {}) { this.flushInertia(); this.pushView(); const ctl = this.controls, cam = this.camera; const dir = cam.position.clone().sub(ctl.target).normalize(); const d = dist || cam.position.distanceTo(ctl.target); const p1 = pt.clone().add(dir.multiplyScalar(d)); this.orthoControls.target.copy(pt); this.animateTo(p1, pt, { ms }); }
   // 境界: 掴んで動かしてモデルが画面外に出たら、自動で画面内へ戻す（中心が視野の 1.05 倍の外に出たとき）
   keepInView() { if (this.keepInViewOff || this._tween || this.gizmo.dragging) return; let ref = this._focusObj; if (ref) { let ok = false; for (let p = ref; p; p = p.parent) if (p === this.modelRoot) { ok = true; break; } if (!ok || !ref.visible) { ref = null; this._setFocus(null); } } const box = new THREE.Box3().setFromObject(ref || this.modelRoot); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()); const cam = this.activeCamera; const p = c.clone().project(cam); const out = Math.abs(p.x) > 1.05 || Math.abs(p.y) > 1.05 || p.z > 1; if (!out) return;
     // 中心が画面の端（0.8）に来る位置まで戻す: 目標点を中心へ寄せる

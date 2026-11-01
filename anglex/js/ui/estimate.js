@@ -36,7 +36,7 @@ export async function createEstimate(app) {
   if (!app.model.instances.length) { toast('モデルに部材がありません', 'bad'); return null; }
   const em = estimateModel(app.model, app.rates()); const est = WF.newEstimate({ projectId: app.project.id, projectName: app.project.name, lines: em.lines, rates: app.rates(), author: app.user().name, org: 'A', branch: app.project.branch || app.user().branch || null });
   try { const hist = await listHistory(app); const n = applyLearned(hist, est); if (n) { est.audit.push({ at: new Date().toISOString(), who: app.user().name, org: 'A', action: 'edit', field: 'lines.baseCost', note: `学習単価を ${n} 行に適用（C社回答の中央値）` }); est.learnedApplied = n; } } catch (e) { console.warn('learned', e); }
-  est.snapshot3d = app.viewer.screenshot(900, 560); await app.store.saveEstimate(est); app.currentEstimateId = est.id; toast(`見積 ${est.no} を作成（${est.lines.length} 明細）`, 'ok'); return est;
+  est.snapshot3d = app.snapshotForPdf ? app.snapshotForPdf(900, 560) : app.viewer.screenshot(900, 560); /* 全体用の「📷 PDF」視点があればその角度 */ await app.store.saveEstimate(est); app.currentEstimateId = est.id; toast(`見積 ${est.no} を作成（${est.lines.length} 明細）`, 'ok'); return est;
 }
 function renderEstimate(app, est, rerender, m) {
   const role = app.role(); const user = app.user(); const mine = est.currentOrg === role && est.status !== 'final'; const cols = WF.visibleColumns(role); const T = WF.totals(est);
