@@ -50,6 +50,13 @@ const route = await page.evaluate(() => {
   return { from: [from.x, from.y, from.lv], to: [to.x, to.y, to.lv], len: r && Math.round(r.length), moves: r && r.moves.map(m => `${m.vt}:${m.from}>${m.to}`), lenBF: r2 && Math.round(r2.length), movesBF: r2 && r2.moves.map(m => `${m.vt}:${m.from}>${m.to}`), stairsBF: r2 && r2.usedStairs };
 });
 console.log('route test', JSON.stringify(route));
+await shot('12_points', `a.applyTheme('paper'); a.setRep('points'); a.camera.position.set(-520, 260, 420); a.controls.target.set(-40, 80, 300);`);
+await shot('13_voxel', `a.setRep('voxel');`);
+await shot('14_explode', `a.setRep('line'); a.setDisp('explode', 0.6);`);
+await shot('15_stack', `a.setDisp('stack', 1);`);
+await shot('16_build', `a.setDisp('build', 0.55);`);
+await shot('17_section', `a.setDisp('explode', 0); a.section(30); a.camera.position.set(-300, 420, 300); a.controls.target.set(-40, 0, 300);`);
+await page.evaluate(() => { window.__app.section(null); });
 await shot('10_line', `a.applyTheme('line'); a.setExpand(1); a.camera.position.set(-520, 260, 420); a.controls.target.set(-40, 80, 300);`);
 await shot('11_night', `a.applyTheme('night');`);
 await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });
