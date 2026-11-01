@@ -1,48 +1,408 @@
 building,floor,zone,name,category,share,source
-MARK IS minatomirai,4F,,CHAO,飲食,1,osm
-MARK IS minatomirai,4F,,HONOLULU COFFEE,飲食,1,osm
-MARK IS minatomirai,4F,,KAMAKURA,飲食,1,osm
-MARK IS minatomirai,4F,,KARIN,飲食,1,osm
-MARK IS minatomirai,4F,,Kitchen Omiya,飲食,1,osm
-MARK IS minatomirai,4F,,LA MERE POULARD,飲食,1,osm
-MARK IS minatomirai,4F,,Mano-e-Mano,飲食,1,osm
-MARK IS minatomirai,4F,,RANG MANG SHOKUDO,飲食,1,osm
-MARK IS minatomirai,4F,,SHABI SHABU KITCHEN,飲食,1,osm
-MARK IS minatomirai,4F,,いしがまやハンバーグ,飲食,1,osm
-MARK IS minatomirai,4F,,おぼんdeごはん,飲食,1,osm
-MARK IS minatomirai,4F,,まぐろ問屋 めぐみ水産,飲食,1,osm
-MARK IS minatomirai,4F,,みんなのフードコート,飲食,1,osm
-MARK IS minatomirai,4F,,アジアン食堂 Kuu,飲食,1,osm
-MARK IS minatomirai,4F,,タリーズコーヒー,飲食,1,osm
-MARK IS minatomirai,4F,,元天ねぎ蛸,飲食,1,osm
-MARK IS minatomirai,4F,,博多だるま,飲食,1,osm
-MARK IS minatomirai,4F,,横濱こてがえし,飲食,1,osm
-MARK IS minatomirai,4F,,沖縄料理 なんくるないさー,飲食,1,osm
-MARK IS minatomirai,4F,,石英,飲食,1,osm
-MARK IS minatomirai,4F,,神楽食堂 串家物語,飲食,1,osm
-MARK IS minatomirai,4F,,築地食堂 源ちゃん,飲食,1,osm
-MARK IS minatomirai,4F,,讃岐釜揚げうどん 丸亀製麺,飲食,1,osm
-MARK IS minatomirai,4F,,鎌倉かつ亭 あら珠,飲食,1,osm
-MARK IS minatomirai,4F,,鎌倉パスタ,飲食,1,osm
-MARK IS minatomirai,4F,,麻婆専門店 福満園,飲食,1,osm
-MARK IS minatomirai,5F,,Orbi,公共,1,osm
-Yokohama World Porters,1F,,トラットリア エトナマーレ 横浜ワールドポーターズ店,飲食,1,osm
-Yokohama World Porters,1F,,ホノルルコーヒー,飲食,1,osm
-Yokohama World Porters,1F,,ローストビーフ星,飲食,1,osm
-Yokohama World Porters,1F,,横浜 元町ドリア,飲食,1,osm
-Yokohama World Porters,2F,,タリーズコーヒー,飲食,1,osm
-Yokohama World Porters,3F,,バンダイナムコ Cross Store,公共,1,osm
-Yokohama World Porters,4F,,UWS アクアリウム アンダーウォータースペース,公共,1,osm
-Yokohama World Porters,5F,,L.A.S.T,飲食,1,osm
-Yokohama World Porters,6F,,Y's Road横浜,物販,1,osm
-ランドマークプラザ,1F,,Brasserie la Classe,飲食,1,osm
-ランドマークプラザ,1F,,Tsukemen TETSU,飲食,1,osm
-ランドマークプラザ,1F,,セブン-イレブン,物販,1,osm
-ランドマークプラザ,1F,,味散歩 横濱文明開館,飲食,1,osm
-ランドマークプラザ,1F,,成城石井,物販,1,osm
-ランドマークプラザ,1F,,横浜ランドマークタワー郵便局,公共,1,osm
-ランドマークプラザ,1F,,銀座天國,飲食,1,osm
-ランドマークプラザ,3F,,Jump Shop,物販,1,osm
-ランドマークプラザ,5F,,Din Tai Fung,飲食,1,osm
-ランドマークプラザ,5F,,アクセア,サービス,1,osm
-横浜ランドマークタワー,2F,,するーぷ,その他,1,osm
+MARK IS minatomirai,B4,1,ファミリーマート,物販,1,official
+MARK IS minatomirai,B4,2,きもの鈴乃屋,物販,1,official
+MARK IS minatomirai,B4,3,くまざわ書店,物販,1,official
+MARK IS minatomirai,B4,4,アイシティ,物販,1,official
+MARK IS minatomirai,B4,5,ペコちゃんmilkyドーナツ,飲食,1,official
+MARK IS minatomirai,B4,6,UNI COFFEE ROASTERY,物販,1,official
+MARK IS minatomirai,B4,7,上島珈琲店,物販,1,official
+MARK IS minatomirai,B4,8,ALBA歯科 & 矯正歯科,医療,1,official
+MARK IS minatomirai,B4,9,ワイモバイル,物販,1,official
+MARK IS minatomirai,B4,10,ベビーパーク,物販,1,official
+MARK IS minatomirai,B4,11,I feeling,物販,1,official
+MARK IS minatomirai,B4,12,ラフィネ,物販,1,official
+MARK IS minatomirai,B4,13,TRU EYELASH,物販,1,official
+MARK IS minatomirai,B4,14,Dr.ストレッチ,物販,1,official
+MARK IS minatomirai,B4,15,ドコモショップ,物販,1,official
+MARK IS minatomirai,B4,16,青山ネイル,サービス,1,official
+MARK IS minatomirai,B2,1,スポーツデポフラッグシップストア,物販,1,official
+MARK IS minatomirai,B2,2,ハックドラッグ,医療,1,official
+MARK IS minatomirai,B2,3,お直しコンシェルジュ ビック・ママ,物販,1,official
+MARK IS minatomirai,B2,4,ポニークリーニング,サービス,1,official
+MARK IS minatomirai,B2,5,ATM/銀行,サービス,1,official
+MARK IS minatomirai,B1,1,Foodway,物販,1,official
+MARK IS minatomirai,B1,2,ソウル市場,物販,1,official
+MARK IS minatomirai,B1,3,お肉処 牛蔵,物販,1,official
+MARK IS minatomirai,B1,4,山助,物販,1,official
+MARK IS minatomirai,B1,5,大東青果,飲食,1,official
+MARK IS minatomirai,B1,6,R Baker,物販,1,official
+MARK IS minatomirai,B1,7,CRISP SALAD WORKS,物販,1,official
+MARK IS minatomirai,B1,8,おめで鯛焼き本舗,物販,1,official
+MARK IS minatomirai,B1,9,中華惣菜 東方紅,飲食,1,official
+MARK IS minatomirai,B1,10,やきとり 鶏陣,物販,1,official
+MARK IS minatomirai,B1,11,BISTRO石川亭DELI,物販,1,official
+MARK IS minatomirai,B1,13,カルディコーヒーファーム,飲食,1,official
+MARK IS minatomirai,B1,15,丼処 山助,飲食,1,official
+MARK IS minatomirai,B1,12,青山フラワーマーケット,物販,1,official
+MARK IS minatomirai,B1,14,ダイソー,物販,1,official
+MARK IS minatomirai,1F,2,ACTUS,物販,1,official
+MARK IS minatomirai,1F,3,モンベル,物販,1,official
+MARK IS minatomirai,1F,4,snow peak,物販,1,official
+MARK IS minatomirai,1F,5,コロンビアスポーツウェア,物販,1,official
+MARK IS minatomirai,1F,6,DESCENTE,物販,1,official
+MARK IS minatomirai,1F,7,キーン ガラージ,物販,1,official
+MARK IS minatomirai,1F,8,サロモンストア,物販,1,official
+MARK IS minatomirai,1F,9,アークテリクス,物販,1,official
+MARK IS minatomirai,1F,10,HOKA Yokohama,物販,1,official
+MARK IS minatomirai,1F,11,THE NORTH FACE,物販,1,official
+MARK IS minatomirai,1F,12,HELLY HANSEN,物販,1,official
+MARK IS minatomirai,1F,13,BRIEFING,物販,1,official
+MARK IS minatomirai,1F,14,フレッドペリー,物販,1,official
+MARK IS minatomirai,1F,15,ニューバランス,物販,1,official
+MARK IS minatomirai,1F,16,MARLMARL,物販,1,official
+MARK IS minatomirai,1F,18,POTR YOKOHAMA,物販,1,official
+MARK IS minatomirai,1F,19,BEAMS,物販,1,official
+MARK IS minatomirai,1F,20,BEAUTY & YOUTH UNITED ARROWS,物販,1,official
+MARK IS minatomirai,1F,21,アニエスベー,物販,1,official
+MARK IS minatomirai,1F,22,MARcourt,物販,1,official
+MARK IS minatomirai,1F,23,tandey mooi,物販,1,official
+MARK IS minatomirai,1F,24,PAL’LAS PALACE,物販,1,official
+MARK IS minatomirai,1F,25,Jouete,物販,1,official
+MARK IS minatomirai,1F,26,IL BISONTE,物販,1,official
+MARK IS minatomirai,1F,27,NANGA SHOP YOKOHAMA,物販,1,official
+MARK IS minatomirai,1F,28,金子眼鏡店,物販,1,official
+MARK IS minatomirai,1F,29,TENTIAL,物販,1,official
+MARK IS minatomirai,1F,30,GARMIN,物販,1,official
+MARK IS minatomirai,1F,31,カンペール,物販,1,official
+MARK IS minatomirai,1F,32,Bshop,物販,1,official
+MARK IS minatomirai,1F,33,RHC Ron Herman,物販,1,official
+MARK IS minatomirai,1F,34,JOURNAL STANDARD FURNITURE,物販,1,official
+MARK IS minatomirai,1F,35,JOURNAL STANDARD relume,物販,1,official
+MARK IS minatomirai,1F,17,レダラッハ,物販,1,official
+MARK IS minatomirai,1F,36,AMALFI CAFFE,物販,1,official
+MARK IS minatomirai,1F,37,RHC CAFE,物販,1,official
+MARK IS minatomirai,1F,38,J.S. PANCAKE CAFE,物販,1,official
+MARK IS minatomirai,1F,39,BLUE BOTTLE COFFEE,物販,1,official
+MARK IS minatomirai,1F,1,ペットパラダイスＤＸ,物販,1,official
+MARK IS minatomirai,1F,40,ポピンズナーサリースクール,サービス,1,official
+MARK IS minatomirai,2F,1,ユニクロ,物販,1,official
+MARK IS minatomirai,2F,2,3COINS +plus,物販,1,official
+MARK IS minatomirai,2F,3,靴下屋,物販,1,official
+MARK IS minatomirai,2F,4,ＬＯＶＯＴ ストア,物販,1,official
+MARK IS minatomirai,2F,5,deux C（ドゥ・セー）,物販,1,official
+MARK IS minatomirai,2F,6,トリンプ,物販,1,official
+MARK IS minatomirai,2F,7,BEAMS HEART,物販,1,official
+MARK IS minatomirai,2F,8,アーバンリサーチ ドアーズ,物販,1,official
+MARK IS minatomirai,2F,9,グラニフ,物販,1,official
+MARK IS minatomirai,2F,10,DESERTSNOW,物販,1,official
+MARK IS minatomirai,2F,11,Afternoon Tea LIVING,物販,1,official
+MARK IS minatomirai,2F,12,Dr.Martens,物販,1,official
+MARK IS minatomirai,2F,13,PATRICK LABO,物販,1,official
+MARK IS minatomirai,2F,14,RED WING SHOE STORE 横浜,物販,1,official
+MARK IS minatomirai,2F,15,TAKEO KIKUCHI,物販,1,official
+MARK IS minatomirai,2F,16,フリースピリッツ,物販,1,official
+MARK IS minatomirai,2F,17,SOUVENIRS,物販,1,official
+MARK IS minatomirai,2F,18,Puretre,物販,1,official
+MARK IS minatomirai,2F,19,GREGORY,物販,1,official
+MARK IS minatomirai,2F,20,GRAPEFRUIT MOON,物販,1,official
+MARK IS minatomirai,2F,21,UNITED ARROWS green label relaxing,物販,1,official
+MARK IS minatomirai,2F,22,ABC-MART GRAND STAGE,物販,1,official
+MARK IS minatomirai,2F,23,ABC-MART,物販,1,official
+MARK IS minatomirai,2F,24,ORIHICA,物販,1,official
+MARK IS minatomirai,2F,25,Yogibo Store,物販,1,official
+MARK IS minatomirai,2F,26,オンデーズ,物販,1,official
+MARK IS minatomirai,2F,27,アンダーアーマー ブランドハウス,物販,1,official
+MARK IS minatomirai,2F,28,OSHMAN’S,物販,1,official
+MARK IS minatomirai,2F,31,プラステ,物販,1,official
+MARK IS minatomirai,2F,29,Afternoon Tea TEAROOM,物販,1,official
+MARK IS minatomirai,2F,30,UNIX Beauty Innovation,物販,1,official
+MARK IS minatomirai,3F,1,ノジマ,物販,1,official
+MARK IS minatomirai,3F,2,トイザらス・ベビーザらス,物販,1,official
+MARK IS minatomirai,3F,3,BREEZE,物販,1,official
+MARK IS minatomirai,3F,4,OVERRIDE,物販,1,official
+MARK IS minatomirai,3F,5,moncheri,物販,1,official
+MARK IS minatomirai,3F,6,キシル,物販,1,official
+MARK IS minatomirai,3F,7,LOWYA,物販,1,official
+MARK IS minatomirai,3F,8,OKAIDI,物販,1,official
+MARK IS minatomirai,3F,10,minimal,物販,1,official
+MARK IS minatomirai,3F,11,fafa,物販,1,official
+MARK IS minatomirai,3F,12,moimoln,物販,1,official
+MARK IS minatomirai,3F,13,じぶんまくら,物販,1,official
+MARK IS minatomirai,3F,14,OLYMPIA,物販,1,official
+MARK IS minatomirai,3F,15,coen,物販,1,official
+MARK IS minatomirai,3F,16,サーモス スタイリングストア,物販,1,official
+MARK IS minatomirai,3F,17,212 KITCHEN STORE,物販,1,official
+MARK IS minatomirai,3F,18,#C-pla,物販,1,official
+MARK IS minatomirai,3F,19,タオル美術館,物販,1,official
+MARK IS minatomirai,3F,20,move,物販,1,official
+MARK IS minatomirai,3F,21,grirose,物販,1,official
+MARK IS minatomirai,3F,22,GLOBAL WORK,物販,1,official
+MARK IS minatomirai,3F,23,島村楽器,物販,1,official
+MARK IS minatomirai,3F,24,petit main,物販,1,official
+MARK IS minatomirai,3F,25,MOMO natural,物販,1,official
+MARK IS minatomirai,3F,26,AMERICAN HOLIC,物販,1,official
+MARK IS minatomirai,3F,27,ゾフ,物販,1,official
+MARK IS minatomirai,3F,32,THE NORTH FACE / HELLY HANSEN kids,物販,1,official
+MARK IS minatomirai,3F,28,カフェ コクテル堂,飲食,1,official
+MARK IS minatomirai,3F,9,保険見直し本舗/あそラボ,サービス,1,official
+MARK IS minatomirai,3F,29,こども写真城 スタジオアリス,サービス,1,official
+MARK IS minatomirai,3F,30,ボーネルンド あそびのせかい,物販,1,official
+MARK IS minatomirai,3F,31,トイズアカデミー,物販,1,official
+MARK IS minatomirai,4F,1,CAPCOM STORE MINATOMIRAI,物販,1,official
+MARK IS minatomirai,4F,2,タリーズコーヒー,飲食,1,official
+MARK IS minatomirai,4F,3,生麺専門　鎌倉パスタ,飲食,1,official
+MARK IS minatomirai,4F,4,元天ねぎ蛸,物販,1,official
+MARK IS minatomirai,4F,5,リンガーハット,物販,1,official
+MARK IS minatomirai,4F,6,福満園,物販,1,official
+MARK IS minatomirai,4F,7,らんまん食堂,飲食,1,official
+MARK IS minatomirai,4F,8,丸亀製麺,物販,1,official
+MARK IS minatomirai,4F,9,FRESHNESS BURGER,物販,1,official
+MARK IS minatomirai,4F,10,博多だるま JAPAN,物販,1,official
+MARK IS minatomirai,4F,11,NATURAL CREPE,物販,1,official
+MARK IS minatomirai,4F,12,サーティワンアイスクリーム,飲食,1,official
+MARK IS minatomirai,4F,13,おぼんdeごはん,物販,1,official
+MARK IS minatomirai,4F,14,焼肉食堂605,飲食,1,official
+MARK IS minatomirai,4F,15,インド料理ムンバイ,飲食,1,official
+MARK IS minatomirai,4F,16,築地食堂 源ちゃん,飲食,1,official
+MARK IS minatomirai,4F,17,梅蘭,物販,1,official
+MARK IS minatomirai,4F,18,鎌倉かつ亭 あら珠,物販,1,official
+MARK IS minatomirai,4F,19,まぐろ問屋 めぐみ水産,物販,1,official
+MARK IS minatomirai,4F,20,LA SALSA SOUTHERN CALIFORNIA RESTAURANT,物販,1,official
+MARK IS minatomirai,4F,21,浅草 キッチン大宮,物販,1,official
+MARK IS minatomirai,4F,22,Mano-e-Mano,物販,1,official
+MARK IS minatomirai,4F,23,いしがまやハンバーグ,物販,1,official
+MARK IS minatomirai,4F,24,KollaBo,物販,1,official
+MARK IS minatomirai,4F,25,そばと天ぷら 石楽,飲食,1,official
+MARK IS minatomirai,4F,26,横濱こてがえし,物販,1,official
+MARK IS minatomirai,4F,27,東京ガス横浜ショールーム,物販,1,official
+MARK IS minatomirai,4F,28,CAPCOMIX,物販,1,official
+MARK IS minatomirai,4F,29,Crazy BANeT/Kids BANeT,物販,1,official
+MARK IS minatomirai,5F,1,みんなの庭,物販,1,official
+MARK IS minatomirai,5F,2,ローソン・ユナイテッドシネマ STYLE-S みなとみらい,公共,1,official
+ランドマークプラザ,1F,1,キィニョン,飲食,1,official
+ランドマークプラザ,1F,2,galbe yokohama みなとみらい店,飲食,1,official
+ランドマークプラザ,1F,3,日本葡萄館　みなとみらい食堂,飲食,1,official
+ランドマークプラザ,1F,4,OTRA CASALINA,飲食,1,official
+ランドマークプラザ,1F,5,マロリーポークステーキ みなとみらい店,飲食,1,official
+ランドマークプラザ,1F,6,HAMAFLORIST,物販,1,official
+ランドマークプラザ,1F,7,ゴンチャ,飲食,1,official
+ランドマークプラザ,1F,8,サワダ飯店,飲食,1,official
+ランドマークプラザ,1F,9,CHOPPED SALAD DAY 横浜みなとみらい店,飲食,1,official
+ランドマークプラザ,1F,10,CHOCOLABO,飲食,1,official
+ランドマークプラザ,1F,11,はまやカレー,飲食,1,official
+ランドマークプラザ,1F,12,コメダ珈琲店／おかげ庵　横浜ランドマークプラザ店,飲食,1,official
+ランドマークプラザ,1F,13,日産レンタカー,サービス,1,official
+ランドマークプラザ,1F,14,洋麺屋 五右衛門,飲食,1,official
+ランドマークプラザ,1F,15,薬・ドラッグハロー＋MCS,医療,1,official
+ランドマークプラザ,1F,16,AFURI,飲食,1,official
+ランドマークプラザ,1F,17,味の牛たん喜助,飲食,1,official
+ランドマークプラザ,1F,18,大阪ぼてぢゅう,飲食,1,official
+ランドマークプラザ,1F,19,成城石井,サービス,1,official
+ランドマークプラザ,1F,20,湘南パンケーキ,飲食,1,official
+ランドマークプラザ,1F,21,三菱UFJ銀行 ATMコーナー,サービス,1,official
+ランドマークプラザ,1F,22,崎陽軒,飲食,1,official
+ランドマークプラザ,1F,23,鶏三和,飲食,1,official
+ランドマークプラザ,1F,24,巻き鮨・中華そば　うおがしや,飲食,1,official
+ランドマークプラザ,1F,25,横浜中華街 華正樓,飲食,1,official
+ランドマークプラザ,1F,26,永坂更科,飲食,1,official
+ランドマークプラザ,1F,27,ラ・メゾン アンソレイユターブル,飲食,1,official
+ランドマークプラザ,1F,28,ローストビーフYOSHIMI,飲食,1,official
+ランドマークプラザ,1F,29,ミセスエリザベスマフィン,飲食,1,official
+ランドマークプラザ,1F,30,とんかつ和幸,飲食,1,official
+ランドマークプラザ,1F,31,つけめん TETSU,飲食,1,official
+ランドマークプラザ,1F,32,タクシー・ハイヤー案内所,サービス,1,official
+ランドマークプラザ,1F,33,ソフトバンク,サービス,1,official
+ランドマークプラザ,1F,34,セブン-イレブン,サービス,1,official
+ランドマークプラザ,1F,35,スターバックス,飲食,1,official
+ランドマークプラザ,1F,36,スープストックトーキョー,飲食,1,official
+ランドマークプラザ,1F,37,シズラー,飲食,1,official
+ランドマークプラザ,1F,38,こめらく 贅沢な、お茶漬け日和。,飲食,1,official
+ランドマークプラザ,1F,39,ヴィ・ド・フランス,飲食,1,official
+ランドマークプラザ,1F,40,WP PIZZA,飲食,1,official
+ランドマークプラザ,1F,41,POSTAL HARBOR,サービス,1,official
+ランドマークプラザ,1F,42,PATISSERIE YUKINOSHITA KAMAKURA,飲食,1,official
+ランドマークプラザ,1F,43,GODIVA,飲食,1,official
+ランドマークプラザ,1F,44,Bubby’s (バビーズ),飲食,1,official
+ランドマークプラザ,1F,45,医療法人社団アスクレピオス LANDMARK横浜国際クリニック,医療,1,official
+ランドマークプラザ,1F,46,ローソン＋スリーエフ,サービス,1,official
+ランドマークプラザ,2F,1,LOWARD SHOP,物販,1,official
+ランドマークプラザ,2F,2,Pandora,物販,1,official
+ランドマークプラザ,2F,3,PINK HOUSE・INGEBORG,物販,1,official
+ランドマークプラザ,2F,4,PELLE MORBIDA,物販,1,official
+ランドマークプラザ,2F,5,ハリー・ポッター　マホウドコロ　ランドマークプラザ店,物販,1,official
+ランドマークプラザ,2F,6,ROCKPORT　横浜ランドマークプラザ,物販,1,official
+ランドマークプラザ,2F,7,muta MARINE YOKOHAMA,物販,1,official
+ランドマークプラザ,2F,8,ジャストカーテン,物販,1,official
+ランドマークプラザ,2F,9,ピンフィッティングスタジオ みなとみらい,物販,1,official
+ランドマークプラザ,2F,10,パンジー直営SHOP　横浜ランドマークプラザ店,飲食,1,official
+ランドマークプラザ,2F,11,レゴ(R) ストア,物販,1,official
+ランドマークプラザ,2F,12,LIB,物販,1,official
+ランドマークプラザ,2F,13,くまざわ書店,物販,1,official
+ランドマークプラザ,2F,14,サムソナイト,物販,1,official
+ランドマークプラザ,2F,15,JUMP SHOP,物販,1,official
+ランドマークプラザ,2F,16,ロペピクニック,物販,1,official
+ランドマークプラザ,2F,17,リーガルシューズ,物販,1,official
+ランドマークプラザ,2F,18,ユニバーサルランゲージ,物販,1,official
+ランドマークプラザ,2F,19,メーカーズシャツ鎌倉,物販,1,official
+ランドマークプラザ,2F,20,ミハエル ネグリン,物販,1,official
+ランドマークプラザ,2F,21,マクドナルド,飲食,1,official
+ランドマークプラザ,2F,22,ビクトリノックス,物販,1,official
+ランドマークプラザ,2F,23,SPINGLE,物販,1,official
+ランドマークプラザ,2F,24,カフェ マウカメドウズ,飲食,1,official
+ランドマークプラザ,2F,25,アデュー トリステス,物販,1,official
+ランドマークプラザ,2F,26,WACOAL The Store,物販,1,official
+ランドマークプラザ,2F,27,JINS,物販,1,official
+ランドマークプラザ,2F,28,Gap/GapKids,物販,1,official
+ランドマークプラザ,2F,29,ABC Cooking Studio／Bodies,サービス,1,official
+ランドマークプラザ,3F,1,cui-cui,物販,1,official
+ランドマークプラザ,3F,2,エクセルコ ダイヤモンド,物販,1,official
+ランドマークプラザ,3F,3,銀座ダイヤモンドシライシ,物販,1,official
+ランドマークプラザ,3F,4,TASAKI,物販,1,official
+ランドマークプラザ,3F,5,ミキモト,物販,1,official
+ランドマークプラザ,3F,6,ハーブス,飲食,1,official
+ランドマークプラザ,3F,7,トゥミ,物販,1,official
+ランドマークプラザ,3F,8,ティファニー,物販,1,official
+ランドマークプラザ,3F,9,スワロフスキー,物販,1,official
+ランドマークプラザ,3F,10,スタージュエリー,物販,1,official
+ランドマークプラザ,3F,11,ジェラート フィレンツェ,飲食,1,official
+ランドマークプラザ,3F,12,キタムラ,物販,1,official
+ランドマークプラザ,3F,13,４℃,物販,1,official
+ランドマークプラザ,3F,14,ヴァンドーム青山,物販,1,official
+ランドマークプラザ,3F,15,アンティコカフェ アルアビス,飲食,1,official
+ランドマークプラザ,3F,16,TWG Tea,飲食,1,official
+ランドマークプラザ,3F,17,H&M（3F・4F）,物販,1,official
+ランドマークプラザ,3F,18,Aesop,飲食,1,official
+ランドマークプラザ,4F,1,わくわくはまっこひろば みなとみらい,サービス,1,official
+ランドマークプラザ,4F,2,null2 Shop,物販,1,official
+ランドマークプラザ,4F,3,B-COMPANY OUTLET,物販,1,official
+ランドマークプラザ,4F,4,YOSHIZAWA Inc. PREMIUM YOKOHAMA,飲食,1,official
+ランドマークプラザ,4F,5,Lord Handmade Gallery,物販,1,official
+ランドマークプラザ,4F,6,ステッキ工房シナノ,物販,1,official
+ランドマークプラザ,4F,7,マネードクタープレミア,サービス,1,official
+ランドマークプラザ,4F,8,eyelash salon PHYLIS,飲食,1,official
+ランドマークプラザ,4F,9,MIRROR MIRROR 横浜,サービス,1,official
+ランドマークプラザ,4F,10,KASHIWA,物販,1,official
+ランドマークプラザ,4F,11,KJUS SHOP YOKOHAMA,物販,1,official
+ランドマークプラザ,4F,12,ネイラ,飲食,1,official
+ランドマークプラザ,4F,13,NEEL 横浜ランドマークプラザ店,物販,1,official
+ランドマークプラザ,4F,14,夢工房,サービス,1,official
+ランドマークプラザ,4F,15,幼児教室コペル,サービス,1,official
+ランドマークプラザ,4F,16,京懐石　美濃吉,飲食,1,official
+ランドマークプラザ,4F,17,ファーストスタジオ,サービス,1,official
+ランドマークプラザ,4F,18,どんぐり共和国,物販,1,official
+ランドマークプラザ,4F,19,Quol,飲食,1,official
+ランドマークプラザ,4F,20,H&M（4F・3F）,物販,1,official
+ランドマークプラザ,5F,1,null2n,サービス,1,official
+ランドマークプラザ,5F,2,Pilates KASANE,サービス,1,official
+ランドマークプラザ,5F,3,iCracked Store,サービス,1,official
+ランドマークプラザ,5F,4,Cafe Fan Base,飲食,1,official
+ランドマークプラザ,5F,5,リージャス横浜ランドマークプラザビジネスセンター,サービス,1,official
+ランドマークプラザ,5F,6,鼎泰豐（ディンタイフォン）,飲食,1,official
+ランドマークプラザ,5F,7,果実園　リーベル,飲食,1,official
+ランドマークプラザ,5F,8,目の美容院,飲食,1,official
+ランドマークプラザ,5F,9,伝統横濱スカーフ Marca,物販,1,official
+ランドマークプラザ,5F,10,代官山セレスの館,サービス,1,official
+ランドマークプラザ,5F,11,沼津 魚がし鮨,飲食,1,official
+ランドマークプラザ,5F,12,ヨコハマ メモリーズ,飲食,1,official
+ランドマークプラザ,5F,13,コラントッテオフィシャルショップ,物販,1,official
+ランドマークプラザ,5F,14,カツミ,物販,1,official
+ランドマークプラザ,5F,15,エドム,物販,1,official
+ランドマークプラザ,5F,16,イワキメガネ,物販,1,official
+ランドマークプラザ,5F,17,Re.Ra.Ku,飲食,1,official
+ランドマークプラザ,5F,18,KAHALA ROOM,飲食,1,official
+ランドマークプラザ,5F,19,DOURAKU CORRIDA,飲食,1,official
+ランドマークプラザ,5F,20,アクセア,サービス,1,official
+ランドマークプラザ,5F,21,nail salon PHYLIS,飲食,1,official
+クイーンズスクエア横浜,1F,1,魚がし日本一,飲食,1,official
+クイーンズスクエア横浜,1F,2,ペッシェドーロ,飲食,1,official
+クイーンズスクエア横浜,1F,3,ハードロックカフェ横浜（グッズショップ）,飲食,1,official
+クイーンズスクエア横浜,1F,4,ハードロックカフェ横浜（レストランカフェ）,飲食,1,official
+クイーンズスクエア横浜,1F,5,カフェ・ベローチェ,飲食,1,official
+クイーンズスクエア横浜,2F,1,パティスリー ウイッシュボン　横濱レンガ通りオフィシャルショップ,飲食,1,official
+クイーンズスクエア横浜,2F,2,NEEL クイーンズスクエア横浜店,物販,1,official
+クイーンズスクエア横浜,2F,3,Eggs ’n Things 横浜みなとみらい店,飲食,1,official
+クイーンズスクエア横浜,2F,4,ドクターベリークイーンズ,物販,1,official
+クイーンズスクエア横浜,2F,5,minato coffee,飲食,1,official
+クイーンズスクエア横浜,3F,1,横浜シモンズギャラリー,公共,1,official
+クイーンズスクエア横浜,3F,2,H1Tみなとみらい THE GARDEN,サービス,1,official
+クイーンズスクエア横浜,3F,3,フォーシス アンド カンパニー,サービス,1,official
+クイーンズスクエア横浜,3F,4,カンディハウス横浜,物販,1,official
+クイーンズスクエア横浜,B1F,①-1,clapp vintage,物販,1,official
+クイーンズスクエア横浜,B1F,①-2,SEYMOUR,物販,1,official
+クイーンズスクエア横浜,B1F,①-3,ダイソー,物販,1,official
+クイーンズスクエア横浜,B1F,①-4,一風堂,飲食,1,official
+クイーンズスクエア横浜,B1F,①-5,香川一福,飲食,1,official
+クイーンズスクエア横浜,B1F,①-6,軽井沢とりまる 唐揚げ専門,飲食,1,official
+クイーンズスクエア横浜,B1F,①-7,ゲウチャイ,飲食,1,official
+クイーンズスクエア横浜,B1F,①-8,極上担々麺 香家,飲食,1,official
+クイーンズスクエア横浜,B1F,①-9,東京純豆腐,飲食,1,official
+クイーンズスクエア横浜,B1F,①-10,練りたて茹でたて自家製麺　横浜スパゲティand CAFE,飲食,1,official
+クイーンズスクエア横浜,1F,①-1,ete,物販,1,official
+クイーンズスクエア横浜,1F,①-2,gelato pique,物販,1,official
+クイーンズスクエア横浜,1F,①-3,G-Star RAW,物販,1,official
+クイーンズスクエア横浜,1F,①-4,ナイキ　みなとみらい,物販,1,official
+クイーンズスクエア横浜,1F,①-5,パタゴニア 横浜・みなとみらい（期間限定ストア）,物販,1,official
+クイーンズスクエア横浜,1F,①-6,Wailea,物販,1,official
+クイーンズスクエア横浜,1F,①-7,SHEL'TTER GREEN,物販,1,official
+クイーンズスクエア横浜,1F,①-8,葉山家具,物販,1,official
+クイーンズスクエア横浜,1F,①-9,BoConcept,物販,1,official
+クイーンズスクエア横浜,1F,①-10,Madu,物販,1,official
+クイーンズスクエア横浜,1F,①-11,ロクシタン,物販,1,official
+クイーンズスクエア横浜,2F,①-1,ZARA,物販,1,official
+クイーンズスクエア横浜,2F,①-2,SHAKE SHACK,飲食,1,official
+クイーンズスクエア横浜,3F,①-1,ABC-MART Premier Stage,物販,1,official
+クイーンズスクエア横浜,3F,①-2,丸善,物販,1,official
+クイーンズスクエア横浜,3F,①-3,タリーズコーヒー,飲食,1,official
+クイーンズスクエア横浜,3F,①-4,占い ルルドの部屋,サービス,1,official
+クイーンズスクエア横浜,3F,①-5,Juno,サービス,1,official
+クイーンズスクエア横浜,4F,①-1,MARKEY'S,物販,1,official
+クイーンズスクエア横浜,4F,①-2,カ・ラ・ダ ファクトリー,サービス,1,official
+クイーンズスクエア横浜,4F,①-3,ガシャポンバンダイオフィシャルショップ,サービス,1,official
+クイーンズスクエア横浜,4F,①-4,個別教室のトライ,サービス,1,official
+クイーンズスクエア横浜,4F,①-5,小学館の幼児教室 ドラキッズ,サービス,1,official
+クイーンズスクエア横浜,4F,①-6,スティーム キャンパス,サービス,1,official
+クイーンズスクエア横浜,4F,①-7,namcoあそびパークPLUS,サービス,1,official
+クイーンズスクエア横浜,4F,①-8,happily photo studio,サービス,1,official
+クイーンズスクエア横浜,B1F,②-1,スーパースポーツゼビオ,物販,1,official
+クイーンズスクエア横浜,1F,②-1,Thingsly,物販,1,official
+クイーンズスクエア横浜,1F,②-2,CHARLES ＆ KEITH,物販,1,official
+クイーンズスクエア横浜,1F,②-3,AINZ＆TULPE,物販,1,official
+クイーンズスクエア横浜,1F,②-4,HITOHACHI,物販,1,official
+クイーンズスクエア横浜,1F,②-5,Flying Tiger Copenhagen,物販,1,official
+クイーンズスクエア横浜,1F,②-6,スターバックス コーヒー,飲食,1,official
+クイーンズスクエア横浜,2F,②-1,SWEAT.jp,物販,1,official
+クイーンズスクエア横浜,2F,②-2,YOKOHAMA  HONMOKU-YA,物販,1,official
+クイーンズスクエア横浜,2F,②-3,Ripo trenta anni,物販,1,official
+クイーンズスクエア横浜,2F,②-4,Levi's®Store,物販,1,official
+クイーンズスクエア横浜,2F,②-5,Lunetterie,物販,1,official
+クイーンズスクエア横浜,2F,②-6,CANDY A☆GO☆GO!,飲食,1,official
+クイーンズスクエア横浜,2F,②-7,J PASTA terrace,飲食,1,official
+クイーンズスクエア横浜,2F,②-8,ル サロン ド ニナス,飲食,1,official
+クイーンズスクエア横浜,2F,②-9,WINE STAND BASIL,飲食,1,official
+クイーンズスクエア横浜,2F,②-10,みずほ銀行ATMコーナー,サービス,1,official
+クイーンズスクエア横浜,3F,②-1,coca,物販,1,official
+クイーンズスクエア横浜,4F,②-1,L.L.Bean,物販,1,official
+クイーンズスクエア横浜,4F,②-2,横浜家具工房,物販,1,official
+クイーンズスクエア横浜,1F,③-1,アメリカンハウス,飲食,1,official
+クイーンズスクエア横浜,1F,③-2,ケンタッキー・フライド・チキン,飲食,1,official
+クイーンズスクエア横浜,1F,③-3,サブウェイ,飲食,1,official
+クイーンズスクエア横浜,1F,③-4,マクドナルド,飲食,1,official
+クイーンズスクエア横浜,1F,③-5,ネイルズユニークアス,サービス,1,official
+クイーンズスクエア横浜,1F,③-6,ファミリーマート,サービス,1,official
+クイーンズスクエア横浜,1F,③-7,保険クリニック,サービス,1,official
+クイーンズスクエア横浜,1F,③-8,横浜銀行ATMコーナー,サービス,1,official
+クイーンズスクエア横浜,2F,③-1,TAKANASHI Milk RESTAURANT,飲食,1,official
+クイーンズスクエア横浜,2F,③-2,FISHERMAN'S MARKET,飲食,1,official
+クイーンズスクエア横浜,3F,③-1,さかえや,飲食,1,official
+クイーンズスクエア横浜,3F,③-2,24/7 restaurant,飲食,1,official
+クイーンズスクエア横浜,4F,③-1,橙家,飲食,1,official
+クイーンズスクエア横浜,5F,③-1,D.U.M.B.O,飲食,1,official
+クイーンズスクエア横浜,1F,④-1,AZUL BY MOUSSY,物販,1,official
+クイーンズスクエア横浜,1F,④-2,POMPADOUR,飲食,1,official
+クイーンズスクエア横浜,1F,④-3,トモズ,サービス,1,official
+クイーンズスクエア横浜,1F,④-4,郵便局,サービス,1,official
+クイーンズスクエア横浜,2F,④-1,【10/31オープン】ムラサキスポーツ　クロックス　POP UP STORE,物販,1,official
+クイーンズスクエア横浜,2F,④-2,Sanrio,物販,1,official
+クイーンズスクエア横浜,2F,④-3,スヌーピータウンショップ,物販,1,official
+クイーンズスクエア横浜,2F,④-4,ディズニーストア,物販,1,official
+クイーンズスクエア横浜,3F,④-1,ムラサキスポーツ,物販,1,official
+クイーンズスクエア横浜,B3F,SC-1,池田屋,物販,1,official
+クイーンズスクエア横浜,B3F,SC-2,GODIVA café Minatomirai,飲食,1,official
+クイーンズスクエア横浜,B2F,SC-1,インドアゴルフスクール E-swing -PREMIUM-,サービス,1,official
+クイーンズスクエア横浜,B2F,SC-2,振袖ハクビ,サービス,1,official
+クイーンズスクエア横浜,B1F,SC-1,足柄牛焼肉　もり次,飲食,1,official
+クイーンズスクエア横浜,B1F,SC-2,カザーナ,飲食,1,official
+クイーンズスクエア横浜,B1F,SC-3,GARLIC JO'S,飲食,1,official
+クイーンズスクエア横浜,B1F,SC-4,下高井戸旭鮨総本店,飲食,1,official
+クイーンズスクエア横浜,B1F,SC-5,陳麻婆豆腐,飲食,1,official
+クイーンズスクエア横浜,B1F,SC-6,とんかつ 新宿 さぼてん,飲食,1,official

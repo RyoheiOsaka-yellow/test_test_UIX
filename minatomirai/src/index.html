@@ -54,6 +54,12 @@ canvas { display: block; }
 .info-floor b { color: #00e5ff; margin-right: 6px; font-size: 11px; }
 .info-sub { font-size: 10px; color: #8ea2c2; margin: 4px 0; }
 .tag { display: inline-block; padding: 0 5px; margin: 1px 0; font-size: 10px; border: 1px solid #888; border-radius: 4px; color: #eaf4ff; }
+.cat-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 4px; }
+.cat-row .cf { font-size: 10px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--c); color: #9fb3d1; background: transparent; cursor: pointer; font-family: inherit; }
+.cat-row .cf.active { background: color-mix(in srgb, var(--c) 35%, transparent); color: #fff; }
+.cf-all { font-size: 9px; margin-left: 6px; padding: 0 6px; border-radius: 8px; border: 1px solid rgba(120,180,255,0.3); background: transparent; color: #9fb3d1; cursor: pointer; font-family: inherit; }
+#zone-detail { display: none; margin: 0 0 8px; padding: 8px 10px; border: 1px solid rgba(0,229,255,0.4); border-radius: 8px; background: rgba(0,183,217,0.08); font-size: 12px; }
+#zone-detail .zd-head { font-size: 13px; margin-bottom: 4px; }
 #credit { position: fixed; right: 10px; bottom: 8px; z-index: 10; font-size: 10px; color: #5f7095; text-align: right; line-height: 1.5; max-width: 60vw; }
 #credit a { color: #7fb2ff; }
 
@@ -149,6 +155,10 @@ canvas { display: block; }
         <label class="row" id="row-windows"><input type="checkbox" id="chk-windows" checked /><span class="chip" style="background:#ffd9a0"></span>窓明かり（夜景）</label>
         <label class="row"><input type="checkbox" id="chk-labels" checked /><span class="chip" style="background:#7ef0ff"></span>駅名ラベル</label>
         <label class="row"><input type="checkbox" id="chk-poi" /><span class="chip" style="background:#e0652f"></span>テナント・店舗（OSM）</label>
+        <div class="sec-title">用途フィルタ <button id="cat-all" class="cf-all">すべて</button></div>
+        <div class="cat-row" id="cat-filter">
+            <button class="cf active" data-cat="飲食" style="--c:#e0652f">飲食</button><button class="cf active" data-cat="物販" style="--c:#e8a33d">物販</button><button class="cf active" data-cat="サービス" style="--c:#8c5ae0">サービス</button><button class="cf active" data-cat="オフィス" style="--c:#5a6b8c">オフィス</button><button class="cf active" data-cat="医療" style="--c:#d04a7a">医療</button><button class="cf active" data-cat="公共" style="--c:#2fb27a">公共</button><button class="cf active" data-cat="宿泊" style="--c:#2f7fe0">宿泊</button><button class="cf active" data-cat="その他" style="--c:#9aa3b5">その他</button>
+        </div>
         <div class="panel-sep"></div>
         <div class="sec-title">フロア展開 <span id="expand-value">×1.0</span></div>
         <input type="range" id="floor-expand" min="0" max="3" step="0.05" value="1" />
@@ -197,6 +207,7 @@ canvas { display: block; }
 
     <div id="info">
         <div class="info-head"><span id="info-title"></span><button id="btn-info-close">×</button></div>
+        <div id="zone-detail"></div>
         <div class="sec-title">階分解 <span class="hint">（建物をクリックで選択。フロアごとにスライス）</span></div>
         <input type="range" id="floor-gap" min="0" max="16" step="0.1" value="0" style="width:100%;accent-color:#00b7d9;cursor:pointer;margin:2px 0 6px" />
         <div id="info-body"></div>

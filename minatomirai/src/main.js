@@ -683,6 +683,13 @@ function applyRepMode() {
 
 // ---- テナント・店舗 POI (OSM) -----------------------------------------------------
 let poiData = [], poiPoints = null, poiByBuilding = new Map();
+const catVisible = new Set();  // 空 = すべて表示
+const catOn = c => catVisible.size === 0 || catVisible.has(c);
+function applyCategoryFilter() {
+  for (const z of sel.zones) { const on = z.isCor || catOn(z.zone.category); z.mesh.visible = on; z.edge.visible = on; if (z.label) z.label.visible = on && z.label.material.opacity > 0.02; }
+  for (const sp of sel.markers) sp.userData.filtered = !catOn(sp.userData.q.c);
+  if (poiPoints) { const a = poiPoints.geometry.attributes.vis; poiData.forEach((q, i) => a.setX(i, catOn(q.c) ? 1 : 0)); a.needsUpdate = true; }
+}
 const CAT_COLOR = { '飲食': '#e0652f', '物販': '#e8a33d', 'サービス': '#8c5ae0', 'オフィス': '#5a6b8c', '医療': '#d04a7a', '公共': '#2fb27a', '宿泊': '#2f7fe0', 'その他': '#9aa3b5' };
 const catColor = c => CAT_COLOR[c] ?? CAT_COLOR['その他'];
 const POI_GROUP_COLOR = { shop: '#e0652f', amenity: '#2f7fe0', office: '#5a6b8c', craft: '#8c5ae0', tourism: '#2fb27a', leisure: '#2fb27a', healthcare: '#d04a7a' };
@@ -693,21 +700,24 @@ function buildPOI(list) {
   for (const q of poiData) if (q.b >= 0) { if (!poiByBuilding.has(q.b)) poiByBuilding.set(q.b, []); poiByBuilding.get(q.b).push(q); }
   const pos = new Float32Array(poiData.length * 3), col = new Float32Array(poiData.length * 3);
   poiData.forEach((q, i) => { pos[i * 3] = q.x; pos[i * 3 + 1] = poiY(q); pos[i * 3 + 2] = -q.y; const c = hex(catColor(q.c)); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; });
-  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setAttribute('vis', new THREE.BufferAttribute(new Float32Array(poiData.length).fill(1), 1));
   const mat = new THREE.ShaderMaterial({
     uniforms: { uScale: { value: innerHeight / 2 }, uPR: { value: renderer.getPixelRatio() }, uSize: { value: 2.2 }, uMin: { value: 3 }, uMax: { value: 7 }, uOpacity: { value: 0.95 }, uColor: { value: new THREE.Color() } },
-    vertexShader: `attribute vec3 color; varying vec3 vC; uniform float uSize, uMin, uMax, uScale, uPR; void main(){ vC = color; vec4 mv = modelViewMatrix * vec4(position, 1.0); float s = uSize * uScale / max(1.0, -mv.z); gl_PointSize = clamp(s, uMin, uMax) * uPR; gl_Position = projectionMatrix * mv; }`,
-    fragmentShader: `varying vec3 vC; uniform float uOpacity; void main(){ vec2 d = gl_PointCoord - 0.5; float r = length(d) * 2.0; if (r > 1.0) discard; float ring = smoothstep(0.55, 0.7, r); gl_FragColor = vec4(mix(vC, vec3(1.0), ring * 0.9), uOpacity * (1.0 - smoothstep(0.85, 1.0, r))); }`,
+    vertexShader: `attribute vec3 color; attribute float vis; varying vec3 vC; varying float vV; uniform float uSize, uMin, uMax, uScale, uPR; void main(){ vC = color; vV = vis; vec4 mv = modelViewMatrix * vec4(position, 1.0); float s = uSize * uScale / max(1.0, -mv.z); gl_PointSize = clamp(s, uMin, uMax) * uPR; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying vec3 vC; varying float vV; uniform float uOpacity; void main(){ if (vV < 0.5) discard; vec2 d = gl_PointCoord - 0.5; float r = length(d) * 2.0; if (r > 1.0) discard; float ring = smoothstep(0.55, 0.7, r); gl_FragColor = vec4(mix(vC, vec3(1.0), ring * 0.9), uOpacity * (1.0 - smoothstep(0.85, 1.0, r))); }`,
     transparent: true, depthWrite: false, depthTest: false,
   });
   pointMaterials.push(mat);
   poiPoints = new THREE.Points(geo, mat); poiPoints.renderOrder = 15; poiPoints.frustumCulled = false; poiPoints.visible = false; scene.add(poiPoints);
 }
 const updatePOIPositions = () => { if (!poiPoints) return; const p = poiPoints.geometry.attributes.position; poiData.forEach((q, i) => p.setY(i, poiY(q))); p.needsUpdate = true; };
+const pickZone = () => { if (!sel.zones.length) return null; const hits = raycaster.intersectObjects(sel.zones.filter(z => !z.isCor && z.mesh.visible).map(z => z.mesh), false); return hits.length ? hits[0].object : null; };
 const pickPOI = (sx, sy) => {
   if (!poiPoints || !poiPoints.visible) return null;
+  for (const q of poiData) q._vis = catOn(q.c);
   let best = null, bd = 9;
   for (const q of poiData) {
+    if (!q._vis) continue;
     tmpV.set(q.x, poiY(q), -q.y).project(activeCamera); if (tmpV.z > 1) continue;
     const d = Math.hypot((tmpV.x + 1) / 2 * innerWidth - sx, (1 - tmpV.y) / 2 * innerHeight - sy); if (d < bd) { bd = d; best = q; }
   }
@@ -770,6 +780,50 @@ const clipHalf = (poly, nx, ny, c, keepLess) => { // n·p <= c (keepLess) を残
   }
   return out;
 };
+// 区画記号の数値順 (MARK IS の区画番号など) に並べる
+const zoneOrder = zs => [...zs].sort((a, b) => { const na = parseFloat((a.zone.match(/\d+(\.\d+)?/) || ['Infinity'])[0]), nb = parseFloat((b.zone.match(/\d+(\.\d+)?/) || ['Infinity'])[0]); return na - nb || a.zone.localeCompare(b.zone) || a.name.localeCompare(b.name); });
+let partitionMode = 'corridor';   // strip | grid | corridor
+const hullAxis = hull => {
+  let cx = 0, cy = 0; for (const p of hull) { cx += p[0]; cy += p[1]; } cx /= hull.length; cy /= hull.length;
+  let sxx = 0, sxy = 0, syy = 0; for (const p of hull) { const dx = p[0] - cx, dy = p[1] - cy; sxx += dx * dx; sxy += dx * dy; syy += dy * dy; }
+  const ang = 0.5 * Math.atan2(2 * sxy, sxx - syy); const ax = Math.cos(ang), ay = Math.sin(ang), nx = -ay, ny = ax;
+  const pa = hull.map(p => (p[0] - cx) * ax + (p[1] - cy) * ay), pn = hull.map(p => (p[0] - cx) * nx + (p[1] - cy) * ny);
+  return { cx, cy, ax, ay, nx, ny, a0: Math.min(...pa), a1: Math.max(...pa), n0: Math.min(...pn), n1: Math.max(...pn) };
+};
+// 主軸方向の帯分割 (poly を範囲 [a0,a1] 内で share 比に分ける)
+const splitAlong = (poly, A, zones, a0, a1) => {
+  const total = zones.reduce((a, z) => a + z.share, 0); let acc = a0; const out = [];
+  const base = A.cx * A.ax + A.cy * A.ay;
+  for (const z of zones) {
+    const w = (a1 - a0) * z.share / total; const c0 = acc, c1 = acc + w; acc = c1;
+    let q = clipHalf(poly, A.ax, A.ay, base + c0, false); if (q.length >= 3) q = clipHalf(q, A.ax, A.ay, base + c1, true);
+    if (q.length >= 3) out.push({ zone: z, poly: q });
+  }
+  return out;
+};
+const sliceAcross = (poly, A, t0, t1) => { // 直交方向の比率 [t0,t1] で切り出す
+  const base = A.cx * A.nx + A.cy * A.ny;
+  let q = clipHalf(poly, A.nx, A.ny, base + A.n0 + (A.n1 - A.n0) * t0, false); if (q.length >= 3) q = clipHalf(q, A.nx, A.ny, base + A.n0 + (A.n1 - A.n0) * t1, true);
+  return q;
+};
+function partition(hull, zones, mode = partitionMode) {
+  zones = zoneOrder(zones); const A = hullAxis(hull);
+  if (mode === 'strip' || zones.length < 3) return splitAlong(hull, A, zones, A.a0, A.a1).map(o => ({ ...o, kind: 'zone' }));
+  if (mode === 'grid') {
+    const rows = Math.max(2, Math.min(4, Math.round(Math.sqrt(zones.length / 2)))); const out = [];
+    const per = Math.ceil(zones.length / rows);
+    for (let r = 0; r < rows; r++) { const band = sliceAcross(hull, A, r / rows, (r + 1) / rows); const zs = zones.slice(r * per, (r + 1) * per); if (band.length >= 3 && zs.length) out.push(...splitAlong(band, A, zs, A.a0, A.a1).map(o => ({ ...o, kind: 'zone' }))); }
+    return out;
+  }
+  // corridor: 中央通路 (幅 14%) の両側に交互配置
+  const left = zones.filter((_, i) => i % 2 === 0), right = zones.filter((_, i) => i % 2 === 1);
+  const bl = sliceAcross(hull, A, 0, 0.43), bc = sliceAcross(hull, A, 0.43, 0.57), br = sliceAcross(hull, A, 0.57, 1);
+  const out = [];
+  if (bl.length >= 3) out.push(...splitAlong(bl, A, left, A.a0, A.a1).map(o => ({ ...o, kind: 'zone' })));
+  if (br.length >= 3 && right.length) out.push(...splitAlong(br, A, right, A.a0, A.a1).map(o => ({ ...o, kind: 'zone' })));
+  if (bc.length >= 3) out.push({ zone: { name: '通路', category: '通路', zone: '', share: 1 }, poly: bc, kind: 'corridor' });
+  return out;
+}
 function stripPartition(hull, zones) {
   // 主軸 (最長方向) に沿って share 比で帯に分ける
   let cx = 0, cy = 0; for (const p of hull) { cx += p[0]; cy += p[1]; } cx /= hull.length; cy /= hull.length;
@@ -790,6 +844,20 @@ const sel = { bid: -1, mesh: null, lines: null, markers: [], gap: 0, floors: 0, 
 let floorCatMode = false;  // 階を用途色で塗る
 const selGroup = new THREE.Group(); scene.add(selGroup);
 const infoEl = document.getElementById('info'), infoBody = document.getElementById('info-body'), infoTitle = document.getElementById('info-title');
+const zoneDetail = document.getElementById('zone-detail');
+function showZoneDetail(zi) {
+  const z = zi.zone; const src = z.source === 'official' ? '公式フロアガイド' : z.source === 'osm' ? 'OpenStreetMap' : z.source || '手入力';
+  const osm = poiData.find(q => q.n === z.name && q.b === sel.bid);
+  zoneDetail.innerHTML = `<div class="zd-head"><span class="tag" style="border-color:${catColor(z.category)};background:${catColor(z.category)}33">${z.category}</span> <b>${z.name}</b></div>
+    <div>${zi.building ?? ''} ${floorName(zi.fl)}${z.zone ? ' ／ 区画 ' + z.zone : ''}</div>
+    <div class="info-sub">出典: ${src}${osm ? ' ／ OSM 種別: ' + osm.k : ''}</div>
+    <div class="btn-row" style="margin:6px 0 0"><button id="btn-zone-cat">同じ用途だけ表示</button><button id="btn-zone-close">閉じる</button></div>`;
+  zoneDetail.style.display = 'block';
+  document.getElementById('btn-zone-cat').addEventListener('click', () => { setCatFilter(new Set([z.category])); });
+  document.getElementById('btn-zone-close').addEventListener('click', () => { zoneDetail.style.display = 'none'; });
+  for (const zz of sel.zones) zz.edge.material.opacity = (zz.zone === z) ? 1 : (zz.isCor ? 0.4 : 0.9), zz.mesh.material.opacity = (zz.zone === z) ? 0.85 : (zz.isCor ? 0.18 : 0.45);
+}
+const setCatFilter = set => { catVisible.clear(); for (const c of set) catVisible.add(c); document.querySelectorAll('#cat-filter .cf').forEach(b => b.classList.toggle('active', catVisible.size === 0 || catVisible.has(b.dataset.cat))); applyCategoryFilter(); };
 function sliceBuilding(bid, floorH) {
   const g = buildingMesh.geometry, P = g.attributes.position, I = g.index.array;
   const base = buildingMeta[bid].z[0], top = buildingMeta[bid].z[1];
@@ -888,17 +956,17 @@ function selectBuilding(bid) {
     for (let tr = buildingStarts[bid]; tr < buildingStarts[bid + 1]; tr++) for (let k = 0; k < 3; k++) { const vi = buildingMesh.geometry.index.array[tr * 3 + k]; pts.push([P.getX(vi), -P.getZ(vi)]); }
     sel.hull = convexHull(pts);
     for (const [fl, zs] of guide) {
-      const parts = stripPartition(sel.hull, zs);
-      for (const { zone, poly } of parts) {
+      const parts = partition(sel.hull, zs);
+      for (const { zone, poly, kind } of parts) {
         const shape = new THREE.Shape(poly.map(p => new THREE.Vector2(p[0], p[1])));
         const g = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false }); g.applyMatrix4(ROT_XZ);
-        const col = catColor(zone.category);
-        const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, depthWrite: false }));
-        const edge = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.9 }));
+        const isCor = kind === 'corridor'; const col = isCor ? '#9aa3b5' : catColor(zone.category);
+        const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.18 : 0.55, depthWrite: false }));
+        const edge = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.4 : 0.9 }));
         let zx = 0, zy = 0; for (const q of poly) { zx += q[0]; zy += q[1]; } zx /= poly.length; zy /= poly.length;
-        const label = makeTextSprite(zone.name, col, { scale: 0.12, themeColor: tt => tt.labelGlow === false ? col : '#ffe9b0' }); label.userData.fadeFrom = 1000;
-        mesh.renderOrder = 5; selGroup.add(mesh, edge, label);
-        sel.zones.push({ fl, mesh, edge, label, zx, zy, zone });
+        const label = isCor ? null : makeTextSprite(zone.name, col, { scale: 0.12, themeColor: tt => tt.labelGlow === false ? col : '#ffe9b0' }); if (label) label.userData.fadeFrom = 1000;
+        mesh.renderOrder = 5; mesh.userData.zoneInfo = { fl, zone, building: m.n }; selGroup.add(mesh, edge); if (label) selGroup.add(label);
+        sel.zones.push({ fl, mesh, edge, label, zx, zy, zone, isCor });
       }
     }
   }
@@ -916,10 +984,13 @@ function selectBuilding(bid) {
   const nGuide = guide ? [...guide.values()].reduce((a, v) => a + v.length, 0) : 0;
   infoBody.innerHTML = `<div>高さ ${h} m ／ 推定 ${nFloors} 階（階高 ${FLOOR_H} m）${m.parts > 1 ? ` ／ ${m.parts} 部位を統合` : ''}</div>
     <label class="row" style="padding:4px 0"><input type="checkbox" id="chk-floorcat" ${floorCatMode ? 'checked' : ''} /> 階を用途色で塗る</label>
+    <div class="sec-title">区画の割り付け</div>
+    <div class="seg-row" id="part-presets"><button data-part="corridor" class="${partitionMode === 'corridor' ? 'active' : ''}">通路＋両側</button><button data-part="grid" class="${partitionMode === 'grid' ? 'active' : ''}">グリッド</button><button data-part="strip" class="${partitionMode === 'strip' ? 'active' : ''}">帯</button></div>
     <div class="legend" style="margin:2px 0 6px">${legend}</div>
     <div class="info-sub">フロアガイド ${nGuide} 区画（CSV）／ OSM 店舗 ${tenants.length} 件</div>${rows}${unknown}${tenants.length || nGuide ? '' : '<div class="info-sub">この建物に登録された店舗・施設はありません</div>'}
     <div class="btn-row" style="margin-top:8px"><button id="btn-guide-template">この建物の CSV 雛形</button><button id="btn-guide-load">CSV 読み込み</button></div>
     <div class="info-sub">※ 区画は CSV の share 比で主軸方向に帯分割した近似。正式な階数・区画形状はオープンデータに含まれません。</div>`;
+  document.querySelectorAll('#part-presets button').forEach(b => b.addEventListener('click', () => { partitionMode = b.dataset.part; const g = selUniforms.uGap.value; selectBuilding(bid); selUniforms.uGap.value = g; updateSelectionLayout(); }));
   document.getElementById('chk-floorcat').addEventListener('change', e => { floorCatMode = e.target.checked; selUniforms.uCat.value = floorCatMode ? 1 : 0; });
   document.getElementById('btn-guide-template').addEventListener('click', () => download(new Blob(['\ufeff' + floorGuideTemplate(m.n ?? '', nFloors)], { type: 'text/csv' }), `floorguide_${(m.n ?? 'building').replace(/[\\/:*?"<>|]/g, '_')}.csv`));
   document.getElementById('btn-guide-load').addEventListener('click', () => guideFileInput.click());
@@ -929,13 +1000,15 @@ function selectBuilding(bid) {
 function updateSelectionLayout() {
   const gap = selUniforms.uGap.value;
   for (const sp of sel.markers) { const q = sp.userData.q; const fl = Math.max(0, Math.min(sel.floors - 1, q.lv ?? 0)); sp.position.set(q.x, sel.base + fl * FLOOR_H + 1.8 + fl * gap, -q.y); layoutSprite(sp); }
-  for (const z of sel.zones) { const y = sel.base + z.fl * FLOOR_H + 0.5 + Math.max(0, z.fl) * gap; z.mesh.position.y = y; z.edge.position.y = y; z.label.position.set(z.zx, y + 2.2, -z.zy); layoutSprite(z.label); }
+  for (const z of sel.zones) { const y = sel.base + z.fl * FLOOR_H + 0.5 + Math.max(0, z.fl) * gap; z.mesh.position.y = y; z.edge.position.y = y; if (z.label) { z.label.position.set(z.zx, y + 2.2, -z.zy); layoutSprite(z.label); } }
+  applyCategoryFilter();
 }
 function clearSelection() {
   if (sel.mesh) { selGroup.remove(sel.mesh); sel.mesh.geometry.dispose(); sel.mesh.material.dispose(); sel.mesh = null; }
   if (sel.lines) { selGroup.remove(sel.lines); sel.lines.geometry.dispose(); sel.lines.material.dispose(); sel.lines = null; }
   for (const sp of sel.markers) { selGroup.remove(sp); sp.material.map.dispose(); sp.material.dispose(); }
-  for (const z of sel.zones) { selGroup.remove(z.mesh, z.edge, z.label); z.mesh.geometry.dispose(); z.mesh.material.dispose(); z.edge.geometry.dispose(); z.edge.material.dispose(); z.label.material.map.dispose(); z.label.material.dispose(); }
+  for (const z of sel.zones) { selGroup.remove(z.mesh, z.edge); z.mesh.geometry.dispose(); z.mesh.material.dispose(); z.edge.geometry.dispose(); z.edge.material.dispose(); if (z.label) { selGroup.remove(z.label); z.label.material.map.dispose(); z.label.material.dispose(); } }
+  zoneDetail.style.display = 'none';
   sel.zones = []; sel.markers = []; sel.bid = -1; dispUniforms.uHide.value = -1; infoEl.style.display = 'none'; selUniforms.uHoverFl.value = -1;
 }
 onTheme(t => { if (sel.mesh) { sel.mesh.material.uniforms.uFace.value.set(t.face); sel.mesh.material.uniforms.uLine.value.set(t.faceLine); sel.lines.material.color.set(t.edge); } });
@@ -1231,7 +1304,9 @@ function updateHover(now) {
   if (!pointerMoved || now - lastHover < 120) return; lastHover = now; pointerMoved = false;
   raycaster.setFromCamera(pointer, activeCamera);
   let html = null;
-  const q = pickPOI(pointerPx.x, pointerPx.y);
+  const zq = pickZone();
+  if (zq) { const zi = zq.userData.zoneInfo; html = `<span class="tt-floor">${floorName(zi.fl)}</span>${zi.zone.name}<span class="tt-sub">${zi.zone.category}${zi.zone.zone ? '｜区画 ' + zi.zone.zone : ''}｜クリックで詳細</span>`; }
+  const q = html ? null : pickPOI(pointerPx.x, pointerPx.y);
   if (q) html = `<span class="tt-floor">${lvLabel(q.lv)}</span>${q.n}<span class="tt-sub">${q.k}${q.b >= 0 && buildingMeta[q.b].n ? '｜' + buildingMeta[q.b].n : ''}</span>`;
   if (!html && sel.mesh) {
     const hit = raycaster.intersectObject(sel.mesh, false)[0];
@@ -1340,6 +1415,13 @@ guideFileInput.addEventListener('change', async () => { const f = guideFileInput
 if (window.__FLOORGUIDE) loadFloorGuide(window.__FLOORGUIDE);
 document.getElementById('floor-gap').addEventListener('input', e => { selUniforms.uGap.value = parseFloat(e.target.value); updateSelectionLayout(); });
 document.getElementById('btn-info-close').addEventListener('click', () => clearSelection());
+document.querySelectorAll('#cat-filter .cf').forEach(b => b.addEventListener('click', () => {
+  const c = b.dataset.cat;
+  if (catVisible.size === 0) { catVisible.add(c); } else if (catVisible.has(c)) { catVisible.delete(c); } else catVisible.add(c);
+  if (catVisible.size === Object.keys(CAT_COLOR).length) catVisible.clear();
+  setCatFilter(new Set(catVisible));
+}));
+document.getElementById('cat-all').addEventListener('click', () => setCatFilter(new Set()));
 document.getElementById('chk-poi').addEventListener('change', e => { if (poiPoints) poiPoints.visible = e.target.checked; });
 document.getElementById('chk-faces').addEventListener('change', e => { bldFaces = e.target.checked; for (const m of styledMeshes) m.mesh.visible = T().bloom || bldFaces; applyRepMode(); });
 document.getElementById('chk-network').addEventListener('change', e => { flowPoints.visible = e.target.checked && flow.count > 0; });
@@ -1377,6 +1459,8 @@ canvas.addEventListener('pointerdown', e => { downPos = { x: e.clientX, y: e.cli
 canvas.addEventListener('pointerup', e => {
   if (!routeMode && downPos && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) <= 6 && e.button === 0) {
     raycaster.setFromCamera(pointer, activeCamera);
+    const zm = pickZone();
+    if (zm) { showZoneDetail(zm.userData.zoneInfo); return; }
     const hit = buildingMesh && buildingMesh.visible ? raycaster.intersectObject(buildingMesh, false)[0] : null;
     if (hit) { const bid = findRange(buildingStarts, hit.faceIndex); if (bid !== sel.bid) selectBuilding(bid); }
     else if (sel.mesh && !raycaster.intersectObject(sel.mesh, false).length) clearSelection();
@@ -1408,7 +1492,7 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { const i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { const i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
@@ -1432,7 +1516,8 @@ function animate() {
   stepFlow(dt); stepRouteFlow(dt); updateHover(performance.now());
   if (groups.labels.visible) for (const sp of groups.labels.children) layoutSprite(sp);
   for (const sp of floorLabelSprites) layoutSprite(sp);
-  for (const sp of sel.markers) layoutSprite(sp);
+  for (const sp of sel.markers) { layoutSprite(sp); if (sp.userData.filtered) sp.visible = false; }
+  for (const z of sel.zones) if (z.label && z.mesh.visible === false) z.label.visible = false;
   composer.render();
 }
 init().catch(e => { loadingText.textContent = `読み込みエラー: ${e.message}`; console.error(e); });

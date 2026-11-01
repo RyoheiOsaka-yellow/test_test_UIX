@@ -61,7 +61,11 @@ await page.evaluate(() => { window.__app.section(null); });
 // 建物選択 + 階分解 (ランドマークタワー = 最も高い建物 = bid 0)
 await shot('19_floors', `a.select(0); a.setGap(9); a.poi(true); a.camera.position.set(-700, 520, 760); a.controls.target.set(-56, 260, 361);`);
 await shot('20_tenants', `const i = a.selectByName('MARK IS'); a.setGap(7); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 260, 230, cz + 220); a.controls.target.set(cx, 40, cz);`);
-await shot('20a_zones', `const i = a.selectByName('MARK IS'); a.setGap(9); a.floorCat(true); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 200, 150, cz + 170); a.controls.target.set(cx, 30, cz);`);
+await shot('20a_zones', `a.setPartition('corridor'); const i = a.selectByName('MARK IS'); a.setGap(9); a.floorCat(true); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 200, 150, cz + 170); a.controls.target.set(cx, 30, cz);`);
+await shot('20d_markis_1f', `const i = a.selectByName('MARK IS'); a.setGap(0); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.section(6); a.camera.position.set(cx - 40, 230, cz + 120); a.controls.target.set(cx, 0, cz);`);
+await shot('20e_grid_filter', `a.section(null); a.setPartition('grid'); const i = a.selectByName('ランドマークプラザ'); a.setGap(8); a.setCat(['飲食']); a.zoneDetail(0); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 220, 200, cz + 200); a.controls.target.set(cx, 20, cz);`);
+await page.screenshot({ path: `${out}/20f_zone_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
+await page.evaluate(() => { window.__app.setCat([]); window.__app.setPartition('corridor'); });
 await shot('20b_queens', `const i = a.selectByName('クイーンズスクエア横浜'); a.setGap(5); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 420, 420, cz + 380); a.controls.target.set(cx, 120, cz);`);
 await page.screenshot({ path: `${out}/20c_tenant_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
 await page.evaluate(() => { const a = window.__app; a.select(-1); a.poi(false); });
