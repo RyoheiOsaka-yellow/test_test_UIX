@@ -16,11 +16,12 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 14.0,
+  "scale": 0.94,
+  "dx": 0.0,
+  "dy": -4.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -40,11 +41,12 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 14.0,
+  "scale": 1.01,
+  "dx": -10.0,
+  "dy": 8.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -64,11 +66,12 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": -14.0,
+  "scale": 0.91,
+  "dx": -6.0,
+  "dy": -2.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -88,11 +91,12 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 183.0,
+  "scale": 1.15,
+  "dx": 24.0,
+  "dy": 10.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -112,11 +116,12 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 3.0,
+  "scale": 1.01,
+  "dx": 4.0,
+  "dy": 2.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -136,11 +141,12 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 0,
+  "rot": 182.0,
   "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "dx": 4.0,
+  "dy": -2.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -160,11 +166,12 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 0,
+  "rot": 2.0,
   "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "dx": 4.0,
+  "dy": 0.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -184,11 +191,12 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 0,
+  "rot": 186.0,
   "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "dx": -6.0,
+  "dy": 0.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -208,11 +216,12 @@
    "u": 0.38,
    "v": 0.82
   },
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": -2.0,
+  "scale": 0.9,
+  "dx": 10.0,
+  "dy": -20.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -232,11 +241,12 @@
    "u": 0.38,
    "v": 0.82
   },
-  "rot": 0,
+  "rot": -14.0,
   "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "dx": -6.0,
+  "dy": -12.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -256,11 +266,12 @@
    "u": 0.38,
    "v": 0.82
   },
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": -14.0,
+  "scale": 0.94,
+  "dx": 12.0,
+  "dy": -22.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -280,11 +291,12 @@
    "u": 0.38,
    "v": 0.82
   },
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": -13.0,
+  "scale": 0.99,
+  "dx": 2.0,
+  "dy": -8.0,
   "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  },
  {
@@ -304,11 +316,159 @@
    "u": 0.38,
    "v": 0.82
   },
+  "rot": 190.0,
+  "scale": 1.0,
+  "dx": 20.0,
+  "dy": -20.0,
+  "opacity": 0.8,
+  "fit": false,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "クイーンズスクエア横浜",
+  "floor": "B3",
+  "file": "tokyu_B3.jpg",
+  "w": 325,
+  "h": 305,
+  "box": [
+   0.0831,
+   0.0426,
+   1.0,
+   0.9508
+  ],
+  "anchor": null,
   "rot": 0,
   "scale": 1.0,
   "dx": 0,
   "dy": 0,
   "opacity": 0.8,
+  "fit": false,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "クイーンズスクエア横浜",
+  "floor": "B2",
+  "file": "tokyu_B2.jpg",
+  "w": 400,
+  "h": 305,
+  "box": [
+   0.2,
+   0.1016,
+   0.9425,
+   0.918
+  ],
+  "anchor": null,
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "fit": false,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "クイーンズスクエア横浜",
+  "floor": "B1",
+  "file": "tokyu_B1.jpg",
+  "w": 475,
+  "h": 260,
+  "box": [
+   0.0884,
+   0.1577,
+   0.9811,
+   0.8846
+  ],
+  "anchor": null,
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "fit": false,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "クイーンズスクエア横浜",
+  "floor": "1F",
+  "file": "tokyu_1F.jpg",
+  "w": 893,
+  "h": 405,
+  "box": [
+   0.0437,
+   0.1062,
+   0.9742,
+   0.9975
+  ],
+  "anchor": null,
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "fit": false,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "クイーンズスクエア横浜",
+  "floor": "2F",
+  "file": "tokyu_2F.jpg",
+  "w": 905,
+  "h": 392,
+  "box": [
+   0.011,
+   0.0893,
+   0.8994,
+   0.9592
+  ],
+  "anchor": null,
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "fit": false,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "クイーンズスクエア横浜",
+  "floor": "3F",
+  "file": "tokyu_3F.jpg",
+  "w": 943,
+  "h": 370,
+  "box": [
+   0.0011,
+   0.0297,
+   0.9852,
+   0.9973
+  ],
+  "anchor": null,
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "fit": false,
+  "source": "公式フロアガイド PDF"
+ },
+ {
+  "building": "クイーンズスクエア横浜",
+  "floor": "4F",
+  "file": "tokyu_4F.jpg",
+  "w": 810,
+  "h": 410,
+  "box": [
+   0.021,
+   0.039,
+   0.9889,
+   0.9707
+  ],
+  "anchor": null,
+  "rot": 0,
+  "scale": 1.0,
+  "dx": 0,
+  "dy": 0,
+  "opacity": 0.8,
+  "fit": false,
   "source": "公式フロアガイド PDF"
  }
 ]

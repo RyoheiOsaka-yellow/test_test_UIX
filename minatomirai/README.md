@@ -60,6 +60,11 @@ node tools/decode_b3dm.js $MM_WORK/brid_lod2 --out $MM_WORK/dec_brid2.json
 node tools/decode_b3dm.js $MM_WORK/brid_lod3 --out $MM_WORK/dec_brid3.json
 python3 tools/fetch_osm.py
 python3 tools/build_data.py              # -> data/minatomirai.pack
+python3 tools/fetch_floorguide.py        # -> data/floorguide.csv (公式フロアガイド)
+python3 tools/make_underlays.py          # -> data/underlays/*.jpg, data/underlays.json
+python3 tools/fit_underlays.py           # 下敷きの自動位置合わせ (時間がかかる)
+python3 tools/extract_zones.py           # -> data/zones.json (MARK IS の区画形状)
+python3 tools/fictional_building.py      # 架空ビルをパックと CSV に追加
 npm run build                            # -> dist/index.html
 ```
 
@@ -90,6 +95,23 @@ MARK IS はフロアマップの区画番号を zone に持つので、番号順
 名札は「自動間引き（画面上で重なるものを隠す。カーソルの階を優先）」「カーソルの階のみ」「すべて」「なし」を選べる。
 区画クリックの詳細には、公式サイトの店舗ページ URL、営業時間（ランドマークプラザは店舗ごと、他は施設共通）、
 電話番号、店舗公式サイトを表示する（`fetch_floorguide.py` が詳細ページから取得）。
+
+### 下敷きの自動位置合わせと区画の自動抽出
+
+- `tools/fit_underlays.py`: 建物の実フットプリントと図面の建物領域の IoU が最大になる回転・拡縮・平行移動を
+  探索し、`data/underlays.json` に書き戻す（アンカー地物で 0°/180° を決めてから ±16° を探索。全 20 階で約 40 分）。
+- `tools/extract_zones.py`: MARK IS の公式マップから彩色された区画面を連結成分として検出し、区画番号を OCR
+  （RapidOCR）と、検出済み番号から学習した字形テンプレートの照合で割り当てる。面の凸包を下敷きと同じ変換で
+  世界座標にして `data/zones.json` に書く。画面では抽出済みの区画は実形状で、未抽出の区画だけ帯分割の近似
+  （薄い塗り）で表示する。現状の抽出率は約 8 割。
+
+### 架空の商業ビル
+
+`tools/fictional_building.py` は、既存の建物・道路・水面・緑地に重ならない最大の空地（新高島駅南西の街区）に
+「みなとみらい セントラルタワー（架空）」（高さ 331 m、85 階＋冠部、エリア最高）を生成してデータパックに追加する。
+低層部 6 層の商業フロアは MARK IS の階ごとの用途構成比を参考に架空テナントを配置し（source=fictional）、
+7〜62F オフィス、63〜82F ホテル、83〜85F 展望・飲食とした。正面エントランスを歩行者ネットワークに接続している。
+画面上では「架空の建物」と明示する。`build_data.py` の後に実行する（再生成時はパックを作り直してから）。
 
 ### 手入力
 

@@ -67,6 +67,13 @@ await shot('20g_underlay_1f', `a.labels('none'); const i = a.selectByName('MARK 
 await shot('20h_underlay_lmp', `a.section(null); const i = a.selectByName('ランドマークプラザ'); a.setGap(0); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.section(5); a.camera.position.set(cx + 1, 330, cz + 1); a.controls.target.set(cx, 0, cz);`);
 await shot('20h2_underlay_lmp3', `const i = a.selectByName('ランドマークプラザ'); a.setGap(0); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.section(12); a.camera.position.set(cx + 1, 330, cz + 1); a.controls.target.set(cx, 0, cz);`);
 await page.evaluate(() => window.__app.setCat([]));
+await shot('20j_zones_exact', `a.labels('auto'); const i = a.selectByName('MARK IS minatomirai'); a.setGap(0); a.underlay(false); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.section(5); a.camera.position.set(cx + 1, 330, cz + 1); a.controls.target.set(cx, 0, cz);`);
+await shot('20k_zones_3f', `const i = a.selectByName('MARK IS minatomirai'); a.setGap(0); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.section(12); a.camera.position.set(cx + 1, 330, cz + 1); a.controls.target.set(cx, 0, cz);`);
+await page.evaluate(() => { window.__app.underlay(true); window.__app.section(null); });
+await shot('21_fictional', `a.select(-1); a.camera.position.set(-900, 420, -60); a.controls.target.set(-408, 120, -373);`);
+await shot('21b_fictional_floors', `a.selectByName('みなとみらい セントラルタワー（架空）'); a.setGap(6); a.floorCat(true); a.camera.position.set(-640, 300, -180); a.controls.target.set(-408, 60, -373);`);
+await page.screenshot({ path: `${out}/21c_fictional_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
+await page.evaluate(() => { window.__app.select(-1); window.__app.floorCat(false); });
 await shot('20i_declutter', `a.section(null); a.labels('auto'); const i = a.selectByName('MARK IS'); a.setGap(9); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 200, 150, cz + 170); a.controls.target.set(cx, 30, cz);`);
 await shot('20d_markis_1f', `const i = a.selectByName('MARK IS'); a.setGap(0); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.section(6); a.camera.position.set(cx - 40, 230, cz + 120); a.controls.target.set(cx, 0, cz);`);
 await shot('20e_grid_filter', `a.section(null); a.setPartition('grid'); const i = a.selectByName('ランドマークプラザ'); a.setGap(8); a.setCat(['飲食']); a.zoneDetail(0); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 220, 200, cz + 200); a.controls.target.set(cx, 20, cz);`);

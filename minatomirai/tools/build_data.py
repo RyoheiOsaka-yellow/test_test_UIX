@@ -414,7 +414,15 @@ def build_water(nodes, ways, rels, cache):
                     pts = way_coords(nodes, ways, ref, cache)
                     if len(pts) > 3 and pts[0] == pts[-1]: outer.append(Polygon(pts).buffer(0))
             inland += outer
-    big = box(BOX[0] - 400, BOX[1] - 400, BOX[2] + 400, BOX[3] + 400)
+    # 外枠は OSM 取得範囲より小さくする (海岸線が枠内で途切れると面に分割されない)
+    big = box(BOX[0] - 60, BOX[1] - 60, BOX[2] + 60, BOX[3] + 60)
+    # 海岸線は外枠で切り、端点が必ず枠上に来るようにする (枠内で途切れると面に分割されない)
+    clipped = []
+    for ls in coast:
+        g = ls.intersection(big)
+        for part in (g.geoms if hasattr(g, "geoms") else [g]):
+            if part.geom_type == "LineString" and part.length > 0: clipped.append(part)
+    coast = clipped
     polys = list(polygonize(unary_union([big.boundary] + coast)))
     def side_pt(ls, sign, dist=3):
         c = list(ls.coords); k = len(c) // 2

@@ -16,6 +16,7 @@ DPI = 150; REF = 60
 PDFS = {
     "markis": "https://www.mec-markis.jp/mm/common/pdf/floorguide.pdf?202508",
     "lmp": "https://www.yokohama-landmark.jp/upload/pdf/landmark_guide_JPEn.pdf",
+    "tokyu": "https://www.minatomirai-square.com/uploads/pdfs/minatomirai/000002/000002/a086b021.pdf",  # クイーンズスクエア横浜 Floor Map (全館)
 }
 # (pdf, page, x0, y0, x1, y1) @60dpi, building, floor, 初期回転(度: 建物主軸基準), 初期スケール
 CROPS = [
@@ -32,6 +33,13 @@ CROPS = [
     ("lmp", 1, 25, 498, 300, 692, "ランドマークプラザ", "3F", 0, 1.0),
     ("lmp", 1, 25, 705, 300, 922, "ランドマークプラザ", "2F", 0, 1.0),
     ("lmp", 2, 25, 65, 350, 302, "ランドマークプラザ", "1F", 0, 1.0),
+    ("tokyu", 1, 60, 170, 190, 292, "クイーンズスクエア横浜", "B3", 0, 1.0),
+    ("tokyu", 1, 300, 170, 460, 292, "クイーンズスクエア横浜", "B2", 0, 1.0),
+    ("tokyu", 1, 530, 178, 720, 282, "クイーンズスクエア横浜", "B1", 0, 1.0),
+    ("tokyu", 1, 105, 440, 462, 602, "クイーンズスクエア横浜", "1F", 0, 1.0),
+    ("tokyu", 2, 100, 58, 462, 215, "クイーンズスクエア横浜", "2F", 0, 1.0),
+    ("tokyu", 2, 85, 248, 462, 396, "クイーンズスクエア横浜", "3F", 0, 1.0),
+    ("tokyu", 2, 28, 468, 352, 632, "クイーンズスクエア横浜", "4F", 0, 1.0),
 ]
 
 ANCHORS = {  # 回転 (0/180°) 判定用: 画像内の相対位置 (u,v) にある地物名
@@ -76,7 +84,7 @@ def main():
         name = f"{pdf}_{fl}.jpg"; im.save(os.path.join(OUTDIR, name), "JPEG", quality=78, optimize=True)
         prev = old.get((bld, fl), {})
         manifest.append({"building": bld, "floor": fl, "file": name, "w": im.width, "h": im.height, "box": drawing_box(im), "anchor": ANCHORS.get(bld),
-                         "rot": prev.get("rot", rot), "scale": prev.get("scale", scale), "dx": prev.get("dx", 0), "dy": prev.get("dy", 0), "opacity": prev.get("opacity", 0.8),
+                         "rot": prev.get("rot", rot), "scale": prev.get("scale", scale), "dx": prev.get("dx", 0), "dy": prev.get("dy", 0), "opacity": prev.get("opacity", 0.8), "fit": prev.get("fit", False),
                          "source": "公式フロアガイド PDF"})
         print(name, im.size)
     json.dump(manifest, open(mf, "w"), ensure_ascii=False, indent=1)

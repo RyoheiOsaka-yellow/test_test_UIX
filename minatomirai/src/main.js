@@ -733,6 +733,9 @@ const lvLabel = lv => lv == null ? '階不明' : lv >= 0 ? `${lv + 1}F` : `B${-l
 
 // ---- フロアガイド CSV (building,floor,zone,name,category,share,source) -------------------
 let floorGuide = new Map();   // building name -> Map(fl -> [{zone,name,category,share}])
+const ZONES = new Map();      // `${building}|${fl}|${zone}` -> [[x,y],...] (world, 北=+y)
+for (const z of (window.__ZONES || [])) ZONES.set(`${z.building}|${parseFloor(z.floor)}|${z.zone}`, z.poly);
+const zoneKey = (b, fl, zone) => { for (const [k, v] of ZONES) { const [kb, kf, kz] = k.split('|'); if ((b.includes(kb) || kb.includes(b)) && Number(kf) === fl && kz === String(zone)) return v; } return null; };
 const parseFloor = f => { f = String(f || '').trim().toUpperCase(); if (!f) return null; const b = f.match(/^B(\d+)/); if (b) return -Number(b[1]); if (f === 'GL' || f === 'G') return 0; const n = parseFloat(f); return isNaN(n) ? null : Math.round(n) - 1; };
 const parseCSV = text => {
   const rows = []; let row = [], field = '', q = false;
@@ -881,7 +884,7 @@ function layoutUnderlays() {
     const L = (A.a1 - A.a0) * (u.scale ?? 1);
     const k = L / Math.max(1, bw);                                              // 世界 m / px
     const w = u.w * k, h = u.h * k;
-    const rotDeg = autoRotation(u, A) + (u.rot ?? 0); const ang = Math.atan2(A.ay, A.ax) + rotDeg * Math.PI / 180;
+    const rotDeg = (u.fit ? 0 : autoRotation(u, A)) + (u.rot ?? 0); const ang = Math.atan2(A.ay, A.ax) + rotDeg * Math.PI / 180;
     const rx = Math.cos(ang), ry = Math.sin(ang), ux = -Math.sin(ang), uy = Math.cos(ang);   // 画像の右・上 (世界 東,北)
     const offR = ((box[0] + box[2]) / 2 - 0.5) * u.w * k, offD = ((box[1] + box[3]) / 2 - 0.5) * u.h * k; // 図面中心の画像中心からのずれ
     const tx = A.cx + A.ax * (u.dx ?? 0) + A.nx * (u.dy ?? 0), ty = A.cy + A.ay * (u.dx ?? 0) + A.ny * (u.dy ?? 0);
@@ -905,7 +908,7 @@ const selGroup = new THREE.Group(); scene.add(selGroup);
 const infoEl = document.getElementById('info'), infoBody = document.getElementById('info-body'), infoTitle = document.getElementById('info-title');
 const zoneDetail = document.getElementById('zone-detail');
 function showZoneDetail(zi) {
-  const z = zi.zone; const src = z.source === 'official' ? '公式フロアガイド' : z.source === 'osm' ? 'OpenStreetMap' : z.source || '手入力';
+  const z = zi.zone; const src = z.source === 'official' ? '公式フロアガイド' : z.source === 'osm' ? 'OpenStreetMap' : z.source === 'fictional' ? '架空（生成データ）' : z.source || '手入力';
   const osm = poiData.find(q => q.n === z.name && q.b === sel.bid);
   zoneDetail.innerHTML = `<div class="zd-head"><span class="tag" style="border-color:${catColor(z.category)};background:${catColor(z.category)}33">${z.category}</span> <b>${z.name}</b></div>
     <div>${zi.building ?? ''} ${floorName(zi.fl)}${z.zone ? ' ／ 区画 ' + z.zone : ''}${z.genre ? ' ／ ' + z.genre : ''}</div>
@@ -1025,12 +1028,15 @@ function selectBuilding(bid) {
     for (let tr = buildingStarts[bid]; tr < buildingStarts[bid + 1]; tr++) for (let k = 0; k < 3; k++) { const vi = buildingMesh.geometry.index.array[tr * 3 + k]; pts.push([P.getX(vi), -P.getZ(vi)]); }
     sel.hull = convexHull(pts);
     for (const [fl, zs] of guide) {
-      const parts = partition(sel.hull, zs);
-      for (const { zone, poly, kind } of parts) {
+      // 抽出済みの区画多角形があればそれを使い、無いものは残りを帯分割で近似
+      const withPoly = zs.filter(z => zoneKey(m.n, fl, z.zone)); const rest = zs.filter(z => !zoneKey(m.n, fl, z.zone));
+      const parts = withPoly.map(z => ({ zone: z, poly: zoneKey(m.n, fl, z.zone), kind: 'zone', exact: true }));
+      if (rest.length) parts.push(...(withPoly.length ? partition(sel.hull, rest, 'strip') : partition(sel.hull, rest)));
+      for (const { zone, poly, kind, exact } of parts) {
         const shape = new THREE.Shape(poly.map(p => new THREE.Vector2(p[0], p[1])));
         const g = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false }); g.applyMatrix4(ROT_XZ);
         const isCor = kind === 'corridor'; const col = isCor ? '#9aa3b5' : catColor(zone.category);
-        const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.18 : 0.55, depthWrite: false, clippingPlanes: sectionPlanes }));
+        const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.18 : (kind === 'zone' && !exact && withPoly.length ? 0.22 : 0.55), depthWrite: false, clippingPlanes: sectionPlanes }));
         const edge = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.4 : 0.9, clippingPlanes: sectionPlanes }));
         let zx = 0, zy = 0; for (const q of poly) { zx += q[0]; zy += q[1]; } zx /= poly.length; zy /= poly.length;
         const label = isCor ? null : makeTextSprite(zone.name, col, { scale: 0.12, themeColor: tt => tt.labelGlow === false ? col : '#ffe9b0' }); if (label) label.userData.fadeFrom = 1000;
@@ -1052,7 +1058,7 @@ function selectBuilding(bid) {
   const legend = Object.entries(CAT_COLOR).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join('');
   infoTitle.textContent = m.n ?? '（名称なし）';
   const nGuide = guide ? [...guide.values()].reduce((a, v) => a + v.length, 0) : 0;
-  infoBody.innerHTML = `<div>高さ ${h} m ／ 推定 ${nFloors} 階（階高 ${FLOOR_H} m）${m.parts > 1 ? ` ／ ${m.parts} 部位を統合` : ''}</div>
+  infoBody.innerHTML = `${m.fictional ? '<div class="info-sub" style="color:#ffb648">※ この建物は本ツールで生成した架空の建築です（テナントも架空）</div>' : ''}<div>高さ ${h} m ／ 推定 ${nFloors} 階（階高 ${FLOOR_H} m）${m.parts > 1 ? ` ／ ${m.parts} 部位を統合` : ''}</div>
     <label class="row" style="padding:4px 0"><input type="checkbox" id="chk-floorcat" ${floorCatMode ? 'checked' : ''} /> 階を用途色で塗る</label>
     ${underlaysFor(m.n).length ? `<label class="row" style="padding:4px 0"><input type="checkbox" id="chk-underlay" ${underlayOn ? 'checked' : ''} /> 公式フロアマップを下敷き表示（${underlaysFor(m.n).length} 階）</label>
     <details id="underlay-cal"><summary class="info-sub" style="cursor:pointer">下敷きの位置合わせ（階ごと）</summary>
@@ -1443,7 +1449,7 @@ function updateHover(now) {
       if (h.object === buildingMesh) {
         const i = findRange(buildingStarts, h.faceIndex); const m = buildingMeta[i]; bldUniforms.uHover.value = i;
         const hgt = m.h != null ? `高さ ${m.h}m` : `高さ 約${Math.round(m.z[1] - m.z[0])}m`;
-        html = `<span class="tt-floor">建物</span>${m.n ?? '（名称なし）'}<span class="tt-sub">${hgt}</span>`;
+        html = `<span class="tt-floor">${m.fictional ? '架空の建物' : '建物'}</span>${m.n ?? '（名称なし）'}<span class="tt-sub">${hgt}${m.fictional ? '｜本ツールで生成した仮想建築' : ''}</span>`;
       } else {
         const i = findRange(bridgeStarts, h.faceIndex); const m = bridgeMeta[i];
         html = `<span class="tt-floor">橋梁</span>${m.fn && m.fn !== '不明' ? m.fn : '橋梁・デッキ'}`;
@@ -1608,7 +1614,7 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { const i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
