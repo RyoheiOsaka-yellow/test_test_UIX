@@ -1,0 +1,25 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","inspect/":"../js/"}}</script>
+<style>body{margin:0}#v{width:1000px;height:700px;position:relative}.v-callout{font:11px sans-serif;background:#fff;border:1px solid #333;padding:1px 4px;border-radius:9px}</style>
+</head><body><div id="v"></div>
+<script type="module">
+import * as THREE from 'three';
+import { Viewer } from 'inspect/viewer/scene.js';
+import { BUILDERS } from 'inspect/geo/parts.js';
+import { PARTS } from 'inspect/data/parts.js';
+const q = new URLSearchParams(location.search); const which = q.get('part') || 'housing'; const view = q.get('view') || 'iso';
+if (q.get('nopbr')) globalThis.__inspectNoPBR = true;
+const t0 = performance.now();
+const v = new Viewer(document.getElementById('v'), { quality: q.get('quality') !== '0' });
+if (q.get('noshadow')) { v.renderer.shadowMap.enabled = false; v.sun.castShadow = false; }
+const part = PARTS.find(p => p.model === which);
+const built = BUILDERS[which](part.params);
+const t1 = performance.now();
+v.setPart(built); v.setView(view, false);
+if (q.get('section')) v.setSection(q.get('section'), +q.get('t') || 0.5);
+if (q.get('style') === 'normal') { v.quality = false; built.group.traverse(o => { if (o.isMesh) o.material = new THREE.MeshNormalMaterial(); }); v.clearEdges(); } else if (q.get('style')) v.setDisplayStyle(q.get('style'));
+window.__built = built;
+if (q.get('feat')) { const F = built.features[q.get('feat')]; v.showFeatures([{ no: 1, feature: F, status: 'ng', text: 'test', selected: true }]); v.focusFeature(F); v._tween = null; v.camera.position.copy(v._tween ? v._tween.p1 : v.camera.position); }
+let tris = 0; built.group.traverse(o => { if (o.isMesh) tris += o.geometry.attributes.position.count / 3; });
+setTimeout(() => { v.render(); window.__result = { tris, buildMs: Math.round(t1 - t0) }; }, 800);
+</script></body></html>
