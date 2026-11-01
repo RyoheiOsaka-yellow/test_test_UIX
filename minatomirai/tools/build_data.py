@@ -281,6 +281,32 @@ def build_roads_from_mvt():
                         polys.append([ring_dm(p.exterior.coords[:-1])] + [ring_dm(i.coords[:-1]) for i in p.interiors])
     return polys
 
+def build_green(nodes, ways, rels, cache):
+    """公園・緑地 (OSM leisure=park/garden, landuse=grass/recreation_ground, natural=wood/scrub)。"""
+    polys = []
+    def ok(t):
+        return t.get("leisure") in ("park", "garden", "pitch", "playground") or t.get("landuse") in ("grass", "recreation_ground", "forest", "meadow", "cemetery") or t.get("natural") in ("wood", "scrub", "grassland")
+    for w, (nd, t) in ways.items():
+        if ok(t) and nd[0] == nd[-1]:
+            pts = way_coords(nodes, ways, w, cache)
+            if len(pts) > 3:
+                try: polys.append(Polygon(pts).buffer(0))
+                except Exception: pass
+    for r, (m, t) in rels.items():
+        if t.get("type") == "multipolygon" and ok(t):
+            for ty, ref, role in m:
+                if ty == "way" and ref in ways and role in ("outer", ""):
+                    pts = way_coords(nodes, ways, ref, cache)
+                    if len(pts) > 3 and pts[0] == pts[-1]:
+                        try: polys.append(Polygon(pts).buffer(0))
+                        except Exception: pass
+    g = unary_union(polys).intersection(BOXPOLY)
+    out = []
+    for q in (g.geoms if hasattr(g, "geoms") else [g]):
+        if q.is_empty or q.geom_type != "Polygon" or q.area < 30: continue
+        out.append([ring_dm(q.exterior.coords[:-1])] + [ring_dm(i.coords[:-1]) for i in q.interiors])
+    return out
+
 def build_water(nodes, ways, rels, cache):
     coast = []; inland = []
     for w, (nd, t) in ways.items():
@@ -671,6 +697,7 @@ def main():
 
     print("roads ..."); roads = build_roads_from_mvt(); print("  polygons", len(roads))
     print("water ..."); water = build_water(nodes, ways, rels, cache); print("  sea", len(water["sea"]), "inland", len(water["inland"]))
+    print("green ..."); green = build_green(nodes, ways, rels, cache); print("  polygons", len(green))
     print("rails ..."); rails = build_rails(nodes, ways, cache); print("  ways", len(rails))
 
     print("network ..."); nnodes, nlinks = build_network(nodes, ways, cache, tsample)
@@ -740,7 +767,7 @@ def main():
         "terrain": tmeta,
         "buildings": {"starts": bstarts, "meta": bmetas},
         "bridges": {"starts": rstarts, "meta": rmetas},
-        "roads": roads, "water": water, "rails": rails,
+        "roads": roads, "water": water, "green": green, "rails": rails,
         "network": {"nodes": nnodes, "links": nlinks, "vtypes": {v: k for k, v in VTYPE.items() if k}},
         "stations": [{"st": s["st"], "lv": s["lv"], "cat": s["cat"], "n": s["n"], "r": ring_dm(s["r"])} for s in spaces],
         "labels": labels,

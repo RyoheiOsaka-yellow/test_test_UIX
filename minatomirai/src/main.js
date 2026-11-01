@@ -68,7 +68,18 @@ const canvas = document.createElement('canvas');
 document.body.appendChild(canvas);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(BG);
-scene.fog = new THREE.FogExp2(BG, 0.00032);
+scene.fog = new THREE.FogExp2('#070a18', 0.00030);
+// 夜空のグラデーション (地平線付近をわずかに明るく)
+const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 32, 16), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { top: { value: new THREE.Color('#02030a') }, horizon: { value: new THREE.Color('#0d1a3a') } },
+  vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: 'uniform vec3 top, horizon; varying vec3 vP; void main(){ float h = normalize(vP).y; float t = pow(clamp(1.0 - h * 2.2, 0.0, 1.0), 2.2); gl_FragColor = vec4(mix(top, horizon, t), 1.0); }',
+}));
+sky.renderOrder = -10; scene.add(sky);
+// 対象範囲の外側を覆う地面 (地形の切れ目を目立たせない)
+const farGround = new THREE.Mesh(new THREE.CircleGeometry(9000, 64), new THREE.MeshBasicMaterial({ color: '#060912' }));
+farGround.rotation.x = -Math.PI / 2; farGround.position.y = -1.2; farGround.renderOrder = -5; scene.add(farGround);
 
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 20000);
 const CAM_HOME = new THREE.Vector3(1150, 720, -1250);
@@ -107,7 +118,7 @@ const fill = new THREE.DirectionalLight('#7fb2ff', 0.5); fill.position.set(900, 
 const renderTarget = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { samples: 4 });
 const composer = new EffectComposer(renderer, renderTarget);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.18, 0.22, 0.55);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.28, 0.3, 0.5);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 composer.setSize(innerWidth, innerHeight);
@@ -160,7 +171,7 @@ const makeTextSprite = (text, color, { font = 'bold 56px "Hiragino Kaku Gothic P
 // アプリ本体
 // ---------------------------------------------------------------------------
 const groups = {
-  terrain: new THREE.Group(), water: new THREE.Group(), roads: new THREE.Group(), buildings: new THREE.Group(), edges: new THREE.Group(),
+  terrain: new THREE.Group(), water: new THREE.Group(), green: new THREE.Group(), roads: new THREE.Group(), buildings: new THREE.Group(), edges: new THREE.Group(),
   bridges: new THREE.Group(), rails: new THREE.Group(), network: new THREE.Group(), station: new THREE.Group(), labels: new THREE.Group(),
 };
 for (const [k, g] of Object.entries(groups)) { g.name = k; scene.add(g); }
@@ -231,6 +242,20 @@ function buildWater(water) {
   }
 }
 
+// ---- 公園・緑地 (OSM) ---------------------------------------------------------
+function buildGreen(polys) {
+  const geos = [];
+  for (const rings of polys || []) {
+    const sh = shapeFromRings(rings); if (!sh) continue;
+    const g = flatGeometry(sh, 0); const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) p.setY(i, terrainSampler(p.getX(i), -p.getZ(i)) + 0.18);
+    geos.push(g);
+  }
+  if (!geos.length) return;
+  const m = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshStandardMaterial({ color: '#0f3a2a', emissive: '#0a2a1c', emissiveIntensity: 0.5, roughness: 1, transparent: true, opacity: 0.8, depthWrite: false }));
+  groups.green.add(m);
+}
+
 // ---- 道路面 (PLATEAU tran) ---------------------------------------------------
 function buildRoads(polys) {
   const fills = []; const lines = [];
@@ -273,15 +298,60 @@ const findRange = (starts, faceIndex) => { // starts: 三角形開始インデ�
   return lo;
 };
 
+const bldUniforms = { uHover: { value: -1 }, uWindows: { value: 1 }, uTime: { value: 0 } };
+function cityMaterial({ windows }) {
+  const mat = new THREE.MeshStandardMaterial({ color: '#2b3e6c', emissive: '#0c142c', emissiveIntensity: 0.6, roughness: 0.6, metalness: 0.3, flatShading: true, transparent: true, opacity: 0.86 });
+  mat.onBeforeCompile = shader => {
+    shader.uniforms.uHover = bldUniforms.uHover; shader.uniforms.uWindows = bldUniforms.uWindows; shader.uniforms.uTime = bldUniforms.uTime;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float bid; varying float vBid; varying vec3 vWPos; varying vec3 vWNormal;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvBid = bid; vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vWNormal = normalize(mat3(modelMatrix) * objectNormal);');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        uniform float uHover, uWindows, uTime; varying float vBid; varying vec3 vWPos; varying vec3 vWNormal;
+        float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        {
+          // フラットシェーディング用の面法線
+          vec3 fn = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
+          float vert = 1.0 - abs(fn.y);                       // 1: 垂直面(壁)
+          float h = max(vWPos.y, 0.0);
+          // 地表付近を暗く (簡易 AO)
+          float ao = mix(0.55, 1.0, smoothstep(0.0, 28.0, h));
+          diffuseColor.rgb *= ao;
+          // 窓明かり: 壁面の格子 (階高 3.6m, 柱間 3.2m)
+          if (uWindows > 0.5 && vert > 0.6 && h > 2.0) {
+            float u = abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x;
+            vec2 cell = floor(vec2(u / 3.2, vWPos.y / 3.6));
+            vec2 f = fract(vec2(u / 3.2, vWPos.y / 3.6));
+            float win = step(0.18, f.x) * step(f.x, 0.82) * step(0.25, f.y) * step(f.y, 0.78);
+            float r = hash21(cell + vec2(vBid * 0.37, vBid * 1.13));
+            float lit = step(0.62, r) * win;
+            float flick = 0.85 + 0.15 * sin(uTime * 0.6 + r * 60.0);
+            vec3 warm = mix(vec3(1.0, 0.82, 0.55), vec3(0.75, 0.9, 1.0), step(0.85, r));
+            totalEmissiveRadiance += warm * lit * 0.55 * flick * vert;
+            diffuseColor.rgb += vec3(0.04) * win * vert;         // 消灯窓もわずかに見せる
+          }
+          if (abs(vBid - uHover) < 0.5) { totalEmissiveRadiance += vec3(0.35, 0.85, 1.0) * 0.55; diffuseColor.rgb += vec3(0.1, 0.2, 0.3); }
+        }`);
+  };
+  mat.customProgramCacheKey = () => 'city' + (windows ? 'w' : '');
+  return mat;
+}
+function addBidAttribute(g, starts) {
+  const n = g.attributes.position.count; const bid = new Float32Array(n); const idx = g.index.array;
+  for (let b = 0; b < starts.length - 1; b++) for (let t = starts[b]; t < starts[b + 1]; t++) { bid[idx[t * 3]] = b; bid[idx[t * 3 + 1]] = b; bid[idx[t * 3 + 2]] = b; }
+  g.setAttribute('bid', new THREE.BufferAttribute(bid, 1));
+}
 function buildBuildings(blobs, header) {
   const g = meshFromPack(blobs.bldg_pos, blobs.bldg_idx);
-  const mat = new THREE.MeshStandardMaterial({ color: '#2a3c66', emissive: '#0e1733', emissiveIntensity: 0.55, roughness: 0.55, metalness: 0.35, flatShading: true, transparent: true, opacity: 0.8 });
-  buildingMesh = new THREE.Mesh(g, mat); buildingMesh.name = 'bldg';
-  groups.buildings.add(buildingMesh);
   buildingMeta = header.buildings.meta; buildingStarts = header.buildings.starts;
+  addBidAttribute(g, buildingStarts);
+  buildingMesh = new THREE.Mesh(g, cityMaterial({ windows: true })); buildingMesh.name = 'bldg';
+  groups.buildings.add(buildingMesh);
   // 輪郭線 (面の折れ角が大きい辺のみ)
-  const eg = new THREE.EdgesGeometry(g, 28);
-  const edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#6fa0ff', transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const eg = new THREE.EdgesGeometry(g, 30);
+  const edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#6fa0ff', transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false }));
   groups.edges.add(edges);
 }
 function buildBridges(blobs, header) {
@@ -566,7 +636,8 @@ function updateFloorPositions() {
 // ---- ランドマークラベル -------------------------------------------------------------
 function buildLabels(labels) {
   for (const l of labels) {
-    const color = l.kind === 'station' ? '#7ef0ff' : '#ffe66e';
+    if (l.kind !== 'station') continue;   // 建物名はホバー表示のみ
+    const color = '#7ef0ff';
     const sp = makeTextSprite(l.n, color, { scale: l.kind === 'station' ? 0.2 : 0.17 });
     sp.position.set(l.p[0], terrainSampler(l.p[0], l.p[1]) + l.h, -l.p[1]);
     sp.userData.kind = l.kind; sp.userData.fadeFrom = l.kind === 'station' ? 2600 : 1500; groups.labels.add(sp);
@@ -594,7 +665,7 @@ function updateHover(now) {
     if (hits.length) {
       const h = hits[0];
       if (h.object === buildingMesh) {
-        const i = findRange(buildingStarts, h.faceIndex); const m = buildingMeta[i];
+        const i = findRange(buildingStarts, h.faceIndex); const m = buildingMeta[i]; bldUniforms.uHover.value = i;
         const hgt = m.h != null ? `高さ ${m.h}m` : `高さ 約${Math.round(m.z[1] - m.z[0])}m`;
         html = `<span class="tt-floor">建物</span>${m.n ?? '（名称なし）'}<span class="tt-sub">${hgt}</span>`;
       } else {
@@ -603,6 +674,7 @@ function updateHover(now) {
       }
     }
   }
+  if (!html || !html.startsWith('<span class="tt-floor">建物')) bldUniforms.uHover.value = -1;
   if (html) { tooltip.innerHTML = html; tooltip.style.left = `${pointerPx.x}px`; tooltip.style.top = `${pointerPx.y}px`; tooltip.style.display = 'block'; }
   else tooltip.style.display = 'none';
 }
@@ -634,7 +706,8 @@ let fly = null;
 const flyTo = (pos, target) => { fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: target.clone(), start: performance.now(), ms: 1400 }; };
 const bindToggle = (id, group) => document.getElementById(id).addEventListener('change', e => { group.visible = e.target.checked; });
 bindToggle('chk-network', groups.network); bindToggle('chk-station', groups.station); bindToggle('chk-bld', groups.buildings); bindToggle('chk-edges', groups.edges);
-bindToggle('chk-bridge', groups.bridges); bindToggle('chk-road', groups.roads); bindToggle('chk-rail', groups.rails); bindToggle('chk-water', groups.water); bindToggle('chk-terrain', groups.terrain); bindToggle('chk-labels', groups.labels);
+bindToggle('chk-bridge', groups.bridges); bindToggle('chk-road', groups.roads); bindToggle('chk-rail', groups.rails); bindToggle('chk-water', groups.water); bindToggle('chk-terrain', groups.terrain); bindToggle('chk-labels', groups.labels); bindToggle('chk-green', groups.green);
+document.getElementById('chk-windows').addEventListener('change', e => { bldUniforms.uWindows.value = e.target.checked ? 1 : 0; });
 document.getElementById('chk-network').addEventListener('change', e => { flowPoints.visible = e.target.checked && flow.count > 0; });
 
 const expandInput = document.getElementById('floor-expand'), expandValue = document.getElementById('expand-value');
@@ -682,7 +755,7 @@ async function init() {
   const { header, blobs } = await loadPack();
   LEVEL_H = Object.fromEntries(Object.entries(header.levelHeights).map(([k, v]) => [Number(k), v]));
   setProgress(0.15, '地形を生成中…'); await nextFrame(); buildTerrain(header.terrain, blobs.terrain);
-  setProgress(0.25, '水面・道路面を生成中…'); await nextFrame(); buildWater(header.water); buildRoads(header.roads);
+  setProgress(0.25, '水面・道路面を生成中…'); await nextFrame(); buildWater(header.water); buildGreen(header.green); buildRoads(header.roads);
   setProgress(0.45, `建物 ${header.buildings.meta.length.toLocaleString()} 棟を生成中…`); await nextFrame(); buildBuildings(blobs, header);
   setProgress(0.65, 'デッキ・橋梁を生成中…'); await nextFrame(); buildBridges(blobs, header);
   setProgress(0.75, '鉄道・歩行者ネットワークを生成中…'); await nextFrame(); buildRails(header.rails); buildNetwork(header.network);
@@ -707,6 +780,7 @@ function animate() {
   if (fly) { const t = easeOut(Math.min((performance.now() - fly.start) / fly.ms, 1)); camera.position.lerpVectors(fly.p0, fly.p1, t); controls.target.lerpVectors(fly.t0, fly.t1, t); if (t >= 1) fly = null; }
   activeControls.update();
   for (const m of Object.values(netMats)) m.dashOffset = -elapsed * 4;
+  bldUniforms.uTime.value = elapsed;
   stepFlow(dt); stepRouteFlow(dt); updateHover(performance.now());
   if (groups.labels.visible) for (const sp of groups.labels.children) layoutSprite(sp);
   for (const sp of floorLabelSprites) layoutSprite(sp);
