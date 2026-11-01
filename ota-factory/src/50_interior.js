@@ -2,10 +2,10 @@
 const EQ_OBJ = {};      // id -> { group, data }
 // グループ内の静的メッシュを材質ごとに結合（描画コール削減）。userData.dyn / joints を持つ部分は除外。
 function compactGroup(grp){
-  grp.updateMatrixWorld(true); const buckets = new Map(), remove = [];
-  grp.traverse(o => { if (!o.isMesh || o.isInstancedMesh || o.isSprite || o.userData.dyn || Array.isArray(o.material)) return;
+  grp.updateMatrixWorld(true); const buckets = new Map(), remove = []; const inv = grp.matrixWorld.clone().invert(); const rel = new THREE.Matrix4();
+  grp.traverse(o => { if (!o.isMesh || o.isInstancedMesh || o.isSprite || o.userData.dyn || o.userData.plan || Array.isArray(o.material)) return;
     let p = o.parent; while (p && p !== grp){ if (p.userData.joints || p.userData.dyn) return; p = p.parent; }
-    const g = o.geometry.clone().applyMatrix4(o.matrixWorld); if (!buckets.has(o.material)) buckets.set(o.material, []); buckets.get(o.material).push(g); remove.push(o); });
+    rel.multiplyMatrices(inv, o.matrixWorld); const g = o.geometry.clone().applyMatrix4(rel); if (!buckets.has(o.material)) buckets.set(o.material, []); buckets.get(o.material).push(g); remove.push(o); });
   remove.forEach(o => o.parent.remove(o));
   for (const [mat, geos] of buckets){ const m = new THREE.Mesh(mergeGeometries(geos, false), mat); geos.forEach(g=>g.dispose()); m.castShadow = m.receiveShadow = true; grp.add(m); }
 }

@@ -52,7 +52,7 @@ function generateLane(lane){
     if (s.kind === "ref"){ const p = resolveRef(s.ref, lane, prev); s.pos = p; if (!s.aux) stationPos.push({ ...p, s }); prev = p; continue; }
     const us = lay.units.filter(u=>u.s===s); const cx = us.reduce((a,u)=>a+u.x,0)/us.length, cz = us.reduce((a,u)=>a+u.z,0)/us.length;
     s.pos = { x:cx, z:cz, floor:lane.floor }; s.units = us; if (!s.aux) stationPos.push({ x:cx, z:cz, floor:lane.floor, s }); prev = s.pos;
-    us.forEach((u, k) => { const b = BUILDERS[s.kind]; if (!b) return; const grp = b(); compactGroup(grp); grp.position.set(u.x, yF, u.z); grp.rotation.y = u.rot;
+    us.forEach((u, k) => { const b = BUILDERS[s.kind]; if (!b) return; const grp = b(); grp.add(makeMachineExtras(s.kind, s.fp[0], s.fp[1])); compactGroup(grp); grp.position.set(u.x, yF, u.z); grp.rotation.y = u.rot;
       const id = `${lane.id}-S${s.idx}${s.n>1? String.fromCharCode(97+k) : ""}`; const e = { id, kind:s.kind, name: s.n > 1 ? `${STATION_TYPES[s.type].n} #${k+1}` : STATION_TYPES[s.type].n, x:+u.x.toFixed(1), z:+u.z.toFixed(1), rot:u.rot, zone:lane.zone, lane:lane.id, station:s.idx, generated:true,
         spec:{ レーン:`${lane.id} ${R.n}`, 工程:`S${s.idx}${s.aux? "（補助）":""} ${s.n>1? s.n+" 台並列" : ""}`, 標準時間:`${s.ct} ${s.unit}/${R.unitName}`, 自動化:s.auto==="auto"? "無人運転可" : s.auto==="semi"? "監視付き自動" : "手作業", ...s.spec } };
       EQUIP.push(e); tagEq(grp, e); eqIds.push(id); g.add(grp);
@@ -69,12 +69,12 @@ function generateLane(lane){
     const s = p.s; const tag = makeLabel(`S${s.idx}  ${s.n>1? "×"+s.n+" " : ""}${s.ct? s.ct+" "+s.unit : ""}`, { scale:0.55, bg:"rgba(20,24,30,0.8)", accent:"#"+R.color.toString(16).padStart(6,"0") }); tag.position.set(p.x, yF+1.2, p.z); tag.userData.kind = "eq"; tag.userData.floor = lane.floor; ov.add(tag); });
   const anim = { update(t){ for (const m of strips) m.material.map.offset.x = -t*0.35; } }; ANIM.push(anim);
   // ---- 天井設備 ----
-  const oh = new THREE.Group(); oh.name = "overhead"; oh.userData.layer = "overhead"; g.add(oh); const ceilY = lane.floor===1 ? (lane.zone==="mach"||lane.zone==="asm1"||lane.zone==="asm2" ? 12.6 : BLD.lv[1]-0.8) : BLD.lv[lane.floor]-0.8;
+  const oh = new THREE.Group(); oh.name = "overhead"; oh.userData.layer = "overhead"; g.add(oh); const ceilY = lane.zone==="north" ? 5.9 : lane.floor===1 ? (lane.zone==="mach"||lane.zone==="asm1"||lane.zone==="asm2" ? 12.6 : BLD.lv[1]-0.8) : BLD.lv[lane.floor]-0.8;
   const row0 = lay.rows[0]; const laneLen = lane.area[1]-lane.area[0]-1; const cxL = (lane.area[0]+lane.area[1])/2;
   for (const k of R.overhead){
     if (k==="gantryLoader"){ const mcs = lay.units.filter(u=>u.s.kind==="mc5" && u.row===0); if (!mcs.length) continue; const xs = mcs.map(u=>u.x); const xa = Math.min(...xs)-3.2, xb = Math.max(...xs)+3.2; const z = mcs[0].z; const gl = makeGantryLoader(xb-xa, 6.6, xs.map(x=>x-(xa+xb)/2)); gl.position.set((xa+xb)/2, yF, z); oh.add(gl); animOverhead("gantryLoader", gl, 0); }
-    else if (k==="toolRail"){ const len = Math.min(laneLen, 30); const z = lane.recipe==="assembly" ? (row0.zTop + row0.d/2) : (row0.zTop + row0.d + 2.0); const hl = Math.max(1, ceilY - 6.6); const tr = makeToolRail(len, hl, lane.recipe==="panel"? 2 : 4); tr.position.set(cxL, yF+6.6 - (lane.zone==="elab"? 2.6 : 0), z); if (lane.zone==="elab"){ tr.position.y = yF+3.6; tr.userData.trolleys.forEach(o=>{ o.tool.position.y = -1.6; }); } oh.add(tr); animOverhead("toolRail", tr, 0); }
-    else if (k==="boom"){ const boomY = lane.zone==="elab" ? 3.3 : 6.5; const hl = Math.max(0.3, ceilY - yF - boomY); for (const [i, x] of [cxL-laneLen*0.3, cxL+laneLen*0.3].entries()){ const bm = makeEnergyBoom(hl); bm.position.set(x, yF + boomY, row0.zTop + row0.d + (lane.recipe==="assembly"? -1 : 1.5)); oh.add(bm); animOverhead("boom", bm, i*1.3); } }
+    else if (k==="toolRail"){ const len = Math.min(laneLen, 30); const z = lane.recipe==="assembly" ? (row0.zTop + row0.d/2) : (row0.zTop + row0.d + 2.0); const low = lane.zone==="elab" || lane.zone==="north"; const railY = low ? 3.6 : 6.6; const hl = Math.max(0.6, ceilY - railY); const tr = makeToolRail(len, hl, lane.recipe==="panel"? 2 : 4); tr.position.set(cxL, yF+railY, z); if (low){ tr.userData.trolleys.forEach(o=>{ o.tool.position.y = -1.6; }); } oh.add(tr); animOverhead("toolRail", tr, 0); }
+    else if (k==="boom"){ const boomY = (lane.zone==="elab" || lane.zone==="north") ? 3.3 : 6.5; const hl = Math.max(0.3, ceilY - yF - boomY); for (const [i, x] of [cxL-laneLen*0.3, cxL+laneLen*0.3].entries()){ const bm = makeEnergyBoom(hl); bm.position.set(x, yF + boomY, row0.zTop + row0.d + (lane.recipe==="assembly"? -1 : 1.5)); oh.add(bm); animOverhead("boom", bm, i*1.3); } }
     else if (k==="jib"){ const gu = lay.units.find(u=>u.s.kind==="gantry"); if (!gu) continue; const j = makeJib(); j.position.set(gu.x + gu.w/2 + 1.2, yF, gu.z + 1.5); oh.add(j); animOverhead("jib", j, 0.4); }
     else if (k==="laser"){ const au = lay.units.find(u=>u.s.kind==="asmA"); if (!au) continue; const lp = makeLaserProjector(9.4, 4.9); lp.position.set(au.x, 0, au.z); placeLaser(lp, ceilY, yF, 9.4, 4.9); oh.add(lp); animOverhead("laser", lp, 0); }
     else if (k==="cams"){ for (let x=lane.area[0]+3; x<lane.area[1]-1; x+=8){ const c = makeCamNode(); c.position.set(x, ceilY, lane.area[2]+1.5); c.rotation.y = Math.PI; oh.add(c); } }
@@ -83,6 +83,12 @@ function generateLane(lane){
   // 区画内に残る固定設備（ラック等）は転用に伴い非表示にし、レーン削除時に復元
   const hidden = []; for (const id in EQ_OBJ){ const o = EQ_OBJ[id]; if (o.data.generated || !["rack","bench","testcell"].includes(o.data.kind)) continue; const [x0,x1,z0,z1] = lane.area; const f = ZONES.find(z=>z[0]===o.data.zone)?.[2] ?? 1;
     if (f===lane.floor && o.data.x>x0 && o.data.x<x1 && o.data.z>z0 && o.data.z<z1 && o.group.visible){ o.group.visible = false; hidden.push(id); } }
+  oh.children.slice().forEach(c => compactGroup(c));
+  // アンドン表示板（レーン中央の天井から）とレーン名バナー
+  const kpi0 = computeLaneKPI(lane, sts); const cxA = (lane.area[0]+lane.area[1])/2, czA = lane.area[2] + 1.5;
+  if (lane.floor === 1 && lane.zone !== "north"){ const an = makeAndon({ lane, kpi:kpi0 }); an.position.set(cxA, Math.min(ceilY - 0.2, yF + 9.0), czA); an.scale.setScalar(0.8); oh.add(an);
+    const bn = makeBanner(`${lane.id}  ${R.n}`, R.color); bn.position.set(cxA - 6.5, Math.min(ceilY - 0.2, yF + 8.4), czA); bn.scale.setScalar(0.8); oh.add(bn); }
+  else if (lane.zone === "north"){ const an = makeAndon({ lane, kpi:kpi0 }); an.position.set(cxA, 5.4, -31.2); an.scale.setScalar(0.7); oh.add(an); }
   const obj = { lane, group:g, sts, aux, lay, stationPos, overlay:ov, eqIds, anim: ANIM.slice(animStart), strips, hidden };
   obj.kpi = computeLaneKPI(lane, sts); LANE_OBJ[lane.id] = obj; return obj;
 }
@@ -182,5 +188,7 @@ function assemblyScenarios(){ const asmO = Object.values(LANE_OBJ).find(o => LAN
   const mk = (n, patch, withTest) => { const L = cloneLane(base, patch); const ev = evalLane(L); const entries = [...others, { lane:L, kpi:ev.kpi }]; let tev = null; if (withTest){ tev = evalLane(testLane); entries.push({ lane:testLane, kpi:tev.kpi }); }
     const P = computePlant(entries); return { n, L, ev, tev, P, capex: ev.capex - asmO.kpi.capex0 + (tev? tev.capex : 0), ppl: ev.kpi.ppl + (tev? tev.kpi.ppl : 0) }; };
   const cur = evalLane(base); asmO.kpi.capex0 = cur.capex;
-  const so2 = cloneLane(base.stationOv || {}); so2.asmMech = Object.assign({}, so2.asmMech, { n:2 });
-  return [ mk("現状", {}, false), mk("組立ベイ 2 並列（機械組立 ×2）", { stationOv: so2, override:{ asmMech:2 } }, false), mk("試験を試験レーンへ外出し（試験セル ×2）", { offload:["test"] }, true), mk("両方", { stationOv: so2, override:{ asmMech:2 }, offload:["test"] }, true) ]; }
+  const so = base.stationOv || {}; const nMech = so.asmMech?.n ?? base.override?.asmMech ?? 1; const nWire = so.asmWire?.n ?? 1;
+  const ov = (m, w) => ({ stationOv: Object.assign(cloneLane(so), { asmMech: Object.assign({}, so.asmMech, { n:m }), asmWire: Object.assign({}, so.asmWire, { n:w }) }), override: Object.assign({}, base.override, { asmMech:m }) });
+  return [ mk("現状", {}, false), mk(`配線・ソフト結合ベイ 2 並列（×${nWire+1}）`, ov(nMech, nWire+1), false), mk(`機械組立ベイ +1（×${nMech+1}）`, ov(nMech+1, nWire), false), mk("試験を試験レーンへ外出し（試験セル ×2）", Object.assign({ offload:["test"] }), true), mk("配線 2 並列 ＋ 試験外出し", Object.assign(ov(nMech, nWire+1), { offload:["test"] }), true) ];
+}

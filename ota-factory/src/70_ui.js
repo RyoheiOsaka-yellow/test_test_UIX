@@ -116,9 +116,8 @@ document.querySelectorAll("#ledger [data-tab]").forEach(b => b.onclick = () => {
 const LANE_SLOTS = [
   { id:"mach-N", n:"機械加工エリア 北側（1F）", zone:"mach", floor:1, area:[-43,-13,-29.5,-12] },
   { id:"mach-S", n:"機械加工エリア 南側（1F）", zone:"mach", floor:1, area:[-43,-13,-11,1] },
-  { id:"asm",    n:"大型組立ベイ A＋B（1F）",   zone:"asm1", floor:1, area:[-11,19,-29,1] },
+  { id:"asm",    n:"大型組立ベイ 1〜4（1F）",    zone:"asm1", floor:1, area:[-11,35,-29,1] },
   { id:"elab",   n:"電子・制御ラボ（1F）",      zone:"elab", floor:1, area:[-5.5,5.5,3,17] },
-  { id:"recv",   n:"受入・資材置場を転用（1F）",zone:"recv", floor:1, area:[20.5,35.5,-29.5,-14.5] },
   { id:"yard",   n:"北側 屋外庇下ヤード 東",    zone:"north",floor:1, area:[2,44,-39.8,-30.5] },
   { id:"yard2",  n:"北側 屋外ヤード 西",        zone:"north",floor:1, area:[-44,0,-39.8,-30.5] },
   { id:"tcell",  n:"試運転・試験セル区画（1F）", zone:"tcell",floor:1, area:[20.5,43,-14,1] },
@@ -157,7 +156,7 @@ function applyLaneForm(id, fd){ const o = LANE_OBJ[id]; const L = o ? o.lane : {
   const so = {}; const keys = typeof fd.keys === "function" ? [...fd.keys()] : []; for (const k of keys){ const [f, t] = k.split(":"); if (!t || !STATION_TYPES[t]) continue; so[t] = so[t] || {}; const v = fd.get(k); if (f==="ct") so[t].ct = +v; else if (f==="n") so[t].n = Math.max(1, +v|0); else if (f==="auto") so[t].auto = v; else if (f==="ppl") so[t].ppl = +v; }
   L.stationOv = (recipe === (o? o.lane.recipe : recipe) && keys.length) ? so : {}; if (L.override && L.stationOv[MAIN_STATION[recipe]]) L.stationOv[MAIN_STATION[recipe]].n = L.override[MAIN_STATION[recipe]];
   generateLane(L); if (!LANES.includes(L)) LANES.push(L); setActiveLane(L.id); afterLaneChange(); focusLane(L.id); }
-function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
+function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
 function focusLane(id){ const o = LANE_OBJ[id]; if (!o) return; const L = o.lane; if (walk.on) toggleWalk(false); setMode(L.floor); const [x0,x1,z0,z1] = L.area; const w = Math.max(x1-x0, z1-z0);
   setCam({ yaw: L.floor===2? -0.9 : -0.6, pitch:0.62, dist: w*1.35, target:[(x0+x1)/2, BLD.lv[L.floor-1]+2, (z0+z1)/2] }); setActiveLane(id); renderLanes(); renderOS(); }
 $("laneAdd").onclick = () => { let n = 6; while (LANE_OBJ["L"+n]) n++; const id = "L"+n; const fd = new Map([["recipe","precision"],["main","3"],["shifts","2"],["unattended","8"],["slot","recv"]]); applyLaneForm(id, fd); const card = document.querySelector(`.lane[data-id="${id}"] form`); if (card) card.hidden = false; };
@@ -248,7 +247,7 @@ addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; con
 
 // ================= 構築 & メインループ =================
 function build(){
-  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildMovers();
+  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildMovers();
   for (const k in LAYERS) { if (k === "green" || k === "context") LAYERS[k].userData.layer = k; }
   // 人・車両レイヤー：階グループ内の作業者にも付与
   scene.traverse(o => { if (o.userData.legs) o.userData.layer = "people"; });

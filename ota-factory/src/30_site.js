@@ -94,11 +94,12 @@ function buildSite(){
   mg.box(0.5, 0.02, 60, M.lineWhite, 50, 0.03, 0); for (let z=-30; z<30; z+=6) mg.box(0.25, 0.02, 3, M.line, 55, 0.03, z);
   mg.box(0.4, 2.2, 0.4, M.darkSteel, 46, 0, hd); mg.box(0.4, 2.2, 0.4, M.darkSteel, 58, 0, hd); mg.box(11.6, 0.08, 0.08, M.steel, 52, 2.0, hd);
   // 北側：キュービクル・コンプレッサ室・屋外試験ヤードの庇
-  for (let i=0;i<3;i++){ mg.box(3.2, 2.4, 1.6, std(0xbfc6cc,{metalness:0.4,roughness:0.5}), -36+i*3.6, 0.2, -36); mg.box(3.0, 0.1, 1.5, M.darkSteel, -36+i*3.6, 2.6, -36); }
-  mg.box(8, 3.2, 4, M.wallMetal, -20, 0, -36); mg.box(8.4, 0.3, 4.4, M.darkSteel, -20, 3.2, -36);
-  mg.cyl(0.9, 2.8, std(0xd8dcdf,{metalness:0.5,roughness:0.4}), -10, 0.2, -36.5, 20); mg.cyl(0.9, 2.8, std(0xd8dcdf,{metalness:0.5,roughness:0.4}), -7.5, 0.2, -36.5, 20);
-  for (const x of [8, 20, 32]) { mg.cyl(0.2, 5, M.steel, x, 0, -33, 10); mg.cyl(0.2, 5, M.steel, x, 0, -39, 10); }
-  mg.box(26, 0.25, 7, M.roofMetal, 20, 5, -36);
+  for (let i=0;i<3;i++){ mg.box(3.2, 2.4, 1.6, std(0xbfc6cc,{metalness:0.4,roughness:0.5}), -57+i*3.6, 0.2, -30); mg.box(3.0, 0.1, 1.5, M.darkSteel, -57+i*3.6, 2.6, -30); }
+  mg.box(6, 3.2, 4, M.wallMetal, -52, 0, -36); mg.box(6.4, 0.3, 4.4, M.darkSteel, -52, 3.2, -36);
+  mg.cyl(0.9, 2.8, std(0xd8dcdf,{metalness:0.5,roughness:0.4}), -47, 0.2, -36.5, 20); mg.cyl(0.9, 2.8, std(0xd8dcdf,{metalness:0.5,roughness:0.4}), -47, 0.2, -33, 20);
+  for (let x=-42; x<=42; x+=12) { mg.cyl(0.2, 5.6, M.steel, x, 0, -31.5, 10); mg.cyl(0.2, 5.6, M.steel, x, 0, -39.2, 10); mg.box(0.3, 0.5, 8.4, M.darkSteel, x, 5.6, -35.3); }
+  mg.box(88, 0.22, 9.2, M.roofMetal, 0, 6.1, -35.3); mg.box(88, 0.35, 0.12, M.darkSteel, 0, 5.8, -39.9); for (let x=-43; x<=43; x+=0.5) mg.box(0.12, 0.08, 9.0, M.steel, x, 6.32, -35.3);
+  mg.box(88, 0.03, 9.0, std(0xc9cdd1,{roughness:0.55}), 0, 0.045, -35.3);   // 庇下は土間コンクリート
   // 外周フェンス（南面以外）
   for (let x=-hw; x<=hw; x+=4){ mg.box(0.08, 2.0, 0.08, M.fence, x, 0, -hd); }
   for (let z=-hd; z<=hd; z+=4){ mg.box(0.08, 2.0, 0.08, M.fence, -hw, 0, z); if (z<hd-8) mg.box(0.08, 2.0, 0.08, M.fence, hw, 0, z); }

@@ -45,11 +45,11 @@ const ZTYPE = {
 const ZONES = [
   // ---- 1F 機械ホール（高天井 14m / 10tクレーン2基）----
   ["mach",  "機械加工エリア",       1, "mach", -44, -12, -30, 2,  14, "5軸MC・横型MC・門型MC・旋盤・EDM。ロボットセル2基で自動供給。"],
-  ["asm1",  "大型組立ベイ A",       1, "asm",  -12,   4, -30, 2,  10, "開発中大型機の組立・調整。10tクレーン直下、床耐荷重 5t/㎡。"],
-  ["asm2",  "大型組立ベイ B",       1, "asm",    4,  20, -30, 2,  10, "第2号機／顧客立会い組立。可動間仕切りでAと連結可。"],
-  ["recv",  "受入・資材置場",       1, "logi",  20,  36, -30, -14, 3, "パレットラック・部品棚。入荷検査後 AGV で各ベイへ供給。"],
+  ["asm1",  "大型組立ベイ 1〜4（機械組立）", 1, "asm", -12, 36, -30, -17, 16, "開発中大型機を 4 ベイ並列で機械組立。10tクレーン直下、床耐荷重 5t/㎡。"],
+  ["asm2",  "配線・ソフト結合ベイ",  1, "asm",  -12,  20, -17, 2,   8, "機械組立後の配線・制御盤接続・ソフト結合。顧客立会いもここで。"],
   ["tcell", "試運転・性能試験セル", 1, "test",  20,  36, -14, 2,   4, "防音ガラス囲い。振動・騒音・熱測定、ソフトとの連成試験。"],
-  ["ship",  "出荷ドック",           1, "logi",  36,  44, -30, 2,   3, "ドックレベラー2基・大型機は東側大扉からトレーラー積込。"],
+  ["recv",  "受入・資材置場",       1, "logi",  36,  44, -30, -14, 3, "受入ドック DK-01 直結。パレットラックから AGV で各ベイへ供給。"],
+  ["ship",  "出荷ドック",           1, "logi",  36,  44, -14, 2,   3, "ドックレベラー DK-02・大型機は東側大扉 DK-03 からトレーラー積込。"],
   // ---- 1F 南側ストリップ ----
   ["lobby", "エントランス・受付",   1, "pub",  -44, -30,  2, 18,  2, "来客ロビー。ガラス越しに機械ホールを見せるショーケース動線。"],
   ["show",  "ショールーム・実機展示",1, "pub", -30, -16,  2, 18,  1, "開発機の実機展示・デモ。ホールと一体の吹抜け。"],
@@ -80,7 +80,7 @@ const ZONES = [
   ["plaza", "前庭プラザ・来客駐車", 0, "out",  -44,  44, 24, 40,  0, "歩道からの緩やかなアプローチ。樹木・ベンチ。"],
   ["park",  "駐車場（太陽光カーポート）",0,"out",-60, -44,-40, 40, 0, "32台。カーポート屋根に太陽光 120kW。"],
   ["yard",  "東側ヤード・トラック動線",0,"out",  44,  60,-40, 40, 0, "大型トレーラー進入路・ドック待機。"],
-  ["north", "北側 屋外試験ヤード・設備",0,"out",-44,  44,-40,-30, 0, "キュービクル・コンプレッサ・屋外試験スペース。"],
+  ["north", "北側 庇下ヤード（板金・塗装）",0,"out",-44,  44,-40,-30, 0, "庇下に板金・溶接レーンと塗装レーン。キュービクル・コンプレッサも北側。"],
 ];
 
 // ---- 設備台帳（機械ホール・ラボ） ----
@@ -88,14 +88,12 @@ const ZONES = [
 const EQUIP = [
   // ※ 工作機械・組立ステーション・制御盤組立はレーン定義（LANES）から自動生成される
   // 組立ベイ
-  { id:"RK-A",  kind:"rack",   name:"部品ラック A", x:-10.5, z:-27, rot:0, zone:"asm1", spec:{ 仕様:"パレットラック 3段 L8m", 用途:"組立部品キット" } },
-  { id:"RK-B",  kind:"rack",   name:"部品ラック B", x:17.5, z:-27, rot:0, zone:"asm2", spec:{ 仕様:"パレットラック 3段 L8m", 用途:"組立部品キット" } },
+  { id:"RK-B",  kind:"rack",   name:"組立部品キットラック", x:-6, z:-0.5, rot:0, zone:"asm2", spec:{ 仕様:"パレットラック 3段 L8m", 用途:"組立部品キット（AGV 供給）" } },
   // 試験・受入・出荷
   { id:"TC-01", kind:"testcell", name:"試運転・性能試験セル", x:28, z:-6, rot:0, zone:"tcell",
     spec:{ 仕様:"防音ガラス囲い 14×12m・H6m", 計測:"振動/騒音/熱/消費電力", 連成:"HILラボとリアルタイム接続", 電源:"200 kVA" } },
-  { id:"RK-R1", kind:"rack",   name:"資材パレットラック 1", x:24, z:-26, rot:0, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"購入部品・鋼材" } },
-  { id:"RK-R2", kind:"rack",   name:"資材パレットラック 2", x:24, z:-20, rot:0, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"購入部品・鋼材" } },
-  { id:"RK-R3", kind:"rack",   name:"資材パレットラック 3", x:32, z:-26, rot:0, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"梱包材・治具" } },
+  { id:"RK-R1", kind:"rack",   name:"資材パレットラック 1", x:38.5, z:-25, rot:Math.PI/2, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"購入部品・鋼材" } },
+  { id:"RK-R2", kind:"rack",   name:"資材パレットラック 2", x:38.5, z:-16.5, rot:Math.PI/2, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"梱包材・治具" } },
   { id:"DK-01", kind:"dock",   name:"ドックレベラー #1", x:43, z:-24, rot:0, zone:"ship", spec:{ 仕様:"油圧式 2.0×2.5m 6t", 扉:"電動オーバースライダー W3.5×H4.5" } },
   { id:"DK-02", kind:"dock",   name:"ドックレベラー #2", x:43, z:-16, rot:0, zone:"ship", spec:{ 仕様:"油圧式 2.0×2.5m 6t", 扉:"電動オーバースライダー W3.5×H4.5" } },
   { id:"DK-03", kind:"bigdoor",name:"大型機搬出大扉", x:43, z:-5, rot:0, zone:"ship", spec:{ 仕様:"W8.0×H7.0 電動ハンガードア", 用途:"大型機のトレーラー積込（低床）" } },
@@ -104,7 +102,7 @@ const EQUIP = [
     spec:{ 定格:"10 t", スパン:"30 m", 揚程:"9 m", 走行:"全長 88m 共用ランウェイ", 制御:"インバータ・無線操作" } },
   { id:"CR-02", kind:"crane",  name:"天井クレーン #2（10t）", x:14, z:-14, rot:0, zone:"asm2",
     spec:{ 定格:"10 t", スパン:"30 m", 揚程:"9 m", 走行:"全長 88m 共用ランウェイ", 制御:"インバータ・無線操作" } },
-  { id:"AGV-1", kind:"agv",    name:"AGV #1（パレット搬送）", x:30, z:-14, rot:0, zone:"recv", spec:{ 可搬:"1,000 kg", 速度:"1.5 m/s", 誘導:"SLAM（自社ソフト）" } },
+  { id:"AGV-1", kind:"agv",    name:"AGV #1（パレット搬送）", x:40, z:-14, rot:0, zone:"recv", spec:{ 可搬:"1,000 kg", 速度:"1.5 m/s", 誘導:"SLAM（自社ソフト）" } },
   { id:"AGV-2", kind:"agv",    name:"AGV #2（部品供給）", x:-20, z:-14, rot:0, zone:"mach", spec:{ 可搬:"500 kg", 速度:"1.5 m/s", 誘導:"SLAM（自社ソフト）" } },
   // 1F ラボ
   { id:"CM-01", kind:"cmm",    name:"門型三次元測定機", x:-11, z:9, rot:0, zone:"cmm",
@@ -139,8 +137,8 @@ const TOUR = [
     text:"レシピ「旋盤→5軸MC×3→横型MC×2→洗浄→計測→ストア」を区画に流し込むと、機械配置・床の流れ・天井ガントリーローダ・ツールレールが自動生成され、タクト・日産・OEE・自動化率が算出される。" },
   { cam:{ yaw:-0.6, pitch:0.62, dist:42, target:[-28,2,-5] }, mode:"floor", floor:1, lane:"L2", title:"レーン L2：大型構造物 加工レーン",
     text:"門型MCを中心に研削・EDM・計測へ。ジブクレーンとエネルギーブームが大物の段取りを支える。" },
-  { cam:{ yaw:-1.0, pitch:0.3, dist:46, target:[-4,4,-16] }, mode:"int", floor:1, title:"大型組立ベイ A",
-    text:"床耐荷重 5t/㎡・クレーン直下。開発機を組み上げながら、真上のソフト開発フロアからログを見てパラメータを即時に調整。" },
+  { cam:{ yaw:-1.0, pitch:0.3, dist:46, target:[-4,4,-16] }, mode:"int", floor:1, title:"大型組立ベイ 1〜4",
+    text:"機械組立を 4 ベイ並列にし、配線・ソフト結合ベイへ流す 2 ステージ。床耐荷重 5t/㎡・クレーン直下。真上のソフト開発フロアからログを見てパラメータを即時に調整。" },
   { cam:{ yaw:0.9, pitch:0.3, dist:40, target:[28,3,-6] }, mode:"int", floor:1, title:"試運転・性能試験セル",
     text:"防音ガラス囲い。振動・騒音・電力を計測し、2F HIL ラボとリアルタイム連成。" },
   { cam:{ yaw:-0.8, pitch:0.5, dist:48, target:[4,2,-14] }, mode:"floor", floor:1, lane:"L3", title:"レーン L3：大型機 組立レーンと天井工具",
@@ -263,12 +261,16 @@ const LANES = [
     shifts:{ hours:8, shifts:2, unattended:8 }, oee:{ avail:0.88, perf:0.95, qual:0.985 } },
   { id:"L2", recipe:"heavy",     zone:"mach", floor:1, area:[-43,-13,-11,1],    flowDir:1,
     shifts:{ hours:8, shifts:2, unattended:6 }, oee:{ avail:0.85, perf:0.9, qual:0.98 } },
-  { id:"L3", recipe:"assembly",  zone:"asm1", floor:1, area:[-11,19,-29,1],     flowDir:1,
+  { id:"L3", recipe:"assembly",  zone:"asm1", floor:1, area:[-11,35,-29,1],     flowDir:1, override:{ asmMech:4 },
     shifts:{ hours:8, shifts:1, unattended:0, days:21 }, oee:{ avail:0.9, perf:0.9, qual:1 } },
   { id:"L4", recipe:"panel",     zone:"elab", floor:1, area:[-5.5,5.5,3,17],    flowDir:1,
     shifts:{ hours:8, shifts:2, unattended:0 }, oee:{ avail:0.92, perf:0.95, qual:0.99 } },
   { id:"L5", recipe:"software",  zone:"sw",   floor:2, area:[-36,34,3,17],      flowDir:1,
     shifts:{ hours:8, shifts:1, unattended:16, days:5 }, oee:{ avail:0.97, perf:1, qual:0.95 } },
+  { id:"L6", recipe:"sheet",     zone:"north",floor:1, area:[2,44,-39.8,-30.5],  flowDir:1,
+    shifts:{ hours:8, shifts:1, unattended:6, days:5 }, oee:{ avail:0.85, perf:0.92, qual:0.98 } },
+  { id:"L7", recipe:"paint",     zone:"north",floor:1, area:[-44,0,-39.8,-30.5], flowDir:1,
+    shifts:{ hours:8, shifts:1, unattended:4, days:5 }, oee:{ avail:0.85, perf:0.92, qual:0.98 } },
 ];
 
 // ================= v0.3: 追加レシピ・レーン間の物量リンク・需要 =================
