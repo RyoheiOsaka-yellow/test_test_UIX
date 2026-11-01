@@ -145,6 +145,8 @@ const TOUR = [
     text:"防音ガラス囲い。振動・騒音・電力を計測し、2F HIL ラボとリアルタイム連成。" },
   { cam:{ yaw:-0.8, pitch:0.5, dist:48, target:[4,2,-14] }, mode:"floor", floor:1, lane:"L3", title:"レーン L3：大型機 組立レーンと天井工具",
     text:"10t クレーン（フェストゥーン・巻上ドラム・フックブロック）、ツールバランサーレールのナットランナ、エネルギーブーム、据付基準を床に描くレーザー投影、天井カメラ／UWB で人と部品の位置を把握。" },
+  { cam:{ yaw:-0.5, pitch:0.55, dist:120, target:[0,3,-12] }, mode:"floor", floor:1, plant:true, title:"工場全体のライン：需要 → 必要物量 → 制約",
+    text:"目標「大型機 2 台/月」から BOM で各レーンの必要量を出し、能力と比べて稼働率を表示。緑の流線が供給レーン→組立の物量リンク。社内レーンの無い品目は外注前提として表示する。左下「工場全体」で目標台数を動かせる。" },
   { cam:{ yaw:-0.7, pitch:0.5, dist:140, target:[0,5,-8] }, mode:"floor", floor:2, module:"edge", title:"YELLOW Factory OS：Edge Runtime",
     text:"全レーンの機械に載る実行環境。1 kHz のログが 2F の Edge DC に集まり、Scheduler・Quality AI・Digital Twin（このモデル自身）に供給される。モジュールをクリックすると、使うレーンとデータの流れを表示。" },
   { cam:{ yaw:-1.1, pitch:0.4, dist:60, target:[-20,7,10] }, mode:"floor", floor:2, lane:"L5", title:"2F ソフトウェア開発フロア = レーン L5",
@@ -268,3 +270,62 @@ const LANES = [
   { id:"L5", recipe:"software",  zone:"sw",   floor:2, area:[-36,34,3,17],      flowDir:1,
     shifts:{ hours:8, shifts:1, unattended:16, days:5 }, oee:{ avail:0.97, perf:1, qual:0.95 } },
 ];
+
+// ================= v0.3: 追加レシピ・レーン間の物量リンク・需要 =================
+Object.assign(STATION_TYPES, {
+  laser:   { n:"ファイバーレーザー加工機", kind:"laser",  fp:[7.0,4.2], ct:9,   unit:"min", auto:"auto",   ppl:0.3,
+             spec:{ 型式:"ファイバーレーザー 6 kW（想定）", 加工範囲:"3000×1500", 材料:"SS400/SUS/AL t25まで", 供給:"自動パレットチェンジャ", 電源:"60 kVA" } },
+  brake:   { n:"プレスブレーキ",        kind:"brake",  fp:[4.4,2.6], ct:12,  unit:"min", auto:"semi",   ppl:1,
+             spec:{ 型式:"油圧プレスブレーキ 220 t（想定）", 曲げ長:"4,000 mm", 支援:"曲げ順序を Edge 端末へ配信、角度センサ補正" } },
+  weld:    { n:"溶接ロボットセル",      kind:"weld",   fp:[6.4,6.4], ct:35,  unit:"min", auto:"auto",   ppl:0.5,
+             spec:{ 構成:"6軸溶接ロボット＋2軸ポジショナ＋ヒューム集塵", 方式:"MAG/TIG 切替", 安全:"遮光パネル・光線式安全装置" } },
+  finish:  { n:"仕上げ・研磨ブース",    kind:"finish", fp:[3.6,3.0], ct:15,  unit:"min", auto:"manual", ppl:1,
+             spec:{ 仕様:"集塵ブース・ベルトサンダ・歪取り定盤", 品質:"溶接外観をカメラで自動判定" } },
+  mask:    { n:"マスキング・前処理",    kind:"mask",   fp:[3.4,2.6], ct:20,  unit:"min", auto:"manual", ppl:1,
+             spec:{ 仕様:"脱脂槽・マスキング台・吊り治具", 連携:"塗装レシピ（色・膜厚）は MES から取得" } },
+  booth:   { n:"塗装ブース",            kind:"booth",  fp:[8.0,5.0], ct:30,  unit:"min", auto:"semi",   ppl:1,
+             spec:{ 仕様:"給排気ブース 8×5×4 m、塗装ロボット＋手吹き", 排気:"活性炭フィルタ、消防法 指定数量以下", 電源:"40 kVA" } },
+  oven:    { n:"乾燥炉",                kind:"oven",   fp:[6.0,3.6], ct:40,  unit:"min", auto:"auto",   ppl:0,
+             spec:{ 仕様:"熱風循環炉 80℃、台車式", 熱源:"ヒートポンプ＋電気" } },
+  demoPrep:{ n:"デモ準備・段取",        kind:"demoPrep", fp:[4.0,3.0], ct:4, unit:"h",  auto:"manual", ppl:2,
+             spec:{ 仕様:"デモ用ワーク・治具の準備台、搬入経路確保", 連携:"デモシナリオを Scheduler に登録" } },
+  demo:    { n:"デモステージ（実演）",  kind:"demo",   fp:[10.0,7.0], ct:3,  unit:"h",   auto:"manual", ppl:2,
+             spec:{ 仕様:"可動ステージ＋大型ディスプレイ＋来客席 12", 演出:"稼働データを Digital Twin にライブ表示" } },
+  accept:  { n:"立会い検収・契約",      kind:"ref",    ref:"@zone:mtg2", ct:2, unit:"h", auto:"manual", ppl:1 },
+  tcell:   { n:"試験セル（防音・計測）", kind:"tcell",  fp:[13.5,11.5], ct:40, unit:"h", auto:"semi",   ppl:2,
+             spec:{ 仕様:"防音ガラス囲い 13×11×6 m", 計測:"振動/騒音/熱/電力", 連成:"HIL ラボとリアルタイム接続", 電源:"200 kVA" } },
+  report:  { n:"試験報告・判定",        kind:"ref",    ref:"HIL-1", ct:4, unit:"h", auto:"auto", ppl:0.5 },
+});
+Object.assign(LANE_RECIPES, {
+  sheet:   { n:"板金・溶接 レーン", mode:"flow", color:0xff9f43, unitName:"個",
+    stations:[["load",1],["laser",1],["brake",1],["weld",2],["finish",1],["store",1]], aux:[],
+    overhead:["toolRail","boom","cams"], os:["edge","sched","mes","qai","cmms"], params:{},
+    desc:"レーザー切断→曲げ→ロボット溶接×2→仕上げ→ストア。カバー・架台・ブラケット類を内製。", supplies:"板金部品" },
+  paint:   { n:"塗装 レーン", mode:"flow", color:0x2ec4b6, unitName:"個",
+    stations:[["mask",1],["booth",1],["oven",1],["store",1]], aux:[],
+    overhead:["boom","cams"], os:["edge","mes","qai"], params:{},
+    desc:"前処理→塗装ブース（ロボット＋手吹き）→乾燥炉→ストア。カバー・外装の社内塗装。", supplies:"塗装部品" },
+  demo:    { n:"顧客デモ・立会い レーン", mode:"release", color:0xffd166, unitName:"デモ",
+    stations:[["demoPrep",1],["demo",1],["accept",1]], aux:[],
+    overhead:["laser","cams"], os:["twin","mes","sched"], params:{},
+    desc:"デモ準備→ステージ実演→会議室で検収・契約。稼働データをライブで見せる営業の工程。" },
+  testing: { n:"試験 レーン（試験セル複数）", mode:"project", color:0xff6b6b, unitName:"台",
+    stations:[["tcell",2],["report",1]], aux:[],
+    overhead:["crane","cams"], os:["edge","cicd","qai","mes"], params:{},
+    desc:"試験セル×2 で並行試験、HIL ラボで自動判定。組立レーンの試験工程をここへ外出しして組立タクトを縮める。" },
+});
+// 既存レシピの供給品目
+LANE_RECIPES.precision.supplies = "精密部品"; LANE_RECIPES.heavy.supplies = "大型構造部品"; LANE_RECIPES.panel.supplies = "制御盤";
+LANE_RECIPES.software.supplies = "ソフトリリース"; LANE_RECIPES.assembly.consumes = true; LANE_RECIPES.testing.supplies = "試験済み機";
+
+// ---- 1 台の大型機に必要な物量（BOM）と需要 ----
+const BOM = {
+  "精密部品":     { perUnit:120, n:"精密加工部品（軸・ハウジング・治具）", unit:"個" },
+  "大型構造部品": { perUnit:6,   n:"大型構造部品（ベッド・コラム・クロスレール）", unit:"個" },
+  "板金部品":     { perUnit:40,  n:"板金部品（カバー・架台・ブラケット）", unit:"個" },
+  "塗装部品":     { perUnit:40,  n:"塗装部品（外装カバー）", unit:"個" },
+  "制御盤":       { perUnit:3,   n:"制御盤（主盤・操作盤・ロボット盤）", unit:"面" },
+  "ソフトリリース": { perUnit:2, n:"ソフトリリース（出荷検証版＋現地版）", unit:"件" },
+};
+const DEMAND = { target: 2.0 };   // 目標：大型機 台/月
+const WORK_DAYS = 21, WORK_WEEKS = 4.3;

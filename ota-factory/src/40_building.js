@@ -65,7 +65,7 @@ function buildBuilding(){
   }
   roofExtrude(0, 0.45, M.roofMetal, z0-1, eaveZ, x0-1.2, x1+1.2, gr).name = "roofTop";
   // ホール内側 デッキ（薄グレー）と、ストリップ・キャンチ部の木天井
-  roofExtrude(-0.5, 0.05, std(0xd9dcdf,{roughness:0.8, side:THREE.DoubleSide}), z0-0.5, zh, x0, x1, gr);
+  roofExtrude(-0.5, 0.05, M.hallGlow, z0-0.5, zh, x0, x1, gr);
   const soffit = mesh(G.plane(W+2.4, eaveZ - zh), M.timber, (x0+x1)/2, 13.65, (zh+eaveZ)/2, { rot:[Math.PI/2,0,0], cast:false }); soffit.material = M.timber.clone(); soffit.material.map = TEX.timber([1, 44]); gr.add(soffit);
   // 木ルーバー（軒下に 30cm ピッチ）
   for (let z=zh+0.3; z<eaveZ-0.3; z+=0.3) R.box(W+2.4, 0.12, 0.06, M.timber, (x0+x1)/2, 13.45, z);
@@ -115,6 +115,21 @@ function buildBuilding(){
   // 外部 人用ドア（北・東）
   E1.box(0.3, 2.2, 1.0, M.darkSteel, x0+6, 0, z0+0.1); E1.box(0.3, 2.2, 1.0, M.darkSteel, x1-0.1, 0, 10);
 
+  // ---------- 外観ディテール：木質エントランス・スパンドレル・屋上設備 ----------
+  // 南西の木質ポータル（ロビー前に 3.5 m 張り出す）
+  E1.box(0.35, lv[1]-0.3, 3.6, M.timberDark, x0+0.2, 0, z1+1.8); E1.box(0.35, lv[1]-0.3, 3.6, M.timberDark, x0+14, 0, z1+1.8);
+  E1.box(14.2, 0.5, 3.8, M.timberDark, x0+7.1, lv[1]-0.8, z1+1.8); E1.box(14.2, 0.6, 0.3, M.timberDark, x0+7.1, lv[1]-0.9, z1+3.5);
+  E1.box(14.2, 0.08, 0.6, M.lampWarm, x0+7.1, lv[1]-0.85, z1+2.6);
+  E1.box(0.3, lv[1]-0.7, z1-zh, M.timberDark, x0+0.35, 0, (zh+z1)/2);                       // 西面 1F は木質壁（ロビー背面）
+  E1.box(2.4, 2.6, 0.12, M.glassTint, x0+7.1, 0, z1+0.2); E1.box(0.1, 2.6, 0.12, M.mullion, x0+5.9, 0, z1+0.2); E1.box(0.1, 2.6, 0.12, M.mullion, x0+8.3, 0, z1+0.2); E1.box(2.6, 0.1, 0.12, M.mullion, x0+7.1, 2.6, z1+0.2);
+  // スパンドレル（階の帯）：3F 床レベルと屋根下
+  E3.box(W, 0.6, 0.1, M.spandrel, (x0+x1)/2, lv[2]-0.6, z1+0.08); E3.box(W, 0.35, 0.1, M.concreteWhite, (x0+x1)/2, 13.5, z1+0.08);
+  E2.box(W, 0.55, 0.3, M.concreteWhite, (x0+x1)/2, lv[1]-0.3, terraceZ-0.15);              // テラス先端の白い帯
+  // 屋上：太陽光パネル（棟1→谷の南斜面）と空調屋外機
+  { const pvM = new Merger(); const za = -15, zb = -5; const sl = (roofY(zb)-roofY(za))/(zb-za); const ang = Math.atan(sl);
+    for (let z=za+0.6; z<zb; z+=2.1) for (let x=x0+3; x<x1-3; x+=2.1){ pvM.boxC(2.0, 0.06, 1.0, M.solar, x, roofY(z)+0.28, z, [-ang,0,0]); pvM.boxC(0.08, 0.2, 0.08, M.steel, x-0.8, roofY(z)+0.12, z, [-ang,0,0]); }
+    for (const x of [20, 26, 32]){ pvM.box(3.0, 1.8, 2.0, std(0xd0d4d8,{metalness:0.4,roughness:0.5}), x, roofY(-3.6)+0.4, -3.6); pvM.box(2.8, 0.12, 1.8, M.darkSteel, x, roofY(-3.6)+2.2, -3.6); for (let k=0;k<6;k++) pvM.box(2.6, 0.03, 0.08, M.darkSteel, x, roofY(-3.6)+0.6+k*0.22, -2.6); pvM.box(3.4, 0.4, 2.4, M.darkSteel, x, roofY(-3.6), -3.6); }
+    pvM.flush(gr, { name:"roofEquip", layer:"envelope" }); }
   // ---------- 床・スラブ・天井 ----------
   const hallFloor = mesh(G.plane(W, zh-z0), M.epoxy, (x0+x1)/2, 0.06, (z0+zh)/2, { rot:[-Math.PI/2,0,0], cast:false }); hallFloor.name="hallFloor"; g1.add(hallFloor);
   const stripFloor = mesh(G.plane(W, z1-zh), std(0xc9ccd0,{ map:TEX.concrete([20,4]), roughness:0.6 }), (x0+x1)/2, 0.06, (zh+z1)/2, { rot:[-Math.PI/2,0,0], cast:false }); g1.add(stripFloor);
@@ -136,8 +151,8 @@ function buildBuilding(){
   // 1F ストリップ天井（2Fスラブ下 / 木ルーバー）・2F 天井（3Fスラブ下）
   for (let z=zh+0.3; z<terraceZ; z+=0.3) E2.box(W, 0.1, 0.05, M.timber, (x0+x1)/2, lv[1]-0.75, z);
   for (let z=zh+0.3; z<z1; z+=0.3) E3.box(W, 0.1, 0.05, M.timber, (x0+x1)/2, lv[2]-0.75, z);
-  g2.add(mesh(G.plane(W, terraceZ-zh), M.ceiling, (x0+x1)/2, lv[1]-0.68, (zh+terraceZ)/2, { rot:[Math.PI/2,0,0], cast:false }));
-  g3.add(mesh(G.plane(W, z1-zh), M.ceiling, (x0+x1)/2, lv[2]-0.68, (zh+z1)/2, { rot:[Math.PI/2,0,0], cast:false }));
+  g2.add(mesh(G.plane(W, terraceZ-zh), M.ceilingGlow, (x0+x1)/2, lv[1]-0.68, (zh+terraceZ)/2, { rot:[Math.PI/2,0,0], cast:false }));
+  g3.add(mesh(G.plane(W, z1-zh), M.ceilingGlow, (x0+x1)/2, lv[2]-0.68, (zh+z1)/2, { rot:[Math.PI/2,0,0], cast:false }));
 
   // ---------- ホール⇔ストリップ境界（z=2）の壁・ガラス ----------
   // 1F：ロビー/ショールームはガラス・開放、他は壁＋ドア
@@ -184,6 +199,8 @@ function buildBuilding(){
   S.flush(g1, { name:"structure", layer:"structure" }); R.flush(gr, { name:"roofStruct", layer:"structure" });
   E1.flush(g1, { name:"env1", layer:"envelope" }); E2.flush(g2, { name:"env2", layer:"envelope" }); E3.flush(g3, { name:"env3", layer:"envelope" });
 
+  { const sg = makeLabel("YELLOW", { scale:1.1, color:"#1a1400", bg:"rgba(242,199,68,0.97)" }); sg.position.set(x0+7, lv[1]-1.4, z1+3.7); sg.userData.kind = "sign"; g1.add(sg);
+    const sg2 = makeLabel("YELLOW  FUSION FACTORY", { scale:0.9, color:"#1a1400", bg:"rgba(242,199,68,0.97)" }); sg2.position.set(x1+0.9, 12.5, 12); sg2.userData.kind = "sign"; g1.add(sg2); }
   // ---------- ゾーンラベル ----------
   for (const z of ZONES){ const [id, name, f, type, xa, xb, za, zb] = z; const g = f===0? layer("site") : floorGroup(f); const y = f===0? 0.3 : lv[f-1] + (f===1 && za<2? 6.5 : 3.0);
     const lb = makeLabel(name, { scale: 1.0, accent:"#"+ZTYPE[type].c.toString(16).padStart(6,"0") }); lb.position.set((xa+xb)/2, y, (za+zb)/2); lb.userData.zone = id; lb.userData.kind = "zone"; lb.userData.floor = f; g.add(lb); }

@@ -3,13 +3,16 @@ const LANE_OBJ = {};        // id -> { lane, group, stations, overlay, kpi, eqId
 let activeLane = null, activeModule = null;
 
 const BUILDERS = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, robotcell:()=>makeRobotCell(true),
-  load:makeLoadStation, wash:makeWash, store:makeStore, asmA:()=>makeAssembly("A"), asmB:()=>makeAssembly("B"), panel:makePanelStation, wiring:makeWiringStation, ptest:makePowerTest };
+  load:makeLoadStation, wash:makeWash, store:makeStore, asmA:()=>makeAssembly("A"), asmB:()=>makeAssembly("B"), panel:makePanelStation, wiring:makeWiringStation, ptest:makePowerTest,
+  laser:makeLaserCutter, brake:makePressBrake, weld:makeWeldCell, finish:makeFinishBooth, mask:makeMaskStation, booth:makePaintBooth, oven:makeOven, demoPrep:makeDemoPrep, demo:makeDemoStage, tcell:makeTestCellStation };
 
 // レシピ＋パラメータ → ステーション配列（[type, n] を展開）
 function expandStations(lane){
   const R = LANE_RECIPES[lane.recipe]; const ov = lane.override || {};
   // 注意: STATION_TYPES の n は表示名なので、台数 n は spread の後で上書きする
-  const sts = R.stations.map(([t, n], i) => ({ ...STATION_TYPES[t], idx:i+1, type:t, n: ov[t] ?? n, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {} }));
+  const so = lane.stationOv || {};   // { type: { ct, n, auto, ppl } }
+  const sts = R.stations.map(([t, n], i) => ({ ...STATION_TYPES[t], idx:i+1, type:t, n: so[t]?.n ?? ov[t] ?? n, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {},
+    ...(so[t]?.ct !== undefined ? { ct:so[t].ct } : {}), ...(so[t]?.auto ? { auto:so[t].auto } : {}), ...(so[t]?.ppl !== undefined ? { ppl:so[t].ppl } : {}) }));
   const aux = (R.aux||[]).map(([t,n], i) => ({ ...STATION_TYPES[t], idx:"A"+(i+1), type:t, n, aux:true, label: STATION_TYPES[t].n, spec: STATION_TYPES[t].spec ? {...STATION_TYPES[t].spec} : {} }));
   return { sts, aux };
 }
@@ -123,3 +126,31 @@ function refreshLaneVis(){
         flowLine(FLOW_LINES, new THREE.CatmullRomCurve3(pts).getPoints(40), R.color, 0.6, 0.9, 0.85); }); } }
 }
 ANIM.push({ update(t){ FLOW_UNI.t.value = t; } });
+
+// ================= 工場全体ライン：需要（台/月）→ 必要供給量 → 稼働率・全体ボトルネック =================
+const LANE_LINK_LINES = new THREE.Group(); LANE_LINK_LINES.name = "laneLinks";
+function monthlyOut(o){ const R = LANE_RECIPES[o.lane.recipe]; const k = o.kpi; return R.mode==="flow" ? k.out*WORK_DAYS : R.mode==="project" ? k.out : k.out*WORK_WEEKS; }
+function computePlant(){
+  const lanes = Object.values(LANE_OBJ); const asm = lanes.filter(o => LANE_RECIPES[o.lane.recipe].consumes);
+  const asmCap = asm.reduce((a,o)=>a+o.kpi.out, 0);                       // 台/月
+  const items = {}; for (const key in BOM) items[key] = { ...BOM[key], key, cap:0, lanes:[] };
+  for (const o of lanes){ const R = LANE_RECIPES[o.lane.recipe]; if (!R.supplies || !items[R.supplies]) continue; const m = monthlyOut(o); items[R.supplies].cap += m; items[R.supplies].lanes.push({ id:o.lane.id, out:m, color:R.color }); }
+  const target = DEMAND.target; const rows = Object.values(items).map(it => { const need = target*it.perUnit; const util = it.cap>0 ? need/it.cap : Infinity; const support = it.cap/it.perUnit; return { ...it, need, util, support }; });
+  const asmUtil = asmCap>0 ? target/asmCap : Infinity;
+  // 社内供給レーンが無い品目は外注前提として能力制約から外す（画面では「供給レーンなし」と表示）
+  const limits = [{ n:"大型機 組立", support:asmCap, util:asmUtil, lanes: asm.map(o=>({ id:o.lane.id, color:LANE_RECIPES[o.lane.recipe].color })) }, ...rows.filter(r=>r.cap>0).map(r=>({ n:r.n, support:r.support, util:r.util, lanes:r.lanes, key:r.key }))];
+  const plantCap = Math.min(...limits.map(l=>l.support)); const bott = limits.reduce((a,b)=> b.support < a.support ? b : a, limits[0]);
+  const outsourced = rows.filter(r=>r.cap<=0).map(r=>r.key);
+  return { target, asmCap, asmUtil, rows, plantCap, bott, limits, outsourced };
+}
+// 3D：供給レーン → 組立レーンの物量リンク（床上の流線、太さ・色＝稼働率）
+function refreshLinkLines(){
+  LANE_LINK_LINES.clear(); const P = computePlant(); const asm = Object.values(LANE_OBJ).find(o => LANE_RECIPES[o.lane.recipe].consumes); if (!asm) return P;
+  const dst = asm.stationPos[0]; const dstF = asm.lane.floor;
+  for (const r of P.rows){ for (const ln of r.lanes){ const o = LANE_OBJ[ln.id]; if (!o) continue; const src = o.stationPos[o.stationPos.length-1]; const util = r.util; const col = util > 1 ? 0xff4d4d : util > 0.85 ? 0xf2c744 : 0x3fb950;
+      const ya = BLD.lv[src.floor-1]+0.5, yb = BLD.lv[dstF-1]+0.5; const mid = new THREE.Vector3((src.x+dst.x)/2, Math.max(ya,yb)+ (src.floor!==dstF? 6 : 2.5), (src.z+dst.z)/2);
+      const pts = new THREE.CatmullRomCurve3([new THREE.Vector3(src.x, ya, src.z), mid, new THREE.Vector3(dst.x, yb, dst.z)]).getPoints(48);
+      const l = flowLine(LANE_LINK_LINES, pts, col, 1.2, 0.8, 0.95); l.userData.link = r.key;
+      const lb = makeLabel(`${r.key}  ${r.need.toFixed(0)} / ${r.cap.toFixed(0)} ${r.unit}/月  ${isFinite(util)? (util*100).toFixed(0)+"%" : "供給なし"}`, { scale:0.6, bg: util>1? "rgba(120,20,20,0.85)" : "rgba(13,17,23,0.8)", accent:"#"+ln.color.toString(16).padStart(6,"0") }); lb.position.copy(mid); lb.position.y += 0.8; lb.userData.kind = "link"; LANE_LINK_LINES.add(lb); } }
+  return P;
+}

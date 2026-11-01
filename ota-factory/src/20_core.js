@@ -44,7 +44,7 @@ sky.frustumCulled = false; sky.renderOrder = -10; scene.add(sky);
 const DAY_PRESETS = {
   day:  { top:0x5f93d6, mid:0xcfe0f2, bot:0xe9eef2, fog:0xd5e0ea, sun:[-90,160,110], sunC:0xfff3e0, sunI:2.0, hemi:0.55, env:0.55, exp:1.05, emis:0.0 },
   dusk: { top:0x2f4f86, mid:0xf0a66a, bot:0xd7c6b4, fog:0xd9b39a, sun:[-170,45,60], sunC:0xffb070, sunI:1.5, hemi:0.35, env:0.35, exp:1.0, emis:0.8 },
-  night:{ top:0x05080f, mid:0x151e2e, bot:0x1b2230, fog:0x141a24, sun:[60,120,-90], sunC:0x8da8d8, sunI:0.25, hemi:0.12, env:0.18, exp:0.95, emis:1.0 },
+  night:{ top:0x05080f, mid:0x151e2e, bot:0x1b2230, fog:0x141a24, sun:[60,120,-90], sunC:0x8da8d8, sunI:0.25, hemi:0.12, env:0.18, exp:1.05, emis:1.0 },
 };
 let dayMode = "day";
 const emissiveMats = []; // 夜に発光させる材質
@@ -55,6 +55,8 @@ function setDay(mode){
   sun.position.set(...p.sun); sun.color.set(p.sunC); sun.intensity = p.sunI;
   hemi.intensity = p.hemi; scene.environmentIntensity = p.env; renderer.toneMappingExposure = p.exp;
   emissiveMats.forEach(m => { m.emissiveIntensity = p.emis * (m.userData.emisMax ?? 1); m.needsUpdate = false; });
+  M.glass.opacity = mode==='night'? 0.14 : 0.28; M.glassIn.opacity = mode==='night'? 0.1 : 0.18; M.glassTint.opacity = mode==='night'? 0.3 : 0.45;
+  scene.traverse(o => { if (o.userData.cloud) { o.material.color.set(mode==='night'? 0x334055 : mode==='dusk'? 0xffc9a0 : 0xffffff); } });
   dirtyShadow();
 }
 
@@ -173,6 +175,15 @@ const M = {
   water:    new THREE.MeshPhysicalMaterial({ color:0x3b6e8c, roughness:0.15, metalness:0.1, transparent:true, opacity:0.85 }),
 };
 M.screen.userData.emisMax = 1.2; emissiveMats.push(M.screen);
+M.ceilingGlow = new THREE.MeshStandardMaterial({ color:0xf0efe9, emissive:0xffe9c4, emissiveIntensity:0.0, roughness:0.95 }); M.ceilingGlow.userData.emisMax = 1.5; emissiveMats.push(M.ceilingGlow);
+M.hallGlow = new THREE.MeshStandardMaterial({ color:0xd9dcdf, emissive:0xfff2dc, emissiveIntensity:0.0, roughness:0.9, side:THREE.DoubleSide }); M.hallGlow.userData.emisMax = 0.9; emissiveMats.push(M.hallGlow);
+M.bollardLight = new THREE.MeshStandardMaterial({ color:0xfff4dc, emissive:0xffd79a, emissiveIntensity:0.0, roughness:0.6 }); M.bollardLight.userData.emisMax = 1.6; emissiveMats.push(M.bollardLight);
+M.timberDark = std(0x8a5a32, { map:TEX.timber([6,1]), roughness:0.75 });
+M.spandrel = std(0x2b2f35, { roughness:0.45, metalness:0.55 });
+M.concreteWhite = std(0xe8e6e0, { roughness:0.85 });
+// ---- 雲（ビルボード） ----
+function addClouds(parent, n=14){ const tex = canvasTex("cloud", 256, (c,w,h,rnd)=>{ c.clearRect(0,0,w,h); for (let i=0;i<26;i++){ const r = 22+rnd()*40; const g = c.createRadialGradient(w*0.2+rnd()*w*0.6, h*0.35+rnd()*h*0.3, 0, w*0.2+rnd()*w*0.6, h*0.35+rnd()*h*0.3, r); g.addColorStop(0, "rgba(255,255,255,0.55)"); g.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = g; c.fillRect(0,0,w,h); } });
+  const rnd = sRand("clouds"); for (let i=0;i<n;i++){ const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, opacity:0.75, depthWrite:false, fog:false })); const d = 500+rnd()*500, a = rnd()*Math.PI*2; sp.position.set(Math.cos(a)*d, 170+rnd()*120, Math.sin(a)*d); const sc = 180+rnd()*220; sp.scale.set(sc, sc*0.45, 1); sp.userData.cloud = true; parent.add(sp); } }
 M.lamp.userData.emisMax = 1.3; M.lampWarm.userData.emisMax = 1.3;
 M.lamp.emissiveIntensity = 0.9; M.lampWarm.emissiveIntensity = 0.9;
 

@@ -69,7 +69,8 @@ function renderStats(){
   const staff = STAFF.reduce((a, s) => a + s[1], 0); const maxH = Math.max(...BLD.roofProfile.map(p => p[1])) + 0.45;
   const n = v => v.toLocaleString("ja-JP", { maximumFractionDigits: 0 });
   const K = allLaneKPI();
-  let h = `<table class="ptbl"><tr><td>精密・大型部品</td><td class="n">${K.parts.toFixed(0)} 個/日</td></tr><tr><td>大型機 組立</td><td class="n">${K.machines.toFixed(1)} 台/月</td></tr><tr><td>制御盤</td><td class="n">${K.panels.toFixed(0)} 面/日</td></tr><tr><td>ソフト リリース</td><td class="n">${K.releases.toFixed(0)} 件/週</td></tr><tr><td>平均自動化率 / 無人運転</td><td class="n">${(K.autoAvg*100).toFixed(0)}% / ${K.unattended} h</td></tr></table><div class="sub">レーン定義（レシピ×区画×シフト）から自動算出。左下「レーン・生産性」で再構成できます。</div><div class="sep"></div>
+  const P = computePlant();
+  let h = `<table class="ptbl"><tr><td>工場全体の能力 / 目標</td><td class="n">${isFinite(P.plantCap)? P.plantCap.toFixed(1):"—"} / ${P.target.toFixed(1)} 台/月</td></tr><tr><td>制約</td><td class="n" style="color:var(--bad)">${pe(P.bott.n)}</td></tr><tr><td>精密・大型部品</td><td class="n">${K.parts.toFixed(0)} 個/日</td></tr><tr><td>大型機 組立</td><td class="n">${K.machines.toFixed(1)} 台/月</td></tr><tr><td>制御盤</td><td class="n">${K.panels.toFixed(0)} 面/日</td></tr><tr><td>ソフト リリース</td><td class="n">${K.releases.toFixed(0)} 件/週</td></tr><tr><td>平均自動化率 / 無人運転</td><td class="n">${(K.autoAvg*100).toFixed(0)}% / ${K.unattended} h</td></tr></table><div class="sub">レーン定義（レシピ×区画×シフト）から自動算出。左下「レーン・生産性」で再構成できます。</div><div class="sep"></div>
   <div class="sub">${pe(SITE.name)}<br>${pe(SITE.zoning)}（建蔽率 ${SITE.bcrMax}% / 容積率 ${SITE.farMax}%）</div><div class="sep"></div><table>
   <tr><td>敷地面積</td><td class="n">${n(siteA)} ㎡</td><td class="sub">${SITE.w}×${SITE.d} m</td></tr>
   <tr><td>建築面積</td><td class="n">${n(footA)} ㎡</td><td class="sub">建蔽率 ${(footA/siteA*100).toFixed(1)}%</td></tr>
@@ -119,7 +120,7 @@ const LANE_SLOTS = [
   { id:"yard",   n:"北側 屋外庇下ヤード",       zone:"north",floor:1, area:[8,32,-39,-33.5] },
   { id:"sw",     n:"ソフトウェア開発フロア（2F）",zone:"sw",  floor:2, area:[-36,34,3,17] },
 ];
-const MAIN_STATION = { precision:"mc5", heavy:"gantry", assembly:"asmMech", panel:"panel", software:"hil" };
+const MAIN_STATION = { precision:"mc5", heavy:"gantry", assembly:"asmMech", panel:"panel", software:"hil", sheet:"weld", paint:"booth", demo:"demo", testing:"tcell" };
 function slotOf(lane){ return LANE_SLOTS.find(sl => sl.zone === lane.zone && sl.area[2] === lane.area[2]) || LANE_SLOTS.find(sl => sl.zone === lane.zone); }
 function laneCard(o){ const L = o.lane, R = LANE_RECIPES[L.recipe], k = o.kpi; const c = "#"+R.color.toString(16).padStart(6,"0"); const sl = slotOf(L);
   const chips = R.os.map(m => `<span class="chip" data-mod="${m}">${pe(OS_MODULES[m].n)}</span>`).join("");
@@ -132,6 +133,8 @@ function laneCard(o){ const L = o.lane, R = LANE_RECIPES[L.recipe], k = o.kpi; c
   <form class="cfg" hidden><label>レシピ<select name="recipe">${Object.keys(LANE_RECIPES).map(r=>`<option value="${r}"${r===L.recipe?" selected":""}>${pe(LANE_RECIPES[r].n)}</option>`).join("")}</select></label>
   <label>主要機械の台数<input name="main" type="number" min="1" max="6" value="${mainN}"></label><label>シフト数<input name="shifts" type="number" min="1" max="3" value="${L.shifts.shifts}"></label>
   <label>無人運転 h/日<input name="unattended" type="number" min="0" max="16" value="${L.shifts.unattended}"></label><label>区画<select name="slot">${LANE_SLOTS.map(sl=>`<option value="${sl.id}"${sl.id===(slotOf(L)||{}).id?" selected":""}>${pe(sl.n)}</option>`).join("")}</select></label>
+  <div class="sub" style="margin-top:6px">工程ごとの根拠値（標準時間・並列数・自動化・要員）</div><table class="stTbl"><tr><th>工程</th><th style="width:22%">時間</th><th style="width:14%">台数</th><th style="width:24%">自動化</th><th style="width:16%">要員</th></tr>${o.sts.map(st=>`<tr><td>S${st.idx} ${pe(st.label)}</td><td><input name="ct:${st.type}" type="number" step="0.5" min="0" value="${st.ct}"> <small>${st.unit}</small></td><td><input name="n:${st.type}" type="number" min="1" max="8" value="${st.n}"></td><td><select name="auto:${st.type}"><option value="auto"${st.auto==="auto"?" selected":""}>無人</option><option value="semi"${st.auto==="semi"?" selected":""}>監視付</option><option value="manual"${st.auto==="manual"?" selected":""}>手作業</option></select></td><td><input name="ppl:${st.type}" type="number" step="0.1" min="0" value="${st.ppl}"></td></tr>`).join("")}</table>
+  <label>OEE 稼働率 / 性能 / 品質<span style="display:flex;gap:3px;width:56%"><input name="avail" type="number" step="0.01" min="0.3" max="1" value="${L.oee.avail}"><input name="perf" type="number" step="0.01" min="0.3" max="1" value="${L.oee.perf}"><input name="qual" type="number" step="0.01" min="0.5" max="1" value="${L.oee.qual}"></span></label>
   <div class="ctl"><span class="sub">同じ区画の既存レーンは置き換えます</span><button class="btn sm on" type="submit">生成</button></div></form></div>`; }
 function renderLanes(){ const list = $("laneList"); list.innerHTML = Object.values(LANE_OBJ).sort((a,b)=>a.lane.id.localeCompare(b.lane.id)).map(laneCard).join("");
   list.querySelectorAll(".lane").forEach(card => { const id = card.dataset.id;
@@ -145,11 +148,32 @@ function applyLaneForm(id, fd){ const o = LANE_OBJ[id]; const L = o ? o.lane : {
   for (const oid in LANE_OBJ){ if (oid !== id && slotOf(LANE_OBJ[oid].lane)?.id === sl.id) removeLane(oid); }
   L.recipe = recipe; L.zone = sl.zone; L.floor = sl.floor; L.area = sl.area.slice(); L.override = { [MAIN_STATION[recipe]]: Math.max(1, Number(fd.get("main"))||1) }; if (recipe==="panel") L.override.wiring = L.override.panel;
   L.shifts = { hours:8, shifts: Number(fd.get("shifts"))||1, unattended: Number(fd.get("unattended"))||0, days: LANE_RECIPES[recipe].mode==="project"? 21 : 5 };
-  if (!L.oee) L.oee = { avail:0.88, perf:0.95, qual:0.985 }; generateLane(L); setActiveLane(L.id); afterLaneChange(); focusLane(L.id); }
-function afterLaneChange(){ renderLanes(); renderOS(); renderLedger(); renderStats(); refreshLaneVis(); dirtyShadow(); }
+  if (!L.oee) L.oee = { avail:0.88, perf:0.95, qual:0.985 }; if (fd.get("avail")) L.oee = { avail:+fd.get("avail"), perf:+fd.get("perf"), qual:+fd.get("qual") };
+  // 工程ごとの根拠値（レシピが同じ場合のみ引き継ぐ）
+  const so = {}; const keys = typeof fd.keys === "function" ? [...fd.keys()] : []; for (const k of keys){ const [f, t] = k.split(":"); if (!t || !STATION_TYPES[t]) continue; so[t] = so[t] || {}; const v = fd.get(k); if (f==="ct") so[t].ct = +v; else if (f==="n") so[t].n = Math.max(1, +v|0); else if (f==="auto") so[t].auto = v; else if (f==="ppl") so[t].ppl = +v; }
+  L.stationOv = (recipe === (o? o.lane.recipe : recipe) && keys.length) ? so : {}; if (L.override && L.stationOv[MAIN_STATION[recipe]]) L.stationOv[MAIN_STATION[recipe]].n = L.override[MAIN_STATION[recipe]];
+  generateLane(L); if (!LANES.includes(L)) LANES.push(L); setActiveLane(L.id); afterLaneChange(); focusLane(L.id); }
+function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
 function focusLane(id){ const o = LANE_OBJ[id]; if (!o) return; const L = o.lane; if (walk.on) toggleWalk(false); setMode(L.floor); const [x0,x1,z0,z1] = L.area; const w = Math.max(x1-x0, z1-z0);
   setCam({ yaw: L.floor===2? -0.9 : -0.6, pitch:0.62, dist: w*1.35, target:[(x0+x1)/2, BLD.lv[L.floor-1]+2, (z0+z1)/2] }); setActiveLane(id); renderLanes(); renderOS(); }
 $("laneAdd").onclick = () => { let n = 6; while (LANE_OBJ["L"+n]) n++; const id = "L"+n; const fd = new Map([["recipe","precision"],["main","3"],["shifts","2"],["unattended","8"],["slot","recv"]]); applyLaneForm(id, fd); const card = document.querySelector(`.lane[data-id="${id}"] form`); if (card) card.hidden = false; };
+
+$("laneSave").onclick = () => { const data = { version:3, demand:DEMAND, lanes: Object.values(LANE_OBJ).map(o => o.lane) }; const a = document.createElement("a"); a.download = "yellow-ota-lanes.json"; a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type:"application/json" })); a.click(); };
+$("laneLoad").onclick = () => $("laneFile").click();
+$("laneFile").onchange = ev => { const f = ev.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { const d = JSON.parse(rd.result); if (!Array.isArray(d.lanes)) throw new Error("lanes がありません"); for (const id of Object.keys(LANE_OBJ)) removeLane(id); LANES.length = 0; if (d.demand?.target) DEMAND.target = d.demand.target; for (const L of d.lanes){ if (!LANE_RECIPES[L.recipe]) continue; LANES.push(L); generateLane(L); } afterLaneChange(); } catch (e) { alert("読込エラー: " + e.message); } ev.target.value = ""; }; rd.readAsText(f); };
+
+// ---- 工場全体（需要 → 必要供給量 → 稼働率） ----
+let linksOn = false;
+function renderPlant(){ const P = refreshLinkLines(); LANE_LINK_LINES.visible = linksOn; const el = $("plantBody"); const n = v => isFinite(v) ? v.toFixed(v<10? 1:0) : "—";
+  const bar = u => `<div class="bar"><i class="${u>1?"bad":u>0.85?"warn":""}" style="width:${Math.min(100, (isFinite(u)? u:1)*100).toFixed(0)}%"></i></div>`;
+  let h = `<div class="sub">目標需要（大型機）とレーン能力から、必要物量・稼働率・工場全体のボトルネックを算出。BOM は 1 台あたりの想定数量。</div>
+  <label class="fld" style="display:flex;justify-content:space-between;align-items:center;margin:8px 0;font-size:12px">目標 <b style="color:var(--acc)">${DEMAND.target.toFixed(1)} 台/月</b><input id="demand" type="range" min="0.5" max="8" step="0.5" value="${DEMAND.target}" style="width:52%;accent-color:var(--acc)"></label>
+  <div class="plant-row" style="border-color:var(--acc)"><div class="lh"><span>工場全体の能力</span><b style="color:var(--acc)">${n(P.plantCap)} 台/月</b></div><div class="sub">制約: ${pe(P.bott.n)}${P.bott.lanes.length? "（"+P.bott.lanes.map(l=>l.id).join(", ")+"）":""} ／ 目標に対し ${isFinite(P.plantCap)&&P.plantCap>0? (P.target/P.plantCap*100).toFixed(0)+"%":"—"} 負荷${P.outsourced.length? "<br>外注前提: "+P.outsourced.map(pe).join("・") : ""}</div></div>
+  <div class="plant-row${P.bott.n==="大型機 組立"?" bott":""}"><div class="lh"><span>大型機 組立（${P.limits[0].lanes.map(l=>l.id).join(", ")||"なし"}）</span><b>${P.target.toFixed(1)} / ${n(P.asmCap)} 台/月</b></div>${bar(P.asmUtil)}</div>
+  <div class="sub" style="margin:6px 0 4px">供給レーン → 組立（必要量 / 能力 ・月）</div>`;
+  for (const r of P.rows){ const supplied = r.lanes.length; h += `<div class="plant-row${P.bott.key===r.key?" bott":""}"><div class="lh"><span>${pe(r.n)}</span><b>${r.need.toFixed(0)} / ${supplied? r.cap.toFixed(0):"—"} ${r.unit}</b></div>${bar(r.util)}<div class="sub">${r.perUnit} ${r.unit}/台 × ${P.target} 台 ／ ${supplied? r.lanes.map(l=>`<span class="chip" style="border-color:#${l.color.toString(16).padStart(6,"0")}">${l.id} ${l.out.toFixed(0)}</span>`).join(" ") : '<span style="color:var(--bad)">供給レーンなし（外注前提）</span>'}${isFinite(r.util)&&r.util>1? ` <span style="color:var(--bad)">不足 ${(r.need-r.cap).toFixed(0)} ${r.unit}</span>`:""}</div></div>`; }
+  h += `<div class="ctl" style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px"><button class="btn sm${linksOn?" on":""}" id="linksBtn">3D に供給リンクを表示</button></div>`;
+  el.innerHTML = h; $("demand").oninput = ev => { DEMAND.target = +ev.target.value; renderPlant(); renderStats(); }; $("linksBtn").onclick = () => { linksOn = !linksOn; LANE_LINK_LINES.visible = linksOn; renderPlant(); if (linksOn){ if (mode==="ext") setMode(1); } }; }
 
 // ---- Factory OS パネル ----
 function renderOS(){ const el = $("osList"); let h = "";
@@ -177,11 +201,11 @@ $("photosBtn").onclick = () => { const p = $("photos"); const on = p.style.displ
 let tourIdx = -1, tourTimer = null;
 function tourGo(i){ if (i < 0 || i >= TOUR.length){ tourStop(); return; } tourIdx = i; const s = TOUR[i]; if (walk.on) toggleWalk(false);
   if (s.mode === "ext") setMode("ext"); else setMode(s.floor); setCam(s.cam);
-  if (s.lane) setActiveLane(s.lane); else if (s.module) setActiveModule(s.module); else setActiveLane(null); renderLanes(); renderOS();
-  if (s.module) document.querySelector('[data-tab="os"]').click(); else if (s.lane) document.querySelector('[data-tab="lanes"]').click();
+  if (s.lane) setActiveLane(s.lane); else if (s.module) setActiveModule(s.module); else setActiveLane(null); linksOn = !!s.plant; renderPlant(); renderLanes(); renderOS();
+  if (s.module) document.querySelector('[data-tab="os"]').click(); else if (s.plant) document.querySelector('[data-tab="plant"]').click(); else if (s.lane) document.querySelector('[data-tab="lanes"]').click();
   $("tourStep").textContent = `ガイドツアー ${i + 1} / ${TOUR.length}`; $("tourTitle").textContent = s.title; $("tourText").textContent = s.text; $("tourCard").style.display = "block";
   clearTimeout(tourTimer); tourTimer = setTimeout(() => tourGo(i + 1), 11000); }
-function tourStop(){ clearTimeout(tourTimer); tourTimer = null; tourIdx = -1; $("tourCard").style.display = "none"; $("tourBtn").classList.remove("on"); setActiveLane(null); renderLanes(); renderOS(); }
+function tourStop(){ clearTimeout(tourTimer); tourTimer = null; tourIdx = -1; $("tourCard").style.display = "none"; $("tourBtn").classList.remove("on"); setActiveLane(null); linksOn = false; renderPlant(); renderLanes(); renderOS(); }
 $("tourBtn").onclick = () => { if (tourIdx >= 0) tourStop(); else { $("tourBtn").classList.add("on"); tourGo(0); } };
 $("tourNext").onclick = () => tourGo(tourIdx + 1); $("tourPrev").onclick = () => tourGo(Math.max(0, tourIdx - 1)); $("tourStop").onclick = tourStop;
 
@@ -195,17 +219,17 @@ addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; con
 
 // ================= 構築 & メインループ =================
 function build(){
-  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); buildMovers();
+  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildMovers();
   for (const k in LAYERS) { if (k === "green" || k === "context") LAYERS[k].userData.layer = k; }
   // 人・車両レイヤー：階グループ内の作業者にも付与
   scene.traverse(o => { if (o.userData.legs) o.userData.layer = "people"; });
-  renderStats(); renderLedger(); renderLanes(); renderOS(); setDay("day"); setMode("ext"); setCam(VIEWS[0][1], true); refitLabels();
+  renderStats(); renderLedger(); renderLanes(); renderOS(); renderPlant(); setDay("day"); setMode("ext"); setCam(VIEWS[0][1], true); refitLabels();
   $("loading").style.display = "none";
 }
 const clock = new THREE.Clock(); let frame = 0;
 function updateLabels(){
   const d = walk.on ? 12 : camGoal.dist; const f = mode === "ext" ? 0 : Number(mode);
-  for (const sp of LABELS){ const k = sp.userData.kind; if (!k){ sp.visible = layerState.labels; continue; }
+  for (const sp of LABELS){ const k = sp.userData.kind; if (!k){ sp.visible = layerState.labels; continue; } if (k === "link"){ sp.visible = layerState.labels && linksOn; continue; } if (k === "sign"){ sp.visible = true; continue; }
     if (k === "zone") sp.visible = layerState.labels && !walk.on && d > 28 && (sp.userData.floor === 0 ? (d > 60 && mode === "ext") : (mode !== "ext" && sp.userData.floor === f));
     else sp.visible = layerState.labels && d < 90 && (walk.on || mode !== "ext") && (mode === "ext" || sp.userData.floor <= f); }
 }
@@ -219,4 +243,4 @@ function loop(){
 }
 $("loadMsg").textContent = "敷地・建屋・設備を生成しています…";
 setTimeout(() => { try { build(); } catch (err) { $("loadMsg").textContent = "構築エラー: " + err.message; console.error(err); throw err; } loop(); }, 30);
-window.__factory = { scene, camera, renderer, EQUIP, ZONES, BLD, SITE, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, setActiveLane, setActiveModule, applyLaneForm };
+window.__factory = { scene, camera, renderer, EQUIP, ZONES, BLD, SITE, DEMAND, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };

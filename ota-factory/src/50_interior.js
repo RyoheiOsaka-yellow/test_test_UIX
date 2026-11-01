@@ -336,3 +336,64 @@ function buildInterior(){
   P.flush(g1, { name:"mep", layer:"mep", cast:false });
 }
 function cols_(b){ const a=[]; for (let x=b.x0; x<=b.x1+0.01; x+=b.grid) a.push(x); return a; }
+
+// ---- v0.3 追加ステーション：板金・溶接・塗装・デモ・試験 ----
+function makeLaserCutter(){ const g = new THREE.Group();
+  boxAt(g, 7.0, 0.3, 4.0, M.machineDark, 0, 0, 0); boxAt(g, 4.2, 1.9, 3.2, M.machineWhite, -1.2, 0.3, 0); boxAt(g, 4.2, 0.2, 3.2, M.machineDark, -1.2, 2.2, 0);
+  boxAt(g, 3.0, 0.9, 0.05, M.machineWin, -1.2, 1.0, 1.62); boxAt(g, 0.5, 0.5, 0.5, M.machineBlue, -3.0, 2.4, -0.8); // 本体・窓・共振器
+  for (let i=0;i<2;i++){ boxAt(g, 3.2, 0.12, 1.6, M.steel, 1.8, 0.75+i*0.25, 0); for (let k=0;k<14;k++) boxAt(g, 3.0, 0.3, 0.02, M.darkSteel, 1.8, 0.87+i*0.25, -0.75+k*0.11); } // パレットチェンジャ（剣山）
+  boxAt(g, 0.4, 0.4, 0.4, M.machineDark, -1.2, 2.4, 0.8); boxAt(g, 0.12, 0.6, 0.12, M.steel, -1.2, 1.5, 0.8);   // 加工ヘッド
+  boxAt(g, 1.0, 2.2, 1.0, std(0x8a9199,{metalness:0.5}), -3.8, 0.3, -1.2); cylAt(g, 0.2, 1.0, M.duct, -3.8, 2.5, -1.2, {seg:12});  // 集塵機
+  pendant(g, 2.0, 1.9, 2.1, 0); signalTower(g, -2.8, 2.4, 1.3); return g; }
+function makePressBrake(){ const g = new THREE.Group();
+  boxAt(g, 4.4, 0.3, 2.4, M.machineDark, 0, 0, 0); for (const dx of [-1.9, 1.9]) boxAt(g, 0.5, 3.0, 1.6, M.machineBlue, dx, 0.3, -0.2);
+  boxAt(g, 4.0, 0.7, 0.6, M.machineBlue, 0, 2.6, -0.2); const ram = boxAt(g, 3.6, 0.9, 0.25, M.steel, 0, 1.5, -0.1); ram.userData.dyn = true; boxAt(g, 3.6, 0.5, 0.5, M.steel, 0, 0.3, -0.1);
+  boxAt(g, 3.4, 0.08, 0.08, M.darkSteel, 0, 0.8, -0.1); ANIM.push({ update(t){ ram.position.y = 1.95 + Math.max(0, Math.sin(t*0.8))*(-0.5); } });
+  boxAt(g, 0.5, 1.2, 0.4, M.machineDark, 2.4, 1.0, 0.8); boxAt(g, 0.4, 0.3, 0.02, M.screen, 2.4, 1.8, 1.01); boxAt(g, 1.6, 0.05, 1.0, M.steel, 0, 0.8, 0.9);  // 制御盤・バックゲージ台
+  boxAt(g, 0.08, 0.05, 2.4, M.yellow, -1.7, 0.02, 0.9); boxAt(g, 0.08, 0.05, 2.4, M.yellow, 1.7, 0.02, 0.9); return g; }
+function makeWeldCell(){ const g = new THREE.Group(); const w = 6.4;
+  for (let i=0;i<=3;i++) for (const [x,z] of [[-w/2+i*2.13,-w/2],[-w/2+i*2.13,w/2],[-w/2,-w/2+i*2.13],[w/2,-w/2+i*2.13]]) boxAt(g, 0.08, 2.2, 0.08, M.darkSteel, x, 0, z);
+  for (const [x,z,ry] of [[0,-w/2,0],[0,w/2,0],[-w/2,0,Math.PI/2],[w/2,0,Math.PI/2]]) g.add(mesh(G.plane(w, 2.1), std(0x6b3a1a,{transparent:true,opacity:0.7,side:THREE.DoubleSide}), x, 1.1, z, {ry, cast:false})); // 遮光パネル
+  const r = makeRobot(1.2, M.robotYellow); r.position.set(-1.2, 0.5, 0.2); cylAt(g, 0.5, 0.5, M.machineDark, -1.2, 0, 0.2, {seg:20}); g.add(r); animateRobot(r, 0.6, 0.55);
+  cylAt(g, 0.012, 0.35, std(0xff8a3b,{emissive:0xff8a3b,emissiveIntensity:2}), -1.2, 2.0, 0.2, {seg:4}); // トーチ発光（簡略）
+  boxAt(g, 1.2, 0.9, 1.0, M.machineBlue, 1.6, 0, 0.4); cylAt(g, 0.5, 0.25, M.steel, 1.6, 0.9, 0.4, {seg:20}); boxAt(g, 1.8, 0.3, 0.3, M.steel, 1.6, 1.15, 0.4); // ポジショナ＋ワーク
+  cylAt(g, 0.25, 2.4, M.duct, 2.4, 0, -2.4, {seg:12}); boxAt(g, 1.0, 1.4, 0.8, std(0x8a9199,{metalness:0.5}), 2.4, 0, -2.4); // ヒューム集塵
+  cabinet(g, 0.9, 1.9, 0.5, -2.6, -2.6, 0, M.machineWhite); boxAt(g, 0.5, 0.9, 0.5, std(0x2a2e33), -2.6, 0, 2.4); cylAt(g, 0.15, 1.2, std(0x4caf50), -2.4, 0.9, 2.4, {seg:10}); // 溶接機・ガスボンベ
+  signalTower(g, 2.8, 2.2, 2.8); return g; }
+function makeFinishBooth(){ const g = new THREE.Group();
+  boxAt(g, 3.6, 2.6, 0.2, std(0xcfd4d8), 0, 0, -1.4); boxAt(g, 0.2, 2.6, 3.0, std(0xcfd4d8), -1.7, 0, 0); for (let i=0;i<5;i++) boxAt(g, 3.2, 0.05, 0.3, M.darkSteel, 0, 0.3+i*0.45, -1.28);  // 集塵壁（スリット）
+  boxAt(g, 2.0, 0.9, 1.0, M.darkSteel, 0, 0, 0); boxAt(g, 2.0, 0.1, 1.0, std(0x9aa0a6,{metalness:0.3}), 0, 0.9, 0); boxAt(g, 0.9, 0.3, 0.3, M.steel, 0.3, 1.0, 0.1);   // 歪取り定盤＋ワーク
+  boxAt(g, 0.5, 0.5, 0.3, M.machineDark, -1.0, 1.0, 0.2); cylAt(g, 0.12, 0.3, M.darkSteel, -0.7, 1.15, 0.2, {rot:[0,0,Math.PI/2], seg:10});   // ベルトサンダ
+  boxAt(g, 0.6, 1.9, 0.5, std(0x8a9199,{metalness:0.5}), 1.4, 0, -1.0); cylAt(g, 0.1, 0.7, M.duct, 1.4, 1.9, -1.0, {seg:10}); makeCamNode(); return g; }
+function makeMaskStation(){ const g = new THREE.Group();
+  boxAt(g, 1.6, 1.0, 1.4, std(0x7c8a99,{metalness:0.5}), -0.8, 0, 0); boxAt(g, 1.4, 0.05, 1.2, M.water, -0.8, 0.95, 0);  // 脱脂槽
+  boxAt(g, 1.6, 0.8, 1.0, M.deskWhite, 1.0, 0, 0.1); for (let i=0;i<4;i++) cylAt(g, 0.1, 0.25, [M.yellow, M2.hose, M.white, M2.hoseR][i], 0.5+i*0.3, 0.8, -0.2, {rot:[0,0,Math.PI/2], seg:10});  // マスキングテープ
+  boxAt(g, 0.06, 2.2, 0.06, M.darkSteel, 1.2, 0, -1.0); boxAt(g, 2.4, 0.06, 0.06, M.darkSteel, 0.1, 2.2, -1.0); for (let i=0;i<3;i++){ cylAt(g, 0.01, 0.5, M.cable, -0.7+i*0.8, 1.7, -1.0, {seg:4}); boxAt(g, 0.5, 0.35, 0.05, M.steel, -0.7+i*0.8, 1.35, -1.0); } // 吊り治具
+  return g; }
+function makePaintBooth(){ const g = new THREE.Group(); const w = 8, d = 5, h = 4;
+  boxAt(g, w, h, 0.12, M.machineWhite, 0, 0, -d/2); boxAt(g, 0.12, h, d, M.machineWhite, -w/2, 0, 0); boxAt(g, 0.12, h, d, M.machineWhite, w/2, 0, 0); boxAt(g, w, 0.2, d, M.machineWhite, 0, h, 0);
+  for (let i=0;i<3;i++) boxAt(g, 1.6, 2.6, 0.06, M.machineWin, -2.6+i*2.6, 0.6, d/2);  // 前面ガラス扉
+  for (let x=-3; x<=3; x+=1.5) boxAt(g, 1.2, 0.06, 0.3, M.lamp, x, h-0.08, 0); for (let i=0;i<6;i++) boxAt(g, 1.0, 0.8, 0.05, std(0xdde3e8), -3.0+i*1.2, 0.3, -d/2+0.1);  // 照明・排気フィルタ
+  cylAt(g, 0.35, 1.5, M.duct, 2.0, h+0.2, -1.0, {seg:14}); boxAt(g, 1.2, 1.0, 1.2, std(0x8a9199,{metalness:0.5}), 2.0, h+0.2, -1.0); cylAt(g, 0.35, 1.5, M.duct, -2.0, h+0.2, -1.0, {seg:14});
+  const r = makeRobot(1.1, M.robotWhite); r.position.set(-1.5, 0, -0.8); g.add(r); animateRobot(r, 1.1, 0.5);
+  boxAt(g, 1.6, 0.2, 1.0, M.darkSteel, 1.2, 0, 0.4); boxAt(g, 1.2, 0.9, 0.5, std(0x58a6ff,{roughness:0.3}), 1.2, 0.2, 0.4);  // 台車＋ワーク
+  cabinet(g, 1.0, 1.9, 0.5, w/2+0.6, -1.5, -Math.PI/2, M.machineWhite); boxAt(g, 0.5, 0.3, 0.02, M.screen, w/2+0.36, 1.3, -1.5).rotation.y = -Math.PI/2;
+  return g; }
+function makeOven(){ const g = new THREE.Group(); const w = 6, d = 3.4, h = 3.2;
+  boxAt(g, w, h, d, std(0xc9cfd4,{metalness:0.4,roughness:0.5}), 0, 0, 0); boxAt(g, w, 0.15, d, M.darkSteel, 0, h, 0); for (let i=0;i<4;i++) boxAt(g, 0.08, h-0.2, 0.08, M.darkSteel, -w/2+0.6+i*1.6, 0.1, d/2+0.02);
+  boxAt(g, 1.8, 2.4, 0.08, M.darkSteel, -1.6, 0.3, d/2+0.04); boxAt(g, 0.3, 0.3, 0.03, std(0xff5a36,{emissive:0xff5a36,emissiveIntensity:0.8}), -1.6, 2.0, d/2+0.1);  // 扉・温度表示
+  cylAt(g, 0.25, 1.2, M.duct, 2.0, h+0.1, 0, {seg:12}); boxAt(g, 1.2, 0.8, 1.4, std(0x6b7781,{metalness:0.5}), -2.2, h+0.1, 0);  // 煙突・ヒートポンプ
+  for (let i=0;i<2;i++){ boxAt(g, 1.4, 0.15, 1.0, M.darkSteel, -1.6, 0, d/2+1.0+i*1.2); boxAt(g, 1.2, 1.2, 0.8, std(0x58a6ff,{roughness:0.3}), -1.6, 0.15, d/2+1.0+i*1.2); } // 台車・乾燥待ちワーク
+  boxAt(g, 0.06, 0.03, 2.6, M.steel, -2.2, 0.02, d/2+1.3); boxAt(g, 0.06, 0.03, 2.6, M.steel, -1.0, 0.02, d/2+1.3); return g; }
+function makeDemoPrep(){ const g = new THREE.Group(); boxAt(g, 2.4, 0.85, 1.0, M.steel, -0.6, 0, 0); for (let i=0;i<4;i++) boxAt(g, 0.3, 0.2, 0.3, M.steel, -1.4+i*0.5, 0.85, 0);
+  boxAt(g, 1.1, 0.14, 1.1, M.pallet, 1.2, 0, 0.2); boxAt(g, 0.9, 0.5, 0.9, M.crate, 1.2, 0.14, 0.2); boxAt(g, 0.06, 1.4, 0.06, M.darkSteel, -1.6, 0, -1.0); boxAt(g, 0.5, 0.35, 0.04, M.monitor, -1.6, 1.35, -1.0); boxAt(g, 0.46, 0.3, 0.02, M.screen, -1.6, 1.37, -0.97);
+  for (const dx of [0.4, 1.4]) cylAt(g, 0.1, 0.9, M.safetyYellow, dx, 0, -1.2, {seg:8}); return g; }
+function makeDemoStage(){ const g = new THREE.Group(); const w = 10, d = 7;
+  boxAt(g, w, 0.3, d*0.6, M.timber, 0, 0, -d*0.2); boxAt(g, w, 0.02, d*0.6, std(0xe4d4b8), 0, 0.3, -d*0.2); // 木製ステージ
+  boxAt(g, 6.0, 3.0, 0.15, M.monitor, 0, 0.6, -d/2+0.2); boxAt(g, 5.8, 2.8, 0.02, M.screen, 0, 0.7, -d/2+0.29);                // 大型ディスプレイ
+  const demoM = makeMC5(); demoM.scale.setScalar(0.75); demoM.position.set(-2.2, 0.3, -1.4); g.add(demoM);
+  const r = makeRobot(0.9, M.robotWhite); r.position.set(2.4, 0.3, -1.2); cylAt(g, 0.45, 0.3, M.machineDark, 2.4, 0.3, -1.2, {seg:16}); g.add(r); animateRobot(r, 0.3, 0.8);
+  for (let row=0; row<2; row++) for (let i=0;i<6;i++){ const x = -3.5+i*1.4, z = 1.6+row*1.2; boxAt(g, 0.5, 0.08, 0.5, M.chair, x, 0.42, z); boxAt(g, 0.48, 0.5, 0.06, M.chair, x, 0.5, z+0.22); cylAt(g, 0.03, 0.42, M.darkSteel, x, 0, z, 6); if ((i+row)%2) { const m = new Merger(); seatedPerson(m, x, z, Math.PI); m.flush(g); } }
+  for (const x of [-4.5, 4.5]) { cylAt(g, 0.05, 3.0, M.darkSteel, x, 0.3, -d/2+0.6, {seg:6}); boxAt(g, 0.4, 0.3, 0.3, M.lampWarm, x, 3.2, -d/2+0.6); }
+  boxAt(g, 1.2, 0.9, 0.6, M.deskWhite, 4.2, 0.3, -0.5); boxAt(g, 0.5, 0.35, 0.03, M.screen, 4.2, 1.25, -0.6); return g; }
+function makeTestCellStation(){ const g = makeTestCell(); return g; }

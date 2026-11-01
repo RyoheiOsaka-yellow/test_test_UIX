@@ -55,7 +55,12 @@ function buildSite(){
   const treesCtx = []; for (let i=0;i<60;i++){ const x = -hw-140 + rnd()*(SITE.w+280), z = hd+16.5 + (rnd()<0.5? 0 : 0); if (Math.abs(x) < 10) continue; treesCtx.push([x, z, 0.7+rnd()*0.4]); }
 
   // ---- 敷地 ----
-  const slab = mesh(G.plane(SITE.w, SITE.d), M.asphalt, 0, 0.02, 0, { rot:[-Math.PI/2,0,0], cast:false }); slab.name="siteSlab"; site.add(slab);
+  const slab = mesh(G.plane(SITE.w, SITE.d), std(0xd9d7d0, { map:TEX.paving([48,32]), roughness:0.85 }), 0, 0.02, 0, { rot:[-Math.PI/2,0,0], cast:false }); slab.name="siteSlab"; site.add(slab);
+  // 車路・駐車場・ヤードはアスファルト、建物まわりは明るいコンクリート舗装
+  site.add(mesh(G.plane(16, SITE.d), M.asphalt, -hw+8, 0.03, 0, { rot:[-Math.PI/2,0,0], cast:false }));
+  site.add(mesh(G.plane(16, SITE.d), M.asphalt, hw-8, 0.03, 0, { rot:[-Math.PI/2,0,0], cast:false }));
+  site.add(mesh(G.plane(SITE.w-32, 10), M.asphalt, 0, 0.03, -hd+5, { rot:[-Math.PI/2,0,0], cast:false }));
+  addClouds(ctx);
   // 前庭プラザ（舗装 + 芝 + 植栽帯）
   const plazaMat = std(0xd2cfc6, { map:TEX.paving([30,6]), roughness:0.85 });
   site.add(mesh(G.plane(SITE.w, 16), plazaMat, 0, 0.05, BLD.z1+6+2, { rot:[-Math.PI/2,0,0], cast:false }));
@@ -111,9 +116,15 @@ function buildSite(){
   trees.push(...treesCtx);
   const trunkI = new THREE.InstancedMesh(G.cyl(0.14, 3.2, 8, 0.1), M.trunk, trees.length);
   const can1 = new THREE.InstancedMesh(G.sph(1.9, 12), M.leaf, trees.length), can2 = new THREE.InstancedMesh(G.sph(1.4, 10), M.leaf2, trees.length);
-  trees.forEach(([x,z,s], i)=>{ tmp.rotation.set(0,0,0); tmp.scale.set(s, s, s); tmp.position.set(x, 1.6*s, z); tmp.updateMatrix(); trunkI.setMatrixAt(i, tmp.matrix);
-    tmp.position.set(x, 4.2*s, z); tmp.updateMatrix(); can1.setMatrixAt(i, tmp.matrix); tmp.position.set(x+0.8*s, 5.2*s, z-0.5*s); tmp.updateMatrix(); can2.setMatrixAt(i, tmp.matrix); });
-  [trunkI, can1, can2].forEach(m => { m.castShadow = true; m.receiveShadow = true; m.instanceMatrix.needsUpdate = true; green.add(m); });
+  const leafCols = [0x4f8a3c, 0x5f9a44, 0x6aa24a, 0x7fae4e, 0x4a7f3a, 0x8fb04a];
+  trees.forEach(([x,z,s], i)=>{ const col = new THREE.Color(leafCols[i % leafCols.length]); tmp.rotation.set(0, i*1.7, 0); tmp.scale.set(s, s, s); tmp.position.set(x, 1.6*s, z); tmp.updateMatrix(); trunkI.setMatrixAt(i, tmp.matrix);
+    tmp.scale.set(s*(0.9+(i%3)*0.1), s*(0.85+(i%2)*0.2), s); tmp.position.set(x, 4.2*s, z); tmp.updateMatrix(); can1.setMatrixAt(i, tmp.matrix); can1.setColorAt(i, col);
+    tmp.scale.set(s, s, s); tmp.position.set(x+0.8*s, 5.2*s, z-0.5*s); tmp.updateMatrix(); can2.setMatrixAt(i, tmp.matrix); can2.setColorAt(i, col.clone().multiplyScalar(1.12)); });
+  [trunkI, can1, can2].forEach(m => { m.castShadow = true; m.receiveShadow = true; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; green.add(m); });
+  // ボラード照明（前庭の歩行路）・エントランス前の足元灯
+  for (let x=-40; x<=40; x+=8){ mg.cyl(0.07, 0.9, M.darkSteel, x+2, 0.05, 26, 8); mg.cyl(0.075, 0.12, M.bollardLight, x+2, 0.85, 26, 8); }
+  for (const [x,z] of [[-42,22.8],[-32,22.8],[-37,19]]) mg.box(0.3, 0.08, 0.3, M.bollardLight, x, 0.05, z);
+  mg.flush(site, { name:"siteLights", cast:false });
   // 低木（植栽帯）
   const shrubs = []; for (const [x,z,w,d] of beds) for (let i=0;i<Math.floor(w*1.5);i++) shrubs.push([x-w/2+0.6+rnd()*(w-1.2), z-d/2+0.6+rnd()*(d-1.2), 0.5+rnd()*0.5]);
   for (let x=-42; x<=42; x+=1.2) shrubs.push([x, BLD.terraceZ-1.0, 0.5+rnd()*0.3]);  // 2Fテラス植栽（高さは後で）
