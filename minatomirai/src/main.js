@@ -62,6 +62,46 @@ async function loadPack() {
 }
 
 // ---------------------------------------------------------------------------
+// 表示スタイル (線画 / 白図面 / 夜景)
+// ---------------------------------------------------------------------------
+const THEMES = {
+  line: {  // 細線の BIM 風線画 (暗背景)
+    bg: '#05070f', fog: '#05070f', fogDensity: 0.00030, skyTop: '#05070f', skyHorizon: '#05070f', far: '#05070f', bloom: false, tone: false,
+    face: '#090d1c', faceLine: '#9cc4ff', faceLineAlpha: 0.42, edge: '#b9d4ff', edgeAlpha: 0.78, edgeAdd: false,
+    brFace: '#0a1226', brEdge: '#a8dcff', brEdgeAlpha: 0.75,
+    terrain: '#04060d', terrainAlpha: 0.9, wire: '#1c2c52', wireAlpha: 0.08,
+    sea: '#061226', seaAlpha: 0.9, inland: '#081a33', water: '#3f7fd0', waterLineAlpha: 0.55,
+    road: '#070b16', roadAlpha: 0.9, roadLine: '#6d87b8', roadLineAlpha: 0.5,
+    green: '#07140f', greenLine: '#2f8f5a', greenLineAlpha: 0.5,
+    net: '#39e1ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0],
+  },
+  paper: { // 白図面
+    bg: '#f4f6fa', fog: '#f4f6fa', fogDensity: 0.00018, skyTop: '#f4f6fa', skyHorizon: '#e3e9f3', far: '#f0f3f8', bloom: false, tone: false,
+    face: '#ffffff', faceLine: '#35466b', faceLineAlpha: 0.55, edge: '#1f2a44', edgeAlpha: 0.85, edgeAdd: false,
+    brFace: '#f7f9fc', brEdge: '#2a3a5c', brEdgeAlpha: 0.8,
+    terrain: '#f0f3f8', terrainAlpha: 0.95, wire: '#c8d2e2', wireAlpha: 0.25,
+    sea: '#dfe9f6', seaAlpha: 0.95, inland: '#d5e3f4', water: '#6f9bd3', waterLineAlpha: 0.7,
+    road: '#eaeef4', roadAlpha: 0.95, roadLine: '#6d7fa3', roadLineAlpha: 0.6,
+    green: '#e4efe7', greenLine: '#5e9b79', greenLineAlpha: 0.6,
+    net: '#0a7fc4', netPts: '#0a5f9a', hover: [0.1, 0.55, 1.0],
+  },
+  night: { // 夜景 (窓明かり)
+    bg: '#04050c', fog: '#070a18', fogDensity: 0.0003, skyTop: '#02030a', skyHorizon: '#0d1a3a', far: '#060912', bloom: true, tone: true,
+    face: '#2b3e6c', faceLine: '#9cc4ff', faceLineAlpha: 0.0, edge: '#6fa0ff', edgeAlpha: 0.2, edgeAdd: true,
+    brFace: '#2d5a8a', brEdge: '#8fd0ff', brEdgeAlpha: 0.25,
+    terrain: '#0b1020', terrainAlpha: 0.62, wire: '#1a2b52', wireAlpha: 0.12,
+    sea: '#0d3b6e', seaAlpha: 0.72, inland: '#124a86', water: '#3f7fd0', waterLineAlpha: 0.0,
+    road: '#151c33', roadAlpha: 0.7, roadLine: '#c466ff', roadLineAlpha: 0.22,
+    green: '#0f3a2a', greenLine: '#2f8f5a', greenLineAlpha: 0.0,
+    net: '#00e5ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0],
+  },
+};
+let styleName = 'line';
+const T = () => THEMES[styleName];
+const themed = [];   // { apply(theme) } を登録し、スタイル切替時に一括適用
+const onTheme = fn => { themed.push(fn); fn(T()); };
+
+// ---------------------------------------------------------------------------
 // シーン基礎
 // ---------------------------------------------------------------------------
 const canvas = document.createElement('canvas');
@@ -69,6 +109,7 @@ document.body.appendChild(canvas);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(BG);
 scene.fog = new THREE.FogExp2('#070a18', 0.00030);
+onTheme(t => { scene.background.set(t.bg); scene.fog.color.set(t.fog); scene.fog.density = t.fogDensity; });
 // 夜空のグラデーション (地平線付近をわずかに明るく)
 const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
@@ -77,9 +118,11 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 32, 16), new THREE.Sha
   fragmentShader: 'uniform vec3 top, horizon; varying vec3 vP; void main(){ float h = normalize(vP).y; float t = pow(clamp(1.0 - h * 2.2, 0.0, 1.0), 2.2); gl_FragColor = vec4(mix(top, horizon, t), 1.0); }',
 }));
 sky.renderOrder = -10; scene.add(sky);
+onTheme(t => { sky.material.uniforms.top.value.set(t.skyTop); sky.material.uniforms.horizon.value.set(t.skyHorizon); });
 // 対象範囲の外側を覆う地面 (地形の切れ目を目立たせない)
 const farGround = new THREE.Mesh(new THREE.CircleGeometry(9000, 64), new THREE.MeshBasicMaterial({ color: '#060912' }));
 farGround.rotation.x = -Math.PI / 2; farGround.position.y = -1.2; farGround.renderOrder = -5; scene.add(farGround);
+onTheme(t => farGround.material.color.set(t.far));
 
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 20000);
 const CAM_HOME = new THREE.Vector3(1150, 720, -1250);
@@ -95,8 +138,9 @@ const pixelRatio = () => { const cap = Math.min(devicePixelRatio * 1.25, 3); con
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(pixelRatio());
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.toneMappingExposure = 1.05;
+onTheme(t => { renderer.toneMapping = t.tone ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); });
 
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.08; controls.zoomToCursor = true; controls.screenSpacePanning = false;
@@ -121,6 +165,7 @@ composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.28, 0.3, 0.5);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+onTheme(t => { bloom.enabled = t.bloom; });
 composer.setSize(innerWidth, innerHeight);
 const renderPass = composer.passes[0];
 
@@ -213,72 +258,69 @@ function buildTerrain(meta, grid) {
   };
   const geo = new THREE.PlaneGeometry((nx - 1) * step, (ny - 1) * step, nx - 1, ny - 1);
   const pos = geo.attributes.position;
-  // PlaneGeometry は (x, y) 平面、行は y 降順。 x: x0.. , y(北): y0..
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const idx = j * nx + i; const gx = x0 + i * step, gy = y0 + (ny - 1 - j) * step;
     pos.setXYZ(idx, gx, gy, h[(ny - 1 - j) * nx + i]);
   }
   geo.applyMatrix4(ROT_XZ); // (x, y, z) -> (x, z, -y): 北が -z, 標高が y
   geo.computeVertexNormals();
-  const mat = new THREE.MeshStandardMaterial({ color: '#0b1020', roughness: 1, metalness: 0, transparent: true, opacity: 0.62, depthWrite: false });
+  const mat = new THREE.MeshBasicMaterial({ color: '#0b1020', transparent: true, opacity: 0.62, depthWrite: false });
   const mesh = new THREE.Mesh(geo, mat); mesh.position.y = -0.4; mesh.renderOrder = -2;
   groups.terrain.add(mesh);
   const wire = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#1a2b52', wireframe: true, transparent: true, opacity: 0.12 }));
   wire.position.y = -0.3; groups.terrain.add(wire);
+  onTheme(t => { mat.color.set(t.terrain); mat.opacity = t.terrainAlpha; wire.material.color.set(t.wire); wire.material.opacity = t.wireAlpha; });
+}
+
+// 面ポリゴン群 → 塗り + 外周線 (線画用)
+function outlineLines(polys, lift) {
+  const lines = [];
+  for (const rings of polys) for (const ring of rings) {
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      const ax = a[0] / 10, ay = a[1] / 10, bx = b[0] / 10, by = b[1] / 10;
+      lines.push(ax, terrainSampler(ax, ay) + lift, -ay, bx, terrainSampler(bx, by) + lift, -by);
+    }
+  }
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+  return new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.4 }));
+}
+function fillMesh(polys, lift, color) {
+  const geos = [];
+  for (const rings of polys) {
+    const sh = shapeFromRings(rings); if (!sh) continue;
+    const g = flatGeometry(sh, 0); const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) p.setY(i, terrainSampler(p.getX(i), -p.getZ(i)) + lift);
+    geos.push(g);
+  }
+  if (!geos.length) return null;
+  return new THREE.Mesh(mergeGeometries(geos), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false }));
 }
 
 // ---- 水面 -----------------------------------------------------------------
 function buildWater(water) {
-  const sea = []; const inland = [];
-  for (const rings of water.sea) { const s = shapeFromRings(rings); if (s) sea.push(fixNorth(flatGeometry(s, 0))); }
-  for (const rings of water.inland) { const s = shapeFromRings(rings); if (s) inland.push(fixNorth(flatGeometry(s, 0))); }
-  if (sea.length) {
-    const m = new THREE.Mesh(mergeGeometries(sea), new THREE.MeshStandardMaterial({ color: '#0d3b6e', emissive: '#0a2a52', emissiveIntensity: 0.6, roughness: 0.8, metalness: 0.1, transparent: true, opacity: 0.72, depthWrite: false }));
-    m.position.y = 0.05; m.renderOrder = -1; groups.water.add(m);
-  }
-  if (inland.length) {
-    const m = new THREE.Mesh(mergeGeometries(inland), new THREE.MeshStandardMaterial({ color: '#124a86', emissive: '#0b3160', emissiveIntensity: 0.7, roughness: 0.8, metalness: 0.1, transparent: true, opacity: 0.85, depthWrite: false }));
-    m.position.y = 0.6; groups.water.add(m);
-  }
+  const sea = fillMesh(water.sea, 0.05, '#0d3b6e'); const inland = fillMesh(water.inland, 0.6, '#124a86');
+  const ln = outlineLines([...water.sea, ...water.inland], 0.7);
+  if (sea) { sea.renderOrder = -1; groups.water.add(sea); }
+  if (inland) groups.water.add(inland);
+  groups.water.add(ln);
+  onTheme(t => { if (sea) { sea.material.color.set(t.sea); sea.material.opacity = t.seaAlpha; } if (inland) { inland.material.color.set(t.inland); inland.material.opacity = t.seaAlpha; } ln.material.color.set(t.water); ln.material.opacity = t.waterLineAlpha; ln.visible = t.waterLineAlpha > 0; });
 }
 
 // ---- 公園・緑地 (OSM) ---------------------------------------------------------
 function buildGreen(polys) {
-  const geos = [];
-  for (const rings of polys || []) {
-    const sh = shapeFromRings(rings); if (!sh) continue;
-    const g = flatGeometry(sh, 0); const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) p.setY(i, terrainSampler(p.getX(i), -p.getZ(i)) + 0.18);
-    geos.push(g);
-  }
-  if (!geos.length) return;
-  const m = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshStandardMaterial({ color: '#0f3a2a', emissive: '#0a2a1c', emissiveIntensity: 0.5, roughness: 1, transparent: true, opacity: 0.8, depthWrite: false }));
-  groups.green.add(m);
+  const m = fillMesh(polys || [], 0.18, '#0f3a2a'); if (!m) return;
+  const ln = outlineLines(polys, 0.3);
+  groups.green.add(m, ln);
+  onTheme(t => { m.material.color.set(t.green); ln.material.color.set(t.greenLine); ln.material.opacity = t.greenLineAlpha; ln.visible = t.greenLineAlpha > 0; });
 }
 
 // ---- 道路面 (PLATEAU tran) ---------------------------------------------------
 function buildRoads(polys) {
-  const fills = []; const lines = [];
-  for (const rings of polys) {
-    const s = shapeFromRings(rings); if (!s) continue;
-    const g = fixNorth(flatGeometry(s, 0));
-    const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) p.setY(i, terrainSampler(p.getX(i), -p.getZ(i)) + 0.25);
-    fills.push(g);
-    for (const ring of rings) {
-      for (let i = 0; i < ring.length; i++) {
-        const a = ring[i], b = ring[(i + 1) % ring.length];
-        const ax = a[0] / 10, ay = a[1] / 10, bx = b[0] / 10, by = b[1] / 10;
-        lines.push(ax, terrainSampler(ax, ay) + 0.45, -ay, bx, terrainSampler(bx, by) + 0.45, -by);
-      }
-    }
-  }
-  if (fills.length) {
-    const m = new THREE.Mesh(mergeGeometries(fills), new THREE.MeshStandardMaterial({ color: '#151c33', emissive: '#0c1226', emissiveIntensity: 0.5, roughness: 0.95, transparent: true, opacity: 0.7, depthWrite: false }));
-    groups.roads.add(m);
-  }
-  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
-  groups.roads.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: '#c466ff', transparent: true, opacity: 0.22 })));
+  const m = fillMesh(polys, 0.25, '#151c33'); const ln = outlineLines(polys, 0.45);
+  if (m) groups.roads.add(m);
+  groups.roads.add(ln);
+  onTheme(t => { if (m) { m.material.color.set(t.road); m.material.opacity = t.roadAlpha; } ln.material.color.set(t.roadLine); ln.material.opacity = t.roadLineAlpha; });
 }
 
 // ---- PLATEAU メッシュ (建物・橋梁) -----------------------------------------------
@@ -299,27 +341,24 @@ const findRange = (starts, faceIndex) => { // starts: 三角形開始インデ�
 };
 
 const bldUniforms = { uHover: { value: -1 }, uWindows: { value: 1 }, uTime: { value: 0 } };
-function cityMaterial({ windows }) {
-  const mat = new THREE.MeshStandardMaterial({ color: '#2b3e6c', emissive: '#0c142c', emissiveIntensity: 0.6, roughness: 0.6, metalness: 0.3, flatShading: true, transparent: true, opacity: 0.86 });
+// 夜景用: 窓明かりつき標準マテリアル
+function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c' }) {
+  const mat = new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: 0.6, roughness: 0.6, metalness: 0.3, flatShading: true, transparent: true, opacity: 0.86 });
   mat.onBeforeCompile = shader => {
     shader.uniforms.uHover = bldUniforms.uHover; shader.uniforms.uWindows = bldUniforms.uWindows; shader.uniforms.uTime = bldUniforms.uTime;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float bid; varying float vBid; varying vec3 vWPos; varying vec3 vWNormal;')
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvBid = bid; vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vWNormal = normalize(mat3(modelMatrix) * objectNormal);');
+      .replace('#include <common>', '#include <common>\nattribute float bid; varying float vBid; varying vec3 vWPos;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvBid = bid; vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform float uHover, uWindows, uTime; varying float vBid; varying vec3 vWPos; varying vec3 vWNormal;
+        uniform float uHover, uWindows, uTime; varying float vBid; varying vec3 vWPos;
         float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         {
-          // フラットシェーディング用の面法線
           vec3 fn = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
-          float vert = 1.0 - abs(fn.y);                       // 1: 垂直面(壁)
+          float vert = 1.0 - abs(fn.y);
           float h = max(vWPos.y, 0.0);
-          // 地表付近を暗く (簡易 AO)
-          float ao = mix(0.55, 1.0, smoothstep(0.0, 28.0, h));
-          diffuseColor.rgb *= ao;
-          // 窓明かり: 壁面の格子 (階高 3.6m, 柱間 3.2m)
+          diffuseColor.rgb *= mix(0.55, 1.0, smoothstep(0.0, 28.0, h));
           if (uWindows > 0.5 && vert > 0.6 && h > 2.0) {
             float u = abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x;
             vec2 cell = floor(vec2(u / 3.2, vWPos.y / 3.6));
@@ -330,7 +369,7 @@ function cityMaterial({ windows }) {
             float flick = 0.85 + 0.15 * sin(uTime * 0.6 + r * 60.0);
             vec3 warm = mix(vec3(1.0, 0.82, 0.55), vec3(0.75, 0.9, 1.0), step(0.85, r));
             totalEmissiveRadiance += warm * lit * 0.55 * flick * vert;
-            diffuseColor.rgb += vec3(0.04) * win * vert;         // 消灯窓もわずかに見せる
+            diffuseColor.rgb += vec3(0.04) * win * vert;
           }
           if (abs(vBid - uHover) < 0.5) { totalEmissiveRadiance += vec3(0.35, 0.85, 1.0) * 0.55; diffuseColor.rgb += vec3(0.1, 0.2, 0.3); }
         }`);
@@ -338,30 +377,79 @@ function cityMaterial({ windows }) {
   mat.customProgramCacheKey = () => 'city' + (windows ? 'w' : '');
   return mat;
 }
+// 線画用: 隠線処理のための面 (背景色に近い塗り) + 階ライン・方立ラインを細線で描く
+function drawingMaterial({ floors = true } = {}) {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uFace: { value: hex('#090d1c') }, uLine: { value: hex('#9cc4ff') }, uLineAlpha: { value: 0.42 }, uHover: bldUniforms.uHover, uHoverCol: { value: new THREE.Vector3(0.35, 0.85, 1.0) }, uFloors: { value: floors ? 1 : 0 }, fogColor: { value: new THREE.Color() }, fogDensity: { value: 0 } },
+    vertexShader: `attribute float bid; varying float vBid; varying vec3 vWPos; varying float vFogDepth;
+      void main(){ vBid = bid; vec4 wp = modelMatrix * vec4(position, 1.0); vWPos = wp.xyz; vec4 mv = viewMatrix * wp; vFogDepth = -mv.z; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 uFace, uLine, uHoverCol, fogColor; uniform float uLineAlpha, uHover, uFloors, fogDensity;
+      varying float vBid; varying vec3 vWPos; varying float vFogDepth;
+      void main(){
+        vec3 fn = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
+        float vert = 1.0 - abs(fn.y);
+        // 面ごとのごく薄い陰影 (向きで僅かに変える)
+        vec3 col = uFace * (0.94 + 0.06 * abs(fn.x) + 0.03 * abs(fn.z));
+        if (uFloors > 0.5 && vert > 0.6 && vWPos.y > 1.0) {
+          float yf = vWPos.y / 3.6; float fy = min(fract(yf), 1.0 - fract(yf)); float wy = fwidth(yf);
+          float floorLine = 1.0 - smoothstep(wy * 0.6, wy * 1.6, fy);
+          float u = abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x;
+          float uf = u / 3.2; float fu = min(fract(uf), 1.0 - fract(uf)); float wu = fwidth(uf);
+          float mullion = 1.0 - smoothstep(wu * 0.6, wu * 1.6, fu);
+          // 遠景では細線が潰れるので距離で減衰
+          float fade = clamp(1.0 - (vFogDepth - 500.0) / 1400.0, 0.0, 1.0);
+          float l = max(floorLine, mullion * 0.45) * uLineAlpha * fade;
+          col = mix(col, uLine, l);
+        }
+        if (abs(vBid - uHover) < 0.5) col = mix(col, uHoverCol, 0.45);
+        float f = 1.0 - exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);
+        col = mix(col, fogColor, clamp(f, 0.0, 1.0));
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+    polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 1.5,
+  });
+  return mat;
+}
 function addBidAttribute(g, starts) {
   const n = g.attributes.position.count; const bid = new Float32Array(n); const idx = g.index.array;
   for (let b = 0; b < starts.length - 1; b++) for (let t = starts[b]; t < starts[b + 1]; t++) { bid[idx[t * 3]] = b; bid[idx[t * 3 + 1]] = b; bid[idx[t * 3 + 2]] = b; }
   g.setAttribute('bid', new THREE.BufferAttribute(bid, 1));
 }
+let bldFaces = true;   // 面を描く (隠線処理) か、線のみか
+const styledMeshes = []; // { mesh, drawing, night, edges, kind }
+function setupStyledMesh(mesh, drawing, night, edges, kind) {
+  styledMeshes.push({ mesh, drawing, night, edges, kind });
+  onTheme(t => {
+    const isNight = t.bloom;
+    mesh.material = isNight ? night : drawing;
+    mesh.visible = isNight || bldFaces;
+    drawing.uniforms.uFace.value.set(kind === 'brid' ? t.brFace : t.face); drawing.uniforms.uLine.value.set(t.faceLine); drawing.uniforms.uLineAlpha.value = kind === 'brid' ? t.faceLineAlpha * 0.5 : t.faceLineAlpha;
+    drawing.uniforms.uHoverCol.value.set(...t.hover); drawing.uniforms.fogColor.value.set(t.fog); drawing.uniforms.fogDensity.value = t.fogDensity;
+    edges.material.color.set(kind === 'brid' ? t.brEdge : t.edge); edges.material.opacity = kind === 'brid' ? t.brEdgeAlpha : t.edgeAlpha;
+    edges.material.blending = t.edgeAdd ? THREE.AdditiveBlending : THREE.NormalBlending; edges.material.depthWrite = !t.edgeAdd; edges.material.needsUpdate = true;
+  });
+}
 function buildBuildings(blobs, header) {
   const g = meshFromPack(blobs.bldg_pos, blobs.bldg_idx);
   buildingMeta = header.buildings.meta; buildingStarts = header.buildings.starts;
   addBidAttribute(g, buildingStarts);
-  buildingMesh = new THREE.Mesh(g, cityMaterial({ windows: true })); buildingMesh.name = 'bldg';
+  buildingMesh = new THREE.Mesh(g, drawingMaterial()); buildingMesh.name = 'bldg';
   groups.buildings.add(buildingMesh);
-  // 輪郭線 (面の折れ角が大きい辺のみ)
-  const eg = new THREE.EdgesGeometry(g, 30);
-  const edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#6fa0ff', transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false }));
+  // 輪郭線: 折れ角 14° 以上の辺をすべて拾う (曲面のファセットも線として出る)
+  const eg = new THREE.EdgesGeometry(g, 14);
+  const edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#b9d4ff', transparent: true, opacity: 0.78 }));
   groups.edges.add(edges);
+  setupStyledMesh(buildingMesh, buildingMesh.material, cityMaterial({ windows: true }), edges, 'bldg');
 }
 function buildBridges(blobs, header) {
   const g = meshFromPack(blobs.brid_pos, blobs.brid_idx);
-  const mat = new THREE.MeshStandardMaterial({ color: '#2d5a8a', emissive: '#0f2a4a', emissiveIntensity: 0.7, roughness: 0.5, metalness: 0.4, flatShading: true, transparent: true, opacity: 0.95 });
-  bridgeMesh = new THREE.Mesh(g, mat); bridgeMesh.name = 'brid';
+  bridgeMesh = new THREE.Mesh(g, drawingMaterial({ floors: false })); bridgeMesh.name = 'brid';
   groups.bridges.add(bridgeMesh);
   bridgeMeta = header.bridges.meta; bridgeStarts = header.bridges.starts;
-  const eg = new THREE.EdgesGeometry(g, 40);
-  groups.bridges.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#8fd0ff', transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false })));
+  const eg = new THREE.EdgesGeometry(g, 20);
+  const edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: '#a8dcff', transparent: true, opacity: 0.75 }));
+  groups.bridges.add(edges);
+  setupStyledMesh(bridgeMesh, bridgeMesh.material, cityMaterial({ windows: false, color: '#2d5a8a', emissive: '#0f2a4a' }), edges, 'brid');
 }
 
 // ---- 鉄道 -----------------------------------------------------------------
@@ -381,6 +469,7 @@ function buildRails(rails) {
     const mat = new LineMaterial({ color: hex(color), linewidth: 1.4, worldUnits: true, transparent: true, opacity: 0.8, depthWrite: false });
     mat.resolution.set(innerWidth, innerHeight);
     const line = new LineSegments2(geo, mat); line.userData.segs = segs; groups.rails.add(line); railLines.push(line);
+    onTheme(t => { mat.linewidth = t.bloom ? 1.4 : 0.9; mat.opacity = t.bloom ? 0.8 : 0.9; });
   }
   updateRails();
 }
@@ -398,6 +487,7 @@ const graph = { nodes: [], links: [], adj: new Map() };
 let netLines = null, netLines2 = null, netPoints = null;
 const netMat = (color) => { const m = new LineMaterial({ color: hex(color), linewidth: 0.5, worldUnits: true, dashed: true, dashSize: 2.2, gapSize: 1.6, transparent: true, opacity: 0.85, depthWrite: false }); m.resolution.set(innerWidth, innerHeight); return m; };
 const netMats = { 0: netMat('#00e5ff'), 1: netMat('#ffb648'), 2: netMat('#ffd94d'), 3: netMat('#7dffa8'), 4: netMat('#9fffe0') };
+onTheme(t => { netMats[0].color.set(t.net); for (const m of Object.values(netMats)) m.linewidth = t.bloom ? 0.5 : 0.35; });
 const nodeY = (n, k = expand) => terrainSampler(n.x, n.y) + levelY(n.lv, k) + 1.2;
 
 function buildNetwork(net) {
@@ -416,6 +506,7 @@ function buildNetwork(net) {
   netLines = new LineSegments2(new LineSegmentsGeometry(), netMats[0]);
   netLines2 = {}; for (const k of [1, 2, 3, 4]) netLines2[k] = new LineSegments2(new LineSegmentsGeometry(), netMats[k]);
   netPoints = new THREE.Points(new THREE.BufferGeometry(), registerPoints(makePointsMaterial('#9ff3ff', { size: 0.9, maxPx: 4, opacity: 0.45, additive: false })));
+  onTheme(t => netPoints.material.uniforms.uColor.value.set(t.netPts));
   groups.network.add(netLines, netPoints, ...Object.values(netLines2));
   updateNetwork();
 }
@@ -708,6 +799,9 @@ const bindToggle = (id, group) => document.getElementById(id).addEventListener('
 bindToggle('chk-network', groups.network); bindToggle('chk-station', groups.station); bindToggle('chk-bld', groups.buildings); bindToggle('chk-edges', groups.edges);
 bindToggle('chk-bridge', groups.bridges); bindToggle('chk-road', groups.roads); bindToggle('chk-rail', groups.rails); bindToggle('chk-water', groups.water); bindToggle('chk-terrain', groups.terrain); bindToggle('chk-labels', groups.labels); bindToggle('chk-green', groups.green);
 document.getElementById('chk-windows').addEventListener('change', e => { bldUniforms.uWindows.value = e.target.checked ? 1 : 0; });
+const applyTheme = name => { styleName = name; const t = T(); for (const fn of themed) fn(t); document.querySelectorAll('#style-presets button').forEach(b => b.classList.toggle('active', b.dataset.style === name)); document.getElementById('row-windows').style.display = t.bloom ? '' : 'none'; };
+document.querySelectorAll('#style-presets button').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.style)));
+document.getElementById('chk-faces').addEventListener('change', e => { bldFaces = e.target.checked; for (const m of styledMeshes) m.mesh.visible = T().bloom || bldFaces; });
 document.getElementById('chk-network').addEventListener('change', e => { flowPoints.visible = e.target.checked && flow.count > 0; });
 
 const expandInput = document.getElementById('floor-expand'), expandValue = document.getElementById('expand-value');
@@ -761,12 +855,13 @@ async function init() {
   setProgress(0.75, '鉄道・歩行者ネットワークを生成中…'); await nextFrame(); buildRails(header.rails); buildNetwork(header.network);
   setProgress(0.9, '駅構内モデルを生成中…'); await nextFrame(); buildStations(header.stations); buildLabels(header.labels);
   applyFlowPreset();
+  applyTheme(styleName);
   setProgress(1, '完了');
   const loading = document.getElementById('loading');
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => composer.render(), setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();

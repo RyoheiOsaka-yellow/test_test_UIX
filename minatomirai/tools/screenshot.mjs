@@ -50,7 +50,9 @@ const route = await page.evaluate(() => {
   return { from: [from.x, from.y, from.lv], to: [to.x, to.y, to.lv], len: r && Math.round(r.length), moves: r && r.moves.map(m => `${m.vt}:${m.from}>${m.to}`), lenBF: r2 && Math.round(r2.length), movesBF: r2 && r2.moves.map(m => `${m.vt}:${m.from}>${m.to}`), stairsBF: r2 && r2.usedStairs };
 });
 console.log('route test', JSON.stringify(route));
-await page.evaluate(() => { document.getElementById('btn-blueprint').click(); });
+await shot('10_paper', `a.applyTheme('paper'); a.setExpand(1); a.camera.position.set(-520, 260, 420); a.controls.target.set(-40, 80, 300);`);
+await shot('11_night', `a.applyTheme('night');`);
+await page.evaluate(() => { window.__app.applyTheme('line'); document.getElementById('btn-blueprint').click(); });
 await shot('08_blueprint', ``);
 await page.screenshot({ path: `${out}/09_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
 await browser.close();
