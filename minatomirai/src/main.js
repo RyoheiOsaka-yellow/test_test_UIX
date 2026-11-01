@@ -733,10 +733,10 @@ const lvLabel = lv => lv == null ? '階不明' : lv >= 0 ? `${lv + 1}F` : `B${-l
 
 // ---- フロアガイド CSV (building,floor,zone,name,category,share,source) -------------------
 let floorGuide = new Map();   // building name -> Map(fl -> [{zone,name,category,share}])
+const parseFloor = f => { f = String(f || '').trim().toUpperCase(); if (!f) return null; const b = f.match(/^B(\d+)/); if (b) return -Number(b[1]); if (f === 'GL' || f === 'G') return 0; const n = parseFloat(f); return isNaN(n) ? null : Math.round(n) - 1; };
 const ZONES = new Map();      // `${building}|${fl}|${zone}` -> [[x,y],...] (world, 北=+y)
 for (const z of (window.__ZONES || [])) ZONES.set(`${z.building}|${parseFloor(z.floor)}|${z.zone}`, z.poly);
 const zoneKey = (b, fl, zone) => { for (const [k, v] of ZONES) { const [kb, kf, kz] = k.split('|'); if ((b.includes(kb) || kb.includes(b)) && Number(kf) === fl && kz === String(zone)) return v; } return null; };
-const parseFloor = f => { f = String(f || '').trim().toUpperCase(); if (!f) return null; const b = f.match(/^B(\d+)/); if (b) return -Number(b[1]); if (f === 'GL' || f === 'G') return 0; const n = parseFloat(f); return isNaN(n) ? null : Math.round(n) - 1; };
 const parseCSV = text => {
   const rows = []; let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {
@@ -1031,7 +1031,8 @@ function selectBuilding(bid) {
       // 抽出済みの区画多角形があればそれを使い、無いものは残りを帯分割で近似
       const withPoly = zs.filter(z => zoneKey(m.n, fl, z.zone)); const rest = zs.filter(z => !zoneKey(m.n, fl, z.zone));
       const parts = withPoly.map(z => ({ zone: z, poly: zoneKey(m.n, fl, z.zone), kind: 'zone', exact: true }));
-      if (rest.length) parts.push(...(withPoly.length ? partition(sel.hull, rest, 'strip') : partition(sel.hull, rest)));
+      // 実形状が取れている階では、未抽出の区画は描かない (一覧には残る)。取れていない階は従来の近似割り付け
+      if (rest.length && !withPoly.length) parts.push(...partition(sel.hull, rest));
       for (const { zone, poly, kind, exact } of parts) {
         const shape = new THREE.Shape(poly.map(p => new THREE.Vector2(p[0], p[1])));
         const g = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false }); g.applyMatrix4(ROT_XZ);

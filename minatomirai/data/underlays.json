@@ -16,13 +16,14 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 14.0,
-  "scale": 0.94,
-  "dx": 0.0,
-  "dy": -4.0,
+  "rot": 4.0,
+  "scale": 0.97,
+  "dx": -2.0,
+  "dy": 6.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.521
  },
  {
   "building": "MARK IS minatomirai",
@@ -41,13 +42,14 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 14.0,
-  "scale": 1.01,
-  "dx": -10.0,
-  "dy": 8.0,
+  "rot": 0.0,
+  "scale": 0.98,
+  "dx": -8.0,
+  "dy": 6.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.55
  },
  {
   "building": "MARK IS minatomirai",
@@ -66,13 +68,14 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": -14.0,
-  "scale": 0.91,
-  "dx": -6.0,
-  "dy": -2.0,
+  "rot": 0.0,
+  "scale": 0.9,
+  "dx": -8.0,
+  "dy": 8.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.419
  },
  {
   "building": "MARK IS minatomirai",
@@ -91,13 +94,14 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 183.0,
-  "scale": 1.15,
-  "dx": 24.0,
-  "dy": 10.0,
+  "rot": 2.0,
+  "scale": 1.16,
+  "dx": -14.0,
+  "dy": -4.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.882
  },
  {
   "building": "MARK IS minatomirai",
@@ -121,8 +125,9 @@
   "dx": 4.0,
   "dy": 2.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.882
  },
  {
   "building": "MARK IS minatomirai",
@@ -141,13 +146,14 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 182.0,
+  "rot": 2.0,
   "scale": 1.0,
   "dx": 4.0,
   "dy": -2.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.797
  },
  {
   "building": "MARK IS minatomirai",
@@ -171,8 +177,9 @@
   "dx": 4.0,
   "dy": 0.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.889
  },
  {
   "building": "MARK IS minatomirai",
@@ -191,13 +198,14 @@
    "u": 0.5,
    "v": 1.8
   },
-  "rot": 186.0,
-  "scale": 1.0,
-  "dx": -6.0,
-  "dy": 0.0,
+  "rot": 5.0,
+  "scale": 0.97,
+  "dx": 30.0,
+  "dy": 4.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.758
  },
  {
   "building": "ランドマークプラザ",
@@ -221,8 +229,9 @@
   "dx": 10.0,
   "dy": -20.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.705
  },
  {
   "building": "ランドマークプラザ",
@@ -241,13 +250,14 @@
    "u": 0.38,
    "v": 0.82
   },
-  "rot": -14.0,
-  "scale": 1.0,
-  "dx": -6.0,
-  "dy": -12.0,
+  "rot": -19.0,
+  "scale": 0.99,
+  "dx": 2.0,
+  "dy": -10.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.678
  },
  {
   "building": "ランドマークプラザ",
@@ -266,13 +276,14 @@
    "u": 0.38,
    "v": 0.82
   },
-  "rot": -14.0,
+  "rot": -16.0,
   "scale": 0.94,
   "dx": 12.0,
   "dy": -22.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.741
  },
  {
   "building": "ランドマークプラザ",
@@ -291,13 +302,14 @@
    "u": 0.38,
    "v": 0.82
   },
-  "rot": -13.0,
-  "scale": 0.99,
+  "rot": -14.0,
+  "scale": 0.98,
   "dx": 2.0,
   "dy": -8.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.664
  },
  {
   "building": "ランドマークプラザ",
@@ -316,13 +328,14 @@
    "u": 0.38,
    "v": 0.82
   },
-  "rot": 190.0,
-  "scale": 1.0,
-  "dx": 20.0,
-  "dy": -20.0,
+  "rot": -14.0,
+  "scale": 0.94,
+  "dx": 4.0,
+  "dy": 12.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.532
  },
  {
   "building": "クイーンズスクエア横浜",
@@ -337,13 +350,14 @@
    0.9508
   ],
   "anchor": null,
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 158.0,
+  "scale": 0.67,
+  "dx": 2.0,
+  "dy": 16.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.233
  },
  {
   "building": "クイーンズスクエア横浜",
@@ -358,13 +372,14 @@
    0.918
   ],
   "anchor": null,
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": -14.0,
+  "scale": 0.7,
+  "dx": -24.0,
+  "dy": 30.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.258
  },
  {
   "building": "クイーンズスクエア横浜",
@@ -379,13 +394,14 @@
    0.8846
   ],
   "anchor": null,
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 8.0,
+  "scale": 0.77,
+  "dx": -14.0,
+  "dy": 22.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.419
  },
  {
   "building": "クイーンズスクエア横浜",
@@ -400,13 +416,14 @@
    0.9975
   ],
   "anchor": null,
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 181.0,
+  "scale": 0.76,
+  "dx": -14.0,
+  "dy": 14.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.412
  },
  {
   "building": "クイーンズスクエア横浜",
@@ -421,13 +438,14 @@
    0.9592
   ],
   "anchor": null,
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 187.0,
+  "scale": 0.75,
+  "dx": -12.0,
+  "dy": 10.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.412
  },
  {
   "building": "クイーンズスクエア横浜",
@@ -442,13 +460,14 @@
    0.9973
   ],
   "anchor": null,
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 190.0,
+  "scale": 1.18,
+  "dx": -56.0,
+  "dy": 36.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.266
  },
  {
   "building": "クイーンズスクエア横浜",
@@ -463,12 +482,13 @@
    0.9707
   ],
   "anchor": null,
-  "rot": 0,
-  "scale": 1.0,
-  "dx": 0,
-  "dy": 0,
+  "rot": 2.0,
+  "scale": 0.83,
+  "dx": -26.0,
+  "dy": 52.0,
   "opacity": 0.8,
-  "fit": false,
-  "source": "公式フロアガイド PDF"
+  "fit": true,
+  "source": "公式フロアガイド PDF",
+  "iou": 0.314
  }
 ]

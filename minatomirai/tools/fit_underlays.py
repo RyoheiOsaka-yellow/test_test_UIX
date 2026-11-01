@@ -106,21 +106,21 @@ def anchor_rot(u, A, metas):
     d0 = (iu * A["ax"] + iv * A["nx"]) * tx + (iu * A["ay"] + iv * A["ny"]) * ty
     return 0 if d0 >= 0 else 180
 
-def fit(u, tris, base_rot):
+def fit(u, tris, base_rot, fix_rot=False, scales=np.arange(0.75, 1.26, 0.05)):
     mask = map_mask(os.path.join(DATA, "underlays", u["file"]))
     fp, x0, y1, W, H = world_grid(tris)
     A = hull_axis(convex_hull([tuple(p) for t in tris for p in t]))
     best = (-1, None)
     # 粗探索 (アンカーで決めた向きの ±16° 以内) → 細探索
-    for rot in [base_rot + d for d in (-16, -12, -8, -4, 0, 4, 8, 12, 16)]:
-        for s in np.arange(0.75, 1.26, 0.05):
+    for rot in ([base_rot] if fix_rot else [base_rot + d for d in (-16, -12, -8, -4, 0, 4, 8, 12, 16)]):
+        for s in scales:
             for dx in range(-40, 41, 10):
                 for dy in range(-40, 41, 10):
                     v = iou(fp, render_map(mask, u, A, rot, s, dx, dy, x0, y1, W, H))
                     if v > best[0]: best = (v, (rot, s, dx, dy))
     rot, s, dx, dy = best[1]
     for _ in range(2):
-        for r2 in np.arange(rot - 3, rot + 3.1, 1):
+        for r2 in (np.arange(rot - 1, rot + 1.1, 1) if fix_rot else np.arange(rot - 3, rot + 3.1, 1)):
             for s2 in np.arange(s - 0.04, s + 0.041, 0.01):
                 for dx2 in range(int(dx) - 8, int(dx) + 9, 2):
                     for dy2 in range(int(dy) - 8, int(dy) + 9, 2):
@@ -132,17 +132,28 @@ def fit(u, tris, base_rot):
 def main():
     header, blobs = load_pack(); metas = header["buildings"]["meta"]
     us = json.load(open(MF))
-    only = sys.argv[1:]  # 建物名の部分一致で絞り込み (省略時は全部)
+    # 使い方: fit_underlays.py [建物名...] [--floors B4,B2,B1] [--rot 2] [--scale 0.4,1.3]
+    #   --rot: 回転を固定 (部分的な階 (地下階など) は IoU が不安定なので、良く合った階の回転を流用する)
+    args = sys.argv[1:]; only = []; floors = None; fix_rot = None; scales = np.arange(0.75, 1.26, 0.05)
+    i = 0
+    while i < len(args):
+        if args[i] == "--floors": floors = args[i + 1].split(","); i += 2
+        elif args[i] == "--rot": fix_rot = float(args[i + 1]); i += 2
+        elif args[i] == "--scale": a, b = map(float, args[i + 1].split(",")); scales = np.arange(a, b + 1e-9, 0.05); i += 2
+        else: only.append(args[i]); i += 1
     for u in us:
         if only and not any(o in u["building"] for o in only): continue
+        if floors and u["floor"] not in floors: continue
         bid = next((i for i, m in enumerate(metas) if m.get("n") and (u["building"] in m["n"] or m["n"] in u["building"])), None)
         if bid is None: print("building not found:", u["building"]); continue
         tris = building_tris(header, blobs, bid)
         A = hull_axis(convex_hull([tuple(p) for t in tris for p in t]))
-        if u.get("anchor"):
-            base = anchor_rot(u, A, metas); results = [fit(u, tris, base)]
+        if fix_rot is not None:
+            results = [fit(u, tris, fix_rot, fix_rot=True, scales=scales)]
+        elif u.get("anchor"):
+            base = anchor_rot(u, A, metas); results = [fit(u, tris, base, scales=scales)]
         else:
-            results = [fit(u, tris, r) for r in (0, 180)]   # アンカー無し: 形状で 0/180 を判定
+            results = [fit(u, tris, r, scales=scales) for r in (0, 180)]   # アンカー無し: 形状で 0/180 を判定
         (v, (rot, s, dx, dy)) = max(results, key=lambda r: r[0])
         # fit=True のとき rot は絶対値 (主軸基準)。main.js はアンカー判定を省略して rot をそのまま使う
         u["rot"] = round(float(rot), 1); u["scale"] = round(float(s), 3); u["dx"] = float(dx); u["dy"] = float(dy); u["iou"] = round(float(v), 3); u["fit"] = True
