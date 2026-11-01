@@ -53,8 +53,10 @@ def hull_axis(hull):   # main.js hullAxis と同じ
     return dict(cx=cx, cy=cy, ax=ax, ay=ay, nx=nx, ny=ny, a0=pa.min(), a1=pa.max(), n0=pn.min(), n1=pn.max())
 
 def map_mask(path):
-    im = np.array(Image.open(path).convert("L"))
-    m = im < 225
+    rgb = np.array(Image.open(path).convert("RGB")).astype(int); im = rgb.mean(axis=2)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    tree = (g > r + 25) & (g > b + 25) & (g - np.minimum(r, b) > 60)   # 植栽 (濃い緑) は建物外なので除外
+    m = (im < 225) & ~tree
     m = ndimage.binary_closing(m, structure=np.ones((9, 9)), iterations=2)
     m = ndimage.binary_fill_holes(m)
     lab, n = ndimage.label(m)
