@@ -27,7 +27,7 @@ function buildSite(){
   const wireMat = new THREE.LineBasicMaterial({ color:0x2a2a2a });
   for (const dy of [10.2, 9.4]) for (const dx of [-1, 1]){ const pts = []; for (const [x,z] of poles){ pts.push(new THREE.Vector3(x+dx*0.9, dy, z)); if (poles.indexOf) {} }
     const geo = new THREE.BufferGeometry().setFromPoints(pts); const l = new THREE.Line(geo, wireMat); ctx.add(l); }
-  for (let x=-hw+10; x<hw; x+=24){ mg.cyl(0.12, 8, M.darkSteel, x, 0, hd+1.2, 8); mg.box(1.6, 0.12, 0.3, M.darkSteel, x+0.8, 8, hd+1.2); mg.box(0.5, 0.12, 0.25, M.lamp, x+1.4, 7.9, hd+1.2); }
+  for (let x=-hw+16; x<hw; x+=24){ mg.cyl(0.12, 8, M.darkSteel, x, 0, hd+1.2, 8); mg.box(1.6, 0.12, 0.3, M.darkSteel, x+0.8, 8, hd+1.2); mg.box(0.5, 0.12, 0.25, M.lamp, x+1.4, 7.9, hd+1.2); }
 
   // ---- 隣接建物（低層工場・倉庫・集合住宅の群）----
   const rnd = sRand("ota-neighbors");
@@ -70,8 +70,8 @@ function buildSite(){
   // ベンチ・ボラード・サイン
   for (const [x,z] of [[-30,28],[-6,28],[18,28],[40,28]]){ mg.box(2.4, 0.08, 0.5, M.timber, x, 0.42, z); mg.box(0.12, 0.4, 0.45, M.darkSteel, x-1, 0.05, z); mg.box(0.12, 0.4, 0.45, M.darkSteel, x+1, 0.05, z); }
   for (let x=-42; x<=42; x+=6) mg.cyl(0.12, 0.9, M.darkSteel, x, 0.05, hd-0.6, 10);
-  mg.box(5, 2.2, 0.35, M.darkSteel, -50, 0.2, 36); mg.box(4.6, 1.6, 0.05, M.yellow, -50, 0.5, 35.8);
-  const sign = makeLabel("YELLOW  FUSION FACTORY  OTA", { scale:0.8, color:"#111", bg:"rgba(246,203,47,0.95)" }); sign.position.set(-50, 2.9, 35.5); site.add(sign);
+  mg.box(5, 2.2, 0.35, M.darkSteel, -50, 0.2, 36); mg.box(4.8, 1.8, 0.05, std(0x111417,{roughness:0.4}), -50, 0.4, 36.2); mg.box(0.08, 1.4, 0.03, M.yellow, -52.2, 0.6, 36.23);
+  const sign = logoPlane(4.2, { white:true, emis:1.4 }); sign.position.set(-50, 1.3, 36.24); site.add(sign);
 
   // ---- 西側 駐車場 + ソーラーカーポート ----
   const px = -hw+8; // 中心 x=-52

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>YELLOW フュージョン・ファクトリー 大田区 — 開発一体型工場 3D構想モデル v0.6</title>
+<title>XANTALOS（ザンタロス）大田区 — 開発一体型工場 3D構想モデル v0.8</title>
 <style>
   :root { --bg:#0d1117; --panel:#161b22d9; --line:#30363d; --txt:#e6edf3; --sub:#9da7b3; --acc:#f2c744; --acc2:#58a6ff; --good:#3fb950; --bad:#f85149; }
   * { box-sizing:border-box; }
@@ -17,7 +17,7 @@
   h3 { margin:0 0 8px; font-size:12px; color:var(--sub); font-weight:600; letter-spacing:.04em; }
   .row { display:flex; justify-content:space-between; align-items:baseline; margin:4px 0; gap:10px; } .row .v { font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; }
   .sep { height:1px; background:var(--line); margin:8px 0; } .sub { color:var(--sub); font-size:11px; line-height:1.55; }
-  #brand { font-weight:800; letter-spacing:.06em; font-size:13px; color:var(--acc); padding:0 6px; white-space:nowrap; } #brand small { color:var(--sub); font-weight:500; margin-left:6px; letter-spacing:0; }
+  #brand { display:flex; align-items:center; gap:10px; padding:0 8px 0 2px; white-space:nowrap; } #brandLogo { height:14px; width:auto; display:block; opacity:.95; } #brand small { color:var(--sub); font-weight:500; margin-left:6px; letter-spacing:0; }
   #topbar .btn { flex:none; }
   #topbar { position:absolute; top:0; left:0; right:0; height:48px; display:flex; align-items:center; gap:6px; padding:0 12px; background:var(--panel); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); z-index:30; overflow-x:auto; overflow-y:hidden; }
   #topbar .sp { flex:1; } #topbar .vsep { width:1px; height:22px; background:var(--line); margin:0 4px; }
@@ -71,10 +71,10 @@
 </head>
 <body>
 <div id="app"></div>
-<div id="loading"><b>YELLOW FUSION FACTORY · OTA</b><span id="loadMsg">3Dモデルを構築しています…</span></div>
+<div id="loading"><img src="img/xantalos_logo_white_1000.png" alt="XANTALOS" style="width:320px;max-width:70vw;opacity:.95" onerror="this.src=LOGO_W"><span class="sub" style="letter-spacing:.2em">OTA · DEVELOPMENT-INTEGRATED FACTORY</span><span id="loadMsg">3Dモデルを構築しています…</span></div>
 
 <div id="topbar">
-  <span id="brand">YELLOW <small>FUSION FACTORY · 大田区</small></span>
+  <span id="brand"><img src="img/xantalos_logo_white_1000.png" alt="XANTALOS" id="brandLogo"><small>ザンタロス · 大田区</small></span>
   <button class="btn sm on" data-mode="ext">外観</button><button class="btn sm" data-mode="1">1F ホール</button><button class="btn sm" data-mode="2">2F ソフト</button><button class="btn sm" data-mode="3">3F 設計</button>
   <span class="vsep"></span><button class="btn sm" id="secBtn">断面</button><button class="btn sm" id="walkBtn">歩行</button><button class="btn sm" id="bimBtn">BIM・MEP</button><button class="btn sm" id="layersBtn">レイヤー</button>
   <span id="crumb" style="margin-left:8px"></span><span class="sp"></span>
@@ -84,7 +84,7 @@
 <div id="views" class="panel"><span class="lbl">視点</span></div>
 
 <div id="stats" class="panel">
-  <h3>計画概要 — 大田区 開発一体型工場（構想 v0.6）</h3>
+  <h3>計画概要 — XANTALOS 大田区（構想 v0.8）</h3>
   <div id="statsBody"></div>
 </div>
 
@@ -103,7 +103,7 @@
   <div class="tabPane on" id="tab-lanes"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:4px"><span class="sub">レシピ＋区画＋シフト＋工程時間から配置と KPI を自動生成</span><button class="btn sm" id="laneAdd">＋ 追加</button><button class="btn sm" id="laneSave" title="レーン定義を JSON で保存">保存</button><button class="btn sm" id="laneLoad" title="JSON を読込">読込</button><input id="laneFile" type="file" accept="application/json" hidden></div><div id="laneList"></div></div>
   <div class="tabPane" id="tab-plant"><div id="plantBody"></div></div>
   <div class="tabPane" id="tab-eq"><input id="eqFilter" placeholder="設備名・ID・レーン・ゾーンで絞込み"><div id="ledgerList"></div></div>
-  <div class="tabPane" id="tab-os"><div class="sub" style="margin-bottom:6px">YELLOW Factory OS — 機械・レーン・ソフト開発を同じデータモデルで結ぶ。モジュールをクリックすると、使うレーンとデータの流れを 3D に表示。</div><div id="osList"></div></div>
+  <div class="tabPane" id="tab-os"><div class="sub" style="margin-bottom:6px">XANTALOS Factory OS — 機械・レーン・ソフト開発を同じデータモデルで結ぶ。モジュールをクリックすると、使うレーンとデータの流れを 3D に表示。</div><div id="osList"></div></div>
 </div>
 <div id="info" class="panel"></div>
 <div id="hint">左ドラッグ 回転 ／ 右ドラッグ・<kbd>Shift</kbd>＋ドラッグ 平行移動 ／ ホイール ズーム ／ 設備クリックで詳細 ／ 歩行モード <kbd>W A S D</kbd> <kbd>Q E</kbd> 上下 <kbd>Esc</kbd> 終了 ／ <kbd>1</kbd>〜<kbd>4</kbd> 階切替 <kbd>T</kbd> ツアー</div>

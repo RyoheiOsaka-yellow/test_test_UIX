@@ -15,7 +15,7 @@ function drawPlan(){ const w = 1024, h = 512; const cvs = planTex ? planTex.imag
   c.strokeStyle = "#f2c744"; c.lineWidth = 3; c.strokeRect(X(BLD.x0), Z(BLD.z0), BLD.w*sx, BLD.d*sz);
   for (const id in LANE_OBJ){ const o = LANE_OBJ[id]; if (o.lane.floor !== 1) continue; const col = "#" + LANE_RECIPES[o.lane.recipe].color.toString(16).padStart(6,"0"); c.strokeStyle = col; c.lineWidth = 5; c.beginPath(); o.stationPos.forEach((p, i) => { if (i) c.lineTo(X(p.x), Z(p.z)); else c.moveTo(X(p.x), Z(p.z)); }); c.stroke();
     c.fillStyle = col; c.font = "700 22px sans-serif"; c.fillText(`${id} ${o.kpi.outLabel}`, X(o.lane.area[0])+6, Z(o.lane.area[2])+24); }
-  c.fillStyle = "#e6edf3"; c.font = "700 26px sans-serif"; c.fillText("YELLOW FUSION FACTORY · DIGITAL TWIN · 1F  LIVE", 40, 10); c.font = "400 18px sans-serif"; c.fillStyle = "#9da7b3"; c.fillText(new Date().toLocaleDateString("ja-JP") + "  目標 " + DEMAND.target.toFixed(1) + " 台/月", 700, 14);
+  c.fillStyle = "#e6edf3"; c.font = "700 26px sans-serif"; c.fillText("XANTALOS · DIGITAL TWIN · 1F  LIVE", 40, 10); c.font = "400 18px sans-serif"; c.fillStyle = "#9da7b3"; c.fillText(new Date().toLocaleDateString("ja-JP") + "  目標 " + DEMAND.target.toFixed(1) + " 台/月", 700, 14);
   if (!planTex){ planTex = new THREE.CanvasTexture(cvs); planTex.colorSpace = THREE.SRGBColorSpace; } planTex.needsUpdate = true; return planTex; }
 
 // ---- アンドン表示板（レーンの KPI を表示、天井から吊る） ----
@@ -82,9 +82,9 @@ function buildInteriorDetail(){
   // 吸音バッフル（2F/3F オフィス天井）
   for (const [m, y] of [[I2, lv[1]-0.7], [I3, lv[2]-0.7]]) for (let x = x0 + 9; x < x1 - 9; x += 1.2) for (const z of [4.5, 8.5, 12.5]) m.box(0.05, 0.45, 2.4, std(0xdfe3e6, {roughness:0.95}), x, y - 0.5, z);
   // ロビー：デジタルツイン壁面（既存ディスプレイを差し替え）・受付サイン
-  const tex = drawPlan(); const wall = textPlane(tex, 5.6, 2.8, { emis:0.5 }); wall.position.set(-37, 2.0, 16.72); wall.rotation.y = Math.PI; g1.add(wall); wall.userData.plan = true;
-  I1.box(6.0, 3.2, 0.12, M.blackMatte, -37, 0.4, 16.85);
-  const logo = textCanvas([["YELLOW", 150, "#1a1400", 900], ["FUSION FACTORY · OTA", 44, "#1a1400", 600]], { w:1024, h:384, bg:"#f2c744", pad:70 }); const lg = textPlane(logo, 4.0, 1.5, { emis:0.1 }); lg.position.set(-41, 3.2, 17.78); lg.rotation.y = Math.PI; g1.add(lg);
+  const tex = drawPlan(); const wall = textPlane(tex, 5.6, 2.8, { emis:0.5 }); wall.position.set(-33, 2.0, 16.72); wall.rotation.y = Math.PI; g1.add(wall); wall.userData.plan = true;
+  I1.box(6.0, 3.2, 0.12, M.blackMatte, -33, 0.4, 16.85);
+  const lg = logoPlane(4.4, { white:true, emis:0.6 }); lg.position.set(-40, 3.0, 11.82); lg.rotation.y = Math.PI; g1.add(lg); I1.box(5.2, 1.4, 0.08, std(0x111417,{roughness:0.4}), -40, 2.3, 11.86);   // 受付背面（コア壁）のロゴ壁
   // HIL ラボの大型ディスプレイにも同じ平面図
   const wall2 = textPlane(tex, 4.6, 1.7, { emis:0.5 }); wall2.position.set(-4.5, lv[1] + 1.15, 17.13); wall2.rotation.y = Math.PI; g2.add(wall2); wall2.userData.plan = true;
   // ホール：通路の横断帯（ゼブラ）と AGV 停止線

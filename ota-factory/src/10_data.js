@@ -1,4 +1,4 @@
-// ================= 計画データ（YELLOW 大田区 フュージョン・ファクトリー構想） =================
+// ================= 計画データ（XANTALOS ザンタロス 大田区 開発一体型工場 構想） =================
 // 座標系: x=東(+), z=南(+ 道路側), y=上。単位はすべて m。
 // ※敷地・寸法は構想段階の想定値。実敷地が決まれば SITE / BLD の数値差替えで全体が追従する。
 
@@ -123,7 +123,7 @@ const STAFF = [
 
 // ---- ガイドツアー ----
 const TOUR = [
-  { cam:{ yaw:-0.75, pitch:0.55, dist:190, target:[0,6,0] }, mode:"ext", title:"大田区 フュージョン・ファクトリー",
+  { cam:{ yaw:-0.75, pitch:0.55, dist:190, target:[0,6,0] }, mode:"ext", title:"XANTALOS（ザンタロス）— 大田区 開発一体型工場",
     text:"大型機械の開発ホールとソフトウェア開発フロアをひとつの屋根の下に重ねた「開発一体型工場」。敷地 120×80m、延床約7,000㎡。" },
   { cam:{ yaw:0.0, pitch:0.22, dist:120, target:[0,8,20] }, mode:"ext", title:"南面：折板屋根と木天井の軒下",
     text:"3層のガラスファサード。2Fテラスは植栽帯、3Fは軒下の設計フロア。1Fは実機展示・ロビーからホールを見通す。" },
@@ -145,7 +145,7 @@ const TOUR = [
     text:"10t クレーン（フェストゥーン・巻上ドラム・フックブロック）、ツールバランサーレールのナットランナ、エネルギーブーム、据付基準を床に描くレーザー投影、天井カメラ／UWB で人と部品の位置を把握。" },
   { cam:{ yaw:-0.5, pitch:0.55, dist:120, target:[0,3,-12] }, mode:"floor", floor:1, plant:true, title:"工場全体のライン：需要 → 必要物量 → 制約",
     text:"目標「大型機 2 台/月」から BOM で各レーンの必要量を出し、能力と比べて稼働率を表示。緑の流線が供給レーン→組立の物量リンク。社内レーンの無い品目は外注前提として表示する。左下「工場全体」で目標台数を動かせる。" },
-  { cam:{ yaw:-0.7, pitch:0.5, dist:140, target:[0,5,-8] }, mode:"floor", floor:2, module:"edge", title:"YELLOW Factory OS：Edge Runtime",
+  { cam:{ yaw:-0.7, pitch:0.5, dist:140, target:[0,5,-8] }, mode:"floor", floor:2, module:"edge", title:"XANTALOS Factory OS：Edge Runtime",
     text:"全レーンの機械に載る実行環境。1 kHz のログが 2F の Edge DC に集まり、Scheduler・Quality AI・Digital Twin（このモデル自身）に供給される。モジュールをクリックすると、使うレーンとデータの流れを表示。" },
   { cam:{ yaw:-1.1, pitch:0.4, dist:60, target:[-20,7,10] }, mode:"floor", floor:2, lane:"L5", title:"2F ソフトウェア開発フロア = レーン L5",
     text:"コミット→ビルド→HIL→試験セルでの実機試験→OTA 配信を 1 本のレーンとして扱い、週あたりのリリース数とリードタイムを機械レーンと同じ KPI で見る。" },
@@ -170,7 +170,7 @@ const PHOTOS = [
   { f:"img/v05_englab.jpg",   t:"エンジニアリング・ラボ：ホールを背にした設計席" },
 ];
 
-// ================= YELLOW Factory OS（ソフトウェア層） =================
+// ================= XANTALOS Factory OS（ソフトウェア層） =================
 // layer: 1=現場制御 2=協調・計画 3=品質・データ 4=開発
 const OS_MODULES = {
   edge:  { n:"Edge Runtime",     layer:1, d:"各機械のPLC/CNC/ロボットに載る実行環境。1kHzでログ・振動・電流を収集し、レシピ（加工条件・組立手順）を配信。" },

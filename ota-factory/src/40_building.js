@@ -123,7 +123,7 @@ function buildBuilding(){
   // ---------- 外観ディテール：木質エントランス・スパンドレル・屋上設備 ----------
   // 南西の木質ポータル（ロビー前に 3.5 m 張り出す）
   E1.box(0.35, lv[1]-0.3, 3.6, M.timberDark, x0+0.2, 0, z1+1.8); E1.box(0.35, lv[1]-0.3, 3.6, M.timberDark, x0+14, 0, z1+1.8);
-  E1.box(14.2, 0.5, 3.8, M.timberDark, x0+7.1, lv[1]-0.8, z1+1.8); E1.box(14.2, 0.6, 0.3, M.timberDark, x0+7.1, lv[1]-0.9, z1+3.5);
+  E1.box(14.2, 0.5, 3.8, M.timberDark, x0+7.1, lv[1]-0.8, z1+1.8); E1.box(14.2, 0.6, 0.3, M.timberDark, x0+7.1, lv[1]-0.9, z1+3.55);
   E1.box(14.2, 0.08, 0.6, M.lampWarm, x0+7.1, lv[1]-0.85, z1+2.6);
   E1.box(0.3, lv[1]-0.7, z1-zh, M.timberDark, x0+0.35, 0, (zh+z1)/2);                       // 西面 1F は木質壁（ロビー背面）
   E1.box(2.4, 2.6, 0.12, M.glassTint, x0+7.1, 0, z1+0.2); E1.box(0.1, 2.6, 0.12, M.mullion, x0+5.9, 0, z1+0.2); E1.box(0.1, 2.6, 0.12, M.mullion, x0+8.3, 0, z1+0.2); E1.box(2.6, 0.1, 0.12, M.mullion, x0+7.1, 2.6, z1+0.2);
@@ -215,8 +215,9 @@ function buildBuilding(){
   S.flush(g1, { name:"structure", layer:"structure" }); R.flush(gr, { name:"roofStruct", layer:"structure" });
   E1.flush(g1, { name:"env1", layer:"envelope" }); E2.flush(g2, { name:"env2", layer:"envelope" }); E3.flush(g3, { name:"env3", layer:"envelope" });
 
-  { const sg = makeLabel("YELLOW", { scale:1.1, color:"#1a1400", bg:"rgba(242,199,68,0.97)" }); sg.position.set(x0+7, lv[1]-1.4, z1+3.7); sg.userData.kind = "sign"; g1.add(sg);
-    const sg2 = makeLabel("YELLOW  FUSION FACTORY", { scale:0.9, color:"#1a1400", bg:"rgba(242,199,68,0.97)" }); sg2.position.set(x1+0.9, 12.5, 12); sg2.userData.kind = "sign"; g1.add(sg2); }
+  { const sg = logoPlane(8.0, { white:true, emis:0.8 }); sg.position.set(x0+7.1, lv[1]-0.6, z1+3.76); g1.add(sg); E1.box(14.2, 0.6, 0.08, std(0x111417,{roughness:0.5}), x0+7.1, lv[1]-0.9, z1+3.72);                          // エントランス・ポータル正面（黒ロゴ）
+    const sg2 = logoPlane(14, { white:true, emis:1.2 }); sg2.position.set(x1+0.42, 12.6, 12); sg2.rotation.y = Math.PI/2; g1.add(sg2);      // 東面 折れファサード（白ロゴ・夜間発光）
+    const sg3 = logoPlane(16, { white:true, emis:1.2 }); sg3.position.set(0, 12.6, z1+0.92); g1.add(sg3); E3.box(18.5, 2.0, 0.12, std(0x111417,{roughness:0.5}), 0, 11.6, z1+0.84); }                                // 南面 軒下（白ロゴ）
   // ---------- ゾーンラベル ----------
   for (const z of ZONES){ const [id, name, f, type, xa, xb, za, zb] = z; const g = f===0? layer("site") : floorGroup(f); const y = f===0? 0.3 : lv[f-1] + (f===1 && za<2? 6.5 : 3.0);
     const lb = makeLabel(name, { scale: 1.0, accent:"#"+ZTYPE[type].c.toString(16).padStart(6,"0") }); lb.position.set((xa+xb)/2, y, (za+zb)/2); lb.userData.zone = id; lb.userData.kind = "zone"; lb.userData.floor = f; g.add(lb); }

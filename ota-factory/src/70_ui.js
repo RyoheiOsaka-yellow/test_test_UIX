@@ -162,7 +162,7 @@ function focusLane(id){ const o = LANE_OBJ[id]; if (!o) return; const L = o.lane
   setCam({ yaw: L.floor===2? -0.9 : -0.6, pitch:0.62, dist: w*1.35, target:[(x0+x1)/2, BLD.lv[L.floor-1]+2, (z0+z1)/2] }); setActiveLane(id); renderLanes(); renderOS(); }
 $("laneAdd").onclick = () => { let n = 6; while (LANE_OBJ["L"+n]) n++; const id = "L"+n; const fd = new Map([["recipe","precision"],["main","3"],["shifts","2"],["unattended","8"],["slot","recv"]]); applyLaneForm(id, fd); const card = document.querySelector(`.lane[data-id="${id}"] form`); if (card) card.hidden = false; };
 
-$("laneSave").onclick = () => { const data = { version:3, demand:DEMAND, lanes: Object.values(LANE_OBJ).map(o => o.lane) }; const a = document.createElement("a"); a.download = "yellow-ota-lanes.json"; a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type:"application/json" })); a.click(); };
+$("laneSave").onclick = () => { const data = { version:3, demand:DEMAND, lanes: Object.values(LANE_OBJ).map(o => o.lane) }; const a = document.createElement("a"); a.download = "xantalos-lanes.json"; a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type:"application/json" })); a.click(); };
 $("laneLoad").onclick = () => $("laneFile").click();
 $("laneFile").onchange = ev => { const f = ev.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { const d = JSON.parse(rd.result); if (!Array.isArray(d.lanes)) throw new Error("lanes がありません"); for (const id of Object.keys(LANE_OBJ)) removeLane(id); LANES.length = 0; if (d.demand?.target) DEMAND.target = d.demand.target; for (const L of d.lanes){ if (!LANE_RECIPES[L.recipe]) continue; LANES.push(L); generateLane(L); } afterLaneChange(); } catch (e) { alert("読込エラー: " + e.message); } ev.target.value = ""; }; rd.readAsText(f); };
 
@@ -253,7 +253,7 @@ function runClearance(){ const res = clearanceCheck(); clearanceCache = res; ren
   el.querySelectorAll(".clash").forEach(d => d.onclick = () => { const r = res[+d.dataset.i]; if (mode === "ext") setMode(1); setCam({ yaw: camGoal.yaw, pitch:0.5, dist:16, target:[r.at.x, r.at.y, r.at.z] }); selectEq(r.id); }); }
 $("clearBtn").onclick = () => { clrOn = !clrOn; $("clearBtn").classList.toggle("on", clrOn); if (clrOn) runClearance(); else { showClearanceZones(false); $("clearList").innerHTML = ""; } };
 $("xrayBtn").onclick = () => setXray(!xray);
-$("mepCsv").onclick = () => { const sch = mepSchedule(); let csv = "系統,名称,種別,寸法,延長 m,区間数,器具数\n"; for (const k in sch){ const S = SYSTEMS[k]; csv += `${k},${S.n},${S.kind},${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000) : S.size.map(v=>Math.round(v*1000)).join("x")},${sch[k].len.toFixed(1)},${sch[k].runs},${sch[k].fittings}\n`; } const a = document.createElement("a"); a.download = "yellow-ota-mep.csv"; a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type:"text/csv" })); a.click(); };
+$("mepCsv").onclick = () => { const sch = mepSchedule(); let csv = "系統,名称,種別,寸法,延長 m,区間数,器具数\n"; for (const k in sch){ const S = SYSTEMS[k]; csv += `${k},${S.n},${S.kind},${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000) : S.size.map(v=>Math.round(v*1000)).join("x")},${sch[k].len.toFixed(1)},${sch[k].runs},${sch[k].fittings}\n`; } const a = document.createElement("a"); a.download = "xantalos-mep.csv"; a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type:"text/csv" })); a.click(); };
 
 // ---- 構想イメージ ----
 { const g = $("photoGrid"); PHOTOS.forEach(p => { const f = document.createElement("figure"); f.style.margin = 0; f.innerHTML = `<img src="${p.f}" alt="${pe(p.t)}" loading="lazy"><figcaption>${pe(p.t)}</figcaption>`; f.querySelector("img").onclick = () => { $("lbImg").src = p.f; $("lbCap").textContent = p.t; $("lightbox").style.display = "flex"; }; g.appendChild(f); }); }
@@ -273,7 +273,7 @@ $("tourBtn").onclick = () => { if (tourIdx >= 0) tourStop(); else { $("tourBtn")
 $("tourNext").onclick = () => tourGo(tourIdx + 1); $("tourPrev").onclick = () => tourGo(Math.max(0, tourIdx - 1)); $("tourStop").onclick = tourStop;
 
 // ---- スクリーンショット ----
-$("shotBtn").onclick = () => { renderer.render(scene, camera); const a = document.createElement("a"); a.download = `yellow-ota-factory-${Date.now()}.png`; a.href = renderer.domElement.toDataURL("image/png"); a.click(); };
+$("shotBtn").onclick = () => { renderer.render(scene, camera); const a = document.createElement("a"); a.download = `xantalos-ota-${Date.now()}.png`; a.href = renderer.domElement.toDataURL("image/png"); a.click(); };
 
 // ---- キーボード ----
 addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; const k = e.key;

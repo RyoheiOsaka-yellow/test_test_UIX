@@ -54,7 +54,7 @@ function setDay(mode){
   scene.background = new THREE.Color(p.fog); scene.fog = new THREE.Fog(p.fog, 500, 1500);
   sun.position.set(...p.sun); sun.color.set(p.sunC); sun.intensity = p.sunI;
   hemi.intensity = p.hemi; scene.environmentIntensity = p.env; renderer.toneMappingExposure = p.exp;
-  emissiveMats.forEach(m => { m.emissiveIntensity = p.emis * (m.userData.emisMax ?? 1); m.needsUpdate = false; });
+  emissiveMats.forEach(m => { m.emissiveIntensity = Math.max(p.emis, m.map && m.emissiveMap ? 0.35 : 0) * (m.userData.emisMax ?? 1); m.needsUpdate = false; });
   M.glass.opacity = mode==='night'? 0.14 : 0.28; M.glassIn.opacity = mode==='night'? 0.1 : 0.18; M.glassTint.opacity = mode==='night'? 0.3 : 0.45;
   scene.traverse(o => { if (o.userData.cloud) { o.material.color.set(mode==='night'? 0x334055 : mode==='dusk'? 0xffc9a0 : 0xffffff); } });
   dirtyShadow();
@@ -225,6 +225,12 @@ class Merger {
   }
 }
 
+// ---- ロゴ板（XANTALOS ロゴのテクスチャ平面。white: 暗い背景用） ----
+const LOGO_TEX = {};
+function logoTex(white=true){ const k = white ? "w" : "b"; if (!LOGO_TEX[k]){ const t = new THREE.TextureLoader().load(white ? LOGO_W : LOGO_B); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; LOGO_TEX[k] = t; } return LOGO_TEX[k]; }
+function logoPlane(width, opts={}){ const h = width * 176/2000; const g = new THREE.Group(); if (opts.bg){ const bg = new THREE.Mesh(G.plane(width*1.12, h*2.4), opts.bg); bg.position.z = -0.01; g.add(bg); }
+  const m = new THREE.Mesh(G.plane(width, h), new THREE.MeshStandardMaterial({ map: logoTex(opts.white ?? true), transparent:true, alphaTest:0.2, roughness:0.5, metalness:0.1, emissive: opts.emissive ?? 0xffffff, emissiveMap: logoTex(opts.white ?? true), emissiveIntensity: opts.emis ?? 0.0, side: THREE.DoubleSide })); m.castShadow = false; g.add(m);
+  if (opts.emis) { m.material.userData.emisMax = opts.emis; m.material.emissiveIntensity = opts.emis*0.35; emissiveMats.push(m.material); } return g; }
 // ---- ラベル（スプライト：画面上で一定サイズ） ----
 const LABELS = [];
 function refitLabels(){ const a = innerWidth/innerHeight; for (const sp of LABELS) sp.scale.set(sp.userData.aspect * sp.userData.hN / a, sp.userData.hN, 1); }
