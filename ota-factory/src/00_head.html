@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>YELLOW フュージョン・ファクトリー 大田区 — 開発一体型工場 3D構想モデル v0.1</title>
+<title>YELLOW フュージョン・ファクトリー 大田区 — 開発一体型工場 3D構想モデル v0.2</title>
 <style>
   :root { --bg:#0d1117; --panel:#161b22d9; --line:#30363d; --txt:#e6edf3; --sub:#9da7b3; --acc:#f2c744; --acc2:#58a6ff; --good:#3fb950; --bad:#f85149; }
   * { box-sizing:border-box; }
@@ -32,6 +32,23 @@
   #info { right:12px; bottom:12px; width:300px; max-height:52vh; overflow:auto; display:none; } #info h2 { margin:0 0 4px; font-size:14px; } #info table { width:100%; font-size:11px; border-collapse:collapse; } #info td { padding:3px 0; vertical-align:top; border-top:1px solid #21262d; } #info td:first-child { color:var(--sub); width:34%; }
   #layers { top:104px; left:12px; width:230px; display:none; } #layers label { display:flex; align-items:center; gap:8px; padding:3px 0; cursor:pointer; } #layers input { accent-color:var(--acc); }
   #section { top:104px; left:12px; width:260px; display:none; } #section input[type=range] { width:100%; accent-color:var(--acc); }
+  #ledger { width:340px; max-height:58vh; }
+  .tabs { display:flex; gap:4px; margin-bottom:8px; } .tabs .btn { flex:1; padding:5px 4px; font-size:11px; }
+  .tabPane { display:none; overflow:auto; flex:1; } .tabPane.on { display:block; }
+  .lane { border:1px solid var(--line); border-left:4px solid var(--c, #888); border-radius:8px; padding:8px 10px; margin-bottom:8px; cursor:pointer; background:#161b22; }
+  .lane:hover { border-color:#4a5563; border-left-color:var(--c); } .lane.on { background:#1f2733; box-shadow:0 0 0 1px var(--c) inset; }
+  .lane .lh { display:flex; gap:6px; align-items:baseline; font-size:12.5px; font-weight:700; } .lane .lh b { color:var(--c); } .lane .lh small { margin-left:auto; color:var(--sub); font-weight:500; font-size:10px; }
+  .lane .desc { color:var(--sub); font-size:10.5px; line-height:1.45; margin:3px 0 6px; }
+  .kpi { display:grid; grid-template-columns:repeat(3,1fr); gap:4px 8px; } .kpi div { background:#0d1117; border-radius:6px; padding:4px 6px; } .kpi small { display:block; color:var(--sub); font-size:9.5px; } .kpi b { font-size:12px; font-variant-numeric:tabular-nums; }
+  .kpi b.big { font-size:14px; color:var(--acc); }
+  .chips { display:flex; flex-wrap:wrap; gap:3px; margin-top:6px; } .chip { font-size:9.5px; padding:1px 6px; border-radius:10px; background:#21262d; color:#c9d1d9; border:1px solid var(--line); } .chip.on { background:var(--acc); color:#1a1400; border-color:var(--acc); }
+  .lane .ctl { display:flex; gap:5px; margin-top:7px; justify-content:flex-end; }
+  .cfg { background:#0d1117; border:1px solid var(--line); border-radius:8px; padding:8px; margin-top:8px; font-size:11px; } .cfg label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:4px 0; color:var(--sub); }
+  .cfg select, .cfg input { background:#161b22; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:3px 6px; font-size:11px; width:56%; } .cfg .ctl { justify-content:space-between; align-items:center; } .cfg .warn { color:var(--bad); font-size:10px; }
+  .os-layer { margin-bottom:8px; } .os-layer h4 { margin:4px 0; font-size:11px; color:var(--acc); letter-spacing:.06em; }
+  .mod { border:1px solid var(--line); border-radius:8px; padding:6px 9px; margin-bottom:5px; cursor:pointer; background:#161b22; } .mod:hover { border-color:#4a5563; } .mod.on { border-color:var(--acc); background:#1f2733; }
+  .mod b { font-size:12px; } .mod p { margin:2px 0 4px; color:var(--sub); font-size:10.5px; line-height:1.45; }
+  .ptbl { width:100%; border-collapse:collapse; font-size:11px; margin:4px 0 2px; } .ptbl td { padding:2px 0; } .ptbl td.n { text-align:right; font-weight:700; font-variant-numeric:tabular-nums; color:var(--acc); }
   #hint { bottom:12px; left:324px; max-width:360px; color:var(--sub); font-size:11px; line-height:1.6; pointer-events:none; }
   kbd { background:#21262d; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:10px; }
   #photos { top:104px; right:292px; width:420px; max-height:calc(100vh - 130px); overflow:auto; display:none; } #photos .grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; } #photos img { width:100%; border-radius:6px; cursor:pointer; display:block; } #photos figcaption { font-size:10px; color:var(--sub); margin-top:2px; line-height:1.3; }
@@ -69,7 +86,7 @@
 </div>
 
 <div id="stats" class="panel">
-  <h3>計画概要 — 大田区 開発一体型工場（構想 v0.1）</h3>
+  <h3>計画概要 — 大田区 開発一体型工場（構想 v0.2）</h3>
   <div id="statsBody"></div>
 </div>
 
@@ -80,7 +97,12 @@
   <div class="row sub"><span id="secLabel">高さ 10.0 m 以上をカット</span><button class="btn sm" id="secOff">解除</button></div>
 </div>
 
-<div id="ledger" class="panel"><h3>設備台帳 <span id="eqCount" style="color:var(--acc)"></span></h3><input id="eqFilter" placeholder="設備名・ID・ゾーンで絞込み"><div id="ledgerList"></div></div>
+<div id="ledger" class="panel">
+  <div class="tabs"><button class="btn on" data-tab="lanes">レーン・生産性</button><button class="btn" data-tab="eq">設備台帳 <span id="eqCount" style="color:var(--acc)"></span></button><button class="btn" data-tab="os">Factory OS</button></div>
+  <div class="tabPane on" id="tab-lanes"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="sub">レシピ＋区画＋シフトから機械配置と KPI を自動生成</span><button class="btn sm" id="laneAdd">＋ レーン追加</button></div><div id="laneList"></div></div>
+  <div class="tabPane" id="tab-eq"><input id="eqFilter" placeholder="設備名・ID・レーン・ゾーンで絞込み"><div id="ledgerList"></div></div>
+  <div class="tabPane" id="tab-os"><div class="sub" style="margin-bottom:6px">YELLOW Factory OS — 機械・レーン・ソフト開発を同じデータモデルで結ぶ。モジュールをクリックすると、使うレーンとデータの流れを 3D に表示。</div><div id="osList"></div></div>
+</div>
 <div id="info" class="panel"></div>
 <div id="hint">左ドラッグ 回転 ／ 右ドラッグ・<kbd>Shift</kbd>＋ドラッグ 平行移動 ／ ホイール ズーム ／ 設備クリックで詳細 ／ 歩行モード <kbd>W A S D</kbd> <kbd>Q E</kbd> 上下 <kbd>Esc</kbd> 終了 ／ <kbd>1</kbd>〜<kbd>4</kbd> 階切替 <kbd>T</kbd> ツアー</div>
 

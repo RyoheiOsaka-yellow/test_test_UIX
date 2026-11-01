@@ -39,8 +39,8 @@ const movers = [];
 function buildMovers(){
   scene.add(MOVERS);
   // ---- クレーン ----
-  for (const [id, xa, xb, ph] of [["CR-01", -40, -2, 0], ["CR-02", 6, 40, 2.0]]){ const o = EQ_OBJ[id]; if (!o) continue; const c = o.group; const tr = c.userData.trolley, rope = c.userData.rope, hook = c.userData.hook; const span = BLD.zh - BLD.z0 - 2.7;
-    ANIM.push({ update(t){ const s = t*0.12 + ph; c.position.x = lerp(xa, xb, 0.5+0.5*Math.sin(s)); tr.position.z = Math.sin(s*1.7)*(span/2-3); const L = 3.5 + 2.5*(0.5+0.5*Math.sin(s*2.3)); rope.scale.y = L; rope.position.y = 1.1 - L/2; hook.position.y = 1.1 - L; } }); }
+  for (const [id, xa, xb, ph] of [["CR-01", -40, -2, 0], ["CR-02", 6, 40, 2.0]]){ const o = EQ_OBJ[id]; if (!o) continue; const c = o.group;
+    ANIM.push({ update(t){ c.position.x = lerp(xa, xb, 0.5+0.5*Math.sin(t*0.12 + ph)); } }); animOverhead("crane", c, ph); }
   // ---- AGV ----
   { const o = EQ_OBJ["AGV-2"]; if (o){ movers.push(new PathMover(o.group, [[32,0,-14],[0,0,-14],[-30,0,-14],[-30,0,-6],[-14,0,-6],[-14,0,-14],[20,0,-14],[20,0,-24],[32,0,-24],[32,0,-14]], 1.4, { pause:2.5 })); } }
   { const o = EQ_OBJ["AGV-1"]; if (o){ movers.push(new PathMover(o.group, [[38,0,-14],[38,0,-26],[26,0,-28],[26,0,-16],[40,0,-16],[40,0,-8],[36,0,-8],[36,0,-14]], 1.2, { pause:3 })); } }

@@ -116,8 +116,8 @@ function buildBuilding(){
   E1.box(0.3, 2.2, 1.0, M.darkSteel, x0+6, 0, z0+0.1); E1.box(0.3, 2.2, 1.0, M.darkSteel, x1-0.1, 0, 10);
 
   // ---------- 床・スラブ・天井 ----------
-  const hallFloor = mesh(G.plane(W, zh-z0), M.epoxy, (x0+x1)/2, 0.01, (z0+zh)/2, { rot:[-Math.PI/2,0,0], cast:false }); hallFloor.name="hallFloor"; g1.add(hallFloor);
-  const stripFloor = mesh(G.plane(W, z1-zh), std(0xc9ccd0,{ map:TEX.concrete([20,4]), roughness:0.6 }), (x0+x1)/2, 0.01, (zh+z1)/2, { rot:[-Math.PI/2,0,0], cast:false }); g1.add(stripFloor);
+  const hallFloor = mesh(G.plane(W, zh-z0), M.epoxy, (x0+x1)/2, 0.06, (z0+zh)/2, { rot:[-Math.PI/2,0,0], cast:false }); hallFloor.name="hallFloor"; g1.add(hallFloor);
+  const stripFloor = mesh(G.plane(W, z1-zh), std(0xc9ccd0,{ map:TEX.concrete([20,4]), roughness:0.6 }), (x0+x1)/2, 0.06, (zh+z1)/2, { rot:[-Math.PI/2,0,0], cast:false }); g1.add(stripFloor);
   // 2F スラブ（テラス含む）
   E2.box(W, 0.3, terraceZ-zh+2, M.concrete, (x0+x1)/2, lv[1]-0.3, (zh-2+terraceZ)/2);
   g2.add(mesh(G.plane(W, z1-zh), M.carpet, (x0+x1)/2, lv[1]+0.01, (zh+z1)/2, { rot:[-Math.PI/2,0,0], cast:false }));

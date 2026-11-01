@@ -204,6 +204,41 @@ function makeCrane(){ const g = new THREE.Group(); const span = BLD.zh - BLD.z0 
   for (let i=0;i<6;i++) boxAt(g, 2.1, 0.08, 0.06, M.yellow, 0, 1.1, -span/2+2+i*(span-4)/5);
   g.userData.trolley = trolley; g.userData.rope = rope; g.userData.hook = hook; return g; }
 
+// ---- レーン用ステーション ----
+function makeLoadStation(){ const g = new THREE.Group();
+  boxAt(g, 1.6, 0.6, 1.2, M.steel, -0.4, 0, 0); for (let i=0;i<3;i++) boxAt(g, 0.4+Math.random()*0.3, 0.25, 0.4+Math.random()*0.3, std(0x8d939a,{metalness:0.6,roughness:0.4}), -0.9+i*0.5, 0.6, (i%2)*0.3-0.15);   // 素材（鋼材ブロック）
+  boxAt(g, 1.1, 0.14, 1.1, M.pallet, 0.9, 0, 0.1); boxAt(g, 0.9, 0.3, 0.9, M.crate, 0.9, 0.14, 0.1);
+  boxAt(g, 0.08, 1.4, 0.08, M.darkSteel, 0.5, 0, -0.95); boxAt(g, 0.5, 0.35, 0.05, M.monitor, 0.5, 1.35, -0.95); boxAt(g, 0.46, 0.3, 0.02, M.screen, 0.5, 1.37, -0.92);   // 投入指示端末
+  boxAt(g, 0.7, 0.8, 0.5, std(0xc23b3b,{metalness:0.3}), -1.1, 0.15, -0.9); for (const dx of [-0.25,0.25]) for (const dz of [-0.18,0.18]) cylAt(g, 0.06, 0.05, M.blackMatte, -1.1+dx, 0.05, -0.9+dz, {seg:8});
+  return g; }
+function makeWash(){ const g = new THREE.Group(); boxAt(g, 2.6, 0.2, 2.0, M.machineDark, 0, 0, 0); boxAt(g, 2.2, 1.9, 1.9, std(0xd8dde2,{metalness:0.6,roughness:0.35}), -0.2, 0.2, 0); boxAt(g, 1.0, 0.6, 0.04, M.machineWin, -0.2, 1.1, 0.96);
+  cylAt(g, 0.12, 0.6, M.steel, 0.3, 2.1, -0.4, {seg:10}); boxAt(g, 0.5, 0.9, 0.5, M.machineWhite, 1.05, 0.2, -0.6); boxAt(g, 0.4, 0.3, 0.02, M.screen, 1.05, 1.0, -0.33);
+  for (const x of [-1.5, 1.4]) { boxAt(g, 0.8, 0.1, 0.9, M.steel, x, 0.75, 0.3); for (let i=0;i<4;i++) cylAt(g, 0.04, 0.85, M.darkSteel, x-0.3+i*0.2, 0.8, 0.3, {rot:[Math.PI/2,0,0], seg:6}); boxAt(g, 0.5, 0.3, 0.5, M.mesh, x, 0.85, 0.3); }
+  return g; }
+function makeStore(){ const g = new THREE.Group(); const w = 3.2, d = 1.2, lv = 4;
+  for (const x of [-w/2, 0, w/2]) for (const z of [-d/2, d/2]) boxAt(g, 0.06, 2.2, 0.06, M.darkSteel, x, 0, z);
+  for (let l=0;l<lv;l++){ boxAt(g, w, 0.03, d, M.steel, 0, 0.2+l*0.55, 0); for (let i=0;i<8;i++){ boxAt(g, 0.34, 0.26, 0.5, l%2? M.machineBlue : M.rackOrange, -w/2+0.2+i*0.39, 0.23+l*0.55, 0.1); boxAt(g, 0.04, 0.02, 0.01, (i+l)%3? M2.led : std(0x3fb950,{emissive:0x3fb950,emissiveIntensity:1}), -w/2+0.2+i*0.39, 0.21+l*0.55, d/2+0.02); } }
+  boxAt(g, 0.5, 0.35, 0.04, M.monitor, w/2+0.3, 1.5, 0.2); boxAt(g, 0.46, 0.3, 0.02, M.screen, w/2+0.3, 1.52, 0.23); boxAt(g, 0.06, 1.5, 0.06, M.darkSteel, w/2+0.3, 0, 0.2); return g; }
+function makePanelStation(){ const g = new THREE.Group();
+  boxAt(g, 1.6, 0.1, 1.0, M.steel, 0, 0.5, 0.3); for (const dx of [-0.7,0.7]) for (const dz of [-0.1,0.7]) boxAt(g, 0.06, 0.5, 0.06, M.darkSteel, dx, 0, dz);   // 架台
+  boxAt(g, 1.2, 1.8, 0.4, M.machineWhite, 0, 0.6, 0.3); const door = boxAt(g, 0.58, 1.75, 0.03, M.machineWhite, 0.9, 0.62, 0.3); door.rotation.y = -1.2;
+  boxAt(g, 1.1, 1.6, 0.02, std(0xe9c46a), 0, 0.7, 0.52); for (let i=0;i<4;i++) boxAt(g, 1.0, 0.1, 0.06, std(0x6a7f95), 0, 0.85+i*0.35, 0.55); for (let i=0;i<10;i++) boxAt(g, 0.06, 0.09, 0.07, i%3? std(0x8f9aa8) : M.machineBlue, -0.45+i*0.1, 1.18, 0.56);
+  boxAt(g, 2.4, 2.0, 0.4, M.darkSteel, 0, 0, -1.3); for (let k=0;k<4;k++){ boxAt(g, 2.3, 0.02, 0.38, M.steel, 0, 0.4+k*0.45, -1.3); for (let b=0;b<6;b++) boxAt(g, 0.3, 0.2, 0.3, (b+k)%2? M.machineBlue : M.rackOrange, -1.0+b*0.38, 0.42+k*0.45, -1.3); }   // ピッキング棚
+  boxAt(g, 0.06, 1.5, 0.06, M.darkSteel, 1.1, 0, -0.5); boxAt(g, 0.5, 0.35, 0.04, M.monitor, 1.1, 1.45, -0.5); boxAt(g, 0.46, 0.3, 0.02, M.screen, 1.1, 1.47, -0.47);
+  return g; }
+function makeWiringStation(){ const g = new THREE.Group();
+  boxAt(g, 2.2, 0.05, 0.9, M.deskWhite, 0, 0.75, 0.4); for (const dx of [-1.0,1.0]) boxAt(g, 0.06, 0.75, 0.8, M.darkSteel, dx, 0, 0.4); boxAt(g, 0.45, 0.45, 0.45, M.chair, 0, 0, 1.2);
+  boxAt(g, 1.0, 0.5, 0.6, M.machineWhite, -0.5, 0.8, 0.3); boxAt(g, 0.3, 0.2, 0.02, M.screen, -0.5, 1.1, 0.61);   // ワイヤ加工機
+  boxAt(g, 0.6, 0.3, 0.3, M.machineDark, 0.5, 0.8, 0.3); cylAt(g, 0.03, 0.25, M.steel, 0.5, 1.1, 0.3, {seg:6});     // 圧着機
+  boxAt(g, 2.2, 1.6, 0.3, M.darkSteel, 0, 0, -0.9); for (let i=0;i<8;i++) cylAt(g, 0.12, 0.2, [M2.hose, M2.hoseR, M2.cable, std(0xf2c230)][i%4], -0.9+i*0.26, 1.0, -0.9, {rot:[0,0,Math.PI/2], seg:12});  // 電線リール
+  boxAt(g, 0.06, 1.3, 0.06, M.darkSteel, 1.3, 0.75, -0.2); boxAt(g, 0.3, 0.2, 0.02, M.screen, 1.3, 1.9, -0.2);    // AR 端末
+  return g; }
+function makePowerTest(){ const g = new THREE.Group();
+  for (const [x,z] of [[-1.3,-1.3],[1.3,-1.3],[-1.3,1.3],[1.3,1.3]]) cylAt(g, 0.04, 1.0, M.safetyYellow, x, 0, z, {seg:8}); for (const [a,b] of [[[-1.3,-1.3],[1.3,-1.3]],[[1.3,-1.3],[1.3,1.3]],[[1.3,1.3],[-1.3,1.3]]]) { const L = Math.hypot(b[0]-a[0], b[1]-a[1]); const c = boxAt(g, L, 0.02, 0.02, M.safetyYellow, (a[0]+b[0])/2, 0.9, (a[1]+b[1])/2); c.rotation.y = -Math.atan2(b[1]-a[1], b[0]-a[0]); }
+  boxAt(g, 1.2, 1.8, 0.4, M.machineWhite, 0, 0, 0); boxAt(g, 0.8, 1.4, 0.3, M.machineWhite, -1.3, 0, -0.3); boxAt(g, 0.6, 0.3, 0.02, M.screen, -1.3, 1.0, -0.14); for (let i=0;i<3;i++) cylAt(g, 0.03, 0.06, M2.hoseR, -1.5+i*0.2, 0.6, -0.14, {rot:[Math.PI/2,0,0], seg:8});
+  boxAt(g, 0.05, 1.2, 0.05, M.darkSteel, 1.2, 0, 0.8); for (const [i,c] of [[0,0xd13b3b],[1,0xf2c230],[2,0x3fb950]].entries()) cylAt(g, 0.06, 0.1, std(c,{emissive:c,emissiveIntensity:0.6}), 1.2, 1.2+i*0.11, 0.8, {seg:10});
+  return g; }
+
 // ---- オフィス什器 ----
 function deskCluster(m, x, z, people, ry=0){ // 4席アイランド（m: Merger）
   const rot = ry; const R = (dx,dz)=>[x + dx*Math.cos(rot) - dz*Math.sin(rot), z + dx*Math.sin(rot) + dz*Math.cos(rot)];
@@ -232,14 +267,14 @@ function buildInterior(){
   const g1 = floorGroup(1), g2 = floorGroup(2), g3 = floorGroup(3); const lv = BLD.lv;
   const eqG = new THREE.Group(); eqG.name = "equipment"; eqG.userData.layer = "equipment"; g1.add(eqG);
   const F1 = new Merger(), F2 = new Merger(), F3 = new Merger();   // 什器（静的）
-  const builders = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, bench:makeBench, dock:makeDock, testcell:makeTestCell, cmm:makeCMM, elab:makeElab, toolroom:makeToolroom, hil:makeHIL, server:makeServer, agv:makeAGV, crane:makeCrane,
+  const builders = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, bench:makeBench, dock:makeDock, testcell:makeTestCell, cmm:makeCMM, elab:makeElab, toolroom:makeToolroom, hil:makeHIL, server:makeServer, agv:makeAGV, crane:()=>makeCraneDetailed(BLD.zh - BLD.z0 - 2.7),
     robotcell: ()=>makeRobotCell(false), rack: ()=>makeRack(3,4), assembly: ()=>makeAssembly("A") };
   for (const e of EQUIP){
     let b = builders[e.kind]; if (!b) continue;
     if (e.id==="RC-02") b = ()=>makeRobotCell(true); if (e.id==="AS-B") b = ()=>makeAssembly("B"); if (e.zone==="recv") b = ()=>makeRack(4,4);
     if (e.kind==="bigdoor") continue;
     const grp = b(); compactGroup(grp); const floorIdx = ZONES.find(z=>z[0]===e.zone)?.[2] ?? 1; const y = lv[floorIdx-1];
-    grp.position.set(e.x, e.kind==="crane"? BLD.craneRail+0.45 : y, e.z); grp.rotation.y = e.rot||0; tagEq(grp, e);
+    grp.position.set(e.x, e.kind==="crane"? BLD.craneRail+0.62 : y, e.z); grp.rotation.y = e.rot||0; tagEq(grp, e);
     (floorIdx===1? eqG : floorGroup(floorIdx)).add(grp);
     if (e.kind!=="agv" && e.kind!=="crane"){ const lb = makeLabel(e.id+"  "+e.name, { scale:0.7, bg:"rgba(13,17,23,0.65)" }); lb.position.set(0, (e.kind==="gantry"? 7.2 : e.kind==="testcell"? 6.8 : 4.0), 0); lb.userData.kind = "eq"; lb.userData.floor = floorIdx; grp.add(lb); }
   }
@@ -248,10 +283,10 @@ function buildInterior(){
 
   // ---- ホール床のライン・安全表示 ----
   const L = new Merger(); const { x0, x1, z0, zh } = BLD;
-  L.box(x1-x0-2, 0.015, 0.12, M.line, 0, 0.011, -16.2); L.box(x1-x0-2, 0.015, 0.12, M.line, 0, 0.011, -11.8);   // 中央通路 4m
-  for (const x of [-12, 4, 20, 36]) { L.box(0.12, 0.015, zh-z0-2, M.line, x, 0.011, (z0+zh)/2); }                   // ベイ境界
-  for (let x=x0+2; x<x1-2; x+=2) L.box(1.0, 0.015, 0.12, std(0x3fb950), x+0.5, 0.012, -10.5);                      // 歩行者通路（緑破線）
-  for (let i=0;i<6;i++) L.box(0.12, 0.015, 5, M.line, 38+i*1.0, 0.011, -14);                                        // ドック前ハッチング
+  L.box(x1-x0-2, 0.015, 0.12, M.line, 0, 0.07, -16.2); L.box(x1-x0-2, 0.015, 0.12, M.line, 0, 0.07, -11.8);   // 中央通路 4m
+  for (const x of [-12, 4, 20, 36]) { L.box(0.12, 0.015, zh-z0-2, M.line, x, 0.07, (z0+zh)/2); }                   // ベイ境界
+  for (let x=x0+2; x<x1-2; x+=2) L.box(1.0, 0.015, 0.12, std(0x3fb950), x+0.5, 0.072, -10.5);                      // 歩行者通路（緑破線）
+  for (let i=0;i<6;i++) L.box(0.12, 0.015, 5, M.line, 38+i*1.0, 0.07, -14);                                        // ドック前ハッチング
   for (const x of cols_(BLD)) { for (const z of [z0+0.6, zh-0.6]) { L.box(0.76, 1.0, 0.76, M.safetyYellow, x, 0, z); L.box(0.78, 0.12, 0.78, M.blackMatte, x, 0.3, z); L.box(0.78, 0.12, 0.78, M.blackMatte, x, 0.6, z); L.box(0.3, 0.6, 0.2, M.pipeRed, x+0.5, 1.2, z-0.2); } }
   for (const [x,z] of [[42,-28],[42,-20],[42,-12]]) L.cyl(0.1, 1.0, M.safetyYellow, x, 0, z, 8);
   L.flush(g1, { name:"floorLines", layer:"markings", cast:false });

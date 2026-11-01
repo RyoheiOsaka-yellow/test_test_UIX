@@ -86,38 +86,8 @@ const ZONES = [
 // ---- 設備台帳（機械ホール・ラボ） ----
 // kind: mc5 hmc lathe gantry edm grind robotcell cmm assembly testcell rack bench tool server hil crane agv
 const EQUIP = [
-  // 機械加工エリア
-  { id:"MC-01", kind:"mc5",   name:"5軸マシニングセンタ #1", x:-39, z:-24, rot:0, zone:"mach",
-    spec:{ 型式:"5軸立形MC（想定）", 加工範囲:"X800×Y800×Z600", 主軸:"15,000 min⁻¹", 電源:"30 kVA", 質量:"12 t" } },
-  { id:"MC-02", kind:"mc5",   name:"5軸マシニングセンタ #2", x:-32, z:-24, rot:0, zone:"mach",
-    spec:{ 型式:"5軸立形MC（想定）", 加工範囲:"X800×Y800×Z600", 主軸:"15,000 min⁻¹", 電源:"30 kVA", 質量:"12 t" } },
-  { id:"MC-03", kind:"mc5",   name:"5軸マシニングセンタ #3", x:-25, z:-24, rot:0, zone:"mach",
-    spec:{ 型式:"5軸立形MC（想定）", 加工範囲:"X800×Y800×Z600", 主軸:"15,000 min⁻¹", 電源:"30 kVA", 質量:"12 t" } },
-  { id:"RC-01", kind:"robotcell", name:"ロボット供給セル A", x:-35.5, z:-17.5, rot:0, zone:"mach",
-    spec:{ 構成:"6軸ロボット 可搬20kg＋ワークストッカ", 対象:"MC-01/02 自動段取", 安全柵:"H2.0m メッシュ", 電源:"5 kVA" } },
-  { id:"GM-01", kind:"gantry", name:"門型マシニングセンタ", x:-20, z:-12, rot:0, zone:"mach",
-    spec:{ 型式:"門型5面加工機（想定）", 加工範囲:"X4000×Y2500×Z1200", テーブル:"4m×2.5m 耐荷重 15t", 電源:"80 kVA", 質量:"45 t", 基礎:"独立基礎 深さ1.5m" } },
-  { id:"HM-01", kind:"hmc",   name:"横型マシニングセンタ #1", x:-39, z:-9, rot:0, zone:"mach",
-    spec:{ 型式:"横型MC パレット2面（想定）", パレット:"630×630", 主軸:"12,000 min⁻¹", 電源:"35 kVA", 質量:"16 t" } },
-  { id:"HM-02", kind:"hmc",   name:"横型マシニングセンタ #2", x:-31, z:-9, rot:0, zone:"mach",
-    spec:{ 型式:"横型MC パレット2面（想定）", パレット:"630×630", 主軸:"12,000 min⁻¹", 電源:"35 kVA", 質量:"16 t" } },
-  { id:"LT-01", kind:"lathe", name:"CNC旋盤 #1", x:-40, z:-2, rot:0, zone:"mach",
-    spec:{ 型式:"CNC旋盤 Y軸付（想定）", 最大加工径:"φ450", 電源:"25 kVA", 質量:"6 t" } },
-  { id:"LT-02", kind:"lathe", name:"CNC旋盤 #2", x:-34, z:-2, rot:0, zone:"mach",
-    spec:{ 型式:"CNC旋盤 Y軸付（想定）", 最大加工径:"φ450", 電源:"25 kVA", 質量:"6 t" } },
-  { id:"ED-01", kind:"edm",   name:"ワイヤ放電加工機", x:-27, z:-2, rot:0, zone:"mach",
-    spec:{ 型式:"ワイヤEDM（想定）", 加工範囲:"X600×Y400", 電源:"15 kVA", 質量:"4 t" } },
-  { id:"GR-01", kind:"grind", name:"平面研削盤", x:-21, z:-2, rot:0, zone:"mach",
-    spec:{ 型式:"平面研削盤（想定）", テーブル:"600×300", 電源:"10 kVA", 質量:"3 t" } },
-  { id:"RC-02", kind:"robotcell", name:"ロボット供給セル B", x:-15.5, z:-24.5, rot:0, zone:"mach",
-    spec:{ 構成:"6軸ロボット 可搬50kg＋パレットチェンジャ", 対象:"MC-03/GM-01 ワーク搬送", 安全柵:"H2.0m メッシュ", 電源:"6 kVA" } },
+  // ※ 工作機械・組立ステーション・制御盤組立はレーン定義（LANES）から自動生成される
   // 組立ベイ
-  { id:"AS-A",  kind:"assembly", name:"開発機 #1（組立中）", x:-4, z:-16, rot:0, zone:"asm1",
-    spec:{ 機種:"大型門型加工システム（開発中）", 寸法:"L9.0×W4.5×H5.2 m", 質量:"38 t", 状態:"機械組立 → 配線 → ソフト結合", クレーン:"10t 使用" } },
-  { id:"AS-B",  kind:"assembly", name:"開発機 #2（顧客立会い）", x:12, z:-16, rot:0, zone:"asm2",
-    spec:{ 機種:"自律搬送・ロボット統合セル（開発中）", 寸法:"L8.0×W4.0×H3.6 m", 質量:"22 t", 状態:"最終調整・立会い検収" } },
-  { id:"BN-01", kind:"bench",  name:"組立作業台 A-1/2", x:-9.5, z:-4, rot:0, zone:"asm1", spec:{ 仕様:"定盤 2000×1000 ×2・工具キャビネット", 用途:"サブアッセンブリ" } },
-  { id:"BN-02", kind:"bench",  name:"組立作業台 B-1/2", x:6.5, z:-4, rot:0, zone:"asm2", spec:{ 仕様:"定盤 2000×1000 ×2・工具キャビネット", 用途:"サブアッセンブリ" } },
   { id:"RK-A",  kind:"rack",   name:"部品ラック A", x:-10.5, z:-27, rot:0, zone:"asm1", spec:{ 仕様:"パレットラック 3段 L8m", 用途:"組立部品キット" } },
   { id:"RK-B",  kind:"rack",   name:"部品ラック B", x:17.5, z:-27, rot:0, zone:"asm2", spec:{ 仕様:"パレットラック 3段 L8m", 用途:"組立部品キット" } },
   // 試験・受入・出荷
@@ -139,7 +109,6 @@ const EQUIP = [
   // 1F ラボ
   { id:"CM-01", kind:"cmm",    name:"門型三次元測定機", x:-11, z:9, rot:0, zone:"cmm",
     spec:{ 測定範囲:"X1200×Y2000×Z1000", 精度:"1.5+L/350 µm", 環境:"20±0.5℃", 基礎:"独立防振基礎" } },
-  { id:"EL-01", kind:"elab",   name:"制御盤組立・試験ベンチ", x:0, z:10, rot:0, zone:"elab", spec:{ 仕様:"盤組立台 ×4・配線ステーション ×4・ESD床", 試験:"耐電圧・絶縁・通電" } },
   { id:"TL-01", kind:"toolroom", name:"ツールプリセッタ・工具棚", x:11, z:10, rot:0, zone:"tool", spec:{ 仕様:"プリセッタ ×1・ツールキャビネット ×8", 管理:"RFID 工具管理" } },
   // 2F
   { id:"HIL-1", kind:"hil",    name:"HILシミュレータ", x:-3, z:10, rot:0, zone:"hil",
@@ -166,10 +135,20 @@ const TOUR = [
     text:"西から機械加工 → 大型組立ベイA/B → 試運転セル → 出荷。中央通路 4m に AGV ループ。10t クレーン2基が全長を走行。" },
   { cam:{ yaw:-2.3, pitch:0.28, dist:48, target:[-28,3,-14] }, mode:"int", floor:1, title:"機械加工エリア",
     text:"5軸MC×3、横型MC×2、門型MC、旋盤、EDM、研削。ロボットセル2基が夜間無人運転。切粉・クーラントは地下トレンチ集約。" },
+  { cam:{ yaw:-0.6, pitch:0.62, dist:42, target:[-28,2,-20] }, mode:"floor", floor:1, lane:"L1", title:"レーン L1：精密部品 加工レーン（自動生成）",
+    text:"レシピ「旋盤→5軸MC×3→横型MC×2→洗浄→計測→ストア」を区画に流し込むと、機械配置・床の流れ・天井ガントリーローダ・ツールレールが自動生成され、タクト・日産・OEE・自動化率が算出される。" },
+  { cam:{ yaw:-0.6, pitch:0.62, dist:42, target:[-28,2,-5] }, mode:"floor", floor:1, lane:"L2", title:"レーン L2：大型構造物 加工レーン",
+    text:"門型MCを中心に研削・EDM・計測へ。ジブクレーンとエネルギーブームが大物の段取りを支える。" },
   { cam:{ yaw:-1.0, pitch:0.3, dist:46, target:[-4,4,-16] }, mode:"int", floor:1, title:"大型組立ベイ A",
     text:"床耐荷重 5t/㎡・クレーン直下。開発機を組み上げながら、真上のソフト開発フロアからログを見てパラメータを即時に調整。" },
   { cam:{ yaw:0.9, pitch:0.3, dist:40, target:[28,3,-6] }, mode:"int", floor:1, title:"試運転・性能試験セル",
     text:"防音ガラス囲い。振動・騒音・電力を計測し、2F HIL ラボとリアルタイム連成。" },
+  { cam:{ yaw:-0.8, pitch:0.5, dist:48, target:[4,2,-14] }, mode:"floor", floor:1, lane:"L3", title:"レーン L3：大型機 組立レーンと天井工具",
+    text:"10t クレーン（フェストゥーン・巻上ドラム・フックブロック）、ツールバランサーレールのナットランナ、エネルギーブーム、据付基準を床に描くレーザー投影、天井カメラ／UWB で人と部品の位置を把握。" },
+  { cam:{ yaw:-0.7, pitch:0.5, dist:140, target:[0,5,-8] }, mode:"floor", floor:2, module:"edge", title:"YELLOW Factory OS：Edge Runtime",
+    text:"全レーンの機械に載る実行環境。1 kHz のログが 2F の Edge DC に集まり、Scheduler・Quality AI・Digital Twin（このモデル自身）に供給される。モジュールをクリックすると、使うレーンとデータの流れを表示。" },
+  { cam:{ yaw:-1.1, pitch:0.4, dist:60, target:[-20,7,10] }, mode:"floor", floor:2, lane:"L5", title:"2F ソフトウェア開発フロア = レーン L5",
+    text:"コミット→ビルド→HIL→試験セルでの実機試験→OTA 配信を 1 本のレーンとして扱い、週あたりのリリース数とリードタイムを機械レーンと同じ KPI で見る。" },
   { cam:{ yaw:-1.1, pitch:0.4, dist:60, target:[-20,7,10] }, mode:"floor", floor:2, title:"2F ソフトウェア開発フロア",
     text:"56席のオープンフロア。ホール側は全面ガラスとバルコニーで、組立中の実機が常に視界にある。" },
   { cam:{ yaw:-0.9, pitch:0.4, dist:60, target:[-20,11.5,10] }, mode:"floor", floor:3, title:"3F 設計フロア・カフェテリア",
@@ -189,4 +168,103 @@ const PHOTOS = [
   { f:"img/v03_folded.jpg",   t:"折板屋根と木天井のファサード" },
   { f:"img/v04_machining.jpg",t:"機械加工エリアとガラス越しのエンジニアリング" },
   { f:"img/v05_englab.jpg",   t:"エンジニアリング・ラボ：ホールを背にした設計席" },
+];
+
+// ================= YELLOW Factory OS（ソフトウェア層） =================
+// layer: 1=現場制御 2=協調・計画 3=品質・データ 4=開発
+const OS_MODULES = {
+  edge:  { n:"Edge Runtime",     layer:1, d:"各機械のPLC/CNC/ロボットに載る実行環境。1kHzでログ・振動・電流を収集し、レシピ（加工条件・組立手順）を配信。" },
+  fleet: { n:"Fleet 協調",        layer:2, d:"AGV・天井クレーン・ガントリーローダの経路と優先度を一括制御。干渉を予測して待機を最小化。" },
+  sched: { n:"Scheduler",         layer:2, d:"全レーン横断の工程計画。タクト・納期・無人運転枠から日次スケジュールを自動生成。" },
+  mes:   { n:"MES / 実績",        layer:3, d:"着手・完了・不良を自動収集し、OEE・リードタイムをレーン別に可視化。" },
+  qai:   { n:"Quality AI",        layer:3, d:"CMM・画像・振動データから寸法ドリフトと異常を推定。加工条件を Edge へフィードバック。" },
+  twin:  { n:"Digital Twin",      layer:3, d:"このモデルと同じ台帳・レーン定義から工場の双子を生成。配置変更・増設の影響を事前に試算。" },
+  cmms:  { n:"予知保全",          layer:3, d:"主軸・ボールねじ・クレーン巻上機の劣化を推定し、保全枠を Scheduler に予約。" },
+  cicd:  { n:"CI/CD・HIL",        layer:4, d:"制御ソフトのビルド→シミュレーション→HIL→実機試験→配信を自動化。リリースを週次で回す。" },
+  ota:   { n:"OTA 配信",          layer:4, d:"出荷済み機械・社内機械へのソフト更新をロールアウト。失敗時は自動ロールバック。" },
+};
+const OS_LAYERS = [[1,"現場制御"],[2,"協調・計画"],[3,"品質・データ"],[4,"開発・配信"]];
+
+// ---- ステーション種別（レーン生成の部品）----
+// fp:[レーン方向の幅, 奥行] m / ct:標準作業時間 / unit: min|h / auto: auto(無人可) semi(監視付) manual / ppl:要員
+const STATION_TYPES = {
+  load:    { n:"素材投入・段取",     kind:"load",     fp:[2.6,2.4], ct:5,   unit:"min", auto:"semi",   ppl:1,
+             spec:{ 仕様:"素材パレット台＋ツールプリセット端末", 連携:"Scheduler が投入順を指示" } },
+  lathe:   { n:"CNC旋盤",            kind:"lathe",    fp:[3.6,2.2], ct:18,  unit:"min", auto:"semi",   ppl:0.5,
+             spec:{ 型式:"CNC旋盤 Y軸付（想定）", 最大加工径:"φ450", 電源:"25 kVA", 質量:"6 t" } },
+  mc5:     { n:"5軸マシニングセンタ", kind:"mc5",      fp:[4.6,5.0], ct:42,  unit:"min", auto:"auto",   ppl:0.3,
+             spec:{ 型式:"5軸立形MC（想定）", 加工範囲:"X800×Y800×Z600", 主軸:"15,000 min⁻¹", 電源:"30 kVA", 質量:"12 t", 供給:"天井ガントリーローダ" } },
+  hmc:     { n:"横型マシニングセンタ", kind:"hmc",      fp:[5.6,6.4], ct:25,  unit:"min", auto:"auto",   ppl:0.3,
+             spec:{ 型式:"横型MC パレット2面（想定）", パレット:"630×630", 主軸:"12,000 min⁻¹", 電源:"35 kVA", 質量:"16 t" } },
+  gantry:  { n:"門型マシニングセンタ", kind:"gantry",   fp:[12.0,7.0], ct:240, unit:"min", auto:"semi",  ppl:1,
+             spec:{ 型式:"門型5面加工機（想定）", 加工範囲:"X4000×Y2500×Z1200", テーブル:"4×2.5 m 耐荷重 15 t", 電源:"80 kVA", 質量:"45 t", 基礎:"独立基礎 深さ1.5 m" } },
+  edm:     { n:"ワイヤ放電加工機",    kind:"edm",      fp:[3.2,3.0], ct:90,  unit:"min", auto:"auto",   ppl:0.2,
+             spec:{ 型式:"ワイヤEDM（想定）", 加工範囲:"X600×Y400", 電源:"15 kVA", 質量:"4 t" } },
+  grind:   { n:"平面研削盤",          kind:"grind",    fp:[3.0,2.2], ct:60,  unit:"min", auto:"semi",   ppl:0.5,
+             spec:{ 型式:"平面研削盤（想定）", テーブル:"600×300", 電源:"10 kVA", 質量:"3 t" } },
+  robotcell:{ n:"ロボット段取セル",    kind:"robotcell",fp:[6.4,6.4], ct:3,   unit:"min", auto:"auto",   ppl:0,
+             spec:{ 構成:"6軸ロボット 可搬50 kg＋ワークストッカ", 役割:"夜間無人運転の素材・治具段取", 安全柵:"H2.0 m メッシュ" } },
+  wash:    { n:"洗浄・エアブロー",    kind:"wash",     fp:[2.8,2.2], ct:6,   unit:"min", auto:"auto",   ppl:0,
+             spec:{ 仕様:"高圧温水洗浄機 バスケット式", 排水:"油水分離→再生" } },
+  cmm:     { n:"三次元測定（計測室）", kind:"ref",      ref:"CM-01",  ct:12,  unit:"min", auto:"auto",   ppl:0.3 },
+  store:   { n:"完成品ストア",        kind:"store",    fp:[3.2,1.4], ct:2,   unit:"min", auto:"auto",   ppl:0,
+             spec:{ 仕様:"ライトガイド棚 4段×8間口", 連携:"MES が棚番を発行、AGV が組立へ供給" } },
+  asmMech: { n:"機械組立（ベイ）",    kind:"asmA",     fp:[14,9],    ct:160, unit:"h",   auto:"manual", ppl:4,
+             spec:{ 機種:"大型門型加工システム（開発中）", 寸法:"L9.0×W4.5×H5.2 m", 質量:"38 t", 工具:"天井ツールレール（ナットランナ）・エネルギーブーム", 位置決め:"レーザー投影で据付基準を床に表示" } },
+  asmWire: { n:"配線・制御盤接続",    kind:"asmB",     fp:[12,8],    ct:60,  unit:"h",   auto:"manual", ppl:3,
+             spec:{ 機種:"自律搬送・ロボット統合セル（開発中）", 寸法:"L8.0×W4.0×H3.6 m", 質量:"22 t", 工程:"配線→盤接続→I/O チェック" } },
+  asmSoft: { n:"ソフト結合・調整",    kind:"ref",      ref:"@lane",  ct:48,  unit:"h",   auto:"semi",   ppl:2 },
+  test:    { n:"試運転・性能試験",    kind:"ref",      ref:"TC-01",  ct:40,  unit:"h",   auto:"semi",   ppl:2 },
+  ship:    { n:"出荷・積込",          kind:"ref",      ref:"DK-03",  ct:16,  unit:"h",   auto:"manual", ppl:2 },
+  panel:   { n:"盤組立",              kind:"panel",    fp:[2.6,3.2], ct:12,  unit:"h",   auto:"manual", ppl:1,
+             spec:{ 仕様:"盤組立架台＋部品ピッキング棚", 図面:"電気CADから配線表を Edge 端末へ配信" } },
+  wiring:  { n:"配線ステーション",    kind:"wiring",   fp:[2.6,3.2], ct:16,  unit:"h",   auto:"manual", ppl:1,
+             spec:{ 仕様:"ワイヤ加工機＋圧着＋配線台", 支援:"AR 端末で配線経路を表示" } },
+  ptest:   { n:"通電・絶縁試験",      kind:"ptest",    fp:[3.0,3.0], ct:4,   unit:"h",   auto:"semi",   ppl:1,
+             spec:{ 仕様:"耐電圧試験器・絶縁抵抗計・I/O シミュレータ", 記録:"MES へ自動登録" } },
+  commit:  { n:"開発・コミット",      kind:"ref",      ref:"@zone:sw", ct:0,  unit:"h",   auto:"manual", ppl:0 },
+  build:   { n:"ビルド・シミュレーション", kind:"ref", ref:"SV-01",  ct:0.5, unit:"h",   auto:"auto",   ppl:0 },
+  hil:     { n:"HIL 試験",            kind:"ref",      ref:"HIL-1",  ct:2,   unit:"h",   auto:"auto",   ppl:0.5 },
+  ftest:   { n:"実機試験（試験セル）", kind:"ref",     ref:"TC-01",  ct:4,   unit:"h",   auto:"semi",   ppl:1 },
+  release: { n:"リリース・OTA",       kind:"ref",      ref:"SV-01",  ct:1,   unit:"h",   auto:"auto",   ppl:0.5 },
+};
+
+// ---- レーンのレシピ（「こういうレーンには こういう機械」）----
+// mode: flow(部品/日) project(台/月) release(件/週)
+const LANE_RECIPES = {
+  precision: { n:"精密部品 加工レーン", mode:"flow", color:0x58a6ff, unitName:"個",
+    stations:[["load",1],["lathe",2],["mc5",3],["hmc",2],["wash",1],["cmm",1],["store",1]], aux:[["robotcell",1]],
+    overhead:["gantryLoader","toolRail","cams"], os:["edge","fleet","sched","mes","qai","cmms","twin"], params:{ mcCount:3 },
+    desc:"旋盤→5軸MC→横型MC→洗浄→計測→ストア。5軸MC列は天井ガントリーローダで無人供給。" },
+  heavy:     { n:"大型構造物 加工レーン", mode:"flow", color:0x79c0ff, unitName:"個",
+    stations:[["load",1],["gantry",1],["grind",1],["edm",1],["cmm",1]], aux:[],
+    overhead:["jib","boom","cams"], os:["edge","sched","mes","qai","cmms"], params:{},
+    desc:"門型MCでベッド・コラム級の大物を5面加工。研削・EDMで仕上げ、計測室で検査。" },
+  assembly:  { n:"大型機 組立レーン", mode:"project", color:0xf2c744, unitName:"台",
+    stations:[["asmMech",1],["asmWire",1],["asmSoft",1],["test",1],["ship",1]], aux:[],
+    overhead:["crane","toolRail","boom","laser","cams"], os:["edge","fleet","sched","mes","twin","cicd"], params:{},
+    desc:"機械組立→配線→ソフト結合→試運転→出荷。天井クレーン・ツールレール・レーザー投影で据付。" },
+  panel:     { n:"制御盤・電子 組立レーン", mode:"flow", color:0xf778ba, unitName:"面",
+    stations:[["panel",2],["wiring",2],["ptest",1]], aux:[],
+    overhead:["toolRail","boom"], os:["edge","mes","qai"], params:{},
+    desc:"盤組立→配線→通電試験。完成盤は組立レーンへ AGV 供給。" },
+  software:  { n:"ソフトウェア デリバリーレーン", mode:"release", color:0xbc8cff, unitName:"リリース",
+    stations:[["commit",1],["build",1],["hil",1],["ftest",1],["release",1]], aux:[],
+    overhead:[], os:["cicd","ota","twin","mes"], params:{},
+    desc:"コミット→ビルド/シミュレーション→HIL→試験セルでの実機試験→OTA配信。機械と同じ屋根の下で週次に回す。" },
+};
+
+// ---- 配置するレーン（区画・シフト・レシピ）----
+// area:[x0,x1,z0,z1] 生成範囲 / rows: 蛇行配置の行数上限 / shifts: {hours, shifts, unattended(無人運転 h/日)}
+const LANES = [
+  { id:"L1", recipe:"precision", zone:"mach", floor:1, area:[-43,-13,-29.5,-12], flowDir:1,
+    shifts:{ hours:8, shifts:2, unattended:8 }, oee:{ avail:0.88, perf:0.95, qual:0.985 } },
+  { id:"L2", recipe:"heavy",     zone:"mach", floor:1, area:[-43,-13,-11,1],    flowDir:1,
+    shifts:{ hours:8, shifts:2, unattended:6 }, oee:{ avail:0.85, perf:0.9, qual:0.98 } },
+  { id:"L3", recipe:"assembly",  zone:"asm1", floor:1, area:[-11,19,-29,1],     flowDir:1,
+    shifts:{ hours:8, shifts:1, unattended:0, days:21 }, oee:{ avail:0.9, perf:0.9, qual:1 } },
+  { id:"L4", recipe:"panel",     zone:"elab", floor:1, area:[-5.5,5.5,3,17],    flowDir:1,
+    shifts:{ hours:8, shifts:2, unattended:0 }, oee:{ avail:0.92, perf:0.95, qual:0.99 } },
+  { id:"L5", recipe:"software",  zone:"sw",   floor:2, area:[-36,34,3,17],      flowDir:1,
+    shifts:{ hours:8, shifts:1, unattended:16, days:5 }, oee:{ avail:0.97, perf:1, qual:0.95 } },
 ];
