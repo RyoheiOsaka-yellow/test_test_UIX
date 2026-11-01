@@ -19,7 +19,7 @@ v.setPart(built); v.setView(view, false);
 if (q.get('section')) v.setSection(q.get('section'), +q.get('t') || 0.5);
 if (q.get('style') === 'normal') { v.quality = false; built.group.traverse(o => { if (o.isMesh) o.material = new THREE.MeshNormalMaterial(); }); v.clearEdges(); } else if (q.get('style')) v.setDisplayStyle(q.get('style'));
 window.__built = built;
-if (q.get('feat')) { const F = built.features[q.get('feat')]; v.showFeatures([{ no: 1, feature: F, status: 'ng', text: 'test', selected: true }]); v.focusFeature(F); v._tween = null; v.camera.position.copy(v._tween ? v._tween.p1 : v.camera.position); }
+if (q.get('feat')) { const F = built.features[q.get('feat')]; v.showFeatures([{ no: 1, feature: F, status: 'ng', text: 'test', selected: true }]); v.focusFeature(F, { fill: +(q.get('fill') || 0.45) }); const tw = v._tween; v._tween = null; v.camera.position.copy(tw.p1); v.controls.target.copy(tw.t1); v.controls.update(); }
 let tris = 0; built.group.traverse(o => { if (o.isMesh) tris += o.geometry.attributes.position.count / 3; });
 setTimeout(() => { v.render(); window.__result = { tris, buildMs: Math.round(t1 - t0) }; }, 800);
 </script></body></html>

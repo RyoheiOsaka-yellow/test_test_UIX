@@ -7,8 +7,8 @@ export const PARTS = [
   {
     id: 'P-2611-001', name: 'ベアリングハウジング', drawingNo: 'BT-26-1108', rev: 'B', material: 'A6061-T6', process: '切削（マシニングセンタ）', finish: 'アルマイト無し（切削のまま）',
     vendor: '東莞・精密加工工場（DG-PM）', country: 'CN', customer: '顧客 A 社（産業機器）', lot: '試作 1 次', qty: 3, received: '2026-11-01', due: '2026-11-07',
-    model: 'housing', preloaded: false, status: 'todo', mass: 0.41,
-    params: { L: 120, Wd: 80, T: 12, bossD: 60, H: 45, seatD: 35, seatDepth: 11, throughD: 30, grooveD: 37, grooveW: 1.6, grooveY: 36.0, mountD: 9, cboreD: 15, cboreDepth: 8.5, pitchX: 100, pitchY: 60, dowelD: 6, dowelPitch: 80, tapDrill: 3.3, tapPCD: 48, tapDepth: 7, cornerR: 10, c: 0.5, seatC: 1 },
+    model: 'housing', preloaded: false, status: 'todo', density: 2.70,
+    params: { density: 2.70, bossFillet: 1.0, tapM: 4, tapPitch: 0.7, L: 120, Wd: 80, T: 12, bossD: 60, H: 45, seatD: 35, seatDepth: 11, throughD: 30, grooveD: 37, grooveW: 1.6, grooveY: 36.0, mountD: 9, cboreD: 15, cboreDepth: 8.5, pitchX: 100, pitchY: 60, dowelD: 6, dowelPitch: 80, tapDrill: 3.3, tapPCD: 48, tapDepth: 7, cornerR: 10, c: 0.5, seatC: 1 },
     datums: { A: '底面（取付面）', B: 'φ35 軸受座', C: 'ノックピン穴' },
     items: [
       { no: 1, key: 'lengthX', label: '全長', nominal: 120, tol: [0.1, -0.1], kind: 'len', inst: 'ノギス', view: 'top', cmm: 'PLN_END_X/DIST' },
@@ -51,8 +51,8 @@ export const PARTS = [
   {
     id: 'P-2611-002', name: '段付きシャフト', drawingNo: 'BT-26-1112', rev: 'A', material: 'S45C（調質・研磨）', process: '旋盤 + 円筒研削 + キー溝加工', finish: '研磨（軸受部）',
     vendor: '大田区・精密旋盤（OTA-TN）', country: 'JP', customer: '顧客 B 社（搬送装置）', lot: '試作 2 次', qty: 3, received: '2026-10-29', due: '2026-11-05',
-    model: 'shaft', preloaded: true, status: 'inspecting', mass: 0.52,
-    params: { L: 150, thread: { d: 16, pitch: 1.5, len: 20, c: 1 }, relief: { d: 14, len: 3 }, j1: { d: 20, a1: 60 }, groove: { a: 52, w: 1.35, d: 19 }, mid: { d: 25, a1: 100 }, keyway: { w: 8, t1: 4, a0: 65, a1: 95 }, j2: { d: 20, a1: 127 }, end: { d: 16, c: 1 }, center: { D: 5, d: 2, depth: 6 }, c: 0.5 },
+    model: 'shaft', preloaded: true, status: 'inspecting', density: 7.85,
+    params: { density: 7.85, L: 150, thread: { d: 16, pitch: 1.5, len: 20, c: 1 }, relief: { d: 14, len: 3 }, j1: { d: 20, a1: 60 }, groove: { a: 52, w: 1.35, d: 19 }, mid: { d: 25, a1: 100 }, keyway: { w: 8, t1: 4, a0: 65, a1: 95 }, j2: { d: 20, a1: 127 }, end: { d: 16, c: 1 }, center: { D: 5, d: 2, depth: 6 }, c: 0.5 },
     datums: { A: 'φ20 ジャーナル 1', B: 'φ20 ジャーナル 2' },
     items: [
       { no: 1, key: 'length', label: '全長', nominal: 150, tol: [0.1, -0.1], kind: 'len', inst: 'ノギス', view: 'side', cmm: 'PLN_END/DIST' },
@@ -87,8 +87,8 @@ export const PARTS = [
   {
     id: 'P-2611-003', name: 'L ブラケット（板金）', drawingNo: 'BT-26-1120', rev: 'A', material: 'SPCC t2.0', process: 'レーザー切断 + ベンダー曲げ', finish: '電気亜鉛めっき（三価クロメート）',
     vendor: 'バンコク・板金工場（BKK-SM）', country: 'TH', customer: '顧客 C 社（計測機器）', lot: '量産前 初回', qty: 3, received: '2026-10-27', due: '2026-11-04',
-    model: 'bracket', preloaded: true, status: 'done', mass: 0.09,
-    params: { L: 80, Wd: 50, Hh: 50, t: 2, Ri: 2, baseHoles: [[55, 15], [55, -15]], baseHoleD: 6.5, legSlot: { y: 30, z: 0, w: 6.5, len: 12 }, legHoles: [[42, 18], [42, -18]], legHoleD: 4.5 },
+    model: 'bracket', preloaded: true, status: 'done', density: 7.85,
+    params: { density: 7.85, L: 80, Wd: 50, Hh: 50, t: 2, Ri: 2, baseHoles: [[55, 15], [55, -15]], baseHoleD: 6.5, legSlot: { y: 30, z: 0, w: 6.5, len: 12 }, legHoles: [[42, 18], [42, -18]], legHoleD: 4.5 },
     datums: { A: '底面', B: '立板 外面' },
     items: [
       { no: 1, key: 'length', label: '全長', nominal: 80, tol: [0.3, -0.3], kind: 'len', inst: 'ノギス', view: 'front', cmm: 'PLN_END/DIST' },

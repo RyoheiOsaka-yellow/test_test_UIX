@@ -11,6 +11,9 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 export const STATUS_HEX = { ok: 0x3e6b4a, warn: 0xb8862a, ng: 0xc0392b, na: 0x6f6f68, sel: 0x2563eb };
+// 偏差カラーマップ: 公差消費率 t ∈ [−1, +1]（青 = 下限側, 白 = 呼び, 赤 = 上限側。±1 超は濃色 = 公差外）
+export function devColor(t) { const c = new THREE.Color(); if (t == null || Number.isNaN(t)) return c.set(0x9a948a); const a = Math.min(1.35, Math.abs(t)); const over = a > 1; const k = Math.min(1, a); if (t >= 0) c.setRGB(1, 1 - 0.85 * k, 1 - 0.95 * k); else c.setRGB(1 - 0.95 * k, 1 - 0.6 * k, 1); if (over) c.multiplyScalar(0.62); return c; }
+export function devColorCSS(t) { return '#' + devColor(t).getHexString(); }
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
 export class Viewer {
@@ -73,7 +76,7 @@ export class Viewer {
   // ---- 検査オーバーレイ ----
   clearOverlays() { this.invalidate(); while (this.overlayRoot.children.length) { const c = this.overlayRoot.children[0]; this.overlayRoot.remove(c); c.traverse?.(o => { if (o.element?.parentNode) o.element.parentNode.removeChild(o.element); }); } this.overlays = new Map(); }
   clearProbes() { this.invalidate(); while (this.probeRoot.children.length) { const c = this.probeRoot.children[0]; this.probeRoot.remove(c); c.traverse?.(o => { if (o.element?.parentNode) o.element.parentNode.removeChild(o.element); }); } }
-  _mat(status, k = 0.45) { const m = new THREE.MeshBasicMaterial({ color: STATUS_HEX[status] || STATUS_HEX.na, transparent: true, opacity: k, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); return m; }
+  _mat(status, k = 0.45) { const m = new THREE.MeshBasicMaterial({ color: this._color || STATUS_HEX[status] || STATUS_HEX.na, transparent: true, opacity: this._color ? Math.max(k, 0.6) : k, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); return m; }
   _cylMesh(spec, side, status, axis = 'y') { const off = side === 'in' ? -0.12 : 0.12; const r = Math.max(0.2, spec.r + off); const seg = Math.max(32, Math.min(96, Math.round(r * 6))); const g = spec.arc ? new THREE.CylinderGeometry(r, r, spec.h, seg, 1, true, spec.arc[0] + Math.PI / 2, spec.arc[1] - spec.arc[0]) : new THREE.CylinderGeometry(r, r, spec.h, seg, 1, true); g.translate(0, spec.h / 2, 0); const ax = spec.axis || axis; if (ax === 'x') g.rotateZ(-Math.PI / 2); if (ax === 'z') g.rotateX(Math.PI / 2); const m = new THREE.Mesh(g, this._mat(status, side === 'in' ? 0.45 : 0.28)); m.position.copy(spec.c); return m; }
   _featureMesh(F, status) {
     const grp = new THREE.Group();
@@ -84,8 +87,8 @@ export class Viewer {
     return grp;
   }
   // entries: [{ no, feature, status, text, selected }]
-  showFeatures(entries, { labels = true } = {}) {
-    this.clearOverlays(); for (const e of entries) { const F = e.feature; if (!F) continue; const g = this._featureMesh(F, e.selected ? 'sel' : e.status); g.userData.no = e.no; g.visible = !!(e.selected || e.showAll); this.overlayRoot.add(g);
+  showFeatures(entries, { labels = true, colorMode = 'status' } = {}) {
+    this.clearOverlays(); for (const e of entries) { const F = e.feature; if (!F) continue; this._color = colorMode === 'dev' && !e.selected ? devColor(e.ratio) : null; const g = this._featureMesh(F, e.selected ? 'sel' : e.status); this._color = null; g.userData.no = e.no; g.visible = !!(e.selected || e.showAll); this.overlayRoot.add(g);
       if (labels && e.label !== false) { const el = document.createElement('div'); el.className = `v-callout ${e.status}${e.selected ? ' sel' : ''}`; el.innerHTML = `<span class="no">${e.no}</span>${e.text ? `<span class="tx">${e.text}</span>` : ''}`; el.addEventListener('click', ev => { ev.stopPropagation(); this.onPick?.(e.no); }); el.addEventListener('pointerdown', ev => ev.stopPropagation()); el.style.pointerEvents = 'auto'; const o = new CSS2DObject(el); o.position.copy(F.label || F.c || F.a); o.userData.no = e.no; this.overlayRoot.add(o); }
       this.overlays.set(e.no, g); }
     this._applyClipping(); this.invalidate();

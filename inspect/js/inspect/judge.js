@@ -66,9 +66,15 @@ export function aiFinding(part, item, summary) {
   return { key, causes, actions: acts, trend, confidence: status === 'ng' ? 0.72 : 0.55 };
 }
 // 工数試算（ヒアリングに基づく仮定値。実測で更新）
-export function timeEstimate(part) {
+export const ROI_DEFAULT = { lotsPerMonth: 12, itemsPerLot: 25, piecesPerLot: 3, hourlyYen: 4500, compareMin: 2.5, annotateMin: 45, reportMin: 30, measureMin: 1.5 };
+export function timeEstimate(part, A = ROI_DEFAULT) {
   const n = part.items.length, p = part.pieces.length;
-  const manual = { measure: n * p * 1.5, compare: n * p * 2.5, annotate: 45 * p, report: 30 }; manual.total = Object.values(manual).reduce((a, b) => a + b, 0);
-  const tool = { measure: n * p * 1.5, compare: n * 0.3, annotate: 2, report: 3 }; tool.total = Object.values(tool).reduce((a, b) => a + b, 0);
+  const manual = { measure: n * p * A.measureMin, compare: n * p * A.compareMin, annotate: A.annotateMin * p, report: A.reportMin }; manual.total = Object.values(manual).reduce((a, b) => a + b, 0);
+  const tool = { measure: n * p * A.measureMin, compare: n * 0.3, annotate: 2, report: 3 }; tool.total = Object.values(tool).reduce((a, b) => a + b, 0);
   return { manual, tool, saved: manual.total - tool.total, ratio: 1 - tool.total / manual.total };
+}
+// 月次 ROI（ヒアリング値で更新する前提の試算）
+export function roiEstimate(A = ROI_DEFAULT) {
+  const n = A.itemsPerLot, p = A.piecesPerLot; const manual = n * p * A.compareMin + A.annotateMin * p + A.reportMin; const tool = n * 0.3 + 2 + 3; const savedMinPerLot = manual - tool;
+  const savedHoursMonth = savedMinPerLot * A.lotsPerMonth / 60; return { manualMinPerLot: manual, toolMinPerLot: tool, savedMinPerLot, savedHoursMonth, savedYenMonth: savedHoursMonth * A.hourlyYen, savedYenYear: savedHoursMonth * A.hourlyYen * 12 };
 }
