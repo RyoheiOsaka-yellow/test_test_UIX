@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>みなとみらい 立体地図 3D</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #04050c; font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif; color: #dfe8f5; }
+canvas { display: block; }
+
+#loading { position: fixed; inset: 0; z-index: 100; background: #04050c; display: flex; align-items: center; justify-content: center; }
+.loading-inner { text-align: center; }
+.loading-title { font-size: 20px; letter-spacing: 0.35em; color: #9fd8ff; margin-bottom: 18px; text-shadow: 0 0 12px rgba(0, 229, 255, 0.6); }
+.loading-bar { width: 240px; height: 3px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; margin: 0 auto 10px; }
+#loading-progress { width: 0%; height: 100%; background: linear-gradient(90deg, #00e5ff, #7fb2ff); transition: width 0.15s ease; }
+#loading-text { font-size: 11px; color: #6f7f95; letter-spacing: 0.1em; }
+
+#panel { position: fixed; top: 14px; left: 14px; z-index: 10; width: 248px; max-height: calc(100vh - 28px); overflow-y: auto; scrollbar-width: thin; padding: 14px 16px 12px; background: rgba(8, 12, 24, 0.82); border: 1px solid rgba(120, 180, 255, 0.22); border-radius: 10px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); user-select: none; }
+.panel-title { font-size: 14px; font-weight: 600; letter-spacing: 0.14em; color: #eaf4ff; }
+.panel-sub { font-size: 9px; letter-spacing: 0.22em; color: #5f7ba0; margin: 2px 0 10px; }
+.panel-sep { height: 1px; background: rgba(120, 180, 255, 0.16); margin: 8px 0; }
+.row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0; cursor: pointer; color: #c6d4e8; }
+.row:hover { color: #ffffff; }
+.row input[type='checkbox'] { accent-color: #00b7d9; cursor: pointer; }
+.chip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; box-shadow: 0 0 6px currentColor; }
+.chip-outline { background: transparent; border: 1px solid #7fb2ff; box-shadow: none; }
+.floor-count { margin-left: auto; font-size: 10px; color: #55667e; }
+#floor-expand { width: 100%; margin: 2px 0 4px; accent-color: #00b7d9; cursor: pointer; }
+#expand-value { color: #00e5ff; font-size: 10px; margin-left: 4px; }
+.sec-title { font-size: 10px; letter-spacing: 0.12em; color: #7d93b5; margin: 2px 0 4px; }
+.seg-row { display: flex; gap: 4px; }
+.seg-row button { flex: 1; padding: 4px 0; font-size: 11px; color: #9fb3d1; background: rgba(60, 90, 140, 0.18); border: 1px solid rgba(120, 180, 255, 0.22); border-radius: 5px; cursor: pointer; font-family: inherit; }
+.seg-row button.active, .btn-row button.active { background: rgba(0, 183, 217, 0.35); border-color: #00e5ff; color: #fff; }
+#route-result { font-size: 11px; color: #a8ffc8; min-height: 14px; margin: 2px 0 4px; line-height: 1.5; }
+#route-result .route-moves { color: #ffd94d; font-size: 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 10px; color: #8ea2c2; }
+.legend span { display: inline-flex; align-items: center; padding: 2px 0; }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.btn-row { display: flex; gap: 8px; margin: 4px 0 8px; }
+.btn-row button { flex: 1; padding: 5px 0; font-size: 11px; color: #c6d4e8; background: rgba(60, 90, 140, 0.25); border: 1px solid rgba(120, 180, 255, 0.3); border-radius: 6px; cursor: pointer; font-family: inherit; }
+.btn-row button:hover { background: rgba(80, 130, 200, 0.4); color: #fff; }
+.hint { font-size: 9px; color: #55667e; letter-spacing: 0.05em; }
+.note { font-size: 9px; color: #7d8aa5; line-height: 1.5; margin-top: 4px; }
+
+#tooltip { position: fixed; z-index: 20; pointer-events: none; padding: 5px 10px; font-size: 12px; background: rgba(8, 12, 24, 0.9); border: 1px solid rgba(0, 229, 255, 0.45); border-radius: 6px; color: #eaf4ff; white-space: nowrap; transform: translate(12px, -28px); display: none; }
+#tooltip .tt-floor { color: #00e5ff; margin-right: 6px; font-size: 10px; }
+#tooltip .tt-sub { color: #8ea2c2; margin-left: 6px; font-size: 10px; }
+
+#credit { position: fixed; right: 10px; bottom: 8px; z-index: 10; font-size: 10px; color: #5f7095; text-align: right; line-height: 1.5; max-width: 60vw; }
+#credit a { color: #7fb2ff; }
+
+@media (max-width: 768px) {
+    #panel { width: 200px; padding: 10px 12px 8px; }
+    #credit { font-size: 9px; }
+}
+</style>
+</head>
+<body>
+    <div id="loading">
+        <div class="loading-inner">
+            <div class="loading-title">みなとみらい 立体地図 3D</div>
+            <div class="loading-bar"><div id="loading-progress"></div></div>
+            <div id="loading-text">データ展開中…</div>
+        </div>
+    </div>
+
+    <div id="panel">
+        <div class="panel-title">みなとみらい 立体地図 3D</div>
+        <div class="panel-sub">MINATO MIRAI 21 · CITY &amp; STATION 3D MAP</div>
+        <div class="sec-title">視点</div>
+        <div class="seg-row" id="view-presets">
+            <button data-view="station">駅</button>
+            <button data-view="landmark">LMT</button>
+            <button data-view="pacifico">パシフィコ</button>
+            <button data-view="redbrick">赤レンガ</button>
+            <button data-view="yokohama">横浜駅</button>
+        </div>
+        <div class="panel-sep"></div>
+        <div class="sec-title">階層（駅構内・歩行者ネットワーク）</div>
+        <div id="floor-list"></div>
+        <div class="panel-sep"></div>
+        <label class="row"><input type="checkbox" id="chk-network" checked /><span class="chip" style="background:#00e5ff"></span>歩行者ネットワーク（OSM）</label>
+        <label class="row"><input type="checkbox" id="chk-station" checked /><span class="chip" style="background:#ff7fb2"></span>駅構内（近似モデル）</label>
+        <label class="row"><input type="checkbox" id="chk-bld" checked /><span class="chip" style="background:#3f5a8a"></span>建物（PLATEAU LOD2/3）</label>
+        <label class="row"><input type="checkbox" id="chk-edges" checked /><span class="chip chip-outline"></span>建物の輪郭線</label>
+        <label class="row"><input type="checkbox" id="chk-bridge" checked /><span class="chip" style="background:#6fb6ff"></span>デッキ・橋梁（PLATEAU）</label>
+        <label class="row"><input type="checkbox" id="chk-road" checked /><span class="chip" style="background:#d166ff"></span>道路面（PLATEAU）</label>
+        <label class="row"><input type="checkbox" id="chk-rail" checked /><span class="chip" style="background:#3b8cff"></span>鉄道路線</label>
+        <label class="row"><input type="checkbox" id="chk-water" checked /><span class="chip" style="background:#1b5fa8"></span>海・水面</label>
+        <label class="row"><input type="checkbox" id="chk-terrain" checked /><span class="chip chip-outline"></span>地形（DEM5A）</label>
+        <label class="row"><input type="checkbox" id="chk-labels" checked /><span class="chip" style="background:#ffe66e"></span>ランドマーク名</label>
+        <div class="panel-sep"></div>
+        <div class="sec-title">フロア展開 <span id="expand-value">×1.0</span></div>
+        <input type="range" id="floor-expand" min="0" max="3" step="0.05" value="1" />
+        <div class="panel-sep"></div>
+        <div class="sec-title">人流シミュレーション</div>
+        <div class="seg-row" id="flow-presets">
+            <button data-preset="off">オフ</button>
+            <button data-preset="morning" class="active">朝</button>
+            <button data-preset="day">昼</button>
+            <button data-preset="evening">夕</button>
+            <button data-preset="night">夜</button>
+        </div>
+        <div class="panel-sep"></div>
+        <div class="sec-title">経路検索</div>
+        <div class="btn-row">
+            <button id="btn-route">経路検索モード</button>
+            <button id="btn-route-clear">クリア</button>
+        </div>
+        <label class="row"><input type="checkbox" id="chk-barrier" /><span class="chip" style="background:#7dffa8"></span>段差回避（EV・スロープ優先）</label>
+        <div id="route-result"></div>
+        <div class="panel-sep"></div>
+        <div class="legend">
+            <span><i style="background:#ffb648"></i>階段</span>
+            <span><i style="background:#ffd94d"></i>エスカレーター</span>
+            <span><i style="background:#7dffa8"></i>エレベーター</span>
+            <span><i style="background:#ff7fb2"></i>ホーム</span>
+            <span><i style="background:#b8c7ff"></i>コンコース</span>
+            <span><i style="background:#ff5c8a"></i>改札</span>
+            <span><i style="background:#6db4ff"></i>トイレ</span>
+        </div>
+        <div class="panel-sep"></div>
+        <label class="row"><input type="checkbox" id="chk-rotate" /><span class="chip chip-outline"></span>自動回転</label>
+        <div class="btn-row">
+            <button id="btn-blueprint">図面モード</button>
+        </div>
+        <div class="btn-row">
+            <button id="btn-all">全表示</button>
+            <button id="btn-none">全非表示</button>
+            <button id="btn-reset">視点リセット</button>
+        </div>
+        <div class="hint">左ドラッグ: 回転 ／ 右ドラッグ: 移動 ／ ホイール: ズーム</div>
+        <div class="note">※駅構内（ホーム・コンコース・改札・昇降設備）は公開情報に基づく近似モデルです。建物・デッキ・道路は PLATEAU 実測 3D 都市モデル。</div>
+    </div>
+
+    <div id="tooltip"></div>
+
+    <div id="credit">
+        出典: <a href="https://www.mlit.go.jp/plateau/" target="_blank" rel="noopener">3D都市モデル（Project PLATEAU）横浜市（2024年度）</a>（国土交通省）を加工して作成 ／
+        歩行者ネットワーク・鉄道・水面: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors ／
+        標高: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル（DEM5A）</a>
+    </div>
+<script>/*__PACK__*/</script>
+<script>/*__APP__*/</script>
+</body>
+</html>
