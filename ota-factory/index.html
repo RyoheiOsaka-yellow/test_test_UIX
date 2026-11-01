@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>YELLOW フュージョン・ファクトリー 大田区 — 開発一体型工場 3D構想モデル v0.1</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22d9; --line:#30363d; --txt:#e6edf3; --sub:#9da7b3; --acc:#f2c744; --acc2:#58a6ff; --good:#3fb950; --bad:#f85149; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--txt); overflow:hidden;
+              font-family:-apple-system,"Helvetica Neue","Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif; }
+  #app { position:fixed; inset:0; } canvas { display:block; }
+  .panel { position:absolute; background:var(--panel); backdrop-filter:blur(10px); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:12px; z-index:10; }
+  .btn { background:#21262d; color:var(--txt); border:1px solid var(--line); border-radius:7px; padding:6px 10px; cursor:pointer; font-size:12px; line-height:1.2; white-space:nowrap; }
+  .btn:hover { border-color:var(--acc); } .btn.on { background:var(--acc); color:#1a1400; border-color:var(--acc); font-weight:700; }
+  .btn.sm { padding:4px 8px; font-size:11px; } .btn:disabled { opacity:.4; cursor:default; }
+  h3 { margin:0 0 8px; font-size:12px; color:var(--sub); font-weight:600; letter-spacing:.04em; }
+  .row { display:flex; justify-content:space-between; align-items:baseline; margin:4px 0; gap:10px; } .row .v { font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; }
+  .sep { height:1px; background:var(--line); margin:8px 0; } .sub { color:var(--sub); font-size:11px; line-height:1.55; }
+  #brand { font-weight:800; letter-spacing:.06em; font-size:13px; color:var(--acc); padding:0 6px; } #brand small { color:var(--sub); font-weight:500; margin-left:6px; letter-spacing:0; }
+  #nav { top:12px; left:12px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; max-width:60vw; }
+  #views { top:58px; left:12px; display:flex; gap:5px; align-items:center; flex-wrap:wrap; max-width:60vw; }
+  #views span.lbl { color:var(--sub); font-size:11px; margin-right:2px; }
+  #tools { top:12px; right:292px; display:flex; gap:6px; align-items:center; }
+  #stats { top:12px; right:12px; width:268px; max-height:calc(100vh - 24px); overflow:auto; }
+  #stats table { width:100%; border-collapse:collapse; font-size:11px; } #stats td { padding:2px 0; } #stats td.n { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+  .legend { display:flex; flex-wrap:wrap; gap:4px 10px; font-size:11px; color:var(--sub); } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+  #ledger { left:12px; bottom:12px; width:300px; max-height:46vh; display:flex; flex-direction:column; }
+  #ledger input { width:100%; background:#0d1117; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-size:12px; margin-bottom:6px; }
+  #ledgerList { overflow:auto; flex:1; } .eq { display:flex; gap:8px; padding:5px 6px; border-radius:6px; cursor:pointer; align-items:baseline; } .eq:hover { background:#21262d; } .eq.on { background:#2b3340; }
+  .eq b { font-size:11px; color:var(--acc2); min-width:46px; font-variant-numeric:tabular-nums; } .eq span { flex:1; } .eq small { color:var(--sub); }
+  #info { right:12px; bottom:12px; width:300px; max-height:52vh; overflow:auto; display:none; } #info h2 { margin:0 0 4px; font-size:14px; } #info table { width:100%; font-size:11px; border-collapse:collapse; } #info td { padding:3px 0; vertical-align:top; border-top:1px solid #21262d; } #info td:first-child { color:var(--sub); width:34%; }
+  #layers { top:104px; left:12px; width:230px; display:none; } #layers label { display:flex; align-items:center; gap:8px; padding:3px 0; cursor:pointer; } #layers input { accent-color:var(--acc); }
+  #section { top:104px; left:12px; width:260px; display:none; } #section input[type=range] { width:100%; accent-color:var(--acc); }
+  #hint { bottom:12px; left:324px; max-width:360px; color:var(--sub); font-size:11px; line-height:1.6; pointer-events:none; }
+  kbd { background:#21262d; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:10px; }
+  #photos { top:104px; right:292px; width:420px; max-height:calc(100vh - 130px); overflow:auto; display:none; } #photos .grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; } #photos img { width:100%; border-radius:6px; cursor:pointer; display:block; } #photos figcaption { font-size:10px; color:var(--sub); margin-top:2px; line-height:1.3; }
+  #lightbox { position:fixed; inset:0; background:rgba(0,0,0,.88); display:none; z-index:100; align-items:center; justify-content:center; flex-direction:column; gap:10px; cursor:zoom-out; } #lightbox img { max-width:92vw; max-height:84vh; border-radius:8px; } #lightbox p { color:#fff; margin:0; font-size:13px; }
+  #tourCard { bottom:70px; left:50%; transform:translateX(-50%); width:560px; max-width:92vw; display:none; } #tourCard h2 { margin:0 0 6px; font-size:15px; } #tourCard p { margin:0 0 8px; line-height:1.6; font-size:12.5px; } #tourCard .ctl { display:flex; gap:6px; justify-content:flex-end; }
+  #loading { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; z-index:200; color:var(--sub); font-size:13px; } #loading b { color:var(--acc); font-size:18px; letter-spacing:.08em; }
+  #crumb { position:absolute; left:12px; top:104px; color:var(--sub); font-size:11px; pointer-events:none; z-index:5; } #crumb b { color:var(--txt); }
+  body.walk #app { cursor:crosshair; }
+  @media (max-width:1200px){ #tools { right:12px; top:auto; bottom:12px; } #stats { display:none; } #photos { right:12px; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="loading"><b>YELLOW FUSION FACTORY · OTA</b><span id="loadMsg">3Dモデルを構築しています…</span></div>
+
+<div id="nav" class="panel">
+  <span id="brand">YELLOW <small>FUSION FACTORY · 大田区</small></span>
+  <button class="btn on" data-mode="ext">外観</button>
+  <button class="btn" data-mode="1">1F ホール</button>
+  <button class="btn" data-mode="2">2F ソフト</button>
+  <button class="btn" data-mode="3">3F 設計</button>
+  <button class="btn" id="secBtn">断面</button>
+  <button class="btn" id="walkBtn">歩行 (WASD)</button>
+</div>
+<div id="views" class="panel"><span class="lbl">視点</span></div>
+<div id="crumb"></div>
+
+<div id="tools" class="panel">
+  <button class="btn sm on" data-day="day">昼</button><button class="btn sm" data-day="dusk">夕</button><button class="btn sm" data-day="night">夜</button>
+  <button class="btn sm on" id="playBtn">⏸ 稼働</button>
+  <button class="btn sm" id="layersBtn">レイヤー</button>
+  <button class="btn sm" id="photosBtn">構想イメージ</button>
+  <button class="btn sm" id="tourBtn">▶ ガイドツアー</button>
+  <button class="btn sm" id="shotBtn" title="PNGで保存">📷</button>
+</div>
+
+<div id="stats" class="panel">
+  <h3>計画概要 — 大田区 開発一体型工場（構想 v0.1）</h3>
+  <div id="statsBody"></div>
+</div>
+
+<div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div></div>
+<div id="section" class="panel"><h3>断面カット</h3>
+  <div class="row"><span>方向</span><span><button class="btn sm on" data-ax="y">水平（高さ）</button> <button class="btn sm" data-ax="z">南北</button> <button class="btn sm" data-ax="x">東西</button></span></div>
+  <input id="secRange" type="range" min="0" max="100" value="55">
+  <div class="row sub"><span id="secLabel">高さ 10.0 m 以上をカット</span><button class="btn sm" id="secOff">解除</button></div>
+</div>
+
+<div id="ledger" class="panel"><h3>設備台帳 <span id="eqCount" style="color:var(--acc)"></span></h3><input id="eqFilter" placeholder="設備名・ID・ゾーンで絞込み"><div id="ledgerList"></div></div>
+<div id="info" class="panel"></div>
+<div id="hint">左ドラッグ 回転 ／ 右ドラッグ・<kbd>Shift</kbd>＋ドラッグ 平行移動 ／ ホイール ズーム ／ 設備クリックで詳細 ／ 歩行モード <kbd>W A S D</kbd> <kbd>Q E</kbd> 上下 <kbd>Esc</kbd> 終了 ／ <kbd>1</kbd>〜<kbd>4</kbd> 階切替 <kbd>T</kbd> ツアー</div>
+
+<div id="photos" class="panel"><h3>構想イメージ（クリックで拡大）</h3><div class="grid" id="photoGrid"></div></div>
+<div id="lightbox"><img id="lbImg" alt=""><p id="lbCap"></p></div>
+<div id="tourCard" class="panel"><div class="sub" id="tourStep"></div><h2 id="tourTitle"></h2><p id="tourText"></p><div class="ctl"><button class="btn sm" id="tourPrev">‹ 前へ</button><button class="btn sm" id="tourNext">次へ ›</button><button class="btn sm" id="tourStop">終了</button></div></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+// ===== src/10_data.js =====
+// ================= 計画データ（YELLOW 大田区 フュージョン・ファクトリー構想） =================
+// 座標系: x=東(+), z=南(+ 道路側), y=上。単位はすべて m。
+// ※敷地・寸法は構想段階の想定値。実敷地が決まれば SITE / BLD の数値差替えで全体が追従する。
+
+const SITE = {
+  w: 120, d: 80,                              // 敷地 120m × 80m = 9,600㎡
+  name: "東京都大田区（羽田・糀谷 工業地域 想定地）",
+  zoning: "工業地域", bcrMax: 60, farMax: 200, // 建蔽率60% / 容積率200%（工業地域の一般値）
+  heightNote: "高さ制限なし（日影規制対象外の想定）・航空法 羽田制限表面内 要確認",
+  road: "南側 前面道路 幅員 12m（歩道 3m）",
+};
+
+const BLD = {
+  x0: -44, x1: 44,     // 東西 88m
+  z0: -30, zh: 2,      // 北壁 → 機械ホール 32m
+  z1: 18,              // 南側 3層ストリップ 16m（ホール z 2〜18）
+  terraceZ: 22,        // 2F テラス先端
+  eaveZ: 24,           // 屋根 南側キャンチ先端
+  lv: [0, 5.0, 9.5],   // 1F / 2F / 3F FL
+  eave: 14.0,          // 軒高
+  craneRail: 10.5,     // クレーンレール天端
+  grid: 8,             // 柱スパン（東西）
+  // 折板屋根 断面プロファイル (z, y)  北軒 → 棟1 → 谷 → 棟2 → 南軒
+  roofProfile: [[-31, 13.6], [-16, 18.2], [-4, 15.6], [6, 17.6], [24, 14.2]],
+};
+BLD.w = BLD.x1 - BLD.x0; BLD.d = BLD.z1 - BLD.z0;
+
+// ---- 階ごとのゾーン ----
+// type: hall(機械ホール) eng(ソフト・設計) lab(実験・計測) pub(共用) core(コア) svc(設備) out(屋外)
+const ZTYPE = {
+  mach:  { c: 0x58a6ff, n: "機械加工" },
+  asm:   { c: 0xf2c744, n: "大型組立" },
+  test:  { c: 0xff7b72, n: "試運転・試験" },
+  logi:  { c: 0x3fb950, n: "受入・出荷" },
+  sw:    { c: 0xbc8cff, n: "ソフトウェア開発" },
+  design:{ c: 0x79c0ff, n: "設計（CAD/CAE）" },
+  lab:   { c: 0xf778ba, n: "計測・電子ラボ" },
+  pub:   { c: 0xd2a8ff, n: "共用・来客" },
+  core:  { c: 0x8b949e, n: "コア（階段・EV・WC）" },
+  svc:   { c: 0x6e7681, n: "設備・サービス" },
+  out:   { c: 0x56d364, n: "屋外・外構" },
+};
+
+// id, 名称, 階(1/2/3/0=屋外), type, x0,x1,z0,z1, 想定人員, 概要
+const ZONES = [
+  // ---- 1F 機械ホール（高天井 14m / 10tクレーン2基）----
+  ["mach",  "機械加工エリア",       1, "mach", -44, -12, -30, 2,  14, "5軸MC・横型MC・門型MC・旋盤・EDM。ロボットセル2基で自動供給。"],
+  ["asm1",  "大型組立ベイ A",       1, "asm",  -12,   4, -30, 2,  10, "開発中大型機の組立・調整。10tクレーン直下、床耐荷重 5t/㎡。"],
+  ["asm2",  "大型組立ベイ B",       1, "asm",    4,  20, -30, 2,  10, "第2号機／顧客立会い組立。可動間仕切りでAと連結可。"],
+  ["recv",  "受入・資材置場",       1, "logi",  20,  36, -30, -14, 3, "パレットラック・部品棚。入荷検査後 AGV で各ベイへ供給。"],
+  ["tcell", "試運転・性能試験セル", 1, "test",  20,  36, -14, 2,   4, "防音ガラス囲い。振動・騒音・熱測定、ソフトとの連成試験。"],
+  ["ship",  "出荷ドック",           1, "logi",  36,  44, -30, 2,   3, "ドックレベラー2基・大型機は東側大扉からトレーラー積込。"],
+  // ---- 1F 南側ストリップ ----
+  ["lobby", "エントランス・受付",   1, "pub",  -44, -30,  2, 18,  2, "来客ロビー。ガラス越しに機械ホールを見せるショーケース動線。"],
+  ["show",  "ショールーム・実機展示",1, "pub", -30, -16,  2, 18,  1, "開発機の実機展示・デモ。ホールと一体の吹抜け。"],
+  ["cmm",   "精密計測室（恒温）",   1, "lab",  -16,  -6,  2, 18,  3, "20±0.5℃恒温。門型三次元測定機・真円度・粗さ計。"],
+  ["elab",  "電子・制御ラボ",       1, "lab",   -6,   6,  2, 18,  6, "制御盤組立・配線・基板試験。ESD床。"],
+  ["tool",  "工具・治具室",         1, "svc",    6,  16,  2, 18,  2, "ツールプリセッタ・治具保管・計測工具管理。"],
+  ["insp",  "受入検査",             1, "logi",  16,  28,  2, 18,  3, "購入部品の受入検査・一時保管。"],
+  ["rest1", "休憩・更衣",           1, "pub",   28,  36,  2, 18,  0, "製造スタッフ更衣・休憩。"],
+  ["core1", "コア（階段・EV・WC）", 1, "core",  36,  44,  2, 18,  0, "荷物用EV 2t・人荷共用。"],
+  // ---- 2F ソフトウェア階 ----
+  ["core2w","コア（階段・EV）",     2, "core", -44, -36,  2, 18,  0, ""],
+  ["sw",    "ソフトウェア開発フロア",2, "sw",   -36,  -8,  2, 18, 56, "オープンデスク56席。ガラス越しに組立ベイを俯瞰。実機ログを即時に見られる位置。"],
+  ["hil",   "HIL・シミュレーションラボ",2,"lab", -8,   2,  2, 18,  6, "Hardware-in-the-Loop。実機制御盤＋デジタルツイン連成。"],
+  ["mtg2",  "会議室 A/B",           2, "pub",    2,  12,  2, 18,  0, "ガラス間仕切り・ホール側にモニタ。"],
+  ["ctrl",  "制御・組込開発",       2, "sw",    12,  24,  2, 18, 16, "PLC/モーションコントローラ/組込ファーム開発。"],
+  ["srv",   "サーバー室・エッジDC", 2, "svc",   24,  34,  2, 18,  1, "GPUサーバー 8ラック。工場データ基盤・学習用。"],
+  ["rest2", "休憩・フォンブース",   2, "pub",   34,  36,  2, 18,  0, ""],
+  ["core2e","コア（階段・EV・WC）", 2, "core",  36,  44,  2, 18,  0, ""],
+  ["terr2", "2F テラス（植栽）",    2, "out",  -44,  44, 18, 22,  0, "南面全長のテラス。木天井の軒下。"],
+  // ---- 3F 設計・共用階 ----
+  ["core3w","コア（階段・EV）",     3, "core", -44, -36,  2, 18,  0, ""],
+  ["design","設計フロア（メカ/電気）",3,"design",-36, -10,  2, 18, 40, "CAD/CAE 40席。2Fソフトと吹抜け階段で直結。"],
+  ["mtg3",  "会議室群・プロジェクトルーム",3,"pub",-10, 4,  2, 18,  0, "大4・中2。壁面ホワイトボード。"],
+  ["exec",  "役員・管理部門",       3, "pub",    4,  16,  2, 18, 12, "経営・人事・総務。"],
+  ["cafe",  "カフェテリア・ラウンジ",3, "pub",   16,  36,  2, 18,  0, "全社の交流点。木天井・ホール側ガラス。"],
+  ["core3e","コア（階段・EV・WC）", 3, "core",  36,  44,  2, 18,  0, ""],
+  // ---- 屋外 ----
+  ["plaza", "前庭プラザ・来客駐車", 0, "out",  -44,  44, 24, 40,  0, "歩道からの緩やかなアプローチ。樹木・ベンチ。"],
+  ["park",  "駐車場（太陽光カーポート）",0,"out",-60, -44,-40, 40, 0, "32台。カーポート屋根に太陽光 120kW。"],
+  ["yard",  "東側ヤード・トラック動線",0,"out",  44,  60,-40, 40, 0, "大型トレーラー進入路・ドック待機。"],
+  ["north", "北側 屋外試験ヤード・設備",0,"out",-44,  44,-40,-30, 0, "キュービクル・コンプレッサ・屋外試験スペース。"],
+];
+
+// ---- 設備台帳（機械ホール・ラボ） ----
+// kind: mc5 hmc lathe gantry edm grind robotcell cmm assembly testcell rack bench tool server hil crane agv
+const EQUIP = [
+  // 機械加工エリア
+  { id:"MC-01", kind:"mc5",   name:"5軸マシニングセンタ #1", x:-39, z:-24, rot:0, zone:"mach",
+    spec:{ 型式:"5軸立形MC（想定）", 加工範囲:"X800×Y800×Z600", 主軸:"15,000 min⁻¹", 電源:"30 kVA", 質量:"12 t" } },
+  { id:"MC-02", kind:"mc5",   name:"5軸マシニングセンタ #2", x:-32, z:-24, rot:0, zone:"mach",
+    spec:{ 型式:"5軸立形MC（想定）", 加工範囲:"X800×Y800×Z600", 主軸:"15,000 min⁻¹", 電源:"30 kVA", 質量:"12 t" } },
+  { id:"MC-03", kind:"mc5",   name:"5軸マシニングセンタ #3", x:-25, z:-24, rot:0, zone:"mach",
+    spec:{ 型式:"5軸立形MC（想定）", 加工範囲:"X800×Y800×Z600", 主軸:"15,000 min⁻¹", 電源:"30 kVA", 質量:"12 t" } },
+  { id:"RC-01", kind:"robotcell", name:"ロボット供給セル A", x:-35.5, z:-17.5, rot:0, zone:"mach",
+    spec:{ 構成:"6軸ロボット 可搬20kg＋ワークストッカ", 対象:"MC-01/02 自動段取", 安全柵:"H2.0m メッシュ", 電源:"5 kVA" } },
+  { id:"GM-01", kind:"gantry", name:"門型マシニングセンタ", x:-20, z:-12, rot:0, zone:"mach",
+    spec:{ 型式:"門型5面加工機（想定）", 加工範囲:"X4000×Y2500×Z1200", テーブル:"4m×2.5m 耐荷重 15t", 電源:"80 kVA", 質量:"45 t", 基礎:"独立基礎 深さ1.5m" } },
+  { id:"HM-01", kind:"hmc",   name:"横型マシニングセンタ #1", x:-39, z:-9, rot:0, zone:"mach",
+    spec:{ 型式:"横型MC パレット2面（想定）", パレット:"630×630", 主軸:"12,000 min⁻¹", 電源:"35 kVA", 質量:"16 t" } },
+  { id:"HM-02", kind:"hmc",   name:"横型マシニングセンタ #2", x:-31, z:-9, rot:0, zone:"mach",
+    spec:{ 型式:"横型MC パレット2面（想定）", パレット:"630×630", 主軸:"12,000 min⁻¹", 電源:"35 kVA", 質量:"16 t" } },
+  { id:"LT-01", kind:"lathe", name:"CNC旋盤 #1", x:-40, z:-2, rot:0, zone:"mach",
+    spec:{ 型式:"CNC旋盤 Y軸付（想定）", 最大加工径:"φ450", 電源:"25 kVA", 質量:"6 t" } },
+  { id:"LT-02", kind:"lathe", name:"CNC旋盤 #2", x:-34, z:-2, rot:0, zone:"mach",
+    spec:{ 型式:"CNC旋盤 Y軸付（想定）", 最大加工径:"φ450", 電源:"25 kVA", 質量:"6 t" } },
+  { id:"ED-01", kind:"edm",   name:"ワイヤ放電加工機", x:-27, z:-2, rot:0, zone:"mach",
+    spec:{ 型式:"ワイヤEDM（想定）", 加工範囲:"X600×Y400", 電源:"15 kVA", 質量:"4 t" } },
+  { id:"GR-01", kind:"grind", name:"平面研削盤", x:-21, z:-2, rot:0, zone:"mach",
+    spec:{ 型式:"平面研削盤（想定）", テーブル:"600×300", 電源:"10 kVA", 質量:"3 t" } },
+  { id:"RC-02", kind:"robotcell", name:"ロボット供給セル B", x:-15.5, z:-24.5, rot:0, zone:"mach",
+    spec:{ 構成:"6軸ロボット 可搬50kg＋パレットチェンジャ", 対象:"MC-03/GM-01 ワーク搬送", 安全柵:"H2.0m メッシュ", 電源:"6 kVA" } },
+  // 組立ベイ
+  { id:"AS-A",  kind:"assembly", name:"開発機 #1（組立中）", x:-4, z:-16, rot:0, zone:"asm1",
+    spec:{ 機種:"大型門型加工システム（開発中）", 寸法:"L9.0×W4.5×H5.2 m", 質量:"38 t", 状態:"機械組立 → 配線 → ソフト結合", クレーン:"10t 使用" } },
+  { id:"AS-B",  kind:"assembly", name:"開発機 #2（顧客立会い）", x:12, z:-16, rot:0, zone:"asm2",
+    spec:{ 機種:"自律搬送・ロボット統合セル（開発中）", 寸法:"L8.0×W4.0×H3.6 m", 質量:"22 t", 状態:"最終調整・立会い検収" } },
+  { id:"BN-01", kind:"bench",  name:"組立作業台 A-1/2", x:-9.5, z:-4, rot:0, zone:"asm1", spec:{ 仕様:"定盤 2000×1000 ×2・工具キャビネット", 用途:"サブアッセンブリ" } },
+  { id:"BN-02", kind:"bench",  name:"組立作業台 B-1/2", x:6.5, z:-4, rot:0, zone:"asm2", spec:{ 仕様:"定盤 2000×1000 ×2・工具キャビネット", 用途:"サブアッセンブリ" } },
+  { id:"RK-A",  kind:"rack",   name:"部品ラック A", x:-10.5, z:-27, rot:0, zone:"asm1", spec:{ 仕様:"パレットラック 3段 L8m", 用途:"組立部品キット" } },
+  { id:"RK-B",  kind:"rack",   name:"部品ラック B", x:17.5, z:-27, rot:0, zone:"asm2", spec:{ 仕様:"パレットラック 3段 L8m", 用途:"組立部品キット" } },
+  // 試験・受入・出荷
+  { id:"TC-01", kind:"testcell", name:"試運転・性能試験セル", x:28, z:-6, rot:0, zone:"tcell",
+    spec:{ 仕様:"防音ガラス囲い 14×12m・H6m", 計測:"振動/騒音/熱/消費電力", 連成:"HILラボとリアルタイム接続", 電源:"200 kVA" } },
+  { id:"RK-R1", kind:"rack",   name:"資材パレットラック 1", x:24, z:-26, rot:0, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"購入部品・鋼材" } },
+  { id:"RK-R2", kind:"rack",   name:"資材パレットラック 2", x:24, z:-20, rot:0, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"購入部品・鋼材" } },
+  { id:"RK-R3", kind:"rack",   name:"資材パレットラック 3", x:32, z:-26, rot:0, zone:"recv", spec:{ 仕様:"パレットラック 4段 L8m", 用途:"梱包材・治具" } },
+  { id:"DK-01", kind:"dock",   name:"ドックレベラー #1", x:43, z:-24, rot:0, zone:"ship", spec:{ 仕様:"油圧式 2.0×2.5m 6t", 扉:"電動オーバースライダー W3.5×H4.5" } },
+  { id:"DK-02", kind:"dock",   name:"ドックレベラー #2", x:43, z:-16, rot:0, zone:"ship", spec:{ 仕様:"油圧式 2.0×2.5m 6t", 扉:"電動オーバースライダー W3.5×H4.5" } },
+  { id:"DK-03", kind:"bigdoor",name:"大型機搬出大扉", x:43, z:-5, rot:0, zone:"ship", spec:{ 仕様:"W8.0×H7.0 電動ハンガードア", 用途:"大型機のトレーラー積込（低床）" } },
+  // クレーン・AGV
+  { id:"CR-01", kind:"crane",  name:"天井クレーン #1（10t）", x:-20, z:-14, rot:0, zone:"mach",
+    spec:{ 定格:"10 t", スパン:"30 m", 揚程:"9 m", 走行:"全長 88m 共用ランウェイ", 制御:"インバータ・無線操作" } },
+  { id:"CR-02", kind:"crane",  name:"天井クレーン #2（10t）", x:14, z:-14, rot:0, zone:"asm2",
+    spec:{ 定格:"10 t", スパン:"30 m", 揚程:"9 m", 走行:"全長 88m 共用ランウェイ", 制御:"インバータ・無線操作" } },
+  { id:"AGV-1", kind:"agv",    name:"AGV #1（パレット搬送）", x:30, z:-14, rot:0, zone:"recv", spec:{ 可搬:"1,000 kg", 速度:"1.5 m/s", 誘導:"SLAM（自社ソフト）" } },
+  { id:"AGV-2", kind:"agv",    name:"AGV #2（部品供給）", x:-20, z:-14, rot:0, zone:"mach", spec:{ 可搬:"500 kg", 速度:"1.5 m/s", 誘導:"SLAM（自社ソフト）" } },
+  // 1F ラボ
+  { id:"CM-01", kind:"cmm",    name:"門型三次元測定機", x:-11, z:9, rot:0, zone:"cmm",
+    spec:{ 測定範囲:"X1200×Y2000×Z1000", 精度:"1.5+L/350 µm", 環境:"20±0.5℃", 基礎:"独立防振基礎" } },
+  { id:"EL-01", kind:"elab",   name:"制御盤組立・試験ベンチ", x:0, z:10, rot:0, zone:"elab", spec:{ 仕様:"盤組立台 ×4・配線ステーション ×4・ESD床", 試験:"耐電圧・絶縁・通電" } },
+  { id:"TL-01", kind:"toolroom", name:"ツールプリセッタ・工具棚", x:11, z:10, rot:0, zone:"tool", spec:{ 仕様:"プリセッタ ×1・ツールキャビネット ×8", 管理:"RFID 工具管理" } },
+  // 2F
+  { id:"HIL-1", kind:"hil",    name:"HILシミュレータ", x:-3, z:10, rot:0, zone:"hil",
+    spec:{ 構成:"リアルタイム機 ×2・実機制御盤 ×2・モーションシミュレータ", 用途:"制御ソフトの実機レス検証、試験セルと連成" } },
+  { id:"SV-01", kind:"server", name:"GPUサーバー・ラック列", x:29, z:10, rot:0, zone:"srv",
+    spec:{ ラック:"42U ×8（GPU 4ラック・ストレージ 2・NW 2）", 電源:"UPS 150kVA・N+1", 冷却:"リアドア水冷" } },
+];
+
+// ---- 人員計画 ----
+const STAFF = [
+  ["ソフトウェア開発", 72, "sw"], ["設計（メカ・電気）", 40, "design"], ["製造・組立・加工", 38, "asm"],
+  ["品質・計測・試験", 12, "test"], ["生産管理・物流", 8, "logi"], ["経営・管理", 14, "pub"],
+];
+
+// ---- ガイドツアー ----
+const TOUR = [
+  { cam:{ yaw:-0.75, pitch:0.55, dist:190, target:[0,6,0] }, mode:"ext", title:"大田区 フュージョン・ファクトリー",
+    text:"大型機械の開発ホールとソフトウェア開発フロアをひとつの屋根の下に重ねた「開発一体型工場」。敷地 120×80m、延床約7,000㎡。" },
+  { cam:{ yaw:0.0, pitch:0.22, dist:120, target:[0,8,20] }, mode:"ext", title:"南面：折板屋根と木天井の軒下",
+    text:"3層のガラスファサード。2Fテラスは植栽帯、3Fは軒下の設計フロア。1Fは実機展示・ロビーからホールを見通す。" },
+  { cam:{ yaw:2.0, pitch:0.5, dist:60, target:[44,6,-14] }, mode:"ext", title:"東側：出荷ドックと大型機搬出扉",
+    text:"ドックレベラー2基と W8×H7m の大扉。トレーラー進入路は敷地東側に集約し、来客動線と分離。" },
+  { cam:{ yaw:-0.4, pitch:0.5, dist:150, target:[0,6,-10] }, mode:"floor", floor:1, title:"1F 機械ホール（屋根を外して俯瞰）",
+    text:"西から機械加工 → 大型組立ベイA/B → 試運転セル → 出荷。中央通路 4m に AGV ループ。10t クレーン2基が全長を走行。" },
+  { cam:{ yaw:-2.3, pitch:0.28, dist:48, target:[-28,3,-14] }, mode:"int", floor:1, title:"機械加工エリア",
+    text:"5軸MC×3、横型MC×2、門型MC、旋盤、EDM、研削。ロボットセル2基が夜間無人運転。切粉・クーラントは地下トレンチ集約。" },
+  { cam:{ yaw:-1.0, pitch:0.3, dist:46, target:[-4,4,-16] }, mode:"int", floor:1, title:"大型組立ベイ A",
+    text:"床耐荷重 5t/㎡・クレーン直下。開発機を組み上げながら、真上のソフト開発フロアからログを見てパラメータを即時に調整。" },
+  { cam:{ yaw:0.9, pitch:0.3, dist:40, target:[28,3,-6] }, mode:"int", floor:1, title:"試運転・性能試験セル",
+    text:"防音ガラス囲い。振動・騒音・電力を計測し、2F HIL ラボとリアルタイム連成。" },
+  { cam:{ yaw:-1.1, pitch:0.4, dist:60, target:[-20,7,10] }, mode:"floor", floor:2, title:"2F ソフトウェア開発フロア",
+    text:"56席のオープンフロア。ホール側は全面ガラスとバルコニーで、組立中の実機が常に視界にある。" },
+  { cam:{ yaw:-0.9, pitch:0.4, dist:60, target:[-20,11.5,10] }, mode:"floor", floor:3, title:"3F 設計フロア・カフェテリア",
+    text:"CAD/CAE 40席、会議室群、全社のカフェテリア。木天井の下で設計とソフトが日常的に交わる。" },
+  { cam:{ yaw:-0.6, pitch:0.18, dist:70, target:[-30,4,24] }, mode:"ext", title:"前庭プラザ・来客アプローチ",
+    text:"歩道から樹木とベンチの前庭を抜けてロビーへ。西側はソーラーカーポート駐車場 32台。" },
+];
+
+// ---- 構想イメージ ----
+const PHOTOS = [
+  { f:"img/c01_aerial.jpg",   t:"全体鳥瞰：機械ホール＋ソフト棟＋中庭＋ソーラー駐車場" },
+  { f:"img/c02_exterior.jpg", t:"西面：ガラス越しの機械ホールと前庭" },
+  { f:"img/c03_hall.jpg",     t:"機械ホール内部：黄色クレーンと2Fガラス越しのオフィス" },
+  { f:"img/c04_courtyard.jpg",t:"中庭：ソフト棟テラスとホールの対面" },
+  { f:"img/v01_terraced.jpg", t:"南面テラス：1Fホール／2Fテラス／3F軒下オフィス" },
+  { f:"img/v02_street.jpg",   t:"夕景：街路から見える開発ホール" },
+  { f:"img/v03_folded.jpg",   t:"折板屋根と木天井のファサード" },
+  { f:"img/v04_machining.jpg",t:"機械加工エリアとガラス越しのエンジニアリング" },
+  { f:"img/v05_englab.jpg",   t:"エンジニアリング・ラボ：ホールを背にした設計席" },
+];
+
+// ===== src/20_core.js =====
+// ================= 基本セットアップ =================
+const app = document.getElementById("app");
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:"high-performance", preserveDrawingBuffer:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.localClippingEnabled = true;
+app.appendChild(renderer.domElement);
+let shadowDirty = true; function dirtyShadow(){ shadowDirty = true; }
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.2, 3000);
+
+// 環境マップ（金属・ガラスの映り込み用）
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+
+// ---- ライティング ----
+const hemi = new THREE.HemisphereLight(0xbfd4ee, 0x4a4a42, 0.55); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3e0, 2.0);
+sun.position.set(-90, 160, 110); scene.add(sun); scene.add(sun.target);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.25;
+{ const sc = sun.shadow.camera; sc.left=-130; sc.right=130; sc.top=130; sc.bottom=-130; sc.near=20; sc.far=600; sc.updateProjectionMatrix(); }
+const fill = new THREE.DirectionalLight(0x8fb0ff, 0.25); fill.position.set(120, 80, -140); scene.add(fill);
+
+// ---- 空 ----
+const skyMat = new THREE.ShaderMaterial({ side:THREE.BackSide, depthWrite:false, fog:false,
+  uniforms:{ top:{value:new THREE.Color(0x5f93d6)}, mid:{value:new THREE.Color(0xcfe0f2)}, bot:{value:new THREE.Color(0xe9eef2)} },
+  vertexShader:"varying vec3 vW; void main(){ vW=(modelMatrix*vec4(position,1.0)).xyz; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
+  fragmentShader:"uniform vec3 top; uniform vec3 mid; uniform vec3 bot; varying vec3 vW;\n"+
+    "void main(){ float h=normalize(vW).y; vec3 c = h>0.0 ? mix(mid,top,pow(h,0.55)) : mix(mid,bot,clamp(-h*5.0,0.0,1.0));\n"+
+    "  gl_FragColor=vec4(c,1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}" });
+const sky = new THREE.Mesh(new THREE.SphereGeometry(2500, 32, 16), skyMat);
+sky.frustumCulled = false; sky.renderOrder = -10; scene.add(sky);
+
+// 時間帯プリセット（昼・夕・夜）
+const DAY_PRESETS = {
+  day:  { top:0x5f93d6, mid:0xcfe0f2, bot:0xe9eef2, fog:0xd5e0ea, sun:[-90,160,110], sunC:0xfff3e0, sunI:2.0, hemi:0.55, env:0.55, exp:1.05, emis:0.0 },
+  dusk: { top:0x2f4f86, mid:0xf0a66a, bot:0xd7c6b4, fog:0xd9b39a, sun:[-170,45,60], sunC:0xffb070, sunI:1.5, hemi:0.35, env:0.35, exp:1.0, emis:0.8 },
+  night:{ top:0x05080f, mid:0x151e2e, bot:0x1b2230, fog:0x141a24, sun:[60,120,-90], sunC:0x8da8d8, sunI:0.25, hemi:0.12, env:0.18, exp:0.95, emis:1.0 },
+};
+let dayMode = "day";
+const emissiveMats = []; // 夜に発光させる材質
+function setDay(mode){
+  dayMode = mode; const p = DAY_PRESETS[mode];
+  skyMat.uniforms.top.value.set(p.top); skyMat.uniforms.mid.value.set(p.mid); skyMat.uniforms.bot.value.set(p.bot);
+  scene.background = new THREE.Color(p.fog); scene.fog = new THREE.Fog(p.fog, 500, 1500);
+  sun.position.set(...p.sun); sun.color.set(p.sunC); sun.intensity = p.sunI;
+  hemi.intensity = p.hemi; scene.environmentIntensity = p.env; renderer.toneMappingExposure = p.exp;
+  emissiveMats.forEach(m => { m.emissiveIntensity = p.emis * (m.userData.emisMax ?? 1); m.needsUpdate = false; });
+  dirtyShadow();
+}
+
+// ================= ユーティリティ =================
+function sRand(seed){ let h = 1779033703 ^ seed.length; for (let i=0;i<seed.length;i++){ h = Math.imul(h ^ seed.charCodeAt(i), 3432918353); h = (h<<13)|(h>>>19); }
+  return function(){ h = Math.imul(h ^ (h>>>16), 2246822507); h = Math.imul(h ^ (h>>>13), 3266489909); h ^= h>>>16; return (h>>>0)/4294967296; }; }
+const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
+const lerp = (a,b,t)=> a+(b-a)*t;
+const pe = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+// ---- 手続きテクスチャ ----
+const texCache = {};
+function canvasTex(key, size, draw, opts={}){
+  if (texCache[key]) return texCache[key];
+  const cvs = document.createElement("canvas"); cvs.width = size; cvs.height = opts.h || size;
+  const c = cvs.getContext("2d"); draw(c, cvs.width, cvs.height, sRand(key));
+  const t = new THREE.CanvasTexture(cvs); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  t.colorSpace = THREE.SRGBColorSpace; if (opts.repeat) t.repeat.set(...opts.repeat);
+  texCache[key] = t; return t;
+}
+function noiseFill(c, w, h, base, amp, n, rnd){
+  c.fillStyle = base; c.fillRect(0,0,w,h);
+  for (let i=0;i<n;i++){ const v = Math.floor(rnd()*amp); c.fillStyle = `rgba(${v},${v},${v},${(0.15+rnd()*0.35).toFixed(2)})`; c.fillRect(rnd()*w, rnd()*h, 1.5+rnd()*2, 1.5+rnd()*2); }
+}
+const TEX = {
+  concrete(rep){ return canvasTex("concrete", 512, (c,w,h,rnd)=>{ noiseFill(c,w,h,"#b9bbb6",90,14000,rnd);
+      for(let i=0;i<60;i++){ c.strokeStyle=`rgba(80,80,78,${(0.05+rnd()*0.12).toFixed(2)})`; c.lineWidth=0.6+rnd()*1.2; c.beginPath(); c.moveTo(rnd()*w,rnd()*h); c.lineTo(rnd()*w,rnd()*h); c.stroke(); } }, {repeat:rep}); },
+  epoxy(rep){ return canvasTex("epoxy", 512, (c,w,h,rnd)=>{ noiseFill(c,w,h,"#c3c9ce",50,7000,rnd);
+      c.fillStyle="rgba(255,255,255,0.08)"; for(let i=0;i<300;i++){ c.beginPath(); c.arc(rnd()*w,rnd()*h,3+rnd()*18,0,6.3); c.fill(); } }, {repeat:rep}); },
+  asphalt(rep){ return canvasTex("asphalt", 512, (c,w,h,rnd)=>{ noiseFill(c,w,h,"#46494e",60,18000,rnd); }, {repeat:rep}); },
+  paving(rep){ return canvasTex("paving", 512, (c,w,h,rnd)=>{ noiseFill(c,w,h,"#c9c6bd",60,6000,rnd); c.strokeStyle="rgba(90,88,82,0.55)"; c.lineWidth=2;
+      for(let i=0;i<=8;i++){ c.beginPath(); c.moveTo(0,i*64); c.lineTo(w,i*64); c.stroke(); c.beginPath(); c.moveTo(i*64,0); c.lineTo(i*64,h); c.stroke(); } }, {repeat:rep}); },
+  grass(rep){ return canvasTex("grass", 512, (c,w,h,rnd)=>{ c.fillStyle="#5f8a3a"; c.fillRect(0,0,w,h);
+      for(let i=0;i<20000;i++){ const g=70+rnd()*90; c.fillStyle=`rgba(${30+rnd()*40},${g},${20+rnd()*30},0.6)`; c.fillRect(rnd()*w,rnd()*h,1.5,3+rnd()*4);} }, {repeat:rep}); },
+  metal(rep){ return canvasTex("metalpanel", 512, (c,w,h,rnd)=>{ c.fillStyle="#eef0f2"; c.fillRect(0,0,w,h);
+      for(let x=0;x<w;x+=16){ c.fillStyle="rgba(0,0,0,0.10)"; c.fillRect(x,0,5,h); c.fillStyle="rgba(255,255,255,0.35)"; c.fillRect(x+6,0,3,h); } }, {repeat:rep}); },
+  timber(rep){ return canvasTex("timber", 512, (c,w,h,rnd)=>{ c.fillStyle="#b7804a"; c.fillRect(0,0,w,h);
+      for(let i=0;i<w;i+=10){ const v=rnd(); c.fillStyle=`rgba(${120+v*60},${75+v*40},${35+v*25},0.9)`; c.fillRect(i,0,7,h); c.fillStyle="rgba(40,25,10,0.55)"; c.fillRect(i+7,0,3,h); } }, {repeat:rep}); },
+  carpet(rep){ return canvasTex("carpet", 256, (c,w,h,rnd)=>{ noiseFill(c,w,h,"#55606a",50,6000,rnd); c.strokeStyle="rgba(0,0,0,0.25)"; for(let i=0;i<=4;i++){ c.beginPath(); c.moveTo(0,i*64); c.lineTo(w,i*64); c.stroke(); c.beginPath(); c.moveTo(i*64,0); c.lineTo(i*64,h); c.stroke(); } }, {repeat:rep}); },
+  woodFloor(rep){ return canvasTex("woodfloor", 512, (c,w,h,rnd)=>{ c.fillStyle="#c9a06a"; c.fillRect(0,0,w,h);
+      for(let y=0;y<h;y+=32){ for(let x=-64;x<w;x+=256){ const v=rnd(); c.fillStyle=`rgba(${170+v*50},${125+v*40},${75+v*30},1)`; c.fillRect(x+(y/32%2)*128,y,252,30); } } c.strokeStyle="rgba(60,40,20,0.35)"; for(let y=0;y<h;y+=32){ c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); } }, {repeat:rep}); },
+  mesh(rep){ return canvasTex("mesh", 128, (c,w,h,rnd)=>{ c.clearRect(0,0,w,h); c.strokeStyle="#f2c744"; c.lineWidth=3; for(let i=0;i<=w;i+=16){ c.beginPath(); c.moveTo(i,0); c.lineTo(i,h); c.stroke(); c.beginPath(); c.moveTo(0,i); c.lineTo(w,i); c.stroke(); } }, {repeat:rep}); },
+  solar(rep){ return canvasTex("solar", 256, (c,w,h,rnd)=>{ c.fillStyle="#17223a"; c.fillRect(0,0,w,h); c.strokeStyle="#6f86b3"; c.lineWidth=2; for(let i=0;i<=w;i+=32){ c.beginPath(); c.moveTo(i,0); c.lineTo(i,h); c.stroke(); c.beginPath(); c.moveTo(0,i); c.lineTo(w,i); c.stroke(); } }, {repeat:rep}); },
+  glassFrit(rep){ return canvasTex("frit", 128, (c,w,h,rnd)=>{ c.clearRect(0,0,w,h); c.fillStyle="rgba(255,255,255,0.5)"; for(let y=4;y<h;y+=12){ for(let x=4;x<w;x+=12){ c.beginPath(); c.arc(x,y,2.2,0,6.3); c.fill(); } } }, {repeat:rep}); },
+};
+
+// ---- 材質ライブラリ ----
+function std(color, o={}){ return new THREE.MeshStandardMaterial(Object.assign({ color, roughness:0.75, metalness:0.0 }, o)); }
+const M = {
+  white:    std(0xf4f5f6, { roughness:0.55, metalness:0.15 }),
+  roofMetal:std(0xffffff, { map:TEX.metal([24,1]), roughness:0.45, metalness:0.35 }),
+  wallMetal:std(0xe9ebee, { map:TEX.metal([12,1]), roughness:0.5, metalness:0.3 }),
+  timber:   std(0xc8955a, { map:TEX.timber([8,1]), roughness:0.7 }),
+  steel:    std(0xb9bec4, { roughness:0.45, metalness:0.75 }),
+  darkSteel:std(0x3a3f46, { roughness:0.5, metalness:0.7 }),
+  mullion:  std(0x22262b, { roughness:0.45, metalness:0.6 }),
+  yellow:   std(0xf2c230, { roughness:0.5, metalness:0.25 }),
+  safetyYellow: std(0xf6cb2f, { roughness:0.6 }),
+  concrete: std(0xb8b9b4, { map:TEX.concrete([30,30]), roughness:0.92 }),
+  epoxy:    std(0xd4d9dd, { map:TEX.epoxy([40,16]), roughness:0.3, metalness:0.05 }),
+  asphalt:  std(0x4a4d52, { map:TEX.asphalt([40,30]), roughness:0.95 }),
+  paving:   std(0xc8c5bc, { map:TEX.paving([20,20]), roughness:0.85 }),
+  grass:    std(0x6a9a43, { map:TEX.grass([30,20]), roughness:1 }),
+  carpet:   std(0x5a6570, { map:TEX.carpet([40,16]), roughness:1 }),
+  woodFloor:std(0xcaa272, { map:TEX.woodFloor([20,8]), roughness:0.6 }),
+  glass:    new THREE.MeshPhysicalMaterial({ color:0xd8ecf7, roughness:0.08, metalness:0.0, transparent:true, opacity:0.28, side:THREE.DoubleSide, depthWrite:false, envMapIntensity:1.2 }),
+  glassTint:new THREE.MeshPhysicalMaterial({ color:0x9fc6dd, roughness:0.1, metalness:0.1, transparent:true, opacity:0.45, side:THREE.DoubleSide, depthWrite:false, envMapIntensity:1.5 }),
+  glassIn:  new THREE.MeshPhysicalMaterial({ color:0xe8f4fa, roughness:0.05, transparent:true, opacity:0.18, side:THREE.DoubleSide, depthWrite:false }),
+  machineWhite: std(0xe8e9ea, { roughness:0.35, metalness:0.2 }),
+  machineDark:  std(0x2f3338, { roughness:0.4, metalness:0.4 }),
+  machineBlue:  std(0x2a5ea8, { roughness:0.45, metalness:0.2 }),
+  machineWin:   new THREE.MeshPhysicalMaterial({ color:0x6f8ca0, roughness:0.1, transparent:true, opacity:0.5, metalness:0.2 }),
+  robotYellow:  std(0xf3b11b, { roughness:0.35, metalness:0.2 }),
+  robotWhite:   std(0xf0f0ee, { roughness:0.35, metalness:0.1 }),
+  mesh:     new THREE.MeshStandardMaterial({ map:TEX.mesh([3,1]), transparent:true, alphaTest:0.4, side:THREE.DoubleSide, roughness:0.6, metalness:0.3 }),
+  solar:    std(0x1b2740, { map:TEX.solar([8,3]), roughness:0.25, metalness:0.6 }),
+  leaf:     std(0x4f8a3c, { roughness:0.9 }),
+  leaf2:    std(0x6aa24a, { roughness:0.9 }),
+  trunk:    std(0x6b4f35, { roughness:0.95 }),
+  blackMatte: std(0x1d1f22, { roughness:0.9 }),
+  desk:     std(0xd9c3a0, { roughness:0.6 }),
+  deskWhite:std(0xf0f0ee, { roughness:0.5 }),
+  chair:    std(0x30343a, { roughness:0.7 }),
+  monitor:  std(0x14161a, { roughness:0.3, metalness:0.3 }),
+  screen:   new THREE.MeshStandardMaterial({ color:0x1d3550, emissive:0x3b7fd8, emissiveIntensity:0.0, roughness:0.4 }),
+  gypsum:   std(0xf1f0ec, { roughness:0.9 }),
+  ceiling:  std(0xe6e6e2, { roughness:0.95 }),
+  duct:     std(0xc7ccd2, { roughness:0.35, metalness:0.7 }),
+  pipeBlue: std(0x2f6fd0, { roughness:0.4, metalness:0.3 }),
+  pipeRed:  std(0xd13b3b, { roughness:0.4, metalness:0.3 }),
+  tray:     std(0x8a9199, { roughness:0.5, metalness:0.6 }),
+  lamp:     new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xfff3d6, emissiveIntensity:0.9, roughness:0.6 }),
+  lampWarm: new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xffd9a0, emissiveIntensity:0.9, roughness:0.6 }),
+  line:     std(0xf5d14a, { roughness:0.6 }),
+  lineWhite:std(0xf3f3f0, { roughness:0.6 }),
+  rack:     std(0x2d66c4, { roughness:0.55, metalness:0.3 }),
+  rackOrange: std(0xe8731a, { roughness:0.55, metalness:0.3 }),
+  pallet:   std(0xc49a62, { roughness:0.9 }),
+  box:      std(0xb79b74, { roughness:0.9 }),
+  crate:    std(0x7a8a99, { roughness:0.6, metalness:0.3 }),
+  car:      std(0xd8dde2, { roughness:0.3, metalness:0.5 }),
+  truckWhite: std(0xf2f2f2, { roughness:0.4, metalness:0.2 }),
+  skin:     std(0xe8c4a2, { roughness:0.8 }),
+  uniform:  std(0x25355a, { roughness:0.9 }),
+  uniform2: std(0x5b6670, { roughness:0.9 }),
+  shirt:    std(0xe9ecef, { roughness:0.9 }),
+  helmet:   std(0xf6d33b, { roughness:0.4 }),
+  plant:    std(0x3f8a44, { roughness:0.9 }),
+  pot:      std(0xd9d6cf, { roughness:0.8 }),
+  neighbor: std(0xd6d4cf, { roughness:0.8 }),
+  neighbor2:std(0xc4c8cc, { roughness:0.8 }),
+  neighborRoof: std(0x8e9397, { roughness:0.8 }),
+  pole:     std(0x9a9a94, { roughness:0.9 }),
+  fence:    std(0x7d8891, { roughness:0.5, metalness:0.6 }),
+  curb:     std(0xd3d3cf, { roughness:0.9 }),
+  water:    new THREE.MeshPhysicalMaterial({ color:0x3b6e8c, roughness:0.15, metalness:0.1, transparent:true, opacity:0.85 }),
+};
+M.screen.userData.emisMax = 1.2; emissiveMats.push(M.screen);
+M.lamp.userData.emisMax = 1.3; M.lampWarm.userData.emisMax = 1.3;
+M.lamp.emissiveIntensity = 0.9; M.lampWarm.emissiveIntensity = 0.9;
+
+// ---- ジオメトリ短縮 ----
+const G = {
+  box: (w,h,d)=> new THREE.BoxGeometry(w,h,d),
+  cyl: (r,h,seg=24,rt)=> new THREE.CylinderGeometry(rt??r, r, h, seg),
+  sph: (r,seg=16)=> new THREE.SphereGeometry(r, seg, Math.max(8, seg/2|0)),
+  plane: (w,h)=> new THREE.PlaneGeometry(w,h),
+};
+function mesh(geo, mat, x=0, y=0, z=0, opts={}){
+  const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z);
+  if (opts.rot) m.rotation.set(...opts.rot);
+  if (opts.ry !== undefined) m.rotation.y = opts.ry;
+  m.castShadow = opts.cast ?? true; m.receiveShadow = opts.recv ?? true;
+  if (opts.name) m.name = opts.name;
+  return m;
+}
+// box 配置ヘルパ: 底面中心基準 (x, yBottom, z)
+function boxAt(parent, w,h,d, mat, x, yb, z, opts={}){ const m = mesh(G.box(w,h,d), mat, x, yb+h/2, z, opts); parent.add(m); return m; }
+function cylAt(parent, r,h, mat, x, yb, z, opts={}){ const m = mesh(G.cyl(r,h,opts.seg||24,opts.rt), mat, x, yb+h/2, z, opts); parent.add(m); return m; }
+
+// ---- 静的ジオメトリの材質別マージ（描画コール削減） ----
+class Merger {
+  constructor(){ this.buckets = new Map(); }
+  add(geo, mat, matrix){ const g = geo.clone(); if (matrix) g.applyMatrix4(matrix); if(!this.buckets.has(mat)) this.buckets.set(mat, []); this.buckets.get(mat).push(g); geo.dispose?.(); }
+  box(w,h,d, mat, x, yb, z, ry=0){ const mtx = new THREE.Matrix4().makeRotationY(ry).setPosition(x, yb+h/2, z); this.add(G.box(w,h,d), mat, mtx); }
+  boxC(w,h,d, mat, x, y, z, rot){ const mtx = new THREE.Matrix4(); if(rot) mtx.makeRotationFromEuler(new THREE.Euler(...rot)); mtx.setPosition(x,y,z); this.add(G.box(w,h,d), mat, mtx); }
+  cyl(r,h, mat, x, yb, z, seg=16, rot){ const mtx = new THREE.Matrix4(); if(rot) mtx.makeRotationFromEuler(new THREE.Euler(...rot)); mtx.setPosition(x, rot? yb : yb+h/2, z); this.add(G.cyl(r,h,seg), mat, mtx); }
+  flush(parent, opts={}){
+    for (const [mat, geos] of this.buckets){
+      if (!geos.length) continue;
+      const g = mergeGeometries(geos, false); geos.forEach(x=>x.dispose());
+      const m = new THREE.Mesh(g, mat); m.castShadow = opts.cast ?? true; m.receiveShadow = opts.recv ?? true;
+      if (opts.name) m.name = opts.name; if (opts.layer) m.userData.layer = opts.layer;
+      parent.add(m);
+    }
+    this.buckets.clear();
+  }
+}
+
+// ---- ラベル（スプライト：画面上で一定サイズ） ----
+const LABELS = [];
+function refitLabels(){ const a = innerWidth/innerHeight; for (const sp of LABELS) sp.scale.set(sp.userData.aspect * sp.userData.hN / a, sp.userData.hN, 1); }
+function makeLabel(text, opts={}){
+  const scale = opts.scale ?? 1, color = opts.color ?? "#ffffff", bg = opts.bg ?? "rgba(13,17,23,0.78)";
+  const cvs = document.createElement("canvas"); const c = cvs.getContext("2d");
+  const fs = 44; c.font = `700 ${fs}px -apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif`;
+  const tw = c.measureText(text).width; cvs.width = Math.ceil(tw + 56); cvs.height = fs + 36;
+  c.font = `700 ${fs}px -apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif`;
+  c.fillStyle = bg; c.beginPath(); c.roundRect(0,0,cvs.width,cvs.height,16); c.fill();
+  if (opts.accent){ c.fillStyle = opts.accent; c.fillRect(0, 0, 10, cvs.height); }
+  c.fillStyle = color; c.textBaseline = "middle"; c.fillText(text, 28, cvs.height/2 + 2);
+  const t = new THREE.CanvasTexture(cvs); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:t, transparent:true, depthTest:false, depthWrite:false, sizeAttenuation:false }));
+  const hN = 0.032 * scale; sp.scale.set(cvs.width/cvs.height * hN / (innerWidth/innerHeight), hN, 1); sp.renderOrder = 50; sp.userData.isLabel = true; sp.userData.aspect = cvs.width/cvs.height; sp.userData.hN = hN;
+  LABELS.push(sp); return sp;
+}
+
+// ================= カメラ制御（軌道 + 歩行） =================
+const camState = { yaw:-0.75, pitch:0.55, dist:190, target:new THREE.Vector3(0,6,0) };
+const camGoal  = { yaw:-0.75, pitch:0.55, dist:190, target:new THREE.Vector3(0,6,0) };
+const walk = { on:false, pos:new THREE.Vector3(-30, 1.65, 26), yaw:Math.PI, pitch:0, keys:{} };
+let camDirty = true;
+function setCam(goal, instant=false){
+  if (goal.yaw !== undefined) camGoal.yaw = goal.yaw; if (goal.pitch !== undefined) camGoal.pitch = goal.pitch;
+  if (goal.dist !== undefined) camGoal.dist = goal.dist; if (goal.target) camGoal.target.set(...goal.target);
+  if (instant){ camState.yaw=camGoal.yaw; camState.pitch=camGoal.pitch; camState.dist=camGoal.dist; camState.target.copy(camGoal.target); }
+  camDirty = true;
+}
+function applyCam(){
+  if (walk.on){
+    const dir = new THREE.Vector3(Math.sin(walk.yaw)*Math.cos(walk.pitch), Math.sin(walk.pitch), Math.cos(walk.yaw)*Math.cos(walk.pitch));
+    camera.position.copy(walk.pos); camera.lookAt(walk.pos.clone().add(dir)); return;
+  }
+  const s = camState, g = camGoal, k = 0.12;
+  s.yaw = lerp(s.yaw, g.yaw, k); s.pitch = lerp(s.pitch, g.pitch, k); s.dist = lerp(s.dist, g.dist, k); s.target.lerp(g.target, k);
+  const p = clamp(s.pitch, 0.02, 1.55);
+  camera.position.set(s.target.x + s.dist*Math.cos(p)*Math.sin(s.yaw), s.target.y + s.dist*Math.sin(p), s.target.z + s.dist*Math.cos(p)*Math.cos(s.yaw));
+  camera.lookAt(s.target);
+  if (Math.abs(s.yaw-g.yaw)+Math.abs(s.pitch-g.pitch)+Math.abs(s.dist-g.dist)+s.target.distanceTo(g.target) < 0.002) camDirty = false;
+}
+// マウス操作
+const drag = { on:false, btn:0, x:0, y:0, moved:0 };
+const cvsEl = renderer.domElement;
+cvsEl.addEventListener("pointerdown", e => { drag.on = true; drag.btn = e.button; drag.x = e.clientX; drag.y = e.clientY; drag.moved = 0; cvsEl.setPointerCapture(e.pointerId); });
+cvsEl.addEventListener("pointermove", e => {
+  if (walk.on && document.pointerLockElement === cvsEl){ walk.yaw -= e.movementX*0.0025; walk.pitch = clamp(walk.pitch - e.movementY*0.0025, -1.2, 1.2); return; }
+  if (!drag.on) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx)+Math.abs(dy);
+  if (drag.btn === 2 || e.shiftKey){
+    const right = new THREE.Vector3(Math.cos(camGoal.yaw), 0, -Math.sin(camGoal.yaw));
+    const fwd = new THREE.Vector3(-Math.sin(camGoal.yaw), 0, -Math.cos(camGoal.yaw));
+    const k = camGoal.dist * 0.0012;
+    camGoal.target.addScaledVector(right, -dx*k).addScaledVector(fwd, -dy*k);
+  } else { camGoal.yaw -= dx*0.006; camGoal.pitch = clamp(camGoal.pitch + dy*0.005, 0.02, 1.55); }
+  camDirty = true;
+});
+cvsEl.addEventListener("pointerup", e => { drag.on = false; });
+cvsEl.addEventListener("contextmenu", e => e.preventDefault());
+cvsEl.addEventListener("wheel", e => { e.preventDefault(); if (walk.on) return; camGoal.dist = clamp(camGoal.dist * (1 + Math.sign(e.deltaY)*0.12), 3, 600); camDirty = true; }, { passive:false });
+addEventListener("keydown", e => { walk.keys[e.code] = true; });
+addEventListener("keyup", e => { walk.keys[e.code] = false; });
+addEventListener("resize", () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); refitLabels(); camDirty = true; });
+
+function updateWalk(dt){
+  if (!walk.on) return;
+  const sp = (walk.keys.ShiftLeft ? 6 : 2.4) * dt;
+  const f = new THREE.Vector3(Math.sin(walk.yaw), 0, Math.cos(walk.yaw)), r = new THREE.Vector3(f.z, 0, -f.x);
+  if (walk.keys.KeyW || walk.keys.ArrowUp) walk.pos.addScaledVector(f, sp);
+  if (walk.keys.KeyS || walk.keys.ArrowDown) walk.pos.addScaledVector(f, -sp);
+  if (walk.keys.KeyA || walk.keys.ArrowLeft) walk.pos.addScaledVector(r, sp);
+  if (walk.keys.KeyD || walk.keys.ArrowRight) walk.pos.addScaledVector(r, -sp);
+  if (walk.keys.KeyQ) walk.pos.y = clamp(walk.pos.y - sp, 1.2, 16);
+  if (walk.keys.KeyE) walk.pos.y = clamp(walk.pos.y + sp, 1.2, 16);
+  walk.pos.x = clamp(walk.pos.x, -SITE.w/2-20, SITE.w/2+20); walk.pos.z = clamp(walk.pos.z, -SITE.d/2-20, SITE.d/2+30);
+}
+
+// ===== src/30_site.js =====
+// ================= 敷地・周辺環境（大田区 工業地域） =================
+const LAYERS = {};  // name -> Group
+function layer(name){ if(!LAYERS[name]){ const g = new THREE.Group(); g.name = name; LAYERS[name] = g; scene.add(g); } return LAYERS[name]; }
+
+function buildSite(){
+  const site = layer("site"), ctx = layer("context"), green = layer("green");
+  const mg = new Merger();
+  const hw = SITE.w/2, hd = SITE.d/2;  // 60, 40
+
+  // ---- 広域地面 ----
+  const ground = mesh(G.plane(1600,1600), std(0x9a9c98,{roughness:1}), 0, -0.05, 0, { rot:[-Math.PI/2,0,0], cast:false }); ground.name="ground"; ctx.add(ground);
+
+  // ---- 前面道路（南）幅員12m、歩道3m ----
+  const road = mesh(G.plane(SITE.w+300, 12), M.asphalt, 0, 0.0, hd+3+6, { rot:[-Math.PI/2,0,0], cast:false }); ctx.add(road);
+  for (const z of [hd+1.5, hd+12+1.5+3]){ const sw = mesh(G.plane(SITE.w+300, 3), M.paving, 0, 0.12, z, { rot:[-Math.PI/2,0,0], cast:false }); ctx.add(sw);
+    mg.box(SITE.w+300, 0.15, 0.25, M.curb, 0, 0, z + (z<hd+5? 1.5 : -1.5)); }
+  // 東側道路（トラック進入）幅8m
+  const roadE = mesh(G.plane(8, SITE.d+60), M.asphalt, hw+2+4, 0.0, 0, { rot:[-Math.PI/2,0,0], cast:false }); ctx.add(roadE);
+  const swE = mesh(G.plane(2, SITE.d+60), M.paving, hw+1, 0.12, 0, { rot:[-Math.PI/2,0,0], cast:false }); ctx.add(swE);
+  // 車線・横断歩道
+  for (let x=-hw-140; x<hw+140; x+=8) mg.box(4, 0.02, 0.15, M.lineWhite, x+2, 0.01, hd+3+6);
+  for (let i=0;i<12;i++) mg.box(0.45, 0.02, 10, M.lineWhite, -hw-4 + i*1.0, 0.012, hd+3+6);
+  for (let i=0;i<12;i++) mg.box(0.45, 0.02, 10, M.lineWhite, 22 + i*1.0, 0.012, hd+3+6);
+  // 街灯・電柱・架線（大田区の街路らしさ）
+  const poles = [];
+  for (let x=-hw-130; x<=hw+130; x+=30){ const z = hd+12+3+2.0; mg.cyl(0.18, 11, M.pole, x, 0, z, 10); mg.box(2.2, 0.12, 0.12, M.pole, x, 10.2, z); mg.box(2.2, 0.12, 0.12, M.pole, x, 9.4, z); poles.push([x,z]); }
+  const wireMat = new THREE.LineBasicMaterial({ color:0x2a2a2a });
+  for (const dy of [10.2, 9.4]) for (const dx of [-1, 1]){ const pts = []; for (const [x,z] of poles){ pts.push(new THREE.Vector3(x+dx*0.9, dy, z)); if (poles.indexOf) {} }
+    const geo = new THREE.BufferGeometry().setFromPoints(pts); const l = new THREE.Line(geo, wireMat); ctx.add(l); }
+  for (let x=-hw+10; x<hw; x+=24){ mg.cyl(0.12, 8, M.darkSteel, x, 0, hd+1.2, 8); mg.box(1.6, 0.12, 0.3, M.darkSteel, x+0.8, 8, hd+1.2); mg.box(0.5, 0.12, 0.25, M.lamp, x+1.4, 7.9, hd+1.2); }
+
+  // ---- 隣接建物（低層工場・倉庫・集合住宅の群）----
+  const rnd = sRand("ota-neighbors");
+  const nb = new Merger();
+  function block(x, z, w, d, h, kind){
+    const mat = kind===0? M.neighbor : kind===1? M.neighbor2 : std(0xdedbd3,{roughness:0.85});
+    nb.box(w, h, d, mat, x, 0, z);
+    if (kind===0){ // 鋸屋根工場
+      const n = Math.max(1, Math.round(w/8)); for (let i=0;i<n;i++) nb.boxC(w/n*0.98, 2.2, d*0.98, M.neighborRoof, x - w/2 + w/n*(i+0.5), h+0.9, z, [0,0,0.25]);
+    } else if (kind===1){ nb.box(w*0.96, 0.6, d*0.96, M.neighborRoof, x, h, z); nb.box(3, 2.4, 3, M.neighbor2, x+w/4, h+0.6, z+d/4); }
+    else { for (let f=1; f<h/3; f++) for (let i=0;i<Math.floor(w/4);i++) nb.box(2.2, 1.4, 0.15, M.glassTint, x-w/2+2+i*4, f*3+1.0, z+d/2+0.05); nb.box(w*0.96, 0.4, d*0.96, M.neighborRoof, x, h, z); }
+  }
+  const cells = [];
+  for (let gx=-6; gx<=6; gx++) for (let gz=-5; gz<=5; gz++){
+    const cx = gx*44, cz = gz*44;
+    if (Math.abs(cx) < hw+22 && Math.abs(cz) < hd+22) continue;       // 自敷地＋道路帯を除外
+    if (cz > hd && cz < hd+30) continue;
+    const n = 1 + Math.floor(rnd()*2);
+    for (let k=0;k<n;k++){ const w = 14+rnd()*22, d = 12+rnd()*22, kind = rnd()<0.5?0:(rnd()<0.6?1:2);
+      const h = kind===2? 9+Math.floor(rnd()*5)*3 : 6+rnd()*6;
+      block(cx + (k? 18:-6) + rnd()*4, cz + rnd()*8 - 4, w, d, h, kind); }
+  }
+  nb.flush(ctx, { name:"neighbors" });
+  // 周辺街路の樹木（まばら）
+  const treesCtx = []; for (let i=0;i<60;i++){ const x = -hw-140 + rnd()*(SITE.w+280), z = hd+16.5 + (rnd()<0.5? 0 : 0); if (Math.abs(x) < 10) continue; treesCtx.push([x, z, 0.7+rnd()*0.4]); }
+
+  // ---- 敷地 ----
+  const slab = mesh(G.plane(SITE.w, SITE.d), M.asphalt, 0, 0.02, 0, { rot:[-Math.PI/2,0,0], cast:false }); slab.name="siteSlab"; site.add(slab);
+  // 前庭プラザ（舗装 + 芝 + 植栽帯）
+  const plazaMat = std(0xd2cfc6, { map:TEX.paving([30,6]), roughness:0.85 });
+  site.add(mesh(G.plane(SITE.w, 16), plazaMat, 0, 0.05, BLD.z1+6+2, { rot:[-Math.PI/2,0,0], cast:false }));
+  const beds = [[-38, 33, 14, 5],[-14, 35, 16, 4],[8, 33, 14, 5],[32, 35, 16, 4],[-52,30,8,6]];
+  for (const [x,z,w,d] of beds){ mg.box(w, 0.45, d, M.curb, x, 0, z); green.add(mesh(G.plane(w-0.4, d-0.4), M.grass, x, 0.46, z, { rot:[-Math.PI/2,0,0], cast:false })); }
+  // ベンチ・ボラード・サイン
+  for (const [x,z] of [[-30,28],[-6,28],[18,28],[40,28]]){ mg.box(2.4, 0.08, 0.5, M.timber, x, 0.42, z); mg.box(0.12, 0.4, 0.45, M.darkSteel, x-1, 0.05, z); mg.box(0.12, 0.4, 0.45, M.darkSteel, x+1, 0.05, z); }
+  for (let x=-42; x<=42; x+=6) mg.cyl(0.12, 0.9, M.darkSteel, x, 0.05, hd-0.6, 10);
+  mg.box(5, 2.2, 0.35, M.darkSteel, -50, 0.2, 36); mg.box(4.6, 1.6, 0.05, M.yellow, -50, 0.5, 35.8);
+  const sign = makeLabel("YELLOW  FUSION FACTORY  OTA", { scale:0.8, color:"#111", bg:"rgba(246,203,47,0.95)" }); sign.position.set(-50, 2.9, 35.5); site.add(sign);
+
+  // ---- 西側 駐車場 + ソーラーカーポート ----
+  const px = -hw+8; // 中心 x=-52
+  for (let z=-34; z<=34; z+=2.6){ mg.box(5.0, 0.02, 0.12, M.lineWhite, px-5.5, 0.03, z); mg.box(5.0, 0.02, 0.12, M.lineWhite, px+5.5, 0.03, z); }
+  for (const cx of [px-5.5, px+5.5]){ for (let z=-33; z<=33; z+=11){ mg.cyl(0.18, 3.0, M.steel, cx, 0, z, 10); mg.box(0.3, 0.3, 5.2, M.steel, cx, 3.0, z); }
+    mg.boxC(5.6, 0.12, 72, M.steel, cx, 3.35, 0, [0,0,0.08]); mg.boxC(5.4, 0.06, 71.6, M.solar, cx, 3.45, 0, [0,0,0.08]); }
+  // 車（インスタンス）
+  const carBody = new THREE.InstancedMesh(G.box(1.75, 0.6, 4.3), M.car, 40), carTop = new THREE.InstancedMesh(G.box(1.6, 0.55, 2.4), M.glassTint, 40);
+  const carCols = [0xd8dde2, 0x24262a, 0x8a1c1c, 0xcfd3d6, 0x3a4c6b, 0xe8e8e8];
+  let ci = 0; const tmp = new THREE.Object3D();
+  for (const cx of [px-5.5, px+5.5]) for (let z=-33; z<=33; z+=2.6){ if (rnd() < 0.3) continue; if (ci>=40) break;
+    tmp.position.set(cx, 0.55, z); tmp.rotation.set(0, Math.PI/2, 0); tmp.updateMatrix(); carBody.setMatrixAt(ci, tmp.matrix); carBody.setColorAt(ci, new THREE.Color(carCols[Math.floor(rnd()*carCols.length)]));
+    tmp.position.set(cx-0.2, 1.12, z); tmp.updateMatrix(); carTop.setMatrixAt(ci, tmp.matrix); ci++; }
+  carBody.count = ci; carTop.count = ci; carBody.castShadow = true; carBody.instanceMatrix.needsUpdate = true; carTop.instanceMatrix.needsUpdate = true; if (carBody.instanceColor) carBody.instanceColor.needsUpdate = true;
+  site.add(carBody); site.add(carTop);
+  // 駐輪場
+  for (let i=0;i<10;i++) mg.box(0.06, 0.8, 1.7, M.steel, -44.5 + i*0.7, 0.05, 30);
+
+  // ---- 東側ヤード（トラック動線）・門 ----
+  mg.box(0.5, 0.02, 60, M.lineWhite, 50, 0.03, 0); for (let z=-30; z<30; z+=6) mg.box(0.25, 0.02, 3, M.line, 55, 0.03, z);
+  mg.box(0.4, 2.2, 0.4, M.darkSteel, 46, 0, hd); mg.box(0.4, 2.2, 0.4, M.darkSteel, 58, 0, hd); mg.box(11.6, 0.08, 0.08, M.steel, 52, 2.0, hd);
+  // 北側：キュービクル・コンプレッサ室・屋外試験ヤードの庇
+  for (let i=0;i<3;i++){ mg.box(3.2, 2.4, 1.6, std(0xbfc6cc,{metalness:0.4,roughness:0.5}), -36+i*3.6, 0.2, -36); mg.box(3.0, 0.1, 1.5, M.darkSteel, -36+i*3.6, 2.6, -36); }
+  mg.box(8, 3.2, 4, M.wallMetal, -20, 0, -36); mg.box(8.4, 0.3, 4.4, M.darkSteel, -20, 3.2, -36);
+  mg.cyl(0.9, 2.8, std(0xd8dcdf,{metalness:0.5,roughness:0.4}), -10, 0.2, -36.5, 20); mg.cyl(0.9, 2.8, std(0xd8dcdf,{metalness:0.5,roughness:0.4}), -7.5, 0.2, -36.5, 20);
+  for (const x of [8, 20, 32]) { mg.cyl(0.2, 5, M.steel, x, 0, -33, 10); mg.cyl(0.2, 5, M.steel, x, 0, -39, 10); }
+  mg.box(26, 0.25, 7, M.roofMetal, 20, 5, -36);
+  // 外周フェンス（南面以外）
+  for (let x=-hw; x<=hw; x+=4){ mg.box(0.08, 2.0, 0.08, M.fence, x, 0, -hd); }
+  for (let z=-hd; z<=hd; z+=4){ mg.box(0.08, 2.0, 0.08, M.fence, -hw, 0, z); if (z<hd-8) mg.box(0.08, 2.0, 0.08, M.fence, hw, 0, z); }
+  const fenceMesh = new THREE.MeshStandardMaterial({ map:TEX.mesh([30,1]), transparent:true, alphaTest:0.4, side:THREE.DoubleSide, color:0x8a9299, roughness:0.6, metalness:0.5 });
+  site.add(mesh(G.plane(SITE.w, 2), fenceMesh, 0, 1, -hd, { cast:false })); site.add(mesh(G.plane(SITE.d, 2), fenceMesh, -hw, 1, 0, { ry:Math.PI/2, cast:false })); site.add(mesh(G.plane(SITE.d-8, 2), fenceMesh, hw, 1, -4, { ry:Math.PI/2, cast:false }));
+  // 歩道境界の生垣
+  for (const x of [-56, -47.5, 47.5, 56]) { mg.box(6, 1.0, 1.2, M.leaf, x, 0.1, hd-1.0); }
+
+  mg.flush(site, { name:"siteStatic" });
+
+  // ---- 樹木（インスタンス）----
+  const trees = [];
+  for (const [x,z,w,d] of beds) for (let i=0;i<Math.max(2, Math.floor(w/4)); i++) trees.push([x - w/2 + 2 + i*(w-4)/Math.max(1,Math.floor(w/4)-1||1), z + (rnd()-0.5)*(d-2), 0.9+rnd()*0.5]);
+  for (let z=-32; z<=32; z+=8) trees.push([-45.5, z, 0.7+rnd()*0.3]);   // 駐車場との緩衝帯
+  for (let x=-40; x<=40; x+=16) trees.push([x, -33.5, 0.8+rnd()*0.3]);   // 北側
+  trees.push(...treesCtx);
+  const trunkI = new THREE.InstancedMesh(G.cyl(0.14, 3.2, 8, 0.1), M.trunk, trees.length);
+  const can1 = new THREE.InstancedMesh(G.sph(1.9, 12), M.leaf, trees.length), can2 = new THREE.InstancedMesh(G.sph(1.4, 10), M.leaf2, trees.length);
+  trees.forEach(([x,z,s], i)=>{ tmp.rotation.set(0,0,0); tmp.scale.set(s, s, s); tmp.position.set(x, 1.6*s, z); tmp.updateMatrix(); trunkI.setMatrixAt(i, tmp.matrix);
+    tmp.position.set(x, 4.2*s, z); tmp.updateMatrix(); can1.setMatrixAt(i, tmp.matrix); tmp.position.set(x+0.8*s, 5.2*s, z-0.5*s); tmp.updateMatrix(); can2.setMatrixAt(i, tmp.matrix); });
+  [trunkI, can1, can2].forEach(m => { m.castShadow = true; m.receiveShadow = true; m.instanceMatrix.needsUpdate = true; green.add(m); });
+  // 低木（植栽帯）
+  const shrubs = []; for (const [x,z,w,d] of beds) for (let i=0;i<Math.floor(w*1.5);i++) shrubs.push([x-w/2+0.6+rnd()*(w-1.2), z-d/2+0.6+rnd()*(d-1.2), 0.5+rnd()*0.5]);
+  for (let x=-42; x<=42; x+=1.2) shrubs.push([x, BLD.terraceZ-1.0, 0.5+rnd()*0.3]);  // 2Fテラス植栽（高さは後で）
+  const shrubI = new THREE.InstancedMesh(G.sph(0.5, 8), M.leaf2, shrubs.length);
+  shrubs.forEach(([x,z,s],i)=>{ const terr = Math.abs(z-(BLD.terraceZ-1.0))<0.01; tmp.scale.set(s, s*0.8, s); tmp.position.set(x, (terr? BLD.lv[1]+0.6 : 0.5)+0.3*s, z); tmp.updateMatrix(); shrubI.setMatrixAt(i, tmp.matrix); });
+  shrubI.castShadow = true; shrubI.instanceMatrix.needsUpdate = true; green.add(shrubI);
+  tmp.scale.set(1,1,1);
+}
+
+// ===== src/40_building.js =====
+// ================= 建屋：架構・外皮・床・コア =================
+const FL = {};      // 階ごとのグループ（表示切替用）: 1,2,3, roof
+function floorGroup(f){ if(!FL[f]){ const g = new THREE.Group(); g.name = "floor_"+f; FL[f] = g; scene.add(g); } return FL[f]; }
+
+// 屋根プロファイル補間 y(z)
+function roofY(z){
+  const p = BLD.roofProfile; if (z <= p[0][0]) return p[0][1]; if (z >= p[p.length-1][0]) return p[p.length-1][1];
+  for (let i=0;i<p.length-1;i++){ const [z0,y0]=p[i], [z1,y1]=p[i+1]; if (z>=z0 && z<=z1) return lerp(y0, y1, (z-z0)/(z1-z0)); }
+  return BLD.eave;
+}
+
+function buildBuilding(){
+  const { x0, x1, z0, zh, z1, terraceZ, eaveZ, lv, eave, craneRail, grid } = BLD;
+  const S = new Merger();   // 構造（1Fに属させ常時表示）
+  const R = new Merger();   // 屋根まわり
+  const E1 = new Merger(), E2 = new Merger(), E3 = new Merger(); // 階別 外皮・床・壁
+  const g1 = floorGroup(1), g2 = floorGroup(2), g3 = floorGroup(3), gr = floorGroup("roof");
+  const W = x1 - x0;
+
+  // ---------- 柱 ----------
+  const cols = []; for (let x=x0; x<=x1+0.01; x+=grid) cols.push(x);
+  for (const x of cols){
+    S.box(0.7, eave, 0.7, M.yellow, x, 0, z0+0.6);                 // 北側 主柱（黄）
+    S.box(0.7, eave, 0.7, M.yellow, x, 0, zh-0.6);                  // ホール南側 主柱（黄）
+    S.box(0.45, lv[2]+4.1, 0.45, M.steel, x, 0, z1-0.5);           // 南ファサード 柱
+    if (x>x0 && x<x1) S.box(0.45, lv[2]+4.1, 0.45, M.steel, x, 0, 10); // ストリップ中間柱
+    // クレーン受けブラケット + ランウェイ
+    S.box(1.0, 0.5, 0.9, M.yellow, x, craneRail-1.3, z0+1.35); S.box(1.0, 0.5, 0.9, M.yellow, x, craneRail-1.3, zh-1.35);
+  }
+  for (const zr of [z0+1.35, zh-1.35]){ S.box(W+1, 0.9, 0.4, M.darkSteel, (x0+x1)/2, craneRail-0.9, zr); S.box(W+1, 0.12, 0.12, M.steel, (x0+x1)/2, craneRail, zr); }
+  // 壁つなぎ（胴縁）北面
+  for (const y of [3, 6, 9, 12]) S.box(W, 0.15, 0.15, M.darkSteel, (x0+x1)/2, y, z0+0.95);
+
+  // ---------- 屋根トラス（各通り）----------
+  const prof = BLD.roofProfile;
+  function trussAt(x, m){
+    // 上弦材：プロファイルに沿う
+    for (let i=0;i<prof.length-1;i++){ const [za,ya]=prof[i], [zb,yb]=prof[i+1]; const L = Math.hypot(zb-za, yb-ya); const ang = Math.atan2(yb-ya, zb-za);
+      m.boxC(0.25, 0.3, L, M.darkSteel, x, (ya+yb)/2 - 0.5, (za+zb)/2, [-ang, 0, 0]); }
+    // 下弦材：ホール部は水平 y=12.8、ストリップ部は y=13.3
+    m.box(0.25, 0.25, (zh - z0) + 0.5, M.darkSteel, x, 12.8, (z0+zh)/2 - 0.25);
+    m.box(0.25, 0.25, (eaveZ - zh) - 0.5, M.darkSteel, x, 13.3, (zh+eaveZ)/2);
+    // 束材・斜材
+    for (let z=z0; z<=eaveZ-0.5; z+=4){ const yb = z<zh? 12.8 : 13.3, yt = roofY(z)-0.5; const h = yt - yb; if (h<0.3) continue;
+      m.box(0.12, h, 0.12, M.steel, x, yb, z);
+      const zn = Math.min(z+4, eaveZ); const ytn = roofY(zn)-0.5; const L = Math.hypot(zn-z, ytn-yb); const ang = Math.atan2(ytn-yb, zn-z);
+      m.boxC(0.08, 0.08, L, M.steel, x, (yb+ytn)/2, (z+zn)/2, [-ang, 0, 0]); }
+  }
+  for (const x of cols) trussAt(x, R);
+  // 母屋（屋根下面、東西方向）
+  for (let z=z0+1; z<eaveZ; z+=2){ const y = roofY(z)-0.28; const sl = (roofY(z+0.5)-roofY(z-0.5)); R.boxC(W+2, 0.18, 0.12, M.steel, (x0+x1)/2, y, z, [-Math.atan(sl), 0, 0]); }
+  // 2F/3F 床梁（東西・南北）
+  for (const [f, y] of [[2, lv[1]], [3, lv[2]]]){ const m = f===2? E2 : E3;
+    for (const x of cols) m.box(0.3, 0.6, (f===2? terraceZ : z1) - zh + 2, M.darkSteel, x, y-0.65, ((f===2? terraceZ : z1) + zh - 2)/2);
+    for (const z of [zh-1.0, 10, z1-0.5]) m.box(W, 0.6, 0.3, M.darkSteel, (x0+x1)/2, y-0.65, z); }
+
+  // ---------- 屋根（折板）----------
+  function roofExtrude(offset, thick, mat, zFrom, zTo, xa, xb, target){
+    const pts = prof.filter(p=>p[0]>=zFrom-0.01 && p[0]<=zTo+0.01).map(([z,y])=>[z, y+offset]);
+    if (pts[0][0] > zFrom) pts.unshift([zFrom, roofY(zFrom)+offset]); if (pts[pts.length-1][0] < zTo) pts.push([zTo, roofY(zTo)+offset]);
+    const shape = new THREE.Shape(); shape.moveTo(-pts[0][0], pts[0][1]); for (let i=1;i<pts.length;i++) shape.lineTo(-pts[i][0], pts[i][1]);
+    for (let i=pts.length-1;i>=0;i--) shape.lineTo(-pts[i][0], pts[i][1]-thick); shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: xb-xa, bevelEnabled:false });
+    const m = new THREE.Mesh(geo, mat); m.rotation.y = Math.PI/2; m.position.x = xa; m.castShadow = true; m.receiveShadow = true; target.add(m); return m;
+  }
+  roofExtrude(0, 0.45, M.roofMetal, z0-1, eaveZ, x0-1.2, x1+1.2, gr).name = "roofTop";
+  // ホール内側 デッキ（薄グレー）と、ストリップ・キャンチ部の木天井
+  roofExtrude(-0.5, 0.05, std(0xd9dcdf,{roughness:0.8, side:THREE.DoubleSide}), z0-0.5, zh, x0, x1, gr);
+  const soffit = mesh(G.plane(W+2.4, eaveZ - zh), M.timber, (x0+x1)/2, 13.65, (zh+eaveZ)/2, { rot:[Math.PI/2,0,0], cast:false }); soffit.material = M.timber.clone(); soffit.material.map = TEX.timber([1, 44]); gr.add(soffit);
+  // 木ルーバー（軒下に 30cm ピッチ）
+  for (let z=zh+0.3; z<eaveZ-0.3; z+=0.3) R.box(W+2.4, 0.12, 0.06, M.timber, (x0+x1)/2, 13.45, z);
+  // 鋸歯型トップライト（北向き）
+  for (const zc of [-27, -22, -17]){ const yb = roofY(zc); const h = 2.2; const lidZ = 3.6; const ye = roofY(zc+lidZ)+0.05;
+    const glass = mesh(G.plane(W-2, h), M.glass, (x0+x1)/2, yb+h/2, zc, { cast:false, ry:Math.PI }); gr.add(glass);
+    const L = Math.hypot(lidZ, ye-(yb+h)); R.boxC(W-1.6, 0.25, L, M.roofMetal, (x0+x1)/2, (yb+h+ye)/2, zc+lidZ/2, [-Math.atan2(ye-(yb+h), lidZ), 0, 0]);
+    for (let x=x0+1; x<x1; x+=2) R.box(0.1, h, 0.1, M.mullion, x, yb, zc);
+    R.box(W-1.6, 0.15, 0.3, M.roofMetal, (x0+x1)/2, yb+h-0.1, zc); R.boxC(0.3, h, lidZ, M.roofMetal, x0+0.9, yb+h/2, zc+lidZ/2); R.boxC(0.3, h, lidZ, M.roofMetal, x1-0.9, yb+h/2, zc+lidZ/2); }
+  // 妻壁（東・西）: 屋根プロファイルに合わせたパネル（ホール部のみ。ストリップ部はガラス/折板）
+  function gableShape(zFrom, zTo, yBase){ const sh = new THREE.Shape(); sh.moveTo(-zFrom, yBase); for (let z=zFrom; z<=zTo; z+=1) sh.lineTo(-z, roofY(z)-0.45); sh.lineTo(-zTo, roofY(zTo)-0.45); sh.lineTo(-zTo, yBase); sh.closePath(); return sh; }
+  // 東妻壁：折板（出荷扉含む）
+  { const geo = new THREE.ExtrudeGeometry(gableShape(z0, zh, 0), { depth:0.3, bevelEnabled:false }); const m = new THREE.Mesh(geo, M.wallMetal); m.rotation.y = Math.PI/2; m.position.x = x1-0.3; m.castShadow = m.receiveShadow = true; g1.add(m); }
+  // 西妻壁：ホール部は全面ガラス（駐車場側から機械が見える）、上部三角は折板
+  { const geo = new THREE.ExtrudeGeometry(gableShape(z0, zh, 12.5), { depth:0.3, bevelEnabled:false }); const m = new THREE.Mesh(geo, M.wallMetal); m.rotation.y = Math.PI/2; m.position.x = x0; g1.add(m); }
+  // 東側 折れファサード（ストリップ部 z 2〜24：屋根が壁として折り下がる）
+  { const sh = new THREE.Shape(); sh.moveTo(-zh, 0); sh.lineTo(-eaveZ, 0); sh.lineTo(-eaveZ, roofY(eaveZ)-0.4); sh.lineTo(-zh, roofY(zh)-0.4); sh.closePath();
+    const geo = new THREE.ExtrudeGeometry(sh, { depth:0.35, bevelEnabled:false }); const m = new THREE.Mesh(geo, M.wallMetal); m.rotation.y = Math.PI/2; m.position.set(x1-0.2, 0, 0); m.rotation.z = 0.0; m.castShadow = m.receiveShadow = true;
+    // 上端を外へ 1.2m 倒す（折れ感）
+    m.geometry.applyMatrix4(new THREE.Matrix4().makeShear(0, 0, 0, 0, 0, 0.085)); g1.add(m); }
+
+  // ---------- 外壁・カーテンウォール ----------
+  const mullV = [], mullH = [];   // インスタンス化用 [x,y,z,h,ry]
+  function curtain(target, m, xa, xb, za, zb, yb, yt, opts={}){
+    // 平面 (xa,za)-(xb,zb) の鉛直ガラス面 + マリオン
+    const L = Math.hypot(xb-xa, zb-za), ry = Math.atan2(xb-xa, zb-za) + Math.PI/2; const cx=(xa+xb)/2, cz=(za+zb)/2;
+    const gl = mesh(G.plane(L, yt-yb), opts.mat || M.glass, cx, (yb+yt)/2, cz, { ry, cast:false }); gl.userData.layer="envelope"; target.add(gl);
+    const n = Math.round(L/(opts.pitch||2)); for (let i=0;i<=n;i++){ const t=i/n; mullV.push([lerp(xa,xb,t), yb, lerp(za,zb,t), yt-yb, ry]); }
+    for (const y of (opts.transoms||[])) if (y>yb && y<yt) m.boxC(L, 0.1, 0.12, M.mullion, cx, y, cz, [0, ry, 0]);
+    m.boxC(L, 0.15, 0.2, M.mullion, cx, yb+0.08, cz, [0, ry, 0]); m.boxC(L, 0.15, 0.2, M.mullion, cx, yt-0.08, cz, [0, ry, 0]);
+  }
+  // 南ファサード 1F / 2F / 3F
+  curtain(g1, E1, x0, x1, z1, z1, 0, lv[1], { transoms:[2.6], pitch:2 });
+  curtain(g2, E2, x0, x1, z1, z1, lv[1], lv[2], { transoms:[7.3], pitch:2 });
+  curtain(g3, E3, x0, x1, z1, z1, lv[2], 13.5, { transoms:[11.6], pitch:2 });
+  // 西面：ホール（ガラス 0〜12.5）とストリップ
+  curtain(g1, E1, x0, x0, z0, zh, 0, 12.5, { transoms:[4, 8], pitch:2 });
+  curtain(g1, E1, x0, x0, zh, z1, 0, lv[1], { transoms:[2.6] }); curtain(g2, E2, x0, x0, zh, terraceZ, lv[1], lv[2], { transoms:[7.3] }); curtain(g3, E3, x0, x0, zh, z1, lv[2], 13.5, { transoms:[11.6] });
+  // 北面：折板 + ハイサイド窓
+  E1.box(W, 9, 0.3, M.wallMetal, (x0+x1)/2, 0, z0+0.15); E1.box(W, 1.6, 0.3, M.wallMetal, (x0+x1)/2, 12, z0+0.15);
+  curtain(g1, E1, x1, x0, z0+0.1, z0+0.1, 9, 12, { transoms:[10.5], pitch:4 });
+  // 東面 1F ストリップ：折れファサード裏のガラス（受入検査・コア）
+  E1.box(0.3, 0.3, z1-zh, M.mullion, x1-0.35, 0, (zh+z1)/2);
+  // 東妻壁の扉（出荷ドック 2 + 大扉）
+  for (const e of EQUIP.filter(e=>e.kind==="dock")){ E1.box(0.2, 4.5, 3.5, M.darkSteel, x1-0.1, 0, e.z); for (let y=0.6;y<4.5;y+=0.9) E1.box(0.26, 0.06, 3.5, M.steel, x1-0.1, y, e.z); E1.box(0.5, 1.2, 2.4, M.steel, x1+0.3, 0, e.z); E1.box(0.6, 0.6, 3.2, std(0x222,{roughness:0.9}), x1+0.3, 0.6, e.z); }
+  { const e = EQUIP.find(e=>e.kind==="bigdoor"); E1.box(0.25, 7, 8, M.darkSteel, x1-0.1, 0, e.z); for (let y=0.6;y<7;y+=0.9) E1.box(0.3, 0.06, 8, M.steel, x1-0.1, y, e.z); E1.box(0.3, 0.3, 8.4, M.yellow, x1-0.1, 7, e.z); }
+  // 外部 人用ドア（北・東）
+  E1.box(0.3, 2.2, 1.0, M.darkSteel, x0+6, 0, z0+0.1); E1.box(0.3, 2.2, 1.0, M.darkSteel, x1-0.1, 0, 10);
+
+  // ---------- 床・スラブ・天井 ----------
+  const hallFloor = mesh(G.plane(W, zh-z0), M.epoxy, (x0+x1)/2, 0.01, (z0+zh)/2, { rot:[-Math.PI/2,0,0], cast:false }); hallFloor.name="hallFloor"; g1.add(hallFloor);
+  const stripFloor = mesh(G.plane(W, z1-zh), std(0xc9ccd0,{ map:TEX.concrete([20,4]), roughness:0.6 }), (x0+x1)/2, 0.01, (zh+z1)/2, { rot:[-Math.PI/2,0,0], cast:false }); g1.add(stripFloor);
+  // 2F スラブ（テラス含む）
+  E2.box(W, 0.3, terraceZ-zh+2, M.concrete, (x0+x1)/2, lv[1]-0.3, (zh-2+terraceZ)/2);
+  g2.add(mesh(G.plane(W, z1-zh), M.carpet, (x0+x1)/2, lv[1]+0.01, (zh+z1)/2, { rot:[-Math.PI/2,0,0], cast:false }));
+  g2.add(mesh(G.plane(W, terraceZ-z1), M.paving, (x0+x1)/2, lv[1]+0.01, (z1+terraceZ)/2, { rot:[-Math.PI/2,0,0], cast:false }));
+  g2.add(mesh(G.plane(W, 2), M.steel, (x0+x1)/2, lv[1]+0.01, zh-1, { rot:[-Math.PI/2,0,0], cast:false })); // ホール側バルコニー（グレーチング風）
+  // テラス手摺・植栽プランター
+  E2.box(W, 1.1, 0.04, M.glassTint, (x0+x1)/2, lv[1], terraceZ-0.1); E2.box(W, 0.06, 0.08, M.darkSteel, (x0+x1)/2, lv[1]+1.1, terraceZ-0.1);
+  E2.box(W-2, 0.6, 1.4, M.curb, (x0+x1)/2, lv[1], terraceZ-1.0);
+  // バルコニー手摺（ホール側）
+  E2.box(W, 1.1, 0.04, M.glassTint, (x0+x1)/2, lv[1], zh-2.0); E2.box(W, 0.06, 0.08, M.darkSteel, (x0+x1)/2, lv[1]+1.1, zh-2.0);
+  // 3F スラブ
+  E3.box(W, 0.3, z1-zh+1, M.concrete, (x0+x1)/2, lv[2]-0.3, (zh-1+z1)/2);
+  g3.add(mesh(G.plane(W, z1-zh), M.woodFloor, (x0+x1)/2, lv[2]+0.01, (zh+z1)/2, { rot:[-Math.PI/2,0,0], cast:false }));
+  g3.add(mesh(G.plane(W, 1), M.steel, (x0+x1)/2, lv[2]+0.01, zh-0.5, { rot:[-Math.PI/2,0,0], cast:false }));
+  E3.box(W, 1.1, 0.04, M.glassTint, (x0+x1)/2, lv[2], zh-1.0); E3.box(W, 0.06, 0.08, M.darkSteel, (x0+x1)/2, lv[2]+1.1, zh-1.0);
+  // 1F ストリップ天井（2Fスラブ下 / 木ルーバー）・2F 天井（3Fスラブ下）
+  for (let z=zh+0.3; z<terraceZ; z+=0.3) E2.box(W, 0.1, 0.05, M.timber, (x0+x1)/2, lv[1]-0.75, z);
+  for (let z=zh+0.3; z<z1; z+=0.3) E3.box(W, 0.1, 0.05, M.timber, (x0+x1)/2, lv[2]-0.75, z);
+  g2.add(mesh(G.plane(W, terraceZ-zh), M.ceiling, (x0+x1)/2, lv[1]-0.68, (zh+terraceZ)/2, { rot:[Math.PI/2,0,0], cast:false }));
+  g3.add(mesh(G.plane(W, z1-zh), M.ceiling, (x0+x1)/2, lv[2]-0.68, (zh+z1)/2, { rot:[Math.PI/2,0,0], cast:false }));
+
+  // ---------- ホール⇔ストリップ境界（z=2）の壁・ガラス ----------
+  // 1F：ロビー/ショールームはガラス・開放、他は壁＋ドア
+  for (const zn of ZONES.filter(z=>z[2]===1 && z[6]===2 && z[7]===18)){ const [id, name, , , xa, xb] = zn; const cx=(xa+xb)/2, w=xb-xa;
+    if (id==="show") continue;                                   // 吹抜け・開放
+    if (id==="lobby" || id==="cmm" || id==="elab"){ curtain(g1, E1, xa, xb, zh, zh, 0, lv[1]-0.7, { transoms:[2.6], mat:M.glassIn, pitch:2 }); }
+    else { E1.box(w, lv[1]-0.7, 0.2, M.gypsum, cx, 0, zh); E1.box(1.0, 2.2, 0.25, M.darkSteel, cx, 0, zh); } }
+  // 2F/3F：全面ガラス（ホールを見下ろす）
+  curtain(g2, E2, x0, x1, zh, zh, lv[1], lv[2]-0.7, { transoms:[7.3], mat:M.glassIn, pitch:2 });
+  curtain(g3, E3, x0, x1, zh, zh, lv[2], 13.5, { transoms:[11.6], mat:M.glassIn, pitch:2 });
+  // ゾーン間仕切り（1F/2F/3F ストリップ内）
+  for (const f of [1,2,3]){ const m = f===1?E1: f===2?E2: E3; const g = f===1?g1: f===2?g2: g3; const y = lv[f-1]; const h = (f===3? 13.5 : lv[f]-0.7) - y;
+    const zs = ZONES.filter(z=>z[2]===f && z[6]===2 && z[7]===18).sort((a,b)=>a[4]-b[4]);
+    for (let i=0;i<zs.length-1;i++){ const xb = zs[i][5]; const t = zs[i][3], tn = zs[i+1][3]; const glassy = (f>1) || t==="pub" || tn==="pub" || t==="lab" || tn==="lab";
+      if (zs[i][0]==="lobby" && zs[i+1][0]==="show") continue;
+      if (glassy) curtain(g, m, xb, xb, zh+0.2, z1-0.5, y, y+h, { transoms:[y+2.6], mat:M.glassIn, pitch:2 }); else m.box(0.15, h, z1-zh-0.7, M.gypsum, xb, y, (zh+z1)/2);
+      m.box(0.2, 2.2, 1.0, M.darkSteel, xb, y, zh+3); } }
+  // 計測室は恒温のため二重壁（ホール側にも壁）
+  E1.box(10, lv[1]-0.7, 0.2, M.gypsum, -11, 0, zh+0.5);
+
+  // ---------- コア（階段・EV）----------
+  function core(xa, xb, m, g){ const cx=(xa+xb)/2;
+    m.box(xb-xa, 13.5, 0.2, M.gypsum, cx, 0, 12);                       // コア背面壁
+    m.box(2.6, 13.8, 2.6, M.concrete, xa+1.6, 0, 4.0);                  // EV シャフト
+    m.box(0.1, 13.8, 2.2, M.darkSteel, xa+2.95, 0, 4.0);
+    for (const y of lv){ m.box(1.4, 2.2, 0.1, M.steel, xa+1.6, y, 5.35); }
+    // 階段：1F→2F→3F 折返し
+    for (let f=0; f<2; f++){ const yb = lv[f], yt = lv[f+1]; const n = 14; const rh = (yt-yb)/n;
+      for (let i=0;i<n;i++){ const half = i<n/2; const t = half? i : i-n/2; m.box(1.3, rh, 0.28, M.steel, half? xa+5.0 : xa+6.4, yb+i*rh, half? 14.5 - t*0.28 : 12.5 + t*0.28); }
+      m.box(2.8, 0.15, 1.2, M.steel, xa+5.7, yb+(yt-yb)/2-0.1, 12.0); m.box(0.04, 1.0, 5.0, M.darkSteel, xa+5.7, yb+rh*7, 14.5); }
+    m.box(0.15, 2.2, 1.0, M.darkSteel, xb-0.2, 0, 16);                // WC 入口
+    for (const y of lv){ m.box(3.5, 2.8, 0.15, M.gypsum, xb-1.9, y, 10.0); m.box(0.15, 2.8, 4.0, M.gypsum, xb-3.6, y, 12.0); }
+  }
+  core(x0, x0+8, E1, g1); core(x1-8, x1, E1, g1);
+  // 2F⇔3F 吹抜け階段（ソフトと設計をつなぐ）
+  { const xa = -22; const n = 14, rh = (lv[2]-lv[1])/n; for (let i=0;i<n;i++) E2.box(2.0, rh, 0.3, M.timber, xa, lv[1]+i*rh, 9 + i*0.32);
+    E2.box(0.05, 1.0, n*0.32, M.glassTint, xa-1.0, lv[1]+rh*n/2, 9 + n*0.16); E2.box(0.05, 1.0, n*0.32, M.glassTint, xa+1.0, lv[1]+rh*n/2, 9 + n*0.16); }
+
+  // ---------- マリオン インスタンス化 ----------
+  const mI = new THREE.InstancedMesh(G.box(0.12, 1, 0.12), M.mullion, mullV.length); const tmp = new THREE.Object3D();
+  mullV.forEach(([x,y,z,h,ry], i)=>{ tmp.position.set(x, y+h/2, z); tmp.rotation.set(0, ry, 0); tmp.scale.set(1, h, 1); tmp.updateMatrix(); mI.setMatrixAt(i, tmp.matrix); });
+  mI.castShadow = true; mI.instanceMatrix.needsUpdate = true; mI.userData.layer = "envelope"; g1.add(mI);
+
+  S.flush(g1, { name:"structure", layer:"structure" }); R.flush(gr, { name:"roofStruct", layer:"structure" });
+  E1.flush(g1, { name:"env1", layer:"envelope" }); E2.flush(g2, { name:"env2", layer:"envelope" }); E3.flush(g3, { name:"env3", layer:"envelope" });
+
+  // ---------- ゾーンラベル ----------
+  for (const z of ZONES){ const [id, name, f, type, xa, xb, za, zb] = z; const g = f===0? layer("site") : floorGroup(f); const y = f===0? 0.3 : lv[f-1] + (f===1 && za<2? 6.5 : 3.0);
+    const lb = makeLabel(name, { scale: 1.0, accent:"#"+ZTYPE[type].c.toString(16).padStart(6,"0") }); lb.position.set((xa+xb)/2, y, (za+zb)/2); lb.userData.zone = id; lb.userData.kind = "zone"; lb.userData.floor = f; g.add(lb); }
+}
+
+// ===== src/50_interior.js =====
+// ================= 内部：設備・什器・MEP =================
+const EQ_OBJ = {};      // id -> { group, data }
+// グループ内の静的メッシュを材質ごとに結合（描画コール削減）。userData.dyn / joints を持つ部分は除外。
+function compactGroup(grp){
+  grp.updateMatrixWorld(true); const buckets = new Map(), remove = [];
+  grp.traverse(o => { if (!o.isMesh || o.isInstancedMesh || o.isSprite || o.userData.dyn || Array.isArray(o.material)) return;
+    let p = o.parent; while (p && p !== grp){ if (p.userData.joints || p.userData.dyn) return; p = p.parent; }
+    const g = o.geometry.clone().applyMatrix4(o.matrixWorld); if (!buckets.has(o.material)) buckets.set(o.material, []); buckets.get(o.material).push(g); remove.push(o); });
+  remove.forEach(o => o.parent.remove(o));
+  for (const [mat, geos] of buckets){ const m = new THREE.Mesh(mergeGeometries(geos, false), mat); geos.forEach(g=>g.dispose()); m.castShadow = m.receiveShadow = true; grp.add(m); }
+}
+const ANIM = [];        // 稼働アニメ対象 { update(t,dt) }
+
+function tagEq(group, data){ group.userData.eqId = data.id; group.traverse(o=>{ o.userData.eqId = data.id; }); EQ_OBJ[data.id] = { group, data }; }
+
+// ---- 共通部品 ----
+function signalTower(g, x, y, z){ cylAt(g, 0.05, 0.4, M.darkSteel, x, y, z, {seg:8}); for (const [i,c] of [[0,0xd13b3b],[1,0xf2c230],[2,0x3fb950]].entries()) cylAt(g, 0.07, 0.12, std(c,{emissive:c, emissiveIntensity:0.5}), x, y+0.4+i*0.13, z, {seg:10}); }
+function pendant(g, x, y, z, ry=0){ const a = new THREE.Group(); a.position.set(x,y,z); a.rotation.y = ry;
+  boxAt(a, 0.08, 0.08, 0.6, M.darkSteel, 0, 0, 0.3); boxAt(a, 0.08, 0.9, 0.08, M.darkSteel, 0, -0.9, 0.6);
+  const p = boxAt(a, 0.45, 0.6, 0.08, M.machineDark, 0, -0.6, 0.62); boxAt(a, 0.36, 0.3, 0.02, M.screen, 0, -0.35, 0.67); boxAt(a, 0.36, 0.18, 0.02, std(0x8d939a), 0, -0.58, 0.67); g.add(a); return a; }
+function chipConveyor(g, x, y, z, ry=0){ const c = new THREE.Group(); c.position.set(x,y,z); c.rotation.y = ry;
+  const incl = boxAt(c, 0.5, 0.35, 2.2, M.machineDark, 0, 0.3, 1.1); incl.rotation.x = -0.35; incl.position.y = 0.95;
+  boxAt(c, 0.5, 0.35, 1.4, M.machineDark, 0, 0.2, 0.2); boxAt(c, 0.9, 0.8, 0.9, std(0x5a6066,{metalness:0.5,roughness:0.5}), 0, 0, 2.3); g.add(c); }
+function cabinet(g, w,h,d, x, z, ry=0, mat=M.machineWhite){ const c = new THREE.Group(); c.position.set(x,0,z); c.rotation.y=ry; boxAt(c, w,h,d, mat, 0,0,0); boxAt(c, w*0.9, 0.02, 0.02, M.darkSteel, 0, h*0.55, d/2+0.01); boxAt(c, 0.04, 0.25, 0.03, M.darkSteel, w*0.35, h*0.5, d/2+0.02); g.add(c); return c; }
+function hazardBase(g, w, d, x, z){ for (let i=0;i<4;i++) boxAt(g, w, 0.03, d, i%2? M.blackMatte : M.safetyYellow, x, 0.001+i*0.0, z).scale.set(1-i*0.22,1,1-i*0.22); }
+
+// ---- 6軸ロボット（関節参照付き） ----
+function makeRobot(scale=1, mat=M.robotYellow){
+  const r = new THREE.Group(); r.scale.setScalar(scale);
+  cylAt(r, 0.38, 0.25, M.darkSteel, 0, 0, 0, {seg:20}); const j1 = new THREE.Group(); j1.position.y = 0.25; r.add(j1);
+  cylAt(j1, 0.32, 0.45, mat, 0, 0, 0, {seg:20}); boxAt(j1, 0.5, 0.5, 0.35, mat, 0, 0.3, 0.1);
+  const j2 = new THREE.Group(); j2.position.set(0, 0.75, 0.1); j1.add(j2);
+  const upper = boxAt(j2, 0.3, 1.1, 0.34, mat, 0, 0, 0); cylAt(j2, 0.22, 0.4, M.darkSteel, 0, -0.2, 0, {rot:[0,0,Math.PI/2], seg:16});
+  const j3 = new THREE.Group(); j3.position.set(0, 1.1, 0); j2.add(j3);
+  boxAt(j3, 0.42, 0.36, 0.5, mat, 0, -0.18, 0.1); const fore = boxAt(j3, 0.24, 0.24, 1.2, mat, 0, -0.12, 0.7); cylAt(j3, 0.2, 0.46, M.darkSteel, 0, -0.18, 0, {rot:[0,0,Math.PI/2], seg:16});
+  const j5 = new THREE.Group(); j5.position.set(0, 0, 1.3); j3.add(j5);
+  cylAt(j5, 0.12, 0.3, M.darkSteel, 0, -0.15, 0, {rot:[0,0,Math.PI/2], seg:12}); boxAt(j5, 0.16, 0.16, 0.25, mat, 0, -0.08, 0.15);
+  const tool = new THREE.Group(); tool.position.set(0, 0, 0.3); j5.add(tool); boxAt(tool, 0.22, 0.12, 0.12, M.darkSteel, 0, -0.06, 0.06); boxAt(tool, 0.04, 0.16, 0.14, M.darkSteel, -0.08, -0.08, 0.12); boxAt(tool, 0.04, 0.16, 0.14, M.darkSteel, 0.08, -0.08, 0.12);
+  r.userData.joints = { j1, j2, j3, j5 }; r.userData.base = { j2: -0.4, j3: 0.9, j5: -0.5 };
+  j2.rotation.x = -0.4; j3.rotation.x = 0.9; j5.rotation.x = -0.5;
+  return r;
+}
+function animateRobot(r, phase, speed=0.6){
+  const J = r.userData.joints; ANIM.push({ update(t){ const s = t*speed + phase; J.j1.rotation.y = Math.sin(s)*0.9; J.j2.rotation.x = -0.4 + Math.sin(s*1.3)*0.35; J.j3.rotation.x = 0.9 + Math.cos(s*0.9)*0.4; J.j5.rotation.x = -0.5 + Math.sin(s*2)*0.3; } });
+}
+
+// ---- 工作機械 ----
+function makeMC5(){ const g = new THREE.Group();
+  boxAt(g, 4.2, 0.35, 4.6, M.machineDark, 0, 0, 0); boxAt(g, 4.0, 2.9, 3.4, M.machineWhite, 0, 0.35, -0.5);
+  boxAt(g, 4.0, 0.25, 3.4, M.machineDark, 0, 3.25, -0.5); boxAt(g, 1.4, 1.5, 1.2, M.machineWhite, -1.9, 1.2, -0.3); // ATC マガジン
+  for (const dx of [-0.95, 0.95]){ boxAt(g, 1.7, 2.0, 0.08, M.machineDark, dx, 0.6, 1.22); boxAt(g, 1.3, 1.2, 0.03, M.machineWin, dx, 1.0, 1.27); }
+  boxAt(g, 0.12, 2.0, 0.06, M.yellow, 0, 0.6, 1.28);
+  boxAt(g, 1.2, 0.6, 1.2, M.steel, 0, 0.35, 0.2); cylAt(g, 0.25, 0.5, M.darkSteel, 0, 1.9, 0.2, {seg:16});   // テーブル・主軸
+  pendant(g, 2.05, 2.0, 0.6); chipConveyor(g, 2.3, 0.0, -1.2, Math.PI/2); signalTower(g, 1.6, 3.5, -0.6);
+  boxAt(g, 1.0, 0.9, 2.0, M.machineDark, -2.6, 0, -0.8); // クーラントタンク
+  return g; }
+function makeHMC(){ const g = new THREE.Group();
+  boxAt(g, 5.2, 0.35, 6.2, M.machineDark, 0, 0, 0); boxAt(g, 5.0, 3.0, 3.8, M.machineWhite, 0, 0.35, -1.0); boxAt(g, 5.0, 0.25, 3.8, M.machineDark, 0, 3.35, -1.0);
+  boxAt(g, 3.0, 2.2, 2.2, M.machineWhite, 0, 0.35, 1.9); cylAt(g, 1.2, 0.3, M.steel, 0, 2.55, 1.9, {seg:24}); // パレットチェンジャ
+  boxAt(g, 1.2, 1.4, 0.06, M.machineWin, 0, 1.0, 3.0); boxAt(g, 1.8, 2.0, 0.08, M.machineDark, 2.0, 0.6, 0.95); boxAt(g, 1.3, 1.1, 0.03, M.machineWin, 2.0, 1.0, 1.0);
+  boxAt(g, 0.9, 1.6, 1.3, M.machineWhite, -2.9, 1.3, -1.0); cylAt(g, 0.9, 0.5, M.machineDark, -2.9, 3.0, -1.0, {seg:20}); // ツールマガジン
+  pendant(g, 2.6, 2.1, 2.2, 0); chipConveyor(g, 2.8, 0, -2.2, Math.PI/2); signalTower(g, -1.8, 3.6, -1.5); return g; }
+function makeLathe(){ const g = new THREE.Group();
+  boxAt(g, 3.4, 0.3, 2.0, M.machineDark, 0, 0, 0); boxAt(g, 3.2, 1.8, 1.7, M.machineWhite, 0, 0.3, 0); boxAt(g, 3.2, 0.2, 1.7, M.machineDark, 0, 2.1, 0);
+  boxAt(g, 1.6, 1.3, 0.06, M.machineDark, 0.2, 0.6, 0.86); boxAt(g, 1.2, 0.8, 0.03, M.machineWin, 0.2, 0.85, 0.9);
+  boxAt(g, 0.45, 0.7, 0.08, M.machineDark, 1.3, 1.2, 0.87); boxAt(g, 0.36, 0.3, 0.02, M.screen, 1.3, 1.5, 0.92);
+  chipConveyor(g, -2.0, 0, -0.3, 0); signalTower(g, -1.2, 2.3, 0); return g; }
+function makeGantry(){ const g = new THREE.Group();
+  boxAt(g, 10, 1.0, 3.2, M.machineDark, 0, 0, 0); boxAt(g, 4.2, 0.4, 2.6, M.steel, -1.5, 1.0, 0);         // ベッド・テーブル
+  for (let i=0;i<8;i++) boxAt(g, 0.04, 0.02, 2.6, M.blackMatte, -1.5-2.0+i*0.55, 1.4, 0);                  // T溝
+  for (const dz of [-2.4, 2.4]) boxAt(g, 1.0, 5.6, 1.0, M.machineWhite, 0, 0, dz);                          // コラム
+  boxAt(g, 1.1, 1.0, 6.2, M.machineWhite, 0, 5.1, 0); boxAt(g, 1.3, 0.3, 6.4, M.machineDark, 0, 6.1, 0);   // クロスレール
+  const saddle = boxAt(g, 0.9, 0.9, 0.9, M.machineDark, 0, 4.4, 0.4); const ram = boxAt(g, 0.5, 2.6, 0.5, M.steel, 0, 2.0, 0.4);
+  const head = boxAt(g, 0.7, 0.6, 0.7, M.machineWhite, 0, 1.5, 0.4); saddle.userData.dyn = ram.userData.dyn = head.userData.dyn = true; cylAt(g, 0.12, 0.3, M.darkSteel, 0, 1.3, 0.4, {seg:12});
+  ANIM.push({ update(t){ const dz = Math.sin(t*0.4)*1.0; saddle.position.z = 0.4+dz; ram.position.z = 0.4+dz; head.position.z = 0.4+dz; const dy = Math.sin(t*0.9)*0.3; ram.position.y = 3.3+dy; head.position.y = 1.8+dy; } });
+  // 操作デッキ・階段・制御盤
+  boxAt(g, 2.4, 0.1, 1.6, M.steel, 3.9, 1.6, 2.6); for (let i=0;i<6;i++) boxAt(g, 0.8, 0.05, 0.3, M.steel, 5.3, 0.27*i, 2.6+1.0-i*0.3);
+  boxAt(g, 2.4, 1.0, 0.04, M.darkSteel, 3.9, 1.7, 3.4); boxAt(g, 0.04, 1.0, 1.6, M.darkSteel, 2.7, 1.7, 2.6);
+  cabinet(g, 1.2, 2.0, 0.6, 3.5, 2.0, Math.PI, M.machineWhite); boxAt(g, 0.5, 0.35, 0.03, M.screen, 3.5, 3.0, 2.4);
+  cabinet(g, 2.2, 2.2, 0.8, -4.0, -2.9, 0, M.machineWhite); cabinet(g, 2.2, 2.2, 0.8, -1.5, -2.9, 0, M.machineWhite); // 電気盤
+  signalTower(g, 0, 6.4, 2.4); chipConveyor(g, -5.6, 0, -0.2, Math.PI/2);
+  for (const x of [-5.2, 5.2]) for (const z of [-2.0, 2.0]) cylAt(g, 0.08, 1.0, M.yellow, x, 0, z, {seg:8});
+  return g; }
+function makeEDM(){ const g = new THREE.Group(); boxAt(g, 2.6, 0.3, 2.6, M.machineDark, 0, 0, 0); boxAt(g, 2.4, 2.1, 2.2, M.machineWhite, 0, 0.3, -0.1); boxAt(g, 2.4, 0.15, 2.2, M.machineDark, 0, 2.4, -0.1);
+  boxAt(g, 1.4, 1.1, 0.04, M.machineWin, 0, 0.9, 1.0); boxAt(g, 0.5, 1.0, 0.5, M.machineWhite, 1.4, 1.1, 0.9); boxAt(g, 0.4, 0.3, 0.02, M.screen, 1.4, 1.6, 1.16);
+  boxAt(g, 0.8, 0.9, 1.4, std(0x7a8aa0), -1.9, 0, 0); cylAt(g, 0.25, 0.3, M.steel, 0.6, 2.55, -0.8, {seg:16}); return g; }
+function makeGrinder(){ const g = new THREE.Group(); boxAt(g, 2.6, 0.3, 1.8, M.machineDark, 0, 0, 0); boxAt(g, 2.4, 1.0, 1.4, std(0x4a7a5a), 0, 0.3, 0); boxAt(g, 0.8, 1.2, 1.0, std(0x4a7a5a), 0.5, 1.3, -0.2);
+  cylAt(g, 0.3, 0.2, M.darkSteel, 0.1, 1.5, 0.3, {rot:[0,0,Math.PI/2], seg:20}); boxAt(g, 1.2, 0.1, 0.5, M.steel, -0.4, 1.3, 0.2); boxAt(g, 0.4, 0.5, 0.06, M.machineDark, 1.0, 1.0, 0.75); return g; }
+
+// ---- ロボットセル ----
+function makeRobotCell(big){ const g = new THREE.Group(); const w = 6, d = 6;
+  for (let i=0;i<=3;i++){ for (const [x,z] of [[-w/2+i*2, -d/2],[-w/2+i*2, d/2],[-w/2, -d/2+i*2],[w/2, -d/2+i*2]]) boxAt(g, 0.08, 2.0, 0.08, M.safetyYellow, x, 0, z); }
+  for (const [x,z,ry] of [[0,-d/2,0],[0,d/2,0],[-w/2,0,Math.PI/2],[w/2,0,Math.PI/2]]){ const p = mesh(G.plane(w, 1.9), M.mesh, x, 1.0, z, { ry, cast:false }); g.add(p); }
+  boxAt(g, 1.0, 2.0, 0.04, M.darkSteel, w/2+0.0, 0, 1.5).rotation.y = Math.PI/2; // 扉
+  const r = makeRobot(big? 1.35 : 1.0); r.position.set(0, 0.6, 0); cylAt(g, 0.5, 0.6, M.machineDark, 0, 0, 0, {seg:20}); g.add(r); animateRobot(r, big? 1.4 : 0.2, big? 0.45 : 0.7);
+  // ワークストッカ（棚）
+  for (const x of [-2.2, 2.2]){ boxAt(g, 1.2, 1.5, 0.8, M.darkSteel, x, 0, -2.0); for (let i=0;i<3;i++) boxAt(g, 1.1, 0.03, 0.75, M.steel, x, 0.3+i*0.5, -2.0); for (let i=0;i<3;i++) for (let k=0;k<3;k++) boxAt(g, 0.25, 0.22, 0.25, M.steel, x-0.35+k*0.35, 0.33+i*0.5, -2.0); }
+  cabinet(g, 0.9, 1.9, 0.5, -2.4, 2.4, 0, M.machineWhite); boxAt(g, 0.8, 0.9, 0.8, M.steel, 1.8, 0, 2.0); // 制御盤・治具台
+  for (const x of [-2.6, 2.6]) boxAt(g, 0.06, 1.6, 0.06, M.yellow, x, 0.2, 2.98);  // ライトカーテン
+  signalTower(g, -2.4, 1.9, 2.4); return g; }
+
+// ---- 組立ベイ：組立中の大型機 ----
+function makeAssembly(variant){ const g = new THREE.Group();
+  if (variant === "A"){ // 大型門型システム 組立中
+    boxAt(g, 9.0, 0.6, 4.5, M.machineDark, 0, 0, 0); for (let i=0;i<4;i++) boxAt(g, 0.4, 0.2, 4.5, M.yellow, -3.3+i*2.2, 0.6, 0);  // ベースとレベリング
+    boxAt(g, 1.0, 4.6, 1.1, M.machineWhite, -2.5, 0.6, -1.9); boxAt(g, 1.0, 4.6, 1.1, M.machineWhite, -2.5, 0.6, 1.9); boxAt(g, 1.1, 0.9, 4.8, M.machineWhite, -2.5, 5.2, 0); // 第1門
+    boxAt(g, 1.0, 4.6, 1.1, M.machineWhite, 2.5, 0.6, -1.9); boxAt(g, 1.0, 2.6, 1.1, M.steel, 2.5, 0.6, 1.9);   // 第2門（片側は未設置→クレーン吊り中）
+    boxAt(g, 3.8, 0.35, 2.4, M.steel, 0, 0.6, 0); boxAt(g, 0.6, 0.6, 0.6, M.machineDark, -2.5, 4.4, 0.6);
+    // 作業足場（単管＋足場板＋手摺）
+    for (const [x,z] of [[-4.0,-2.9],[-4.0,2.9],[-1.0,-2.9],[-1.0,2.9],[2.0,-2.9],[2.0,2.9],[5.0,-2.9],[5.0,2.9]]) cylAt(g, 0.03, 4.0, M.steel, x, 0, z, {seg:6});
+    for (const z of [-2.9, 2.9]){ boxAt(g, 9.2, 0.06, 0.9, M.pallet, 0.5, 2.2, z); boxAt(g, 9.2, 0.03, 0.03, M.steel, 0.5, 3.2, z+Math.sign(z)*0.45); boxAt(g, 9.2, 0.03, 0.03, M.steel, 0.5, 2.7, z+Math.sign(z)*0.45); boxAt(g, 9.2, 0.03, 0.03, M.steel, 0.5, 2.2, z); boxAt(g, 9.2, 0.03, 0.03, M.steel, 0.5, 4.0, z); }
+    for (let i=0;i<7;i++) boxAt(g, 0.7, 0.03, 0.25, M.steel, -5.0, 0.3*i, -2.0 + i*0.32);  // 階段
+    // 周辺：工具カート、ケーブルリール、部品パレット、制御盤仮置き
+    for (const [x,z] of [[5.8,-1.0],[5.8,1.2]]){ boxAt(g, 0.7, 0.9, 0.5, std(0xc23b3b,{metalness:0.3,roughness:0.5}), x, 0.15, z); for (let i=0;i<4;i++) boxAt(g, 0.66, 0.02, 0.02, M.steel, x, 0.3+i*0.2, z+0.26); for (const dx of [-0.25,0.25]) for (const dz of [-0.18,0.18]) cylAt(g, 0.07, 0.05, M.blackMatte, x+dx, 0.05, z+dz, {seg:10}); }
+    cylAt(g, 0.35, 0.3, M.rackOrange, -5.6, 0.1, 2.8, {rot:[0,0,Math.PI/2], seg:16}); boxAt(g, 0.5, 0.6, 0.5, M.darkSteel, -5.6, 0, 2.8);
+    for (const [x,z] of [[-6.5,-1.5],[-6.5,0.0],[-6.5,1.5]]){ boxAt(g, 1.1, 0.14, 1.1, M.pallet, x, 0, z); boxAt(g, 0.9, 0.5, 0.9, M.crate, x, 0.14, z); }
+    cabinet(g, 1.8, 2.1, 0.7, 6.5, 2.9, Math.PI, M.machineWhite); cabinet(g, 1.8, 2.1, 0.7, 6.5, -2.9, 0, M.machineWhite);
+    boxAt(g, 0.9, 1.1, 0.03, std(0xe8e8e0), -6.0, 1.3, -3.4); boxAt(g, 0.05, 1.2, 0.05, M.darkSteel, -6.0, 0.1, -3.4); // 工程ボード
+  } else { // 自律搬送・ロボット統合セル
+    boxAt(g, 8.0, 0.5, 4.0, M.darkSteel, 0, 0, 0); boxAt(g, 7.6, 0.08, 3.6, M.steel, 0, 0.5, 0);
+    for (let i=0;i<3;i++){ boxAt(g, 2.2, 0.5, 0.8, M.darkSteel, -2.6+i*2.6, 0.58, -1.2); for (let k=0;k<10;k++) cylAt(g, 0.06, 0.78, M.steel, -2.6+i*2.6-1.0+k*0.22, 1.08, -1.2, {rot:[Math.PI/2,0,0], seg:8}); } // コンベヤ
+    const r1 = makeRobot(1.1, M.robotWhite); r1.position.set(-1.5, 0.58, 0.8); g.add(r1); animateRobot(r1, 0.0, 0.8);
+    const r2 = makeRobot(1.1, M.robotWhite); r2.position.set(1.8, 0.58, 0.8); g.add(r2); animateRobot(r2, 2.1, 0.8);
+    cabinet(g, 1.6, 2.0, 0.6, 3.5, 1.6, -Math.PI/2, M.machineWhite); cabinet(g, 1.6, 2.0, 0.6, -3.5, 1.6, Math.PI/2, M.machineWhite);
+    for (let i=0;i<4;i++){ boxAt(g, 0.08, 1.8, 0.08, M.safetyYellow, -3.9+i*2.6, 0.58, -1.9); } g.add(mesh(G.plane(7.8, 1.7), M.mesh, 0, 1.48, -1.9, {cast:false}));
+    boxAt(g, 1.6, 0.35, 1.1, M.machineBlue, 0.4, 0.58, 1.6); cylAt(g, 0.08, 0.2, M.blackMatte, 0.4, 0.93, 1.6, {seg:12}); // AMR 試作機
+    boxAt(g, 1.2, 1.8, 0.05, M.monitor, -4.6, 0.9, 2.4); boxAt(g, 1.1, 1.1, 0.02, M.screen, -4.6, 1.3, 2.43); boxAt(g, 0.1, 0.9, 0.1, M.darkSteel, -4.6, 0, 2.4); // 立会い用ディスプレイ
+    for (const [x,z] of [[-5.5,-1.0],[-5.5,0.5]]){ boxAt(g, 1.1, 0.14, 1.1, M.pallet, x, 0, z); boxAt(g, 0.9, 0.6, 0.9, M.box, x, 0.14, z); }
+    boxAt(g, 1.6, 0.75, 0.8, M.deskWhite, 5.5, 0, 2.6); for (const dx of [-0.4,0.4]) boxAt(g, 0.45, 0.45, 0.45, M.chair, 5.5+dx, 0, 3.4); // 立会い席
+  }
+  return g; }
+
+function makeBench(){ const g = new THREE.Group();
+  for (const x of [-1.3, 1.3]){ boxAt(g, 2.0, 0.12, 1.0, M.steel, x, 0.75, 0); for (const dx of [-0.9,0.9]) for (const dz of [-0.4,0.4]) boxAt(g, 0.06, 0.75, 0.06, M.darkSteel, x+dx, 0, dz); boxAt(g, 0.3, 0.25, 0.2, M.machineBlue, x-0.6, 0.87, 0.3); boxAt(g, 1.9, 0.04, 0.9, M.darkSteel, x, 0.3, 0); }
+  boxAt(g, 0.7, 1.0, 0.5, std(0xc23b3b,{metalness:0.3}), -2.9, 0, -0.2); for (let i=0;i<5;i++) boxAt(g, 0.66, 0.02, 0.02, M.steel, -2.9, 0.15+i*0.18, 0.06);
+  boxAt(g, 0.9, 1.9, 0.4, M.darkSteel, 2.9, 0, -0.3); for (let i=0;i<4;i++) boxAt(g, 0.85, 0.02, 0.36, M.steel, 2.9, 0.4+i*0.45, -0.3);
+  for (let i=0;i<6;i++) boxAt(g, 0.08+Math.random()*0.2, 0.08, 0.08+Math.random()*0.15, M.steel, -1.8+i*0.5, 0.81, -0.2);
+  return g; }
+function makeRack(levels=3, bays=4){ const g = new THREE.Group(); const L = bays*2.0, d = 1.1;
+  for (let i=0;i<=bays;i++) for (const z of [-d/2, d/2]) boxAt(g, 0.09, levels*1.6+0.4, 0.09, M.rack, -L/2+i*2.0, 0, z);
+  for (let l=1;l<=levels;l++) for (const z of [-d/2, d/2]) boxAt(g, L, 0.12, 0.08, M.rackOrange, 0, l*1.6-0.12, z);
+  const rnd = sRand("rack"+levels+bays);
+  for (let l=0;l<levels;l++) for (let b=0;b<bays;b++) for (const k of [-0.5, 0.5]){ if (rnd()<0.25) continue; const x = -L/2+b*2.0+1.0+k*0.9, y = l===0? 0 : l*1.6; boxAt(g, 0.8, 0.14, 1.0, M.pallet, x, y, 0);
+    const h = 0.4+rnd()*0.8; boxAt(g, 0.75, h, 0.9, rnd()<0.5? M.box : M.crate, x, y+0.14, 0); }
+  for (const x of [-L/2-0.3, L/2+0.3]) for (const z of [-d/2, d/2]) boxAt(g, 0.1, 0.4, 0.1, M.safetyYellow, x, 0, z);
+  return g; }
+function makeDock(){ const g = new THREE.Group(); boxAt(g, 2.2, 0.08, 2.6, M.darkSteel, -1.1, 0.0, 0); for (const z of [-1.9, 1.9]) boxAt(g, 0.5, 0.5, 0.3, M.blackMatte, 0.0, 0.2, z); for (const z of [-2.2, 2.2]) cylAt(g, 0.1, 1.0, M.safetyYellow, -2.6, 0, z, {seg:8}); boxAt(g, 1.4, 0.3, 0.3, M.safetyYellow, -1.0, 0, -2.4); return g; }
+function makeTestCell(){ const g = new THREE.Group(); const w = 13, d = 11, h = 6;
+  for (let i=0;i<=Math.round(w/2);i++) for (const z of [-d/2, d/2]) boxAt(g, 0.15, h, 0.15, M.darkSteel, -w/2+i*2, 0, z);
+  for (let i=0;i<=Math.round(d/2);i++) for (const x of [-w/2, w/2]) boxAt(g, 0.15, h, 0.15, M.darkSteel, x, 0, -d/2+i*2);
+  for (const [x,z,ry,L] of [[0,-d/2,0,w],[0,d/2,0,w],[-w/2,0,Math.PI/2,d],[w/2,0,Math.PI/2,d]]){ g.add(mesh(G.plane(L, h-1.2), M.glassIn, x, 1.2+(h-1.2)/2, z, {ry, cast:false})); const p = boxAt(g, L, 1.2, 0.12, std(0x3b4046,{roughness:0.95}), x, 0, z); p.rotation.y = ry; }
+  boxAt(g, w, 0.4, d, std(0x3b4046,{roughness:0.95}), 0, h, 0);                                     // 吸音天井
+  const door = boxAt(g, 2.0, 2.4, 0.08, M.darkSteel, -w/2, 0, 2.5); door.rotation.y = Math.PI/2;
+  // 試験中の機械（中型）＋センサー・配線
+  boxAt(g, 5.0, 0.5, 2.6, M.machineDark, -1.5, 0, -1.0); boxAt(g, 4.6, 2.6, 2.2, M.machineWhite, -1.5, 0.5, -1.0); boxAt(g, 0.8, 1.2, 0.8, M.steel, 0.2, 3.1, -1.0);
+  const spindle = cylAt(g, 0.18, 0.9, M.darkSteel, 0.2, 2.2, -1.0, {seg:14}); spindle.userData.dyn = true; ANIM.push({ update(t){ spindle.rotation.y = t*20; } });
+  for (const [x,z] of [[-4.8,2.5],[3.5,2.5],[3.5,-4.0]]){ cylAt(g, 0.04, 1.6, M.darkSteel, x, 0, z, {seg:8}); cylAt(g, 0.3, 0.25, M.darkSteel, x, 0, z, {seg:12}); boxAt(g, 0.15, 0.15, 0.25, M.machineDark, x, 1.6, z); } // 計測スタンド
+  boxAt(g, 1.8, 1.8, 0.6, M.machineWhite, 4.8, 0, -3.5); boxAt(g, 1.6, 0.9, 0.03, M.screen, 4.8, 2.2, -3.2); boxAt(g, 1.8, 1.1, 0.06, M.monitor, 4.8, 2.1, -3.25);
+  boxAt(g, 2.0, 0.75, 0.9, M.deskWhite, 4.2, 0, 3.8); boxAt(g, 0.45, 0.45, 0.45, M.chair, 4.2, 0, 4.6); boxAt(g, 0.6, 0.38, 0.05, M.screen, 4.2, 0.8, 3.6);
+  for (let i=0;i<3;i++) boxAt(g, 0.06, 0.06, 7, M.darkSteel, -3+i*0.3, 5.5, 0);
+  return g; }
+function makeCMM(){ const g = new THREE.Group();
+  boxAt(g, 3.0, 0.9, 1.8, M.darkSteel, 0, 0, 0); boxAt(g, 2.8, 0.3, 1.6, std(0x202326,{roughness:0.2,metalness:0.1}), 0, 0.9, 0);   // 御影石定盤
+  for (const z of [-1.0, 1.0]) boxAt(g, 0.3, 1.8, 0.25, M.machineWhite, 0.4, 1.2, z); boxAt(g, 0.3, 0.3, 2.3, M.machineWhite, 0.4, 3.0, 0);
+  const col = boxAt(g, 0.18, 1.4, 0.18, M.machineWhite, 0.4, 1.7, 0.3); col.userData.dyn = true; cylAt(g, 0.03, 0.3, M.darkSteel, 0.4, 1.4, 0.3, {seg:8});
+  ANIM.push({ update(t){ col.position.z = Math.sin(t*0.5)*0.6; col.position.y = 2.4 + Math.sin(t*0.8)*0.2; } });
+  boxAt(g, 0.5, 0.4, 0.3, M.steel, -0.6, 1.2, -0.2);
+  boxAt(g, 1.6, 0.75, 0.8, M.deskWhite, -3.0, 0, 0); boxAt(g, 0.55, 0.35, 0.04, M.screen, -3.0, 0.85, -0.2); boxAt(g, 0.45, 0.45, 0.45, M.chair, -3.0, 0, 0.8);
+  boxAt(g, 1.2, 1.0, 0.8, M.machineWhite, 3.0, 0, 0.5); cylAt(g, 0.2, 0.5, M.darkSteel, 3.0, 1.0, 0.5, {seg:16}); boxAt(g, 0.3, 0.6, 0.3, M.machineWhite, 3.0, 1.2, 0.2);  // 真円度測定機
+  return g; }
+function makeElab(){ const g = new THREE.Group();
+  for (let i=0;i<4;i++){ const x = -4.5+i*3; boxAt(g, 1.6, 2.0, 0.5, M.machineWhite, x, 0, -4.5); boxAt(g, 1.4, 1.6, 0.04, M.darkSteel, x, 0.2, -4.22); for (let k=0;k<4;k++) boxAt(g, 1.2, 0.1, 0.06, std(0x6a7f95), x, 0.45+k*0.35, -4.2);
+    boxAt(g, 1.8, 0.75, 0.8, M.desk, x, 0, -2.0); boxAt(g, 0.45, 0.45, 0.45, M.chair, x, 0, -1.2); boxAt(g, 0.5, 0.32, 0.04, M.screen, x+0.4, 0.85, -2.2); boxAt(g, 0.6, 0.2, 0.3, M.machineDark, x-0.5, 0.75, -2.2); }
+  for (let i=0;i<3;i++){ boxAt(g, 1.0, 2.0, 0.45, M.darkSteel, -4+i*1.1, 0, 5.5); for (let k=0;k<5;k++) boxAt(g, 0.95, 0.02, 0.42, M.steel, -4+i*1.1, 0.3+k*0.38, 5.5); for (let k=0;k<5;k++) for (let b=0;b<3;b++) boxAt(g, 0.28, 0.14, 0.35, M.machineBlue, -4.35+i*1.1+b*0.32, 0.33+k*0.38, 5.5); }
+  boxAt(g, 3.0, 0.9, 1.2, M.deskWhite, 3.5, 0, 4.0); boxAt(g, 0.8, 0.5, 0.5, M.machineDark, 2.5, 0.9, 4.0); boxAt(g, 0.6, 0.4, 0.4, M.machineDark, 4.2, 0.9, 4.0); // 耐電圧試験
+  return g; }
+function makeToolroom(){ const g = new THREE.Group();
+  for (let i=0;i<8;i++){ const x = -4.2+i*1.2; boxAt(g, 1.0, 1.4, 0.7, std(0x6b7178,{metalness:0.4,roughness:0.5}), x, 0, -5.5); for (let k=0;k<6;k++) boxAt(g, 0.9, 0.02, 0.02, M.steel, x, 0.15+k*0.22, -5.14); }
+  boxAt(g, 1.4, 1.2, 1.0, M.machineWhite, -2.0, 0, 0); boxAt(g, 0.3, 0.9, 0.3, M.machineWhite, -2.0, 1.2, -0.2); cylAt(g, 0.05, 0.3, M.darkSteel, -2.0, 1.2, 0.2, {rot:[Math.PI/2,0,0], seg:8}); boxAt(g, 0.5, 0.35, 0.04, M.screen, -1.3, 1.6, 0.0); // プリセッタ
+  boxAt(g, 2.0, 0.8, 1.0, M.steel, 1.5, 0, 0.5); for (let i=0;i<8;i++) cylAt(g, 0.05, 0.35, M.darkSteel, 0.7+i*0.22, 0.8, 0.5, {seg:8});
+  return g; }
+function makeHIL(){ const g = new THREE.Group();
+  for (let i=0;i<2;i++){ boxAt(g, 0.7, 2.0, 0.9, M.machineDark, -3.5+i*1.0, 0, -4.5); for (let k=0;k<8;k++) boxAt(g, 0.6, 0.04, 0.02, std(0x3fb950,{emissive:0x3fb950,emissiveIntensity:0.6}), -3.5+i*1.0, 0.3+k*0.2, -4.04); }  // リアルタイム機
+  for (let i=0;i<2;i++) cabinet(g, 1.6, 2.0, 0.6, 0.5+i*1.9, -4.5, 0, M.machineWhite);  // 実機制御盤
+  boxAt(g, 2.4, 0.8, 1.2, M.steel, 3.5, 0, 0.5); cylAt(g, 0.25, 0.8, M.machineBlue, 3.0, 1.0, 0.5, {rot:[0,0,Math.PI/2], seg:16}); cylAt(g, 0.25, 0.6, M.darkSteel, 4.0, 1.0, 0.5, {rot:[0,0,Math.PI/2], seg:16}); // モータ・負荷試験ベンチ
+  boxAt(g, 5.0, 2.0, 0.08, M.monitor, -1.5, 1.0, 7.2); boxAt(g, 4.8, 1.8, 0.02, M.screen, -1.5, 1.1, 7.15);  // 大型ディスプレイウォール
+  for (let i=0;i<3;i++){ boxAt(g, 1.6, 0.73, 0.8, M.deskWhite, -3+i*2.0, 0, 3.5); boxAt(g, 0.45, 0.45, 0.45, M.chair, -3+i*2.0, 0, 2.6); for (const dx of [-0.35, 0.35]) boxAt(g, 0.55, 0.34, 0.03, M.screen, -3+i*2.0+dx, 0.85, 3.7); }
+  const r = makeRobot(0.7, M.robotWhite); r.position.set(3.2, 0.8, 4.5); boxAt(g, 1.2, 0.8, 1.2, M.steel, 3.2, 0, 4.5); g.add(r); animateRobot(r, 0.9, 0.9);
+  return g; }
+function makeServer(){ const g = new THREE.Group();
+  for (let i=0;i<8;i++){ const x = -4.2+i*1.2; boxAt(g, 0.7, 2.1, 1.1, M.blackMatte, x, 0, 0); boxAt(g, 0.62, 1.95, 0.02, std(0x2a2e33), x, 0.08, 0.56); for (let k=0;k<12;k++) boxAt(g, 0.02, 0.02, 0.02, std(k%3? 0x3fb950 : 0x58a6ff, {emissive:k%3? 0x3fb950 : 0x58a6ff, emissiveIntensity:1}), x-0.25, 0.2+k*0.15, 0.58); }
+  boxAt(g, 10, 0.1, 1.6, M.darkSteel, 0, 2.1, 0); boxAt(g, 10, 2.1, 0.04, M.glassIn, 0, 0, 0.9); boxAt(g, 10, 2.1, 0.04, M.glassIn, 0, 0, -0.9);  // 熱通路封じ込め
+  for (const x of [-4.8, 4.8]) boxAt(g, 1.0, 2.0, 0.8, std(0xd8dcdf,{metalness:0.4}), x, 0, 3.0); boxAt(g, 1.6, 1.9, 0.7, M.machineWhite, 0, 0, 4.5);  // 空調・UPS
+  boxAt(g, 9.8, 0.4, 8, std(0xd0d4d8,{transparent:true,opacity:0.35}), 0, -0.4, 1.5); // フリーアクセス床（薄）
+  return g; }
+function makeAGV(){ const g = new THREE.Group(); boxAt(g, 1.6, 0.35, 1.1, M.machineBlue, 0, 0.06, 0); boxAt(g, 1.5, 0.05, 1.0, M.safetyYellow, 0, 0.41, 0); boxAt(g, 1.1, 0.14, 1.1, M.pallet, 0, 0.46, 0); boxAt(g, 0.9, 0.6, 0.9, M.crate, 0, 0.6, 0);
+  cylAt(g, 0.08, 0.1, M.blackMatte, 0.7, 0.41, 0.45, {seg:12}); cylAt(g, 0.08, 0.1, M.blackMatte, -0.7, 0.41, -0.45, {seg:12}); for (const dx of [-0.5,0.5]) for (const dz of [-0.45,0.45]) cylAt(g, 0.1, 0.08, M.blackMatte, dx, 0.0, dz, {rot:[Math.PI/2,0,0], seg:10}); return g; }
+function makeCrane(){ const g = new THREE.Group(); const span = BLD.zh - BLD.z0 - 2.7; // レール間
+  for (const dx of [-1.0, 1.0]) boxAt(g, 0.5, 1.1, span, M.yellow, dx, 0, 0);            // 主桁 ×2
+  for (const z of [-span/2, span/2]){ boxAt(g, 3.2, 0.5, 0.8, M.darkSteel, 0, -0.3, z); for (const dx of [-1.3,1.3]) cylAt(g, 0.25, 0.3, M.darkSteel, dx, -0.45, z, {rot:[0,0,Math.PI/2], seg:16}); } // エンドトラック・車輪
+  const trolley = new THREE.Group(); trolley.userData.dyn = true; g.add(trolley); boxAt(trolley, 2.6, 0.5, 1.4, M.darkSteel, 0, 1.1, 0); boxAt(trolley, 0.9, 0.8, 0.9, M.machineDark, -0.6, 1.6, 0); cylAt(trolley, 0.3, 0.9, M.darkSteel, 0.6, 1.35, 0, {rot:[0,0,Math.PI/2], seg:16});
+  const rope = cylAt(trolley, 0.02, 1, M.darkSteel, 0, 0, 0, {seg:6}); const hook = new THREE.Group(); trolley.add(hook); boxAt(hook, 0.4, 0.3, 0.3, M.darkSteel, 0, 0, 0); boxAt(hook, 0.12, 0.5, 0.25, M.yellow, 0, -0.5, 0);
+  boxAt(g, 1.2, 0.3, 0.6, M.darkSteel, 0, 0.9, span/2-1.5); boxAt(g, 0.6, 0.25, 0.25, std(0xf2c230,{emissive:0xf2c230,emissiveIntensity:0.6}), 0, 1.25, span/2-1.5);  // 制御盤・警告灯
+  for (let i=0;i<6;i++) boxAt(g, 2.1, 0.08, 0.06, M.yellow, 0, 1.1, -span/2+2+i*(span-4)/5);
+  g.userData.trolley = trolley; g.userData.rope = rope; g.userData.hook = hook; return g; }
+
+// ---- オフィス什器 ----
+function deskCluster(m, x, z, people, ry=0){ // 4席アイランド（m: Merger）
+  const rot = ry; const R = (dx,dz)=>[x + dx*Math.cos(rot) - dz*Math.sin(rot), z + dx*Math.sin(rot) + dz*Math.cos(rot)];
+  for (const [sx,sz] of [[-0.8,-0.75],[0.8,-0.75],[-0.8,0.75],[0.8,0.75]]){ const [px,pz] = R(sx, sz); const side = Math.sign(sz);
+    m.box(1.5, 0.03, 0.75, M.deskWhite, px, 0.72, pz, rot); for (const dx of [-0.65, 0.65]) { const [lx,lz] = R(sx+dx, sz); m.box(0.05, 0.72, 0.6, M.darkSteel, lx, 0, lz, rot); }
+    const [mx,mz] = R(sx, sz - side*0.25); m.box(0.6, 0.36, 0.03, M.screen, mx, 0.85, mz, rot); m.box(0.2, 0.12, 0.15, M.darkSteel, mx, 0.73, mz, rot);
+    const [cx,cz] = R(sx, sz + side*0.75); m.box(0.46, 0.08, 0.46, M.chair, cx, 0.42, cz, rot); m.box(0.44, 0.5, 0.06, M.chair, cx, 0.5, cz + side*0.2, rot); m.cyl(0.03, 0.42, M.darkSteel, cx, 0, cz, 8); m.box(0.5, 0.04, 0.5, M.darkSteel, cx, 0.02, cz, rot);
+    if (people && Math.random() < 0.55) seatedPerson(m, cx, cz, rot + (side>0? Math.PI : 0)); }
+  m.box(3.2, 0.5, 0.05, std(0xcbd5df), x, 0.72, z, rot);   // 中央パーティション
+  { const p = R(1.9, 0); m.box(0.4, 0.5, 0.4, M.pot, p[0], 0, p[1], rot); m.box(0.5, 0.7, 0.5, M.plant, p[0], 0.5, p[1], rot); }
+}
+function seatedPerson(m, x, z, ry){ m.box(0.42, 0.55, 0.26, Math.random()<0.5? M.shirt : M.uniform2, x, 0.48, z, ry); m.cyl(0.11, 0.24, M.skin, x, 1.02, z, 10); m.box(0.4, 0.12, 0.45, M.uniform, x, 0.45, z, ry); }
+function meetingRoom(m, x0, x1, z0, z1, y){ const cx=(x0+x1)/2, cz=(z0+z1)/2, L = Math.min(x1-x0-2, 4.5);
+  m.box(L, 0.05, 1.3, M.desk, cx, y+0.73, cz); m.box(0.12, 0.73, 1.0, M.darkSteel, cx-L/2+0.4, y, cz); m.box(0.12, 0.73, 1.0, M.darkSteel, cx+L/2-0.4, y, cz);
+  for (let i=0;i<Math.floor(L/0.8); i++) for (const dz of [-1.0, 1.0]){ const px = cx-L/2+0.5+i*0.8; m.box(0.46, 0.08, 0.46, M.chair, px, y+0.42, cz+dz); m.box(0.44, 0.5, 0.06, M.chair, px, y+0.5, cz+dz+Math.sign(dz)*0.2); m.cyl(0.03, 0.42, M.darkSteel, px, y, cz+dz, 8); }
+  m.box(2.2, 1.3, 0.06, M.monitor, cx, y+1.0, z1-0.6); m.box(2.1, 1.2, 0.02, M.screen, cx, y+1.05, z1-0.63); m.box(3.0, 1.2, 0.03, std(0xf8f8f6), cx, y+0.9, z0+0.3);
+}
+function sofaSet(m, x, z, y, ry=0){ m.box(2.0, 0.42, 0.9, std(0x6b7c8a,{roughness:0.95}), x, y, z, ry); m.box(2.0, 0.4, 0.2, std(0x6b7c8a,{roughness:0.95}), x, y+0.42, z-0.35, ry); m.box(1.0, 0.4, 0.6, M.timber, x, y, z+1.2, ry); }
+function cafeTable(m, x, z, y){ m.cyl(0.55, 0.04, M.timber, x, y+0.72, z, 20); m.cyl(0.04, 0.72, M.darkSteel, x, y, z, 8); m.cyl(0.25, 0.02, M.darkSteel, x, y, z, 14);
+  for (let k=0;k<4;k++){ const a = k*Math.PI/2; const px = x+Math.cos(a)*0.85, pz = z+Math.sin(a)*0.85; m.box(0.4, 0.06, 0.4, M.chair, px, y+0.42, pz, -a); m.cyl(0.02, 0.42, M.darkSteel, px, y, pz, 6); m.box(0.4, 0.42, 0.05, M.chair, px+Math.cos(a)*0.2, y+0.48, pz+Math.sin(a)*0.2, -a); if (Math.random()<0.35) seatedPerson(m, px, pz, -a+Math.PI/2); } }
+function plantBig(m, x, z, y){ m.cyl(0.35, 0.5, M.pot, x, y, z, 12); m.cyl(0.04, 1.2, M.trunk, x, y+0.5, z, 6); m.add(G.sph(0.6, 10), M.plant, new THREE.Matrix4().setPosition(x, y+1.9, z)); m.add(G.sph(0.45, 10), M.plant, new THREE.Matrix4().setPosition(x+0.3, y+1.5, z-0.2)); }
+function lockerRow(m, x0, x1, z, y){ for (let x=x0; x<x1; x+=0.45) { m.box(0.42, 1.8, 0.5, std(0x9aa5ae,{metalness:0.4}), x+0.22, y, z); m.box(0.3, 0.02, 0.02, M.darkSteel, x+0.22, y+1.0, z+0.26); } }
+
+// ================= 配置 =================
+function buildInterior(){
+  const g1 = floorGroup(1), g2 = floorGroup(2), g3 = floorGroup(3); const lv = BLD.lv;
+  const eqG = new THREE.Group(); eqG.name = "equipment"; eqG.userData.layer = "equipment"; g1.add(eqG);
+  const F1 = new Merger(), F2 = new Merger(), F3 = new Merger();   // 什器（静的）
+  const builders = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, bench:makeBench, dock:makeDock, testcell:makeTestCell, cmm:makeCMM, elab:makeElab, toolroom:makeToolroom, hil:makeHIL, server:makeServer, agv:makeAGV, crane:makeCrane,
+    robotcell: ()=>makeRobotCell(false), rack: ()=>makeRack(3,4), assembly: ()=>makeAssembly("A") };
+  for (const e of EQUIP){
+    let b = builders[e.kind]; if (!b) continue;
+    if (e.id==="RC-02") b = ()=>makeRobotCell(true); if (e.id==="AS-B") b = ()=>makeAssembly("B"); if (e.zone==="recv") b = ()=>makeRack(4,4);
+    if (e.kind==="bigdoor") continue;
+    const grp = b(); compactGroup(grp); const floorIdx = ZONES.find(z=>z[0]===e.zone)?.[2] ?? 1; const y = lv[floorIdx-1];
+    grp.position.set(e.x, e.kind==="crane"? BLD.craneRail+0.45 : y, e.z); grp.rotation.y = e.rot||0; tagEq(grp, e);
+    (floorIdx===1? eqG : floorGroup(floorIdx)).add(grp);
+    if (e.kind!=="agv" && e.kind!=="crane"){ const lb = makeLabel(e.id+"  "+e.name, { scale:0.7, bg:"rgba(13,17,23,0.65)" }); lb.position.set(0, (e.kind==="gantry"? 7.2 : e.kind==="testcell"? 6.8 : 4.0), 0); lb.userData.kind = "eq"; lb.userData.floor = floorIdx; grp.add(lb); }
+  }
+  // 大扉のタグ（ピック用に薄い当たり板）
+  { const e = EQUIP.find(e=>e.kind==="bigdoor"); const grp = new THREE.Group(); grp.position.set(e.x, 0, e.z); const hit = mesh(G.box(0.3, 7, 8), M.darkSteel, 0, 3.5, 0, {cast:false}); hit.material = new THREE.MeshBasicMaterial({visible:false}); grp.add(hit); tagEq(grp, e); eqG.add(grp); }
+
+  // ---- ホール床のライン・安全表示 ----
+  const L = new Merger(); const { x0, x1, z0, zh } = BLD;
+  L.box(x1-x0-2, 0.015, 0.12, M.line, 0, 0.011, -16.2); L.box(x1-x0-2, 0.015, 0.12, M.line, 0, 0.011, -11.8);   // 中央通路 4m
+  for (const x of [-12, 4, 20, 36]) { L.box(0.12, 0.015, zh-z0-2, M.line, x, 0.011, (z0+zh)/2); }                   // ベイ境界
+  for (let x=x0+2; x<x1-2; x+=2) L.box(1.0, 0.015, 0.12, std(0x3fb950), x+0.5, 0.012, -10.5);                      // 歩行者通路（緑破線）
+  for (let i=0;i<6;i++) L.box(0.12, 0.015, 5, M.line, 38+i*1.0, 0.011, -14);                                        // ドック前ハッチング
+  for (const x of cols_(BLD)) { for (const z of [z0+0.6, zh-0.6]) { L.box(0.76, 1.0, 0.76, M.safetyYellow, x, 0, z); L.box(0.78, 0.12, 0.78, M.blackMatte, x, 0.3, z); L.box(0.78, 0.12, 0.78, M.blackMatte, x, 0.6, z); L.box(0.3, 0.6, 0.2, M.pipeRed, x+0.5, 1.2, z-0.2); } }
+  for (const [x,z] of [[42,-28],[42,-20],[42,-12]]) L.cyl(0.1, 1.0, M.safetyYellow, x, 0, z, 8);
+  L.flush(g1, { name:"floorLines", layer:"markings", cast:false });
+
+  // ---- 1F ロビー・ショールーム ----
+  F1.box(4.0, 1.1, 0.8, M.timber, -40, 0, 8); F1.box(4.2, 0.05, 0.9, M.deskWhite, -40, 1.1, 8); sofaSet(F1, -34, 13, 0, 0); sofaSet(F1, -34, 5, 0, Math.PI); plantBig(F1, -42.5, 15, 0); plantBig(F1, -31, 16, 0);
+  F1.box(5, 2.4, 0.08, M.monitor, -37, 1.0, 16.8); F1.box(4.8, 2.2, 0.02, M.screen, -37, 1.1, 16.75);
+  F1.box(5.0, 0.4, 3.0, std(0xe4e4e0), -23, 0, 10); const demo = makeLathe(); demo.position.set(-23, 0.4, 10); demo.rotation.y = Math.PI; g1.add(demo);    // 実機展示（開発機スケールモデル代替）
+  F1.box(1.2, 1.0, 0.8, std(0xe4e4e0), -27.5, 0, 14); F1.box(1.0, 0.7, 0.03, M.screen, -27.5, 1.0, 13.6);   // 説明パネル
+  for (const x of [-20, -17]) plantBig(F1, x, 16.5, 0);
+  lockerRow(F1, 29, 35, 16.5, 0); F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]) F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz);  // 休憩・更衣
+  // 受入検査
+  for (let i=0;i<3;i++){ F1.box(1.1, 0.14, 1.1, M.pallet, 18+i*1.6, 0, 14); F1.box(0.9, 0.7, 0.9, M.box, 18+i*1.6, 0.14, 14); } F1.box(3.0, 0.9, 1.2, M.steel, 23, 0, 6); F1.box(0.6, 0.4, 0.05, M.screen, 23, 1.0, 5.6); F1.box(0.5, 0.5, 0.5, M.machineWhite, 25.5, 0.9, 6.5);
+  F1.flush(g1, { name:"furn1", layer:"furniture" });
+
+  // ---- 2F ----
+  for (let r=0;r<2;r++) for (let c=0;c<7;c++) deskCluster(F2, -33+c*3.8, 6.0+r*6.5, true);   // ソフト 56席
+  for (let c=0;c<2;c++) for (let r=0;r<2;r++) deskCluster(F2, 15+c*4.2, 6.0+r*6.5, true);                             // 制御・組込 16席
+  meetingRoom(F2, 2, 7, 2, 18, 0); meetingRoom(F2, 7, 12, 2, 18, 0);
+  sofaSet(F2, -10, 15.5, 0, 0); plantBig(F2, -36, 16, 0); plantBig(F2, -8, 16.5, 0); plantBig(F2, 24, 16.5, 0);
+  for (const x of [34.5, 35.5]) { F2.box(0.9, 2.2, 0.9, std(0x4a5560), x, 0, 15); }
+  // 2F テラス 什器（木ベンチ・テーブル）
+  for (const x of [-30, -10, 10, 30]){ F2.box(2.0, 0.05, 0.8, M.timber, x, 0.7, 20.4); F2.box(0.1, 0.7, 0.7, M.darkSteel, x-0.9, 0, 20.4); F2.box(0.1, 0.7, 0.7, M.darkSteel, x+0.9, 0, 20.4); for (const dx of [-0.6,0.6]) F2.box(0.4, 0.45, 0.4, M.chair, x+dx, 0, 19.3); }
+  F2.flush(g2, { name:"furn2", layer:"furniture" }); g2.children.filter(c=>c.name==="furn2").forEach(c=>c.position.y = lv[1]);
+
+  // ---- 3F ----
+  for (let r=0;r<2;r++) for (let c=0;c<5;c++) deskCluster(F3, -33+c*4.6, 6.0+r*6.5, true);     // 設計 40席
+  meetingRoom(F3, -10, -3, 2, 18, 0); meetingRoom(F3, -3, 4, 2, 18, 0);
+  for (let c=0;c<3;c++) deskCluster(F3, 6.5+c*3.4, 9.5, true);                                 // 役員・管理 12席
+  for (let r=0;r<2;r++) for (let c=0;c<5;c++) cafeTable(F3, 18.5+c*3.4, 6.0+r*6.0, 0);          // カフェテリア
+  F3.box(6.0, 1.0, 0.9, M.timber, 28, 0, 16.5); F3.box(6.2, 0.05, 1.0, M.deskWhite, 28, 1.0, 16.5); F3.box(1.0, 0.6, 0.6, std(0xd8dcdf,{metalness:0.4}), 30, 1.05, 16.5);
+  plantBig(F3, 16.5, 16.5, 0); plantBig(F3, 35, 16.5, 0); plantBig(F3, -36, 16.5, 0); sofaSet(F3, 12, 15.5, 0, 0);
+  F3.flush(g3, { name:"furn3", layer:"furniture" }); g3.children.filter(c=>c.name==="furn3").forEach(c=>c.position.y = lv[2]);
+
+  // ---- MEP（ダクト・ケーブルラック・配管・照明）----
+  const P = new Merger(); const W = x1-x0;
+  for (const z of [-22, -6]){ P.cyl(0.45, W-4, M.duct, 0, 12.3, z, 20, [0,0,Math.PI/2]); for (let x=x0+6; x<x1-4; x+=8){ P.cyl(0.2, 0.8, M.duct, x, 11.5, z, 12); P.box(0.9, 0.08, 0.9, M.duct, x, 11.4, z); } }
+  for (const z of [z0+1.9, zh-1.9]){ P.box(W-2, 0.1, 0.5, M.tray, 0, 11.6, z); P.box(W-2, 0.1, 0.5, M.tray, 0, 12.4, z); }
+  P.cyl(0.06, W-2, M.pipeBlue, 0, 9.0, z0+2.0, 8, [0,0,Math.PI/2]); P.cyl(0.06, W-2, M.pipeBlue, 0, 9.0, zh-2.0, 8, [0,0,Math.PI/2]);
+  P.cyl(0.08, W-2, M.pipeRed, 0, 12.9, z0+2.4, 8, [0,0,Math.PI/2]); P.cyl(0.08, W-2, M.pipeRed, 0, 12.9, zh-2.4, 8, [0,0,Math.PI/2]);
+  for (const e of EQUIP.filter(e=>["mc5","hmc","lathe","gantry","edm","grind","robotcell"].includes(e.kind))) { const zr = e.z<-14? z0+2.0 : zh-2.0; P.cyl(0.03, 9.0-2.5, M.pipeBlue, e.x+1.5, 2.5, zr, 6); P.cyl(0.03, Math.abs(e.z-zr), M.pipeBlue, e.x+1.5, 2.5, (e.z+zr)/2, 6, [Math.PI/2,0,0]); }
+  // 照明（ホール：ハイベイ列 ／ オフィス：ライン照明）
+  const lampI = []; for (const z of [-26, -19, -12, -5]) for (let x=x0+4; x<x1; x+=6) lampI.push([x, 11.2, z, 1.2, 0.08, 0.3]);
+  for (let x=x0+3; x<x1; x+=4) for (const z of [5, 9, 13]) { lampI.push([x, lv[1]-0.72, z, 3.0, 0.05, 0.15]); lampI.push([x, lv[2]-0.72, z, 3.0, 0.05, 0.15]); lampI.push([x, 13.4, z, 3.0, 0.05, 0.15]); }
+  for (let x=x0+3; x<x1; x+=4) lampI.push([x, lv[1]-0.72, 20, 0.3, 0.05, 0.3]);
+  for (const [x,y,z,w,h,d] of lampI) P.box(w, h, d, M.lamp, x, y, z);
+  P.flush(g1, { name:"mep", layer:"mep", cast:false });
+}
+function cols_(b){ const a=[]; for (let x=b.x0; x<=b.x1+0.01; x+=b.grid) a.push(x); return a; }
+
+// ===== src/60_movers.js =====
+// ================= 稼働アニメーション：クレーン・AGV・作業者・トラック・フォークリフト =================
+const MOVERS = new THREE.Group(); MOVERS.name = "movers"; MOVERS.userData.layer = "people";
+let playing = true; let simT = 0;
+
+function makeWorker(kind="hall"){ const g = new THREE.Group();
+  const body = boxAt(g, 0.42, 0.62, 0.26, kind==="hall"? M.uniform : (Math.random()<0.5? M.shirt : M.uniform2), 0, 0.78, 0);
+  cylAt(g, 0.11, 0.24, M.skin, 0, 1.42, 0, {seg:10}); if (kind==="hall") cylAt(g, 0.13, 0.1, M.helmet, 0, 1.62, 0, {seg:10});
+  const lg = [boxAt(g, 0.16, 0.78, 0.2, kind==="hall"? M.uniform : M.chair, -0.11, 0, 0), boxAt(g, 0.16, 0.78, 0.2, kind==="hall"? M.uniform : M.chair, 0.11, 0, 0)];
+  const arms = [boxAt(g, 0.1, 0.6, 0.12, M.skin, -0.28, 0.8, 0), boxAt(g, 0.1, 0.6, 0.12, M.skin, 0.28, 0.8, 0)];
+  lg.forEach(l=>{ l.geometry.translate(0, -0.39, 0); l.position.y = 0.78; }); arms.forEach(a=>{ a.geometry.translate(0, -0.3, 0); a.position.y = 1.35; });
+  g.userData.legs = lg; g.userData.arms = arms; return g; }
+
+// 経路追従
+class PathMover {
+  constructor(obj, pts, speed, opts={}){ this.obj = obj; this.pts = pts.map(p=>new THREE.Vector3(p[0], p[1]??0, p[2]??p[1])); this.speed = speed; this.loop = opts.loop ?? true; this.pause = opts.pause ?? 0; this.seg = 0; this.t = 0; this.wait = 0; this.yoff = opts.yoff ?? 0; this.smoothTurn = opts.smoothTurn ?? true;
+    this.lens = []; for (let i=0;i<this.pts.length-1;i++) this.lens.push(this.pts[i].distanceTo(this.pts[i+1])); this.obj.position.copy(this.pts[0]); this.obj.position.y += this.yoff; this.moving = true; }
+  update(dt){
+    if (this.wait > 0){ this.wait -= dt; this.moving = false; return; } this.moving = true;
+    const n = this.pts.length - 1; if (n < 1) return;
+    let a = this.pts[this.seg], b = this.pts[(this.seg+1) % this.pts.length]; if (!this.loop && this.seg >= n) return;
+    const L = a.distanceTo(b) || 0.001; this.t += this.speed*dt / L;
+    while (this.t >= 1){ this.t -= 1; this.seg = (this.seg + 1) % (this.loop ? this.pts.length : n); if (this.pause) this.wait = this.pause; a = this.pts[this.seg]; b = this.pts[(this.seg+1) % this.pts.length]; if (!this.loop && this.seg >= n){ this.t = 0; break; } }
+    const p = a.clone().lerp(b, this.t); this.obj.position.set(p.x, p.y + this.yoff, p.z);
+    const dir = b.clone().sub(a); if (dir.lengthSq() > 1e-6){ const yaw = Math.atan2(dir.x, dir.z); this.obj.rotation.y = this.smoothTurn ? lerpAngle(this.obj.rotation.y, yaw, Math.min(1, dt*6)) : yaw; }
+  }
+}
+function lerpAngle(a, b, t){ let d = b - a; while (d > Math.PI) d -= 2*Math.PI; while (d < -Math.PI) d += 2*Math.PI; return a + d*t; }
+
+function makeTruck(){ const g = new THREE.Group(); boxAt(g, 2.5, 2.6, 8.5, M.truckWhite, 0, 1.0, -1.5); boxAt(g, 2.4, 2.2, 2.2, std(0x2b4b8a,{metalness:0.4,roughness:0.4}), 0, 0.9, 4.2); boxAt(g, 2.2, 0.9, 0.06, M.glassTint, 0, 1.9, 5.3);
+  boxAt(g, 2.5, 0.5, 10.5, M.darkSteel, 0, 0.5, 0); for (const z of [3.8, -2.0, -3.4]) for (const dx of [-1.1, 1.1]) cylAt(g, 0.5, 0.35, M.blackMatte, dx, 0.0, z, {rot:[0,0,Math.PI/2], seg:14});
+  boxAt(g, 1.0, 0.2, 0.3, M.yellow, 0, 2.9, 5.2); return g; }
+function makeForklift(){ const g = new THREE.Group(); boxAt(g, 1.1, 0.9, 2.2, M.rackOrange, 0, 0.3, 0); boxAt(g, 1.0, 0.1, 1.0, M.blackMatte, 0, 1.2, -0.3); for (const dx of [-0.45,0.45]) boxAt(g, 0.08, 2.0, 0.08, M.blackMatte, dx, 1.2, -0.3);
+  boxAt(g, 0.5, 0.6, 0.5, M.uniform, 0, 1.2, -0.1); cylAt(g, 0.11, 0.24, M.skin, 0, 1.85, -0.1, {seg:8}); cylAt(g, 0.13, 0.1, M.helmet, 0, 2.05, -0.1, {seg:8});
+  for (const dx of [-0.5,0.5]) boxAt(g, 0.06, 2.2, 0.1, M.darkSteel, dx, 0.0, 1.2); for (const dx of [-0.35,0.35]) boxAt(g, 0.1, 0.05, 1.0, M.darkSteel, dx, 0.1, 1.8);
+  boxAt(g, 1.1, 0.14, 1.1, M.pallet, 0, 0.16, 1.9); boxAt(g, 0.9, 0.7, 0.9, M.box, 0, 0.3, 1.9);
+  for (const z of [0.7, -0.7]) for (const dx of [-0.55,0.55]) cylAt(g, 0.3, 0.25, M.blackMatte, dx, 0.0, z, {rot:[0,0,Math.PI/2], seg:12}); return g; }
+
+const movers = [];
+function buildMovers(){
+  scene.add(MOVERS);
+  // ---- クレーン ----
+  for (const [id, xa, xb, ph] of [["CR-01", -40, -2, 0], ["CR-02", 6, 40, 2.0]]){ const o = EQ_OBJ[id]; if (!o) continue; const c = o.group; const tr = c.userData.trolley, rope = c.userData.rope, hook = c.userData.hook; const span = BLD.zh - BLD.z0 - 2.7;
+    ANIM.push({ update(t){ const s = t*0.12 + ph; c.position.x = lerp(xa, xb, 0.5+0.5*Math.sin(s)); tr.position.z = Math.sin(s*1.7)*(span/2-3); const L = 3.5 + 2.5*(0.5+0.5*Math.sin(s*2.3)); rope.scale.y = L; rope.position.y = 1.1 - L/2; hook.position.y = 1.1 - L; } }); }
+  // ---- AGV ----
+  { const o = EQ_OBJ["AGV-2"]; if (o){ movers.push(new PathMover(o.group, [[32,0,-14],[0,0,-14],[-30,0,-14],[-30,0,-6],[-14,0,-6],[-14,0,-14],[20,0,-14],[20,0,-24],[32,0,-24],[32,0,-14]], 1.4, { pause:2.5 })); } }
+  { const o = EQ_OBJ["AGV-1"]; if (o){ movers.push(new PathMover(o.group, [[38,0,-14],[38,0,-26],[26,0,-28],[26,0,-16],[40,0,-16],[40,0,-8],[36,0,-8],[36,0,-14]], 1.2, { pause:3 })); } }
+  // ---- 作業者（ホール）----
+  const routes = [
+    [[-36,-20],[-36,-13],[-24,-13],[-24,-6],[-36,-6]],
+    [[-6,-6],[-6,-12],[6,-12],[6,-26],[-8,-26],[-8,-20]],
+    [[10,-6],[18,-6],[18,-24],[12,-24],[12,-10]],
+    [[26,-27],[34,-27],[34,-18],[26,-18]],
+    [[40,-28],[40,-6],[36,-6],[36,-20]],
+    [[-42,-2],[-42,-28],[-20,-28],[-20,-18]],
+    [[-26,-10],[-14,-10],[-14,-4],[-26,-4]],
+    [[22,-4],[22,-12],[30,-12],[30,-4]],
+    [[-12,-16],[-12,-12],[2,-12],[2,-16]],
+    [[4,-8],[4,-4],[16,-4],[16,-8]],
+  ];
+  routes.forEach((r, i)=>{ const w = makeWorker("hall"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(pts[0]); movers.push(new PathMover(w, pts, 0.9+ (i%3)*0.15, { pause: 2 + i%4 })); });
+  // 2F/3F 歩行者（バルコニー・テラス・通路）
+  const lv = BLD.lv;
+  [[lv[1], [[-34,1.0],[30,1.0]]], [lv[1], [[-20,20.5],[20,20.5]]], [lv[2], [[-30,1.8],[30,1.8]]], [lv[1], [[-5,15],[20,15]]], [lv[2], [[-34,15],[-12,15]]]].forEach(([y, r], i)=>{
+    const w = makeWorker("office"); (y===lv[1]? floorGroup(2) : floorGroup(3)).add(w); const pts = r.map(([x,z])=>[x,y,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,y,z])); movers.push(new PathMover(w, pts, 0.8, { pause:3+i })); });
+  // 外構：歩行者
+  [[[-50,34],[-20,30],[-38,25],[-38,19]], [[20,38],[45,38],[45,30]], [[-10,36],[-30,36]]].forEach((r,i)=>{ const w = makeWorker("office"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,0,z])); movers.push(new PathMover(w, pts, 0.9, { pause:2 })); });
+  // 立ち作業者（固定）
+  for (const [x,z,ry] of [[-39,-21,0],[-25,-21,0.5],[-20,-9,-1.2],[-4,-12,0.4],[-1,-19,2.5],[12,-13,-0.7],[28,-4,1.5],[23,-26,0],[-11,9,0],[0,8,1.2],[-23,11,0.3]]){ const w = makeWorker("hall"); w.position.set(x,0,z); w.rotation.y = ry; MOVERS.add(w); }
+  // ---- トラック・フォークリフト ----
+  const tr = makeTruck(); MOVERS.add(tr); movers.push(new PathMover(tr, [[54,0,80],[54,0,20],[54,0,-24],[47.5,0,-24],[54,0,-24],[54,0,60],[54,0,80]], 4.0, { pause:6, smoothTurn:true }));
+  const tr2 = makeTruck(); tr2.position.set(48.5, 0, -16); tr2.rotation.y = Math.PI/2; MOVERS.add(tr2);  // ドック待機中
+  const fk = makeForklift(); MOVERS.add(fk); movers.push(new PathMover(fk, [[40,0,-16],[40,0,-22],[30,0,-22],[30,0,-16],[40,0,-16]], 1.6, { pause:3 }));
+}
+function updateMovers(dt){
+  simT += dt;
+  for (const m of movers){ m.update(dt); const w = m.obj.userData; if (w.legs){ const ph = m.moving ? Math.sin(simT*7 + m.obj.id)*0.45 : 0; w.legs[0].rotation.x = ph; w.legs[1].rotation.x = -ph; w.arms[0].rotation.x = -ph*0.7; w.arms[1].rotation.x = ph*0.7; } }
+  for (const a of ANIM) a.update(simT, dt);
+}
+
+// ===== src/70_ui.js =====
+// ================= UI・モード切替・ピック・ツアー・メインループ =================
+const $ = id => document.getElementById(id);
+
+// ---- 視点プリセット ----
+const VIEWS = [
+  ["全景",      { yaw:-0.6, pitch:0.42, dist:150, target:[0,6,0] }, "ext"],
+  ["正面（南）",{ yaw:0.05, pitch:0.2, dist:125, target:[0,8,20] }, "ext"],
+  ["俯瞰",      { yaw:-0.2, pitch:1.35, dist:210, target:[0,0,0] }, "ext"],
+  ["東ドック",  { yaw:2.0, pitch:0.5, dist:60, target:[44,6,-14] }, "ext"],
+  ["前庭・ロビー",{ yaw:-0.55, pitch:0.18, dist:70, target:[-30,4,24] }, "ext"],
+  ["ホール全景",{ yaw:-0.5, pitch:0.5, dist:140, target:[0,5,-12] }, 1],
+  ["機械加工",  { yaw:-2.5, pitch:0.55, dist:50, target:[-28,3,-14] }, 1],
+  ["組立ベイ",  { yaw:-0.7, pitch:0.45, dist:42, target:[-2,4,-16] }, 1],
+  ["試験セル",  { yaw:2.6, pitch:0.6, dist:40, target:[28,3,-6] }, 1],
+  ["2F ソフト", { yaw:-1.05, pitch:0.42, dist:60, target:[-20,7,10] }, 2],
+  ["3F 設計",   { yaw:-0.9, pitch:0.42, dist:60, target:[-20,11.5,10] }, 3],
+];
+let mode = "ext";   // ext | 1 | 2 | 3
+function setMode(m, keepCam=false){
+  mode = m; document.querySelectorAll("#nav [data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === String(m)));
+  const f = m === "ext" ? 99 : Number(m);
+  FL[1].visible = true; FL[2].visible = f >= 2; FL[3].visible = f >= 3; FL.roof.visible = f >= 4 || m === "ext";
+  // 屋根は 1〜3F 表示時に外す。外観では全表示。
+  $("crumb").innerHTML = m === "ext" ? "<b>外観</b> · 敷地全体" : `<b>${m}F</b> · 上階と屋根を外して表示（ドールハウス）`;
+  dirtyShadow();
+}
+{ const v = $("views"); VIEWS.forEach(([n, cam, md]) => { const b = document.createElement("button"); b.className = "btn sm"; b.textContent = n; b.onclick = () => { if (walk.on) toggleWalk(false); setMode(md); setCam(cam); }; v.appendChild(b); }); }
+document.querySelectorAll("#nav [data-mode]").forEach(b => b.onclick = () => { if (walk.on) toggleWalk(false); setMode(b.dataset.mode === "ext" ? "ext" : Number(b.dataset.mode)); const v = VIEWS.find(x => String(x[2]) === b.dataset.mode) ; if (v) setCam(v[1]); });
+document.querySelectorAll("#tools [data-day]").forEach(b => b.onclick = () => { document.querySelectorAll("#tools [data-day]").forEach(x => x.classList.remove("on")); b.classList.add("on"); setDay(b.dataset.day); });
+
+// ---- 稼働 再生/停止 ----
+$("playBtn").onclick = () => { playing = !playing; $("playBtn").textContent = playing ? "⏸ 稼働" : "▶ 稼働"; $("playBtn").classList.toggle("on", playing); };
+
+// ---- レイヤー ----
+const LAYER_DEFS = [["structure","鉄骨架構・トラス"],["envelope","外皮・ガラス・間仕切り"],["equipment","機械設備"],["furniture","什器・オフィス"],["mep","MEP（ダクト・配管・照明）"],["markings","床ライン・安全表示"],["people","人・車両（稼働）"],["labels","名称ラベル"],["green","植栽"],["context","周辺街区・道路"]];
+const layerState = {};
+function applyLayers(){ scene.traverse(o => { const l = o.userData.layer; if (l && layerState[l] !== undefined) o.visible = layerState[l]; }); if (LAYERS.green) LAYERS.green.visible = layerState.green; if (LAYERS.context) LAYERS.context.visible = layerState.context; dirtyShadow(); }
+{ const list = $("layerList"); for (const [k, n] of LAYER_DEFS){ layerState[k] = true; const lb = document.createElement("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = true; cb.onchange = () => { layerState[k] = cb.checked; applyLayers(); }; lb.appendChild(cb); lb.appendChild(document.createTextNode(n)); list.appendChild(lb); } }
+$("layersBtn").onclick = () => { const p = $("layers"); const on = p.style.display !== "block"; p.style.display = on ? "block" : "none"; $("section").style.display = "none"; $("secBtn").classList.remove("on"); $("layersBtn").classList.toggle("on", on); };
+
+// ---- 断面 ----
+const secPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 10); let secAxis = "y", secOn = false;
+function applySection(){
+  const t = Number($("secRange").value) / 100;
+  if (secAxis === "y"){ const h = lerp(1.5, 19, t); secPlane.normal.set(0, -1, 0); secPlane.constant = h; $("secLabel").textContent = `高さ ${h.toFixed(1)} m 以上をカット`; }
+  else if (secAxis === "z"){ const z = lerp(BLD.z0 - 2, BLD.eaveZ + 2, t); secPlane.normal.set(0, 0, -1); secPlane.constant = z; $("secLabel").textContent = `z = ${z.toFixed(1)} m より南をカット（南から見る）`; }
+  else { const x = lerp(BLD.x0 - 2, BLD.x1 + 2, t); secPlane.normal.set(-1, 0, 0); secPlane.constant = x; $("secLabel").textContent = `x = ${x.toFixed(1)} m より東をカット（東から見る）`; }
+  renderer.clippingPlanes = secOn ? [secPlane] : []; camDirty = true;
+}
+$("secRange").oninput = applySection;
+document.querySelectorAll("#section [data-ax]").forEach(b => b.onclick = () => { document.querySelectorAll("#section [data-ax]").forEach(x => x.classList.remove("on")); b.classList.add("on"); secAxis = b.dataset.ax; applySection(); });
+$("secBtn").onclick = () => { const p = $("section"); secOn = p.style.display !== "block"; p.style.display = secOn ? "block" : "none"; $("layers").style.display = "none"; $("layersBtn").classList.remove("on"); $("secBtn").classList.toggle("on", secOn); applySection(); };
+$("secOff").onclick = () => { secOn = false; $("section").style.display = "none"; $("secBtn").classList.remove("on"); applySection(); };
+
+// ---- 歩行モード ----
+function toggleWalk(on){
+  walk.on = on; document.body.classList.toggle("walk", on); $("walkBtn").classList.toggle("on", on);
+  if (on){ const t = camGoal.target; walk.pos.set(clamp(t.x, -58, 58), (mode === "ext" ? 0 : BLD.lv[Math.max(0, Number(mode) - 1)] || 0) + 1.65, clamp(t.z, -38, 38)); walk.yaw = camGoal.yaw + Math.PI; walk.pitch = -0.05; cvsEl.requestPointerLock?.(); }
+  else { document.exitPointerLock?.(); camDirty = true; }
+}
+$("walkBtn").onclick = () => toggleWalk(!walk.on);
+document.addEventListener("pointerlockchange", () => { if (walk.on && document.pointerLockElement !== cvsEl) toggleWalk(false); });
+cvsEl.addEventListener("click", () => { if (walk.on && document.pointerLockElement !== cvsEl) cvsEl.requestPointerLock?.(); });
+
+// ---- 計画概要 ----
+function areaOf(z){ return (z[5] - z[4]) * (z[7] - z[6]); }
+function renderStats(){
+  const siteA = SITE.w * SITE.d, footA = BLD.w * BLD.d, f1 = footA, f2 = BLD.w * (BLD.z1 - BLD.zh), f3 = f2, total = f1 + f2 + f3;
+  const staff = STAFF.reduce((a, s) => a + s[1], 0); const maxH = Math.max(...BLD.roofProfile.map(p => p[1])) + 0.45;
+  const n = v => v.toLocaleString("ja-JP", { maximumFractionDigits: 0 });
+  let h = `<div class="sub">${pe(SITE.name)}<br>${pe(SITE.zoning)}（建蔽率 ${SITE.bcrMax}% / 容積率 ${SITE.farMax}%）</div><div class="sep"></div><table>
+  <tr><td>敷地面積</td><td class="n">${n(siteA)} ㎡</td><td class="sub">${SITE.w}×${SITE.d} m</td></tr>
+  <tr><td>建築面積</td><td class="n">${n(footA)} ㎡</td><td class="sub">建蔽率 ${(footA/siteA*100).toFixed(1)}%</td></tr>
+  <tr><td>延床面積</td><td class="n">${n(total)} ㎡</td><td class="sub">容積率 ${(total/siteA*100).toFixed(1)}%</td></tr>
+  <tr><td>　1F 機械ホール＋ラボ</td><td class="n">${n(f1)} ㎡</td><td class="sub">軒高 ${BLD.eave} m</td></tr>
+  <tr><td>　2F ソフトウェア</td><td class="n">${n(f2)} ㎡</td><td class="sub">＋テラス ${n(BLD.w*(BLD.terraceZ-BLD.z1))} ㎡</td></tr>
+  <tr><td>　3F 設計・共用</td><td class="n">${n(f3)} ㎡</td><td class="sub">木天井</td></tr>
+  <tr><td>最高高さ</td><td class="n">${maxH.toFixed(1)} m</td><td class="sub">折板屋根 棟</td></tr>
+  <tr><td>想定人員</td><td class="n">${staff} 名</td><td class="sub">${EQUIP.length} 設備</td></tr></table><div class="sep"></div><h3>人員内訳</h3><table>`;
+  for (const [name, num, t] of STAFF) h += `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#${ZTYPE[t].c.toString(16).padStart(6,"0")};margin-right:6px"></i>${pe(name)}</td><td class="n">${num} 名</td></tr>`;
+  h += `</table><div class="sep"></div><h3>ゾーン凡例</h3><div class="legend">`;
+  for (const k in ZTYPE) h += `<span><i style="background:#${ZTYPE[k].c.toString(16).padStart(6,"0")}"></i>${pe(ZTYPE[k].n)}</span>`;
+  h += `</div><div class="sep"></div><div class="sub">${pe(SITE.road)}。${pe(SITE.heightNote)}。数値は構想段階の想定値で、敷地確定後に SITE / BLD の差替えで更新。</div>`;
+  $("statsBody").innerHTML = h;
+}
+
+// ---- 設備台帳・詳細 ----
+let selectedId = null, hoverId = null; const hiCache = new Map();
+function setHighlight(id, on){ const o = EQ_OBJ[id]; if (!o) return; o.group.traverse(m => { if (!m.isMesh || !m.material || !m.material.emissive) return; if (on){ if (!hiCache.has(m)) hiCache.set(m, [m.material, m.material.clone()]); const mat = hiCache.get(m)[1]; mat.emissive.set(0xf2c744); mat.emissiveIntensity = 0.45; m.material = mat; } else if (hiCache.has(m)){ m.material = hiCache.get(m)[0]; } }); }
+function zoneName(id){ const z = ZONES.find(z => z[0] === id); return z ? z[1] : id; }
+function showInfo(e){
+  const p = $("info"); if (!e){ p.style.display = "none"; return; }
+  const z = ZONES.find(z => z[0] === e.zone); let h = `<div class="sub">${pe(e.id)} · ${pe(zoneName(e.zone))}${z ? ` · ${z[2] ? z[2]+"F" : "屋外"}` : ""}</div><h2>${pe(e.name)}</h2><table>`;
+  for (const k in e.spec) h += `<tr><td>${pe(k)}</td><td>${pe(e.spec[k])}</td></tr>`;
+  h += `<tr><td>位置</td><td>x ${e.x} m, z ${e.z} m</td></tr></table><div class="sep"></div><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" id="infoGo">設備へ寄る</button><button class="btn sm" id="infoClose">閉じる</button></div>`;
+  p.innerHTML = h; p.style.display = "block"; $("infoGo").onclick = () => focusEq(e.id); $("infoClose").onclick = () => selectEq(null);
+}
+function selectEq(id){ if (selectedId) setHighlight(selectedId, false); selectedId = id; if (id) setHighlight(id, true); document.querySelectorAll(".eq").forEach(el => el.classList.toggle("on", el.dataset.id === id)); showInfo(id ? EQUIP.find(e => e.id === id) : null); }
+function focusEq(id){ const e = EQUIP.find(x => x.id === id); if (!e) return; const f = ZONES.find(z => z[0] === e.zone)?.[2] ?? 1; if (walk.on) toggleWalk(false); if (mode === "ext" || Number(mode) < f) setMode(f); const y = BLD.lv[f - 1] + (e.kind === "crane" ? 10 : 2); const big = ["gantry","testcell","assembly","crane","server"].includes(e.kind); setCam({ yaw: camGoal.yaw, pitch:0.38, dist: big ? 34 : 18, target:[e.x, y, e.z] }); selectEq(id); }
+function renderLedger(){ const q = ($("eqFilter").value || "").trim().toLowerCase(); const list = $("ledgerList"); list.innerHTML = ""; let n = 0;
+  for (const e of EQUIP){ const zn = zoneName(e.zone); if (q && !(e.id + e.name + zn + e.kind).toLowerCase().includes(q)) continue; n++;
+    const d = document.createElement("div"); d.className = "eq" + (e.id === selectedId ? " on" : ""); d.dataset.id = e.id; d.innerHTML = `<b>${pe(e.id)}</b><span>${pe(e.name)}<br><small>${pe(zn)}</small></span>`; d.onclick = () => focusEq(e.id); list.appendChild(d); }
+  $("eqCount").textContent = `${n}/${EQUIP.length}`; }
+$("eqFilter").oninput = renderLedger;
+
+// ---- ピック ----
+const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
+function pickAt(x, y){ ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
+  const targets = [FL[1], FL[2], FL[3]].filter(g => g.visible); const hits = ray.intersectObjects(targets, true);
+  for (const h of hits){ if (h.object.isSprite) continue; let o = h.object; while (o){ if (o.userData.eqId) return o.userData.eqId; o = o.parent; } return null; } return null; }
+cvsEl.addEventListener("pointerup", e => { if (walk.on || drag.moved > 6 || e.button !== 0) return; const id = pickAt(e.clientX, e.clientY); if (id) { selectEq(id); } else selectEq(null); });
+let hoverTimer = 0;
+cvsEl.addEventListener("pointermove", e => { if (walk.on || drag.on) return; const now = performance.now(); if (now - hoverTimer < 80) return; hoverTimer = now; const id = pickAt(e.clientX, e.clientY); if (id !== hoverId){ if (hoverId && hoverId !== selectedId) setHighlight(hoverId, false); hoverId = id; if (id && id !== selectedId) setHighlight(id, true); cvsEl.style.cursor = id ? "pointer" : ""; } });
+
+// ---- 構想イメージ ----
+{ const g = $("photoGrid"); PHOTOS.forEach(p => { const f = document.createElement("figure"); f.style.margin = 0; f.innerHTML = `<img src="${p.f}" alt="${pe(p.t)}" loading="lazy"><figcaption>${pe(p.t)}</figcaption>`; f.querySelector("img").onclick = () => { $("lbImg").src = p.f; $("lbCap").textContent = p.t; $("lightbox").style.display = "flex"; }; g.appendChild(f); }); }
+$("lightbox").onclick = () => $("lightbox").style.display = "none";
+$("photosBtn").onclick = () => { const p = $("photos"); const on = p.style.display !== "block"; p.style.display = on ? "block" : "none"; $("photosBtn").classList.toggle("on", on); };
+
+// ---- ガイドツアー ----
+let tourIdx = -1, tourTimer = null;
+function tourGo(i){ if (i < 0 || i >= TOUR.length){ tourStop(); return; } tourIdx = i; const s = TOUR[i]; if (walk.on) toggleWalk(false);
+  if (s.mode === "ext") setMode("ext"); else setMode(s.floor); setCam(s.cam);
+  $("tourStep").textContent = `ガイドツアー ${i + 1} / ${TOUR.length}`; $("tourTitle").textContent = s.title; $("tourText").textContent = s.text; $("tourCard").style.display = "block";
+  clearTimeout(tourTimer); tourTimer = setTimeout(() => tourGo(i + 1), 11000); }
+function tourStop(){ clearTimeout(tourTimer); tourTimer = null; tourIdx = -1; $("tourCard").style.display = "none"; $("tourBtn").classList.remove("on"); }
+$("tourBtn").onclick = () => { if (tourIdx >= 0) tourStop(); else { $("tourBtn").classList.add("on"); tourGo(0); } };
+$("tourNext").onclick = () => tourGo(tourIdx + 1); $("tourPrev").onclick = () => tourGo(Math.max(0, tourIdx - 1)); $("tourStop").onclick = tourStop;
+
+// ---- スクリーンショット ----
+$("shotBtn").onclick = () => { renderer.render(scene, camera); const a = document.createElement("a"); a.download = `yellow-ota-factory-${Date.now()}.png`; a.href = renderer.domElement.toDataURL("image/png"); a.click(); };
+
+// ---- キーボード ----
+addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; const k = e.key;
+  if (k === "1") { setMode(1); } else if (k === "2") { setMode(2); } else if (k === "3") { setMode(3); } else if (k === "4" || k === "0") { setMode("ext"); }
+  else if (k === "t" || k === "T") $("tourBtn").click(); else if (k === "Escape") { if (walk.on) toggleWalk(false); selectEq(null); tourStop(); } });
+
+// ================= 構築 & メインループ =================
+function build(){
+  buildSite(); buildBuilding(); buildInterior(); buildMovers();
+  for (const k in LAYERS) { if (k === "green" || k === "context") LAYERS[k].userData.layer = k; }
+  // 人・車両レイヤー：階グループ内の作業者にも付与
+  scene.traverse(o => { if (o.userData.legs) o.userData.layer = "people"; });
+  renderStats(); renderLedger(); setDay("day"); setMode("ext"); setCam(VIEWS[0][1], true); refitLabels();
+  $("loading").style.display = "none";
+}
+const clock = new THREE.Clock(); let frame = 0;
+function updateLabels(){
+  const d = walk.on ? 12 : camGoal.dist; const f = mode === "ext" ? 0 : Number(mode);
+  for (const sp of LABELS){ const k = sp.userData.kind; if (!k){ sp.visible = layerState.labels; continue; }
+    if (k === "zone") sp.visible = layerState.labels && !walk.on && d > 28 && (sp.userData.floor === 0 ? (d > 60 && mode === "ext") : (mode !== "ext" && sp.userData.floor === f));
+    else sp.visible = layerState.labels && d < 90 && (walk.on || mode !== "ext") && (mode === "ext" || sp.userData.floor <= f); }
+}
+function loop(){
+  requestAnimationFrame(loop); const dt = Math.min(0.05, clock.getDelta()); frame++;
+  updateLabels();
+  if (playing) updateMovers(dt);
+  updateWalk(dt); applyCam();
+  if (shadowDirty || (playing && frame % 3 === 0)){ renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
+  renderer.render(scene, camera);
+}
+$("loadMsg").textContent = "敷地・建屋・設備を生成しています…";
+setTimeout(() => { try { build(); } catch (err) { $("loadMsg").textContent = "構築エラー: " + err.message; console.error(err); throw err; } loop(); }, 30);
+window.__factory = { scene, camera, renderer, EQUIP, ZONES, BLD, SITE, setMode, setCam, setDay, focusEq, FL, LAYERS };
+</script>
+</body>
+</html>
