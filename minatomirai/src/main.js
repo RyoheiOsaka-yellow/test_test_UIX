@@ -12,6 +12,7 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { initConstruction, compassSVG, TOWER_NAME } from './construct.js';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -471,6 +472,8 @@ function addBidAttribute(g, starts) {
   g.setAttribute('bid', new THREE.BufferAttribute(bid, 1));
 }
 let bldFaces = true;   // 面を描く (隠線処理) か、線のみか
+let bldTex = null;
+const updateBldTex = (i, h, cx, cy) => { if (!bldTex) return; const d = bldTex.image.data; if (i * 4 + 3 >= d.length) return; d[i * 4] = h; d[i * 4 + 1] = cx; d[i * 4 + 2] = cy; d[i * 4 + 3] = 1; bldTex.needsUpdate = true; };
 let lineScale = 1.0;   // 線の太さ倍率 (UI スライダー)
 const styledMeshes = []; // { mesh, drawing, night, thick, thin, kind }
 // 外形線 (折れ角 thickDeg 以上) は太線、補助線 (thinDeg 以上) は 1px の細線で描く
@@ -538,7 +541,7 @@ function buildBuildings(blobs, header) {
   const data = new Float32Array(texW * texH * 4);
   buildingMeta.forEach((m, i) => { data[i * 4] = m.h ?? Math.max(3, m.z[1] - m.z[0]); data[i * 4 + 1] = m.c[0] / 10; data[i * 4 + 2] = m.c[1] / 10; data[i * 4 + 3] = 1; });
   const tex = new THREE.DataTexture(data, texW, texH, THREE.RGBAFormat, THREE.FloatType); tex.minFilter = tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true;
-  dispUniforms.uBldTex.value = tex; dispUniforms.uBldW.value = texW;
+  dispUniforms.uBldTex.value = tex; dispUniforms.uBldW.value = texW; bldTex = tex;
   // 座標 -> 建物番号 の逆引き (輪郭線用)
   const p = g.attributes.position, bidAttr = g.attributes.bid; bidLookup = new Map();
   for (let i = 0; i < p.count; i++) bidLookup.set(posKey(p.getX(i), p.getY(i), p.getZ(i)), bidAttr.getX(i));
@@ -737,6 +740,9 @@ const parseFloor = f => { f = String(f || '').trim().toUpperCase(); if (!f) retu
 const ZONES = new Map();      // `${building}|${fl}|${zone}` -> [[x,y],...] (world, 北=+y)
 for (const z of (window.__ZONES || [])) ZONES.set(`${z.building}|${parseFloor(z.floor)}|${z.zone}`, z.poly);
 const zoneKey = (b, fl, zone) => { for (const [k, v] of ZONES) { const [kb, kf, kz] = k.split('|'); if ((b.includes(kb) || kb.includes(b)) && Number(kf) === fl && kz === String(zone)) return v; } return null; };
+// 番号のない区画形状 (ランドマークプラザなど): 店名は OSM POI の位置から対応付ける
+const UNLABELED = (window.__ZONES || []).filter(z => z.unlabeled);
+const unlabeledZones = (b, fl) => UNLABELED.filter(z => (b.includes(z.building) || z.building.includes(b)) && parseFloor(z.floor) === fl).map(z => z.poly);
 const parseCSV = text => {
   const rows = []; let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {
@@ -922,8 +928,14 @@ function showZoneDetail(zi) {
   for (const zz of sel.zones) zz.edge.material.opacity = (zz.zone === z) ? 1 : (zz.isCor ? 0.4 : 0.9), zz.mesh.material.opacity = (zz.zone === z) ? 0.85 : (zz.isCor ? 0.18 : 0.45);
 }
 const setCatFilter = set => { catVisible.clear(); for (const c of set) catVisible.add(c); document.querySelectorAll('#cat-filter .cf').forEach(b => b.classList.toggle('active', catVisible.size === 0 || catVisible.has(b.dataset.cat))); applyCategoryFilter(); };
+const runtimeBuildings = new Map(); // bid -> mesh (実行時に生成した建物)
+function buildingSource(bid) {
+  const rm = runtimeBuildings.get(bid);
+  if (rm) { const g = rm.geometry; return { P: g.attributes.position, I: g.index.array, t0: 0, t1: g.index.count / 3 }; }
+  const g = buildingMesh.geometry; return { P: g.attributes.position, I: g.index.array, t0: buildingStarts[bid], t1: buildingStarts[bid + 1] };
+}
 function sliceBuilding(bid, floorH) {
-  const g = buildingMesh.geometry, P = g.attributes.position, I = g.index.array;
+  const { P, I, t0, t1 } = buildingSource(bid);
   const base = buildingMeta[bid].z[0], top = buildingMeta[bid].z[1];
   const nFloors = Math.max(1, Math.ceil((top - base - 0.3) / floorH));
   const tris = []; // [{fl, pts:[[x,y,z],...]}]
@@ -938,7 +950,7 @@ function sliceBuilding(bid, floorH) {
     }
     return [below, above];
   };
-  for (let t = buildingStarts[bid]; t < buildingStarts[bid + 1]; t++) {
+  for (let t = t0; t < t1; t++) {
     let polys = [[0, 1, 2].map(k => [P.getX(I[t * 3 + k]), P.getY(I[t * 3 + k]), P.getZ(I[t * 3 + k])])];
     const ys = polys[0].map(p => p[1]); const k0 = Math.max(1, Math.floor((Math.min(...ys) - base) / floorH) + 1), k1 = Math.min(nFloors - 1, Math.floor((Math.max(...ys) - base) / floorH));
     for (let k = k0; k <= k1; k++) {
@@ -1024,23 +1036,34 @@ function selectBuilding(bid) {
   }
   // 区画プレート: フロアガイドの各階を凸包の帯分割で区画化
   if (guide) {
-    const P = buildingMesh.geometry.attributes.position; const pts = [];
-    for (let tr = buildingStarts[bid]; tr < buildingStarts[bid + 1]; tr++) for (let k = 0; k < 3; k++) { const vi = buildingMesh.geometry.index.array[tr * 3 + k]; pts.push([P.getX(vi), -P.getZ(vi)]); }
+    const src = buildingSource(bid); const P = src.P; const pts = [];
+    for (let tr = src.t0; tr < src.t1; tr++) for (let k = 0; k < 3; k++) { const vi = src.I[tr * 3 + k]; pts.push([P.getX(vi), -P.getZ(vi)]); }
     sel.hull = convexHull(pts);
     for (const [fl, zs] of guide) {
       // 抽出済みの区画多角形があればそれを使い、無いものは残りを帯分割で近似
       const withPoly = zs.filter(z => zoneKey(m.n, fl, z.zone)); const rest = zs.filter(z => !zoneKey(m.n, fl, z.zone));
       const parts = withPoly.map(z => ({ zone: z, poly: zoneKey(m.n, fl, z.zone), kind: 'zone', exact: true }));
+      // 番号なしの実形状 (公式マップのグレー面): OSM POI がその中にあれば店名・用途を付け、無ければ「区画」として描く
+      const unl = unlabeledZones(m.n, fl);
+      if (unl.length) {
+        const pin = (x, y, poly) => { let ins = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins; } return ins; };
+        unl.forEach((poly, i) => {
+          const q = tenantsAll.find(q => (q.lv ?? 0) === fl && pin(q.x, q.y, poly)) || tenantsAll.find(q => q.lv == null && pin(q.x, q.y, poly));
+          const g = q ? zs.find(z => z.name === q.n) : null;
+          const zone = g ? { ...g, exact: true } : q ? { zone: '', name: q.n, category: q.c, share: 1, source: 'osm', url: '', hours: '', tel: '', website: '', genre: q.k } : { zone: `区画 ${i + 1}`, name: '', category: 'その他', share: 1, source: 'map', url: '', hours: '', tel: '', website: '', genre: '店舗未対応（公式マップの区画形状）' };
+          parts.push({ zone, poly, kind: 'zone', exact: true, bare: !q });
+        });
+      }
       // 実形状が取れている階では、未抽出の区画は描かない (一覧には残る)。取れていない階は従来の近似割り付け
-      if (rest.length && !withPoly.length) parts.push(...partition(sel.hull, rest));
-      for (const { zone, poly, kind, exact } of parts) {
+      if (rest.length && !withPoly.length && !unl.length) parts.push(...partition(sel.hull, rest));
+      for (const { zone, poly, kind, exact, bare } of parts) {
         const shape = new THREE.Shape(poly.map(p => new THREE.Vector2(p[0], p[1])));
         const g = new THREE.ExtrudeGeometry(shape, { depth: 0.35, bevelEnabled: false }); g.applyMatrix4(ROT_XZ);
-        const isCor = kind === 'corridor'; const col = isCor ? '#9aa3b5' : catColor(zone.category);
+        const isCor = kind === 'corridor'; const col = isCor ? '#9aa3b5' : bare ? '#8a93a6' : catColor(zone.category);
         const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.18 : (kind === 'zone' && !exact && withPoly.length ? 0.22 : 0.55), depthWrite: false, clippingPlanes: sectionPlanes }));
         const edge = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: isCor ? 0.4 : 0.9, clippingPlanes: sectionPlanes }));
         let zx = 0, zy = 0; for (const q of poly) { zx += q[0]; zy += q[1]; } zx /= poly.length; zy /= poly.length;
-        const label = isCor ? null : makeTextSprite(zone.name, col, { scale: 0.12, themeColor: tt => tt.labelGlow === false ? col : '#ffe9b0' }); if (label) label.userData.fadeFrom = 1000;
+        const label = isCor || !zone.name ? null : makeTextSprite(zone.name, col, { scale: 0.12, themeColor: tt => tt.labelGlow === false ? col : '#ffe9b0' }); if (label) label.userData.fadeFrom = 1000;
         mesh.renderOrder = 5; mesh.userData.zoneInfo = { fl, zone, building: m.n }; selGroup.add(mesh, edge); if (label) selGroup.add(label);
         sel.zones.push({ fl, mesh, edge, label, zx, zy, zone, isCor });
       }
@@ -1195,6 +1218,24 @@ function buildNetwork(net) {
   updateNetwork();
 }
 const linkVisible = l => floorVisible.get(graph.nodes[l.a].lv) !== false && floorVisible.get(graph.nodes[l.b].lv) !== false;
+let towerNodes = null; // [entrance, lobby]
+function addTowerLinks(ex, ey, lx, ly) {
+  if (!towerNodes) {
+    const e = graph.nodes.length; graph.nodes.push({ id: e, x: ex, y: ey, lv: 0 }); const l = graph.nodes.length; graph.nodes.push({ id: l, x: lx, y: ly, lv: 0 });
+    towerNodes = [e, l]; graph.towerLobby = l;
+    graph.links.push({ li: graph.links.length, a: e, b: l, vt: null, vtc: 0, oneWay: false, ax: ex, ay: ey, bx: lx, by: ly, length: 1, tower: true });
+    graph.links.push({ li: graph.links.length, a: e, b: e, vt: null, vtc: 0, oneWay: false, ax: ex, ay: ey, bx: ex, by: ey, length: 1, tower: true });
+  }
+  const [e, l] = towerNodes; graph.nodes[e].x = ex; graph.nodes[e].y = ey; graph.nodes[l].x = lx; graph.nodes[l].y = ly;
+  let best = null, bd = 120;
+  for (const n of graph.nodes) { if (n.lv !== 0 || n.id === e || n.id === l) continue; const d = Math.hypot(n.x - ex, n.y - ey); if (d < bd) { bd = d; best = n; } }
+  const L = graph.links.filter(x => x.tower);
+  Object.assign(L[0], { ax: ex, ay: ey, bx: lx, by: ly, length: Math.max(1, Math.hypot(lx - ex, ly - ey)) });
+  if (best) Object.assign(L[1], { b: best.id, ax: ex, ay: ey, bx: best.x, by: best.y, length: Math.max(1, bd) }); else Object.assign(L[1], { b: e, bx: ex, by: ey, length: 1 });
+  graph.adj = new Map();
+  for (const x of graph.links) { if (!graph.adj.has(x.a)) graph.adj.set(x.a, []); graph.adj.get(x.a).push({ li: x.li, forward: true }); if (!x.oneWay) { if (!graph.adj.has(x.b)) graph.adj.set(x.b, []); graph.adj.get(x.b).push({ li: x.li, forward: false }); } }
+  updateNetwork();
+}
 function updateNetwork() {
   const buckets = { 0: [], 1: [], 2: [], 3: [], 4: [] };
   for (const l of graph.links) {
@@ -1443,12 +1484,12 @@ function updateHover(now) {
     if (rr) { html = `<span class="tt-floor">${rr.floorLabel}</span>${rr.name}<span class="tt-sub">${CAT_LABEL[rr.cat] ?? ''}</span>`; break; }
   }
   if (!html) {
-    const targets = []; if (buildingMesh && groups.buildings.visible) targets.push(buildingMesh); if (bridgeMesh && groups.bridges.visible) targets.push(bridgeMesh);
+    const targets = []; if (buildingMesh && groups.buildings.visible) { targets.push(buildingMesh); for (const rm of runtimeBuildings.values()) if (rm.visible) targets.push(rm); } if (bridgeMesh && groups.bridges.visible) targets.push(bridgeMesh);
     const hits = raycaster.intersectObjects(targets, false);
     if (hits.length) {
       const h = hits[0];
-      if (h.object === buildingMesh) {
-        const i = findRange(buildingStarts, h.faceIndex); const m = buildingMeta[i]; bldUniforms.uHover.value = i;
+      if (h.object === buildingMesh || h.object.userData.bid != null) {
+        const i = h.object === buildingMesh ? findRange(buildingStarts, h.faceIndex) : h.object.userData.bid; const m = buildingMeta[i]; bldUniforms.uHover.value = i;
         const hgt = m.h != null ? `高さ ${m.h}m` : `高さ 約${Math.round(m.z[1] - m.z[0])}m`;
         html = `<span class="tt-floor">${m.fictional ? '架空の建物' : '建物'}</span>${m.n ?? '（名称なし）'}<span class="tt-sub">${hgt}${m.fictional ? '｜本ツールで生成した仮想建築' : ''}</span>`;
       } else {
@@ -1584,8 +1625,10 @@ canvas.addEventListener('pointerup', e => {
     raycaster.setFromCamera(pointer, activeCamera);
     const zm = pickZone();
     if (zm) { showZoneDetail(zm.userData.zoneInfo); return; }
-    const hit = buildingMesh && buildingMesh.visible ? raycaster.intersectObject(buildingMesh, false)[0] : null;
-    if (hit) { const bid = findRange(buildingStarts, hit.faceIndex); if (bid !== sel.bid) selectBuilding(bid); }
+    if (placeMode) { const site = construction.siteFromClick(); if (site) { construction.params.x = site.x; construction.params.y = site.y; setPlaceMode(false); rebuildTower(); } return; }
+    const tgs = buildingMesh && buildingMesh.visible ? [buildingMesh, ...[...runtimeBuildings.values()].filter(r => r.visible)] : [];
+    const hit = tgs.length ? raycaster.intersectObjects(tgs, false)[0] : null;
+    if (hit) { const bid = hit.object === buildingMesh ? findRange(buildingStarts, hit.faceIndex) : hit.object.userData.bid; if (bid !== sel.bid) selectBuilding(bid); }
     else if (sel.mesh && !raycaster.intersectObject(sel.mesh, false).length) clearSelection();
     return;
   }
@@ -1596,6 +1639,39 @@ canvas.addEventListener('pointerup', e => {
     routeResult.textContent = `始点: ${floorLabel(sn.lv)} ／ 終点をクリック`;
   } else { showRoute(n); routeStart = null; }
 });
+
+// ---- 建設モード UI ------------------------------------------------------------------------
+let construction = null, placeMode = false;
+const setPlaceMode = on => { placeMode = on; document.getElementById('btn-site').classList.toggle('active', on); canvas.style.cursor = on ? 'crosshair' : ''; routeResult.textContent = on ? '地図上の敷地をクリックしてください' : ''; };
+const CP = { floors: ['c-floors', v => `${v} 階`], podFloors: ['c-pod', v => `${v} 層`], podHalf: ['c-podw', v => `${v * 2} m`], towerHalf: ['c-tw', v => `${v * 2} m`], officeRatio: ['c-office', v => `${v}%`], ang: ['c-ang', v => `${v}°`] };
+function rebuildTower() {
+  if (!construction) return;
+  construction.params.podHalfB = Math.round(construction.params.podHalf * 0.81);
+  const overlaps = construction.build(); const b = construction.built; const p = construction.params;
+  const area = Math.round(b.floorArea / 1000) * 1000;
+  document.getElementById('c-info').innerHTML = `高さ ${Math.round(b.height)} m ／ ${p.floors} 階 ／ 延床 約 ${area.toLocaleString()} ㎡<br>敷地 (${p.x.toFixed(0)}, ${p.y.toFixed(0)}) ／ 商業 ${p.podFloors} 層 + オフィス ${Math.round((p.floors - p.podFloors - 3) * p.officeRatio / 100)} 階 + ホテル ${p.floors - p.podFloors - 3 - Math.round((p.floors - p.podFloors - 3) * p.officeRatio / 100)} 階 + 展望 3 階` +
+    (overlaps.length ? `<div style="color:#ffb648;margin-top:4px">⚠ 既存建物 ${overlaps.length} 棟と重なっています（${overlaps.slice(0, 3).map(m => m.n ?? '無名').join('、')}${overlaps.length > 3 ? ' 他' : ''}）</div>` : '<div style="color:#7dffa8;margin-top:4px">既存建物との重なりなし</div>');
+  document.getElementById('c-eval').innerHTML = ''; document.getElementById('c-floor').max = p.floors; if (Number(document.getElementById('c-floor').value) > p.floors) document.getElementById('c-floor').value = p.floors;
+}
+function evaluateTower() {
+  const fl = Number(document.getElementById('c-floor').value); const ev = construction.evaluate(fl);
+  const st = ev.stations.slice(0, 4).map(s => `<div>${s.name}: ${s.m} m（徒歩 約${s.min} 分）</div>`).join('') || '<div class="info-sub">ネットワーク未接続</div>';
+  const open = ev.dirs.filter(d => d.free >= 600).length; const seaN = ev.dirs.filter(d => d.seaVisible).length;
+  const blockers = {}; for (const d of ev.dirs) if (d.blocker && d.free < 400) blockers[d.blocker.name] = Math.min(blockers[d.blocker.name] ?? 9999, d.blocker.d);
+  const bl = Object.entries(blockers).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([n, d]) => `${n}（${d} m）`).join('、');
+  document.getElementById('c-eval').innerHTML = `<div class="sec-title">最寄り駅まで（エントランスから歩行者ネットワーク最短路）</div>${st}
+    <div class="sec-title" style="margin-top:6px">${fl + 1}F（高さ ${ev.h} m）の眺望</div><div style="display:flex;gap:8px;align-items:center">${compassSVG(ev)}<div style="font-size:11px;line-height:1.6">開放方位 ${open}/24<br>海が見える方位 ${seaN}/24<br><span class="info-sub">青=海 緑=開放 橙=中距離 赤=近接遮蔽<br>扇の長さ=遮蔽物までの距離</span></div></div>
+    ${bl ? `<div class="info-sub">近接遮蔽: ${bl}</div>` : ''}`;
+}
+function initConstructionUI() {
+  for (const [k, [id, fmt]] of Object.entries(CP)) { const el = document.getElementById(id); el.value = construction.params[k]; document.getElementById(id + '-v').textContent = fmt(construction.params[k]); el.addEventListener('input', () => { construction.params[k] = Number(el.value); document.getElementById(id + '-v').textContent = fmt(Number(el.value)); }); el.addEventListener('change', rebuildTower); }
+  document.getElementById('btn-site').addEventListener('click', () => setPlaceMode(!placeMode));
+  document.getElementById('btn-build').addEventListener('click', rebuildTower);
+  document.getElementById('btn-tower-select').addEventListener('click', () => { selectBuilding(construction.bid); const p = construction.params; flyTo(new THREE.Vector3(p.x - 420, 260, -p.y + 380), new THREE.Vector3(p.x, 80, -p.y)); });
+  document.getElementById('btn-eval').addEventListener('click', evaluateTower);
+  document.getElementById('c-floor').addEventListener('change', () => { if (document.getElementById('c-eval').innerHTML) evaluateTower(); });
+  document.getElementById('c-reset').addEventListener('click', () => { Object.assign(construction.params, { x: -407.6, y: 373.2, ang: -33, floors: 85, podFloors: 6, podHalf: 58, towerHalf: 29, officeRatio: 72 }); for (const [k, [id, fmt]] of Object.entries(CP)) { document.getElementById(id).value = construction.params[k]; document.getElementById(id + '-v').textContent = fmt(construction.params[k]); } rebuildTower(); });
+}
 
 // ---- 起動 -----------------------------------------------------------------------------
 async function init() {
@@ -1609,13 +1685,17 @@ async function init() {
   setProgress(0.75, '鉄道・歩行者ネットワークを生成中…'); await nextFrame(); buildRails(header.rails); buildNetwork(header.network);
   setProgress(0.9, '駅構内モデルを生成中…'); await nextFrame(); buildStations(header.stations); buildLabels(header.labels); buildPOI(header.poi);
   applyFlowPreset();
+  construction = initConstruction({ THREE, groups, buildingMeta, buildingMesh, terrainSampler, drawingMaterial, cityMaterial, setupStyledMesh, sectionPlanes, DISP_PARS, addDispUniforms, dispUniforms, updateBldTex, floorGuide, guideFor, graph, addTowerLinks, makeTextSprite, labelsGroup: groups.labels, header, raycaster, selectBuilding, clearSelection, isSelected: b => sel.bid === b, refreshFlow: () => { visLinks = visibleLinkIdx(); }, canvas, pointer, get activeCamera() { return activeCamera; }, findBuilding: f => findRange(buildingStarts, f) });
+  runtimeBuildings.set(construction.bid, construction.mesh);
+  initConstructionUI();
+  rebuildTower();
   applyTheme(styleName);
   setProgress(1, '完了');
   const loading = document.getElementById('loading');
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();

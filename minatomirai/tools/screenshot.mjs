@@ -71,6 +71,11 @@ await shot('20j_zones_exact', `a.labels('auto'); const i = a.selectByName('MARK 
 await shot('20k_zones_3f', `const i = a.selectByName('MARK IS minatomirai'); a.setGap(0); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.section(12); a.camera.position.set(cx + 1, 330, cz + 1); a.controls.target.set(cx, 0, cz);`);
 await page.evaluate(() => { window.__app.underlay(true); window.__app.section(null); });
 await shot('21_fictional', `a.select(-1); a.camera.position.set(-900, 420, -60); a.controls.target.set(-408, 120, -373);`);
+await shot('22_rebuilt', `const p = a.tower().params; p.floors = 60; p.podFloors = 4; p.towerHalf = 34; p.ang = 10; a.rebuildTower(); a.camera.position.set(-900, 420, -60); a.controls.target.set(-408, 120, -373);`);
+await page.evaluate(() => { const a = window.__app; const p = a.tower().params; Object.assign(p, { floors: 85, podFloors: 6, towerHalf: 29, ang: -33 }); a.rebuildTower(); document.getElementById('c-floor').value = 70; a.evaluateTower(); const el = document.getElementById('c-info'); el.scrollIntoView({ block: 'center' }); });
+await page.screenshot({ path: `${out}/23_construct_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
+await shot('24_lmp_zones', `a.select(-1); const i = a.selectByName('ランドマークプラザ'); a.setGap(0); a.underlay(false); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.section(5); a.camera.position.set(cx + 1, 330, cz + 1); a.controls.target.set(cx, 0, cz);`);
+await page.evaluate(() => { window.__app.section(null); window.__app.underlay(true); window.__app.select(-1); });
 await shot('21b_fictional_floors', `a.selectByName('みなとみらい セントラルタワー（架空）'); a.setGap(6); a.floorCat(true); a.camera.position.set(-640, 300, -180); a.controls.target.set(-408, 60, -373);`);
 await page.screenshot({ path: `${out}/21c_fictional_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
 await page.evaluate(() => { window.__app.select(-1); window.__app.floorCat(false); });

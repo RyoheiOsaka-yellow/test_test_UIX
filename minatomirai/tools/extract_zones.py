@@ -82,6 +82,48 @@ def polygon_of(lab, lid):
         step = len(pts) // 4000; pts = pts[::step]
     return convex_hull(pts)
 
+# ランドマークプラザ: 区画は中間グレーの面 (番号なし)。形状のみ抽出し、店名は画面側で OSM POI の位置から対応付ける
+LMP_CROPS = [
+    ("lmp", 1, 25, 48, 300, 262, "ランドマークプラザ", "5F"), ("lmp", 1, 25, 275, 300, 482, "ランドマークプラザ", "4F"),
+    ("lmp", 1, 25, 498, 300, 692, "ランドマークプラザ", "3F"), ("lmp", 1, 25, 705, 300, 922, "ランドマークプラザ", "2F"),
+    ("lmp", 2, 25, 65, 350, 302, "ランドマークプラザ", "1F"),
+]
+def gray_regions(im):
+    a = np.array(im).astype(int); mx = a.max(-1); mn = a.min(-1)
+    g = (mx - mn < 18) & (mx > 95) & (mx < 205)
+    g = ndimage.binary_opening(g, structure=np.ones((4, 4)))
+    lab, n = ndimage.label(g); sizes = ndimage.sum(g, lab, range(1, n + 1))
+    return lab, n, sizes
+
+def world_mapper(u, im, A):
+    box = u["box"]; w, h = u["w"], u["h"]; sx = w / im.width; sy = h / im.height
+    bw = (box[2] - box[0]) * w; L = (A["a1"] - A["a0"]) * u.get("scale", 1); kk = L / max(1, bw)
+    ang = math.atan2(A["ay"], A["ax"]) + u.get("rot", 0) * math.pi / 180
+    rx, ry = math.cos(ang), math.sin(ang); ux, uy = -math.sin(ang), math.cos(ang)
+    offR = ((box[0] + box[2]) / 2 - 0.5) * w * kk; offD = ((box[1] + box[3]) / 2 - 0.5) * h * kk
+    tx = A["cx"] + A["ax"] * u.get("dx", 0) + A["nx"] * u.get("dy", 0); ty = A["cy"] + A["ay"] * u.get("dx", 0) + A["ny"] * u.get("dy", 0)
+    pcx = tx - (offR * rx - offD * ux); pcy = ty - (offR * ry - offD * uy)
+    def to_world(px, py):
+        ix = px * sx - w / 2; iy = -(py * sy - h / 2)
+        return [round(pcx + (ix * rx + iy * ux) * kk, 2), round(pcy + (ix * ry + iy * uy) * kk, 2)]
+    return to_world
+
+def extract_lmp(header, blobs, us, k):
+    metas = header["buildings"]["meta"]; zones = []
+    for pdf, page, x0, y0, x1, y1, bld, fl in LMP_CROPS:
+        u = next((u for u in us if u["building"] == bld and u["floor"] == fl), None)
+        if not u: continue
+        bid = next(i for i, m in enumerate(metas) if m.get("n") and bld in m["n"])
+        tris = building_tris(header, blobs, bid); A = hull_axis(convex_hull([tuple(p) for t in tris for p in t]))
+        im = page_image(pdf, page).crop((int(x0 * k), int(y0 * k), int(x1 * k), int(y1 * k)))
+        lab, n, sizes = gray_regions(im); to_world = world_mapper(u, im, A); c = 0
+        for lid in range(1, n + 1):
+            if sizes[lid - 1] < 900: continue
+            c += 1
+            zones.append({"building": bld, "floor": fl, "zone": f"L{c}", "unlabeled": True, "poly": [to_world(*p) for p in polygon_of(lab, lid)]})
+        print(f"LMP {fl}: {c} gray regions")
+    return zones
+
 def main():
     header, blobs = load_pack(); metas = header["buildings"]["meta"]
     us = json.load(open(os.path.join(DATA, "underlays.json")))
@@ -144,6 +186,7 @@ def main():
         for lid, num in found.items():
             zones.append({"building": F["bld"], "floor": F["fl"], "zone": str(num), "poly": [to_world(*p) for p in polygon_of(lab, lid)]})
         print(f'{F["fl"]}: regions {int((sizes > 800).sum())}, numbered {len(found)} / {maxn}')
+    zones += extract_lmp(header, blobs, us, k)
     json.dump(zones, open(OUT, "w"), ensure_ascii=False)
     print("wrote", OUT, len(zones))
 

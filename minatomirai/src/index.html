@@ -124,6 +124,19 @@ canvas { display: block; }
             <button id="btn-city-rebuild">街を作り直す（組立アニメ）</button>
         </div>
         <div class="panel-sep"></div>
+        <div class="sec-title">建設モード（架空ビル）</div>
+        <div class="btn-row"><button id="btn-site">敷地を指定（地図クリック）</button><button id="c-reset">初期値</button></div>
+        <div class="cal-row"><span>階数</span><input type="range" id="c-floors" min="12" max="130" step="1" /><b id="c-floors-v"></b></div>
+        <div class="cal-row"><span>商業層</span><input type="range" id="c-pod" min="1" max="10" step="1" /><b id="c-pod-v"></b></div>
+        <div class="cal-row"><span>低層幅</span><input type="range" id="c-podw" min="30" max="80" step="1" /><b id="c-podw-v"></b></div>
+        <div class="cal-row"><span>塔の幅</span><input type="range" id="c-tw" min="14" max="45" step="1" /><b id="c-tw-v"></b></div>
+        <div class="cal-row"><span>オフィス</span><input type="range" id="c-office" min="0" max="100" step="1" /><b id="c-office-v"></b></div>
+        <div class="cal-row"><span>向き</span><input type="range" id="c-ang" min="-90" max="90" step="1" /><b id="c-ang-v"></b></div>
+        <div class="btn-row"><button id="btn-build">建てる／更新</button><button id="btn-tower-select">選択して階分解</button></div>
+        <div id="c-info" class="note"></div>
+        <div class="cal-row" style="margin-top:4px"><span>評価階</span><input type="range" id="c-floor" min="0" max="85" step="1" value="60" /><button id="btn-eval" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid rgba(120,180,255,0.3);background:rgba(60,90,140,0.25);color:#c6d4e8;cursor:pointer">評価</button></div>
+        <div id="c-eval"></div>
+        <div class="panel-sep"></div>
         <div class="sec-title">書き出し</div>
         <div class="btn-row">
             <button id="btn-png">PNG 保存</button>
