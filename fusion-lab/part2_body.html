@@ -1,0 +1,149 @@
+<body>
+<header class="topbar">
+  <div class="brand" id="brand" title="最初から"><span class="brand-mark">ANGLEX<b>.</b>FUSION</span><span class="brand-sub">Technology Fusion Lab</span></div>
+  <div class="topbar-divider"></div>
+  <div class="project-pill" title="現在のセッション"><span class="dot"></span><span class="pname" id="projName">新規セッション</span><span class="pmeta" id="projMeta">DB 72技術 / 12工場</span></div>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-actions">
+    <span class="mode-badge" id="modeBadge" title="AI 推論モードの設定">AI: ローカル推論</span>
+    <button class="tbtn" id="btnLibrary" title="提案ライブラリ"><span class="lbl">提案ライブラリ</span><span class="lbl-s">保存済</span><span class="cnt" id="libCount">0</span></button>
+    <button class="tbtn" id="btnSettings" title="設定">⚙</button>
+  </div>
+</header>
+
+<div class="workflow" id="workflow">
+  <div class="wf-step active" data-step="1"><div class="wf-num">1</div><div><div class="wf-title">技術ベース</div><div class="wf-desc">12工場・72技術から選ぶ</div></div></div>
+  <div class="wf-step" data-step="2"><div class="wf-num">2</div><div><div class="wf-title">仮説・アイデア</div><div class="wf-desc">作りたいもの・制約を入力</div></div></div>
+  <div class="wf-step locked" data-step="3"><div class="wf-num">3</div><div><div class="wf-title">AI 合成</div><div class="wf-desc">相乗効果・提供領域・産業</div></div></div>
+  <div class="wf-step locked" data-step="4"><div class="wf-num">4</div><div><div class="wf-title">デザイン</div><div class="wf-desc">コンセプト図面・工程・検証</div></div></div>
+</div>
+
+<div class="stage">
+  <main class="stage-main" id="stageMain">
+
+    <!-- ① 技術ベース -->
+    <section class="pane" id="pane1">
+      <div class="page-h">技術ベース — 工場をまたいで技術を選ぶ</div>
+      <div class="page-sub">各工場が登録した「できること」のデータベースです。役割（材料・成形・加工・接合・表面・機能・計測・組立）が異なる技術を 2〜6 件選ぶと、AI が組み合わせの相乗効果と提供できる領域を推定します。迷ったら空のまま次へ進み、AI に選ばせることもできます。</div>
+      <div class="sec-h"><span class="eyebrow">Factories</span><h3>登録工場</h3><span class="sp"></span><span class="small muted" id="facHint">クリックで絞り込み</span></div>
+      <div class="fac-strip" id="facStrip"></div>
+      <div class="filters">
+        <input id="q" placeholder="技術・タグ・材料で検索（例：微細 / 気密 / センサ / チタン）" autocomplete="off">
+        <select id="fRole"><option value="">すべての役割</option></select>
+        <select id="fInd"><option value="">すべての産業</option></select>
+        <button class="btn ghost sm" id="fClear">クリア</button>
+      </div>
+      <div class="small muted" id="techCount" style="margin-bottom:8px"></div>
+      <div class="grid g4" id="techGrid"></div>
+    </section>
+
+    <!-- ② 仮説・アイデア -->
+    <section class="pane" id="pane2" hidden>
+      <div class="page-h">仮説・アイデア — 何を作りたいか、どんな仮説か</div>
+      <div class="page-sub">完成イメージでも、課題でも、ふわっとした仮説でも構いません。AI は選択技術と文章の両方を読み、欠けている役割の技術を推薦し、提供可能な領域・産業と 3 つのコンセプト案を返します。</div>
+      <div class="idea-wrap" style="margin-top:16px">
+        <div>
+          <textarea class="idea" id="idea" placeholder="例：農業ハウス向けに、電池交換なしで土壌の水分と温度を測り続けられる小型センサ。雨風に耐え、安価に量産したい。"></textarea>
+          <div class="card" style="margin-top:12px;display:flex;flex-direction:column;gap:12px">
+            <div class="opt-row"><span class="lbl">作るものの規模</span><div class="seg" id="segForm"><button data-v="auto" class="on">おまかせ</button><button data-v="部品">部品・モジュール</button><button data-v="装置">装置・機器</button><button data-v="大型">大型機械</button><button data-v="ノベルティ">ノベルティ</button></div></div>
+            <div class="opt-row"><span class="lbl">想定数量</span><div class="seg" id="segLot"><button data-v="1" >試作 1〜10</button><button data-v="100" class="on">小ロット 〜500</button><button data-v="5000">量産 〜1万</button><button data-v="100000">大量 10万〜</button></div></div>
+            <div class="opt-row"><span class="lbl">重視すること</span><div id="prioChips"></div></div>
+            <div class="opt-row"><span class="lbl">技術の選び方</span><label class="switch"><input type="checkbox" id="autoPick" checked><span>選択が足りない役割を AI が技術ベースから補完する</span></label></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+            <button class="btn primary" id="btnSynth">AI で合成する →</button>
+            <span class="small muted" id="synthHint"></span>
+          </div>
+        </div>
+        <div>
+          <div class="sec-h" style="margin-top:0"><span class="eyebrow">Scenarios</span><h3>デモシナリオ</h3></div>
+          <div class="scen" id="scenList"></div>
+          <div class="callout" style="margin-top:14px">文章中の「医療」「農業」「展示会」などの語から産業と規模を推定し、「軽量」「防水」「量産」などの語から重視する特性を読み取ります。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ AI 合成 -->
+    <section class="pane" id="pane3" hidden>
+      <div class="page-h" id="synthTitle">AI 合成 — 技術の組み合わせを解析</div>
+      <div class="page-sub" id="synthSub">選択技術の役割カバレッジ、相乗効果ルール、スケール・材料の整合性、産業適合度を評価し、コンセプトを生成します。</div>
+      <div class="think" id="think" style="margin-top:14px"></div>
+      <div class="progress"><i id="prog"></i></div>
+      <div id="results" hidden>
+        <div class="result-grid" style="margin-top:18px">
+          <div>
+            <div class="sec-h" style="margin-top:0"><span class="eyebrow">Synthesis</span><h3 id="resTitle"></h3></div>
+            <div class="summary" id="resSummary"></div>
+            <div class="sec-h"><span class="eyebrow">Synergy</span><h3>見つかった相乗効果</h3></div>
+            <div class="grid" id="resSyn" style="gap:8px"></div>
+            <div class="sec-h"><span class="eyebrow">Coverage</span><h3>役割カバレッジと推奨追加技術</h3></div>
+            <div id="resCov"></div>
+          </div>
+          <div>
+            <div class="sec-h" style="margin-top:0"><span class="eyebrow">Fusion map</span><h3>技術の結合マップ</h3></div>
+            <div class="graph-wrap" id="graph"></div>
+            <div class="sec-h"><span class="eyebrow">Markets</span><h3>提供可能な領域・産業</h3></div>
+            <div class="card" id="resInd"></div>
+            <div class="sec-h"><span class="eyebrow">Compatibility</span><h3>整合性チェック</h3></div>
+            <div id="resCompat" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:22px;flex-wrap:wrap">
+          <button class="btn primary" id="btnToDesign">3 案のデザインを見る →</button>
+          <button class="btn" id="btnRerun">条件を変えて再合成</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ④ デザイン -->
+    <section class="pane" id="pane4" hidden>
+      <div class="page-h">デザイン — コンセプト案と図面</div>
+      <div class="page-sub">同じ技術の組み合わせから、規模の異なる 3 案を展開します。図面は技術パラメータから自動生成した概念図で、各技術がどこに効くかを引出線で示します。</div>
+      <div class="ctabs" id="ctabs" style="margin-top:14px"></div>
+      <div class="design-grid">
+        <div>
+          <div class="bp" id="bp"></div>
+          <div class="sec-h"><span class="eyebrow">Process</span><h3>工場をまたぐ工程フロー</h3><span class="sp"></span><span class="small muted num" id="flowTotal"></span></div>
+          <div class="flow" id="flow"></div>
+          <div class="sec-h"><span class="eyebrow">Hypothesis</span><h3>仮説と検証プラン</h3></div>
+          <div class="card" id="hypo"></div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="sec-h" style="margin-top:0"><span class="eyebrow">Concept</span><h3 id="cName"></h3></div>
+            <div id="cDesc" style="font-size:12.5px;line-height:1.7"></div>
+            <dl class="kv" id="cSpec" style="margin-top:12px"></dl>
+          </div>
+          <div class="card radar-wrap" style="margin-top:12px"><div class="sec-h" style="margin-top:0"><span class="eyebrow">Feasibility</span><h3>実現性レーダー</h3></div><div id="radar"></div></div>
+          <div class="card" style="margin-top:12px"><div class="sec-h" style="margin-top:0"><span class="eyebrow">Technologies</span><h3>構成技術と役割</h3></div><div class="tscroll"><table class="t" id="cTech"></table></div></div>
+          <div class="card" style="margin-top:12px"><div class="sec-h" style="margin-top:0"><span class="eyebrow">Risks</span><h3>リスク</h3></div><ul class="plain risk" id="cRisk"></ul></div>
+          <div class="card" style="margin-top:12px"><div class="sec-h" style="margin-top:0"><span class="eyebrow">Next</span><h3>次のアクション</h3></div><ul class="plain next" id="cNext"></ul></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:22px;flex-wrap:wrap">
+        <button class="btn primary" id="btnSave">この提案をライブラリに保存</button>
+        <button class="btn" id="btnCopy">JSON をコピー</button>
+        <button class="btn ghost" id="btnNew">新しいセッション</button>
+      </div>
+    </section>
+
+    <!-- ライブラリ -->
+    <section class="pane" id="paneLib" hidden>
+      <div class="page-h">提案ライブラリ</div>
+      <div class="page-sub">保存した提案はこのブラウザに保持されます。開くと合成結果とデザインを再表示します。</div>
+      <div class="grid g3" id="libGrid" style="margin-top:16px"></div>
+    </section>
+  </main>
+
+  <aside class="basket" id="basket">
+    <div class="basket-h"><h3>選択中の技術</h3><span class="cap" id="basketCap">0 / 6</span></div>
+    <div class="basket-body" id="basketBody"></div>
+    <div class="basket-foot">
+      <div class="coverage" id="coverage"></div>
+      <button class="btn primary full" id="btnNext1">仮説・アイデアへ →</button>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>

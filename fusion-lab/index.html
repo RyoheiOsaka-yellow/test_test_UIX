@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ANGLEX FUSION</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: dark instrument topbar + 4-step workflow rail over a warm paper stage; right-hand basket of selected technologies persists across steps. */
+:root{
+  --paper:#f5f3ec;--paper-warm:#ebe8dc;--paper-dark:#e0dccc;--card:#fbfaf5;
+  --ink:#1a1a17;--ink-soft:#3a3a36;--ink-mute:#6f6f68;--ink-faint:#9a948a;
+  --line:#c9c3ad;--line-soft:#d9d4c0;--line-faint:#e6e2d4;
+  --accent:#b34a2a;--accent-deep:#8a3419;--accent-soft:#f3d7c8;
+  --brass:#B8A67A;--brass-soft:#efe8d2;--steel:#4a5568;
+  --ok:#3e6b4a;--ok-soft:#d7e6db;--info:#3d5a80;--info-soft:#dbe3ee;--warn:#b8862a;--warn-soft:#f4e9cf;--bad:#c0392b;--bad-soft:#f2d6d1;
+  --panel:#13130f;--panel-line:#2a2a22;--panel-ink:#ece8dc;
+  --r-material:#6b5b95;--r-form:#b34a2a;--r-machining:#3d5a80;--r-join:#b8862a;--r-surface:#2a7d8c;--r-func:#3e6b4a;--r-measure:#8a5a3b;--r-assembly:#4a5568;
+  --font:"IBM Plex Sans JP",-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  --mono:"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+  --shadow:0 1px 2px rgba(26,26,23,.06),0 6px 18px rgba(26,26,23,.06);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#171712;--paper-warm:#1f1f18;--paper-dark:#262620;--card:#1d1d17;
+  --ink:#ece8dc;--ink-soft:#d2cec2;--ink-mute:#a39e90;--ink-faint:#7a756a;
+  --line:#3d3c32;--line-soft:#33322a;--line-faint:#2a2922;
+  --accent:#d9704f;--accent-deep:#e8936f;--accent-soft:#3a241c;
+  --brass:#c9b88a;--brass-soft:#2c2920;--steel:#8a95a3;
+  --ok:#7fb08c;--ok-soft:#1f2e23;--info:#8fb0d8;--info-soft:#1d2733;--warn:#d8aa52;--warn-soft:#2e2715;--bad:#e07a6b;--bad-soft:#331e1a;
+  --panel:#0e0e0b;--panel-line:#26261f;--panel-ink:#ece8dc;
+  --r-material:#a995d4;--r-form:#d9704f;--r-machining:#8fb0d8;--r-join:#d8aa52;--r-surface:#5fb3c2;--r-func:#7fb08c;--r-measure:#c8936a;--r-assembly:#9aa5b3;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#171712;--paper-warm:#1f1f18;--paper-dark:#262620;--card:#1d1d17;
+  --ink:#ece8dc;--ink-soft:#d2cec2;--ink-mute:#a39e90;--ink-faint:#7a756a;
+  --line:#3d3c32;--line-soft:#33322a;--line-faint:#2a2922;
+  --accent:#d9704f;--accent-deep:#e8936f;--accent-soft:#3a241c;
+  --brass:#c9b88a;--brass-soft:#2c2920;--steel:#8a95a3;
+  --ok:#7fb08c;--ok-soft:#1f2e23;--info:#8fb0d8;--info-soft:#1d2733;--warn:#d8aa52;--warn-soft:#2e2715;--bad:#e07a6b;--bad-soft:#331e1a;
+  --panel:#0e0e0b;--panel-line:#26261f;--panel-ink:#ece8dc;
+  --r-material:#a995d4;--r-form:#d9704f;--r-machining:#8fb0d8;--r-join:#d8aa52;--r-surface:#5fb3c2;--r-func:#7fb08c;--r-measure:#c8936a;--r-assembly:#9aa5b3;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+  color-scheme:dark}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--font);font-size:13px;line-height:1.55;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100%}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+a{color:var(--info)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--ink-mute)}
+.small{font-size:11.5px}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.3}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== TOPBAR ===== */
+.topbar{display:flex;align-items:center;gap:16px;padding-block:0;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));height:56px;background:var(--panel);color:var(--panel-ink);border-bottom:1px solid var(--panel-line);flex-shrink:0;position:sticky;top:env(safe-area-inset-top,0px);z-index:40}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:41;background:var(--panel)}
+.brand{display:flex;align-items:baseline;gap:10px;cursor:pointer;white-space:nowrap}
+.brand-mark{font-weight:600;font-size:22px;letter-spacing:.04em;color:var(--brass);line-height:1}
+.brand-mark b{color:var(--accent);font-weight:600}
+.brand-sub{font-family:var(--mono);font-size:9.5px;letter-spacing:.26em;color:#9a948a;text-transform:uppercase}
+.topbar-divider{width:1px;height:24px;background:var(--panel-line)}
+.project-pill{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 12px;border:1px solid var(--panel-line);border-radius:6px;background:rgba(255,255,255,.03);min-width:0}
+.project-pill .dot{width:7px;height:7px;border-radius:50%;background:#5a9a6a;flex-shrink:0}
+.project-pill .pname{color:#ebe8dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.project-pill .pmeta{color:#9a948a;font-family:var(--mono);font-size:10px;white-space:nowrap}
+.topbar-spacer{flex:1}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.mode-badge{font-family:var(--mono);font-size:10px;letter-spacing:.08em;padding:4px 9px;border-radius:4px;border:1px solid var(--panel-line);color:#B8A67A;background:rgba(184,166,122,.08);white-space:nowrap;cursor:pointer}
+.mode-badge.live{color:#8fd4a0;border-color:#2f5a3a;background:rgba(90,154,106,.12)}
+.tbtn{background:transparent;border:1px solid var(--panel-line);color:#d9d4c0;border-radius:6px;padding:6px 11px;font-size:12px;cursor:pointer;white-space:nowrap}
+.tbtn:hover{background:rgba(255,255,255,.06)}
+.tbtn .lbl-s{display:none}
+.tbtn .cnt{font-family:var(--mono);font-size:10px;color:#B8A67A;margin-left:4px}
+
+/* ===== WORKFLOW RAIL ===== */
+.workflow{display:flex;gap:0;background:var(--paper-warm);border-bottom:1px solid var(--line-soft);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:auto;flex-shrink:0}
+.wf-step{display:flex;align-items:center;gap:10px;padding:10px 18px 10px 4px;min-width:170px;cursor:pointer;border-bottom:2px solid transparent;opacity:.55;position:relative}
+.wf-step+.wf-step::before{content:"";position:absolute;left:-14px;top:50%;width:14px;height:1px;background:var(--line)}
+.wf-step.active{opacity:1;border-bottom-color:var(--accent)}
+.wf-step.done{opacity:.9}
+.wf-step.locked{cursor:not-allowed;opacity:.38}
+.wf-num{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:11px;flex-shrink:0;background:var(--card)}
+.wf-step.active .wf-num{border-color:var(--accent);color:var(--accent);font-weight:500}
+.wf-step.done .wf-num{background:var(--ok);border-color:var(--ok);color:#fff}
+.wf-title{font-size:12.5px;font-weight:600;white-space:nowrap}
+.wf-desc{font-size:10.5px;color:var(--ink-mute);white-space:nowrap}
+
+/* ===== STAGE ===== */
+.stage{flex:1;display:flex;min-height:0}
+.stage-main{flex:1;min-width:0;overflow-y:auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.basket{width:300px;flex-shrink:0;border-left:1px solid var(--line-soft);background:var(--paper-warm);display:flex;flex-direction:column;min-height:0}
+.basket-h{padding:14px 16px 10px;border-bottom:1px solid var(--line-soft);display:flex;align-items:baseline;justify-content:space-between}
+.basket-h h3{font-size:12.5px;font-weight:600;letter-spacing:.02em}
+.basket-h .cap{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute)}
+.basket-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.basket-empty{color:var(--ink-faint);font-size:12px;padding:18px 6px;text-align:center;border:1px dashed var(--line);border-radius:8px}
+.bitem{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;background:var(--card);border:1px solid var(--line-soft);border-radius:7px}
+.bitem .rolebar{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0}
+.bitem .bt{font-size:12px;font-weight:600;line-height:1.3}
+.bitem .bm{font-size:10.5px;color:var(--ink-mute);font-family:var(--mono);margin-top:2px}
+.bitem .bx{margin-left:auto;background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}
+.bitem .bx:hover{color:var(--bad)}
+.basket-foot{padding:12px 14px;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:8px}
+.coverage{display:flex;flex-wrap:wrap;gap:4px}
+.cov{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;border:1px solid var(--line-soft);color:var(--ink-faint);background:var(--paper)}
+.cov.on{color:var(--ink);border-color:var(--line);background:var(--card);font-weight:500}
+.cov .sw{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;vertical-align:1px;background:var(--line)}
+@media (max-width:860px){.stage{flex-direction:column}.basket{width:auto;border-left:none;border-top:1px solid var(--line-soft);max-height:40vh}.basket-body{max-height:22vh}.basket[data-step="3"]{display:none}}
+@media (max-width:720px){.brand-sub,.pmeta,.topbar-divider,.project-pill,.mode-badge,.tbtn .lbl{display:none}.tbtn .lbl-s{display:inline}.topbar{gap:10px;overflow:hidden}.tbtn{padding:6px 8px;font-size:11.5px}.mode-badge{font-size:9px;padding:4px 6px;max-width:120px;overflow:hidden;text-overflow:ellipsis}}
+
+/* ===== COMMON ===== */
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:8px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--ink-faint)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.primary:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.btn.ghost{background:transparent}
+.btn.full{width:100%;justify-content:center}
+.btn.sm{padding:5px 10px;font-size:11.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn .k{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-left:6px}
+.page-h{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.page-sub{color:var(--ink-mute);font-size:12.5px;margin-top:4px;max-width:70ch}
+.sec-h{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px}
+.sec-h h3{font-size:13.5px;font-weight:600}
+.sec-h .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--brass);text-transform:uppercase}
+.sec-h .sp{flex:1}
+.card{background:var(--card);border:1px solid var(--line-soft);border-radius:9px;padding:14px 16px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.g4{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink-soft);white-space:nowrap}
+.chip.sel{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip.btn-like{cursor:pointer}
+.chip.btn-like:hover{border-color:var(--ink-faint)}
+.tag{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;background:var(--paper-warm);color:var(--ink-mute);border:1px solid var(--line-faint);white-space:nowrap}
+.role-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12px}
+.kv dt{color:var(--ink-mute);white-space:nowrap}
+.kv dd{min-width:0}
+.callout{border-left:3px solid var(--brass);background:var(--brass-soft);padding:10px 14px;border-radius:0 6px 6px 0;font-size:12.5px}
+.callout.warn{border-color:var(--warn);background:var(--warn-soft)}
+.callout.ok{border-color:var(--ok);background:var(--ok-soft)}
+.callout.bad{border-color:var(--bad);background:var(--bad-soft)}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel);color:var(--panel-ink);padding:9px 16px;border-radius:8px;font-size:12.5px;box-shadow:var(--shadow);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+table.t{width:100%;border-collapse:collapse;font-size:12px}
+table.t th{text-align:left;font-weight:600;color:var(--ink-mute);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.t td{padding:7px 8px;border-bottom:1px solid var(--line-faint);vertical-align:top}
+table.t tr:last-child td{border-bottom:none}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tscroll{overflow-x:auto}
+
+/* ===== STEP 1: TECH BASE ===== */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 12px}
+.filters input,.filters select{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:12.5px;min-width:0}
+.filters input{flex:1 1 220px}
+.filters select{flex:0 1 auto;max-width:100%}
+.fac-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:4px}
+.fac{flex:0 0 auto;width:168px;background:var(--card);border:1px solid var(--line-soft);border-radius:8px;padding:10px 12px;cursor:pointer;border-top:3px solid var(--brass)}
+.fac.sel{border-color:var(--ink);box-shadow:var(--shadow)}
+.fac .fn{font-size:12px;font-weight:600;line-height:1.3}
+.fac .fr{font-family:var(--mono);font-size:10px;color:var(--ink-mute);margin-top:2px}
+.fac .ft{font-size:10.5px;color:var(--ink-soft);margin-top:5px}
+.tech{background:var(--card);border:1px solid var(--line-soft);border-radius:9px;padding:12px 13px 11px;display:flex;flex-direction:column;gap:7px;position:relative;cursor:pointer;transition:border-color .12s}
+.tech:hover{border-color:var(--ink-faint)}
+.tech.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.tech .th{display:flex;align-items:flex-start;gap:8px}
+.tech .tn{font-size:13px;font-weight:600;line-height:1.3;flex:1;min-width:0}
+.tech .tf{font-size:10.5px;color:var(--ink-mute);font-family:var(--mono)}
+.tech .td{font-size:11.5px;color:var(--ink-soft);line-height:1.5}
+.tech .tt{display:flex;flex-wrap:wrap;gap:4px}
+.tech .tm{display:flex;gap:10px;font-family:var(--mono);font-size:10px;color:var(--ink-mute);flex-wrap:wrap}
+.tech .tadd{position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--paper);display:grid;place-items:center;font-size:15px;line-height:1;color:var(--ink-mute)}
+.tech.sel .tadd{background:var(--accent);border-color:var(--accent);color:#fff}
+.role-pill{font-size:10px;padding:2px 7px;border-radius:3px;color:#fff;font-weight:600;letter-spacing:.04em;white-space:nowrap}
+
+/* ===== STEP 2: IDEA ===== */
+.idea-wrap{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px}
+@media (max-width:1000px){.idea-wrap{grid-template-columns:1fr}}
+textarea.idea{width:100%;min-height:150px;resize:vertical;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.6}
+.scen{display:flex;flex-direction:column;gap:8px}
+.scen button{text-align:left;background:var(--card);border:1px solid var(--line-soft);border-radius:8px;padding:10px 12px;cursor:pointer}
+.scen button:hover{border-color:var(--ink-faint)}
+.scen .st{font-family:var(--mono);font-size:10px;color:var(--brass);letter-spacing:.1em}
+.scen .sn{font-size:12.5px;font-weight:600;margin-top:2px}
+.scen .sm{font-size:11px;color:var(--ink-mute);margin-top:2px}
+.opt-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.opt-row .lbl{font-size:11.5px;color:var(--ink-mute);margin-right:4px;min-width:84px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.seg button{background:var(--card);border:none;padding:6px 11px;font-size:12px;cursor:pointer;border-right:1px solid var(--line-soft)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--ink);color:var(--paper)}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px}
+.switch input{appearance:none;width:34px;height:18px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;flex-shrink:0}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s}
+.switch input:checked{background:var(--ok)}
+.switch input:checked::after{left:18px}
+
+/* ===== STEP 3: SYNTHESIS ===== */
+.think{background:var(--panel);color:var(--panel-ink);border-radius:9px;padding:14px 16px;font-family:var(--mono);font-size:11.5px;line-height:1.7;min-height:120px;max-height:260px;overflow-y:auto;border:1px solid var(--panel-line)}
+.think .ln{display:flex;gap:10px;opacity:0;animation:fadeIn .25s forwards}
+.think .ln .ts{color:#6f6f68;flex-shrink:0}
+.think .ln .ok{color:#8fd4a0}.think .ln .hi{color:#c9b88a}.think .ln .wn{color:#d8aa52}
+.think .cursor{display:inline-block;width:7px;height:12px;background:#B8A67A;vertical-align:-2px;animation:blink 1s steps(2) infinite}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes blink{50%{opacity:0}}
+.graph-wrap{background:var(--card);border:1px solid var(--line-soft);border-radius:9px;padding:8px;overflow:hidden}
+.graph-wrap svg{width:100%;height:auto;display:block}
+.syn{border-left:3px solid var(--accent);padding:10px 14px;background:var(--card);border-radius:0 8px 8px 0;border-top:1px solid var(--line-faint);border-right:1px solid var(--line-faint);border-bottom:1px solid var(--line-faint)}
+.syn .sn{font-size:13px;font-weight:600}
+.syn .se{font-size:12px;color:var(--ink-soft);margin-top:3px}
+.syn .sx{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
+.ind-row{display:grid;grid-template-columns:120px 1fr 40px;gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line-faint)}
+.ind-row:last-child{border-bottom:none}
+.ind-row .in{font-size:12.5px;font-weight:500}
+.ind-row .bar{height:9px;background:var(--paper-warm);border-radius:3px;overflow:hidden}
+.ind-row .bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.ind-row .sc{font-family:var(--mono);font-size:11px;text-align:right;color:var(--ink-mute)}
+.ind-row .ir{grid-column:1/-1;font-size:11px;color:var(--ink-mute);margin-top:-2px;padding-bottom:4px}
+.summary{font-size:13.5px;line-height:1.8;max-width:72ch}
+.summary p+p{margin-top:8px}
+.result-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+@media (max-width:1000px){.result-grid{grid-template-columns:1fr}}
+
+/* ===== STEP 4: DESIGN ===== */
+.ctabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.ctab{background:var(--card);border:1px solid var(--line-soft);border-radius:8px;padding:10px 14px;cursor:pointer;min-width:200px;flex:1 1 200px;text-align:left}
+.ctab.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.ctab .cf{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--brass)}
+.ctab .cn{font-size:13.5px;font-weight:600;margin-top:2px}
+.ctab .cm{font-size:11px;color:var(--ink-mute);margin-top:2px}
+.design-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+@media (max-width:1000px){.design-grid{grid-template-columns:1fr}}
+.bp{background:var(--card);border:1px solid var(--line-soft);border-radius:9px;padding:8px;overflow:hidden}
+.bp svg{width:100%;height:auto;display:block}
+.radar-wrap svg{width:100%;max-width:300px;height:auto;display:block;margin:0 auto}
+.flow{display:flex;gap:0;overflow-x:auto;padding:4px 0 8px}
+.fstep{flex:0 0 auto;width:150px;position:relative;padding-right:14px}
+.fstep::after{content:"";position:absolute;right:2px;top:22px;width:10px;height:10px;border-top:1.5px solid var(--line);border-right:1.5px solid var(--line);transform:rotate(45deg)}
+.fstep:last-child::after{display:none}
+.fstep .fb{background:var(--card);border:1px solid var(--line-soft);border-radius:8px;padding:9px 10px;border-top:3px solid var(--line);height:100%}
+.fstep .fr{font-family:var(--mono);font-size:10px;color:var(--ink-mute)}
+.fstep .fn{font-size:12px;font-weight:600;margin-top:2px;line-height:1.3}
+.fstep .ff{font-size:10.5px;color:var(--ink-soft);margin-top:3px}
+.fstep .fd{font-family:var(--mono);font-size:10px;color:var(--brass);margin-top:4px}
+ul.plain{list-style:none;display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+ul.plain li{padding-left:16px;position:relative}
+ul.plain li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--brass)}
+ul.plain.risk li::before{background:var(--warn)}
+ul.plain.next li::before{background:var(--ok)}
+
+/* ===== LIBRARY / MODAL ===== */
+.modal-bg{position:fixed;inset:0;background:rgba(19,19,15,.55);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:12px;width:min(560px,100%);max-height:90vh;overflow-y:auto;padding:20px 22px;box-shadow:var(--shadow)}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:6px}
+.modal .field{margin-top:12px}
+.modal label{display:block;font-size:11.5px;color:var(--ink-mute);margin-bottom:4px}
+.modal input,.modal select{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12.5px}
+.modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.lib-item{background:var(--card);border:1px solid var(--line-soft);border-radius:9px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.lib-item:hover{border-color:var(--ink-faint)}
+.lib-item .ln{font-size:13.5px;font-weight:600}
+.lib-item .lm{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute)}
+.lib-item .lt{display:flex;flex-wrap:wrap;gap:4px}
+.progress{height:3px;background:var(--line-faint);border-radius:2px;overflow:hidden;margin-top:10px}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
+.fade-in{animation:fadeIn .3s}
+.pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:11px;background:var(--paper-warm);border:1px solid var(--line-soft);border-radius:6px;padding:10px;max-height:240px;overflow:auto}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand" id="brand" title="最初から"><span class="brand-mark">ANGLEX<b>.</b>FUSION</span><span class="brand-sub">Technology Fusion Lab</span></div>
+  <div class="topbar-divider"></div>
+  <div class="project-pill" title="現在のセッション"><span class="dot"></span><span class="pname" id="projName">新規セッション</span><span class="pmeta" id="projMeta">DB 72技術 / 12工場</span></div>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-actions">
+    <span class="mode-badge" id="modeBadge" title="AI 推論モードの設定">AI: ローカル推論</span>
+    <button class="tbtn" id="btnLibrary" title="提案ライブラリ"><span class="lbl">提案ライブラリ</span><span class="lbl-s">保存済</span><span class="cnt" id="libCount">0</span></button>
+    <button class="tbtn" id="btnSettings" title="設定">⚙</button>
+  </div>
+</header>
+
+<div class="workflow" id="workflow">
+  <div class="wf-step active" data-step="1"><div class="wf-num">1</div><div><div class="wf-title">技術ベース</div><div class="wf-desc">12工場・72技術から選ぶ</div></div></div>
+  <div class="wf-step" data-step="2"><div class="wf-num">2</div><div><div class="wf-title">仮説・アイデア</div><div class="wf-desc">作りたいもの・制約を入力</div></div></div>
+  <div class="wf-step locked" data-step="3"><div class="wf-num">3</div><div><div class="wf-title">AI 合成</div><div class="wf-desc">相乗効果・提供領域・産業</div></div></div>
+  <div class="wf-step locked" data-step="4"><div class="wf-num">4</div><div><div class="wf-title">デザイン</div><div class="wf-desc">コンセプト図面・工程・検証</div></div></div>
+</div>
+
+<div class="stage">
+  <main class="stage-main" id="stageMain">
+
+    <!-- ① 技術ベース -->
+    <section class="pane" id="pane1">
+      <div class="page-h">技術ベース — 工場をまたいで技術を選ぶ</div>
+      <div class="page-sub">各工場が登録した「できること」のデータベースです。役割（材料・成形・加工・接合・表面・機能・計測・組立）が異なる技術を 2〜6 件選ぶと、AI が組み合わせの相乗効果と提供できる領域を推定します。迷ったら空のまま次へ進み、AI に選ばせることもできます。</div>
+      <div class="sec-h"><span class="eyebrow">Factories</span><h3>登録工場</h3><span class="sp"></span><span class="small muted" id="facHint">クリックで絞り込み</span></div>
+      <div class="fac-strip" id="facStrip"></div>
+      <div class="filters">
+        <input id="q" placeholder="技術・タグ・材料で検索（例：微細 / 気密 / センサ / チタン）" autocomplete="off">
+        <select id="fRole"><option value="">すべての役割</option></select>
+        <select id="fInd"><option value="">すべての産業</option></select>
+        <button class="btn ghost sm" id="fClear">クリア</button>
+      </div>
+      <div class="small muted" id="techCount" style="margin-bottom:8px"></div>
+      <div class="grid g4" id="techGrid"></div>
+    </section>
+
+    <!-- ② 仮説・アイデア -->
+    <section class="pane" id="pane2" hidden>
+      <div class="page-h">仮説・アイデア — 何を作りたいか、どんな仮説か</div>
+      <div class="page-sub">完成イメージでも、課題でも、ふわっとした仮説でも構いません。AI は選択技術と文章の両方を読み、欠けている役割の技術を推薦し、提供可能な領域・産業と 3 つのコンセプト案を返します。</div>
+      <div class="idea-wrap" style="margin-top:16px">
+        <div>
+          <textarea class="idea" id="idea" placeholder="例：農業ハウス向けに、電池交換なしで土壌の水分と温度を測り続けられる小型センサ。雨風に耐え、安価に量産したい。"></textarea>
+          <div class="card" style="margin-top:12px;display:flex;flex-direction:column;gap:12px">
+            <div class="opt-row"><span class="lbl">作るものの規模</span><div class="seg" id="segForm"><button data-v="auto" class="on">おまかせ</button><button data-v="部品">部品・モジュール</button><button data-v="装置">装置・機器</button><button data-v="大型">大型機械</button><button data-v="ノベルティ">ノベルティ</button></div></div>
+            <div class="opt-row"><span class="lbl">想定数量</span><div class="seg" id="segLot"><button data-v="1" >試作 1〜10</button><button data-v="100" class="on">小ロット 〜500</button><button data-v="5000">量産 〜1万</button><button data-v="100000">大量 10万〜</button></div></div>
+            <div class="opt-row"><span class="lbl">重視すること</span><div id="prioChips"></div></div>
+            <div class="opt-row"><span class="lbl">技術の選び方</span><label class="switch"><input type="checkbox" id="autoPick" checked><span>選択が足りない役割を AI が技術ベースから補完する</span></label></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+            <button class="btn primary" id="btnSynth">AI で合成する →</button>
+            <span class="small muted" id="synthHint"></span>
+          </div>
+        </div>
+        <div>
+          <div class="sec-h" style="margin-top:0"><span class="eyebrow">Scenarios</span><h3>デモシナリオ</h3></div>
+          <div class="scen" id="scenList"></div>
+          <div class="callout" style="margin-top:14px">文章中の「医療」「農業」「展示会」などの語から産業と規模を推定し、「軽量」「防水」「量産」などの語から重視する特性を読み取ります。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ AI 合成 -->
+    <section class="pane" id="pane3" hidden>
+      <div class="page-h" id="synthTitle">AI 合成 — 技術の組み合わせを解析</div>
+      <div class="page-sub" id="synthSub">選択技術の役割カバレッジ、相乗効果ルール、スケール・材料の整合性、産業適合度を評価し、コンセプトを生成します。</div>
+      <div class="think" id="think" style="margin-top:14px"></div>
+      <div class="progress"><i id="prog"></i></div>
+      <div id="results" hidden>
+        <div class="result-grid" style="margin-top:18px">
+          <div>
+            <div class="sec-h" style="margin-top:0"><span class="eyebrow">Synthesis</span><h3 id="resTitle"></h3></div>
+            <div class="summary" id="resSummary"></div>
+            <div class="sec-h"><span class="eyebrow">Synergy</span><h3>見つかった相乗効果</h3></div>
+            <div class="grid" id="resSyn" style="gap:8px"></div>
+            <div class="sec-h"><span class="eyebrow">Coverage</span><h3>役割カバレッジと推奨追加技術</h3></div>
+            <div id="resCov"></div>
+          </div>
+          <div>
+            <div class="sec-h" style="margin-top:0"><span class="eyebrow">Fusion map</span><h3>技術の結合マップ</h3></div>
+            <div class="graph-wrap" id="graph"></div>
+            <div class="sec-h"><span class="eyebrow">Markets</span><h3>提供可能な領域・産業</h3></div>
+            <div class="card" id="resInd"></div>
+            <div class="sec-h"><span class="eyebrow">Compatibility</span><h3>整合性チェック</h3></div>
+            <div id="resCompat" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:22px;flex-wrap:wrap">
+          <button class="btn primary" id="btnToDesign">3 案のデザインを見る →</button>
+          <button class="btn" id="btnRerun">条件を変えて再合成</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ④ デザイン -->
+    <section class="pane" id="pane4" hidden>
+      <div class="page-h">デザイン — コンセプト案と図面</div>
+      <div class="page-sub">同じ技術の組み合わせから、規模の異なる 3 案を展開します。図面は技術パラメータから自動生成した概念図で、各技術がどこに効くかを引出線で示します。</div>
+      <div class="ctabs" id="ctabs" style="margin-top:14px"></div>
+      <div class="design-grid">
+        <div>
+          <div class="bp" id="bp"></div>
+          <div class="sec-h"><span class="eyebrow">Process</span><h3>工場をまたぐ工程フロー</h3><span class="sp"></span><span class="small muted num" id="flowTotal"></span></div>
+          <div class="flow" id="flow"></div>
+          <div class="sec-h"><span class="eyebrow">Hypothesis</span><h3>仮説と検証プラン</h3></div>
+          <div class="card" id="hypo"></div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="sec-h" style="margin-top:0"><span class="eyebrow">Concept</span><h3 id="cName"></h3></div>
+            <div id="cDesc" style="font-size:12.5px;line-height:1.7"></div>
+            <dl class="kv" id="cSpec" style="margin-top:12px"></dl>
+          </div>
+          <div class="card radar-wrap" style="margin-top:12px"><div class="sec-h" style="margin-top:0"><span class="eyebrow">Feasibility</span><h3>実現性レーダー</h3></div><div id="radar"></div></div>
+          <div class="card" style="margin-top:12px"><div class="sec-h" style="margin-top:0"><span class="eyebrow">Technologies</span><h3>構成技術と役割</h3></div><div class="tscroll"><table class="t" id="cTech"></table></div></div>
+          <div class="card" style="margin-top:12px"><div class="sec-h" style="margin-top:0"><span class="eyebrow">Risks</span><h3>リスク</h3></div><ul class="plain risk" id="cRisk"></ul></div>
+          <div class="card" style="margin-top:12px"><div class="sec-h" style="margin-top:0"><span class="eyebrow">Next</span><h3>次のアクション</h3></div><ul class="plain next" id="cNext"></ul></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:22px;flex-wrap:wrap">
+        <button class="btn primary" id="btnSave">この提案をライブラリに保存</button>
+        <button class="btn" id="btnCopy">JSON をコピー</button>
+        <button class="btn ghost" id="btnNew">新しいセッション</button>
+      </div>
+    </section>
+
+    <!-- ライブラリ -->
+    <section class="pane" id="paneLib" hidden>
+      <div class="page-h">提案ライブラリ</div>
+      <div class="page-sub">保存した提案はこのブラウザに保持されます。開くと合成結果とデザインを再表示します。</div>
+      <div class="grid g3" id="libGrid" style="margin-top:16px"></div>
+    </section>
+  </main>
+
+  <aside class="basket" id="basket">
+    <div class="basket-h"><h3>選択中の技術</h3><span class="cap" id="basketCap">0 / 6</span></div>
+    <div class="basket-body" id="basketBody"></div>
+    <div class="basket-foot">
+      <div class="coverage" id="coverage"></div>
+      <button class="btn primary full" id="btnNext1">仮説・アイデアへ →</button>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+<script>
+/* =====================================================================
+   DATA — 技術ベース（デモ用。工場名・技術は架空）
+   ===================================================================== */
+const ROLES = ['材料','成形','加工','接合','表面','機能','計測','組立'];
+const ROLE_COLOR = {材料:'var(--r-material)',成形:'var(--r-form)',加工:'var(--r-machining)',接合:'var(--r-join)',表面:'var(--r-surface)',機能:'var(--r-func)',計測:'var(--r-measure)',組立:'var(--r-assembly)'};
+const ROLE_DESC = {材料:'素材そのものを作る・選ぶ',成形:'形を一度に作る',加工:'形を削り出す・切る',接合:'部品同士をつなぐ',表面:'表面に機能・意匠を与える',機能:'電気・制御・センシングを与える',計測:'測る・検査する',組立:'組み上げて製品にする'};
+const INDUSTRIES = ['医療','半導体','自動車','航空宇宙','ロボティクス','食品','農業','建設','エネルギー','家電','分析機器','物流','スポーツ','ノベルティ'];
+const IND_KEY = {医療:'医療',半導体:'半導体',自動車:'自動車',航空:'航空宇宙',ロボ:'ロボティクス',食品:'食品',農業:'農業',建設:'建設',エネ:'エネルギー',家電:'家電',分析:'分析機器',物流:'物流',スポーツ:'スポーツ',ノベ:'ノベルティ'};
+
+const FACTORIES = [
+  {id:'F01',name:'大田精密工業',region:'東京・大田区',type:'精密切削・放電',note:'μm級の切削と検査。医療・航空の少量高精度品が主力。'},
+  {id:'F02',name:'燕三条メタルワークス',region:'新潟・燕三条',type:'板金・プレス・研磨',note:'薄板の筐体から量産プレス、鏡面磨きまで。'},
+  {id:'F03',name:'東海樹脂成形',region:'愛知・豊田',type:'射出成形・複合成形',note:'インサート・二色・光学グレードの樹脂量産。'},
+  {id:'F04',name:'北陸表面技術',region:'富山・高岡',type:'めっき・コーティング',note:'アルマイト、樹脂めっき、機能性ナノコート。'},
+  {id:'F05',name:'関西セラミックス',region:'京都・宇治',type:'セラミックス・MIM',note:'焼結体、圧電素子、セラミック-金属の気密接合。'},
+  {id:'F06',name:'九州エレクトロ',region:'福岡・北九州',type:'基板実装・センサ',note:'高密度実装、IoT センサ、エッジ AI 基板。'},
+  {id:'F07',name:'浜松アディティブ',region:'静岡・浜松',type:'金属/樹脂 3D プリント',note:'LPBF 金属 AM、ラティス設計、砂型バインダージェット。'},
+  {id:'F08',name:'播磨レーザー工業',region:'兵庫・播磨',type:'レーザー加工・溶接',note:'微細穴から厚板切断、異材溶接、機能表面。'},
+  {id:'F09',name:'信州マイクロ',region:'長野・諏訪',type:'MEMS・光学・微細',note:'シリコン MEMS、マイクロ流体、光学薄膜。'},
+  {id:'F10',name:'道央テキスタイル',region:'北海道・旭川',type:'産業繊維・複合材',note:'CFRP、産業織物、スマートテキスタイル。'},
+  {id:'F11',name:'四国ゴム化成',region:'香川・坂出',type:'ゴム・シリコーン',note:'医療グレード LSR、防振、ソフトアクチュエータ。'},
+  {id:'F12',name:'東北ロボティクス',region:'宮城・仙台',type:'自動化・制御・組立',note:'協働ロボセル、画像検査 AI、大型フレーム組立。'},
+];
+const FAC = Object.fromEntries(FACTORIES.map(f=>[f.id,f]));
+
+// [id, fac, name, role, tags, materials, scaleMin(mm), scaleMax(mm), precision, lotMin, lotMax, leadDays, TRL, industries{short:weight}, desc]
+const RAW = [
+ ['T01','F01','5軸微細マシニング','加工',['切削','微細','高精度','複雑形状'],['AL','TI','SUS','真鍮','樹脂'],0.5,400,'±2μm',1,500,14,9,{医療:3,航空:3,半導体:2,分析:2,ロボ:1},'φ0.1 の工具で三次元の自由曲面を削り出す。試作から 500 個規模の高精度部品向け。'],
+ ['T02','F01','ワイヤ放電加工','加工',['放電','高硬度','精密穴','金型'],['SUS','超硬','工具鋼','TI'],1,300,'±3μm',1,200,10,9,{半導体:3,自動車:2,医療:1,航空:2},'焼入れ鋼や超硬をワイヤで切り抜く。金型部品や精密スリットに。'],
+ ['T03','F01','ハードターニング（硬質旋削）','加工',['旋削','高硬度','軸物','量産'],['SUS','工具鋼','超硬'],3,200,'±5μm',10,5000,7,9,{自動車:3,ロボ:2,エネ:1},'研削を省いて焼入れ後の軸物を直接仕上げる。シャフト・ピンの中量産。'],
+ ['T04','F01','超音波ホーニング・鏡面仕上げ','表面',['鏡面','内面','Ra0.05','潤滑'],['SUS','AL','超硬'],2,150,'Ra0.05',1,1000,5,8,{医療:2,分析:3,半導体:2,エネ:1},'穴の内面を鏡面に。流体の滑らかさや摺動性を上げる。'],
+ ['T05','F01','三次元測定・CT スキャン検査','計測',['検査','CT','内部欠陥','トレーサビリティ'],['*'],1,500,'±1μm',1,10000,3,9,{医療:3,航空:3,自動車:2,半導体:2},'X 線 CT で内部の欠陥と寸法を非破壊で測り、個体ごとに記録する。'],
+ ['T06','F01','微細ねじ・長尺深穴加工','加工',['深穴','微細ねじ','長尺','流路'],['SUS','AL','TI'],1,1000,'±10μm',1,300,12,8,{医療:2,エネ:2,分析:2,航空:1},'φ1 で深さ 100 倍の穴やM1 以下のねじ。細い流路・内視鏡部品に。'],
+ ['T07','F02','ファイバーレーザー精密板金','成形',['板金','薄板','軽量','筐体'],['SUS','AL','鉄','銅'],10,2000,'±0.1mm',1,2000,7,9,{家電:3,ロボ:2,物流:2,建設:1,医療:1},'t0.3〜6 の板を切って曲げる。筐体・ブラケットの定番工法。'],
+ ['T08','F02','順送プレス（量産）','成形',['プレス','量産','薄板','低コスト'],['SUS','鉄','銅','AL'],5,300,'±0.05mm',1000,1000000,21,9,{自動車:3,家電:3,エネ:1},'金型で毎分数百個。端子・バネ・小物金具の大量生産。'],
+ ['T09','F02','ヘラ絞り・深絞り','成形',['絞り','曲面','容器','一体'],['SUS','AL','銅','TI'],20,800,'±0.2mm',1,3000,10,9,{食品:3,家電:2,医療:1,ノベ:2},'一枚の板から継ぎ目のない容器・カップ・リフレクタを成形。'],
+ ['T10','F02','磨き（鏡面研磨・ヘアライン）','表面',['研磨','鏡面','意匠','衛生'],['SUS','AL','銅','TI'],5,1500,'Ra0.1',1,5000,5,9,{食品:3,家電:2,ノベ:3,医療:1,建設:1},'職人の手磨きとロボット研磨。衛生性と高級感を両立。'],
+ ['T11','F02','TIG / ファイバー溶接（薄板）','接合',['溶接','薄板','気密','構造'],['SUS','AL','TI'],10,2500,'±0.3mm',1,2000,7,9,{食品:2,建設:2,エネ:2,医療:1,ロボ:1},'薄板の歪みを抑えた気密溶接。タンク・筐体・架台。'],
+ ['T12','F02','金属エンボス・微細刻印','表面',['刻印','意匠','テクスチャ','ブランド'],['SUS','AL','銅','真鍮'],5,600,'±0.05mm',1,50000,5,9,{ノベ:3,家電:2,食品:1,スポーツ:1},'ロゴ・紋様・滑り止めテクスチャを金属表面に転写。'],
+ ['T13','F03','精密射出成形','成形',['射出','樹脂','量産','薄肉'],['PP','PC','POM','PA','PEEK'],2,500,'±0.03mm',500,1000000,30,9,{家電:3,自動車:3,医療:2,ノベ:2},'肉厚 0.3mm の薄肉から大型外装まで。樹脂量産の基本。'],
+ ['T14','F03','インサート成形（金属一体）','成形',['インサート','異材一体','防水','導通'],['PA','PBT','PC+金属'],5,300,'±0.05mm',500,500000,35,9,{自動車:3,家電:2,医療:2,ロボ:1},'端子・ナット・磁石を金型に置いて樹脂で包む。防水と導通を一工程で。'],
+ ['T15','F03','二色成形・エラストマー複合','成形',['二色','軟質','グリップ','シール'],['PP+TPE','PC+TPU'],5,300,'±0.05mm',1000,500000,35,9,{家電:2,スポーツ:3,医療:2,ノベ:2},'硬い骨格に柔らかいグリップやシールを一体成形。'],
+ ['T16','F03','PEEK / スーパーエンプラ成形','成形',['耐熱','耐薬品','生体適合','高強度'],['PEEK','PPS','PEI'],2,200,'±0.05mm',100,100000,40,8,{医療:3,半導体:3,航空:2,エネ:1},'金属代替の高機能樹脂。滅菌・薬液・高温環境に。'],
+ ['T17','F03','光学グレード成形（レンズ・導光）','成形',['光学','透明','導光','レンズ'],['PMMA','PC','COP'],1,300,'±0.01mm',1000,1000000,45,8,{家電:2,医療:2,分析:3,自動車:2},'非球面レンズや導光板を樹脂で量産。光を設計する成形。'],
+ ['T18','F03','樹脂無塗装意匠（シボ・偏光）','表面',['シボ','意匠','無塗装','環境'],['PP','ABS','PC'],10,500,'—',1000,500000,20,9,{家電:3,自動車:2,ノベ:3},'塗装なしで革・木・金属のような質感。VOC ゼロ。'],
+ ['T19','F04','硬質アルマイト・カラーアルマイト','表面',['アルマイト','耐摩耗','絶縁','着色'],['AL'],1,1500,'膜厚±2μm',1,100000,5,9,{家電:2,ロボ:2,航空:2,ノベ:3,スポーツ:2},'アルミに硬さと色を。摺動部から意匠部品まで。'],
+ ['T20','F04','無電解ニッケル・金めっき','表面',['めっき','導電','耐食','接点'],['AL','SUS','銅','樹脂'],0.5,800,'膜厚±1μm',1,1000000,5,9,{半導体:3,家電:2,医療:2,エネ:2},'複雑形状に均一な膜。接点・耐食・はんだ付け性。'],
+ ['T21','F04','樹脂メタライズ（樹脂めっき）','表面',['樹脂めっき','軽量金属感','EMI','意匠'],['ABS','PC','PA'],5,400,'—',100,500000,7,8,{家電:3,自動車:2,ノベ:3},'樹脂に金属膜。軽いのに金属の見え方と電磁シールド。'],
+ ['T22','F04','DLC・フッ素コーティング','表面',['DLC','低摩擦','撥水','離型'],['SUS','AL','超硬','樹脂'],1,600,'膜厚±0.2μm',1,50000,7,8,{自動車:3,医療:2,食品:2,エネ:2,スポーツ:1},'ダイヤモンドライクカーボンで摩擦と摩耗を激減。離型・撥水も。'],
+ ['T23','F04','抗菌・親水ナノコート','表面',['抗菌','親水','衛生','防曇'],['SUS','AL','樹脂','ガラス'],1,1500,'—',1,100000,5,7,{医療:3,食品:3,家電:2,建設:1},'ナノ粒子で抗菌・防曇・汚れ落ち。医療・食品の接触面に。'],
+ ['T24','F04','溶射（セラミック・金属）','表面',['溶射','耐熱','耐摩耗','絶縁'],['鉄','SUS','AL'],20,3000,'膜厚±20μm',1,5000,7,9,{エネ:3,航空:2,建設:2,半導体:1},'大物に厚膜の耐熱・耐摩耗層を吹き付ける。'],
+ ['T25','F05','ファインセラミックス焼結','材料',['セラミック','絶縁','耐熱','耐摩耗'],['Al2O3','ZrO2','SiC'],1,300,'±0.1%',10,100000,40,9,{半導体:3,医療:2,エネ:2,分析:2},'アルミナ・ジルコニア・SiC。1000℃と絶縁と硬さを同時に。'],
+ ['T26','F05','MIM（金属粉末射出成形）','成形',['MIM','複雑形状','小物量産','高強度'],['SUS','TI','工具鋼'],2,80,'±0.3%',5000,5000000,45,9,{医療:3,自動車:2,家電:2,ロボ:1},'金属を樹脂のように成形。切削では高い小物の量産。'],
+ ['T27','F05','セラミック 3D 積層（光造形）','成形',['セラミックAM','複雑流路','試作','耐熱'],['Al2O3','ZrO2'],1,150,'±50μm',1,500,14,6,{医療:2,エネ:2,半導体:2,分析:2},'焼結セラミックの内部に流路や格子を作る。試作段階の技術。'],
+ ['T28','F05','透光性セラミック・蛍光体','材料',['透光','光学','蛍光','高出力光源'],['YAG','Al2O3'],1,100,'—',10,50000,45,7,{家電:1,医療:2,分析:2,自動車:2},'光を通すセラミック。高出力 LED・レーザー光源の窓と波長変換。'],
+ ['T29','F05','圧電セラミック素子','機能',['圧電','振動','超音波','アクチュエータ'],['PZT','無鉛圧電'],1,80,'—',100,1000000,40,9,{医療:3,分析:2,ロボ:2,家電:2,自動車:1},'電気と振動を相互変換。超音波・微小ポンプ・触覚。'],
+ ['T30','F05','セラミック・金属接合（ろう付け）','接合',['異材接合','気密','耐熱','真空'],['セラミック+SUS','コバール'],2,200,'気密 1e-9',1,10000,20,8,{半導体:3,エネ:2,医療:1,航空:2},'セラミックと金属を真空気密でつなぐ。真空装置・センサ窓。'],
+ ['T31','F06','高密度基板実装（0201・BGA）','機能',['基板','実装','小型','電子'],['FR-4','フレキ'],5,400,'—',10,1000000,14,9,{家電:3,医療:2,自動車:2,ロボ:2},'0.25mm の部品を全数 X 線検査付きで実装。'],
+ ['T32','F06','センサモジュール（温湿度・加速度・ToF）','機能',['センサ','IoT','計測','無線'],['モジュール'],5,100,'—',10,100000,21,9,{農業:3,物流:3,家電:2,ロボ:2,建設:2,医療:1},'測りたい量に合わせたセンサ基板。校正済みで供給。'],
+ ['T33','F06','低消費電力無線（BLE / LoRa）','機能',['無線','IoT','低電力','通信'],['モジュール'],10,100,'—',10,100000,21,9,{農業:3,物流:3,建設:2,家電:2,医療:1},'コイン電池で年単位、LoRa で数 km。屋外 IoT の通信層。'],
+ ['T34','F06','フレキシブル基板・伸縮配線','機能',['フレキ','伸縮','曲面','ウェアラブル'],['PI','TPU'],5,500,'±0.05mm',10,100000,21,7,{医療:3,スポーツ:3,家電:2,ロボ:2},'曲がる・伸びる配線。皮膚や曲面に沿う電子回路。'],
+ ['T35','F06','エネルギーハーベスト電源','機能',['発電','電池レス','振動','光'],['モジュール'],10,200,'—',10,50000,28,6,{農業:2,建設:2,物流:2,エネ:3},'振動・光・温度差から微小電力を回収。電池交換ゼロの機器へ。'],
+ ['T36','F06','エッジ AI 推論基板','機能',['AI','画像認識','エッジ','カメラ'],['モジュール'],30,150,'—',10,20000,28,8,{ロボ:3,農業:2,物流:3,建設:2,食品:2},'カメラ映像をその場で判定。クラウド不要の認識モジュール。'],
+ ['T37','F07','金属 3D プリント（LPBF）','成形',['金属AM','ラティス','軽量','一体化'],['TI','AL','SUS','インコネル'],5,400,'±50μm',1,500,14,8,{航空:3,医療:3,ロボ:2,エネ:2},'粉末をレーザーで溶かして積層。中空・ラティス・一体化が可能。'],
+ ['T38','F07','樹脂 AM（SLS・MJF）','成形',['樹脂AM','試作','小ロット','複雑形状'],['PA12','PA11','TPU'],5,380,'±0.2mm',1,2000,5,9,{ロボ:2,医療:2,ノベ:3,家電:1,スポーツ:2},'金型なしでナイロン部品を数日で。小ロットの最終部品にも。'],
+ ['T39','F07','バインダージェット（砂型・金属）','成形',['砂型','鋳造','大型','低コスト'],['鋳鉄','AL','銅合金'],50,1500,'±0.5mm',1,200,14,8,{建設:2,エネ:2,自動車:2,農業:2},'砂型を印刷して鋳造。大型・複雑な一品物を木型なしで。'],
+ ['T40','F07','トポロジー最適化・ジェネレーティブ設計','機能',['設計','軽量化','最適化','CAE'],['*'],1,3000,'—',1,1,7,9,{航空:3,自動車:2,ロボ:2,スポーツ:2},'荷重条件から形状を計算で導く。材料 40% 減の設計支援。'],
+ ['T41','F07','ハイブリッド AM（積層＋切削）','加工',['AM','切削','補修','ニアネット'],['SUS','TI','インコネル'],20,600,'±20μm',1,100,21,7,{エネ:3,航空:2,建設:1},'積層した直後に同じ機械で削る。精度と自由形状の両取り。'],
+ ['T42','F07','多材料・カラー 3D プリント','成形',['多材料','フルカラー','試作','意匠'],['樹脂','フルカラー'],1,300,'±0.1mm',1,500,3,8,{ノベ:3,医療:2,家電:1},'硬軟・色をボクセル単位で。見た目そのままの試作・記念品。'],
+ ['T43','F08','レーザー微細穴あけ・マイクロ流路','加工',['微細','流路','穴','薄板'],['SUS','ガラス','樹脂','セラミック'],0.5,300,'±5μm',1,10000,7,8,{医療:3,分析:3,半導体:2,エネ:1},'φ10μm の穴や幅 50μm の溝をバリなしで。ノズル・流路板。'],
+ ['T44','F08','レーザー溶接（異材・気密）','接合',['溶接','異材','気密','低歪'],['SUS','AL','銅','TI'],2,1000,'±0.05mm',1,100000,7,9,{自動車:3,医療:2,エネ:3,家電:1},'銅とアルミ、薄肉缶の気密封止。熱影響を最小に。'],
+ ['T45','F08','レーザーマーキング・2D コード','表面',['マーキング','トレーサビリティ','意匠','QR'],['*'],1,1000,'—',1,1000000,1,9,{物流:3,医療:2,食品:2,ノベ:3,自動車:1},'消えない個体識別コードやロゴを刻む。全数トレース。'],
+ ['T46','F08','レーザーテクスチャリング（撥水・摩擦制御）','表面',['テクスチャ','撥水','摩擦','機能表面'],['SUS','AL','樹脂','ガラス'],1,500,'±2μm',1,20000,7,7,{医療:2,自動車:2,食品:2,スポーツ:2,エネ:1},'μm の周期構造で撥水・摩擦・光沢を制御。コーティング不要の機能表面。'],
+ ['T47','F08','厚板レーザー・ベベル切断','加工',['厚板','大型','構造','切断'],['鉄','SUS','AL'],100,6000,'±0.5mm',1,1000,5,9,{建設:3,農業:2,エネ:2,物流:2},'t25 まで開先付きで切る。架台・フレーム・大型構造。'],
+ ['T48','F08','レーザークラッディング（硬化肉盛）','表面',['肉盛','耐摩耗','補修','大型'],['鉄','SUS','超硬'],50,3000,'—',1,500,10,8,{建設:2,エネ:3,農業:2,自動車:1},'摩耗部に硬い金属層を肉盛り。大型部品の寿命を延ばす。'],
+ ['T49','F09','MEMS マイクロ加工（シリコン）','加工',['MEMS','微細','センサ','シリコン'],['Si','ガラス'],0.01,50,'±0.5μm',100,1000000,60,8,{医療:3,分析:3,半導体:3,自動車:2},'シリコンに μm の構造。圧力・慣性・マイクロミラー。'],
+ ['T50','F09','マイクロ流体チップ','加工',['流路','微細','診断','ガラス'],['ガラス','COP','PDMS'],1,100,'±2μm',10,100000,30,8,{医療:3,分析:3,食品:1,農業:1},'髪の毛ほどの流路で液体を混ぜ・分け・測る。診断・分析チップ。'],
+ ['T51','F09','光学薄膜・AR コート','表面',['光学','薄膜','反射防止','フィルタ'],['ガラス','樹脂'],1,300,'±1nm',10,100000,14,9,{分析:3,医療:2,家電:2,自動車:1},'nm 精度の多層膜で反射防止・波長選択。'],
+ ['T52','F09','小型光学ユニット組立','組立',['光学','組立','レンズ','精密'],['ガラス','樹脂','AL'],2,100,'±5μm',10,50000,21,9,{医療:2,分析:3,家電:2,ロボ:2},'レンズ・センサ・光源を μm で位置決めしてユニット化。'],
+ ['T53','F09','ガラス微細加工・接合','加工',['ガラス','微細','透明','気密'],['ガラス','石英'],1,200,'±2μm',10,50000,21,7,{分析:3,医療:2,半導体:2,家電:1},'ガラスを切って穴をあけ、接着剤なしで気密接合。'],
+ ['T54','F09','微小力・変位計測','計測',['計測','微小','校正','トレーサビリティ'],['*'],0.01,100,'nm 級',1,1000,5,9,{医療:2,分析:3,半導体:2,ロボ:1},'nm の変位、μN の力を国家標準にトレースして測る。'],
+ ['T55','F10','CFRP / GFRP 複合材成形','材料',['複合材','軽量','高剛性','大型'],['CFRP','GFRP'],50,4000,'±0.5mm',1,2000,21,9,{航空:3,スポーツ:3,自動車:2,ロボ:2,農業:1},'炭素繊維で鉄の 1/5 の重さと高剛性。アーム・フレーム・筐体。'],
+ ['T56','F10','産業用織物・メッシュ','材料',['織物','フィルタ','通気','柔軟'],['PET','PP','ガラス繊維','SUS線'],10,3000,'—',10,100000,14,9,{農業:3,食品:2,建設:2,医療:1},'開口 10μm〜のメッシュ、補強織物。ろ過・通気・補強。'],
+ ['T57','F10','導電繊維・スマートテキスタイル','機能',['導電','センサ','ウェアラブル','柔軟'],['導電糸','PET'],10,2000,'—',10,50000,28,6,{スポーツ:3,医療:3,家電:1,ロボ:1},'糸がセンサと配線になる布。姿勢・圧力・心拍を服で測る。'],
+ ['T58','F10','熱可塑性複合材プレス（量産）','成形',['複合材','量産','軽量','リサイクル'],['CFRTP','GFRTP'],50,1500,'±0.3mm',100,100000,28,8,{自動車:3,スポーツ:2,家電:1,物流:2},'1 分サイクルで複合材部品を成形。リサイクルも可能。'],
+ ['T59','F10','耐候・難燃生地加工','表面',['耐候','難燃','防水','大型'],['PET','PVC','PTFE'],100,20000,'—',1,5000,14,9,{建設:3,農業:3,物流:1,スポーツ:1},'10 年屋外で使える膜材。ハウス・テント・カバー。'],
+ ['T60','F10','縫製・溶着（大型シート）','接合',['縫製','溶着','大型','柔軟'],['PVC','PET','TPU'],100,20000,'—',1,5000,10,9,{建設:2,農業:3,物流:2,スポーツ:2},'数十 m の膜を高周波溶着。気密・防水の大型構造。'],
+ ['T61','F11','シリコーン成形（医療・食品グレード）','成形',['シリコーン','生体適合','柔軟','衛生'],['LSR','HTV'],1,400,'±0.05mm',100,1000000,30,9,{医療:3,食品:3,家電:1,スポーツ:1},'体に触れても安全な柔らかい部品。マスク・弁・哺乳瓶。'],
+ ['T62','F11','ゴム・金属加硫接着','接合',['加硫','防振','異材一体','シール'],['NR','EPDM+SUS'],5,500,'±0.2mm',100,500000,28,9,{自動車:3,建設:2,ロボ:2,エネ:1},'ゴムと金属を化学的に一体化。防振マウント・シール。'],
+ ['T63','F11','発泡・ゲル素材（衝撃吸収）','材料',['発泡','衝撃吸収','軽量','クッション'],['PU','シリコーンゲル','EVA'],5,1000,'—',10,100000,21,9,{スポーツ:3,物流:2,医療:2,ノベ:2},'硬さを設計した発泡・ゲル。保護・快適・梱包。'],
+ ['T64','F11','導電・磁性ゴム','機能',['導電ゴム','センサ','柔軟','EMI'],['シリコーン+Ag','シリコーン+Fe'],1,300,'—',100,100000,28,7,{ロボ:3,医療:2,家電:2,自動車:1},'押すと抵抗が変わるゴム。触覚センサ・柔らかいスイッチ。'],
+ ['T65','F11','ソフトアクチュエータ（空圧・流体）','機能',['ソフトロボ','把持','柔軟','空圧'],['シリコーン','TPU'],10,300,'—',1,5000,21,5,{ロボ:3,食品:3,農業:2,医療:2},'空気で膨らんで曲がる指。壊れやすい物を優しくつかむ。'],
+ ['T66','F11','耐薬・耐熱フッ素ゴム部品','成形',['フッ素','耐薬品','耐熱','シール'],['FKM','FFKM'],1,300,'±0.1mm',100,500000,30,9,{半導体:3,エネ:2,自動車:2,食品:1},'300℃と強酸に耐えるシール。半導体・プラント。'],
+ ['T67','F12','協働ロボット組立セル','組立',['組立','協働ロボ','自動化','少量多品種'],['*'],10,1000,'—',100,100000,30,9,{家電:2,自動車:2,医療:2,ロボ:3},'人と並んで働くロボで組立を自動化。段取り替え 10 分。'],
+ ['T68','F12','画像検査 AI（外観・寸法）','計測',['検査','AI','画像','全数'],['*'],1,1000,'±10μm',100,1000000,21,8,{自動車:3,食品:3,家電:2,医療:2},'傷・欠け・寸法をカメラと AI で全数判定。'],
+ ['T69','F12','制御ソフト・モーションコントロール','機能',['制御','ソフト','モーション','PLC'],['*'],10,10000,'—',1,1000,30,9,{ロボ:3,農業:2,建設:2,物流:3},'多軸の動きと安全を司る制御ソフト。機械を「動くもの」にする。'],
+ ['T70','F12','デジタルツイン・IoT 監視','機能',['IoT','ダッシュボード','予知保全','クラウド'],['*'],10,50000,'—',1,100,30,8,{エネ:3,建設:2,農業:2,物流:3},'機械の状態をクラウドで可視化し、故障前に知らせる。'],
+ ['T71','F12','AGV / 搬送ユニット','組立',['搬送','AGV','物流','自律'],['AL','鉄'],300,3000,'—',1,500,45,8,{物流:3,農業:2,建設:1,食品:2},'自律走行の台車。工場・倉庫・圃場で物を運ぶ。'],
+ ['T72','F12','大型フレーム溶接・機械組立','組立',['大型','フレーム','機械','据付'],['鉄','SUS','AL'],500,10000,'±1mm',1,100,45,9,{建設:3,農業:3,エネ:2,物流:2},'数 m の機械フレームを溶接・組立・据付まで。'],
+];
+const TECH = RAW.map(r=>({id:r[0],fac:r[1],name:r[2],role:r[3],tags:r[4],mat:r[5],smin:r[6],smax:r[7],prec:r[8],lmin:r[9],lmax:r[10],lead:r[11],trl:r[12],ind:Object.fromEntries(Object.entries(r[13]).map(([k,v])=>[IND_KEY[k],v])),desc:r[14]}));
+const T = Object.fromEntries(TECH.map(t=>[t.id,t]));
+
+/* 相乗効果ルール：pairs のいずれかの組（タグ 2 つ）が、異なる技術にまたがって揃うと成立 */
+const SYNERGY = [
+ {id:'S01',pairs:[['微細','量産'],['微細','射出'],['微細','MIM']],name:'微細構造の量産転写',eff:'試作で作った μm 形状を金型や粉末成形で量産へ写し取る。1 個の精度を 1 万個に。',ind:['医療','家電','分析機器'],form:'部品'},
+ {id:'S02',pairs:[['流路','気密'],['流路','溶接'],['流路','異材接合']],name:'密閉型マイクロ流体モジュール',eff:'流路と気密接合を組み合わせ、漏れのない分析・冷却・投薬モジュールにする。',ind:['医療','分析機器','半導体'],form:'部品'},
+ {id:'S03',pairs:[['センサ','柔軟'],['センサ','シリコーン'],['導電','柔軟'],['フレキ','柔軟']],name:'柔軟センシング構造体',eff:'変形する素材そのものがセンサになる。体や曲面に沿って測れる。',ind:['医療','スポーツ','ロボティクス'],form:'部品'},
+ {id:'S04',pairs:[['センサ','構造'],['センサ','フレーム'],['IoT','大型'],['センサ','複合材']],name:'自己計測構造（スマートストラクチャ）',eff:'構造部材に計測機能を埋め込み、荷重・振動・劣化を構造自身が報告する。',ind:['建設','エネルギー','物流'],form:'大型'},
+ {id:'S05',pairs:[['無線','発電'],['無線','電池レス'],['低電力','発電']],name:'電池レス IoT ノード',eff:'設置後の電池交換が不要な分散センサ。屋外・大量設置に向く。',ind:['農業','建設','物流','エネルギー'],form:'部品'},
+ {id:'S06',pairs:[['軽量','高剛性'],['複合材','切削'],['複合材','金属AM']],name:'軽量高剛性アーム・フレーム',eff:'複合材やラティス構造で重量を半減し、可搬質量と速度を上げる。',ind:['ロボティクス','航空宇宙','スポーツ'],form:'装置'},
+ {id:'S07',pairs:[['金属AM','切削'],['ラティス','高精度'],['一体化','検査']],name:'一体化軽量部品（AM＋仕上げ）',eff:'積層で中空・一体化し、重要面だけ切削で仕上げる。部品点数を 1/5 に。',ind:['航空宇宙','医療','ロボティクス'],form:'部品'},
+ {id:'S08',pairs:[['耐熱','絶縁'],['セラミック','溶射'],['セラミック','耐熱']],name:'高温環境向け電気絶縁部品',eff:'セラミックの絶縁・耐熱を金属構造と組み合わせ、高温装置の中で電気を扱う。',ind:['半導体','エネルギー','航空宇宙'],form:'部品'},
+ {id:'S09',pairs:[['生体適合','微細'],['生体適合','流路'],['生体適合','深穴']],name:'低侵襲医療デバイス',eff:'生体適合材料と微細加工で、体内に入る細く精密な器具を作る。',ind:['医療'],form:'部品'},
+ {id:'S10',pairs:[['生体適合','柔軟'],['シリコーン','ウェアラブル'],['柔軟','衝撃吸収']],name:'体に触れるソフトインターフェース',eff:'皮膚に長時間触れても安全で快適な接触部。装着型・介護・スポーツ。',ind:['医療','スポーツ'],form:'部品'},
+ {id:'S11',pairs:[['衛生','抗菌'],['鏡面','抗菌'],['衛生','シリコーン'],['衛生','絞り']],name:'衛生設計の食品・医療接触部品',eff:'洗浄しやすい継ぎ目のない形状と抗菌表面で、衛生基準を設計で満たす。',ind:['食品','医療'],form:'部品'},
+ {id:'S12',pairs:[['意匠','刻印'],['意匠','マーキング'],['刻印','鏡面'],['ブランド','フルカラー']],name:'ブランド体験型プロダクト',eff:'素材の質感と刻印・マーキングで、手に取った瞬間にブランドが伝わる。',ind:['ノベルティ','家電'],form:'ノベルティ'},
+ {id:'S13',pairs:[['意匠','軽量金属感'],['シボ','樹脂めっき'],['意匠','アルマイト']],name:'高級感のある軽量筐体',eff:'樹脂やアルミに金属の見え方と手触りを与え、軽さと高級感を両立。',ind:['家電','ノベルティ','自動車'],form:'装置'},
+ {id:'S14',pairs:[['AI','検査'],['AI','画像'],['検査','組立'],['全数','トレーサビリティ']],name:'検査一体型の生産セル',eff:'組立と全数検査を同じセルで行い、個体 ID に検査結果を紐づける。',ind:['自動車','食品','家電'],form:'装置'},
+ {id:'S15',pairs:[['把持','柔軟'],['ソフトロボ','センサ'],['ソフトロボ','導電ゴム'],['把持','AI']],name:'感触を持つソフトハンド',eff:'柔らかい指に触覚を与え、形や硬さが揃わない物を傷めずにつかむ。',ind:['食品','農業','ロボティクス'],form:'装置'},
+ {id:'S16',pairs:[['大型','制御'],['フレーム','制御'],['大型','モーション'],['厚板','制御']],name:'大型自動化機械',eff:'大型フレームと制御ソフトで、人手作業を機械化する専用機。',ind:['建設','農業','物流'],form:'大型'},
+ {id:'S17',pairs:[['大型','搬送'],['AGV','センサ'],['搬送','AI'],['搬送','制御']],name:'自律搬送プラットフォーム',eff:'自律走行とセンシングで、屋内外の運搬を無人化する。',ind:['物流','農業'],form:'大型'},
+ {id:'S18',pairs:[['耐摩耗','低摩擦'],['DLC','旋削'],['肉盛','旋削'],['耐摩耗','軸物']],name:'長寿命摺動部品',eff:'硬い下地と低摩擦膜の組み合わせで、摩耗寿命を数倍に延ばす。',ind:['自動車','エネルギー','ロボティクス'],form:'部品'},
+ {id:'S19',pairs:[['撥水','透明'],['撥水','光学'],['防曇','光学'],['親水','レンズ']],name:'防曇・自己洗浄の光学窓',eff:'汚れや曇りを寄せ付けない透明部材。屋外カメラや医療スコープ。',ind:['自動車','医療','農業'],form:'部品'},
+ {id:'S20',pairs:[['光学','微細'],['レンズ','組立'],['光学','薄膜'],['透光','光学']],name:'マイクロ光学モジュール',eff:'レンズ・薄膜・精密組立で、指先サイズの光学ユニットにする。',ind:['分析機器','医療','家電'],form:'部品'},
+ {id:'S21',pairs:[['圧電','流路'],['超音波','流路'],['圧電','微細']],name:'超音波駆動マイクロポンプ',eff:'圧電の振動で μL 単位の液体を送る。モータなしの小型送液。',ind:['医療','分析機器'],form:'部品'},
+ {id:'S22',pairs:[['圧電','柔軟'],['振動','グリップ'],['圧電','二色']],name:'振動触覚フィードバック',eff:'握る部分に振動を埋め込み、情報を手触りで伝える。',ind:['家電','スポーツ','ロボティクス'],form:'部品'},
+ {id:'S23',pairs:[['導通','インサート'],['導電','樹脂'],['めっき','射出'],['導通','基板']],name:'配線一体成形',eff:'ハーネスやコネクタを樹脂成形に埋め込み、組立工数と防水の両方を解く。',ind:['自動車','家電'],form:'部品'},
+ {id:'S24',pairs:[['EMI','無線'],['EMI','基板'],['樹脂めっき','電子']],name:'電波設計された筐体',eff:'シールドと窓を筐体で作り分け、無線性能とノイズ耐性を両立。',ind:['家電','医療'],form:'装置'},
+ {id:'S25',pairs:[['トレーサビリティ','IoT'],['QR','IoT'],['マーキング','クラウド'],['CT','クラウド']],name:'個体管理型プロダクト',eff:'刻印した個体 ID をクラウドに結び、製造から使用履歴まで追える。',ind:['物流','医療','食品'],form:'装置'},
+ {id:'S26',pairs:[['複合材','溶着'],['複合材','縫製'],['耐候','縫製'],['防水','大型']],name:'大型軽量膜構造',eff:'骨格と膜材を組み合わせ、軽くて広い屋外構造物を短工期で。',ind:['建設','農業'],form:'大型'},
+ {id:'S27',pairs:[['発泡','意匠'],['衝撃吸収','二色'],['クッション','グリップ'],['発泡','刻印']],name:'手に馴染む保護製品',eff:'衝撃吸収と質感のよいグリップで、守りながら気持ちよく使える道具にする。',ind:['スポーツ','ノベルティ','物流'],form:'ノベルティ'},
+ {id:'S28',pairs:[['異材接合','気密'],['真空','溶接'],['気密','ガラス']],name:'真空・高圧対応の異材アセンブリ',eff:'ガラス・セラミック・金属を気密に接合し、真空や高圧の中で機能する部品に。',ind:['半導体','エネルギー','航空宇宙'],form:'部品'},
+ {id:'S29',pairs:[['設計','金属AM'],['最適化','ラティス'],['軽量化','複合材'],['CAE','切削']],name:'形状最適化による材料削減',eff:'荷重から形を計算し、積層や複合材で実装。材料と重量を 40% 削る。',ind:['航空宇宙','自動車','スポーツ'],form:'部品'},
+ {id:'S30',pairs:[['耐薬品','流路'],['フッ素','流路'],['耐薬品','微細']],name:'耐薬品流体部品',eff:'強酸・溶剤を流せる微細流路。半導体薬液やプラント計装に。',ind:['半導体','エネルギー','分析機器'],form:'部品'},
+ {id:'S31',pairs:[['防振','計測'],['防振','センサ'],['防振','光学']],name:'低ノイズ計測ベース',eff:'防振マウントの上に計測・光学系を載せ、外乱から精度を守る。',ind:['分析機器','半導体'],form:'装置'},
+ {id:'S32',pairs:[['フィルタ','流路'],['織物','流路'],['メッシュ','容器'],['フィルタ','衛生']],name:'分離・ろ過ユニット',eff:'メッシュと流路で液体・気体から不要物を分ける。洗って繰り返し使える。',ind:['食品','農業','医療'],form:'部品'},
+ {id:'S33',pairs:[['試作','量産'],['樹脂AM','射出'],['小ロット','プレス'],['セラミックAM','セラミック']],name:'試作から量産への一気通貫',eff:'同じ図面を AM で試作し、金型で量産。立ち上げ期間を半分に。',ind:[],form:null},
+ {id:'S34',pairs:[['試作','意匠'],['フルカラー','刻印'],['多材料','アルマイト'],['樹脂AM','マーキング']],name:'少量カスタムの記念・展示品',eff:'型を作らず、一つずつ違う意匠を入れた小ロット製品に。',ind:['ノベルティ'],form:'ノベルティ'},
+ {id:'S35',pairs:[['組立','検査'],['組立','基板'],['協働ロボ','センサ']],name:'完成品一貫供給',eff:'部品ではなく、組み立てて検査した完成品として納められる。',ind:[],form:null},
+ {id:'S36',pairs:[['刻印','衛生'],['意匠','鏡面'],['絞り','鏡面'],['アルマイト','刻印']],name:'意匠性のある金属製品',eff:'一枚板の造形と磨き・刻印で、道具としての美しさを持つ製品にする。',ind:['ノベルティ','食品','家電'],form:'ノベルティ'},
+ {id:'S37',pairs:[['AI','農業'],['カメラ','AGV'],['画像認識','把持'],['エッジ','センサ']],name:'見て判断する現場機械',eff:'カメラと AI で状況を判断し、その場で動作を変える。',ind:['農業','物流','食品'],form:'装置'},
+ {id:'S38',pairs:[['ウェアラブル','発電'],['導電','ウェアラブル'],['伸縮','センサ']],name:'身につける計測デバイス',eff:'衣服や装具に電子機能を縫い込み、意識せずに測り続ける。',ind:['スポーツ','医療'],form:'部品'},
+];
+
+/* アイデア文のキーワード辞書 */
+const KW_IND = {
+ 医療:['医療','手術','患者','病院','診断','カテーテル','義手','義足','介護','看護','滅菌','体内','内視鏡','薬'],
+ 半導体:['半導体','ウェハ','クリーンルーム','薬液','真空','チャンバ'],
+ 自動車:['自動車','車','EV','バッテリー','車載','モビリティ'],
+ 航空宇宙:['航空','宇宙','ドローン','衛星','機体','飛行'],
+ ロボティクス:['ロボット','ロボ','アーム','ハンド','グリッパ','把持','自動化','協働'],
+ 食品:['食品','厨房','調理','飲料','食','衛生','厨房','惣菜','製菓'],
+ 農業:['農業','農','ハウス','圃場','土壌','収穫','作物','畑','酪農'],
+ 建設:['建設','建築','現場','足場','橋','トンネル','インフラ','施工'],
+ エネルギー:['エネルギー','発電','プラント','水素','電池','蓄電','風力','太陽光'],
+ 家電:['家電','キッチン','生活','スマートホーム','オーディオ','照明','スピーカー'],
+ 分析機器:['分析','計測器','顕微鏡','検査装置','センシング','分光','研究'],
+ 物流:['物流','倉庫','配送','搬送','ピッキング','コンテナ','トレース'],
+ スポーツ:['スポーツ','アウトドア','登山','自転車','ランニング','ウェア','ヘルメット','フィットネス'],
+ ノベルティ:['ノベルティ','展示会','記念','ギフト','景品','周年','来場','キーホルダー','トロフィー','販促'],
+};
+const KW_FEAT = {
+ 軽量:['軽い','軽量','軽く'],防水:['防水','雨','水','屋外','耐候'],耐熱:['耐熱','高温','熱'],小型:['小型','小さい','コンパクト','指先','携帯'],
+ 大型:['大型','大きい','数 m','数m','重機','構造物'],量産:['量産','大量','安価','低コスト','コスト'],高精度:['高精度','精密','μm','精度'],
+ 衛生:['衛生','清潔','洗浄','抗菌'],電池レス:['電池交換なし','電池レス','メンテ不要','電池交換'],無線:['無線','通信','IoT','クラウド','遠隔'],
+ センサ:['センサ','測る','測り','計測','検知','モニタ'],柔軟:['柔らかい','柔軟','ソフト','やさしく','優しく'],意匠:['デザイン','高級感','質感','美しい','ブランド','ロゴ'],
+ 透明:['透明','光','レンズ','見える','カメラ'],流路:['流路','ポンプ','液体','送液','冷却','流す'],
+};
+const KW_FORM = {
+ 部品:['部品','モジュール','パーツ','ユニット','コンポーネント','センサ','バルブ','ノズル'],
+ 装置:['装置','機器','デバイス','卓上','ツール','機械','端末','ハンド'],
+ 大型:['大型','重機','ライン','プラント','構造物','車両','搬送機','設備'],
+ ノベルティ:['ノベルティ','記念','ギフト','景品','キーホルダー','トロフィー','展示会','販促','グッズ'],
+};
+const KW_NOUN = ['ポンプ','バルブ','グリッパ','ハンド','センサ','筐体','ケース','フレーム','冷却ユニット','フィルタ','アーム','ドローン','治具','コネクタ','ノズル','窓','容器','ボトル','キーホルダー','プレート','ランプ','照明','ヘルメット','義手','義足','カテーテル','マウント','スタンド','カバー','タンク','トレー','スピーカー','マスク','グリップ','ホルダー','ブラケット','トロフィー','コースター','ペン','カップ','搬送機','収穫機','散布機','検査装置','顕微鏡','ステージ','屋根','テント','シェルター','ゲート','棚','ラック','義肢','車いす','ボード'];
+
+const SCENARIOS = [
+ {tag:'AGRI / IoT',name:'電池交換なしの土壌センサ',meta:'農業ハウス・屋外・量産',idea:'農業ハウス向けに、電池交換なしで土壌の水分と温度を測り続けられる小型センサを作りたい。雨風に耐え、数百台をハウスに刺して使うので安価に量産したい。データはスマホで見たい。',form:'auto',lot:'5000',prio:['コスト','耐久'],techs:['T32','T33','T35','T14']},
+ {tag:'MEDICAL',name:'使い捨てマイクロ投薬ポンプ',meta:'医療・微細・滅菌',idea:'在宅医療向けに、貼り付けて使う使い捨ての小型投薬ポンプ。モータなしで μL 単位の薬液を正確に送りたい。肌に長時間触れても安全で、滅菌に耐える必要がある。',form:'部品',lot:'100000',prio:['精度','安全'],techs:['T29','T43','T61','T16']},
+ {tag:'FOOD / ROBOT',name:'惣菜を盛り付けるソフトハンド',meta:'食品・ロボット・衛生',idea:'惣菜工場で、形も柔らかさも揃わない食材を傷めずにつかんで盛り付けるロボットハンド。洗浄しやすく衛生的で、何をつかんでいるかをカメラで判断させたい。',form:'装置',lot:'100',prio:['衛生','独自性'],techs:['T65','T64','T36','T61']},
+ {tag:'NOVELTY',name:'周年記念の来場者ギフト',meta:'展示会・少量・意匠',idea:'創業 50 周年の展示会で来場者に渡す記念品。自社の技術が伝わる、手に取って気持ちいい金属製の小物にしたい。一人ひとり違う刻印を入れ、500 個ほど。',form:'ノベルティ',lot:'100',prio:['意匠','速さ'],techs:['T09','T10','T12','T45']},
+ {tag:'CONSTRUCTION',name:'自分の劣化を知らせる仮設屋根',meta:'建設・大型・IoT',idea:'工事現場やイベント会場に短工期で建てられる大型の仮設屋根。軽くて丈夫で、風荷重や膜の劣化を自分で測ってクラウドに知らせてほしい。',form:'大型',lot:'1',prio:['耐久','速さ'],techs:['T55','T59','T60','T32','T70']},
+ {tag:'AERO / AM',name:'ドローン用 一体化軽量アーム',meta:'航空・軽量・少量',idea:'産業用ドローンのアームとモータマウントを一体化し、重量を 40% 減らしたい。振動で緩まない構造で、月 50 台分。',form:'部品',lot:'100',prio:['軽量','精度'],techs:['T37','T40','T01','T05']},
+];
+const PRIORITIES = ['コスト','速さ','精度','独自性','量産','耐久','軽量','衛生','安全','意匠'];
+</script>
+<script>
+/* =====================================================================
+   ENGINE — ローカル推論（ルールベースの合成器）
+   ===================================================================== */
+const hash = s=>{let h=2166136261;for(const c of String(s)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return (h>>>0)};
+const rnd = (seed,i)=>{const x=Math.sin(seed*0.0001+i*12.9898)*43758.5453;return x-Math.floor(x)};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const uniq=a=>[...new Set(a)];
+const fmtNum=n=>n>=10000?`${Math.round(n/1000)}k`:String(n);
+const CODENAMES=['KESTREL','ORIGAMI','LANTERN','BASALT','MERIDIAN','TALLOW','CALDERA','HALYARD','QUARTZ','PELICAN','SEXTANT','TIDEWATER','GARNET','FERRULE','COMPASS','VESPER','MARLIN','LATTICE','OBSIDIAN','ANVIL'];
+const FORMS=['部品','装置','大型','ノベルティ'];
+const SYN_SHORT={S01:'微細構造',S02:'マイクロ流体',S03:'柔軟センサ',S04:'スマート構造',S05:'電池レスセンサ',S06:'軽量アーム',S07:'一体化構造',S08:'高温絶縁',S09:'低侵襲デバイス',S10:'ソフトインターフェース',S11:'衛生接触',S12:'ブランド',S13:'軽量筐体',S14:'検査セル',S15:'ソフトハンド',S16:'自動化機械',S17:'自律搬送',S18:'摺動',S19:'防曇窓',S20:'マイクロ光学',S21:'マイクロポンプ',S22:'触覚',S23:'配線一体',S24:'電波筐体',S25:'個体管理',S26:'膜構造',S27:'保護グリップ',S28:'気密アセンブリ',S29:'最適化構造',S30:'耐薬流体',S31:'防振計測',S32:'ろ過',S33:'一気通貫',S34:'カスタム記念',S35:'一貫供給',S36:'意匠金属',S37:'視覚判断',S38:'ウェアラブル計測'};
+const DEVICE_NOUN=/ハンド|ポンプ|装置|ステーション|システム|ライン|搬送機|収穫機|散布機|検査装置|顕微鏡|ドローン|ランプ|照明|スピーカー|センサ|アーム|グリッパ|フィルタ|冷却ユニット|ステージ/;
+function conceptName(form,noun,adj,seed,idx){
+  const pick=arr=>arr[Math.floor(rnd(seed,idx+11)*arr.length)];
+  const dev=DEVICE_NOUN.test(noun),st=/屋根|テント|シェルター|ゲート|橋|フレーム|棚|ラック|膜構造|スマート構造|一体化構造|最適化構造|筐体/.test(noun);let core;
+  if(form==='部品') core=noun+pick(dev?['ユニット','モジュール','コア']:['ユニット','モジュール','カートリッジ']);
+  else if(form==='装置') core=dev?'卓上'+noun:st?'可搬'+noun+'キット':noun+pick(['ステーション','ワークセル','装置']);
+  else if(form==='大型') core=noun+pick(st?['大型構造','システム','プラットフォーム']:['自動化ライン','大型システム','プラットフォーム']);
+  else core=dev?noun+'モチーフ '+pick(['キーピース','オブジェ','メダル']):noun+pick(['ピース','オブジェ','キーピース']);
+  const a=adj&&!noun.includes(adj.replace('設計',''))&&!(form==='大型'&&/超小型|卓上/.test(adj))?adj+' ':'';
+  return (a+core).trim();
+}
+const FORM_LABEL={部品:'部品・モジュール',装置:'装置・機器',大型:'大型機械・構造',ノベルティ:'ノベルティ・小物'};
+const FORM_BAND={部品:[5,300],装置:[300,1500],大型:[1500,10000],ノベルティ:[20,150]};
+const FORM_AFF={
+ 部品:{医療:1.2,半導体:1.2,自動車:1.2,航空宇宙:1.2,ロボティクス:1,食品:.8,農業:.8,建設:.6,エネルギー:1,家電:1.1,分析機器:1.2,物流:.7,スポーツ:.9,ノベルティ:.6},
+ 装置:{医療:1.1,半導体:1,自動車:.8,航空宇宙:.7,ロボティクス:1.3,食品:1.2,農業:1,建設:.8,エネルギー:.9,家電:1.1,分析機器:1.3,物流:1,スポーツ:.7,ノベルティ:.4},
+ 大型:{医療:.4,半導体:.6,自動車:.8,航空宇宙:.7,ロボティクス:1,食品:.9,農業:1.4,建設:1.5,エネルギー:1.3,家電:.3,分析機器:.4,物流:1.4,スポーツ:.4,ノベルティ:.1},
+ ノベルティ:{医療:.3,半導体:.1,自動車:.4,航空宇宙:.2,ロボティクス:.3,食品:.9,農業:.3,建設:.3,エネルギー:.2,家電:.9,分析機器:.2,物流:.4,スポーツ:1.1,ノベルティ:1.8},
+};
+const LOT_LABEL={1:'試作 1〜10 台',100:'小ロット 〜500',5000:'量産 〜1 万',100000:'大量 10 万〜'};
+
+function parseIdea(text){
+  const t=(text||'').trim();
+  const inds={},feats=new Set();let form=null,noun=null;
+  for(const [ind,kws] of Object.entries(KW_IND)) for(const k of kws) if(t.includes(k)) inds[ind]=(inds[ind]||0)+1;
+  for(const [f,kws] of Object.entries(KW_FEAT)) for(const k of kws) if(t.includes(k)) feats.add(f);
+  const fs={};for(const [f,kws] of Object.entries(KW_FORM)) for(const k of kws) if(t.includes(k)) fs[f]=(fs[f]||0)+1;
+  if(Object.keys(fs).length) form=Object.entries(fs).sort((a,b)=>b[1]-a[1])[0][0];
+  for(const n of KW_NOUN) if(t.includes(n)){noun=n;break}
+  return {text:t,inds,feats,form,noun};
+}
+
+/* 技術の自動補完：役割の穴を、アイデアとの親和性が高い技術で埋める */
+function autoPick(selIds, parsed, opts){
+  const have=new Set(selIds);const roles=new Set(selIds.map(id=>T[id].role));
+  const score=t=>{
+    let s=0;for(const [ind,w] of Object.entries(t.ind)) s+=w*(parsed.inds[ind]||0)*1.5;
+    for(const f of parsed.feats){ if(t.tags.some(tag=>tag.includes(f)||f.includes(tag))) s+=3; }
+    const fm={部品:[5,300],装置:[100,1500],大型:[500,10000],ノベルティ:[10,200]}[opts.form==='auto'?(parsed.form||'部品'):opts.form];
+    if(t.smax<fm[0]||t.smin>fm[1]) s-=4;
+    if(opts.lot<t.lmin) s-=3; if(opts.lot>t.lmax) s-=2;
+    for(const p of opts.prio){ if(p==='コスト'&&t.tags.includes('低コスト')) s+=2; if(p==='量産'&&t.tags.includes('量産')) s+=2; if(p==='精度'&&(t.tags.includes('高精度')||t.tags.includes('微細'))) s+=2; if(p==='軽量'&&t.tags.includes('軽量')) s+=2; if(p==='衛生'&&(t.tags.includes('衛生')||t.tags.includes('抗菌'))) s+=2; if(p==='意匠'&&t.tags.includes('意匠')) s+=2; if(p==='耐久'&&(t.tags.includes('耐摩耗')||t.tags.includes('耐候'))) s+=2; if(p==='速さ'&&t.lead<=7) s+=1; }
+    s+=t.trl*0.15;
+    // 既選択技術との相乗
+    for(const r of SYNERGY) for(const [a,b] of r.pairs){ const tagsSel=new Set(selIds.flatMap(id=>T[id].tags)); if((t.tags.includes(a)&&tagsSel.has(b))||(t.tags.includes(b)&&tagsSel.has(a))) s+=2.5; }
+    return s;
+  };
+  const picks=[];
+  const want=[];
+  const shaping=['成形','加工','材料'].some(r=>roles.has(r));
+  if(!shaping) want.push(['成形','加工','材料']);
+  if(!roles.has('接合')&&!roles.has('表面')) want.push(['表面','接合']);
+  if((parsed.feats.has('センサ')||parsed.feats.has('無線')||parsed.feats.has('電池レス'))&&!roles.has('機能')) want.push(['機能']);
+  if(!roles.has('計測')&&!roles.has('組立')&&(opts.lot>=5000||opts.form==='装置'||opts.form==='大型')) want.push(['計測','組立']);
+  const target=Math.min(6,Math.max(selIds.length+1,4));
+  const cand=TECH.filter(t=>!have.has(t.id)).map(t=>({t,s:score(t)})).sort((a,b)=>b.s-a.s);
+  for(const group of want){ const c=cand.find(x=>group.includes(x.t.role)&&!picks.includes(x.t.id)); if(c&&have.size+picks.length<6) picks.push(c.t.id); }
+  for(const c of cand){ if(have.size+picks.length>=target) break; if(picks.includes(c.t.id)) continue; if([...have,...picks].filter(id=>T[id].role===c.t.role).length>=2) continue; if(c.s<2) break; picks.push(c.t.id); }
+  return picks;
+}
+
+function findSynergies(techs){
+  const out=[];
+  for(const r of SYNERGY){
+    for(const [a,b] of r.pairs){
+      const A=techs.filter(t=>t.tags.includes(a)), B=techs.filter(t=>t.tags.includes(b));
+      if(!A.length||!B.length) continue;
+      let pair=null;for(const x of A) for(const y of B) if(x.id!==y.id){pair=[x,y];break}
+      if(!pair&&A.length&&B.length) continue;
+      if(pair){ out.push({...r,techs:[pair[0].id,pair[1].id],via:[a,b]}); break; }
+    }
+  }
+  return out;
+}
+
+function analyze(selIds, ideaText, opts){
+  const parsed=parseIdea(ideaText);
+  const added=opts.autoPick?autoPick(selIds,parsed,opts):[];
+  const ids=[...selIds,...added].slice(0,8);
+  const techs=ids.map(id=>T[id]);
+  const seed=hash(ids.join('|')+ideaText);
+  const roles=uniq(techs.map(t=>t.role));
+  const missing=ROLES.filter(r=>!roles.includes(r));
+  const facs=uniq(techs.map(t=>t.fac));
+  const syn=findSynergies(techs);
+
+  // 産業スコア
+  const sc={};for(const i of INDUSTRIES) sc[i]=0;
+  const why={};const add=(i,v,w)=>{sc[i]+=v;(why[i]=why[i]||[]).push(w)};
+  for(const t of techs) for(const [i,w] of Object.entries(t.ind)) add(i,w,`${t.name}`);
+  for(const s of syn) for(const i of s.ind) add(i,2.5,`相乗:${s.name}`);
+  for(const [i,w] of Object.entries(parsed.inds)) add(i,4*w,'アイデア文の記述');
+  const mx=Math.max(1,...Object.values(sc));
+  const industries=INDUSTRIES.map(i=>({name:i,raw:sc[i],score:Math.round(sc[i]/mx*100),reasons:uniq(why[i]||[])})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+
+  // 整合性
+  const shaping=techs.filter(t=>['成形','加工','材料','接合','表面'].includes(t.role));
+  const warnings=[],notes=[];
+  let smin=0,smax=1e9;for(const t of shaping){smin=Math.max(smin,t.smin);smax=Math.min(smax,t.smax)}
+  const scaleOk=shaping.length<2||smin<=smax;
+  if(!scaleOk){ const small=shaping.reduce((a,b)=>a.smax<b.smax?a:b), big=shaping.reduce((a,b)=>a.smin>b.smin?a:b); warnings.push({lv:'warn',text:`スケールが重なりません：${small.name}（〜${small.smax}mm）と ${big.name}（${big.smin}mm〜）。小さな機能部品を大きな構造に組み込む「階層アセンブリ」として設計する必要があります。`}); }
+  else if(shaping.length>=2) notes.push({lv:'ok',text:`共通スケール ${smin}〜${smax} mm の範囲で、選択した成形・加工・表面技術が同じ部品に適用できます。`});
+  const mats=shaping.filter(t=>!t.mat.includes('*')).map(t=>t.mat);
+  if(mats.length>=2){ const common=mats.reduce((a,b)=>a.filter(m=>b.some(x=>x.includes(m)||m.includes(x)))); if(common.length) notes.push({lv:'ok',text:`共通材料：${common.join(' / ')}。材料をまたがず一体で作れます。`}); else { const hasJoin=roles.includes('接合')||techs.some(t=>t.tags.includes('異材一体')||t.tags.includes('インサート')); warnings.push({lv:hasJoin?'ok':'warn',text:hasJoin?`材料が異なります（${uniq(mats.flat()).slice(0,5).join('・')}）が、異材接合／一体成形の技術が含まれるため橋渡しできます。`:`材料系が異なります（${uniq(mats.flat()).slice(0,5).join('・')}）。異材を結ぶ接合技術（レーザー異材溶接、インサート成形、加硫接着など）の追加を推奨します。`}); } }
+  const lotWarn=techs.filter(t=>opts.lot<t.lmin||opts.lot>t.lmax);
+  for(const t of lotWarn) warnings.push({lv:'warn',text:opts.lot<t.lmin?`${t.name} は ${fmtNum(t.lmin)} 個以上で経済的です。${LOT_LABEL[opts.lot]} では初期費（金型・段取り）が単価を支配します。`:`${t.name} の実績上限は ${fmtNum(t.lmax)} 個規模です。${LOT_LABEL[opts.lot]} では複数ラインか代替工法の検討が必要です。`});
+  const lowTrl=techs.filter(t=>t.trl<=6);
+  for(const t of lowTrl) notes.push({lv:'warn',text:`${t.name} は成熟度 TRL ${t.trl}。量産前に実証フェーズを置く前提で計画します。`});
+
+  // 推奨追加（まだ無い役割から、親和性の高い技術）
+  const rec=[];
+  const tagsSel=new Set(techs.flatMap(t=>t.tags));
+  const cands=TECH.filter(t=>!ids.includes(t.id)&&missing.includes(t.role)).map(t=>{let s=0;for(const [i,w] of Object.entries(t.ind)) s+=w*((industries.find(x=>x.name===i)||{}).score||0)/100;for(const r of SYNERGY) for(const [a,b] of r.pairs){if((t.tags.includes(a)&&tagsSel.has(b))||(t.tags.includes(b)&&tagsSel.has(a))) s+=2}return {t,s}}).sort((a,b)=>b.s-a.s);
+  const usedRoles=new Set();
+  for(const c of cands){ if(usedRoles.has(c.t.role)) continue; if(rec.length>=3) break; usedRoles.add(c.t.role); const r=SYNERGY.find(r=>r.pairs.some(([a,b])=>(c.t.tags.includes(a)&&tagsSel.has(b))||(c.t.tags.includes(b)&&tagsSel.has(a)))); rec.push({id:c.t.id,reason:r?`「${r.name}」が成立し、${r.ind.slice(0,2).join('・')||'複数領域'}への展開が開く`:`${ROLE_DESC[c.t.role]}役割を補い、${(Object.keys(c.t.ind)[0]||'')}向けの完成度が上がる`}); }
+
+  // 規模の決定
+  let primary=opts.form!=='auto'?opts.form:(parsed.form||(syn.find(s=>s.form)||{}).form||(shaping.length&&smax>=1500?'大型':'部品'));
+  const order=[primary,...FORMS.filter(f=>f!==primary)];
+  // 3 案：primary と、産業スコア×規模親和性が高い 2 つ
+  const formScore=f=>industries.slice(0,6).reduce((a,x)=>a+x.score*(FORM_AFF[f][x.name]||.5),0)+(syn.filter(s=>s.form===f).length*40);
+  const others=order.slice(1).sort((a,b)=>formScore(b)-formScore(a)).slice(0,2);
+  const concepts=[primary,...others].map((f,i)=>buildConcept(f,i,{techs,ids,syn,industries,parsed,opts,seed,warnings,facs,roles,lowTrl,lotWarn,scaleOk,missing}));
+
+  const process=processFlow(ids);
+  const title=concepts[0].name;
+  const summary=buildSummary({techs,syn,industries,concepts,parsed,facs,roles,missing,opts,scaleOk});
+  const hypothesis=buildHypothesis({parsed,syn,industries,concepts,techs,opts,process});
+  return {mode:'local',ids,added,techs:ids,title,tagline:concepts[0].tagline,summary,synergies:syn.map(s=>({id:s.id,name:s.name,effect:s.eff,techs:s.techs,industries:s.ind,via:s.via})),industries:industries.slice(0,7),coverage:{roles,missing,recommended:rec},compat:{warnings,notes,scale:scaleOk?[smin,smax]:null},concepts,process,hypothesis,parsed:{inds:parsed.inds,feats:[...parsed.feats],form:parsed.form,noun:parsed.noun},idea:ideaText,opts,ts:Date.now()};
+}
+
+function buildConcept(form,idx,ctx){
+  const {techs,ids,syn,industries,parsed,opts,seed,facs,roles,lowTrl,lotWarn,scaleOk,missing}=ctx;
+  const aff=FORM_AFF[form];
+  const inds=industries.map(x=>({...x,s:x.score*(aff[x.name]||.5)})).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>x.name);
+  const synF=[...syn].sort((a,b)=>(b.form===form)-(a.form===form));
+  const core=synF[0];
+  const feats=[...parsed.feats];
+  const adj=feats.includes('軽量')?'軽量':feats.includes('防水')?'全天候':feats.includes('小型')?'超小型':feats.includes('衛生')?'衛生設計':feats.includes('電池レス')?'電池レス':feats.includes('高精度')?'高精度':feats.includes('柔軟')?'ソフト':'';
+  let noun=parsed.noun||(core?SYN_SHORT[core.id]:'')||{部品:'機能',装置:'ワーク',大型:'自動化',ノベルティ:'メモリアル'}[form];
+  const name=conceptName(form,noun,adj,seed,idx);
+  const code=CODENAMES[(hash(name)+idx)%CODENAMES.length];
+  const band=FORM_BAND[form];
+  const sz=(k)=>Math.round((band[0]+(band[1]-band[0])*rnd(seed,idx*7+k)*0.8+ (band[1]-band[0])*0.1)/(band[1]>1000?50:band[1]>200?5:1))*(band[1]>1000?50:band[1]>200?5:1);
+  const W=sz(1),D=Math.round(W*(0.5+rnd(seed,idx*7+2)*0.5)),H=Math.round(W*(0.25+rnd(seed,idx*7+3)*0.6));
+  const lot=opts.lot;
+  const costBand=costOf(form,lot,techs);
+  const trlAvg=techs.reduce((a,t)=>a+t.trl,0)/techs.length;
+  const maturity=clamp(Math.round(trlAvg/9*100-(form==='大型'&&!roles.includes('組立')?12:0)-(lowTrl.length*4)),20,98);
+  const manuf=clamp(Math.round(92-7*(facs.length-1)-(scaleOk?0:16)-8*lotWarn.length+(syn.some(s=>s.id==='S33'||s.id==='S35')?8:0)-(form==='大型'?6:0)),20,98);
+  const market=clamp(Math.round((industries.find(x=>x.name===inds[0])||{score:40}).score*(aff[inds[0]]||.7)*0.95+8),15,98);
+  const unique=clamp(Math.round(30+14*syn.length+(roles.length>=4?10:0)+(form==='ノベルティ'?-8:0)+(parsed.feats.size*2)),20,98);
+  const cost=clamp(Math.round(costScore(form,lot,techs,lotWarn)),15,98);
+  const radar={技術成熟度:maturity,製造性:manuf,市場性:market,独自性:unique,コスト効率:cost};
+  const desc=buildDesc(form,{name,core,syn:synF,techs,inds,feats,W,D,H,lot,parsed});
+  const risks=[];
+  if(!scaleOk) risks.push('小さな機能部品と大きな構造の間に中間アセンブリが必要。インターフェース（固定・配線・シール）の設計工数を見込む。');
+  for(const t of lowTrl) risks.push(`${t.name}（TRL ${t.trl}）は量産実績が薄い。実証 → 限定生産 → 量産の 3 段階で立ち上げる。`);
+  for(const t of lotWarn.slice(0,2)) risks.push(opts.lot<t.lmin?`${t.name} は本数量だと初期費の回収が難しい。試作段階は代替工法（AM・切削）で置き換える。`:`${t.name} は本数量に対して能力が不足。複数拠点化か工法変更を前提に計画。`);
+  if(inds.includes('医療')) risks.push('医療領域は薬機法・ISO 13485 の適合が必須。クラス分類で開発期間が 1〜3 年変わる。');
+  if(inds.includes('食品')) risks.push('食品接触材料の規格（食品衛生法・FDA）と洗浄性（CIP）の検証が必要。');
+  if(form==='大型') risks.push('据付・安全規格（機械安全 ISO 12100）・輸送寸法の制約が設計を支配する。');
+  if(form==='ノベルティ') risks.push('単価と個別刻印の工数が利益を左右する。デザインの作り込みと工程の自動化を同時に進める。');
+  if(facs.length>=4) risks.push(`${facs.length} 工場をまたぐため、公差・材料ロット・納期の整合を取る「技術コーディネータ」役が必要。`);
+  if(!risks.length) risks.push('技術的な大きな障壁は見当たらない。市場側の検証（顧客が本当に欲しいか）を最優先に。');
+  const next=[];
+  const lead=Math.max(...techs.map(t=>t.lead));
+  if(core) next.push(`PoC：「${core.name}」を ${T[core.techs[0]].name} × ${T[core.techs[1]].name} で試作（目安 ${lead + 7} 日）。`);
+  if(facs.length>=2) next.push(`${FAC[facs[0]].name} と ${FAC[facs[1]].name} の工程すり合わせ（材料・公差・受け渡し図面）。`);
+  next.push(`${inds.slice(0,2).join('・')} の見込み顧客 3 社に、本コンセプト図でヒアリング。`);
+  if(syn.length) next.push(`「${syn[0].name}」周辺の先行特許・競合製品を調査。`);
+  if(missing.length&&missing.includes('計測')) next.push('検査基準（何を・どの精度で測るか）を先に決め、計測技術を追加。');
+  return {form,formLabel:FORM_LABEL[form],name,code,tagline:`${inds[0]||'新領域'}向け ${FORM_LABEL[form]}`,desc,size:{W,D,H},sizeText:form==='大型'?`約 ${(W/1000).toFixed(1)} × ${(D/1000).toFixed(1)} × ${(H/1000).toFixed(1)} m`:`約 ${W} × ${D} × ${H} mm`,lot,lotText:LOT_LABEL[lot],costBand,techs:ids,industries:inds,radar,risks,next,coreSynergy:core?core.name:null,materials:uniq(techs.filter(t=>!t.mat.includes('*')).flatMap(t=>t.mat)).slice(0,4)};
+}
+function costOf(form,lot,techs){
+  const base={部品:1,装置:40,大型:1500,ノベルティ:0.8}[form];
+  const f=techs.reduce((a,t)=>a*(t.tags.includes('量産')||t.tags.includes('低コスト')?0.85:t.tags.includes('金属AM')||t.tags.includes('MEMS')||t.tags.includes('微細')?1.3:1),1);
+  const l=lot>=100000?0.35:lot>=5000?0.55:lot>=100?1:2.2;
+  const v=base*f*l*800;
+  const fmt=x=>x>=1e6?`${(x/1e6).toFixed(1)} 百万円`:x>=1e4?`${Math.round(x/1e4)} 万円`:`${Math.round(x/100)*100} 円`;
+  return `${fmt(v*0.7)} 〜 ${fmt(v*1.4)} / 個`;
+}
+function costScore(form,lot,techs,lotWarn){
+  let s=58;
+  if(lot>=100000) s+=14; else if(lot>=5000) s+=8; else if(lot<=1) s-=6;
+  s-=12*lotWarn.length;
+  for(const t of techs){ if(t.tags.includes('量産')||t.tags.includes('低コスト')) s+=4; if(t.tags.includes('金属AM')||t.tags.includes('MEMS')) s-=6; if(t.tags.includes('試作')&&lot>=5000) s-=4; }
+  if(form==='大型') s-=4;
+  return s;
+}
+function buildDesc(form,c){
+  const {core,syn,techs,inds,feats,W,D,H,lot,parsed}=c;
+  const byRole={};for(const t of techs)(byRole[t.role]=byRole[t.role]||[]).push(t);
+  const roleLine=Object.entries(byRole).map(([r,ts])=>`${r}は${ts.map(t=>t.name.replace(/（.*?）/g,'')).join('・')}`).join('、');
+  const featLine=feats.length?`「${feats.slice(0,3).join('」「')}」を満たすことを設計の軸に置き、`:'';
+  const coreLine=core?`「${core.name}」を中核の価値とし、${core.eff}`:'選択技術を役割ごとに積み上げ、工場単独では出せない完成度を狙う。';
+  const sub=syn[1]?`副次的に「${syn[1].name}」も成立し、${syn[1].ind.slice(0,2).join('・')||'周辺領域'}への横展開も見込める。`:'';
+  const formLine={部品:`完成機器に組み込まれる機能モジュールとして供給する。外形は約 ${W}×${D}×${H} mm。`,装置:`単体で使える装置・機器として供給する。卓上〜床置きの約 ${W}×${D}×${H} mm。`,大型:`現場に据え付ける大型機械・構造として供給する。外形は約 ${(W/1000).toFixed(1)}×${(D/1000).toFixed(1)}×${(H/1000).toFixed(1)} m。`,ノベルティ:`手に取って技術が伝わる小物として供給する。約 ${W}×${D}×${H} mm、一つずつ異なる刻印にも対応。`}[form];
+  return `<p>${coreLine}</p><p>${featLine}${roleLine}が担う。${formLine}</p><p>主な提供先は ${inds.join('・')}。${sub}</p>`;
+}
+function processFlow(ids){
+  const order=ROLES;const techs=ids.map(id=>T[id]).sort((a,b)=>order.indexOf(a.role)-order.indexOf(b.role));
+  let total=0;const byRole={};
+  for(const t of techs){byRole[t.role]=Math.max(byRole[t.role]||0,t.lead)}
+  total=Object.values(byRole).reduce((a,b)=>a+b,0)+Object.keys(byRole).length*2;
+  return {steps:techs.map((t,i)=>({n:i+1,id:t.id,name:t.name,role:t.role,fac:t.fac,facName:FAC[t.fac].name,region:FAC[t.fac].region,days:t.lead})),total};
+}
+function buildSummary(c){
+  const {techs,syn,industries,concepts,parsed,facs,roles,missing,opts,scaleOk}=c;
+  const p1=`${facs.length} 工場・${techs.length} 技術（${roles.join('／')}）を一つの製品として組み合わせました。${syn.length?`相乗効果ルールに ${syn.length} 件が一致し、第 1 案の中核は「${concepts[0].coreSynergy}」です。`:'明確な相乗効果ルールへの一致はありませんが、役割の積み上げとして成立します。'}${scaleOk?'':'スケールの不一致があるため、階層アセンブリとして設計します。'}`;
+  const top=industries.slice(0,3).map(x=>`${x.name}（${x.score}）`).join('、');
+  const p2=`提供可能な領域は ${top} が有力です。${Object.keys(parsed.inds).length?`アイデア文に含まれる ${Object.keys(parsed.inds).join('・')} の文脈を重み付けしました。`:'アイデア文に産業の明示がないため、技術の実績分布から推定しています。'}${missing.length?`未カバーの役割は ${missing.join('・')} で、必要に応じて推奨技術を追加できます。`:'8 つの役割をすべてカバーしています。'}`;
+  const p3=`規模の異なる 3 案 — ${concepts.map(x=>`${x.formLabel}「${x.name}」`).join('、')} — を生成しました。${LOT_LABEL[opts.lot]} の前提で、第 1 案の実現性は 成熟度 ${concepts[0].radar.技術成熟度}・製造性 ${concepts[0].radar.製造性}・市場性 ${concepts[0].radar.市場性} と評価しています。`;
+  return [p1,p2,p3];
+}
+function buildHypothesis(c){
+  const {parsed,syn,industries,concepts,techs,opts,process}=c;
+  const idea=parsed.text?`「${parsed.text.slice(0,48)}${parsed.text.length>48?'…':''}」`:'この組み合わせ';
+  const st=`${idea}は、${syn.slice(0,2).map(s=>`「${s.name}」`).join('と')||'選択技術の組み合わせ'}によって実現でき、${industries.slice(0,2).map(x=>x.name).join('・')}の顧客に対して既存製品より高い価値を持つ。`;
+  const lead=process.total;
+  const tests=[
+   {k:'技術検証',v:`${concepts[0].name} の機能試作を ${lead} 日以内に 1 台作り、${syn[0]?`「${syn[0].name}」の効果（${syn[0].via.join('×')}）`:'主要機能'}を定量評価する。`},
+   {k:'顧客検証',v:`${industries.slice(0,2).map(x=>x.name).join('・')}の見込み顧客 3 社に図面と試作を見せ、「今の解決策と比べて何が変わるか」を聞く。2 社以上が導入条件を語れば次へ。`},
+   {k:'経済性検証',v:`${LOT_LABEL[opts.lot]} での目標単価を ${concepts[0].costBand} に置き、工場ごとの見積合算で ±20% 以内に収まるかを確認する。`},
+  ];
+  return {statement:st,tests};
+}
+
+/* ===================== 可視化（SVG） ===================== */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function graphSVG(ids,syn){
+  const W=560,H=360,cx=W/2,cy=H/2,R=Math.min(W,H)/2-70;
+  const pos={};ids.forEach((id,i)=>{const a=-Math.PI/2+i*2*Math.PI/ids.length;pos[id]=[cx+R*Math.cos(a),cy+R*Math.sin(a)]});
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="var(--font)">`;
+  s+=`<rect width="${W}" height="${H}" fill="var(--card)"/>`;
+  for(const e of syn){const [a,b]=e.techs;if(!pos[a]||!pos[b])continue;const [x1,y1]=pos[a],[x2,y2]=pos[b];const mx=(x1+x2)/2,my=(y1+y2)/2;s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent)" stroke-width="2" opacity=".75"/>`;s+=`<rect x="${mx-62}" y="${my-9}" width="124" height="18" rx="4" fill="var(--paper)" stroke="var(--accent-soft)"/><text x="${mx}" y="${my+4}" text-anchor="middle" font-size="9.5" fill="var(--accent)">${esc(e.name.length>14?e.name.slice(0,13)+'…':e.name)}</text>`}
+  if(!syn.length){for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const [x1,y1]=pos[ids[i]],[x2,y2]=pos[ids[j]];s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--line-soft)" stroke-dasharray="3 4"/>`}}
+  for(const id of ids){const t=T[id];const [x,y]=pos[id];const col=ROLE_COLOR[t.role];s+=`<circle cx="${x}" cy="${y}" r="17" fill="${col}" stroke="var(--card)" stroke-width="3"/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="9.5" font-weight="600" fill="#fff">${t.role}</text>`;const above=y<cy;const nm=t.name.replace(/（.*?）/g,'');s+=`<text x="${x}" y="${y+(above?-26:34)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--ink)">${esc(nm.length>14?nm.slice(0,13)+'…':nm)}</text><text x="${x}" y="${y+(above?-14:46)}" text-anchor="middle" font-size="9" fill="var(--ink-mute)" font-family="var(--mono)">${esc(FAC[t.fac].name)}</text>`}
+  s+=`<text x="12" y="${H-10}" font-size="9.5" fill="var(--ink-faint)" font-family="var(--mono)">NODES ${ids.length} · SYNERGY LINKS ${syn.length}</text></svg>`;
+  return s;
+}
+function radarSVG(scores){
+  const keys=Object.keys(scores),n=keys.length,cx=150,cy=150,R=100;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [cx+r*Math.cos(a),cy+r*Math.sin(a)]};
+  let s=`<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" font-family="var(--font)">`;
+  for(const f of [.25,.5,.75,1]){s+=`<polygon points="${keys.map((_,i)=>pt(i,R*f).join(',')).join(' ')}" fill="none" stroke="var(--line-soft)"/>`}
+  keys.forEach((_,i)=>{const [x,y]=pt(i,R);s+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line-faint)"/>`});
+  s+=`<polygon points="${keys.map((k,i)=>pt(i,R*scores[k]/100).join(',')).join(' ')}" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="2"/>`;
+  keys.forEach((k,i)=>{const [x,y]=pt(i,R*scores[k]/100);s+=`<circle cx="${x}" cy="${y}" r="3.5" fill="var(--accent)"/>`;const [lx,ly]=pt(i,R+26);s+=`<text x="${lx}" y="${ly}" text-anchor="middle" font-size="11" fill="var(--ink)" font-weight="500">${k}</text><text x="${lx}" y="${ly+13}" text-anchor="middle" font-size="10" fill="var(--ink-mute)" font-family="var(--mono)">${scores[k]}</text>`});
+  return s+'</svg>';
+}
+
+/* 概念図面：規模ごとのパラメトリック図 + 技術の引出線 + 表題欄 */
+function blueprintSVG(c,res){
+  const W=760,H=520,seed=hash(c.name);
+  const ink='var(--ink)',mute='var(--ink-mute)',line='var(--line)',acc='var(--accent)',brass='var(--brass)';
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="var(--font)">
+  <defs><pattern id="g" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="var(--line-faint)" stroke-width=".6"/></pattern>
+  <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="${ink}"/></marker></defs>
+  <rect width="${W}" height="${H}" fill="var(--card)"/><rect x="14" y="14" width="${W-28}" height="${H-28}" fill="url(#g)" stroke="${ink}" stroke-width="1.2"/>`;
+  // 表題欄
+  const tb={x:W-14-300,y:H-14-86,w:300,h:86};
+  s+=`<rect x="${tb.x}" y="${tb.y}" width="${tb.w}" height="${tb.h}" fill="var(--card)" stroke="${ink}"/>`;
+  const rows=[['品名',c.name],['図番',`AFX-${String(seed%9000+1000)}-${c.code}`],['尺度 / 外形',`${c.form==='大型'?'1:50':c.form==='装置'?'1:5':'1:1'} · ${c.sizeText}`],['材料',c.materials.join(' / ')||'—'],['工場',uniq(c.techs.map(id=>FAC[T[id].fac].name)).length+' 拠点 · '+LOT_LABEL[c.lot]]];
+  rows.forEach((r,i)=>{const y=tb.y+i*(tb.h/rows.length);s+=`<line x1="${tb.x}" y1="${y}" x2="${tb.x+tb.w}" y2="${y}" stroke="${line}"/><text x="${tb.x+6}" y="${y+12}" font-size="8.5" fill="${mute}" font-family="var(--mono)">${r[0]}</text><text x="${tb.x+62}" y="${y+12}" font-size="9.5" fill="${ink}" font-weight="500">${esc(String(r[1]).length>38?String(r[1]).slice(0,37)+'…':r[1])}</text>`});
+  s+=`<text x="26" y="34" font-size="9" fill="${brass}" font-family="var(--mono)" letter-spacing="2">CONCEPT DRAWING · ${esc(c.code)}</text><text x="26" y="52" font-size="14" font-weight="600" fill="${ink}">${esc(c.name)}</text><text x="26" y="66" font-size="9.5" fill="${mute}">${esc(c.formLabel)} · ${esc(c.industries.join(' / '))}</text>`;
+  // 本体ビュー（中央）
+  const cx=W/2+10,cy=H/2+10;let anchors=[];
+  const dim=(x1,y1,x2,y2,label,off)=>{const h=Math.abs(y2-y1)<1;const ox=h?0:off,oy=h?off:0;return `<line x1="${x1+ox}" y1="${y1+oy}" x2="${x2+ox}" y2="${y2+oy}" stroke="${ink}" stroke-width=".8" marker-end="url(#ar)" marker-start="url(#ar)"/><line x1="${x1}" y1="${y1}" x2="${x1+ox}" y2="${y1+oy}" stroke="${line}" stroke-width=".6"/><line x1="${x2}" y1="${y2}" x2="${x2+ox}" y2="${y2+oy}" stroke="${line}" stroke-width=".6"/><text x="${(x1+x2)/2+ox+(h?0:-6)}" y="${(y1+y2)/2+oy+(h?-4:0)}" font-size="9" fill="${ink}" font-family="var(--mono)" text-anchor="${h?'middle':'end'}" ${h?'':`transform="rotate(-90 ${(x1+x2)/2+ox-6} ${(y1+y2)/2})"`}>${label}</text>`};
+  const szW=c.form==='大型'?`${(c.size.W/1000).toFixed(1)} m`:`${c.size.W}`,szH=c.form==='大型'?`${(c.size.H/1000).toFixed(1)} m`:`${c.size.H}`;
+  if(c.form==='部品'){
+    const w=280,h=150,x=cx-w/2,y=cy-h/2-20;const holes=3+Math.floor(rnd(seed,1)*3);
+    s+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="var(--paper-warm)" stroke="${ink}" stroke-width="1.4"/>`;
+    for(let i=0;i<holes;i++){const hx=x+30+i*((w-60)/(holes-1));s+=`<circle cx="${hx}" cy="${y+22}" r="7" fill="var(--card)" stroke="${ink}"/><line x1="${hx-10}" y1="${y+22}" x2="${hx+10}" y2="${y+22}" stroke="${line}" stroke-width=".6"/><line x1="${hx}" y1="${y+12}" x2="${hx}" y2="${y+32}" stroke="${line}" stroke-width=".6"/>`}
+    s+=`<rect x="${x+30}" y="${y+50}" width="${w-60}" height="${h-80}" rx="6" fill="var(--card)" stroke="${ink}" stroke-dasharray="4 3"/>`;
+    for(let i=0;i<5;i++){const lx=x+50+i*((w-100)/4);s+=`<line x1="${lx}" y1="${y+60}" x2="${lx}" y2="${y+h-40}" stroke="${acc}" stroke-width="1.2" opacity=".8"/>`}
+    s+=`<circle cx="${x+w-36}" cy="${y+h-28}" r="12" fill="var(--card)" stroke="${ink}"/><circle cx="${x+w-36}" cy="${y+h-28}" r="5" fill="none" stroke="${acc}"/>`;
+    // 側面図
+    const sy=y+h+40;s+=`<rect x="${x}" y="${sy}" width="${w}" height="26" fill="var(--paper-warm)" stroke="${ink}" stroke-width="1.2"/><rect x="${x+30}" y="${sy-8}" width="${w-60}" height="8" fill="var(--card)" stroke="${ink}"/>`;
+    s+=dim(x,y-18,x+w,y-18,szW,-8)+dim(x+w+18,y,x+w+18,y+h,szH,8);
+    anchors=[[x+30,y+22],[x+w/2,y+h/2],[x+w-36,y+h-28],[x+w/2,sy+13],[x+8,y+h-10],[x+w/2,y+h-28]];
+  }else if(c.form==='装置'){
+    const w=260,h=230,x=cx-w/2,y=cy-h/2-10;
+    s+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="var(--paper-warm)" stroke="${ink}" stroke-width="1.4"/>`;
+    s+=`<rect x="${x+16}" y="${y+16}" width="${w-32}" height="70" rx="4" fill="var(--panel)" stroke="${ink}"/><text x="${x+w/2}" y="${y+56}" text-anchor="middle" font-size="11" fill="#B8A67A" font-family="var(--mono)">${esc(c.code)} · READY</text>`;
+    s+=`<rect x="${x+16}" y="${y+100}" width="${w-32}" height="${h-130}" rx="4" fill="var(--card)" stroke="${ink}" stroke-dasharray="4 3"/>`;
+    for(let i=0;i<3;i++){const mx=x+28+i*((w-56)/3);s+=`<rect x="${mx}" y="${y+112}" width="${(w-56)/3-12}" height="${h-154}" rx="3" fill="var(--paper)" stroke="${acc}" stroke-width="1.1"/>`}
+    for(let i=0;i<4;i++) s+=`<circle cx="${x+30+i*20}" cy="${y+h-14}" r="4" fill="${i===0?acc:'var(--card)'}" stroke="${ink}"/>`;
+    s+=`<rect x="${x-16}" y="${y+h}" width="${w+32}" height="8" fill="var(--paper-dark)" stroke="${ink}"/>`;
+    s+=dim(x,y-18,x+w,y-18,szW,-8)+dim(x+w+18,y,x+w+18,y+h,szH,8);
+    anchors=[[x+w/2,y+50],[x+40,y+150],[x+w/2,y+150],[x+w-40,y+150],[x+30,y+h-14],[x+w/2,y+h+4]];
+  }else if(c.form==='大型'){
+    const w=420,h=200,x=cx-w/2,y=cy-h/2;const gy=y+h;
+    s+=`<line x1="${x-40}" y1="${gy}" x2="${x+w+40}" y2="${gy}" stroke="${ink}" stroke-width="1.6"/>`;
+    for(let i=0;i<14;i++) s+=`<line x1="${x-40+i*36}" y1="${gy}" x2="${x-52+i*36}" y2="${gy+10}" stroke="${line}"/>`;
+    s+=`<rect x="${x}" y="${y+30}" width="26" height="${h-30}" fill="var(--paper-warm)" stroke="${ink}" stroke-width="1.3"/><rect x="${x+w-26}" y="${y+30}" width="26" height="${h-30}" fill="var(--paper-warm)" stroke="${ink}" stroke-width="1.3"/>`;
+    s+=`<rect x="${x-10}" y="${y}" width="${w+20}" height="34" fill="var(--paper-warm)" stroke="${ink}" stroke-width="1.3"/>`;
+    for(let i=0;i<12;i++){const tx=x+i*(w/12);s+=`<line x1="${tx}" y1="${y+2}" x2="${tx+w/12}" y2="${y+32}" stroke="${line}" stroke-width=".8"/>`}
+    s+=`<rect x="${x+w*0.3}" y="${y+34}" width="70" height="40" fill="var(--card)" stroke="${acc}" stroke-width="1.2"/><line x1="${x+w*0.3+35}" y1="${y+74}" x2="${x+w*0.3+35}" y2="${y+130}" stroke="${acc}" stroke-width="1.4"/><rect x="${x+w*0.3+10}" y="${y+130}" width="50" height="22" rx="3" fill="var(--paper)" stroke="${acc}"/>`;
+    s+=`<path d="M${x+40} ${gy-30} Q${x+w/2} ${gy-70} ${x+w-40} ${gy-30}" fill="none" stroke="${ink}" stroke-dasharray="5 4"/>`;
+    s+=`<rect x="${x+w-120}" y="${gy-60}" width="60" height="60" fill="var(--paper)" stroke="${ink}"/><circle cx="${x+w-105}" cy="${gy-8}" r="8" fill="var(--card)" stroke="${ink}"/><circle cx="${x+w-75}" cy="${gy-8}" r="8" fill="var(--card)" stroke="${ink}"/>`;
+    s+=dim(x-10,y-18,x+w+10,y-18,szW,-8)+dim(x+w+36,y,x+w+36,gy,szH,8);
+    anchors=[[x+w/2,y+17],[x+13,y+h/2],[x+w*0.3+35,y+54],[x+w*0.3+35,y+141],[x+w-90,gy-30],[x+w/2,gy-50]];
+  }else{
+    const w=170,h=240,x=cx-w/2,y=cy-h/2-10;
+    s+=`<path d="M${x+20} ${y} H${x+w-20} a20 20 0 0 1 20 20 V${y+h-20} a20 20 0 0 1 -20 20 H${x+20} a20 20 0 0 1 -20 -20 V${y+20} a20 20 0 0 1 20 -20z" fill="var(--paper-warm)" stroke="${ink}" stroke-width="1.4"/>`;
+    s+=`<circle cx="${x+w/2}" cy="${y+26}" r="9" fill="var(--card)" stroke="${ink}"/><circle cx="${x+w/2}" cy="${y+26}" r="4" fill="none" stroke="${line}"/>`;
+    s+=`<rect x="${x+22}" y="${y+56}" width="${w-44}" height="${h-110}" rx="6" fill="var(--card)" stroke="${acc}" stroke-dasharray="3 3"/>`;
+    const init=c.code.slice(0,2);s+=`<text x="${x+w/2}" y="${y+h/2+12}" text-anchor="middle" font-size="46" font-weight="600" fill="${acc}" opacity=".85">${init}</text>`;
+    for(let i=0;i<6;i++) s+=`<line x1="${x+30}" y1="${y+h-44+i*5}" x2="${x+w-30}" y2="${y+h-44+i*5}" stroke="${line}" stroke-width=".7"/>`;
+    s+=`<text x="${x+w/2}" y="${y+h-8}" text-anchor="middle" font-size="7" fill="${mute}" font-family="var(--mono)">No. ${String(seed%500+1).padStart(3,'0')} / 500</text>`;
+    const sx=x+w+70;s+=`<rect x="${sx}" y="${y}" width="22" height="${h}" rx="6" fill="var(--paper-warm)" stroke="${ink}" stroke-width="1.2"/><rect x="${sx+6}" y="${y+56}" width="10" height="${h-110}" fill="var(--card)" stroke="${acc}" stroke-width=".8"/>`;
+    s+=dim(x,y-18,x+w,y-18,szW,-8)+dim(sx+40,y,sx+40,y+h,szH,8);
+    anchors=[[x+w/2,y+26],[x+w/2,y+h/2],[x+w/2,y+h-30],[sx+11,y+h/2],[x+10,y+h/2],[x+w-10,y+60]];
+  }
+  // 引出線（左右の列に配置）
+  const techs=c.techs.slice(0,6).map(id=>T[id]);
+  const leftX=26,rightX=W-26,colTop=100,gap=62;
+  techs.forEach((t,i)=>{const [ax,ay]=anchors[i%anchors.length];const left=i%2===0;const lx=left?leftX+156:rightX-156;const ly=colTop+Math.floor(i/2)*gap+(left?0:26);const tx=left?leftX:rightX;const anchor=left?'start':'end';
+    s+=`<path d="M${ax} ${ay} L${lx} ${ly}" stroke="${ink}" stroke-width=".8" fill="none"/><circle cx="${ax}" cy="${ay}" r="3" fill="${ROLE_COLOR[t.role]}" stroke="var(--card)"/>`;
+    s+=`<line x1="${lx}" y1="${ly}" x2="${tx}" y2="${ly}" stroke="${ink}" stroke-width=".8"/>`;
+    s+=`<rect x="${left?tx:tx-9}" y="${ly-25}" width="9" height="9" fill="${ROLE_COLOR[t.role]}"/><text x="${left?tx+13:tx-13}" y="${ly-17}" text-anchor="${anchor}" font-size="8.5" fill="${mute}" font-family="var(--mono)">${t.role} · ${esc(FAC[t.fac].name)}</text>`;
+    const nm=t.name.replace(/（.*?）/g,'');s+=`<text x="${tx}" y="${ly-4}" text-anchor="${anchor}" font-size="10.5" font-weight="600" fill="${ink}">${esc(nm.length>16?nm.slice(0,15)+'…':nm)}</text>`;
+  });
+  if(c.coreSynergy) s+=`<text x="26" y="${H-24}" font-size="9.5" fill="${acc}" font-family="var(--mono)">CORE SYNERGY · ${esc(c.coreSynergy)}</text>`;
+  s+=`<text x="26" y="${H-40}" font-size="8.5" fill="${mute}" font-family="var(--mono)">概念図（パラメトリック自動生成）· 寸法は規模の目安 · ${new Date(res.ts||Date.now()).toLocaleDateString('ja-JP')}</text>`;
+  return s+'</svg>';
+}
+
+/* ===================== Claude API（ライブ推論） ===================== */
+const LIVE_SCHEMA={type:'object',additionalProperties:false,required:['title','tagline','summary','synergies','industries','concepts','recommended','hypothesis'],properties:{
+ title:{type:'string'},tagline:{type:'string'},summary:{type:'array',items:{type:'string'}},
+ synergies:{type:'array',items:{type:'object',additionalProperties:false,required:['name','effect','tech_ids','industries'],properties:{name:{type:'string'},effect:{type:'string'},tech_ids:{type:'array',items:{type:'string'}},industries:{type:'array',items:{type:'string'}}}}},
+ industries:{type:'array',items:{type:'object',additionalProperties:false,required:['name','score','reasons'],properties:{name:{type:'string'},score:{type:'integer'},reasons:{type:'array',items:{type:'string'}}}}},
+ concepts:{type:'array',items:{type:'object',additionalProperties:false,required:['form','name','desc','size_mm','industries','radar','risks','next'],properties:{form:{type:'string',enum:FORMS},name:{type:'string'},desc:{type:'string'},size_mm:{type:'array',items:{type:'integer'}},industries:{type:'array',items:{type:'string'}},radar:{type:'object',additionalProperties:false,required:['技術成熟度','製造性','市場性','独自性','コスト効率'],properties:{技術成熟度:{type:'integer'},製造性:{type:'integer'},市場性:{type:'integer'},独自性:{type:'integer'},コスト効率:{type:'integer'}}},risks:{type:'array',items:{type:'string'}},next:{type:'array',items:{type:'string'}}}}},
+ recommended:{type:'array',items:{type:'object',additionalProperties:false,required:['tech_id','reason'],properties:{tech_id:{type:'string'},reason:{type:'string'}}}},
+ hypothesis:{type:'object',additionalProperties:false,required:['statement','tests'],properties:{statement:{type:'string'},tests:{type:'array',items:{type:'object',additionalProperties:false,required:['k','v'],properties:{k:{type:'string'},v:{type:'string'}}}}}},
+}};
+async function analyzeLive(selIds, ideaText, opts, cfg, log){
+  const local=analyze(selIds,ideaText,opts); // 補完・工程・整合性はローカルで計算し、創造的な部分を Claude に委ねる
+  const db=TECH.map(t=>`${t.id}|${FAC[t.fac].name}|${t.role}|${t.name}|${t.tags.join(',')}|${t.smin}-${t.smax}mm|lot ${t.lmin}-${t.lmax}|TRL${t.trl}`).join('\n');
+  const sys=`あなたは製造業の技術コーディネータ兼プロダクトデザイナーです。複数の工場が持つ技術を組み合わせ、新しい製品・技術コンセプトを提案します。与えられた技術ベースの ID だけを使い、技術的に実現可能で、具体的で、売り先が明確な提案を日本語で返してください。score は 0〜100、radar の各値も 0〜100 の整数。concepts は規模の異なる 3 案（form は 部品/装置/大型/ノベルティ から 3 種類）。summary は 3 段落の配列。`;
+  const user=`# 技術ベース（id|工場|役割|技術名|タグ|スケール|ロット|TRL）\n${db}\n\n# 選択された技術\n${local.ids.join(', ')}\n\n# アイデア・仮説\n${ideaText||'（未記入）'}\n\n# 条件\n規模: ${opts.form} / 数量: ${LOT_LABEL[opts.lot]} / 重視: ${opts.prio.join('・')||'指定なし'}\n\n# ローカル解析のヒント\n役割カバレッジ: ${local.coverage.roles.join('・')} / 未カバー: ${local.coverage.missing.join('・')||'なし'}\n整合性: ${local.compat.warnings.map(w=>w.text).join(' ')||'問題なし'}\n\n選択技術を核に、相乗効果・提供可能な領域（産業）・3 案のコンセプト・推奨追加技術・仮説と検証プランを返してください。`;
+  log('Claude API へ送信 … model='+cfg.model,'hi');
+  const body={model:cfg.model||'claude-opus-5-5',max_tokens:16000,system:sys,messages:[{role:'user',content:user}],output_config:{effort:'medium',format:{type:'json_schema',schema:LIVE_SCHEMA}},fallbacks:'default'};
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':cfg.key,'anthropic-version':'2026-10-21','anthropic-beta':'server-side-fallback-2026-07-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.text();throw new Error(`HTTP ${r.status}: ${e.slice(0,200)}`)}
+  const msg=await r.json();
+  if(msg.stop_reason==='refusal') throw new Error('モデルが応答を拒否しました（stop_reason: refusal）。表現を変えて再実行してください。');
+  if(msg.stop_reason==='max_tokens') throw new Error('出力が長すぎて途中で切れました。技術数を減らして再実行してください。');
+  const text=(msg.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  const j=JSON.parse(text);
+  log(`応答を受信: ${msg.usage?.input_tokens||'?'} in / ${msg.usage?.output_tokens||'?'} out tokens`,'ok');
+  // ローカル結果にマージ
+  const ids=local.ids;
+  const concepts=j.concepts.slice(0,3).map((c,i)=>{const base=local.concepts.find(x=>x.form===c.form)||local.concepts[i]||local.concepts[0];const [W,D,H]=(c.size_mm&&c.size_mm.length>=3)?c.size_mm:[base.size.W,base.size.D,base.size.H];return {...base,form:c.form,formLabel:FORM_LABEL[c.form],name:c.name,code:CODENAMES[hash(c.name)%CODENAMES.length],tagline:`${c.industries[0]||''}向け ${FORM_LABEL[c.form]}`,desc:`<p>${esc(c.desc).replace(/\n+/g,'</p><p>')}</p>`,size:{W,D,H},sizeText:c.form==='大型'?`約 ${(W/1000).toFixed(1)} × ${(D/1000).toFixed(1)} × ${(H/1000).toFixed(1)} m`:`約 ${W} × ${D} × ${H} mm`,industries:c.industries.slice(0,3),radar:c.radar,risks:c.risks,next:c.next,coreSynergy:(j.synergies[0]||{}).name||null,costBand:costOf(c.form,opts.lot,ids.map(id=>T[id]))}});
+  const synergies=j.synergies.map(s=>({id:'L',name:s.name,effect:s.effect,techs:s.tech_ids.filter(id=>T[id]).slice(0,2),industries:s.industries,via:[]})).filter(s=>s.techs.length===2);
+  const industries=j.industries.filter(x=>INDUSTRIES.includes(x.name)).map(x=>({name:x.name,score:clamp(x.score,0,100),reasons:x.reasons})).sort((a,b)=>b.score-a.score).slice(0,7);
+  return {...local,mode:'live',title:j.title,tagline:j.tagline,summary:j.summary,synergies,industries:industries.length?industries:local.industries,concepts:concepts.length?concepts:local.concepts,coverage:{...local.coverage,recommended:j.recommended.filter(r=>T[r.tech_id]&&!ids.includes(r.tech_id)).slice(0,3).map(r=>({id:r.tech_id,reason:r.reason}))},hypothesis:j.hypothesis,usage:msg.usage};
+}
+</script>
+<script>
+/* =====================================================================
+   UI
+   ===================================================================== */
+const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
+const MAX_SEL=6;
+const state={step:1,sel:[],fac:null,q:'',fRole:'',fInd:'',idea:'',form:'auto',lot:100,prio:[],autoPick:true,result:null,concept:0,lib:[],cfg:{mode:'local',key:'',model:'claude-opus-5-5'},running:false};
+const store={get(k,d){try{const v=localStorage.getItem('afx:'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('afx:'+k,JSON.stringify(v))}catch(e){}}};
+state.lib=store.get('lib',[]);state.cfg={...state.cfg,...store.get('cfg',{})};
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
+const rolePill=r=>`<span class="role-pill" style="background:${ROLE_COLOR[r]}">${r}</span>`;
+
+/* ---------- ナビゲーション ---------- */
+function go(step){
+  state.step=step;
+  $$('.pane').forEach(p=>p.hidden=true);
+  const id=step==='lib'?'#paneLib':'#pane'+step;$(id).hidden=false;
+  $$('.wf-step').forEach(el=>{const n=+el.dataset.step;el.classList.toggle('active',n===step);el.classList.toggle('done',typeof step==='number'&&n<step);if(n>=3) el.classList.toggle('locked',!state.result);});
+  $('#basket').hidden=(step===4||step==='lib');$('#basket').dataset.step=step;
+  $('#stageMain').scrollTop=0;
+}
+$$('.wf-step').forEach(el=>el.addEventListener('click',()=>{if(el.classList.contains('locked')){toast('先にアイデアを入力して AI 合成を実行してください');return}go(+el.dataset.step)}));
+$('#brand').addEventListener('click',()=>go(1));
+$('#btnNext1').addEventListener('click',()=>go(2));
+$('#btnLibrary').addEventListener('click',()=>{renderLib();go('lib')});
+
+/* ---------- Step 1 ---------- */
+function renderFacs(){
+  $('#facStrip').innerHTML=FACTORIES.map(f=>`<div class="fac ${state.fac===f.id?'sel':''}" data-id="${f.id}"><div class="fn">${f.name}</div><div class="fr">${f.region} · ${TECH.filter(t=>t.fac===f.id).length} 技術</div><div class="ft">${f.type}</div></div>`).join('');
+  $$('.fac').forEach(el=>el.addEventListener('click',()=>{state.fac=state.fac===el.dataset.id?null:el.dataset.id;renderFacs();renderTechs()}));
+}
+function renderTechs(){
+  const q=state.q.trim();
+  const list=TECH.filter(t=>(!state.fac||t.fac===state.fac)&&(!state.fRole||t.role===state.fRole)&&(!state.fInd||t.ind[state.fInd])&&(!q||[t.name,t.desc,...t.tags,...t.mat,FAC[t.fac].name].some(s=>s.includes(q))));
+  $('#techCount').textContent=`${list.length} / ${TECH.length} 技術を表示${state.fac?' · '+FAC[state.fac].name:''}`;
+  $('#techGrid').innerHTML=list.map(t=>{const sel=state.sel.includes(t.id);return `<div class="tech ${sel?'sel':''}" data-id="${t.id}" tabindex="0" role="button" aria-pressed="${sel}">
+    <div class="th">${rolePill(t.role)}<div><div class="tn">${t.name}</div><div class="tf">${FAC[t.fac].name} · ${FAC[t.fac].region}</div></div></div>
+    <div class="td">${t.desc}</div>
+    <div class="tt">${t.tags.map(x=>`<span class="tag">${x}</span>`).join('')}</div>
+    <div class="tm"><span>${t.smin}–${t.smax}mm</span><span>${t.prec}</span><span>lot ${fmtNum(t.lmin)}–${fmtNum(t.lmax)}</span><span>TRL ${t.trl}</span></div>
+    <div class="tadd" aria-hidden="true">${sel?'✓':'+'}</div></div>`}).join('')||`<div class="muted" style="padding:20px">該当する技術がありません。</div>`;
+  $$('.tech').forEach(el=>{const h=()=>toggleTech(el.dataset.id);el.addEventListener('click',h);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();h()}})});
+}
+function toggleTech(id){
+  const i=state.sel.indexOf(id);
+  if(i>=0) state.sel.splice(i,1); else { if(state.sel.length>=MAX_SEL){toast(`選択できるのは ${MAX_SEL} 件までです`);return} state.sel.push(id); }
+  renderTechs();renderBasket();
+}
+function renderBasket(){
+  $('#basketCap').textContent=`${state.sel.length} / ${MAX_SEL}`;
+  $('#basketBody').innerHTML=state.sel.length?state.sel.map(id=>{const t=T[id];return `<div class="bitem"><div class="rolebar" style="background:${ROLE_COLOR[t.role]}"></div><div style="min-width:0"><div class="bt">${t.name}</div><div class="bm">${t.role} · ${FAC[t.fac].name}</div></div><button class="bx" data-id="${id}" title="外す" aria-label="外す">×</button></div>`}).join(''):`<div class="basket-empty">技術をクリックして追加<br><span class="small">空のままでも、AI が仮説から選びます</span></div>`;
+  $$('.bx').forEach(b=>b.addEventListener('click',()=>toggleTech(b.dataset.id)));
+  const roles=new Set(state.sel.map(id=>T[id].role));
+  $('#coverage').innerHTML=ROLES.map(r=>`<span class="cov ${roles.has(r)?'on':''}" title="${ROLE_DESC[r]}"><span class="sw" style="${roles.has(r)?'background:'+ROLE_COLOR[r]:''}"></span>${r}</span>`).join('');
+  $('#projMeta').textContent=`選択 ${state.sel.length} 技術 / ${new Set(state.sel.map(id=>T[id].fac)).size} 工場`;
+}
+$('#q').addEventListener('input',e=>{state.q=e.target.value;renderTechs()});
+$('#fRole').innerHTML+=ROLES.map(r=>`<option>${r}</option>`).join('');$('#fRole').addEventListener('change',e=>{state.fRole=e.target.value;renderTechs()});
+$('#fInd').innerHTML+=INDUSTRIES.map(r=>`<option>${r}</option>`).join('');$('#fInd').addEventListener('change',e=>{state.fInd=e.target.value;renderTechs()});
+$('#fClear').addEventListener('click',()=>{state.q='';state.fRole='';state.fInd='';state.fac=null;$('#q').value='';$('#fRole').value='';$('#fInd').value='';renderFacs();renderTechs()});
+
+/* ---------- Step 2 ---------- */
+function renderScen(){
+  $('#scenList').innerHTML=SCENARIOS.map((s,i)=>`<button data-i="${i}"><div class="st">${s.tag}</div><div class="sn">${s.name}</div><div class="sm">${s.meta} · ${s.techs.length} 技術をセット</div></button>`).join('');
+  $$('#scenList button').forEach(b=>b.addEventListener('click',()=>{const s=SCENARIOS[+b.dataset.i];state.sel=[...s.techs];state.idea=s.idea;state.form=s.form;state.lot=+s.lot;state.prio=[...s.prio];$('#idea').value=s.idea;syncOpts();renderTechs();renderBasket();$('#projName').textContent=s.name;toast('シナリオを読み込みました')}));
+}
+function syncOpts(){
+  $$('#segForm button').forEach(b=>b.classList.toggle('on',b.dataset.v===state.form));
+  $$('#segLot button').forEach(b=>b.classList.toggle('on',+b.dataset.v===state.lot));
+  $('#prioChips').innerHTML=PRIORITIES.map(p=>`<span class="chip btn-like ${state.prio.includes(p)?'sel':''}" data-p="${p}" role="button" tabindex="0">${p}</span>`).join('');
+  $$('#prioChips .chip').forEach(c=>c.addEventListener('click',()=>{const p=c.dataset.p;const i=state.prio.indexOf(p);if(i>=0)state.prio.splice(i,1);else if(state.prio.length<3)state.prio.push(p);else toast('重視点は 3 つまで');syncOpts()}));
+  $('#autoPick').checked=state.autoPick;
+  $('#synthHint').textContent=state.sel.length?`${state.sel.length} 技術を核に合成します`:'技術が未選択のため、仮説から AI が選びます';
+}
+$$('#segForm button').forEach(b=>b.addEventListener('click',()=>{state.form=b.dataset.v;syncOpts()}));
+$$('#segLot button').forEach(b=>b.addEventListener('click',()=>{state.lot=+b.dataset.v;syncOpts()}));
+$('#autoPick').addEventListener('change',e=>state.autoPick=e.target.checked);
+$('#idea').addEventListener('input',e=>{state.idea=e.target.value;if(!$('#projName').dataset.manual){const p=parseIdea(state.idea);$('#projName').textContent=p.noun?`${p.noun}の企画`:(state.idea.slice(0,14)||'新規セッション')}});
+$('#btnSynth').addEventListener('click',runSynthesis);
+
+/* ---------- Step 3 ---------- */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let logT0=0;
+function logLine(text,cls){const t=((performance.now()-logT0)/1000).toFixed(2);const el=document.createElement('div');el.className='ln';el.innerHTML=`<span class="ts">${t}s</span><span class="${cls||''}">${text}</span>`;const th=$('#think');const cur=th.querySelector('.cursor');if(cur)cur.remove();th.appendChild(el);th.appendChild(Object.assign(document.createElement('span'),{className:'cursor'}));th.scrollTop=th.scrollHeight}
+async function runSynthesis(){
+  if(state.running) return;
+  if(!state.sel.length&&!state.idea.trim()){toast('技術を選ぶか、アイデアを入力してください');return}
+  if(!state.sel.length&&!state.autoPick){state.autoPick=true;$('#autoPick').checked=true}
+  state.running=true;state.result=null;
+  $$('.wf-step').forEach(el=>{if(+el.dataset.step>=3)el.classList.remove('locked')});
+  go(3);$('#results').hidden=true;$('#think').innerHTML='';$('#prog').style.width='0%';logT0=performance.now();
+  const opts={form:state.form,lot:state.lot,prio:[...state.prio],autoPick:state.autoPick};
+  const steps=[[`技術ベースを走査 … ${TECH.length} 技術 / ${FACTORIES.length} 工場`,'',6],[`選択技術 ${state.sel.length} 件の役割を分類 → ${uniq(state.sel.map(id=>T[id].role)).join('・')||'（なし）'}`,'',14],[`アイデア文を解析 … 産業語 ${Object.keys(parseIdea(state.idea).inds).join('・')||'なし'} / 特性語 ${[...parseIdea(state.idea).feats].join('・')||'なし'}`,'',24]];
+  for(const [t,c,p] of steps){logLine(t,c);$('#prog').style.width=p+'%';await sleep(260)}
+  let res;
+  try{
+    if(opts.autoPick){const add=autoPick(state.sel,parseIdea(state.idea),opts);logLine(add.length?`役割の穴を補完 → ${add.map(id=>T[id].name).join('、')}`:'役割カバレッジは十分。補完なし','hi');await sleep(260)}
+    $('#prog').style.width='36%';
+    logLine(`相乗効果ルール ${SYNERGY.length} 件を照合 …`);await sleep(220);
+    const pre=analyze(state.sel,state.idea,opts);
+    logLine(`→ ${pre.synergies.length} 件が成立${pre.synergies.length?'： '+pre.synergies.map(s=>s.name).join(' / '):''}`,pre.synergies.length?'ok':'wn');$('#prog').style.width='52%';await sleep(260);
+    logLine(`スケール・材料・ロットの整合性を検査 → 警告 ${pre.compat.warnings.filter(w=>w.lv==='warn').length} 件`,pre.compat.warnings.some(w=>w.lv==='warn')?'wn':'ok');$('#prog').style.width='62%';await sleep(220);
+    logLine(`産業適合度を算出 → 上位: ${pre.industries.slice(0,3).map(x=>`${x.name} ${x.score}`).join(' / ')}`);$('#prog').style.width='72%';await sleep(220);
+    if(state.cfg.mode==='live'&&state.cfg.key){
+      $('#prog').style.width='78%';
+      try{ res=await analyzeLive(state.sel,state.idea,opts,state.cfg,logLine); }
+      catch(e){ logLine('Claude API エラー: '+e.message+' → ローカル推論にフォールバック','wn'); res=pre; }
+    } else { res=pre; logLine('ローカル推論でコンセプトを生成 …','hi');await sleep(300); }
+    $('#prog').style.width='90%';
+    logLine(`3 案を生成 → ${res.concepts.map(c=>c.formLabel).join(' / ')}`,'ok');await sleep(200);
+    logLine('概念図面・工程フロー・検証プランを作成 … 完了','ok');$('#prog').style.width='100%';
+  }catch(e){ logLine('エラー: '+e.message,'wn'); state.running=false; return; }
+  state.result=res;state.concept=0;state.running=false;
+  renderResults(res);renderDesign();
+  $('#results').hidden=false;$('#results').classList.add('fade-in');
+}
+function renderResults(res){
+  $('#resTitle').textContent=res.title;
+  $('#synthTitle').textContent=`AI 合成 — ${res.title}`;
+  $('#synthSub').textContent=`${res.tagline}${res.mode==='live'?' · Claude API（'+state.cfg.model+'）による生成':' · ローカル推論（ルールベース）'}`;
+  $('#resSummary').innerHTML=res.summary.map(p=>`<p>${p}</p>`).join('');
+  $('#resSyn').innerHTML=res.synergies.length?res.synergies.map(s=>`<div class="syn"><div class="sn">${s.name}</div><div class="se">${s.effect}</div><div class="sx">${s.techs.map(id=>`<span class="chip"><span class="role-dot" style="background:${ROLE_COLOR[T[id].role]}"></span>${T[id].name}</span>`).join('')}${s.industries.map(i=>`<span class="tag">${i}</span>`).join('')}</div></div>`).join(''):`<div class="callout warn">相乗効果ルールへの一致はありません。役割の異なる技術（例：表面＋機能、接合＋計測）を足すと、名前の付く価値が生まれやすくなります。</div>`;
+  const cov=res.coverage;
+  $('#resCov').innerHTML=`<div class="coverage" style="margin-bottom:10px">${ROLES.map(r=>`<span class="cov ${cov.roles.includes(r)?'on':''}"><span class="sw" style="${cov.roles.includes(r)?'background:'+ROLE_COLOR[r]:''}"></span>${r}</span>`).join('')}</div>
+   ${res.added.length?`<div class="callout ok" style="margin-bottom:10px">AI が補完した技術：${res.added.map(id=>`<b>${T[id].name}</b>（${FAC[T[id].fac].name}）`).join('、')}</div>`:''}
+   ${cov.recommended.length?`<div class="grid" style="gap:8px">${cov.recommended.map(r=>`<div class="card" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px"><div>${rolePill(T[r.id].role)}</div><div style="min-width:0;flex:1"><div style="font-weight:600;font-size:12.5px">${T[r.id].name} <span class="muted small">· ${FAC[T[r.id].fac].name}</span></div><div class="small" style="color:var(--ink-soft)">${r.reason}</div></div><button class="btn sm" data-add="${r.id}">追加して再合成</button></div>`).join('')}</div>`:`<div class="small muted">追加を推奨する技術はありません。</div>`}`;
+  $$('[data-add]').forEach(b=>b.addEventListener('click',()=>{if(state.sel.length>=MAX_SEL){state.sel.shift()}if(!state.sel.includes(b.dataset.add))state.sel.push(b.dataset.add);renderTechs();renderBasket();runSynthesis()}));
+  $('#graph').innerHTML=graphSVG(res.ids,res.synergies);
+  $('#resInd').innerHTML=res.industries.map(x=>`<div class="ind-row"><div class="in">${x.name}</div><div class="bar"><i style="width:${x.score}%"></i></div><div class="sc">${x.score}</div><div class="ir">${x.reasons.slice(0,3).join(' · ')}</div></div>`).join('');
+  const all=[...res.compat.warnings,...res.compat.notes];
+  $('#resCompat').innerHTML=all.length?all.map(w=>`<div class="callout ${w.lv}">${w.text}</div>`).join(''):`<div class="callout ok">整合性の問題は見つかりませんでした。</div>`;
+}
+$('#btnToDesign').addEventListener('click',()=>go(4));
+$('#btnRerun').addEventListener('click',()=>go(2));
+
+/* ---------- Step 4 ---------- */
+function renderDesign(){
+  const res=state.result;if(!res)return;
+  $('#ctabs').innerHTML=res.concepts.map((c,i)=>`<button class="ctab ${i===state.concept?'on':''}" data-i="${i}"><div class="cf">案 ${'ABC'[i]} · ${c.formLabel}</div><div class="cn">${c.name}</div><div class="cm">${c.industries.join(' / ')} · ${c.sizeText}</div></button>`).join('');
+  $$('.ctab').forEach(b=>b.addEventListener('click',()=>{state.concept=+b.dataset.i;renderDesign()}));
+  const c=res.concepts[state.concept];
+  $('#bp').innerHTML=blueprintSVG(c,res);
+  $('#cName').textContent=c.name;
+  $('#cDesc').innerHTML=c.desc;
+  $('#cSpec').innerHTML=[['コード',`<span class="mono">${c.code}</span>`],['規模',c.formLabel],['外形（目安）',c.sizeText],['想定数量',c.lotText],['単価レンジ（概算）',c.costBand],['主材料',c.materials.join(' / ')||'—'],['提供先',c.industries.join(' / ')],['中核の相乗効果',c.coreSynergy||'—']].map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
+  $('#radar').innerHTML=radarSVG(c.radar);
+  $('#cTech').innerHTML=`<thead><tr><th>役割</th><th>技術</th><th>工場</th><th>この案での働き</th></tr></thead><tbody>${c.techs.map(id=>{const t=T[id];return `<tr><td>${rolePill(t.role)}</td><td style="font-weight:600">${t.name}</td><td class="small">${FAC[t.fac].name}</td><td class="small">${roleInConcept(t,c,res)}</td></tr>`}).join('')}</tbody>`;
+  $('#cRisk').innerHTML=c.risks.map(r=>`<li>${r}</li>`).join('');
+  $('#cNext').innerHTML=c.next.map(r=>`<li>${r}</li>`).join('');
+  const f=res.process;
+  $('#flow').innerHTML=f.steps.map(s=>`<div class="fstep"><div class="fb" style="border-top-color:${ROLE_COLOR[s.role]}"><div class="fr">${String(s.n).padStart(2,'0')} · ${s.role}</div><div class="fn">${s.name}</div><div class="ff">${s.facName}<br><span class="mono">${s.region}</span></div><div class="fd">${s.days} 日</div></div></div>`).join('');
+  $('#flowTotal').textContent=`想定リードタイム 約 ${f.total} 日（工程間の受け渡しを含む）`;
+  const h=res.hypothesis;
+  $('#hypo').innerHTML=`<div style="font-size:13.5px;line-height:1.7;font-weight:500">${h.statement}</div><table class="t" style="margin-top:10px"><tbody>${h.tests.map(t=>`<tr><td style="white-space:nowrap;color:var(--brass);font-weight:600">${t.k}</td><td>${t.v}</td></tr>`).join('')}</tbody></table>`;
+}
+function roleInConcept(t,c,res){
+  const s=res.synergies.find(s=>s.techs.includes(t.id));
+  const base={材料:'製品の素材と基本特性を決める',成形:'主要形状を一度に作る',加工:'精度が必要な部位を仕上げる',接合:'異なる部品・材料をつなぐ',表面:'機能・意匠・耐久を表面で与える',機能:'電気・制御・センシングを担う',計測:'品質を測り、個体ごとに記録する',組立:'部品を製品に組み上げる'}[t.role];
+  return s?`${base}。「${s.name}」の片側を担う`:base;
+}
+$('#btnSave').addEventListener('click',()=>{const r=state.result;if(!r)return;const item={id:Date.now().toString(36),name:r.title,ts:Date.now(),ids:r.ids,sel:[...state.sel],idea:state.idea,opts:r.opts,mode:r.mode,forms:r.concepts.map(c=>c.formLabel),inds:r.industries.slice(0,3).map(x=>x.name),result:r};state.lib.unshift(item);state.lib=state.lib.slice(0,30);store.set('lib',state.lib);$('#libCount').textContent=state.lib.length;toast('ライブラリに保存しました')});
+$('#btnCopy').addEventListener('click',async()=>{const r=state.result;if(!r)return;const out={title:r.title,tagline:r.tagline,mode:r.mode,idea:r.idea,technologies:r.ids.map(id=>({id,name:T[id].name,factory:FAC[T[id].fac].name,role:T[id].role})),synergies:r.synergies,industries:r.industries,concepts:r.concepts.map(c=>({form:c.form,name:c.name,code:c.code,size:c.sizeText,lot:c.lotText,cost:c.costBand,industries:c.industries,radar:c.radar,risks:c.risks,next:c.next})),process:r.process,hypothesis:r.hypothesis};const txt=JSON.stringify(out,null,2);try{await navigator.clipboard.writeText(txt);toast('JSON をコピーしました')}catch(e){openModal(`<h3>提案 JSON</h3><div class="pre">${esc(txt)}</div><div class="actions"><button class="btn" data-close>閉じる</button></div>`)}});
+$('#btnNew').addEventListener('click',()=>{state.sel=[];state.idea='';state.result=null;state.prio=[];state.form='auto';state.lot=100;$('#idea').value='';$('#projName').textContent='新規セッション';renderTechs();renderBasket();syncOpts();$$('.wf-step').forEach(el=>{if(+el.dataset.step>=3)el.classList.add('locked')});go(1)});
+
+/* ---------- ライブラリ ---------- */
+function renderLib(){
+  $('#libCount').textContent=state.lib.length;
+  $('#libGrid').innerHTML=state.lib.length?state.lib.map(it=>`<div class="lib-item" data-id="${it.id}"><div class="ln">${it.name}</div><div class="lm">${new Date(it.ts).toLocaleString('ja-JP')} · ${it.ids.length} 技術 · ${it.mode==='live'?'Claude API':'ローカル'}</div><div class="lt">${it.inds.map(i=>`<span class="tag">${i}</span>`).join('')}</div><div class="small muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.idea||'（アイデア未記入）'}</div><div style="display:flex;gap:6px;margin-top:4px"><button class="btn sm" data-open="${it.id}">開く</button><button class="btn sm ghost" data-del="${it.id}">削除</button></div></div>`).join(''):`<div class="muted">保存された提案はまだありません。デザイン画面の「ライブラリに保存」から追加できます。</div>`;
+  $$('[data-open]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const it=state.lib.find(x=>x.id===b.dataset.open);state.sel=[...it.sel];state.idea=it.idea;$('#idea').value=it.idea;state.form=it.opts.form;state.lot=it.opts.lot;state.prio=[...it.opts.prio];state.result=it.result;state.concept=0;$('#projName').textContent=it.name;renderTechs();renderBasket();syncOpts();$$('.wf-step').forEach(el=>el.classList.remove('locked'));$('#think').innerHTML=`<div class="ln"><span class="ts">—</span><span class="ok">ライブラリから復元しました</span></div>`;$('#prog').style.width='100%';renderResults(it.result);renderDesign();$('#results').hidden=false;go(4)}));
+  $$('[data-del]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();state.lib=state.lib.filter(x=>x.id!==b.dataset.del);store.set('lib',state.lib);renderLib()}));
+}
+
+/* ---------- 設定モーダル ---------- */
+function openModal(html){$('#modalRoot').innerHTML=`<div class="modal-bg" id="modalBg"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;$$('[data-close]').forEach(b=>b.addEventListener('click',closeModal));$('#modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal()})}
+function closeModal(){$('#modalRoot').innerHTML=''}
+function openSettings(){
+  openModal(`<h3>AI 推論モード</h3><div class="small muted">デモは既定でブラウザ内のルールベース推論で動きます。Claude API キーを設定すると、相乗効果・コンセプト・仮説の文章を Claude が生成します（補完・工程・図面はローカル）。</div>
+   <div class="field"><label>モード</label><select id="cfgMode"><option value="local" ${state.cfg.mode==='local'?'selected':''}>ローカル推論（オフライン・即時）</option><option value="live" ${state.cfg.mode==='live'?'selected':''}>Claude API（要 API キー）</option></select></div>
+   <div class="field"><label>Anthropic API キー（このブラウザにのみ保存）</label><input id="cfgKey" type="password" value="${esc(state.cfg.key||'')}" placeholder="sk-ant-…" autocomplete="off"></div>
+   <div class="field"><label>モデル</label><select id="cfgModel">${['claude-opus-5-5','claude-sonnet-5-5','claude-haiku-5-5'].map(m=>`<option ${state.cfg.model===m?'selected':''}>${m}</option>`).join('')}</select></div>
+   <div class="callout warn" style="margin-top:12px">ブラウザから直接 API を呼ぶため、API キーは閲覧者の端末に保存されます。本番ではサーバ経由にしてください。拒否応答や通信失敗時はローカル推論に自動フォールバックします。</div>
+   <div class="actions"><button class="btn" data-close>キャンセル</button><button class="btn primary" id="cfgSave">保存</button></div>`);
+  $('#cfgSave').addEventListener('click',()=>{state.cfg={mode:$('#cfgMode').value,key:$('#cfgKey').value.trim(),model:$('#cfgModel').value};if(state.cfg.mode==='live'&&!state.cfg.key){toast('API キーを入力してください');return}store.set('cfg',state.cfg);renderMode();closeModal();toast('設定を保存しました')});
+}
+function renderMode(){const b=$('#modeBadge');const live=state.cfg.mode==='live'&&state.cfg.key;b.textContent=live?`AI: Claude API · ${state.cfg.model}`:'AI: ローカル推論';b.classList.toggle('live',!!live)}
+$('#btnSettings').addEventListener('click',openSettings);$('#modeBadge').addEventListener('click',openSettings);
+
+/* ---------- 起動 ---------- */
+renderFacs();renderTechs();renderBasket();renderScen();syncOpts();renderMode();$('#libCount').textContent=state.lib.length;
+(function hashRoute(){const h=location.hash.replace('#','');if(h==='library'){renderLib();go('lib')}})();
+</script>
+</body>
+</html>
