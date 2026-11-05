@@ -11,12 +11,12 @@ const CODENAMES=['KESTREL','ORIGAMI','LANTERN','BASALT','MERIDIAN','TALLOW','CAL
 const FORMS=['部品','装置','大型','ノベルティ'];
 const SYN_SHORT={S01:'微細構造',S02:'マイクロ流体',S03:'柔軟センサ',S04:'スマート構造',S05:'電池レスセンサ',S06:'軽量アーム',S07:'一体化構造',S08:'高温絶縁',S09:'低侵襲デバイス',S10:'ソフトインターフェース',S11:'衛生接触',S12:'ブランド',S13:'軽量筐体',S14:'検査セル',S15:'ソフトハンド',S16:'自動化機械',S17:'自律搬送',S18:'摺動',S19:'防曇窓',S20:'マイクロ光学',S21:'マイクロポンプ',S22:'触覚',S23:'配線一体',S24:'電波筐体',S25:'個体管理',S26:'膜構造',S27:'保護グリップ',S28:'気密アセンブリ',S29:'最適化構造',S30:'耐薬流体',S31:'防振計測',S32:'ろ過',S33:'一気通貫',S34:'カスタム記念',S35:'一貫供給',S36:'意匠金属',S37:'視覚判断',S38:'ウェアラブル計測'};
 const DEVICE_NOUN=/ハンド|ポンプ|装置|ステーション|システム|ライン|搬送機|収穫機|散布機|検査装置|顕微鏡|ドローン|ランプ|照明|スピーカー|センサ|アーム|グリッパ|フィルタ|冷却ユニット|ステージ/;
-function conceptName(form,noun,adj,seed,idx){
+function conceptName(form,noun,adj,seed,idx,membrane){
   const pick=arr=>arr[Math.floor(rnd(seed,idx+11)*arr.length)];
-  const dev=DEVICE_NOUN.test(noun),st=/屋根|テント|シェルター|ゲート|橋|フレーム|棚|ラック|膜構造|スマート構造|一体化構造|最適化構造|筐体/.test(noun);let core;
+  const dev=DEVICE_NOUN.test(noun)&&!(form==='大型'&&membrane),st=(form==='大型'&&membrane)||/屋根|テント|シェルター|ゲート|橋|フレーム|棚|ラック|膜構造|スマート構造|一体化構造|最適化構造|筐体/.test(noun);let core;
   if(form==='部品') core=noun+pick(dev?['ユニット','モジュール','コア']:['ユニット','モジュール','カートリッジ']);
   else if(form==='装置') core=dev?'卓上'+noun:st?'可搬'+noun+'キット':noun+pick(['ステーション','ワークセル','装置']);
-  else if(form==='大型') core=noun+pick(st?['大型構造','システム','プラットフォーム']:['自動化ライン','大型システム','プラットフォーム']);
+  else if(form==='大型') core=noun+pick(st?(membrane?['シェルター','膜構造ステーション','大型構造']:['大型構造','システム','プラットフォーム']):['自動化ライン','大型システム','プラットフォーム']);
   else core=dev?noun+'モチーフ '+pick(['キーピース','オブジェ','メダル']):noun+pick(['ピース','オブジェ','キーピース']);
   const a=adj&&!noun.includes(adj.replace('設計',''))&&!(form==='大型'&&/超小型|卓上/.test(adj))?adj+' ':'';
   return (a+core).trim();
@@ -150,7 +150,9 @@ function buildConcept(form,idx,ctx){
   const feats=[...parsed.feats];
   const adj=feats.includes('軽量')?'軽量':feats.includes('防水')?'全天候':feats.includes('小型')?'超小型':feats.includes('衛生')?'衛生設計':feats.includes('電池レス')?'電池レス':feats.includes('高精度')?'高精度':feats.includes('柔軟')?'ソフト':'';
   let noun=parsed.noun||(core?SYN_SHORT[core.id]:'')||{部品:'機能',装置:'ワーク',大型:'自動化',ノベルティ:'メモリアル'}[form];
-  const name=conceptName(form,noun,adj,seed,idx);
+  const membrane=techs.some(t=>['耐候','縫製','溶着'].some(x=>t.tags.includes(x)));
+  let name=conceptName(form,noun,adj,seed,idx,membrane);
+  if(form==='ノベルティ'&&techs.some(t=>t.tags.includes('絞り'))) name=name.replace(/(モチーフ )?(キーピース|オブジェ|メダル|ピース)$/,'カップ');
   const code=CODENAMES[(hash(name)+idx)%CODENAMES.length];
   const band=FORM_BAND[form];
   const sz=(k)=>Math.round((band[0]+(band[1]-band[0])*rnd(seed,idx*7+k)*0.8+ (band[1]-band[0])*0.1)/(band[1]>1000?50:band[1]>200?5:1))*(band[1]>1000?50:band[1]>200?5:1);

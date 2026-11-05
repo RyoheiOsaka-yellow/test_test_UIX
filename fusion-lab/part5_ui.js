@@ -4,7 +4,7 @@
    ===================================================================== */
 const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
 const MAX_SEL=6;
-const state={step:1,sel:[],fac:null,q:'',fRole:'',fInd:'',idea:'',form:'auto',lot:100,prio:[],autoPick:true,result:null,concept:0,lib:[],cfg:{mode:'local',key:'',model:'claude-opus-5-5'},running:false};
+const state={step:1,sel:[],fac:null,q:'',fRole:'',fInd:'',idea:'',form:'auto',lot:100,prio:[],autoPick:true,result:null,concept:0,view:'3d',lib:[],cfg:{mode:'local',key:'',model:'claude-opus-5-5'},running:false};
 const store={get(k,d){try{const v=localStorage.getItem('afx:'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('afx:'+k,JSON.stringify(v))}catch(e){}}};
 state.lib=store.get('lib',[]);state.cfg={...state.cfg,...store.get('cfg',{})};
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2200)}
@@ -140,11 +140,13 @@ function renderDesign(){
   $$('.ctab').forEach(b=>b.addEventListener('click',()=>{state.concept=+b.dataset.i;renderDesign()}));
   const c=res.concepts[state.concept];
   $('#bp').innerHTML=blueprintSVG(c,res);
+  render3D(c,res);
   $('#cName').textContent=c.name;
   $('#cDesc').innerHTML=c.desc;
   $('#cSpec').innerHTML=[['コード',`<span class="mono">${c.code}</span>`],['規模',c.formLabel],['外形（目安）',c.sizeText],['想定数量',c.lotText],['単価レンジ（概算）',c.costBand],['主材料',c.materials.join(' / ')||'—'],['提供先',c.industries.join(' / ')],['中核の相乗効果',c.coreSynergy||'—']].map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
   $('#radar').innerHTML=radarSVG(c.radar);
-  $('#cTech').innerHTML=`<thead><tr><th>役割</th><th>技術</th><th>工場</th><th>この案での働き</th></tr></thead><tbody>${c.techs.map(id=>{const t=T[id];return `<tr><td>${rolePill(t.role)}</td><td style="font-weight:600">${t.name}</td><td class="small">${FAC[t.fac].name}</td><td class="small">${roleInConcept(t,c,res)}</td></tr>`}).join('')}</tbody>`;
+  $('#cTech').innerHTML=`<thead><tr><th>役割</th><th>技術</th><th>工場</th><th>この案での働き</th></tr></thead><tbody>${c.techs.map(id=>{const t=T[id];return `<tr data-tid="${id}"><td>${rolePill(t.role)}</td><td style="font-weight:600">${t.name}</td><td class="small">${FAC[t.fac].name}</td><td class="small">${roleInConcept(t,c,res)}</td></tr>`}).join('')}</tbody>`;
+  $$('#cTech tr[data-tid]').forEach(tr=>{tr.addEventListener('mouseenter',()=>has3D()&&FX3D.hoverTech(tr.dataset.tid));tr.addEventListener('mouseleave',()=>has3D()&&FX3D.hoverTech(null));tr.addEventListener('click',()=>{if(!has3D())return;FX3D.focusTech(tr.dataset.tid);const v=$('#v3d');const r=v.getBoundingClientRect();if(r.top<0||r.bottom>innerHeight)v.scrollIntoView({behavior:'smooth',block:'center'})})});
   $('#cRisk').innerHTML=c.risks.map(r=>`<li>${r}</li>`).join('');
   $('#cNext').innerHTML=c.next.map(r=>`<li>${r}</li>`).join('');
   const f=res.process;
@@ -161,6 +163,52 @@ function roleInConcept(t,c,res){
 $('#btnSave').addEventListener('click',()=>{const r=state.result;if(!r)return;const item={id:Date.now().toString(36),name:r.title,ts:Date.now(),ids:r.ids,sel:[...state.sel],idea:state.idea,opts:r.opts,mode:r.mode,forms:r.concepts.map(c=>c.formLabel),inds:r.industries.slice(0,3).map(x=>x.name),result:r};state.lib.unshift(item);state.lib=state.lib.slice(0,30);store.set('lib',state.lib);$('#libCount').textContent=state.lib.length;toast('ライブラリに保存しました')});
 $('#btnCopy').addEventListener('click',async()=>{const r=state.result;if(!r)return;const out={title:r.title,tagline:r.tagline,mode:r.mode,idea:r.idea,technologies:r.ids.map(id=>({id,name:T[id].name,factory:FAC[T[id].fac].name,role:T[id].role})),synergies:r.synergies,industries:r.industries,concepts:r.concepts.map(c=>({form:c.form,name:c.name,code:c.code,size:c.sizeText,lot:c.lotText,cost:c.costBand,industries:c.industries,radar:c.radar,risks:c.risks,next:c.next})),process:r.process,hypothesis:r.hypothesis};const txt=JSON.stringify(out,null,2);try{await navigator.clipboard.writeText(txt);toast('JSON をコピーしました')}catch(e){openModal(`<h3>提案 JSON</h3><div class="pre">${esc(txt)}</div><div class="actions"><button class="btn" data-close>閉じる</button></div>`)}});
 $('#btnNew').addEventListener('click',()=>{state.sel=[];state.idea='';state.result=null;state.prio=[];state.form='auto';state.lot=100;$('#idea').value='';$('#projName').textContent='新規セッション';renderTechs();renderBasket();syncOpts();$$('.wf-step').forEach(el=>{if(+el.dataset.step>=3)el.classList.add('locked')});go(1)});
+
+
+/* ---------- 3D ビューア連携 ---------- */
+const has3D=()=>!!(window.FX3D&&FX3D.ready&&state.view==='3d');
+function render3D(c,res){
+  const ok3d=window.FX3D&&FX3D.available();
+  if(!ok3d){ if(state.view==='3d'){state.view='2d';$('#v3d').innerHTML='<div class="v3d-fallback">この環境では WebGL が使えないため、概念図面を表示しています。</div>'} setView(state.view,true); return; }
+  setView(state.view,true);
+  if(!FX3D.show($('#v3d'),c,res)){state.view='2d';setView('2d',true);toast('3D 表示に失敗したため図面に切り替えました');return}
+  renderPartMap();
+  if(syncSize(c)) renderDesign();
+}
+/* 3D モデルの実寸を正として、仕様・図面・説明の外形を揃える */
+function syncSize(c){
+  const m=FX3D.measured(); if(!m) return false;
+  const o=c.size; if(Math.abs(m.W-o.W)<=Math.max(1,o.W*0.02)&&Math.abs(m.D-o.D)<=Math.max(1,o.D*0.02)&&Math.abs(m.H-o.H)<=Math.max(1,o.H*0.02)) return false;
+  if(!c.size0) c.size0={...o};
+  const big=c.form==='大型', f=v=>big?(v/1000).toFixed(1):v;
+  if(typeof c.desc==='string') c.desc=c.desc.split(`${f(o.W)}×${f(o.D)}×${f(o.H)}`).join(`${f(m.W)}×${f(m.D)}×${f(m.H)}`);
+  c.size={...m}; c.sizeText=big?`約 ${f(m.W)} × ${f(m.D)} × ${f(m.H)} m`:`約 ${m.W} × ${m.D} × ${m.H} mm`;
+  return true;
+}
+function renderPartMap(){
+  const ps=FX3D.parts();
+  $('#pmap').innerHTML=ps.map(p=>`<button class="pchip" data-tid="${p.techs[0]}" title="${p.techs.map(id=>T[id].name).join(' / ')}"><i style="background:${ROLE_COLOR[T[p.techs[0]].role]}"></i><b>${p.name}</b>${p.techs.map(id=>T[id].name.replace(/（.*?）/g,'')).join('・')}</button>`).join('');
+  $$('#pmap .pchip').forEach(b=>{b.addEventListener('click',()=>FX3D.focusTech(b.dataset.tid));b.addEventListener('mouseenter',()=>FX3D.hoverTech(b.dataset.tid));b.addEventListener('mouseleave',()=>FX3D.hoverTech(null))});
+}
+function markTech(ids,cls){$$('#cTech tr[data-tid]').forEach(tr=>tr.classList.toggle(cls,ids.includes(tr.dataset.tid)));$$('#pmap .pchip').forEach(b=>b.classList.toggle(cls,ids.includes(b.dataset.tid)))}
+function setView(v,silent){
+  state.view=v;
+  $$('#segView button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $('#v3d').hidden=v!=='3d';$('#bp').hidden=v!=='2d';$('#vtools').hidden=v!=='3d';$('#vfoot').hidden=v!=='3d';
+  if(!silent&&v==='3d'&&state.result){render3D(state.result.concepts[state.concept],state.result)}
+}
+$$('#segView button').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.v==='3d'&&!(window.FX3D&&FX3D.available())){toast('この環境では 3D 表示を使えません');return}setView(b.dataset.v)}));
+$('#vExplode').addEventListener('input',e=>window.FX3D&&FX3D.setExplode(e.target.value/100));
+const pressToggle=(id,fn)=>$(id).addEventListener('click',e=>{const b=e.currentTarget;const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);fn(on)});
+pressToggle('#vRole',on=>FX3D.setRoleMode(on));
+pressToggle('#vSection',on=>FX3D.setSection(on));
+pressToggle('#vLabels',on=>FX3D.setLabels(on));
+$('#vReset').addEventListener('click',()=>FX3D.reset());
+const exp=(fn,label)=>async()=>{try{await fn();toast(`${label} を書き出しました`)}catch(e){toast(`${label} の書き出しに失敗しました`)}};
+$('#vGLB').addEventListener('click',exp(()=>FX3D.exportGLB(),'GLB'));
+$('#vSTL').addEventListener('click',exp(()=>FX3D.exportSTL(),'STL'));
+$('#vPNG').addEventListener('click',exp(()=>FX3D.exportPNG(),'PNG'));
+if(window.FX3D){FX3D.onFocus=ids=>markTech(ids,'on');FX3D.onHover=ids=>markTech(ids,'hv')}
 
 /* ---------- ライブラリ ---------- */
 function renderLib(){

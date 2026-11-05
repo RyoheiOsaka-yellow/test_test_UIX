@@ -1,0 +1,13 @@
+{
+  "name": "anglex-fusion",
+  "private": true,
+  "version": "0.2.0",
+  "description": "ANGLEX FUSION concept demo (single-file HTML build)",
+  "scripts": {
+    "build": "bash build.sh"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0",
+    "three": "0.180.0"
+  }
+}

@@ -98,11 +98,28 @@
     <!-- ④ デザイン -->
     <section class="pane" id="pane4" hidden>
       <div class="page-h">デザイン — コンセプト案と図面</div>
-      <div class="page-sub">同じ技術の組み合わせから、規模の異なる 3 案を展開します。図面は技術パラメータから自動生成した概念図で、各技術がどこに効くかを引出線で示します。</div>
+      <div class="page-sub">同じ技術の組み合わせから、規模の異なる 3 案を展開します。3D モデルと概念図面は技術パラメータから自動生成し、どの技術がどの部位に効くかを示します。分解・断面で内部構成も確認できます。</div>
       <div class="ctabs" id="ctabs" style="margin-top:14px"></div>
       <div class="design-grid">
         <div>
-          <div class="bp" id="bp"></div>
+          <div class="viewer">
+            <div class="vbar">
+              <div class="seg" id="segView" role="tablist"><button data-v="3d" class="on" role="tab">3D モデル</button><button data-v="2d" role="tab">概念図面</button></div>
+              <div class="vtools" id="vtools">
+                <label class="vrange" for="vExplode">分解<input type="range" id="vExplode" min="0" max="100" value="0"></label>
+                <button class="btn sm" id="vRole" aria-pressed="false" title="部位を技術の役割で色分け">役割カラー</button>
+                <button class="btn sm" id="vSection" aria-pressed="false" title="中央で切断して内部を表示">断面</button>
+                <button class="btn sm" id="vLabels" aria-pressed="true" title="技術ラベルの表示">ラベル</button>
+                <button class="btn sm ghost" id="vReset" title="視点を初期位置へ">視点リセット</button>
+              </div>
+            </div>
+            <div class="v3d" id="v3d"><div class="v3d-note">概念 3D · パラメトリック自動生成 · 寸法は目安</div><div class="v3d-hint">ドラッグで回転 · ホイールで拡大 · 右ドラッグで移動 · 部品をクリックで技術を表示</div></div>
+            <div class="bp" id="bp" hidden></div>
+            <div class="vfoot" id="vfoot">
+              <div class="pmap" id="pmap"></div>
+              <div class="vexp" id="vexp"><span class="small muted">書き出し</span><button class="btn sm" id="vGLB" title="glTF バイナリ（m 単位）">GLB</button><button class="btn sm" id="vSTL" title="STL（mm 単位）">STL</button><button class="btn sm" id="vPNG" title="現在の視点を画像で保存">PNG</button></div>
+            </div>
+          </div>
           <div class="sec-h"><span class="eyebrow">Process</span><h3>工場をまたぐ工程フロー</h3><span class="sp"></span><span class="small muted num" id="flowTotal"></span></div>
           <div class="flow" id="flow"></div>
           <div class="sec-h"><span class="eyebrow">Hypothesis</span><h3>仮説と検証プラン</h3></div>
