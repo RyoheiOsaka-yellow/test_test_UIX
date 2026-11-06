@@ -14,8 +14,10 @@ studio-core/            # 共通コア（ここを編集して build.sh で各�
 ├── 4b_panels.js        # ツリー / プロパティ / パラメータ / BOM / 手順 / 計測 / ビュー
 ├── 4c_ui.js            # 入力・ラベル・ループ・レイアウト・初期化
 └── build.sh            # cat で結合して ../volatrap-studio, ../wheelchair-studio に出力
-volatrap-studio/index.html    # 生成物（単体で開ける）
-wheelchair-studio/index.html  # 生成物（単体で開ける）
+volatrap-studio/index.html        # 生成物（単体で開ける）
+wheelchair-studio/index.html      # 生成物（ライブパラメトリック版）
+wheelchair-cad-studio/index.html  # 生成物（CAD 版: 53 品番 / 254 点、メッシュ埋め込み 2.3 MB）
+wheelchair-cad/                   # CadQuery (OpenCascade) モデル → out/model.json, out/*.step, gen_js.py で 3_wheelchair_cad.js を生成
 ```
 
 **編集は `studio-core/` で行い、`./build.sh` で index.html を再生成してください**（生成物を直接編集すると次のビルドで消えます）。
@@ -147,6 +149,18 @@ wheelchair-studio/index.html  # 生成物（単体で開ける）
 - 書き出しはクリップボード経由（JSON / TSV）。ファイル保存は未実装。
 
 ---
+
+## 6.5 CAD パイプライン（wheelchair-cad/）
+
+```
+wheelchair_cad.py  ──(CadQuery B-rep)──▶  out/model.json ──(gen_js.py)──▶ studio-core/3_wheelchair_cad.js ──(build.sh)──▶ wheelchair-cad-studio/index.html
+                   └──(--step)────────▶  out/wheelchair_assembly.step
+```
+
+- 製品データファイルは `PART_DEFS` の `build()` で `decodeMesh()`（base64 → BufferGeometry）を返すだけ。コアは変更不要。
+- `qtyInGeom:true` + メッシュ単位の `ex` で左右対称品を 1 品番に保ったまま ±Z に分解。
+- `PARAM_DEFS=[]` のとき「パラメータ」タブには `PRODUCT.paramNote` を表示（CAD 版は固定ジオメトリ）。
+- より精密にするには `tessellate(tol, ang)` の公差を下げる（0.7 → 0.3 で三角形数は約 2 倍、ファイルサイズも比例）。
 
 ## 7. ロードマップ案（優先度順）
 
