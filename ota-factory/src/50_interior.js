@@ -268,10 +268,10 @@ function buildInterior(){
   const eqG = new THREE.Group(); eqG.name = "equipment"; eqG.userData.layer = "equipment"; g1.add(eqG);
   const F1 = new Merger(), F2 = new Merger(), F3 = new Merger();   // 什器（静的）
   const builders = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, bench:makeBench, dock:makeDock, testcell:makeTestCell, cmm:makeCMM, elab:makeElab, toolroom:makeToolroom, hil:makeHIL, server:makeServer, agv:makeAGV, crane:()=>makeCraneDetailed(BLD.zh - BLD.z0 - 2.7),
-    robotcell: ()=>makeRobotCell(false), rack: ()=>makeRack(3,4), assembly: ()=>makeAssembly("A") };
+    robotcell: ()=>makeRobotCell(false), rack: ()=>makeRackAsset(3,4), assembly: ()=>makeAssembly("A") };
   for (const e of EQUIP){
     let b = builders[e.kind]; if (!b) continue;
-    if (e.id==="RC-02") b = ()=>makeRobotCell(true); if (e.id==="AS-B") b = ()=>makeAssembly("B"); if (e.zone==="recv") b = ()=>makeRack(4,4);
+    if (e.id==="RC-02") b = ()=>makeRobotCell(true); if (e.id==="AS-B") b = ()=>makeAssembly("B"); if (e.zone==="recv") b = ()=>makeRackAsset(4,4);
     if (e.kind==="bigdoor") continue;
     const grp = b(); compactGroup(grp); const floorIdx = ZONES.find(z=>z[0]===e.zone)?.[2] ?? 1; const y = lv[floorIdx-1];
     grp.position.set(e.x, e.kind==="crane"? BLD.craneRail+0.62 : y, e.z); grp.rotation.y = e.rot||0; tagEq(grp, e);
@@ -292,12 +292,12 @@ function buildInterior(){
   L.flush(g1, { name:"floorLines", layer:"markings", cast:false });
 
   // ---- 1F ロビー・ショールーム ----
-  F1.box(4.0, 1.1, 0.8, M.timber, -40, 0, 8); F1.box(4.2, 0.05, 0.9, M.deskWhite, -40, 1.1, 8); sofaSet(F1, -34, 13, 0, 0); sofaSet(F1, -34, 5, 0, Math.PI); plantBig(F1, -42.5, 15, 0); plantBig(F1, -31, 16, 0);
+  F1.box(4.0, 1.1, 0.8, M.timber, -40, 0, 8); F1.box(4.2, 0.05, 0.9, M.deskWhite, -40, 1.1, 8);  plantBig(F1, -42.5, 15, 0); plantBig(F1, -31, 16, 0);
   F1.box(5, 2.4, 0.08, M.monitor, -37, 1.0, 16.8); F1.box(4.8, 2.2, 0.02, M.screen, -37, 1.1, 16.75);
   F1.box(5.0, 0.4, 3.0, std(0xe4e4e0), -23, 0, 10); const demo = makeLathe(); demo.position.set(-23, 0.4, 10); demo.rotation.y = Math.PI; g1.add(demo);    // 実機展示（開発機スケールモデル代替）
   F1.box(1.2, 1.0, 0.8, std(0xe4e4e0), -27.5, 0, 14); F1.box(1.0, 0.7, 0.03, M.screen, -27.5, 1.0, 13.6);   // 説明パネル
   for (const x of [-20, -17]) plantBig(F1, x, 16.5, 0);
-  lockerRow(F1, 29, 35, 16.5, 0); F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]) F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz);  // 休憩・更衣
+  F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]) F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz);  // 休憩・更衣
   // 受入検査
   for (let i=0;i<3;i++){ F1.box(1.1, 0.14, 1.1, M.pallet, 18+i*1.6, 0, 14); F1.box(0.9, 0.7, 0.9, M.box, 18+i*1.6, 0.14, 14); } F1.box(3.0, 0.9, 1.2, M.steel, 23, 0, 6); F1.box(0.6, 0.4, 0.05, M.screen, 23, 1.0, 5.6); F1.box(0.5, 0.5, 0.5, M.machineWhite, 25.5, 0.9, 6.5);
   F1.flush(g1, { name:"furn1", layer:"furniture" });

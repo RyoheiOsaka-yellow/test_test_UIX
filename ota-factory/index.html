@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>XANTALOS（ザンタロス）大田区 — 開発一体型工場 3D構想モデル v0.8</title>
+<title>XANTALOS（ザンタロス）大田区 — 開発一体型工場 3D構想モデル v0.9</title>
 <style>
   :root { --bg:#0d1117; --panel:#161b22d9; --line:#30363d; --txt:#e6edf3; --sub:#9da7b3; --acc:#f2c744; --acc2:#58a6ff; --good:#3fb950; --bad:#f85149; }
   * { box-sizing:border-box; }
@@ -77,18 +77,18 @@
   <span id="brand"><img src="img/xantalos_logo_white_1000.png" alt="XANTALOS" id="brandLogo"><small>ザンタロス · 大田区</small></span>
   <button class="btn sm on" data-mode="ext">外観</button><button class="btn sm" data-mode="1">1F ホール</button><button class="btn sm" data-mode="2">2F ソフト</button><button class="btn sm" data-mode="3">3F 設計</button>
   <span class="vsep"></span><button class="btn sm" id="secBtn">断面</button><button class="btn sm" id="walkBtn">歩行</button><button class="btn sm" id="bimBtn">BIM・MEP</button><button class="btn sm" id="layersBtn">レイヤー</button>
-  <span id="crumb" style="margin-left:8px"></span><span class="sp"></span>
+  <span id="crumb" style="margin-left:8px"></span><span id="assetStatus" class="sub" style="margin-left:10px;white-space:nowrap"></span><span class="sp"></span>
   <button class="btn sm on" data-day="day">昼</button><button class="btn sm" data-day="dusk">夕</button><button class="btn sm" data-day="night">夜</button>
   <span class="vsep"></span><button class="btn sm on" id="playBtn">⏸ 稼働</button><button class="btn sm" id="photosBtn">構想イメージ</button><button class="btn sm" id="tourBtn">▶ ツアー</button><button class="btn sm" id="shotBtn" title="PNGで保存">📷</button>
 </div>
 <div id="views" class="panel"><span class="lbl">視点</span></div>
 
 <div id="stats" class="panel">
-  <h3>計画概要 — XANTALOS 大田区（構想 v0.8）</h3>
+  <h3>計画概要 — XANTALOS 大田区（構想 v0.9）</h3>
   <div id="statsBody"></div>
 </div>
 
-<div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div></div>
+<div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div><div class="sep"></div><div class="row"><span class="sub">実物モデルの品質</span><select id="assetQ" class="btn sm"><option value="lod2">軽量</option><option value="lod1" selected>標準</option><option value="glb">最高</option></select></div><div class="sub" style="margin-top:6px">3D モデル：NVIDIA SimReady（CC BY 4.0）を <a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a> から読込。初回はネットワークから取得します。</div></div>
 <div id="bim" class="panel"><h3>BIM・MEP 系統 <span class="sub" id="bimSum"></span></h3><div id="bimSys"></div><div class="sep"></div>
   <div class="row"><span class="sub">幹線高さの調整（選択系統）</span><select id="bimSysSel" class="btn sm"></select></div><input id="bimH" type="range" min="-3" max="3" step="0.1" value="0"><div class="sub" id="bimHLabel">±0.0 m</div>
   <div class="sep"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="clashBtn">干渉チェック</button><button class="btn sm" id="clearBtn">保守スペース</button><button class="btn sm" id="xrayBtn">X線表示</button><button class="btn sm" id="mepCsv">数量 CSV</button></div><div id="clashList" style="margin-top:6px"></div><div id="clearList" style="margin-top:6px"></div></div>
@@ -120,6 +120,9 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { KTX2Loader } from "three/addons/loaders/KTX2Loader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 
 // ===== src/05_logo.js =====
 // XANTALOS ロゴ（PNG, base64 埋め込み：file:// でも単体 HTML でも読める）
@@ -282,6 +285,8 @@ const TOUR = [
     text:"56席のオープンフロア。ホール側は全面ガラスとバルコニーで、組立中の実機が常に視界にある。" },
   { cam:{ yaw:-0.9, pitch:0.4, dist:60, target:[-20,11.5,10] }, mode:"floor", floor:3, title:"3F 設計フロア・カフェテリア",
     text:"CAD/CAE 40席、会議室群、全社のカフェテリア。木天井の下で設計とソフトが日常的に交わる。" },
+  { cam:{ yaw:-2.2, pitch:0.42, dist:20, target:[41,1,-22] }, mode:"floor", floor:1, title:"実物モデル：受入置場（NVIDIA SimReady）",
+    text:"フォークリフト・ハンドパレット・パレット・木箱・ラック・踏台など、NVIDIA SimReady の実物 3D モデル（CC BY 4.0）約 130 点を配置。レーンを組み替えると工程に応じた小物が自動で付く。" },
   { cam:{ yaw:-0.6, pitch:0.18, dist:70, target:[-30,4,24] }, mode:"ext", title:"前庭プラザ・来客アプローチ",
     text:"歩道から樹木とベンチの前庭を抜けてロビーへ。西側はソーラーカーポート駐車場 32台。" },
 ];
@@ -1427,10 +1432,10 @@ function buildInterior(){
   const eqG = new THREE.Group(); eqG.name = "equipment"; eqG.userData.layer = "equipment"; g1.add(eqG);
   const F1 = new Merger(), F2 = new Merger(), F3 = new Merger();   // 什器（静的）
   const builders = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, bench:makeBench, dock:makeDock, testcell:makeTestCell, cmm:makeCMM, elab:makeElab, toolroom:makeToolroom, hil:makeHIL, server:makeServer, agv:makeAGV, crane:()=>makeCraneDetailed(BLD.zh - BLD.z0 - 2.7),
-    robotcell: ()=>makeRobotCell(false), rack: ()=>makeRack(3,4), assembly: ()=>makeAssembly("A") };
+    robotcell: ()=>makeRobotCell(false), rack: ()=>makeRackAsset(3,4), assembly: ()=>makeAssembly("A") };
   for (const e of EQUIP){
     let b = builders[e.kind]; if (!b) continue;
-    if (e.id==="RC-02") b = ()=>makeRobotCell(true); if (e.id==="AS-B") b = ()=>makeAssembly("B"); if (e.zone==="recv") b = ()=>makeRack(4,4);
+    if (e.id==="RC-02") b = ()=>makeRobotCell(true); if (e.id==="AS-B") b = ()=>makeAssembly("B"); if (e.zone==="recv") b = ()=>makeRackAsset(4,4);
     if (e.kind==="bigdoor") continue;
     const grp = b(); compactGroup(grp); const floorIdx = ZONES.find(z=>z[0]===e.zone)?.[2] ?? 1; const y = lv[floorIdx-1];
     grp.position.set(e.x, e.kind==="crane"? BLD.craneRail+0.62 : y, e.z); grp.rotation.y = e.rot||0; tagEq(grp, e);
@@ -1451,12 +1456,12 @@ function buildInterior(){
   L.flush(g1, { name:"floorLines", layer:"markings", cast:false });
 
   // ---- 1F ロビー・ショールーム ----
-  F1.box(4.0, 1.1, 0.8, M.timber, -40, 0, 8); F1.box(4.2, 0.05, 0.9, M.deskWhite, -40, 1.1, 8); sofaSet(F1, -34, 13, 0, 0); sofaSet(F1, -34, 5, 0, Math.PI); plantBig(F1, -42.5, 15, 0); plantBig(F1, -31, 16, 0);
+  F1.box(4.0, 1.1, 0.8, M.timber, -40, 0, 8); F1.box(4.2, 0.05, 0.9, M.deskWhite, -40, 1.1, 8);  plantBig(F1, -42.5, 15, 0); plantBig(F1, -31, 16, 0);
   F1.box(5, 2.4, 0.08, M.monitor, -37, 1.0, 16.8); F1.box(4.8, 2.2, 0.02, M.screen, -37, 1.1, 16.75);
   F1.box(5.0, 0.4, 3.0, std(0xe4e4e0), -23, 0, 10); const demo = makeLathe(); demo.position.set(-23, 0.4, 10); demo.rotation.y = Math.PI; g1.add(demo);    // 実機展示（開発機スケールモデル代替）
   F1.box(1.2, 1.0, 0.8, std(0xe4e4e0), -27.5, 0, 14); F1.box(1.0, 0.7, 0.03, M.screen, -27.5, 1.0, 13.6);   // 説明パネル
   for (const x of [-20, -17]) plantBig(F1, x, 16.5, 0);
-  lockerRow(F1, 29, 35, 16.5, 0); F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]) F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz);  // 休憩・更衣
+  F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]) F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz);  // 休憩・更衣
   // 受入検査
   for (let i=0;i<3;i++){ F1.box(1.1, 0.14, 1.1, M.pallet, 18+i*1.6, 0, 14); F1.box(0.9, 0.7, 0.9, M.box, 18+i*1.6, 0.14, 14); } F1.box(3.0, 0.9, 1.2, M.steel, 23, 0, 6); F1.box(0.6, 0.4, 0.05, M.screen, 23, 1.0, 5.6); F1.box(0.5, 0.5, 0.5, M.machineWhite, 25.5, 0.9, 6.5);
   F1.flush(g1, { name:"furn1", layer:"furniture" });
@@ -1776,9 +1781,9 @@ function generateLane(lane){
     const bn = makeBanner(`${lane.id}  ${R.n}`, R.color); bn.position.set(cxA - 6.5, Math.min(ceilY - 0.2, yF + 8.4), czA); bn.scale.setScalar(0.8); oh.add(bn); }
   else if (lane.zone === "north"){ const an = makeAndon({ lane, kpi:kpi0 }); an.position.set(cxA, 5.4, -31.2); an.scale.setScalar(0.7); oh.add(an); }
   const obj = { lane, group:g, sts, aux, lay, stationPos, overlay:ov, eqIds, anim: ANIM.slice(animStart), strips, hidden };
-  obj.kpi = computeLaneKPI(lane, sts); LANE_OBJ[lane.id] = obj; return obj;
+  obj.kpi = computeLaneKPI(lane, sts); LANE_OBJ[lane.id] = obj; if (typeof laneAssets === "function") laneAssets(obj); return obj;
 }
-function removeLane(id){ const o = LANE_OBJ[id]; if (!o) return; o.group.parent?.remove(o.group); for (const h of o.hidden||[]) if (EQ_OBJ[h]) EQ_OBJ[h].group.visible = true; for (const a of o.anim){ const i = ANIM.indexOf(a); if (i>=0) ANIM.splice(i,1); }
+function removeLane(id){ const o = LANE_OBJ[id]; if (!o) return; if (typeof removeAssetsOf === "function") removeAssetsOf(o.group); o.group.parent?.remove(o.group); for (const h of o.hidden||[]) if (EQ_OBJ[h]) EQ_OBJ[h].group.visible = true; for (const a of o.anim){ const i = ANIM.indexOf(a); if (i>=0) ANIM.splice(i,1); }
   for (const eid of o.eqIds){ const i = EQUIP.findIndex(e=>e.id===eid); if (i>=0) EQUIP.splice(i,1); delete EQ_OBJ[eid]; } delete LANE_OBJ[id]; }
 
 function arrowTex(){ return canvasTex("arrow", 128, (c,w,h)=>{ c.clearRect(0,0,w,h); c.fillStyle = "rgba(255,255,255,0.35)"; c.fillRect(0, h*0.42, w, h*0.16); c.fillStyle = "rgba(255,255,255,0.95)"; c.beginPath(); c.moveTo(w*0.55, h*0.18); c.lineTo(w*0.9, h*0.5); c.lineTo(w*0.55, h*0.82); c.closePath(); c.fill(); }, { repeat:[1,1] }); }
@@ -2005,7 +2010,7 @@ function buildMEP(){
           routeMesh(sys, [[dx, 0.06, zt], [dx, 0.06, zb], [e.x, 0.06, zb]], { name:`${S.n} 床トレンチ ${e.id}`, to:e.id, floor:1, trench:true, load:`${(LOADS[e.kind]||{})[sys]||0} ${LOAD_UNIT[sys]}` }, g1); } } }); }
   applyMepVisibility();
 }
-function applyMepVisibility(){ for (const k in MEP.groups){ const g = MEP.groups[k]; const office = g.parent && g.parent.name !== "floor_1"; g.visible = (MEP.visible[g.userData.sys] ?? true) && (layerState?.mep ?? true) && (!office || MEP.office || MEP.walk); } }
+function applyMepVisibility(){ for (const k in MEP.groups){ const g = MEP.groups[k]; const office = g.parent && g.parent.name !== "floor_1"; g.visible = (MEP.visible[g.userData.sys] ?? true) && (layerState?.mep ?? true) && !!(!office || MEP.office || MEP.walk); } }
 
 // ---- 数量表 ----
 function mepSchedule(){ const t = {}; for (const k in SYSTEMS) t[k] = { n:SYSTEMS[k].n, len:0, runs:0, fittings:0, load: MEP.loads.total ? MEP.loads.total[k] : 0, unit: LOAD_UNIT[k] }; for (const k in MEP.groups) MEP.groups[k].children.forEach(c => { const m = c.userData.mep; if (!m) return; if (m.length !== undefined){ t[m.sys].len += m.length; t[m.sys].runs++; } else t[m.sys].fittings++; }); return t; }
@@ -2302,13 +2307,160 @@ function buildMovers(){
   // ---- トラック・フォークリフト ----
   const tr = makeTruck(); MOVERS.add(tr); movers.push(new PathMover(tr, [[54,0,80],[54,0,20],[54,0,-24],[47.5,0,-24],[54,0,-24],[54,0,60],[54,0,80]], 4.0, { pause:6, smoothTurn:true }));
   const tr2 = makeTruck(); tr2.position.set(48.5, 0, -16); tr2.rotation.y = Math.PI/2; MOVERS.add(tr2);  // ドック待機中
-  const fk = makeForklift(); MOVERS.add(fk); movers.push(new PathMover(fk, [[40,0,-16],[40,0,-22],[30,0,-22],[30,0,-16],[40,0,-16]], 1.6, { pause:3 }));
+  const fk = assetMover("forklift", makeForklift()); movers.push(new PathMover(fk, [[40,0,-16],[40,0,-22],[30,0,-22],[30,0,-16],[40,0,-16]], 1.6, { pause:3 }));
 }
 function updateMovers(dt){
   simT += dt;
   for (const m of movers){ m.update(dt); const w = m.obj.userData; if (w.legs){ const ph = m.moving ? Math.sin(simT*7 + m.obj.id)*0.45 : 0; w.legs[0].rotation.x = ph; w.legs[1].rotation.x = -ph; w.arms[0].rotation.x = -ph*0.7; w.arms[1].rotation.x = ph*0.7; } }
   for (const a of ANIM) a.update(simT, dt);
 }
+
+// ===== src/65_assets.js =====
+// ================= 実物 3D モデル（NVIDIA SimReady, CC BY 4.0 — codepawl/simready-glb 経由）=================
+// 手続き生成の工場に、実在のフォークリフト・パレット・ラック・工具・安全設備などの GLB を重ねる。
+// 読込は非同期：先に手続きモデル（fallback）を見せ、届いた順に差し替える。オフラインでも手続きモデルで成立する。
+const HF = "https://huggingface.co/datasets/codepawl/simready-glb/resolve/main/";
+const ASSET_CATALOG = {   // key: { a: asset 名, n: 表示名, tris: 元の三角形数(k) }
+  forklift:   { a:"vehicle_forklift_orange_a01",          n:"フォークリフト（リーチ式）", tris:330 },
+  forklift2:  { a:"vehicle_forklift_blue_a01",            n:"フォークリフト（待機）",     tris:330 },
+  palletJack: { a:"palletJack_lowProfile_a01",            n:"ハンドパレット",             tris:181 },
+  handTruck:  { a:"handTruck_convertible_steel_orange_a01", n:"台車（ハンドトラック）",  tris:109 },
+  tiltTruck:  { a:"tiltTruck_gray_a01",                   n:"ダンプカート",               tris:146 },
+  palletA:    { a:"pallet_assembly_a05",                  n:"パレット（箱積み）",         tris:89 },
+  palletB:    { a:"pallet_assembly_b01",                  n:"パレット（部品）",           tris:53 },
+  palletC:    { a:"pallet_assembly_yellow_a02",           n:"パレット（コンテナ）",       tris:260 },
+  crate:      { a:"crate_plywood_b02",                    n:"木箱（出荷梱包）",           tris:20 },
+  rack:       { a:"rack_large_empty_a01",                 n:"パレットラック 4 m",         tris:44 },
+  ladder:     { a:"ladder_rolling_yellow_a02",            n:"移動式踏台",                 tris:269 },
+  dockGate:   { a:"barrier_gate_safetyDock_a02",          n:"ドック安全ゲート",           tris:75 },
+  floorSign:  { a:"sign_floor_movable_a01",               n:"フロアサイン",               tris:174 },
+  extinguisher:{ a:"fireProtection_extinguisher_portable_b01", n:"消火器",               tris:50 },
+  firstAid:   { a:"safety_firstAidCabinet_wallMounted_a01", n:"救急箱（壁付）",           tris:39 },
+  eyewash:    { a:"safety_eyewashStation_stand_selfContained_a01", n:"洗眼器",           tris:228 },
+  locker:     { a:"storage_locker_double_bench_b01",      n:"ロッカー（ベンチ付）",       tris:34 },
+  welding:    { a:"powerTool_welding_station_a01",        n:"溶接機",                     tris:287 },
+  toolCab:    { a:"equipment_rolling_tool_cabinet_a01",   n:"ツールキャビネット",         tris:500 },
+  toolCart:   { a:"equipment_mechanic_tool_cart_g01",     n:"工具カート",                 tris:676 },
+  cabinet:    { a:"furniture_workbench_modular_a01",      n:"工具保管キャビネット",       tris:90 },
+  vise:       { a:"equipment_bench_vise_a01",             n:"万力",                       tris:106 },
+  liftTable:  { a:"equipment_liftTable_scissorMobile_a01", n:"リフトテーブル",            tris:443 },
+  partsWasher:{ a:"equipment_parts_washer_cabinet_b01",   n:"部品洗浄機",                 tris:180 },
+  compressor: { a:"equipment_airCompressor_a01",          n:"空気圧縮機",                 tris:538 },
+  airDryer:   { a:"equipment_airDryer_b01",               n:"エアドライヤ",               tris:207 },
+  drum:       { a:"drum_steel_a01",                       n:"ドラム缶",                   tris:100 },
+  drumBlue:   { a:"drum_plastic_blue_a02",                n:"ドラム缶（樹脂）",           tris:40 },
+  ibc:        { a:"ibcTank_a02",                          n:"IBC タンク",                 tris:136 },
+  sprayBooth: { a:"equipment_sprayBooth_painting_a01",    n:"塗装ブース",                 tris:1025 },
+  conveyor:   { a:"conveyor_belt_a05",                    n:"ローラーコンベヤ",           tris:229 },
+  cobot:      { a:"robotic_system_arm_b01",               n:"移動式協働ロボット",         tris:786 },
+  fan:        { a:"climate_shopFan_floorAxial_a01",       n:"工場扇",                     tris:229 },
+  trash:      { a:"trashCan_wheeled_black_a01",           n:"ごみ箱（車輪付）",           tris:88 },
+  sofa:       { a:"sofa_visitor_a01",                     n:"ソファ（来客）",             tris:334 },
+  coffee:     { a:"furniture_counter_coffeeStation_a01",  n:"コーヒーステーション",       tris:282 },
+  printer:    { a:"computer_printer_office_a01",          n:"複合機",                     tris:29 },
+  printer3d:  { a:"equipment_3d_printer_b01",             n:"3D プリンタ",                tris:394 },
+  scope:      { a:"testingTool_oscilloscope_b01",         n:"オシロスコープ",             tris:175 },
+  chair:      { a:"chair_office_amf_black_a01",           n:"オフィスチェア",             tris:32 },
+};
+const AS = { on:true, quality:"lod1", loader:null, cache:{}, placed:[], loaded:0, total:0, failed:0, bytes:0 };
+function assetLoader(){ if (AS.loader) return AS.loader; const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder);
+  const k = new KTX2Loader().setTranscoderPath("https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/libs/basis/").detectSupport(renderer); l.setKTX2Loader(k); AS.loader = l; return l; }
+// 重いアセット（原型 30 万三角形超）は選択品質より 1 段軽い LOD を使う
+function effQuality(c){ const q = AS.quality; if (c.tris <= 300 || q === "lod2") return q; return q === "glb" ? "lod1" : "lod2"; }
+function assetURL(c){ const q = effQuality(c); return q === "glb" ? `${HF}glb/${c.a}.glb` : `${HF}lods/${c.a}/${c.a}_${q}.glb`; }
+{ const qp = new URLSearchParams(location.search).get("assets"); if (qp === "off") AS.on = false; else if (["lod1","lod2","glb"].includes(qp||"")) AS.quality = qp; }
+function loadAsset(key){ const c = ASSET_CATALOG[key]; const ck = key + "@" + AS.quality; if (AS.cache[ck]) return AS.cache[ck];
+  AS.cache[ck] = assetLoader().loadAsync(assetURL(c)).then(g => { const sc = g.scene; sc.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(sc); const size = bb.getSize(new THREE.Vector3()); const ctr = bb.getCenter(new THREE.Vector3());
+    sc.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; if (o.material && o.material.transparent && o.material.opacity > 0.98) o.material.transparent = false; } });
+    return { scene: sc, bb, size, ctr }; }); return AS.cache[ck]; }
+// opts: parent, x, y, z, ry, scale, fit:{w|d|h}, fallback(Group), eqId, hideFallback(true)
+function placeAsset(key, opts={}){
+  const c = ASSET_CATALOG[key]; if (!c) return null; const holder = new THREE.Group(); holder.name = "asset_" + key; holder.position.set(opts.x||0, opts.y||0, opts.z||0); holder.rotation.y = opts.ry||0;
+  holder.userData.extra = true; holder.userData.asset = key; holder.userData.layer = "assets"; if (opts.eqId) holder.userData.eqId = opts.eqId;
+  if (opts.fallback){ opts.fallback.userData.fallback = true; holder.add(opts.fallback); }
+  (opts.parent || scene).add(holder); const rec = { holder, key, opts, inst:null }; AS.placed.push(rec); AS.total++;
+  if (AS.on) attachAsset(rec); return holder;
+}
+function attachAsset(rec){ const { holder, key, opts } = rec; loadAsset(key).then(r => { if (rec.inst) return; const inst = r.scene.clone(true); let s = opts.scale || 1;
+    if (opts.fit){ const f = opts.fit; const sx = f.w ? f.w / r.size.x : Infinity, sz = f.d ? f.d / r.size.z : Infinity, sy = f.h ? f.h / r.size.y : Infinity; s = Math.min(sx, sz, sy); if (!isFinite(s)) s = 1; }
+    inst.scale.setScalar(s); inst.position.set(-r.ctr.x * s, -r.bb.min.y * s, -r.ctr.z * s); inst.userData.assetInst = true; holder.add(inst); rec.inst = inst;
+    if (opts.fallback && opts.hideFallback !== false) opts.fallback.visible = false; AS.loaded++; assetStatus(); dirtyShadow(); })
+  .catch(err => { AS.failed++; console.warn("asset load failed", key, err?.message || err); assetStatus(); }); }
+function assetStatus(){ const el = document.getElementById("assetStatus"); if (!el) return; const done = AS.loaded + AS.failed; el.textContent = AS.on ? (done < AS.total ? `実物モデル ${AS.loaded}/${AS.total} 読込中…` : `実物モデル ${AS.loaded} 点${AS.failed? `（${AS.failed} 失敗）`:""}`) : "実物モデル OFF"; el.style.color = done < AS.total ? "var(--acc)" : "var(--sub)"; }
+function setAssetsOn(on){ AS.on = on; for (const rec of AS.placed){ if (rec.inst) rec.inst.visible = on; if (rec.opts.fallback) rec.opts.fallback.visible = !on || !rec.inst; if (on && !rec.inst) attachAsset(rec); } assetStatus(); dirtyShadow(); }
+function setAssetQuality(q){ if (q === AS.quality) return; AS.quality = q; AS.cache = {}; AS.loaded = 0; AS.failed = 0; for (const rec of AS.placed){ if (rec.inst){ rec.holder.remove(rec.inst); rec.inst = null; } if (rec.opts.fallback) rec.opts.fallback.visible = true; if (AS.on) attachAsset(rec); } assetStatus(); }
+function removeAssetsOf(parent){ for (let i = AS.placed.length - 1; i >= 0; i--){ const rec = AS.placed[i]; let p = rec.holder.parent, inside = false; while (p){ if (p === parent){ inside = true; break; } p = p.parent; } if (inside){ rec.holder.parent?.remove(rec.holder); AS.placed.splice(i, 1); AS.total--; if (rec.inst) AS.loaded--; } } assetStatus(); }
+// 手続きモデルを fallback 用の Group にまとめる（Merger を使う既存関数を流用）
+function fallbackGroup(fn){ const m = new Merger(); const g = new THREE.Group(); fn(m, g); m.flush(g); return g; }
+
+// ---------- 配置：固定什器・外構 ----------
+function buildAssets(){
+  const g1 = floorGroup(1), g2 = floorGroup(2), g3 = floorGroup(3), site = layer("site"); const { x0, x1, z0, zh, z1, lv } = BLD;
+  // 受入置場（東端）：パレット・木箱・踏台・ハンドパレット・台車・待機フォークリフト
+  [["palletA", 40.6, -28.2, 0.1], ["palletB", 40.6, -26.4, 0], ["palletA", 40.6, -24.6, -0.15], ["palletC", 40.6, -22.6, 0.05]].forEach(([k,x,z,ry]) => placeAsset(k, { parent:g1, x, z, ry }));
+  placeAsset("crate", { parent:g1, x:42.6, z:-27.2 }); placeAsset("crate", { parent:g1, x:42.6, z:-26.0, ry:0.1 }); placeAsset("crate", { parent:g1, x:42.6, y:1.02, z:-27.2, ry:-0.05 });
+  placeAsset("ladder", { parent:g1, x:40.4, z:-20.2, ry:Math.PI/2 }); placeAsset("palletJack", { parent:g1, x:42.0, z:-13.6, ry:-Math.PI/2 }); placeAsset("handTruck", { parent:g1, x:42.9, z:-19.3, ry:Math.PI/2 });
+  placeAsset("forklift2", { parent:g1, x:40.8, z:-9.0, ry:Math.PI/2 });
+  // ドック：安全ゲート・フロアサイン・ごみ箱・出荷木箱
+  for (const e of EQUIP.filter(e => e.kind === "dock")) placeAsset("dockGate", { parent:g1, x:42.1, z:e.z, ry:Math.PI/2 });
+  placeAsset("floorSign", { parent:g1, x:38.8, z:-14.2 }); placeAsset("floorSign", { parent:g1, x:-12.6, z:-14.6 });
+  placeAsset("trash", { parent:g1, x:43.2, z:-9.6 }); placeAsset("crate", { parent:g1, x:40.2, z:-3.6 }); placeAsset("crate", { parent:g1, x:41.4, z:-3.6, ry:0.08 });
+  // 各ベイ境界の柱脇：消火器・救急箱
+  for (const x of [-12, 4, 20, 36]){ placeAsset("extinguisher", { parent:g1, x:x+0.55, z:zh-0.95 }); placeAsset("firstAid", { parent:g1, x:x+1.45, y:1.25, z:zh-0.42, ry:Math.PI/2 }); }
+  for (const x of [-30, 10]) placeAsset("extinguisher", { parent:g1, x, z:z0+1.0 });
+  // 組立ベイ前の工場扇
+  placeAsset("fan", { parent:g1, x:-8, z:-2.6, ry:Math.PI }); placeAsset("fan", { parent:g1, x:16, z:-2.6, ry:Math.PI });
+  // 電子ラボ：洗眼器・オシロスコープは L4 のレーンフックで
+  placeAsset("eyewash", { parent:g1, x:-5.2, z:16.6, ry:Math.PI/2 });
+  // 休憩・更衣：ロッカー（手続きロッカー列を置換）
+  for (let i=0;i<8;i++) placeAsset("locker", { parent:g1, x:29.3 + i*0.66, z:16.9, ry:Math.PI, fallback: i===0 ? fallbackGroup(m => lockerRow(m, 0, 5.3, 0, 0)) : null });
+  // ロビー：来客ソファ（手続きソファを置換）
+  placeAsset("sofa", { parent:g1, x:-34, z:13.2, ry:Math.PI/2, fallback: fallbackGroup(m => sofaSet(m, 0, 0, 0, 0)) });
+  placeAsset("sofa", { parent:g1, x:-34, z:5.2, ry:-Math.PI/2, fallback: fallbackGroup(m => sofaSet(m, 0, 0, 0, Math.PI)) });
+  placeAsset("cobot", { parent:g1, x:-26.5, z:14.6, ry:0.6 });   // ショールームの移動式協働ロボット
+  // 2F：複合機の横に 3D プリンタ（HIL 近く）、3F：コーヒーステーション・複合機・3D プリンタ・会議室の椅子
+  placeAsset("printer3d", { parent:g2, x:-5.6, y:lv[1], z:16.6 });
+  placeAsset("coffee", { parent:g3, x:21.5, y:lv[2], z:16.4, ry:Math.PI/2 }); placeAsset("printer", { parent:g3, x:-30, y:lv[2], z:3.9 }); placeAsset("printer3d", { parent:g3, x:-20.6, y:lv[2]+0.98, z:16.2 });
+  for (const [xa, xb] of [[-10,-3],[-3,4]]){ const cx = (xa+xb)/2, L = Math.min(xb-xa-2, 4.5); for (let i=0;i<Math.floor(L/0.8);i++) for (const dz of [-1.0, 1.0]) placeAsset("chair", { parent:g3, x:cx-L/2+0.5+i*0.8, y:lv[2], z:10+dz, ry: dz>0 ? Math.PI : 0 }); }
+  // 北側：圧縮機・エアドライヤ（コンプレッサ室脇）、ダンプカート（ごみ置場）、ごみ箱
+  placeAsset("compressor", { parent:site, x:-47.4, z:-38.8, ry:0 }); placeAsset("airDryer", { parent:site, x:-45.3, z:-38.9 }); placeAsset("tiltTruck", { parent:site, x:-51.5, z:-25.5, ry:0.3 }); placeAsset("trash", { parent:site, x:10, z:-31.0 });
+  placeAsset("eyewash", { parent:site, x:-15.2, z:-31.3, ry:-Math.PI/2 });
+}
+// ---------- 配置：レーンの工程ごとの小物（生成・再生成のたびに呼ぶ）----------
+const LANE_ASSETS = {   // kind → [asset, dx, dz, ry, opts]（局所座標：+z が正面＝通路側）
+  load:   [["palletA", -1.4, 0, 0.2], ["palletB", 1.6, 0.2, 0]],
+  mc5:    [["toolCab", 0, 1, 0, { front:true, dx:-0.45 }]],
+  hmc:    [["toolCab", 0, 1, 0, { front:true, dx:0.45 }]],
+  lathe:  [["toolCart", 0, 1, Math.PI/2, { front:true, dx:-0.4 }]],
+  gantry: [["toolCab", 0, 1, 0, { front:true, dx:-0.5 }], ["ladder", 0, 1, 0, { front:true, dx:0.5 }]],
+  wash:   [["partsWasher", 0, 1, Math.PI, { front:true, dx:0.5 }]],
+  store:  [["handTruck", 0, 1, Math.PI, { front:true, dx:-0.4 }], ["crate", 0, 1, 0, { front:true, dx:0.5 }]],
+  asmA:   [["liftTable", -7.6, 3.2, 0], ["toolCart", 5.6, -2.0, 0], ["crate", -7.6, -3.2, 0], ["palletB", -7.6, -1.4, 0.1]],
+  asmB:   [["cabinet", 5.6, -3.0, 0], ["toolCab", 5.6, -1.6, 0], ["conveyor", -2.6, -3.3, Math.PI/2], ["vise", 5.5, 0.75, 0, { dz:2.6 }]],
+  weld:   [["welding", -2.1, 2.0, 0], ["drum", 2.6, -2.6, 0]],
+  finish: [["fan", 0, 1, Math.PI, { front:true, dx:-0.6 }], ["drumBlue", 0, 1, 0, { front:true, dx:0.6 }]],
+  mask:   [["drum", -1.9, 0.8, 0], ["drum", -1.9, 0.1, 0.4], ["ibc", 0, 1, 0, { front:true, dx:0.8 }]],
+  booth:  [["sprayBooth", 0, 0, Math.PI, { replace:true }]],
+  wiring: [["scope", 0.6, 0.4, 0, { y:0.78 }]],
+  panel:  [["toolCab", 0, 1, 0, { front:true, dx:0.6 }]],
+  laser:  [["palletB", 0, 1, 0, { front:true, dx:-0.5 }]],
+  brake:  [["handTruck", 0, 1, 0, { front:true, dx:0.6 }]],
+  demo:   [["cobot", -0.2, 0.6, 0.4, { y:0.3 }]],
+};
+function laneAssets(obj){ removeAssetsOf(obj.group); for (const s of obj.sts.concat(obj.aux)){ const list = LANE_ASSETS[s.kind]; if (!list || !s.units) continue;
+    for (const u of s.units){ const grp = obj.group.children.find(c => c.userData.eqId && c.userData.eqId === `${obj.lane.id}-S${s.idx}${s.n>1? String.fromCharCode(97+u.k) : ""}`); if (!grp) continue; const fp = s.fp;
+      for (const [key, dx, dz, ry, o={}] of list){ const px = o.front ? (o.dx||0) * fp[0]*0.5 : dx, pz = o.front ? fp[1]/2 + 0.9 : (o.dz !== undefined ? o.dz : dz);
+        if (o.replace){ const fb = new THREE.Group(); grp.children.filter(c => !c.isSprite && !c.userData.extra).forEach(c => fb.add(c)); grp.add(fb); placeAsset(key, { parent:grp, x:0, z:0, ry, fallback:fb, fit:{ w:fp[0]+0.4, d:fp[1]+0.9 } }); }
+        else placeAsset(key, { parent:grp, x:px, y:o.y||0, z:pz, ry }); } } } }
+// ---------- 動く物：フォークリフト（手続きモデルを fallback に）----------
+function assetMover(key, fallback){ const holder = placeAsset(key, { parent:MOVERS, x:0, z:0, fallback }); return holder; }
+// ---------- パレットラック：実物ラック 4 m × 2 ＋ パレット（手続きラックを fallback に）----------
+function makeRackAsset(levels=3, bays=4){ const g = new THREE.Group(); const fb = makeRack(levels, bays);
+  placeAsset("rack", { parent:g, x:-2, z:0, fallback:fb }); placeAsset("rack", { parent:g, x:2, z:0 });
+  const rnd = sRand("rackAsset" + levels + bays); const floorKeys = ["palletA","palletC","palletA","palletB"];
+  for (let i=0;i<4;i++){ const x = -3 + i*2; if (rnd() < 0.8) placeAsset(floorKeys[i % 4], { parent:g, x, z:-0.45, ry:(rnd()-0.5)*0.2 }); if (rnd() < 0.6) placeAsset("palletB", { parent:g, x, z:0.55, ry:(rnd()-0.5)*0.2 });
+    if (rnd() < 0.7) placeAsset("palletB", { parent:g, x, y:2.1, z:-0.45, ry:(rnd()-0.5)*0.15 }); if (levels >= 4 && rnd() < 0.5) placeAsset("crate", { parent:g, x, y:2.1, z:0.55 }); }
+  return g; }
 
 // ===== src/70_ui.js =====
 // ================= UI・モード切替・ピック・ツアー・メインループ =================
@@ -2347,11 +2499,12 @@ document.querySelectorAll("#topbar [data-day]").forEach(b => b.onclick = () => {
 $("playBtn").onclick = () => { playing = !playing; $("playBtn").textContent = playing ? "⏸ 稼働" : "▶ 稼働"; $("playBtn").classList.toggle("on", playing); };
 
 // ---- レイヤー ----
-const LAYER_DEFS = [["structure","鉄骨架構・トラス"],["envelope","外皮・ガラス・間仕切り"],["equipment","機械設備"],["furniture","什器・オフィス"],["mep","MEP（ダクト・配管・照明）"],["overhead","天井工具（ガントリー・ツールレール・ブーム）"],["markings","床ライン・安全表示"],["people","人・車両（稼働）"],["labels","名称ラベルを常時表示（OFF＝ホバー時のみ）"],["green","植栽"],["context","周辺街区・道路"]];
+const LAYER_DEFS = [["structure","鉄骨架構・トラス"],["envelope","外皮・ガラス・間仕切り"],["equipment","機械設備"],["furniture","什器・オフィス"],["mep","MEP（ダクト・配管・照明）"],["overhead","天井工具（ガントリー・ツールレール・ブーム）"],["markings","床ライン・安全表示"],["people","人・車両（稼働）"],["labels","名称ラベルを常時表示（OFF＝ホバー時のみ）"],["assets","実物モデル（SimReady GLB）"],["green","植栽"],["context","周辺街区・道路"]];
 const layerState = {};
-function applyLayers(){ scene.traverse(o => { const l = o.userData.layer; if (l && layerState[l] !== undefined) o.visible = layerState[l]; }); applyMepVisibility(); if (LAYERS.green) LAYERS.green.visible = layerState.green; if (LAYERS.context) LAYERS.context.visible = layerState.context; dirtyShadow(); }
-{ const list = $("layerList"); for (const [k, n] of LAYER_DEFS){ layerState[k] = k !== "labels"; const lb = document.createElement("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = layerState[k]; cb.onchange = () => { layerState[k] = cb.checked; applyLayers(); }; lb.appendChild(cb); lb.appendChild(document.createTextNode(n)); list.appendChild(lb); } }
+function applyLayers(){ scene.traverse(o => { const l = o.userData.layer; if (l && layerState[l] !== undefined && l !== "assets") o.visible = layerState[l]; }); applyMepVisibility(); if (typeof setAssetsOn === "function" && AS.on !== layerState.assets) setAssetsOn(layerState.assets); if (LAYERS.green) LAYERS.green.visible = layerState.green; if (LAYERS.context) LAYERS.context.visible = layerState.context; dirtyShadow(); }
+{ const list = $("layerList"); for (const [k, n] of LAYER_DEFS){ layerState[k] = k !== "labels"; const lb = document.createElement("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.dataset.k = k; cb.checked = layerState[k]; cb.onchange = () => { layerState[k] = cb.checked; applyLayers(); }; lb.appendChild(cb); lb.appendChild(document.createTextNode(n)); list.appendChild(lb); } }
 function leftPanel(id){ for (const [pid, bid] of [["layers","layersBtn"],["section","secBtn"],["bim","bimBtn"]]){ const on = pid === id; $(pid).style.display = on ? "block" : "none"; $(bid).classList.toggle("on", on); } document.body.classList.toggle("leftopen", !!id); MEP.office = id === "bim"; applyMepVisibility(); }
+$("assetQ").onchange = ev => setAssetQuality(ev.target.value);
 $("layersBtn").onclick = () => leftPanel($("layers").style.display === "block" ? null : "layers");
 
 // ---- 断面 ----
@@ -2529,10 +2682,10 @@ function renderOS(){ const el = $("osList"); let h = "";
 const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
 function pickAt(x, y){ ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
   const targets = [FL[1], FL[2], FL[3]].filter(g => g.visible); const hits = ray.intersectObjects(targets, true);
-  for (const h of hits){ if (h.object.isSprite) continue; let o = h.object; if (o.userData.mep) return { mep:o.userData.mep, obj:o }; while (o){ if (o.userData.eqId) return o.userData.eqId; o = o.parent; } return null; } return null; }
-cvsEl.addEventListener("pointerup", e => { if (walk.on || drag.moved > 6 || e.button !== 0) return; const id = pickAt(e.clientX, e.clientY); if (id && id.mep) { selectEq(null); showMepInfo(id.mep); } else if (id) { selectEq(id); } else selectEq(null); });
+  for (const h of hits){ if (h.object.isSprite) continue; let o = h.object; if (o.userData.mep) return { mep:o.userData.mep, obj:o }; while (o){ if (o.userData.eqId) return o.userData.eqId; if (o.userData.asset) return { asset:o.userData.asset }; o = o.parent; } return null; } return null; }
+cvsEl.addEventListener("pointerup", e => { if (walk.on || drag.moved > 6 || e.button !== 0) return; const id = pickAt(e.clientX, e.clientY); if (id && id.mep) { selectEq(null); showMepInfo(id.mep); } else if (id && id.asset) { selectEq(null); showAssetInfo(id.asset); } else if (id) { selectEq(id); } else selectEq(null); });
 let hoverTimer = 0;
-cvsEl.addEventListener("pointermove", e => { if (walk.on || drag.on) return; const now = performance.now(); if (now - hoverTimer < 80) return; hoverTimer = now; const id0 = pickAt(e.clientX, e.clientY); const id = (id0 && id0.mep) ? null : id0; cvsEl.style.cursor = id0 ? "pointer" : ""; hoverUpdate(e, id0); if (id !== hoverId){ if (hoverId && hoverId !== selectedId) setHighlight(hoverId, false); hoverId = id; if (id && id !== selectedId) setHighlight(id, true); } });
+cvsEl.addEventListener("pointermove", e => { if (walk.on || drag.on) return; const now = performance.now(); if (now - hoverTimer < 80) return; hoverTimer = now; const id0 = pickAt(e.clientX, e.clientY); const id = (id0 && (id0.mep || id0.asset)) ? null : id0; cvsEl.style.cursor = id0 ? "pointer" : ""; hoverUpdate(e, id0); if (id !== hoverId){ if (hoverId && hoverId !== selectedId) setHighlight(hoverId, false); hoverId = id; if (id && id !== selectedId) setHighlight(id, true); } });
 
 // ---- 歩行モード：天井内の設備（2F/3F の MEP）も見えるようにし、ホール内では名称を近距離だけ表示 ----
 const _toggleWalk0 = toggleWalk;
@@ -2542,6 +2695,7 @@ toggleWalk = function(on){ _toggleWalk0(on); MEP.walk = on; applyMepVisibility()
 let xray = false, clashMarks = null;
 const XRAY_MATS = () => [M.gypsum, M.concrete, M.roofMetal, M.wallMetal, M.timber, M.timberDark, M.concreteWhite, M.spandrel, M.ceiling, M.ceilingGlow, M.hallGlow, M.epoxy, M.carpet, M.woodFloor, M.mullion, M.paving, M.asphalt, ...Object.values(FIN_MAT)];
 function setXray(on){ xray = on; for (const m of XRAY_MATS()){ if (!m) continue; if (on){ m.userData._op = m.opacity; m.userData._tr = m.transparent; m.transparent = true; m.opacity = 0.12; m.depthWrite = false; } else if (m.userData._op !== undefined){ m.opacity = m.userData._op; m.transparent = m.userData._tr; m.depthWrite = true; } m.needsUpdate = true; } $("xrayBtn").classList.toggle("on", on); dirtyShadow(); }
+function showAssetInfo(key){ const c = ASSET_CATALOG[key]; const p = $("info"); document.body.classList.add("info"); p.innerHTML = `<div class="sub">実物 3D モデル</div><h2>${pe(c.n)}</h2><table><tr><td>アセット</td><td>${pe(c.a)}</td></tr><tr><td>出典</td><td>NVIDIA SimReady（CC BY 4.0）<br><a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a></td></tr><tr><td>三角形数（原型）</td><td>${c.tris.toLocaleString()} k</td></tr><tr><td>品質</td><td>${AS.quality === "glb" ? "最高（原型）" : AS.quality === "lod1" ? "標準（LOD1）" : "軽量（LOD2）"}</td></tr></table><div class="sep"></div><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" id="infoClose">閉じる</button></div>`; p.style.display = "block"; $("infoClose").onclick = () => showInfo(null); }
 function showMepInfo(m){ const p = $("info"); document.body.classList.add("info"); const S = SYSTEMS[m.sys]; p.innerHTML = `<div class="sub">MEP · ${pe(S.n)}</div><h2>${pe(m.name || m.kind || "")}</h2><table>
   <tr><td>系統</td><td>${pe(m.sys)} ${pe(S.n)}</td></tr><tr><td>種別</td><td>${S.kind==="pipe"?"配管":S.kind==="duct"?"ダクト":S.kind==="tray"?"ケーブルラック":"床トレンチ"}${m.trench?"（床トレンチ）":""}</td></tr>
   <tr><td>寸法</td><td>${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000)+" mm" : S.size.map(v=>Math.round(v*1000)).join("×")+" mm"}</td></tr>${m.length!==undefined? `<tr><td>延長</td><td>${m.length.toFixed(1)} m</td></tr>`:""}
@@ -2595,11 +2749,11 @@ addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; con
 
 // ================= 構築 & メインループ =================
 function build(){
-  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildFloorDetail(); buildMEP(); buildMovers();
+  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildFloorDetail(); buildMEP(); buildMovers(); buildAssets(); assetStatus();
   for (const k in LAYERS) { if (k === "green" || k === "context") LAYERS[k].userData.layer = k; }
   // 人・車両レイヤー：階グループ内の作業者にも付与
   scene.traverse(o => { if (o.userData.legs) o.userData.layer = "people"; });
-  renderStats(); renderLedger(); renderLanes(); renderOS(); renderPlant(); setDay("day"); setMode("ext"); setCam(VIEWS[0][1], true); refitLabels();
+  renderStats(); renderLedger(); renderLanes(); renderOS(); renderPlant(); { const q = $("assetQ"); if (q) q.value = AS.quality; layerState.assets = AS.on; const cb = document.querySelector('#layerList input[data-k="assets"]'); if (cb) cb.checked = AS.on; } setDay("day"); setMode("ext"); setCam(VIEWS[0][1], true); refitLabels();
   $("loading").style.display = "none";
 }
 const clock = new THREE.Clock(); let frame = 0;
@@ -2618,7 +2772,8 @@ function zoneAt(x, z, f){ for (const zn of ZONES){ if (zn[2] !== f) continue; if
 const floorPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
 function hoverUpdate(e, id0){
   let html = "", lb = null; hoverZone = null;
-  if (id0 && id0.mep){ const m = id0.mep, S = SYSTEMS[m.sys]; html = `<b>${pe(S.n)}</b><br>${pe(m.name || m.kind || "")}${m.length? ` · ${m.length.toFixed(1)} m` : ""}${m.sizeLabel? ` · ${pe(m.sizeLabel)}` : ""}`; }
+  if (id0 && id0.asset){ const c = ASSET_CATALOG[id0.asset]; html = `<b>${pe(c.n)}</b><br><span>NVIDIA SimReady · ${pe(c.a)}</span>`; }
+  else if (id0 && id0.mep){ const m = id0.mep, S = SYSTEMS[m.sys]; html = `<b>${pe(S.n)}</b><br>${pe(m.name || m.kind || "")}${m.length? ` · ${m.length.toFixed(1)} m` : ""}${m.sizeLabel? ` · ${pe(m.sizeLabel)}` : ""}`; }
   else if (id0){ const eq = EQUIP.find(x => x.id === id0); if (eq){ html = `<b>${pe(eq.id)}</b> ${pe(eq.name)}<br><span>${pe(zoneName(eq.zone))}${eq.lane? " · "+pe(eq.lane) : ""}</span>`; const o = EQ_OBJ[id0]; if (o) o.group.traverse(c => { if (c.isSprite && c.userData.kind === "eq" && !lb) lb = c; }); } }
   else if (!walk.on){ // 床のゾーン
     ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const f = mode === "ext" ? 1 : Number(mode); floorPlane.constant = -BLD.lv[f-1]; const pt = new THREE.Vector3();
@@ -2627,7 +2782,7 @@ function hoverUpdate(e, id0){
 }
 cvsEl.addEventListener("pointerleave", () => { tip.style.display = "none"; hoverLabel = null; hoverZone = null; });
 function loop(){
-  requestAnimationFrame(loop); const dt = Math.min(0.05, clock.getDelta()); frame++;
+  requestAnimationFrame(loop); if (window.__pauseRender) return; const dt = Math.min(0.05, clock.getDelta()); frame++;
   updateLabels();
   if (playing) updateMovers(dt);
   updateWalk(dt); applyCam();
@@ -2636,7 +2791,7 @@ function loop(){
 }
 $("loadMsg").textContent = "敷地・建屋・設備を生成しています…";
 setTimeout(() => { try { build(); } catch (err) { $("loadMsg").textContent = "構築エラー: " + err.message; console.error(err); throw err; } loop(); }, 30);
-window.THREE = THREE; window.__factory = { scene, camera, renderer, buildMEP, clearanceCheck, LOADS, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
+window.THREE = THREE; window.__factory = { scene, camera, renderer, AS, ASSET_CATALOG, setAssetQuality, buildMEP, clearanceCheck, LOADS, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
 </script>
 </body>
 </html>

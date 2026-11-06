@@ -153,6 +153,8 @@ const TOUR = [
     text:"56席のオープンフロア。ホール側は全面ガラスとバルコニーで、組立中の実機が常に視界にある。" },
   { cam:{ yaw:-0.9, pitch:0.4, dist:60, target:[-20,11.5,10] }, mode:"floor", floor:3, title:"3F 設計フロア・カフェテリア",
     text:"CAD/CAE 40席、会議室群、全社のカフェテリア。木天井の下で設計とソフトが日常的に交わる。" },
+  { cam:{ yaw:-2.2, pitch:0.42, dist:20, target:[41,1,-22] }, mode:"floor", floor:1, title:"実物モデル：受入置場（NVIDIA SimReady）",
+    text:"フォークリフト・ハンドパレット・パレット・木箱・ラック・踏台など、NVIDIA SimReady の実物 3D モデル（CC BY 4.0）約 130 点を配置。レーンを組み替えると工程に応じた小物が自動で付く。" },
   { cam:{ yaw:-0.6, pitch:0.18, dist:70, target:[-30,4,24] }, mode:"ext", title:"前庭プラザ・来客アプローチ",
     text:"歩道から樹木とベンチの前庭を抜けてロビーへ。西側はソーラーカーポート駐車場 32台。" },
 ];

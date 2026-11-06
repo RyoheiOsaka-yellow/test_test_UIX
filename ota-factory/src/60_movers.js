@@ -69,7 +69,7 @@ function buildMovers(){
   // ---- トラック・フォークリフト ----
   const tr = makeTruck(); MOVERS.add(tr); movers.push(new PathMover(tr, [[54,0,80],[54,0,20],[54,0,-24],[47.5,0,-24],[54,0,-24],[54,0,60],[54,0,80]], 4.0, { pause:6, smoothTurn:true }));
   const tr2 = makeTruck(); tr2.position.set(48.5, 0, -16); tr2.rotation.y = Math.PI/2; MOVERS.add(tr2);  // ドック待機中
-  const fk = makeForklift(); MOVERS.add(fk); movers.push(new PathMover(fk, [[40,0,-16],[40,0,-22],[30,0,-22],[30,0,-16],[40,0,-16]], 1.6, { pause:3 }));
+  const fk = assetMover("forklift", makeForklift()); movers.push(new PathMover(fk, [[40,0,-16],[40,0,-22],[30,0,-22],[30,0,-16],[40,0,-16]], 1.6, { pause:3 }));
 }
 function updateMovers(dt){
   simT += dt;

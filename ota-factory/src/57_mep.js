@@ -123,7 +123,7 @@ function buildMEP(){
           routeMesh(sys, [[dx, 0.06, zt], [dx, 0.06, zb], [e.x, 0.06, zb]], { name:`${S.n} 床トレンチ ${e.id}`, to:e.id, floor:1, trench:true, load:`${(LOADS[e.kind]||{})[sys]||0} ${LOAD_UNIT[sys]}` }, g1); } } }); }
   applyMepVisibility();
 }
-function applyMepVisibility(){ for (const k in MEP.groups){ const g = MEP.groups[k]; const office = g.parent && g.parent.name !== "floor_1"; g.visible = (MEP.visible[g.userData.sys] ?? true) && (layerState?.mep ?? true) && (!office || MEP.office || MEP.walk); } }
+function applyMepVisibility(){ for (const k in MEP.groups){ const g = MEP.groups[k]; const office = g.parent && g.parent.name !== "floor_1"; g.visible = (MEP.visible[g.userData.sys] ?? true) && (layerState?.mep ?? true) && !!(!office || MEP.office || MEP.walk); } }
 
 // ---- 数量表 ----
 function mepSchedule(){ const t = {}; for (const k in SYSTEMS) t[k] = { n:SYSTEMS[k].n, len:0, runs:0, fittings:0, load: MEP.loads.total ? MEP.loads.total[k] : 0, unit: LOAD_UNIT[k] }; for (const k in MEP.groups) MEP.groups[k].children.forEach(c => { const m = c.userData.mep; if (!m) return; if (m.length !== undefined){ t[m.sys].len += m.length; t[m.sys].runs++; } else t[m.sys].fittings++; }); return t; }

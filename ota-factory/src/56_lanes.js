@@ -96,9 +96,9 @@ function generateLane(lane){
     const bn = makeBanner(`${lane.id}  ${R.n}`, R.color); bn.position.set(cxA - 6.5, Math.min(ceilY - 0.2, yF + 8.4), czA); bn.scale.setScalar(0.8); oh.add(bn); }
   else if (lane.zone === "north"){ const an = makeAndon({ lane, kpi:kpi0 }); an.position.set(cxA, 5.4, -31.2); an.scale.setScalar(0.7); oh.add(an); }
   const obj = { lane, group:g, sts, aux, lay, stationPos, overlay:ov, eqIds, anim: ANIM.slice(animStart), strips, hidden };
-  obj.kpi = computeLaneKPI(lane, sts); LANE_OBJ[lane.id] = obj; return obj;
+  obj.kpi = computeLaneKPI(lane, sts); LANE_OBJ[lane.id] = obj; if (typeof laneAssets === "function") laneAssets(obj); return obj;
 }
-function removeLane(id){ const o = LANE_OBJ[id]; if (!o) return; o.group.parent?.remove(o.group); for (const h of o.hidden||[]) if (EQ_OBJ[h]) EQ_OBJ[h].group.visible = true; for (const a of o.anim){ const i = ANIM.indexOf(a); if (i>=0) ANIM.splice(i,1); }
+function removeLane(id){ const o = LANE_OBJ[id]; if (!o) return; if (typeof removeAssetsOf === "function") removeAssetsOf(o.group); o.group.parent?.remove(o.group); for (const h of o.hidden||[]) if (EQ_OBJ[h]) EQ_OBJ[h].group.visible = true; for (const a of o.anim){ const i = ANIM.indexOf(a); if (i>=0) ANIM.splice(i,1); }
   for (const eid of o.eqIds){ const i = EQUIP.findIndex(e=>e.id===eid); if (i>=0) EQUIP.splice(i,1); delete EQ_OBJ[eid]; } delete LANE_OBJ[id]; }
 
 function arrowTex(){ return canvasTex("arrow", 128, (c,w,h)=>{ c.clearRect(0,0,w,h); c.fillStyle = "rgba(255,255,255,0.35)"; c.fillRect(0, h*0.42, w, h*0.16); c.fillStyle = "rgba(255,255,255,0.95)"; c.beginPath(); c.moveTo(w*0.55, h*0.18); c.lineTo(w*0.9, h*0.5); c.lineTo(w*0.55, h*0.82); c.closePath(); c.fill(); }, { repeat:[1,1] }); }
