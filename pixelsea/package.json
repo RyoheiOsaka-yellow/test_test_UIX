@@ -1,10 +1,12 @@
 {
   "name": "pixelsea",
   "version": "0.1.0",
-  "description": "世界のエビとウミウシのドット絵集。Code-driven pixel art of the world's shrimps and nudibranchs, in the manner of pixelfx.",
+  "description": "世界の海の生き物ドット絵集。Code-driven pixel art of shrimps, nudibranchs, shellfish, whales and big fish, in the manner of pixelfx.",
   "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "exports": {
     ".": "./src/core/index.js",
     "./species": "./src/species/index.js",

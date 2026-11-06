@@ -1,6 +1,6 @@
 # Catalog / 図鑑
 
-25 species, every one a small piece of code in `src/species/<category>/<name>.js`.
+55 species, every one a small piece of code in `src/species/<category>/<name>.js`.
 
 | | 和名 | Name | Scientific name | Region | Size |
 |---|---|---|---|---|---|
@@ -31,6 +31,38 @@
 | ![](previews/nudibranch-sakuraeolis.gif) | サクラミノウミウシ | Sakura aeolid (`nudibranch/sakuraeolis`) | *Sakuraeolis enosimensis* | Japan (Pacific coast of Honshu) | 4 cm |
 | ![](previews/nudibranch-leaf-sheep.gif) | テングモウミウシ | Leaf sheep (`nudibranch/leaf-sheep`) | *Costasiella kuroshimae* | Japan (Kuroshima), Indonesia, Philippines | 5 mm |
 | ![](previews/nudibranch-blue-dragon.gif) | アオミノウミウシ | Blue dragon (`nudibranch/blue-dragon`) | *Glaucus atlanticus* | Open ocean worldwide, warm seas | 3 cm |
+| **貝 Shellfish** | | | | | |
+| ![](previews/shell-hamaguri.gif) | ハマグリ | Common orient clam (`shell/hamaguri`) | *Meretrix lusoria* | Japan, Korea, China (tidal sand flats) | 8 cm |
+| ![](previews/shell-asari.gif) | アサリ | Manila clam (`shell/asari`) | *Ruditapes philippinarum* | Japan and East Asia; introduced worldwide | 4 cm |
+| ![](previews/shell-hotate.gif) | ホタテガイ | Yesso scallop (`shell/hotate`) | *Mizuhopecten yessoensis* | Hokkaido, Tohoku, Sakhalin, Korea | 15 cm |
+| ![](previews/shell-shako.gif) | オオシャコガイ | Giant clam (`shell/shako`) | *Tridacna gigas* | Coral reefs of the Indo-Pacific | 120 cm |
+| ![](previews/shell-mussel.gif) | ムラサキイガイ | Mediterranean mussel (`shell/mussel`) | *Mytilus galloprovincialis* | Mediterranean and Atlantic Europe; introduced to Japan and worldwide | 8 cm |
+| ![](previews/shell-oyster.gif) | マガキ | Pacific oyster (`shell/oyster`) | *Crassostrea gigas* | Japan; farmed on every continent but Antarctica | 15 cm |
+| ![](previews/shell-akoya.gif) | アコヤガイ | Akoya pearl oyster (`shell/akoya`) | *Pinctada fucata* | Japan (Mie, Ehime, Nagasaki), Indo-Pacific | 7 cm |
+| ![](previews/shell-geoduck.gif) | アメリカナミガイ | Pacific geoduck (`shell/geoduck`) | *Panopea generosa* | Pacific coast of North America (Alaska to Baja California) | 20 cm shell, siphon to 1 m |
+| ![](previews/shell-sazae.gif) | サザエ | Horned turban (`shell/sazae`) | *Turbo sazae* | Japan, Korea (rocky shores) | 10 cm |
+| ![](previews/shell-awabi.gif) | クロアワビ | Japanese abalone (`shell/awabi`) | *Haliotis discus discus* | Japan (Pacific coast), Korea | 20 cm |
+| ![](previews/shell-horagai.gif) | ホラガイ | Triton's trumpet (`shell/horagai`) | *Charonia tritonis* | Indo-Pacific coral reefs | 50 cm |
+| ![](previews/shell-takaragai.gif) | ホシダカラ | Tiger cowrie (`shell/takaragai`) | *Cypraea tigris* | Indo-Pacific reefs, south to Okinawa | 10 cm |
+| ![](previews/shell-conch.gif) | ピンクガイ | Queen conch (`shell/conch`) | *Aliger gigas* | Caribbean Sea, Bahamas, Florida | 30 cm |
+| ![](previews/shell-imogai.gif) | アンボイナガイ | Geography cone (`shell/imogai`) | *Conus geographus* | Indo-Pacific reefs, north to Okinawa | 12 cm |
+| ![](previews/shell-nautilus.gif) | オウムガイ | Chambered nautilus (`shell/nautilus`) | *Nautilus pompilius* | Western Pacific, 100–500 m (Philippines, Palau, Fiji) | 20 cm |
+| **鯨・大型魚 Whales & big fish** | | | | | |
+| ![](previews/giants-blue-whale.gif) | シロナガスクジラ | Blue whale (`giants/blue-whale`) | *Balaenoptera musculus* | All oceans; feeds in polar seas, breeds in the tropics | 30 m |
+| ![](previews/giants-humpback.gif) | ザトウクジラ | Humpback whale (`giants/humpback`) | *Megaptera novaeangliae* | All oceans; Okinawa and Ogasawara in winter, Alaska in summer | 15 m |
+| ![](previews/giants-sperm-whale.gif) | マッコウクジラ | Sperm whale (`giants/sperm-whale`) | *Physeter macrocephalus* | All deep oceans; Ogasawara, Kochi and Hokkaido waters | 18 m |
+| ![](previews/giants-orca.gif) | シャチ | Orca (`giants/orca`) | *Orcinus orca* | Every ocean, from the poles to the equator | 8 m |
+| ![](previews/giants-narwhal.gif) | イッカク | Narwhal (`giants/narwhal`) | *Monodon monoceros* | Arctic Ocean: Canada, Greenland, Svalbard | 5 m (tusk to 3 m) |
+| ![](previews/giants-whale-shark.gif) | ジンベエザメ | Whale shark (`giants/whale-shark`) | *Rhincodon typus* | Tropical and warm seas worldwide; Okinawa, Ningaloo, Cebu | 12 m |
+| ![](previews/giants-great-white.gif) | ホホジロザメ | Great white shark (`giants/great-white`) | *Carcharodon carcharias* | Temperate seas worldwide; South Africa, Australia, California, Japan | 6 m |
+| ![](previews/giants-hammerhead.gif) | アカシュモクザメ | Scalloped hammerhead (`giants/hammerhead`) | *Sphyrna lewini* | Warm seas worldwide; famous schools at Yonaguni, Galápagos, Cocos | 4 m |
+| ![](previews/giants-manta.gif) | オニイトマキエイ | Giant oceanic manta (`giants/manta`) | *Mobula birostris* | Tropical and warm seas worldwide; Ishigaki, Ogasawara | 7 m across |
+| ![](previews/giants-mola.gif) | マンボウ | Ocean sunfish (`giants/mola`) | *Mola mola* | Temperate and tropical seas worldwide | 3 m, up to 2 tonnes |
+| ![](previews/giants-tuna.gif) | クロマグロ | Pacific bluefin tuna (`giants/tuna`) | *Thunnus orientalis* | North Pacific, Japan to California | 3 m |
+| ![](previews/giants-sailfish.gif) | バショウカジキ | Indo-Pacific sailfish (`giants/sailfish`) | *Istiophorus platypterus* | Indo-Pacific; Japan in summer and autumn | 3.5 m |
+| ![](previews/giants-oarfish.gif) | リュウグウノツカイ | Giant oarfish (`giants/oarfish`) | *Regalecus glesne* | Deep open ocean worldwide, 200–1000 m; washes up on the Sea of Japan coast | 8 m, to 11 m |
+| ![](previews/giants-coelacanth.gif) | シーラカンス | Coelacanth (`giants/coelacanth`) | *Latimeria chalumnae* | Comoros, Mozambique Channel, South Africa, 150–700 m | 2 m |
+| ![](previews/giants-arapaima.gif) | ピラルク | Arapaima (`giants/arapaima`) | *Arapaima gigas* | Amazon and Essequibo basins (freshwater) | 3 m |
 
 ## エビ Shrimp
 
@@ -289,3 +321,311 @@ tags: sacoglossan, sea slug, green, japan, tiny, cute, loop
 A slug that lives at the sea's surface, floating upside down on a swallowed bubble: silver belly to the sky, blue back to the deep, cerata fanned out in three pairs of wings. It eats Portuguese man o' war and keeps the stings for itself.
 
 tags: nudibranch, aeolid, blue, pelagic, surface, loop
+
+## 貝 Shellfish
+
+Clams, scallops, oysters, snails and a nautilus: the ones that carry their house.
+
+### ハマグリ — Common orient clam
+
+*Meretrix lusoria* · Japan, Korea, China (tidal sand flats) · 8 cm · `shell/hamaguri` · 64×48 px, 4 s loop at 30 fps
+
+干潟の砂に潜む、つやのある滑らかな二枚貝。栗色・クリーム・紫の模様は一枚ごとに違い、ぴたりと合うのは元の相手だけ。それが夫婦円満の縁起物とされるゆえん。
+
+The smooth, glossy clam of Japanese sand flats, each shell a different wash of chestnut, cream and violet. It sits buried with two short siphons up in the water. No two shells match except their own pair, which is why hamaguri stand for a good marriage.
+
+tags: shell, bivalve, clam, japan, sand, food, loop
+
+### アサリ — Manila clam
+
+*Ruditapes philippinarum* · Japan and East Asia; introduced worldwide · 4 cm · `shell/asari` · 56×44 px, 3.6 s loop at 30 fps
+
+味噌汁の定番。細かい放射肋に、黒・茶・白の迷路のような模様は一枚ずつ違う。砂に浅く潜って水管を出し、今では世界中の海岸に広がった。
+
+The little ribbed clam of miso soup, every shell printed with a different maze of brown, black and white. It lives a hand's depth under the sand with two siphons up, and has quietly colonized coasts from France to California.
+
+tags: shell, bivalve, clam, japan, sand, food, loop
+
+### ホタテガイ — Yesso scallop
+
+*Mizuhopecten yessoensis* · Hokkaido, Tohoku, Sakhalin, Korea · 15 cm · `shell/hotate` · 72×52 px, 3.6 s loop at 30 fps
+
+北の海のホタテ。上の殻は紫褐色、下の殻は白、扇のような放射肋。外套膜の縁には小さな青い目が並ぶ。驚くと殻を打ち鳴らして水を噴き、貝のくせに泳いで逃げる。
+
+The northern scallop: a purple-brown upper valve and a white lower one, ribbed like a fan, with a row of tiny blue eyes along the mantle edge. Startled, it claps its shell and jets away through the water, the only clam that really swims.
+
+tags: shell, bivalve, scallop, japan, swim, eyes, food, loop
+
+### オオシャコガイ — Giant clam
+
+*Tridacna gigas* · Coral reefs of the Indo-Pacific · 120 cm · `shell/shako` · 76×52 px, 4.4 s loop at 30 fps
+
+現生最大の貝。幅1 m、重さ200 kgにもなり、サンゴ礁に殻を開けて太陽を仰ぐ。外套膜が青や緑に輝くのは、体内で育てている藻のせい。その藻に養われて百年生きる。
+
+The largest living shell, a metre across and two hundred kilos, wedged into the reef with its gape to the sun. Its mantle glows blue and green with the algae it farms in its own flesh, which feed it for a century.
+
+tags: shell, bivalve, giant, reef, symbiosis, loop
+
+### ムラサキイガイ — Mediterranean mussel
+
+*Mytilus galloprovincialis* · Mediterranean and Atlantic Europe; introduced to Japan and worldwide · 8 cm · `shell/mussel` · 60×48 px, 4 s loop at 30 fps
+
+ムール貝として知られる紫黒色のくさび形の二枚貝。足糸（ひげ）で岩にしがみつき、殻を少し開けてオレンジ色の身をのぞかせながら潮を濾す。日本には100年ほど前に船底について渡来した。
+
+The moules of a thousand bistros: a blue-black wedge of shell tied to the rock by a beard of byssus threads, gaping just enough to show its orange flesh as it filters the tide. It reached Japan on ships' hulls a century ago.
+
+tags: shell, bivalve, mussel, rock, europe, food, loop
+
+### マガキ — Pacific oyster
+
+*Crassostrea gigas* · Japan; farmed on every continent but Antarctica · 15 cm · `shell/oyster` · 64×48 px, 4.2 s loop at 30 fps
+
+広島や宮城の養殖カキ。ゴツゴツした灰色と紫の殻で、深い下の殻ごと岩に固着する。一日に200 Lの海水を濾し、日本からフランスや北米など世界中の養殖場に広まった。
+
+The rough, fluted, grey-and-purple oyster of Hiroshima and Miyagi, cemented to the rock by its deep lower valve. It filters two hundred litres a day and was carried from Japan to farm the oyster beds of France, the Pacific coast and beyond.
+
+tags: shell, bivalve, oyster, rock, japan, food, loop
+
+### アコヤガイ — Akoya pearl oyster
+
+*Pinctada fucata* · Japan (Mie, Ehime, Nagasaki), Indo-Pacific · 7 cm · `shell/akoya` · 60×46 px, 4.4 s loop at 30 fps
+
+真珠養殖の母貝。平たく放射状の模様がある殻の内側は真珠層。核を入れると、1〜2年かけて真珠層を何層も重ね、丸い白いアコヤ真珠を育てる。
+
+The oyster that made Mikimoto: a flat, rayed, greenish shell lined with nacre. Seeded with a bead, it coats the irritant in mother-of-pearl, layer by layer, into a round white Akoya pearl over a year or two.
+
+tags: shell, bivalve, pearl, japan, loop
+
+### アメリカナミガイ — Pacific geoduck
+
+*Panopea generosa* · Pacific coast of North America (Alaska to Baja California) · 20 cm shell, siphon to 1 m · `shell/geoduck` · 60×56 px, 4.4 s loop at 30 fps
+
+世界最大の潜砂性二枚貝で、170年も生きる長寿の動物。殻に収まりきらないしわだらけの水管は腕ほどの長さで、1 mの砂を貫いて海水に届く。
+
+The biggest burrowing clam on Earth and one of the longest-lived animals, up to 170 years. The shell can't close around its siphon, a wrinkled neck as long as an arm that reaches up a metre of sand to the water.
+
+tags: shell, bivalve, clam, siphon, sand, america, loop
+
+### サザエ — Horned turban
+
+*Turbo sazae* · Japan, Korea (rocky shores) · 10 cm · `shell/sazae` · 64×48 px, 4 s loop at 30 fps
+
+日本の磯の代表的な巻貝。夜に海藻を食べ、分厚いフタで殻を閉ざす。波の荒い場所では長いトゲが伸び、穏やかな場所では丸い殻になる。
+
+The spiny turban snail of Japanese rocky shores, grazing seaweed by night with a green-black foot and a thick lid (operculum) that seals it shut. Wave-beaten shells grow long horns; calm-water ones stay smooth.
+
+tags: shell, snail, gastropod, japan, rock, food, loop
+
+### クロアワビ — Japanese abalone
+
+*Haliotis discus discus* · Japan (Pacific coast), Korea · 20 cm · `shell/awabi` · 68×44 px, 4.2 s loop at 30 fps
+
+らせんを捨てた巻貝。平たい耳形の殻に呼吸孔が一列に並び、その下の巨大な足で岩にしがみつく。三重や千葉の海女が二千年前から素潜りで獲ってきた。
+
+A snail that gave up the spiral: a flat ear of shell with a row of breathing holes, clamped over a huge muscular foot that grips rock against any wave. The ama divers of Mie and Chiba have taken it by hand for two thousand years.
+
+tags: shell, snail, gastropod, japan, rock, food, loop
+
+### ホラガイ — Triton's trumpet
+
+*Charonia tritonis* · Indo-Pacific coral reefs · 50 cm · `shell/horagai` · 88×56 px, 4.6 s loop at 30 fps
+
+海で最大級の巻貝。クリーム色に栗色の三日月模様が並ぶ50 cmの塔。サンゴを食い荒らすオニヒトデを襲う、サンゴ礁の守り手。先端に穴を開けたものが山伏や武将の吹く法螺貝。
+
+One of the largest snails in the sea, a half-metre spire of cream and chestnut crescents. It hunts the crown-of-thorns starfish that eat coral, so reefs with tritons stay healthier. Drilled at the tip, the shell is the conch that Japanese monks and generals blew.
+
+tags: shell, snail, gastropod, giant, reef, predator, loop
+
+### ホシダカラ — Tiger cowrie
+
+*Cypraea tigris* · Indo-Pacific reefs, south to Okinawa · 10 cm · `shell/takaragai` · 64×44 px, 4.4 s loop at 30 fps
+
+サンゴ礁の磨かれた卵。ヒョウ柄の斑点をもつ陶器のような殻は、左右から外套膜が包み込んで磨き続けるためいつも艶やか。タカラガイはアジアやアフリカで三千年にわたり貨幣として使われた。
+
+The glossy egg of the reef: a porcelain shell spotted like a leopard, kept polished because the snail's own mantle wraps up over it from both sides, bristling with papillae. Cowries were money across Asia and Africa for three thousand years.
+
+tags: shell, snail, gastropod, cowrie, reef, spots, loop
+
+### ピンクガイ — Queen conch
+
+*Aliger gigas* · Caribbean Sea, Bahamas, Florida · 30 cm · `shell/conch` · 84×54 px, 4 s loop at 30 fps
+
+カリブ海のピンク色の唇をもつ巻貝。塔にはこぶの冠、広がった唇の下から二本の目が覗く。爪のような足を砂に突き立て、殻ごと飛び跳ねるように進む。
+
+The pink-lipped conch of the Caribbean, with a crown of knobs on the spire and two eyes on stalks peering out from under the flared lip. It moves in hops, planting its claw-like foot and lurching the whole shell forward.
+
+tags: shell, snail, gastropod, caribbean, sand, pink, loop
+
+### アンボイナガイ — Geography cone
+
+*Conus geographus* · Indo-Pacific reefs, north to Okinawa · 12 cm · `shell/imogai` · 68×44 px, 4 s loop at 30 fps
+
+最も危険な貝。古い羊皮紙のような色に茶色の網目模様。夜に魚を狩り、ピンクの吻を伸ばして毒の銛（歯舌）を撃ち込む。「ハブガイ」とも呼ばれ、殻を拾ったダイバーが刺されて亡くなった例もある。
+
+The most dangerous snail alive. A cone the colour of old parchment, netted in brown, that hunts fish at night: it stretches out a pink proboscis and fires a venomous harpoon tooth. Its sting has killed divers who picked it up for the pretty shell.
+
+tags: shell, snail, gastropod, venom, reef, night, loop
+
+### オウムガイ — Chambered nautilus
+
+*Nautilus pompilius* · Western Pacific, 100–500 m (Philippines, Palau, Fiji) · 20 cm · `shell/nautilus` · 76×56 px, 4.8 s loop at 30 fps
+
+炎のような縞のらせん殻をもつ生きた化石。殻の中はガスの詰まった小部屋に分かれ、浮力を調節する。昼は深い斜面にひそみ、夜は浮上して、水を噴いて後ろ向きに泳ぎながら90本の触手でエビや死骸を探す。
+
+A living fossil with a coiled, flame-striped shell divided into gas-filled chambers that keep it afloat. By day it hangs deep on the reef slope; by night it rises, jetting backward and feeling with ninety tentacles for shrimp and carrion.
+
+tags: shell, cephalopod, nautilus, deep, fossil, swim, loop
+
+## 鯨・大型魚 Whales & big fish
+
+Whales, sharks, tunas, rays and the biggest bony fish: the ones you measure in metres.
+
+### シロナガスクジラ — Blue whale
+
+*Balaenoptera musculus* · All oceans; feeds in polar seas, breeds in the tropics · 30 m · `giants/blue-whale` · 128×48 px, 5 s loop at 30 fps
+
+史上最大の動物。バス3台分より長く、どの恐竜より重い。青灰色のまだら模様、背びれは尾の近くに小さく一つ。喉の畝を広げて一度に100 tの海水ごとオキアミを飲み込む。
+
+The largest animal that has ever lived, longer than three buses and heavier than any dinosaur. Mottled blue-grey with a tiny dorsal fin far down its back, it lives on krill, gulping a hundred tonnes of water at a time through pleated throat grooves.
+
+tags: whale, cetacean, giant, baleen, krill, loop
+
+### ザトウクジラ — Humpback whale
+
+*Megaptera novaeangliae* · All oceans; Okinawa and Ogasawara in winter, Alaska in summer · 15 m · `giants/humpback` · 112×56 px, 4.6 s loop at 30 fps
+
+海の曲芸師にして歌い手。こぶのある頭、潜るとき丸く盛り上がる背、体長の3分の1もある動物界最長の胸びれ。雄は1時間に及ぶ歌をうたい、その歌は毎年海全体で変わっていく。
+
+The acrobat and the singer: knobbly head, a back that humps as it dives, and pectoral fins a third of its length, the longest of any animal. Males sing hour-long songs that change year by year across an ocean.
+
+tags: whale, cetacean, baleen, song, japan, loop
+
+### マッコウクジラ — Sperm whale
+
+*Physeter macrocephalus* · All deep oceans; Ogasawara, Kochi and Hokkaido waters · 18 m · `giants/sperm-whale` · 112×56 px, 5 s loop at 30 fps
+
+白鯨のモデル。最大の歯をもつ捕食者で、体長の3分の1を占める四角い頭には地球最大の脳と、音響探知に使う蝋状の油の器官が収まる。深さ2 kmまで1時間潜り、暗闇でダイオウイカと渡り合う。
+
+Moby Dick: the largest toothed predator, with a block of a head a third of its length holding the biggest brain on Earth and an organ full of waxy oil for sonar. It dives two kilometres down, for an hour, to fight giant squid in the dark.
+
+tags: whale, cetacean, toothed, deep, squid, loop
+
+### シャチ — Orca
+
+*Orcinus orca* · Every ocean, from the poles to the equator · 8 m · `giants/orca` · 100×52 px, 3.6 s loop at 30 fps
+
+海の食物連鎖の頂点。バスほどの大きさの白黒のイルカで、雄の背びれは人の背丈ほど。群れは文化をもち、ニシンを狩る群れ、アザラシを狩る群れ、ホホジロザメを狩る群れもいる。
+
+The sea's top predator: a black-and-white dolphin the size of a bus, with a dorsal fin as tall as a man on the bulls. Pods hunt by plan and by culture, some for herring, some for seals, some for great white sharks.
+
+tags: whale, cetacean, orca, predator, worldwide, loop
+
+### イッカク — Narwhal
+
+*Monodon monoceros* · Arctic Ocean: Canada, Greenland, Svalbard · 5 m (tusk to 3 m) · `giants/narwhal` · 120×48 px, 4.4 s loop at 30 fps
+
+海のユニコーン。背びれのない灰色まだらの北極のクジラで、雄は最長3 mのらせん状の一本角をもつ。角の正体は唇を突き破って伸びた歯で、神経が通って海水の変化を感じ取る。
+
+The unicorn of the sea: a mottled grey Arctic whale with no dorsal fin and, in males, a single spiral tusk up to three metres long. It is a tooth, grown out through the lip, packed with nerves that taste the water.
+
+tags: whale, cetacean, arctic, tusk, ice, loop
+
+### ジンベエザメ — Whale shark
+
+*Rhincodon typus* · Tropical and warm seas worldwide; Okinawa, Ningaloo, Cebu · 12 m · `giants/whale-shark` · 120×56 px, 5 s loop at 30 fps
+
+海で最大の魚にして最もおとなしい。白い斑点と線の市松模様、体側に走る三本の畝、幅1.5 mの口でプランクトンを濾す。斑点の並びは指紋のように個体ごとに違う。
+
+The biggest fish in the sea, and the gentlest: a grey giant checkered with white spots and lines, three ridges down each flank, and a mouth a metre and a half wide that strains plankton. The spots are a fingerprint; no two sharks share them.
+
+tags: fish, shark, giant, spots, plankton, japan, loop
+
+### ホホジロザメ — Great white shark
+
+*Carcharodon carcharias* · Temperate seas worldwide; South Africa, Australia, California, Japan · 6 m · `giants/great-white` · 104×52 px, 3.2 s loop at 30 fps
+
+背は灰色、腹は白、円錐形の鼻先と、一生生え替わる鋸歯状の三角の歯が300本。海水より高い体温を保ち、アザラシを追って海面から跳び出す。
+
+Slate grey above, white below, a conical snout and three hundred serrated triangular teeth in rows that replace themselves for life. It can hold its body warmer than the sea, and breaches clean out of the water after seals.
+
+tags: fish, shark, predator, teeth, worldwide, loop
+
+### アカシュモクザメ — Scalloped hammerhead
+
+*Sphyrna lewini* · Warm seas worldwide; famous schools at Yonaguni, Galápagos, Cocos · 4 m · `giants/hammerhead` · 100×52 px, 3.4 s loop at 30 fps
+
+頭が翼のような形のサメ。平たい槌の両端に目があり、全方位の視界と、砂に隠れたエイを探る広い電気感覚をもつ。与那国島やガラパゴスでは数百匹の群れになる。
+
+A shark whose head is a wing: eyes at the tips of a flat hammer that gives it wraparound vision and a wide sweep of electric sense for rays hidden in sand. Off Yonaguni and the Galápagos they gather by the hundred.
+
+tags: fish, shark, hammerhead, school, japan, loop
+
+### オニイトマキエイ — Giant oceanic manta
+
+*Mobula birostris* · Tropical and warm seas worldwide; Ishigaki, Ogasawara · 7 m across · `giants/manta` · 112×60 px, 4.8 s loop at 30 fps
+
+翼を広げると7 mになるエイ。ゆっくり羽ばたいて外洋を飛ぶように泳ぎ、頭の角のような二枚のヒレを丸めてプランクトンをすくう。魚で最大の脳をもち、クリーニングステーションに通う常連。
+
+A ray with a seven-metre wingspan that flies through open water on slow beats, rolling the two horn-like lobes on its head into a scoop for plankton. It has the biggest brain of any fish, and visits cleaning stations like a regular.
+
+tags: fish, ray, manta, giant, plankton, japan, loop
+
+### マンボウ — Ocean sunfish
+
+*Mola mola* · Temperate and tropical seas worldwide · 3 m, up to 2 tonnes · `giants/mola` · 84×64 px, 4.2 s loop at 30 fps
+
+最も重い硬骨魚。途中で切れたような灰色の円盤で、上下に高いヒレ、尾の代わりにひらひらした舵（舵鰭）をもつ。クラゲを食べ、深く潜ったあとは水面に横たわって体を温める。
+
+The heaviest bony fish, a great grey disc that seems to end halfway, with a tall fin above and below and a frilled rudder instead of a tail. It sculls along on jellyfish and basks on its side at the surface to warm up after deep dives.
+
+tags: fish, sunfish, giant, jellyfish, worldwide, loop
+
+### クロマグロ — Pacific bluefin tuna
+
+*Thunnus orientalis* · North Pacific, Japan to California · 3 m · `giants/tuna` · 96×48 px, 2.4 s loop at 30 fps
+
+温かい血をもつ魚雷のような魚。背は鋼のような青、腹は銀、黄色い小離鰭と三日月の尾で太平洋を高速で横断する。寿司で最も珍重され、乱獲で数が激減した。
+
+A warm-blooded torpedo of a fish, steel-blue above and silver below, with yellow finlets and a sickle tail that drives it across the Pacific at highway speed. Prized for sushi beyond any other fish, and fished to a fraction of what it was.
+
+tags: fish, tuna, pelagic, japan, fast, food, loop
+
+### バショウカジキ — Indo-Pacific sailfish
+
+*Istiophorus platypterus* · Indo-Pacific; Japan in summer and autumn · 3.5 m · `giants/sailfish` · 120×56 px, 3 s loop at 30 fps
+
+海で最速の魚と言われる。レイピアのような吻、狩りのときに縞が浮かぶ青と銀の体、そして体より高い帆のような背びれ。帆を立ててイワシの群れを追い込む。
+
+Often called the fastest fish in the sea. A bill like a rapier, a body of blue and silver that flashes with bars when it hunts, and a sail of a dorsal fin, taller than its body, raised to herd sardines into a ball.
+
+tags: fish, billfish, fast, sail, japan, loop
+
+### リュウグウノツカイ — Giant oarfish
+
+*Regalecus glesne* · Deep open ocean worldwide, 200–1000 m; washes up on the Sea of Japan coast · 8 m, to 11 m · `giants/oarfish` · 128×48 px, 4 s loop at 30 fps
+
+最も長い硬骨魚。銀色のリボンのような体に全長を貫く深紅の背びれ、頭には長い赤い冠。薄明の深海に縦向きに漂い、背びれを波打たせて泳ぐ。古地図の海蛇の正体とも、竜宮の使いとも言われる。
+
+The longest bony fish, a silver ribbon with a crimson fin running its whole length and a crest of long red rays on its head. It hangs vertically in the twilight zone, rippling its dorsal fin, and is the sea serpent of old maps and the 'messenger from the Dragon Palace' of Japanese lore.
+
+tags: fish, deep, ribbon, japan, legend, loop
+
+### シーラカンス — Coelacanth
+
+*Latimeria chalumnae* · Comoros, Mozambique Channel, South Africa, 150–700 m · 2 m · `giants/coelacanth` · 100×52 px, 4.4 s loop at 30 fps
+
+恐竜とともに絶滅したと思われていたが、1938年に南アフリカの網にかかって甦った「生きた化石」。鋼のような青に白い斑点、手足のような肉質のヒレで漕ぐように泳ぎ、尾びれの真ん中には小さな房がある。
+
+The fish that came back from the dead: thought extinct with the dinosaurs until one turned up in a South African net in 1938. Steel-blue with white flecks, it rows along on fleshy, limb-like lobed fins, and its three-lobed tail has a tuft in the middle.
+
+tags: fish, fossil, deep, lobe-finned, africa, loop
+
+### ピラルク — Arapaima
+
+*Arapaima gigas* · Amazon and Essequibo basins (freshwater) · 3 m · `giants/arapaima` · 112×52 px, 4.4 s loop at 30 fps
+
+アマゾン最大級の淡水魚。オリーブ色の体は尾に向かって鱗が赤く染まる（ピラルク＝赤い魚）。数分おきに水面で空気を呑む必要があり、鱗はピラニアの歯も通さない鎧。
+
+The giant of the Amazon, one of the largest freshwater fish: an olive torpedo whose scales flush red toward the tail (pirarucu, 'red fish'). It must surface to gulp air every few minutes, and its scales are armour tough enough to turn piranha teeth.
+
+tags: fish, freshwater, giant, amazon, air-breather, loop
