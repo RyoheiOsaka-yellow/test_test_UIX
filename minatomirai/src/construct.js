@@ -61,7 +61,7 @@ export function buildTowerGeometry(p, ground) {
   const pos = new Float32Array(mb.v.length);
   for (let i = 0; i < mb.v.length; i += 3) { pos[i] = mb.v[i]; pos[i + 1] = mb.v[i + 2]; pos[i + 2] = -mb.v[i + 1]; }
   let g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(mb.i);
-  g = mergeVertices(g, 1e-3); g.computeBoundingSphere();
+  g = mergeVertices(g, 1e-3); g.computeVertexNormals(); g.computeBoundingSphere();
   return { geometry: g, height: p.floors * FLOOR_H + p.crown, pod, floorArea: areaSum, top: top + p.crown };
 }
 

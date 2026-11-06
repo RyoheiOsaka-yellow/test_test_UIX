@@ -368,6 +368,27 @@ def assign_poi_to_buildings(pois, bmetas):
         p["b"] = best
     return pois
 
+def build_trees(nodes, ways, cache):
+    """街路樹・樹木 (natural=tree, tree_row 上に 8m 間隔) と街灯 (highway=street_lamp)。[x, y, kind] kind 0=樹木 1=街灯"""
+    out = []
+    for nid, (lon, lat, t) in nodes.items():
+        k = 0 if t.get("natural") == "tree" else 1 if t.get("highway") == "street_lamp" else None
+        if k is None: continue
+        x, y = to_local(lon, lat)
+        if inbox(x, y): out.append([dm(x), dm(y), k])
+    for w, (nd, t) in ways.items():
+        if t.get("natural") != "tree_row": continue
+        pts = way_coords(nodes, ways, w, cache); acc = 0.0
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            L = math.hypot(x1 - x0, y1 - y0)
+            if L == 0: continue
+            while acc <= L:
+                x = x0 + (x1 - x0) * acc / L; y = y0 + (y1 - y0) * acc / L
+                if inbox(x, y): out.append([dm(x), dm(y), 0])
+                acc += 8.0
+            acc -= L
+    return out
+
 def build_green(nodes, ways, rels, cache):
     """公園・緑地 (OSM leisure=park/garden, landuse=grass/recreation_ground, natural=wood/scrub)。"""
     polys = []
@@ -793,6 +814,7 @@ def main():
     print("roads ..."); roads = build_roads_from_mvt(); print("  polygons", len(roads))
     print("water ..."); water = build_water(nodes, ways, rels, cache); print("  sea", len(water["sea"]), "inland", len(water["inland"]))
     print("green ..."); green = build_green(nodes, ways, rels, cache); print("  polygons", len(green))
+    print("trees ..."); trees = build_trees(nodes, ways, cache); print("  trees/lamps", len(trees))
     print("poi ..."); pois = assign_poi_to_buildings(build_poi(nodes, ways, cache), bmetas)
     print("  pois", len(pois), "with level", sum(1 for q in pois if q["lv"] is not None), "assigned", sum(1 for q in pois if q["b"] >= 0))
     print("rails ..."); rails = build_rails(nodes, ways, cache); print("  ways", len(rails))
@@ -864,7 +886,7 @@ def main():
         "terrain": tmeta,
         "buildings": {"starts": bstarts, "meta": bmetas},
         "bridges": {"starts": rstarts, "meta": rmetas},
-        "roads": roads, "water": water, "green": green, "rails": rails, "poi": pois,
+        "roads": roads, "water": water, "green": green, "rails": rails, "poi": pois, "trees": trees,
         "network": {"nodes": nnodes, "links": nlinks, "vtypes": {v: k for k, v in VTYPE.items() if k}},
         "stations": [{"st": s["st"], "lv": s["lv"], "cat": s["cat"], "n": s["n"], "r": ring_dm(s["r"])} for s in spaces],
         "labels": labels,

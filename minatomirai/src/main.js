@@ -13,6 +13,9 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { initConstruction, compassSVG, TOWER_NAME } from './construct.js';
+import { initRealistic, realState } from './realistic.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -86,6 +89,16 @@ const THEMES = {
     green: '#e4efe7', greenLine: '#5e9b79', greenLineAlpha: 0.6,
     net: '#0a7fc4', netPts: '#0a5f9a', hover: [0.1, 0.55, 1.0], label: '#163f7a', labelGlow: false, pointColor: '#1f2a44', pointColor2: '#c8553d', voxel: '#eef1f6',
   },
+  real: { // リアル (物理ベース: 空・太陽・影・航空写真・反射水面)
+    real: true, bg: '#9fb8d6', fog: '#b9c9dd', fogDensity: 0.00016, skyTop: '#6f9ad6', skyHorizon: '#dbe6f2', far: '#767a74', bloom: false, tone: true,
+    face: '#2b3e6c', faceLine: '#9cc4ff', faceLineAlpha: 0.0, edge: '#6fa0ff', edgeAlpha: 0.0, edgeAdd: false, edgeWidth: 1.0, thinAlpha: 0.0, hatch: 0.0,
+    brFace: '#2d5a8a', brEdge: '#8fd0ff', brEdgeAlpha: 0.0,
+    terrain: '#6b6f66', terrainAlpha: 1, wire: '#1a2b52', wireAlpha: 0.0,
+    sea: '#0d3b6e', seaAlpha: 0.0, inland: '#1b4f7a', water: '#3f7fd0', waterLineAlpha: 0.0,
+    road: '#151c33', roadAlpha: 0.0, roadLine: '#c466ff', roadLineAlpha: 0.0,
+    green: '#0f3a2a', greenLine: '#2f8f5a', greenLineAlpha: 0.0,
+    net: '#00e5ff', netPts: '#9ff3ff', hover: [0.35, 0.85, 1.0], label: '#ffffff', pointColor: '#1f2a44', pointColor2: '#c8553d', voxel: '#c9ccd2',
+  },
   night: { // 夜景 (窓明かり)
     bg: '#04050c', fog: '#070a18', fogDensity: 0.0003, skyTop: '#02030a', skyHorizon: '#0d1a3a', far: '#060912', bloom: true, tone: true,
     face: '#2b3e6c', faceLine: '#9cc4ff', faceLineAlpha: 0.0, edge: '#6fa0ff', edgeAlpha: 0.25, edgeAdd: true, edgeWidth: 1.0, thinAlpha: 0.12, hatch: 0.0,
@@ -110,7 +123,7 @@ document.body.appendChild(canvas);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(BG);
 scene.fog = new THREE.FogExp2('#070a18', 0.00030);
-onTheme(t => { scene.background.set(t.bg); scene.fog.color.set(t.fog); scene.fog.density = t.fogDensity; });
+onTheme(t => { if (!scene.background) scene.background = new THREE.Color(); scene.background.set(t.bg); scene.fog.color.set(t.fog); scene.fog.density = t.fogDensity; });
 // 夜空のグラデーション (地平線付近をわずかに明るく)
 const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
@@ -119,11 +132,11 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(9000, 32, 16), new THREE.Sha
   fragmentShader: 'uniform vec3 top, horizon; varying vec3 vP; void main(){ float h = normalize(vP).y; float t = pow(clamp(1.0 - h * 2.2, 0.0, 1.0), 2.2); gl_FragColor = vec4(mix(top, horizon, t), 1.0); }',
 }));
 sky.renderOrder = -10; scene.add(sky);
-onTheme(t => { sky.material.uniforms.top.value.set(t.skyTop); sky.material.uniforms.horizon.value.set(t.skyHorizon); });
+onTheme(t => { sky.material.uniforms.top.value.set(t.skyTop); sky.material.uniforms.horizon.value.set(t.skyHorizon); sky.visible = !t.real; });
 // 対象範囲の外側を覆う地面 (地形の切れ目を目立たせない)
 const farGround = new THREE.Mesh(new THREE.CircleGeometry(9000, 64), new THREE.MeshBasicMaterial({ color: '#060912' }));
 farGround.rotation.x = -Math.PI / 2; farGround.position.y = -1.2; farGround.renderOrder = -5; scene.add(farGround);
-onTheme(t => farGround.material.color.set(t.far));
+onTheme(t => { farGround.material.color.set(t.far); });
 
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 20000);
 const CAM_HOME = new THREE.Vector3(1150, 720, -1250);
@@ -156,7 +169,7 @@ orthoControls.enabled = false;
 let activeCamera = camera, activeControls = controls;
 
 // ライティング（建物の立体感用）
-scene.add(new THREE.HemisphereLight('#9fb8ff', '#0a0c18', 0.9));
+const hemi = new THREE.HemisphereLight('#9fb8ff', '#0a0c18', 0.9); scene.add(hemi);
 const sun = new THREE.DirectionalLight('#dfe8ff', 1.6); sun.position.set(-900, 1400, -600); scene.add(sun);
 const fill = new THREE.DirectionalLight('#7fb2ff', 0.5); fill.position.set(900, 500, 900); scene.add(fill);
 
@@ -164,15 +177,20 @@ const renderTarget = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { samp
 const composer = new EffectComposer(renderer, renderTarget);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.28, 0.3, 0.5);
-composer.addPass(bloom);
+const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight); gtao.enabled = false; gtao.blendIntensity = 0.85;
+gtao.updateGtaoMaterial({ radius: 6, distanceExponent: 1.2, thickness: 1.5, scale: 1.0, samples: 12, distanceFallOff: 1, screenSpaceRadius: false });
+gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 12 });
+composer.addPass(gtao);
+composer.addPass(bloom); composer.removePass(bloom); composer.addPass(bloom);
 composer.addPass(new OutputPass());
-onTheme(t => { bloom.enabled = t.bloom; });
+const smaa = new SMAAPass(innerWidth, innerHeight); smaa.enabled = false; composer.addPass(smaa);
+onTheme(t => { bloom.enabled = t.bloom || (t.real && realState.hour >= 17.5) || (t.real && realState.hour < 6); });
 composer.setSize(innerWidth, innerHeight);
 const renderPass = composer.passes[0];
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); fitOrtho();
-  renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(pixelRatio()); composer.setSize(innerWidth, innerHeight);
+  renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(pixelRatio()); composer.setSize(innerWidth, innerHeight); gtao.setSize(innerWidth, innerHeight); smaa.setSize(innerWidth, innerHeight);
   bloom.resolution.set(innerWidth / 2, innerHeight / 2);
   scene.traverse(o => { if (o.material && o.material.isLineMaterial) o.material.resolution.set(innerWidth, innerHeight); });
   for (const m of pointMaterials) { m.uniforms.uScale.value = innerHeight / 2; m.uniforms.uPR.value = renderer.getPixelRatio(); }
@@ -226,7 +244,7 @@ const makeTextSprite = (text, color, { scale = 0.28, themeColor = null } = {}) =
 // ---------------------------------------------------------------------------
 const groups = {
   terrain: new THREE.Group(), water: new THREE.Group(), green: new THREE.Group(), roads: new THREE.Group(), buildings: new THREE.Group(), edges: new THREE.Group(),
-  bridges: new THREE.Group(), rails: new THREE.Group(), network: new THREE.Group(), station: new THREE.Group(), labels: new THREE.Group(),
+  bridges: new THREE.Group(), rails: new THREE.Group(), network: new THREE.Group(), station: new THREE.Group(), labels: new THREE.Group(), trees: new THREE.Group(),
 };
 for (const [k, g] of Object.entries(groups)) { g.name = k; scene.add(g); }
 const floorGroups = new Map();   // level -> Group (駅構内)
@@ -234,7 +252,7 @@ FLOORS.forEach(f => { const g = new THREE.Group(); g.name = `floor${f.level}`; g
 
 let LEVEL_H = {};
 let expand = 1.0;            // フロア展開倍率
-let terrainSampler = () => 0;
+let terrainSampler = () => 0; let terrainMesh = null; let realistic = null;
 const levelY = (lv, k = expand) => (LEVEL_H[lv] ?? lv * 6) * k;
 
 let buildingMesh = null, buildingMeta = null, buildingStarts = null;
@@ -275,7 +293,7 @@ function buildTerrain(meta, grid) {
   geo.computeVertexNormals();
   const mat = new THREE.MeshBasicMaterial({ color: '#0b1020', transparent: true, opacity: 0.62, depthWrite: false });
   const mesh = new THREE.Mesh(geo, mat); mesh.position.y = -0.4; mesh.renderOrder = -2;
-  groups.terrain.add(mesh);
+  groups.terrain.add(mesh); terrainMesh = mesh;
   const wire = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#1a2b52', wireframe: true, transparent: true, opacity: 0.12 }));
   wire.position.y = -0.3; groups.terrain.add(wire);
   onTheme(t => { mat.color.set(t.terrain); mat.opacity = t.terrainAlpha; wire.material.color.set(t.wire); wire.material.opacity = t.wireAlpha; });
@@ -313,7 +331,7 @@ function buildWater(water) {
   if (sea) { sea.renderOrder = -1; groups.water.add(sea); }
   if (inland) groups.water.add(inland);
   groups.water.add(ln);
-  onTheme(t => { if (sea) { sea.material.color.set(t.sea); sea.material.opacity = t.seaAlpha; } if (inland) { inland.material.color.set(t.inland); inland.material.opacity = t.seaAlpha; } ln.material.color.set(t.water); ln.material.opacity = t.waterLineAlpha; ln.visible = t.waterLineAlpha > 0; });
+  onTheme(t => { if (sea) { sea.material.color.set(t.sea); sea.material.opacity = t.seaAlpha; sea.visible = t.seaAlpha > 0; } if (inland) { inland.material.color.set(t.inland); inland.material.opacity = t.seaAlpha; } ln.material.color.set(t.water); ln.material.opacity = t.waterLineAlpha; ln.visible = t.waterLineAlpha > 0; });
 }
 
 // ---- 公園・緑地 (OSM) ---------------------------------------------------------
@@ -321,7 +339,7 @@ function buildGreen(polys) {
   const m = fillMesh(polys || [], 0.18, '#0f3a2a'); if (!m) return;
   const ln = outlineLines(polys, 0.3);
   groups.green.add(m, ln);
-  onTheme(t => { m.material.color.set(t.green); ln.material.color.set(t.greenLine); ln.material.opacity = t.greenLineAlpha; ln.visible = t.greenLineAlpha > 0; });
+  onTheme(t => { m.material.color.set(t.green); m.visible = !t.real; ln.material.color.set(t.greenLine); ln.material.opacity = t.greenLineAlpha; ln.visible = t.greenLineAlpha > 0; });
 }
 
 // ---- 道路面 (PLATEAU tran) ---------------------------------------------------
@@ -329,7 +347,7 @@ function buildRoads(polys) {
   const m = fillMesh(polys, 0.25, '#151c33'); const ln = outlineLines(polys, 0.45);
   if (m) groups.roads.add(m);
   groups.roads.add(ln);
-  onTheme(t => { if (m) { m.material.color.set(t.road); m.material.opacity = t.roadAlpha; } ln.material.color.set(t.roadLine); ln.material.opacity = t.roadLineAlpha; });
+  onTheme(t => { if (m) { m.material.color.set(t.road); m.material.opacity = t.roadAlpha; m.visible = t.roadAlpha > 0; } ln.material.color.set(t.roadLine); ln.material.opacity = t.roadLineAlpha; ln.visible = t.roadLineAlpha > 0; });
 }
 
 // ---- PLATEAU メッシュ (建物・橋梁) -----------------------------------------------
@@ -340,6 +358,7 @@ function meshFromPack(pos16, idx32) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setIndex(new THREE.BufferAttribute(idx32, 1));
+  g.computeVertexNormals();   // GTAO の法線バッファ用 (描画はフラットシェーディングで面法線を再計算)
   g.computeBoundingSphere();
   return g;
 }
@@ -349,7 +368,7 @@ const findRange = (starts, faceIndex) => { // starts: 三角形開始インデ�
   return lo;
 };
 
-const bldUniforms = { uHover: { value: -1 }, uWindows: { value: 1 }, uTime: { value: 0 } };
+const bldUniforms = { uHover: { value: -1 }, uWindows: { value: 1 }, uTime: { value: 0 }, uNight: { value: 1 } };
 // 建物ごとの変位 (分解・組立・高さ順浮上)。建物情報 (高さ, 重心x, 重心y) は DataTexture で渡す
 const dispUniforms = { uDMode: { value: 0 }, uDT: { value: 0 }, uDSeed: { value: 1.7 }, uBldTex: { value: null }, uBldW: { value: 1 }, uHide: { value: -1 } };
 const DISP_PARS = `
@@ -380,17 +399,19 @@ let bidLookup = null; // 量子化座標 -> 建物番号 (輪郭線へ bid を�
 const posKey = (x, y, z) => `${Math.round(x * 10)},${Math.round(y * 10)},${Math.round(z * 10)}`;
 function addDispUniforms(shader) { for (const [k, v] of Object.entries(dispUniforms)) shader.uniforms[k] = v; }
 // 夜景用: 窓明かりつき標準マテリアル
-function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displace = true }) {
-  const mat = new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: 0.6, roughness: 0.6, metalness: 0.3, flatShading: true, transparent: true, opacity: 0.86, clippingPlanes: sectionPlanes });
+function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displace = true, real = false }) {
+  const mat = real
+    ? new THREE.MeshStandardMaterial({ color: '#c0c3c7', emissive: '#000000', emissiveIntensity: 1, roughness: 0.55, metalness: 0.12, flatShading: true, clippingPlanes: sectionPlanes, envMapIntensity: 0.9 })
+    : new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: 0.6, roughness: 0.6, metalness: 0.3, flatShading: true, transparent: true, opacity: 0.86, clippingPlanes: sectionPlanes });
   mat.onBeforeCompile = shader => {
-    shader.uniforms.uHover = bldUniforms.uHover; shader.uniforms.uWindows = bldUniforms.uWindows; shader.uniforms.uTime = bldUniforms.uTime; addDispUniforms(shader);
+    shader.uniforms.uHover = bldUniforms.uHover; shader.uniforms.uWindows = bldUniforms.uWindows; shader.uniforms.uTime = bldUniforms.uTime; shader.uniforms.uNight = bldUniforms.uNight; shader.uniforms.uReal = { value: real ? 1 : 0 }; addDispUniforms(shader);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float bid; varying float vBid; varying vec3 vWPos;\n' + (displace ? DISP_PARS : 'vec3 disp(float b) { return vec3(0.0); }'))
       .replace('#include <begin_vertex>', 'vec3 transformed = vec3(position) + disp(bid);')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvBid = bid; vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform float uHover, uWindows, uTime, uHide; varying float vBid; varying vec3 vWPos;
+        uniform float uHover, uWindows, uTime, uHide, uNight, uReal; varying float vBid; varying vec3 vWPos;
         float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }`)
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vBid - uHide) < 0.5) discard;')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
@@ -399,6 +420,13 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displa
           float vert = 1.0 - abs(fn.y);
           float h = max(vWPos.y, 0.0);
           diffuseColor.rgb *= mix(0.55, 1.0, smoothstep(0.0, 28.0, h));
+          if (uReal > 0.5) {
+            // 建物ごとの外装の色味: 低層は暖色系の壁、高層はガラス寄り
+            float rb = hash21(vec2(vBid * 0.013, vBid * 0.071));
+            vec3 tint = mix(vec3(0.93, 0.90, 0.85), vec3(0.78, 0.84, 0.92), rb);
+            diffuseColor.rgb = mix(diffuseColor.rgb * tint, vec3(0.62, 0.72, 0.82), step(0.75, rb) * 0.5);
+            diffuseColor.rgb /= mix(0.55, 1.0, smoothstep(0.0, 28.0, h)); diffuseColor.rgb *= mix(0.72, 1.0, smoothstep(0.0, 14.0, h));
+          }
           if (uWindows > 0.5 && vert > 0.6 && h > 2.0) {
             float u = abs(fn.x) > abs(fn.z) ? vWPos.z : vWPos.x;
             vec2 cell = floor(vec2(u / 3.2, vWPos.y / 3.6));
@@ -408,13 +436,14 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displa
             float lit = step(0.62, r) * win;
             float flick = 0.85 + 0.15 * sin(uTime * 0.6 + r * 60.0);
             vec3 warm = mix(vec3(1.0, 0.82, 0.55), vec3(0.75, 0.9, 1.0), step(0.85, r));
-            totalEmissiveRadiance += warm * lit * 0.55 * flick * vert;
-            diffuseColor.rgb += vec3(0.04) * win * vert;
+            totalEmissiveRadiance += warm * lit * 0.55 * flick * vert * uNight;
+            diffuseColor.rgb += vec3(0.04) * win * vert * (1.0 - uReal);
+            if (uReal > 0.5) { diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.30, 0.40, 0.52), win * vert * 0.55); }
           }
           if (abs(vBid - uHover) < 0.5) { totalEmissiveRadiance += vec3(0.35, 0.85, 1.0) * 0.55; diffuseColor.rgb += vec3(0.1, 0.2, 0.3); }
         }`);
   };
-  mat.customProgramCacheKey = () => 'city' + (windows ? 'w' : '') + (displace ? 'd' : '');
+  mat.customProgramCacheKey = () => 'city' + (windows ? 'w' : '') + (displace ? 'd' : '') + (real ? 'r' : '');
   return mat;
 }
 // 線画用: 隠線処理のための面 (背景色に近い塗り) + 階ライン・方立ラインを細線で描く
@@ -476,6 +505,7 @@ let bldTex = null;
 const updateBldTex = (i, h, cx, cy) => { if (!bldTex) return; const d = bldTex.image.data; if (i * 4 + 3 >= d.length) return; d[i * 4] = h; d[i * 4 + 1] = cx; d[i * 4 + 2] = cy; d[i * 4 + 3] = 1; bldTex.needsUpdate = true; };
 let lineScale = 1.0;   // 線の太さ倍率 (UI スライダー)
 const styledMeshes = []; // { mesh, drawing, night, thick, thin, kind }
+const realMats = {};
 // 外形線 (折れ角 thickDeg 以上) は太線、補助線 (thinDeg 以上) は 1px の細線で描く
 function makeEdgeLines(g, thinDeg, thickDeg, group, displace = false) {
   const thinGeo = new THREE.EdgesGeometry(g, thinDeg);
@@ -516,8 +546,11 @@ function setupStyledMesh(mesh, drawing, night, lines, kind) {
   styledMeshes.push({ mesh, drawing, night, lines, kind });
   onTheme(t => {
     const isNight = t.bloom;
-    mesh.material = isNight ? night : drawing;
-    mesh.visible = isNight || bldFaces;
+    if (t.real && !realMats[kind]) realMats[kind] = cityMaterial({ windows: kind === 'bldg', real: true, displace: kind === 'bldg' });
+    mesh.material = t.real ? realMats[kind] : isNight ? night : drawing;
+    mesh.visible = isNight || t.real || bldFaces;
+    mesh.castShadow = mesh.receiveShadow = true;
+    lines.thin.visible = lines.thick.visible = !t.real;
     if (kind === 'bldg') applyRepMode();
     drawing.uniforms.uFace.value.set(kind === 'brid' ? t.brFace : t.face); drawing.uniforms.uLine.value.set(t.faceLine); drawing.uniforms.uLineAlpha.value = kind === 'brid' ? t.faceLineAlpha * 0.5 : t.faceLineAlpha;
     drawing.uniforms.uHatch.value = (kind === 'brid' ? t.hatch * 0.6 : t.hatch) * Math.min(1.5, lineScale);
@@ -683,8 +716,8 @@ function updateSectionCap() {
 let repMode = 'line';
 function applyRepMode() {
   const isNight = T().bloom;
-  if (buildingMesh) buildingMesh.visible = repMode === 'line' && (isNight || bldFaces);
-  groups.edges.visible = repMode === 'line' && document.getElementById('chk-edges').checked;
+  if (buildingMesh) buildingMesh.visible = repMode === 'line' && (isNight || T().real || bldFaces);
+  groups.edges.visible = repMode === 'line' && document.getElementById('chk-edges').checked && !T().real;
   if (pointsObj) pointsObj.visible = repMode === 'points';
   if (voxelMesh) voxelMesh.visible = repMode === 'voxel';
   updateSectionCap();
@@ -1533,7 +1566,7 @@ bindToggle('chk-network', groups.network); bindToggle('chk-station', groups.stat
 document.getElementById('chk-edges').addEventListener('change', () => applyRepMode());
 bindToggle('chk-bridge', groups.bridges); bindToggle('chk-road', groups.roads); bindToggle('chk-rail', groups.rails); bindToggle('chk-water', groups.water); bindToggle('chk-terrain', groups.terrain); bindToggle('chk-labels', groups.labels); bindToggle('chk-green', groups.green);
 document.getElementById('chk-windows').addEventListener('change', e => { bldUniforms.uWindows.value = e.target.checked ? 1 : 0; });
-const applyTheme = name => { styleName = name; const t = T(); for (const fn of themed) fn(t); document.querySelectorAll('#style-presets button').forEach(b => b.classList.toggle('active', b.dataset.style === name)); document.getElementById('row-windows').style.display = t.bloom ? '' : 'none'; };
+const applyTheme = name => { styleName = name; const t = T(); for (const fn of themed) fn(t); if (realistic) realistic.enable(!!t.real); if (!t.real) scene.background = scene.background || new THREE.Color(t.bg); document.getElementById('real-controls').style.display = t.real ? '' : 'none'; document.querySelectorAll('#style-presets button').forEach(b => b.classList.toggle('active', b.dataset.style === name)); document.getElementById('row-windows').style.display = t.bloom ? '' : 'none'; };
 document.querySelectorAll('#style-presets button').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.style)));
 document.querySelectorAll('#rep-presets button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#rep-presets button').forEach(x => x.classList.remove('active')); b.classList.add('active'); repMode = b.dataset.rep; applyRepMode(); }));
 const dispInput = document.getElementById('disp-amount'), dispValue = document.getElementById('disp-value');
@@ -1689,13 +1722,15 @@ async function init() {
   runtimeBuildings.set(construction.bid, construction.mesh);
   initConstructionUI();
   rebuildTower();
+  realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
+  initRealUI();
   applyTheme(styleName);
   setProgress(1, '完了');
   const loading = document.getElementById('loading');
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), real: realState, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
@@ -1727,7 +1762,17 @@ function animate() {
   }
   stepFlow(dt); stepRouteFlow(dt); updateHover(performance.now());
   updateLabels();
+  if (realistic) realistic.update(dt);
   composer.render();
+}
+function initRealUI() {
+  const hourEl = document.getElementById('r-hour'), monthEl = document.getElementById('r-month');
+  const fmt = () => { const h = Math.floor(realState.hour), m = Math.round((realState.hour - h) * 60); document.getElementById('r-hour-v').textContent = `${h}:${String(m).padStart(2, '0')}`; document.getElementById('r-month-v').textContent = `${realState.month}月`; };
+  hourEl.value = realState.hour; monthEl.value = realState.month; fmt();
+  const upd = () => { realState.hour = Number(hourEl.value); realState.month = Number(monthEl.value); fmt(); if (T().real) { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; } };
+  hourEl.addEventListener('input', upd); monthEl.addEventListener('input', upd);
+  for (const [id, key] of [['r-shadows', 'shadows'], ['r-ao', 'ao'], ['r-refl', 'reflections'], ['r-photo', 'photo']]) { const el = document.getElementById(id); el.checked = realState[key]; el.addEventListener('change', () => { realState[key] = el.checked; realistic.applyOptions(); }); }
+  document.querySelectorAll('#r-presets button').forEach(b => b.addEventListener('click', () => { hourEl.value = b.dataset.h; upd(); }));
 }
 init().catch(e => { loadingText.textContent = `読み込みエラー: ${e.message}`; console.error(e); });
 animate();
