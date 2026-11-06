@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>pixelsea</title>
+<meta name="description" content="世界のエビとウミウシのドット絵集。Code-driven pixel art of the world's shrimps and nudibranchs: play them, recolor them, export sprite sheets.">
+<link rel="stylesheet" href="gallery/style.css">
+</head>
+<body>
+<header class="head">
+  <div class="title">
+    <svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" role="img" aria-label="pixelsea"><rect x="0" y="0" width="8" height="8" fill="#0a1a34"/><rect x="1" y="3" width="5" height="3" fill="#5ab6d6"/><rect x="2" y="2" width="4" height="1" fill="#a8e6f0"/><rect x="6" y="3" width="1" height="1" fill="#ffffff"/><rect x="1" y="6" width="1" height="1" fill="#2f7eae"/><rect x="3" y="6" width="1" height="1" fill="#2f7eae"/><rect x="5" y="6" width="1" height="1" fill="#2f7eae"/><rect x="0" y="4" width="1" height="1" fill="#2f7eae"/></svg>
+    <div>
+      <h1>pixelsea.</h1>
+      <p class="sub">世界のエビとウミウシ、<span id="count">0</span>種のドット絵。すべて小さなコードから描かれています。<br><span class="en">Pixel art of the world's shrimps and nudibranchs, every one a small piece of code.</span></p>
+    </div>
+  </div>
+  <nav class="links">
+    <a href="docs/CATALOG.md">図鑑 catalog</a>
+    <a href="README.md">readme</a>
+    <a href="https://github.com/patch-gg/pixelfx" target="_blank" rel="noopener">after pixelfx</a>
+  </nav>
+</header>
+<div class="bar">
+  <div class="bar-in">
+    <div class="chips" id="chips" role="toolbar" aria-label="Categories"></div>
+    <input id="q" type="search" placeholder="検索 / search" aria-label="Search species" autocomplete="off">
+  </div>
+</div>
+<main id="grid"></main>
+<p class="empty" id="none" hidden>見つかりません。「japan」「blue」「reef」などで試してみてください。</p>
+<dialog class="detail" id="detail" aria-labelledby="d-name">
+  <div class="sheet">
+    <div class="stage"><canvas id="big"></canvas><button class="close" id="d-close" type="button">閉じる</button></div>
+    <div class="info">
+      <h2 id="d-name"></h2>
+      <div class="latin" id="d-sci"></div>
+      <div class="id" id="d-id"></div>
+      <p id="d-jadesc" class="ja"></p>
+      <p id="d-desc" class="en"></p>
+      <dl class="facts" id="d-facts"></dl>
+      <div class="controls">
+        <div class="row"><label>再生</label><button class="btn" id="d-play" type="button">pause</button><span id="d-speed" class="row"></span></div>
+        <div class="row"><label>背景</label><span id="d-bg" class="row"></span></div>
+        <div class="row"><label>色</label><select class="btn" id="d-pal" aria-label="Palette"></select><button class="btn" id="d-seed" type="button">new seed</button></div>
+        <div class="row"><label>表示</label><button class="btn" id="d-flip" type="button">mirror</button><button class="btn" id="d-scene" type="button">scene</button><button class="btn" id="d-make" type="button">sprite sheet</button></div>
+      </div>
+      <div class="code-head"><span>use it</span><span><a id="d-src" target="_blank" rel="noopener">source</a> · <button class="btn" id="d-copy" type="button">copy</button></span></div>
+      <pre id="d-code"></pre>
+    </div>
+    <div class="sheetout" id="d-sheet"></div>
+  </div>
+</dialog>
+<footer class="foot">pixelsea は <a href="https://github.com/patch-gg/pixelfx">patch-gg/pixelfx</a>（MIT）の設計にならって作られています。生き物の説明は図鑑的な要約で、正確さは保証しません。</footer>
+<script type="module" src="gallery/app.js"></script>
+</body>
+</html>
