@@ -78,6 +78,21 @@ import * as redCoral from "./coral/red-coral.js";
 import * as leather from "./coral/leather.js";
 import * as goniopora from "./coral/goniopora.js";
 import * as fungia from "./coral/fungia.js";
+import * as aori from "./cephalopod/aori.js";
+import * as madako from "./cephalopod/madako.js";
+import * as surume from "./cephalopod/surume.js";
+import * as hotaru from "./cephalopod/hotaru.js";
+import * as daiou from "./cephalopod/daiou.js";
+import * as kouika from "./cephalopod/kouika.js";
+import * as hanaika from "./cephalopod/hanaika.js";
+import * as mimiika from "./cephalopod/mimiika.js";
+import * as humboldt from "./cephalopod/humboldt.js";
+import * as mizudako from "./cephalopod/mizudako.js";
+import * as hyoumon from "./cephalopod/hyoumon.js";
+import * as mimic from "./cephalopod/mimic.js";
+import * as mendako from "./cephalopod/mendako.js";
+import * as kaidako from "./cephalopod/kaidako.js";
+import * as koumoridako from "./cephalopod/koumoridako.js";
 
 export const categories = [
   { id: "shrimp", name: "Shrimp", ja: "エビ", blurb: "Reef cleaners, snappers, dancers and the ones on your plate, from every ocean." },
@@ -86,6 +101,7 @@ export const categories = [
   { id: "giants", name: "Whales & big fish", ja: "鯨・大型魚", blurb: "Whales, sharks, tunas, rays and the biggest bony fish: the ones you measure in metres." },
   { id: "seaweed", name: "Seaweed", ja: "海藻", blurb: "Kelp forests, nori and sea grapes: the weeds that sway, feed and shelter the rest." },
   { id: "coral", name: "Coral", ja: "サンゴ", blurb: "Tables, antlers, boulders, fans and flowers: the animals that build the reef." },
+  { id: "cephalopod", name: "Squid & octopus", ja: "イカ・タコ", blurb: "Jet-propelled, colour-shifting and far too clever: squids, cuttlefish and octopuses." },
 ];
 export const species = {
   "shrimp/harlequin": harlequin,
@@ -167,4 +183,19 @@ export const species = {
   "coral/leather": leather,
   "coral/goniopora": goniopora,
   "coral/fungia": fungia,
+  "cephalopod/aori": aori,
+  "cephalopod/surume": surume,
+  "cephalopod/hotaru": hotaru,
+  "cephalopod/daiou": daiou,
+  "cephalopod/humboldt": humboldt,
+  "cephalopod/kouika": kouika,
+  "cephalopod/hanaika": hanaika,
+  "cephalopod/mimiika": mimiika,
+  "cephalopod/madako": madako,
+  "cephalopod/mizudako": mizudako,
+  "cephalopod/hyoumon": hyoumon,
+  "cephalopod/mimic": mimic,
+  "cephalopod/mendako": mendako,
+  "cephalopod/kaidako": kaidako,
+  "cephalopod/koumoridako": koumoridako,
 };

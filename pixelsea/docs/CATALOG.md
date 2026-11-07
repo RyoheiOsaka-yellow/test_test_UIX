@@ -1,6 +1,6 @@
 # Catalog / 図鑑
 
-79 species, every one a small piece of code in `src/species/<category>/<name>.js`.
+94 species, every one a small piece of code in `src/species/<category>/<name>.js`.
 
 | | 和名 | Name | Scientific name | Region | Size |
 |---|---|---|---|---|---|
@@ -89,6 +89,22 @@
 | ![](previews/coral-leather.gif) | ウミキノコ | Mushroom leather coral (`coral/leather`) | *Sarcophyton sp.* | Indo-Pacific reefs; Okinawa lagoons | 20 cm – 1 m |
 | ![](previews/coral-goniopora.gif) | ハナガササンゴ | Flowerpot coral (`coral/goniopora`) | *Goniopora sp.* | Indo-Pacific reefs, turbid lagoons | colonies 20–50 cm |
 | ![](previews/coral-fungia.gif) | クサビライシ | Mushroom coral (`coral/fungia`) | *Fungia fungites* | Indo-Pacific reefs, sandy lagoon floors | 10–20 cm |
+| **イカ・タコ Squid & octopus** | | | | | |
+| ![](previews/cephalopod-aori.gif) | アオリイカ | Bigfin reef squid (`cephalopod/aori`) | *Sepioteuthis lessoniana* | Indo-Pacific; Japan south of Hokkaido | 40 cm |
+| ![](previews/cephalopod-surume.gif) | スルメイカ | Japanese flying squid (`cephalopod/surume`) | *Todarodes pacificus* | Sea of Japan and the North Pacific around Japan | 30 cm |
+| ![](previews/cephalopod-hotaru.gif) | ホタルイカ | Firefly squid (`cephalopod/hotaru`) | *Watasenia scintillans* | Western Pacific; Toyama Bay, Japan | 7 cm |
+| ![](previews/cephalopod-daiou.gif) | ダイオウイカ | Giant squid (`cephalopod/daiou`) | *Architeuthis dux* | Deep oceans worldwide, 300–1000 m; Ogasawara, Sea of Japan | 13 m with tentacles |
+| ![](previews/cephalopod-humboldt.gif) | アメリカオオアカイカ | Humboldt squid (`cephalopod/humboldt`) | *Dosidicus gigas* | Eastern Pacific, Chile to California; Japanese fleets fish it off Peru | 1.5 m |
+| ![](previews/cephalopod-kouika.gif) | コウイカ（スミイカ） | Golden cuttlefish (`cephalopod/kouika`) | *Sepia esculenta* | Japan, Korea, China (coastal, sandy bottoms) | 18 cm |
+| ![](previews/cephalopod-hanaika.gif) | ハナイカ | Flamboyant cuttlefish (`cephalopod/hanaika`) | *Metasepia tullbergi* | Japan (Kyushu, Okinawa) to the South China Sea | 8 cm |
+| ![](previews/cephalopod-mimiika.gif) | ミミイカ | Bobtail squid (`cephalopod/mimiika`) | *Euprymna berryi* | Japan, Korea, China (shallow sand) | 4 cm |
+| ![](previews/cephalopod-madako.gif) | マダコ | Common octopus (`cephalopod/madako`) | *Octopus sinensis* | Japan, Korea, China; the Atlantic has its twin O. vulgaris | 60 cm, arms to 1 m |
+| ![](previews/cephalopod-mizudako.gif) | ミズダコ | Giant Pacific octopus (`cephalopod/mizudako`) | *Enteroctopus dofleini* | North Pacific; Hokkaido, Alaska, British Columbia | 3–5 m across, 50 kg |
+| ![](previews/cephalopod-hyoumon.gif) | ヒョウモンダコ | Blue-lined octopus (`cephalopod/hyoumon`) | *Hapalochlaena fasciata* | Japan (south of Chiba), Australia (shallow reefs, tide pools) | 10 cm |
+| ![](previews/cephalopod-mimic.gif) | ミミックオクトパス | Mimic octopus (`cephalopod/mimic`) | *Thaumoctopus mimicus* | Indonesia, Malaysia, Philippines (muddy sand flats) | 60 cm |
+| ![](previews/cephalopod-mendako.gif) | メンダコ | Flapjack octopus (`cephalopod/mendako`) | *Opisthoteuthis depressa* | Japan, 200–1000 m deep (Sagami Bay, Suruga Bay) | 20 cm |
+| ![](previews/cephalopod-kaidako.gif) | カイダコ（アオイガイ） | Paper nautilus (`cephalopod/kaidako`) | *Argonauta argo* | Warm open seas worldwide; blown ashore on the Sea of Japan coast | shell 20 cm (female); male 2 cm |
+| ![](previews/cephalopod-koumoridako.gif) | コウモリダコ | Vampire squid (`cephalopod/koumoridako`) | *Vampyroteuthis infernalis* | Deep oceans worldwide, 600–900 m, in the oxygen-minimum zone | 30 cm |
 
 ## エビ Shrimp
 
@@ -903,3 +919,157 @@ tags: coral, hard coral, flowers, polyps, reef, loop
 A coral that is one single polyp the size of a plate, lying loose on the sand with no colony and no attachment. Its skeleton is a disc of radiating blades like a mushroom's gills; it can inflate to right itself when flipped, and shuffle slowly across the bottom.
 
 tags: coral, hard coral, solitary, sand, lagoon, loop
+
+## イカ・タコ Squid & octopus
+
+Jet-propelled, colour-shifting and far too clever: squids, cuttlefish and octopuses.
+
+### アオリイカ — Bigfin reef squid
+
+*Sepioteuthis lessoniana* · Indo-Pacific; Japan south of Hokkaido · 40 cm · `cephalopod/aori` · 96×48 px, 4 s loop at 30 fps
+
+釣り人の憧れ「イカの王様」。ガラスのように透けた胴を楕円のひれがぐるりと囲み、波打ちながら泳ぐ。皮膚の色素胞は透明から銅色、緑へと瞬く。春にはつがいで藻場に卵を産む。
+
+The 'king of squid' to Japanese anglers: a glassy body wrapped in an oval fin that ripples along its whole length, skin flickering with chromatophores from clear to copper to green. Pairs hover over seagrass beds to lay their eggs in spring.
+
+tags: squid, cephalopod, reef, japan, fins, loop
+
+### スルメイカ — Japanese flying squid
+
+*Todarodes pacificus* · Sea of Japan and the North Pacific around Japan · 30 cm · `cephalopod/surume` · 100×44 px, 3.2 s loop at 30 fps
+
+刺身にも干物にも、日本でいちばん身近なイカ。赤褐色の魚雷のような胴にひし形の尾びれ。噴射が強く、海面から飛び出して滑空する。寿命は1年。日本列島を回遊し、産卵して一生を終える。
+
+The everyday squid of Japan, of ika sashimi and dried surume: a red-brown torpedo with rhombic tail fins that jets so hard it can glide clear of the water. It lives one year, migrating the length of Japan and back, and dies after spawning.
+
+tags: squid, cephalopod, japan, pelagic, food, loop
+
+### ホタルイカ — Firefly squid
+
+*Watasenia scintillans* · Western Pacific; Toyama Bay, Japan · 7 cm · `cephalopod/hotaru` · 72×44 px, 4 s loop at 30 fps
+
+指ほどの大きさで、千個の青い発光器をもつ。触腕の先には特に明るい3つの灯り。毎年春、産卵のために富山湾の海面に何百万匹も浮上し、海岸を青く光らせる。
+
+A finger-length squid lit by a thousand blue photophores, with three bright lamps on the tip of each tentacle. Every spring millions rise to the surface of Toyama Bay to spawn and set the shoreline glowing blue.
+
+tags: squid, cephalopod, glow, japan, deep, loop
+
+### ダイオウイカ — Giant squid
+
+*Architeuthis dux* · Deep oceans worldwide, 300–1000 m; Ogasawara, Sea of Japan · 13 m with tentacles · `cephalopod/daiou` · 128×56 px, 5.2 s loop at 30 fps
+
+クラーケンの正体。バスほどの長さで、目は動物界最大、皿ほどもある。10 mも伸びる2本の触腕で獲物をつかむ。2012年、小笠原の深海で初めて生きた姿が撮影された。
+
+The kraken: a squid as long as a bus with eyes the size of dinner plates, the largest of any animal, and two tentacles that reach out ten metres to snatch prey. It was first filmed alive in the deep off Ogasawara in 2012.
+
+tags: squid, cephalopod, giant, deep, legend, loop
+
+### アメリカオオアカイカ — Humboldt squid
+
+*Dosidicus gigas* · Eastern Pacific, Chile to California; Japanese fleets fish it off Peru · 1.5 m · `cephalopod/humboldt` · 112×52 px, 3 s loop at 30 fps
+
+フンボルト海流の「赤い悪魔」。人の背丈ほどの巨体で千匹の群れをつくり、全身を毎秒何回も赤と白に点滅させて仲間と交信する。ケーブルも切るくちばしをもち、日本の惣菜のイカの多くはこの種。
+
+The red devil (diablo rojo) of the Humboldt Current: a squid as long as a man that hunts in packs of a thousand, flashing its whole body red and white several times a second to signal. It has a beak that can cut cable, and most of the 'ika' in Japanese ready meals is this.
+
+tags: squid, cephalopod, giant, pacific, flash, pack, loop
+
+### コウイカ（スミイカ） — Golden cuttlefish
+
+*Sepia esculenta* · Japan, Korea, China (coastal, sandy bottoms) · 18 cm · `cephalopod/kouika` · 80×48 px, 4 s loop at 30 fps
+
+東京湾のスミイカ。胴には白い甲（イカの骨）が入り、ひれが縁をぐるりと波打つ。瞳はW字形。皮膚にしま模様や色の波を走らせてカニを惑わせ、濃い墨を吐いて消える。
+
+The 'ink squid' of Tokyo Bay: a broad body stiffened by a chalky cuttlebone, a fin frill rippling all the way round, and W-shaped pupils. Its skin runs zebra stripes and waves of colour to hypnotise crabs, and it squirts a thick cloud of ink to vanish.
+
+tags: cuttlefish, cephalopod, japan, sand, ink, loop
+
+### ハナイカ — Flamboyant cuttlefish
+
+*Metasepia tullbergi* · Japan (Kyushu, Okinawa) to the South China Sea · 8 cm · `cephalopod/hanaika` · 64×44 px, 3 s loop at 30 fps
+
+手のひらサイズで、砂の上を腕で歩くイカ。紫・黄・白の縞を体に波のように走らせ、「有毒だ」と警告する。体が重く長くは泳げないので、歩いて移動する。
+
+A palm-sized cuttlefish that walks across the sand on its arms, pulsing bands of purple, yellow and white down its body as a warning: its flesh is poisonous. Too heavy to swim far, it struts instead.
+
+tags: cuttlefish, cephalopod, japan, sand, flash, poison, loop
+
+### ミミイカ — Bobtail squid
+
+*Euprymna berryi* · Japan, Korea, China (shallow sand) · 4 cm · `cephalopod/mimiika` · 56×40 px, 3.6 s loop at 30 fps
+
+親指ほどの丸い体に耳のようなひれ。昼は砂に潜り、夜に狩りに出る。腹の発光器に飼う細菌が月明かりと同じ明るさで光り、下から見上げる敵に影を見せない。
+
+A thumb-sized, round-bodied squid with ear-like fins, buried in sand by day and hunting by night. A pouch of glowing bacteria on its belly shines just as bright as the moonlight above, so it casts no shadow for predators below.
+
+tags: squid, cephalopod, tiny, japan, sand, glow, loop
+
+### マダコ — Common octopus
+
+*Octopus sinensis* · Japan, Korea, China; the Atlantic has its twin O. vulgaris · 60 cm, arms to 1 m · `cephalopod/madako` · 84×56 px, 4.4 s loop at 30 fps
+
+たこ焼きと明石のタコ壺のタコ。錆色の袋のような体に吸盤だらけの八本の腕、腕ごとに脳がある。一瞬で色と肌の質感を変え、瓶の口をすり抜け、人の顔を覚える。
+
+The octopus of takoyaki and of Akashi's tide-run pots: a rust-red bag of a body with eight suckered arms and a brain in each, able to change colour and texture in a blink, squeeze through a bottle neck, and remember a face.
+
+tags: octopus, cephalopod, rock, japan, food, clever, loop
+
+### ミズダコ — Giant Pacific octopus
+
+*Enteroctopus dofleini* · North Pacific; Hokkaido, Alaska, British Columbia · 3–5 m across, 50 kg · `cephalopod/mizudako` · 112×64 px, 5 s loop at 30 fps
+
+最大のタコ。北の冷たい海に住む赤い巨体で、腕を広げると5 m。皮膚を畝や角のように盛り上げる。寿命は4年ほどで、雌は何か月も食べずに卵を守って死ぬ。
+
+The largest octopus, a red giant of cold northern water with arms five metres tip to tip and skin that raises into ridges and horns. It lives four years, and the female starves for months guarding her strings of eggs.
+
+tags: octopus, cephalopod, giant, cold, japan, loop
+
+### ヒョウモンダコ — Blue-lined octopus
+
+*Hapalochlaena fasciata* · Japan (south of Chiba), Australia (shallow reefs, tide pools) · 10 cm · `cephalopod/hyoumon` · 60×44 px, 3.2 s loop at 30 fps
+
+ゴルフボールほどの小さなタコ。驚くと虹色に光る青い輪と線を点滅させる。咬まれるとフグ毒と同じテトロドトキシンが入り、血清はない。海水温の上昇で日本沿岸を北上中。
+
+A golf-ball octopus that flashes iridescent blue rings and lines when it is frightened, and means it: its bite carries tetrodotoxin, the pufferfish poison, with no antidote. Warming seas are bringing it north along the Japanese coast.
+
+tags: octopus, cephalopod, venom, tiny, japan, rings, loop
+
+### ミミックオクトパス — Mimic octopus
+
+*Thaumoctopus mimicus* · Indonesia, Malaysia, Philippines (muddy sand flats) · 60 cm · `cephalopod/mimic` · 96×48 px, 4.6 s loop at 30 fps
+
+泥の浅瀬に住む、縞模様の細いタコ。相手に応じてヒラメに化け、二本の腕でウミヘビを演じ、腕を広げてミノカサゴになる物まね上手。1998年に見つかったばかり。
+
+A thin, banded octopus of muddy flats that impersonates other animals: it flattens into a flounder, trails two arms as a banded sea snake, fans out as a lionfish, depending on what has frightened it. Discovered only in 1998.
+
+tags: octopus, cephalopod, mimic, sand, indonesia, loop
+
+### メンダコ — Flapjack octopus
+
+*Opisthoteuthis depressa* · Japan, 200–1000 m deep (Sagami Bay, Suruga Bay) · 20 cm · `cephalopod/mendako` · 72×52 px, 4.8 s loop at 30 fps
+
+ピンクの饅頭のような深海のタコ。平たい傘のような体に耳形のひれ、腕は先まで膜でつながり、墨袋はない。泥の上を漂い、傘を波打たせて進む。日本でいちばん愛される深海の顔。
+
+A deep-sea octopus like a pink dumpling: a flattened umbrella of body with two ear-shaped fins, arms webbed to their tips, and no ink. It drifts just above the mud and pulses its web to move. Japan's most beloved deep-sea face.
+
+tags: octopus, cephalopod, deep, japan, cute, loop
+
+### カイダコ（アオイガイ） — Paper nautilus
+
+*Argonauta argo* · Warm open seas worldwide; blown ashore on the Sea of Japan coast · shell 20 cm (female); male 2 cm · `cephalopod/kaidako` · 64×52 px, 4.4 s loop at 30 fps
+
+殻をもって外洋を漂うタコ。雌は膜のように広げた二本の腕から、紙のように薄い白い殻を分泌し、空気を閉じ込めて浮く。親指ほどの雄に殻はない。冬の嵐のあと、日本海の浜に殻が打ち上がる。
+
+An octopus that sails the open sea in a shell: the female secretes a paper-thin, ribbed white case from two web-spread arms, trapping a bubble of air to float. The thumb-sized male has no shell at all. The shells wash up on Japanese beaches after winter storms.
+
+tags: octopus, cephalopod, shell, pelagic, float, loop
+
+### コウモリダコ — Vampire squid
+
+*Vampyroteuthis infernalis* · Deep oceans worldwide, 600–900 m, in the oxygen-minimum zone · 30 cm · `cephalopod/koumoridako` · 72×56 px, 5 s loop at 30 fps
+
+イカでもタコでもない、独自の目の最後の生き残り。黒ずんだ赤い体に、体の大きさに対して動物界最大の目、二枚の耳ひれ、棘の並んだマントでつながる八本の腕。襲われるとマントを裏返し、腕の先を光らせる。
+
+Neither squid nor octopus but the last of its own order: a black-red body with the largest eyes for its size of any animal, two ear fins, and eight arms joined by a cloak lined with spines. Threatened, it turns the cloak inside out and lights up its arm tips.
+
+tags: cephalopod, deep, vampire, glow, fossil, loop
