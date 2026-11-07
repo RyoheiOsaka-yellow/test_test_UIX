@@ -1,6 +1,6 @@
 # Catalog / 図鑑
 
-94 species, every one a small piece of code in `src/species/<category>/<name>.js`.
+119 species, every one a small piece of code in `src/species/<category>/<name>.js`.
 
 | | 和名 | Name | Scientific name | Region | Size |
 |---|---|---|---|---|---|
@@ -105,6 +105,33 @@
 | ![](previews/cephalopod-mendako.gif) | メンダコ | Flapjack octopus (`cephalopod/mendako`) | *Opisthoteuthis depressa* | Japan, 200–1000 m deep (Sagami Bay, Suruga Bay) | 20 cm |
 | ![](previews/cephalopod-kaidako.gif) | カイダコ（アオイガイ） | Paper nautilus (`cephalopod/kaidako`) | *Argonauta argo* | Warm open seas worldwide; blown ashore on the Sea of Japan coast | shell 20 cm (female); male 2 cm |
 | ![](previews/cephalopod-koumoridako.gif) | コウモリダコ | Vampire squid (`cephalopod/koumoridako`) | *Vampyroteuthis infernalis* | Deep oceans worldwide, 600–900 m, in the oxygen-minimum zone | 30 cm |
+| **クラゲ Jellyfish** | | | | | |
+| ![](previews/jelly-mizukurage.gif) | ミズクラゲ | Moon jelly (`jelly/mizukurage`) | *Aurelia coerulea* | Coastal seas worldwide; every Japanese harbour in summer | 20–30 cm |
+| ![](previews/jelly-akakurage.gif) | アカクラゲ | Japanese sea nettle (`jelly/akakurage`) | *Chrysaora pacifica* | Japan, Korea, China (coastal) | bell 20 cm, tentacles 2 m |
+| ![](previews/jelly-echizen.gif) | エチゼンクラゲ | Nomura's jellyfish (`jelly/echizen`) | *Nemopilema nomurai* | Yellow Sea, East China Sea, Sea of Japan | bell 2 m, 200 kg |
+| ![](previews/jelly-lionsmane.gif) | キタユウレイクラゲ（ライオンズメーン） | Lion's mane jellyfish (`jelly/lionsmane`) | *Cyanea capillata* | Arctic and cold northern seas; Hokkaido in winter | bell 2 m, tentacles 30 m |
+| ![](previews/jelly-katsuonoeboshi.gif) | カツオノエボシ | Portuguese man o' war (`jelly/katsuonoeboshi`) | *Physalia physalis* | Warm oceans worldwide; blown onto Japanese beaches in summer | float 12 cm, tentacles 10 m |
+| ![](previews/jelly-andon.gif) | アンドンクラゲ | Japanese box jelly (`jelly/andon`) | *Carybdea brevipedalia* | Japan (Honshu south), Korea; shallow bays after mid-August | bell 3 cm, tentacles 20 cm |
+| ![](previews/jelly-benikurage.gif) | ベニクラゲ | Immortal jellyfish (`jelly/benikurage`) | *Turritopsis dohrnii* | Mediterranean and Japan (Shirahama, Kagoshima); spreading worldwide | 4 mm |
+| ![](previews/jelly-takokurage.gif) | タコクラゲ | Spotted jelly (`jelly/takokurage`) | *Mastigias papua* | Western Pacific; Palau lakes, Okinawa, Japan in autumn | bell 10 cm |
+| ![](previews/jelly-sakasakurage.gif) | サカサクラゲ | Upside-down jellyfish (`jelly/sakasakurage`) | *Cassiopea ornata* | Okinawa, Indo-Pacific mangroves and lagoons | bell 15 cm |
+| ![](previews/jelly-owankurage.gif) | オワンクラゲ | Crystal jelly (`jelly/owankurage`) | *Aequorea coerulescens* | North Pacific; Japan, California | bell 10–20 cm |
+| ![](previews/jelly-hanagasa.gif) | ハナガサクラゲ | Flower hat jelly (`jelly/hanagasa`) | *Olindias formosus* | Japan (Honshu), Korea; shallow water in spring | bell 15 cm |
+| ![](previews/jelly-urikurage.gif) | ウリクラゲ（クシクラゲ） | Comb jelly (`jelly/urikurage`) | *Beroe cucumis* | Cold and temperate seas worldwide; Japan in winter | 10–15 cm |
+| **カニ・ヤドカリ Crabs & hermits** | | | | | |
+| ![](previews/crab-takaashi.gif) | タカアシガニ | Japanese spider crab (`crab/takaashi`) | *Macrocheira kaempferi* | Pacific coast of Japan, 150–600 m (Suruga Bay) | legs span 3.8 m |
+| ![](previews/crab-zuwai.gif) | ズワイガニ | Snow crab (`crab/zuwai`) | *Chionoecetes opilio* | Sea of Japan, Okhotsk, Bering Sea, 200–600 m | shell 15 cm, legs 70 cm |
+| ![](previews/crab-taraba.gif) | タラバガニ | Red king crab (`crab/taraba`) | *Paralithodes camtschaticus* | Okhotsk, Bering Sea, Alaska; Hokkaido | legs span 1.8 m |
+| ![](previews/crab-kegani.gif) | ケガニ | Horsehair crab (`crab/kegani`) | *Erimacrus isenbeckii* | Hokkaido, Okhotsk, Bering Sea | shell 12 cm |
+| ![](previews/crab-gazami.gif) | ガザミ（ワタリガニ） | Japanese blue crab (`crab/gazami`) | *Portunus trituberculatus* | Japan, Korea, China (sandy bays) | shell 20 cm wide |
+| ![](previews/crab-shiomaneki.gif) | シオマネキ | Fiddler crab (`crab/shiomaneki`) | *Tubuca arcuata* | Mud flats of western Japan (Ariake Sea), Korea, China | shell 3.5 cm |
+| ![](previews/crab-isogani.gif) | イソガニ | Asian shore crab (`crab/isogani`) | *Hemigrapsus sanguineus* | Japan, Korea, China tide pools; invasive on US and European coasts | shell 3.5 cm |
+| ![](previews/crab-kinchaku.gif) | キンチャクガニ | Pom-pom crab (`crab/kinchaku`) | *Lybia tessellata* | Indo-Pacific reefs; Okinawa | shell 1.5 cm |
+| ![](previews/crab-mokuzu.gif) | モクズガニ | Japanese mitten crab (`crab/mokuzu`) | *Eriocheir japonica* | Rivers of Japan, Taiwan, Korea; spawns in the sea | shell 8 cm |
+| ![](previews/crab-yashigani.gif) | ヤシガニ | Coconut crab (`crab/yashigani`) | *Birgus latro* | Islands of the Indo-Pacific; Okinawa and Ogasawara | legs span 1 m, 4 kg |
+| ![](previews/crab-honyadokari.gif) | ホンヤドカリ | Common hermit crab (`crab/honyadokari`) | *Pagurus filholi* | Japan, Korea (tide pools) | 1–2 cm |
+| ![](previews/crab-okayadokari.gif) | オカヤドカリ | Land hermit crab (`crab/okayadokari`) | *Coenobita purpureus* | Okinawa and the Nansei Islands (beaches and coastal forest) | shell 3 cm |
+| ![](previews/crab-yubiwa.gif) | ユビワサンゴヤドカリ | Electric blue hermit crab (`crab/yubiwa`) | *Calcinus elegans* | Indo-Pacific reefs; Okinawa | shell 2 cm |
 
 ## エビ Shrimp
 
@@ -1073,3 +1100,261 @@ tags: octopus, cephalopod, shell, pelagic, float, loop
 Neither squid nor octopus but the last of its own order: a black-red body with the largest eyes for its size of any animal, two ear fins, and eight arms joined by a cloak lined with spines. Threatened, it turns the cloak inside out and lights up its arm tips.
 
 tags: cephalopod, deep, vampire, glow, fossil, loop
+
+## クラゲ Jellyfish
+
+Bells that pulse and trail: moon jellies, sea nettles, box jellies and the ones that glow.
+
+### ミズクラゲ — Moon jelly
+
+*Aurelia coerulea* · Coastal seas worldwide; every Japanese harbour in summer · 20–30 cm · `jelly/mizukurage` · 64×60 px, 4 s loop at 30 fps
+
+誰もが見たことのあるクラゲ。ガラスのような皿に四つ葉のように透ける馬蹄形の生殖腺、縁には短い糸のような触手、中央には四本のひだ状の口腕。刺されてもほぼ平気で、晩夏の港を埋め尽くす。
+
+The jellyfish everyone has seen: a glassy saucer with four horseshoe gonads showing through like a clover, a fringe of short hair-fine tentacles, and four frilly oral arms. Harmless to the touch, and in late summer harbours fill with them.
+
+tags: jellyfish, cnidaria, harbour, worldwide, translucent, loop
+
+### アカクラゲ — Japanese sea nettle
+
+*Chrysaora pacifica* · Japan, Korea, China (coastal) · bell 20 cm, tentacles 2 m · `jelly/akakurage` · 72×80 px, 4.4 s loop at 30 fps
+
+赤褐色の傘に十六本の暗い放射模様、長い触手と四本のひだ状の口腕。刺されると痛く、乾いた粉を吸うとくしゃみが出る。戦国時代にはこの粉を「くしゃみの粉」として戦で使ったという。
+
+A reddish-brown bell striped like a parasol with sixteen dark rays, trailing long tentacles and four ruffled oral arms. Its sting is sharp, and even its dried dust makes people sneeze: samurai once used it as a sneezing powder in battle.
+
+tags: jellyfish, cnidaria, sting, japan, stripes, loop
+
+### エチゼンクラゲ — Nomura's jellyfish
+
+*Nemopilema nomurai* · Yellow Sea, East China Sea, Sea of Japan · bell 2 m, 200 kg · `jelly/echizen` · 96×80 px, 5.2 s loop at 30 fps
+
+冷蔵庫ほどの大きさのクラゲ。くすんだ茶色の傘は直径2 m、重さ200 kg。長い触手はなく、下にはカリフラワーのような口腕の塊。大発生の年には何百万匹が日本海に流れ込み、定置網を破る。
+
+A jellyfish the size of a refrigerator: a dull brown bell two metres across and two hundred kilos, with a cauliflower of oral arms below instead of long tentacles. In bloom years they drift into the Sea of Japan by the million and burst fishing nets.
+
+tags: jellyfish, cnidaria, giant, japan, bloom, loop
+
+### キタユウレイクラゲ（ライオンズメーン） — Lion's mane jellyfish
+
+*Cyanea capillata* · Arctic and cold northern seas; Hokkaido in winter · bell 2 m, tentacles 30 m · `jelly/lionsmane` · 96×88 px, 5.4 s loop at 30 fps
+
+触手を含めれば海で最も長い動物とも。赤橙色の傘は直径2 m、八つの房に分かれた何百本もの触手は30 m以上にたなびく。北の冷たい海を漂い、稚魚はその刺す触手の中に隠れて育つ。
+
+The longest animal in the sea by some measures: a red-orange bell two metres across trailing a mane of hundreds of tentacles, thirty metres and more, in eight tangled clusters. It drifts the cold northern oceans, and young fish shelter among the stings.
+
+tags: jellyfish, cnidaria, giant, arctic, mane, loop
+
+### カツオノエボシ — Portuguese man o' war
+
+*Physalia physalis* · Warm oceans worldwide; blown onto Japanese beaches in summer · float 12 cm, tentacles 10 m · `jelly/katsuonoeboshi` · 72×64 px, 4.8 s loop at 30 fps
+
+一匹ではなく群体。青いガス入りの帆で海面を漂い、その下に何十 mもの、火のように刺す触手を垂らす。泳げず風まかせで、8月の湘南の浜に流れ着く。
+
+Not one animal but a colony: a gas-filled blue sail riding the surface, and beneath it tentacles tens of metres long that sting like fire. It cannot swim, only sail where the wind takes it, which is often a Shonan beach in August.
+
+tags: jellyfish, siphonophore, surface, sting, blue, loop
+
+### アンドンクラゲ — Japanese box jelly
+
+*Carybdea brevipedalia* · Japan (Honshu south), Korea; shallow bays after mid-August · bell 3 cm, tentacles 20 cm · `jelly/andon` · 56×60 px, 2.8 s loop at 30 fps
+
+親指ほどのガラスの立方体で、四隅に一本ずつ触手、本物の目をもち、速く狙って泳ぐ。お盆の頃に現れて鞭のように刺し、海水浴シーズンを終わらせる「電気クラゲ」。
+
+A thumb-sized glass cube with one tentacle at each corner and real eyes, a fast and deliberate swimmer. The 'obon jellyfish' whose whip-like stings end the Japanese swimming season every August.
+
+tags: jellyfish, cubozoa, box, japan, sting, loop
+
+### ベニクラゲ — Immortal jellyfish
+
+*Turritopsis dohrnii* · Mediterranean and Japan (Shirahama, Kagoshima); spreading worldwide · 4 mm · `jelly/benikurage` · 56×52 px, 3.2 s loop at 30 fps
+
+米粒ほどのクラゲ。透明な傘の中に赤い胃が透け、髪の毛のような触手が八十本。飢えたり傷ついたりすると、ほかのどんな動物にもできないこと、ポリプに若返ってやり直す。理屈の上では永遠に。
+
+A jellyfish the size of a grain of rice, with a red stomach glowing through a clear bell and eighty hair-fine tentacles. Starved or hurt, it does what no other animal can: turns back into a polyp and starts life again. In theory, forever.
+
+tags: jellyfish, hydrozoa, immortal, tiny, red, loop
+
+### タコクラゲ — Spotted jelly
+
+*Mastigias papua* · Western Pacific; Palau lakes, Okinawa, Japan in autumn · bell 10 cm · `jelly/takokurage` · 64×60 px, 3.6 s loop at 30 fps
+
+白い斑点の傘の下に、先が棍棒のように太い八本の口腕。縁の触手はない。体内に藻を飼い、藻に光を与えるため太陽を追って泳ぐ。パラオの湖では何百万匹が光を追って動く。
+
+A dome speckled with white spots over eight thick, club-ended oral arms, with no fringe of tentacles at all. It farms algae inside its body and swims toward the sun to feed them, so a lake in Palau fills with millions following the light.
+
+tags: jellyfish, rhizostome, spots, palau, japan, loop
+
+### サカサクラゲ — Upside-down jellyfish
+
+*Cassiopea ornata* · Okinawa, Indo-Pacific mangroves and lagoons · bell 15 cm · `jelly/sakasakurage` · 64×44 px, 4 s loop at 30 fps
+
+砂の上に傘を下にして寝そべり、ひだ状の腕を太陽に向けて揺らす。腕の中の藻に光を与えるためで、青緑の花畑のように見える。寝たまま拍動して水を動かし、粘液を放って離れた相手を刺す。
+
+A jellyfish that lies on its back on the sand, bell down, waving its frilled arms up at the sun like a bed of blue-green flowers to feed the algae living in them. It pulses to keep water moving and stings with mucus it releases into the water.
+
+tags: jellyfish, rhizostome, sand, okinawa, upside-down, loop
+
+### オワンクラゲ — Crystal jelly
+
+*Aequorea coerulescens* · North Pacific; Japan, California · bell 10–20 cm · `jelly/owankurage` · 72×56 px, 4.2 s loop at 30 fps
+
+透明なお椀の形で、細い放射管が肋のように並び、刺激すると縁が緑に光る。この光から下村脩がイクオリンと緑色蛍光タンパク質（GFP）を見つけ、ノーベル賞を受けた。
+
+A clear bowl of a jellyfish ribbed with fine radial canals, whose rim glows green when disturbed. That glow gave science aequorin and GFP, the green fluorescent protein that lights up cells in every biology lab, and a Nobel Prize for Osamu Shimomura.
+
+tags: jellyfish, hydrozoa, glow, gfp, japan, loop
+
+### ハナガサクラゲ — Flower hat jelly
+
+*Olindias formosus* · Japan (Honshu), Korea; shallow water in spring · bell 15 cm · `jelly/hanagasa` · 64×52 px, 3.8 s loop at 30 fps
+
+花笠のようなクラゲ。透明な傘に色の筋が走り、縁には巻いた触手。先端はピンクと緑に蛍光し、青い光の下で輝く。昼は底で触手を巻いて休み、夜に小魚を狩る。刺されると痛い。
+
+A flower-hat of a jellyfish: a clear bell pinstriped with colour and fringed with coiled tentacles tipped fluorescent pink and green that glow under blue light. It rests on the bottom by day, tentacles curled, and hunts small fish at night. Its sting is painful.
+
+tags: jellyfish, hydrozoa, fluorescent, japan, flower, loop
+
+### ウリクラゲ（クシクラゲ） — Comb jelly
+
+*Beroe cucumis* · Cold and temperate seas worldwide; Japan in winter · 10–15 cm · `jelly/urikurage` · 64×52 px, 3.6 s loop at 30 fps
+
+本当のクラゲではなく有櫛動物。瓜のような形の透明なゼリーで、刺す毒はない。八列の櫛板をさざ波のように動かして進み、光が当たると虹色に輝く。ほかのクシクラゲを丸呑みにする。
+
+Not a true jellyfish but a ctenophore: a melon-shaped sack of clear jelly with no sting, rowing itself along on eight rows of beating comb plates that scatter light into rainbows. It swallows other comb jellies whole.
+
+tags: comb jelly, ctenophore, rainbow, worldwide, winter, loop
+
+## カニ・ヤドカリ Crabs & hermits
+
+Scuttlers in armour, from tide-pool hermits to the giant spider crab.
+
+### タカアシガニ — Japanese spider crab
+
+*Macrocheira kaempferi* · Pacific coast of Japan, 150–600 m (Suruga Bay) · legs span 3.8 m · `crab/takaashi` · 128×72 px, 5 s loop at 30 fps
+
+現生最大の節足動物。橙と白のまだらの脚を広げると4 m近く、駿河湾の深い斜面を竹馬のように歩く。動きは遅く穏やかで、寿命は100年ほど。トゲのある甲をカイメンやイソギンチャクで飾る。
+
+The largest arthropod alive: an orange-and-white crab whose legs span nearly four metres, walking the deep slopes off Suruga Bay on stilts. Slow, gentle and a century old at most, it hides its spiny shell under sponges and anemones.
+
+tags: crab, crustacean, giant, deep, japan, loop
+
+### ズワイガニ — Snow crab
+
+*Chionoecetes opilio* · Sea of Japan, Okhotsk, Bering Sea, 200–600 m · shell 15 cm, legs 70 cm · `crab/zuwai` · 96×56 px, 4.2 s loop at 30 fps
+
+日本海側の冬の味覚、鳥取の松葉ガニ、福井の越前ガニ。滑らかな赤褐色の甲に細長い脚で、冷たい泥の海底に住む。雄は10年かけて脱皮を重ね、成熟する。
+
+The winter crab of the Sea of Japan coast, sold as matsuba-gani in Tottori and echizen-gani in Fukui with a tag on its leg: a smooth brown-red shell on long slender legs, living on the cold muddy bottom. Males grow for a decade, moulting until they are ready to mate.
+
+tags: crab, crustacean, cold, japan, food, loop
+
+### タラバガニ — Red king crab
+
+*Paralithodes camtschaticus* · Okhotsk, Bering Sea, Alaska; Hokkaido · legs span 1.8 m · `crab/taraba` · 96×56 px, 4.4 s loop at 30 fps
+
+カニ鍋の王様。トゲだらけの赤い巨体だが、歩脚は4対ではなく3対。実はカニではなくヤドカリの仲間で、殻を捨てて進化した。アラスカの漁師はベーリング海の冬に命を懸け、日本が最高値で買う。
+
+The king of the crab pots: a spiny red giant with three pairs of walking legs instead of four, because it is not a true crab at all but a hermit crab's cousin that gave up the shell. Alaskan fishers risk the Bering winter for it; Japanese buyers pay the most.
+
+tags: crab, anomura, spiny, cold, food, loop
+
+### ケガニ — Horsehair crab
+
+*Erimacrus isenbeckii* · Hokkaido, Okhotsk, Bering Sea · shell 12 cm · `crab/kegani` · 72×48 px, 3.8 s loop at 30 fps
+
+短く硬い毛に覆われた、ずんぐりした橙褐色のカニ。甘い身と濃厚なカニ味噌で北海道の市場の誇り。冷たい海の砂底に住み、漁獲は厳しく制限されている。
+
+A squat, bristly crab furred in short stiff hairs, dull orange-brown, the pride of Hokkaido's fish markets for its sweet meat and rich kani-miso. It lives on sandy bottoms in cold water and is fished within strict quotas.
+
+tags: crab, crustacean, hairy, hokkaido, food, loop
+
+### ガザミ（ワタリガニ） — Japanese blue crab
+
+*Portunus trituberculatus* · Japan, Korea, China (sandy bays) · shell 20 cm wide · `crab/gazami` · 80×48 px, 3.2 s loop at 30 fps
+
+日本の湾のワタリガニ。両端にトゲをもつ菱形の甲、青と白の長いハサミ、最後の脚はオールのように平たく、夜はこれで泳いで渡る。世界でもっとも漁獲量の多いカニ。
+
+The swimming crab of Japanese bays: a wide diamond of a shell with a spike at each corner, long blue-and-white claws, and the last pair of legs flattened into paddles that row it through the water at night. The most fished crab in the world.
+
+tags: crab, crustacean, swimming, japan, sand, food, loop
+
+### シオマネキ — Fiddler crab
+
+*Tubuca arcuata* · Mud flats of western Japan (Ariake Sea), Korea, China · shell 3.5 cm · `crab/shiomaneki` · 64×44 px, 2.8 s loop at 30 fps
+
+「潮を招く」カニ。雄は片方のハサミが体重の半分ほどに巨大化し、干潮の泥干潟でこれを振って雌を呼び、ライバルを威嚇する。小さいほうのハサミで食事をする。有明海の干潟は振られる腕でいっぱい。
+
+The 'tide-beckoner': the male of this mud-flat crab has one claw grown absurdly large, half his weight, which he waves at low tide to call females and warn rivals. The other claw, small, is the one he eats with. The Ariake Sea flats are full of waving arms.
+
+tags: crab, crustacean, mudflat, japan, claw, loop
+
+### イソガニ — Asian shore crab
+
+*Hemigrapsus sanguineus* · Japan, Korea, China tide pools; invasive on US and European coasts · shell 3.5 cm · `crab/isogani` · 56×40 px, 2.6 s loop at 30 fps
+
+日本の磯で石をひっくり返せば必ずいるカニ。四角い緑褐色の甲に縞模様の脚、素早く逃げ、すぐ挟む。バラスト水に乗って、今やニューイングランドやオランダの海岸にもあふれている。
+
+The crab under every rock in a Japanese tide pool: a square green-brown shell banded on the legs, quick to scuttle and quicker to pinch. Carried in ballast water, it now swarms the shores of New England and the Netherlands.
+
+tags: crab, crustacean, tidepool, japan, invasive, loop
+
+### キンチャクガニ — Pom-pom crab
+
+*Lybia tessellata* · Indo-Pacific reefs; Okinawa · shell 1.5 cm · `crab/kinchaku` · 56×40 px, 2.4 s loop at 30 fps
+
+爪ほどの大きさで、ピンクと茶のモザイク模様。両方のハサミに小さなイソギンチャクを一つずつ持ち、ポンポンのように振って敵を追い払う。片方をなくすと、残りを半分に裂いて二つに増やす。
+
+A fingernail-sized crab in a tessellated coat of pink and brown that carries a tiny stinging anemone in each claw like a pair of pom-poms, and waves them at anything that comes close. If it loses one, it tears the other in half to grow two.
+
+tags: crab, crustacean, anemone, tiny, reef, cute, loop
+
+### モクズガニ — Japanese mitten crab
+
+*Eriocheir japonica* · Rivers of Japan, Taiwan, Korea; spawns in the sea · shell 8 cm · `crab/mokuzu` · 64×44 px, 3.4 s loop at 30 fps
+
+ハサミに濃い茶色の毛のミトンをはめた川のカニ。川を遡って育ち、秋に海へ下って産卵する。中国の近縁種が上海蟹で、欧州の川では外来種として問題に。
+
+The river crab with mittens: claws furred in dense brown hair. It climbs rivers to live, then walks back down to the sea to spawn in autumn. Its Chinese cousin is the prized Shanghai hairy crab, and an invader of European rivers.
+
+tags: crab, crustacean, river, hairy, japan, food, loop
+
+### ヤシガニ — Coconut crab
+
+*Birgus latro* · Islands of the Indo-Pacific; Okinawa and Ogasawara · legs span 1 m, 4 kg · `crab/yashigani` · 80×56 px, 4.2 s loop at 30 fps
+
+外骨格をもつ陸の動物では最大。どの貝殻にも収まらなくなったヤドカリで、青と赤の鎧で林床を歩き、ヤシの木に登り、ライオンの噛む力より強いハサミでココナッツを割る。海に戻るのは幼生を放つときだけ。
+
+The largest land animal with an exoskeleton: a hermit crab that outgrew every shell and now walks the forest floor in armour of blue and red, climbs palms, and cracks coconuts with claws that grip harder than a lion's bite. It returns to the sea only to release its larvae.
+
+tags: crab, anomura, land, giant, okinawa, loop
+
+### ホンヤドカリ — Common hermit crab
+
+*Pagurus filholi* · Japan, Korea (tide pools) · 1–2 cm · `crab/honyadokari` · 64×44 px, 3.6 s loop at 30 fps
+
+日本の潮だまりならどこにでもいるヤドカリ。柔らかく巻いた腹を借り物の巻貝に収め、右のハサミが大きくて扉の栓になる。殻が窮屈になると新しい殻を吟味し、一瞬で引っ越す。
+
+The hermit crab of every Japanese tide pool, hauling a borrowed periwinkle shell on a soft curled abdomen, its right claw bigger than its left to plug the door. When it outgrows the shell it inspects a new one, then swaps in a blink.
+
+tags: hermit crab, crustacean, tidepool, japan, shell, loop
+
+### オカヤドカリ — Land hermit crab
+
+*Coenobita purpureus* · Okinawa and the Nansei Islands (beaches and coastal forest) · shell 3 cm · `crab/okayadokari` · 64×44 px, 3.6 s loop at 30 fps
+
+沖縄の浜に住む紫色のオカヤドカリ。国の天然記念物で、サザエやアマオブネの殻を背負って汀線から林の中まで歩く。湿ったエラで空気を吸い、水たまりで水を飲み、夏の夜に海へ下りて幼生を放つ。
+
+A purple land hermit crab of Okinawa's beaches, a protected natural monument, carrying a turban or nerite shell up from the tideline into the forest. It breathes air through damp gills, drinks from puddles, and walks down to the sea on summer nights to release its young.
+
+tags: hermit crab, crustacean, land, okinawa, protected, loop
+
+### ユビワサンゴヤドカリ — Electric blue hermit crab
+
+*Calcinus elegans* · Indo-Pacific reefs; Okinawa · shell 2 cm · `crab/yubiwa` · 56×40 px, 3.2 s loop at 30 fps
+
+目立つ装いのサンゴ礁のヤドカリ。黒い脚に電気のような青の指輪模様、橙色の触角、青と黒の眼柄。小さな巻貝に住み、岩の藻をつまむ。マリンアクアリウムの人気者。
+
+A reef hermit crab dressed to be noticed: black legs ringed in electric blue, orange antennae and blue-and-black eyestalks, housed in a small cone or cerith shell. It picks algae off the rock and is a favourite of marine aquarists.
+
+tags: hermit crab, crustacean, reef, blue, okinawa, loop

@@ -1,9 +1,9 @@
-# pixelsea — 世界の海の生き物ドット絵集（エビ・ウミウシ・貝・鯨と大型魚・海藻・サンゴ・イカとタコ）
+# pixelsea — 世界の海の生き物ドット絵集（エビ・ウミウシ・貝・鯨と大型魚・海藻・サンゴ・イカとタコ・クラゲ・カニとヤドカリ）
 
 ![every species](docs/montage.png)
 
 [patch-gg/pixelfx](https://github.com/patch-gg/pixelfx) と同じ考え方で作った、**コードから描かれるドット絵**の図鑑です。
-画像ファイルはひとつもありません。エビ 13 種、ウミウシ 12 種、貝 15 種、鯨・大型魚 15 種、海藻 11 種、サンゴ 13 種、イカ・タコ 15 種の計 94 種がそれぞれ `src/species/<category>/<name>.js` の小さなモジュールで、
+画像ファイルはひとつもありません。エビ 13 種、ウミウシ 12 種、貝 15 種、鯨・大型魚 15 種、海藻 11 種、サンゴ 13 種、イカ・タコ 15 種、クラゲ 12 種、カニ・ヤドカリ 13 種の計 119 種がそれぞれ `src/species/<category>/<name>.js` の小さなモジュールで、
 時刻 `t` を渡すとその瞬間の姿を 64×48〜128×56 px のフレームに描きます。泳ぎ、脚の動き、触角の揺れ、エラの脈動、水管の伸び縮み、潮吹き、潮流に揺れる葉、ポリプの開閉、泡、水面のゆらめきまで全部コードです。
 
 - **ブラウザで動かす**: `npm run gallery` → http://localhost:8080/ でライブ再生。色替え、鏡像、背景切り替え、スプライトシートの書き出しができます。
@@ -76,6 +76,22 @@
 | ハナイカ `cephalopod/hanaika` | コウモリダコ `cephalopod/koumoridako` |
 | ミミイカ `cephalopod/mimiika` | |
 
+| クラゲ Jellyfish (12) | カニ・ヤドカリ Crabs & hermits (13) |
+|---|---|
+| ミズクラゲ `jelly/mizukurage` | タカアシガニ `crab/takaashi` |
+| アカクラゲ `jelly/akakurage` | ズワイガニ `crab/zuwai` |
+| エチゼンクラゲ `jelly/echizen` | タラバガニ `crab/taraba` |
+| キタユウレイクラゲ（ライオンズメーン）`jelly/lionsmane` | ケガニ `crab/kegani` |
+| カツオノエボシ `jelly/katsuonoeboshi` | ガザミ（ワタリガニ）`crab/gazami` |
+| アンドンクラゲ `jelly/andon` | シオマネキ `crab/shiomaneki` |
+| ベニクラゲ `jelly/benikurage` | イソガニ `crab/isogani` |
+| タコクラゲ `jelly/takokurage` | キンチャクガニ `crab/kinchaku` |
+| サカサクラゲ `jelly/sakasakurage` | モクズガニ `crab/mokuzu` |
+| オワンクラゲ `jelly/owankurage` | ヤシガニ `crab/yashigani` |
+| ハナガサクラゲ `jelly/hanagasa` | ホンヤドカリ `crab/honyadokari` |
+| ウリクラゲ（クシクラゲ）`jelly/urikurage` | オカヤドカリ `crab/okayadokari` |
+| | ユビワサンゴヤドカリ `crab/yubiwa` |
+
 ## 使い方
 
 ```bash
@@ -129,6 +145,8 @@ src/species/     _lib.js   泡・影・コースティクス・砂地・イソ�
                  giants/_body.js      魚と鯨の体（体型プロファイル・尾びれ 6 種・背びれ 5 種・胸びれ・小離鰭・目・口・エラ）、潮吹き、水面光
                  flora/_body.js       海藻とサンゴの部品（潮流の揺れ・葉状体・茎・再帰分岐・ポリプ・塊状ドーム・浮き袋・小魚）
                  cephalopod/_body.js  イカ（外套膜・ひれ 3 種・頭と目・腕と触腕・噴射）とタコ（外套膜・目・うねる腕と吸盤）、色素胞の点滅
+                 jelly/_body.js       クラゲの拍動（素早く縮んで浮き、ゆっくり沈む）・傘・縁の触手・口腕
+                 crab/_body.js        カニ（甲羅 5 形・4 対の脚の横歩き・ハサミ・眼柄）とヤドカリ（貝殻と前半身）
                  <category>/<name>.js 種ごとの meta（和名・英名・学名・生息域・解説・サイズ・ループ）と draw(p, t, o)
 tools/           render / montage / catalog / previews / wallpaper / serve（PNG・GIF エンコーダ内蔵、npm 依存なし）
 gallery/         ライブ再生するギャラリー（index.html から読み込み）
@@ -140,7 +158,7 @@ gallery/         ライブ再生するギャラリー（index.html から読み�
 
 1. 近い種のファイルをコピーして `src/species/<category>/<name>.js` に置く。
 2. `meta` を書き換える（`size` はキャンバス、`origin` は原点、`length` は実物の大きさ）。
-3. `skin(u, v, x, y)` で模様を返す（u は頭 0 → 尾 1、v は背 -1 → 腹 1、返り値は暗→明のランプ）。エビは `drawShrimp`、ウミウシは `drawDorid` / `drawAeolid`、貝は `drawBivalve` / `drawSnail`、魚と鯨は `drawFish` の仕様を調整する。海藻とサンゴは `blade` / `branch` / `dome` / `polyp` を組み合わせて描く。イカは `drawSquid`、タコは `drawOctopus`（腕だけなら `arm`）。
+3. `skin(u, v, x, y)` で模様を返す（u は頭 0 → 尾 1、v は背 -1 → 腹 1、返り値は暗→明のランプ）。エビは `drawShrimp`、ウミウシは `drawDorid` / `drawAeolid`、貝は `drawBivalve` / `drawSnail`、魚と鯨は `drawFish` の仕様を調整する。海藻とサンゴは `blade` / `branch` / `dome` / `polyp` を組み合わせて描く。イカは `drawSquid`、タコは `drawOctopus`（腕だけなら `arm`）、クラゲは `bell` / `tentacles` / `oralArms`、カニは `drawCrab`、ヤドカリは `drawHermit`。
 4. `src/species/index.js` に登録し、`node tools/render.mjs <id> --zoom 6` で見ながら直す。
 
 ## クレジット

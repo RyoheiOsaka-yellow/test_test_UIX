@@ -93,6 +93,31 @@ import * as mimic from "./cephalopod/mimic.js";
 import * as mendako from "./cephalopod/mendako.js";
 import * as kaidako from "./cephalopod/kaidako.js";
 import * as koumoridako from "./cephalopod/koumoridako.js";
+import * as mizukurage from "./jelly/mizukurage.js";
+import * as gazami from "./crab/gazami.js";
+import * as honyadokari from "./crab/honyadokari.js";
+import * as akakurage from "./jelly/akakurage.js";
+import * as echizen from "./jelly/echizen.js";
+import * as katsuonoeboshi from "./jelly/katsuonoeboshi.js";
+import * as andon from "./jelly/andon.js";
+import * as benikurage from "./jelly/benikurage.js";
+import * as takokurage from "./jelly/takokurage.js";
+import * as sakasakurage from "./jelly/sakasakurage.js";
+import * as owankurage from "./jelly/owankurage.js";
+import * as hanagasa from "./jelly/hanagasa.js";
+import * as lionsmane from "./jelly/lionsmane.js";
+import * as urikurage from "./jelly/urikurage.js";
+import * as takaashi from "./crab/takaashi.js";
+import * as zuwai from "./crab/zuwai.js";
+import * as taraba from "./crab/taraba.js";
+import * as kegani from "./crab/kegani.js";
+import * as shiomaneki from "./crab/shiomaneki.js";
+import * as isogani from "./crab/isogani.js";
+import * as kinchaku from "./crab/kinchaku.js";
+import * as mokuzu from "./crab/mokuzu.js";
+import * as yashigani from "./crab/yashigani.js";
+import * as okayadokari from "./crab/okayadokari.js";
+import * as yubiwa from "./crab/yubiwa.js";
 
 export const categories = [
   { id: "shrimp", name: "Shrimp", ja: "エビ", blurb: "Reef cleaners, snappers, dancers and the ones on your plate, from every ocean." },
@@ -102,6 +127,8 @@ export const categories = [
   { id: "seaweed", name: "Seaweed", ja: "海藻", blurb: "Kelp forests, nori and sea grapes: the weeds that sway, feed and shelter the rest." },
   { id: "coral", name: "Coral", ja: "サンゴ", blurb: "Tables, antlers, boulders, fans and flowers: the animals that build the reef." },
   { id: "cephalopod", name: "Squid & octopus", ja: "イカ・タコ", blurb: "Jet-propelled, colour-shifting and far too clever: squids, cuttlefish and octopuses." },
+  { id: "jelly", name: "Jellyfish", ja: "クラゲ", blurb: "Bells that pulse and trail: moon jellies, sea nettles, box jellies and the ones that glow." },
+  { id: "crab", name: "Crabs & hermits", ja: "カニ・ヤドカリ", blurb: "Scuttlers in armour, from tide-pool hermits to the giant spider crab." },
 ];
 export const species = {
   "shrimp/harlequin": harlequin,
@@ -198,4 +225,29 @@ export const species = {
   "cephalopod/mendako": mendako,
   "cephalopod/kaidako": kaidako,
   "cephalopod/koumoridako": koumoridako,
+  "jelly/mizukurage": mizukurage,
+  "jelly/akakurage": akakurage,
+  "jelly/echizen": echizen,
+  "jelly/lionsmane": lionsmane,
+  "jelly/katsuonoeboshi": katsuonoeboshi,
+  "jelly/andon": andon,
+  "jelly/benikurage": benikurage,
+  "jelly/takokurage": takokurage,
+  "jelly/sakasakurage": sakasakurage,
+  "jelly/owankurage": owankurage,
+  "jelly/hanagasa": hanagasa,
+  "jelly/urikurage": urikurage,
+  "crab/takaashi": takaashi,
+  "crab/zuwai": zuwai,
+  "crab/taraba": taraba,
+  "crab/kegani": kegani,
+  "crab/gazami": gazami,
+  "crab/shiomaneki": shiomaneki,
+  "crab/isogani": isogani,
+  "crab/kinchaku": kinchaku,
+  "crab/mokuzu": mokuzu,
+  "crab/yashigani": yashigani,
+  "crab/honyadokari": honyadokari,
+  "crab/okayadokari": okayadokari,
+  "crab/yubiwa": yubiwa,
 };
