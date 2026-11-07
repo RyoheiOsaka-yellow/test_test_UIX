@@ -77,6 +77,8 @@ node tools/render.mjs shrimp/kuruma --opts '{"palette":["#102","#215","#43a","#8
 node tools/montage.mjs                        # docs/montage.png
 node tools/catalog.mjs                        # docs/CATALOG.md
 node tools/previews.mjs                       # docs/previews/*.gif
+node tools/wallpaper.mjs --mode tile --cat nudibranch --out docs/wallpapers/nudibranch-pattern.png   # スマホ壁紙（敷き詰め）
+node tools/wallpaper.mjs --mode hero --species nudibranch/anna --out docs/wallpapers/nudibranch-hero.png  # スマホ壁紙（中央に1匹）
 ```
 
 JavaScript から直接:
@@ -97,6 +99,14 @@ composite(frame, imageData.data);                       // RGBA に合成して 
 長さの違うランプを渡しても既定の長さに揃えられるので、どの種にも同じパレットを渡せます。`scene: false` で砂地・水草・影・光のゆらめきなどの
 「舞台」を消し、生き物だけを描きます（スプライトシートはこの状態で書き出されます）。
 
+## 壁紙
+
+`docs/wallpapers/` に 1080×1920 のスマホ壁紙があります（黒背景、舞台なし）。`--cat` や `--species` で中身を、`--cols` `--rowk` `--zoom` `--seed` で密度と配置を変えられます。
+
+| ウミウシ敷き詰め | 中央にアンナウミウシ |
+|---|---|
+| ![](docs/wallpapers/nudibranch-pattern.png) | ![](docs/wallpapers/nudibranch-hero.png) |
+
 ## 仕組み
 
 ```
@@ -108,7 +118,7 @@ src/species/     _lib.js   泡・影・コースティクス・砂地・イソ�
                  giants/_body.js      魚と鯨の体（体型プロファイル・尾びれ 6 種・背びれ 5 種・胸びれ・小離鰭・目・口・エラ）、潮吹き、水面光
                  flora/_body.js       海藻とサンゴの部品（潮流の揺れ・葉状体・茎・再帰分岐・ポリプ・塊状ドーム・浮き袋・小魚）
                  <category>/<name>.js 種ごとの meta（和名・英名・学名・生息域・解説・サイズ・ループ）と draw(p, t, o)
-tools/           render / montage / catalog / previews / serve（PNG・GIF エンコーダ内蔵、npm 依存なし）
+tools/           render / montage / catalog / previews / wallpaper / serve（PNG・GIF エンコーダ内蔵、npm 依存なし）
 gallery/         ライブ再生するギャラリー（index.html から読み込み）
 ```
 

@@ -18,6 +18,7 @@
     "montage": "node tools/montage.mjs",
     "catalog": "node tools/catalog.mjs",
     "previews": "node tools/previews.mjs",
+    "wallpaper": "node tools/wallpaper.mjs",
     "gallery": "node tools/serve.mjs"
   }
 }

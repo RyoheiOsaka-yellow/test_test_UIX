@@ -16,7 +16,7 @@ export const meta = {
   duration: 4.0,
   loop: true,
   fps: 30,
-  bg: "night",
+  bg: "black",
   options: {
     palette: ["#5a4a30", "#9a8458", "#d0b888", "#eedcb8", "#fff4e0"],
     net: ["#2a1c10", "#5a3c20", "#8a6030", "#b08848", "#d0a868"],
