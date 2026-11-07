@@ -3,6 +3,7 @@
     <div class="mark" id="prodMark">VT</div>
     <div class="name"><span id="prodName">VolaTrap Assembly Studio</span> <span id="prodTag">· 3D 分解 / 設計ダッシュボード</span></div>
     <div class="crumb"><span id="crumbA">VolaTrap_Product.1</span><span>›</span><b id="crumbB">VolaTrap Assy.1</b></div>
+    <div class="mswitch" id="modelSwitch" role="tablist" aria-label="モデル切替"></div>
     <label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="search" type="search" placeholder="部品を検索 (名称 / 部品番号)" aria-label="部品を検索"></label>
     <button class="abtn" id="present" aria-pressed="false" title="プレゼンモード (P)"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4"/></svg>プレゼン</button>
     <button class="abtn" id="resetUi" title="レイアウトを初期化"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18M3 15h18"/></svg>レイアウト</button>
@@ -118,7 +119,7 @@
     <div class="rpanel" data-rp="design" hidden>
       <div class="rgroup">
         <div class="row">
-          <button class="tb" id="openParam">パラメータを開く</button><button class="tb" id="paramReset">初期値に戻す</button><button class="tb" id="paramOpt">質量最適化を実行</button>
+          <button class="tb" id="openParam">パラメータを開く</button><button class="tb" id="paramReset">初期値に戻す</button><button class="tb" id="paramOpt">質量最適化を実行</button><button class="tb" id="exportParams" title="CAD 再生成用の JSON をコピー">CAD 再生成パラメータを書き出し</button>
         </div><div class="cap">Parametric</div>
       </div>
       <div class="rgroup">
@@ -209,7 +210,7 @@
   <footer class="status">
     <span id="stSel">0/0 部品を選択</span><span id="stTri">— 三角形</span><span id="stMass">総質量 —</span>
     <span class="sp"></span>
-    <span><kbd>左ドラッグ</kbd> 回転 · <kbd>右/中</kbd> 移動 · <kbd>ホイール</kbd> ズーム · <kbd>Space</kbd> 分解再生 · <kbd>←→</kbd> 工程 · <kbd>F</kbd> 全体 · <kbd>P</kbd> プレゼン</span>
+    <span><kbd>左ドラッグ</kbd> 回転 · <kbd>右/中</kbd> 移動 · <kbd>ホイール</kbd> ズーム · <kbd>Space</kbd> 分解再生 · <kbd>←→</kbd> 工程 · <kbd>F</kbd> 全体 · <kbd>M</kbd> モデル切替 · <kbd>P</kbd> プレゼン</span>
     <span id="stFps">— fps</span>
   </footer>
 </div>

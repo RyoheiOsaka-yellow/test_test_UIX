@@ -134,7 +134,11 @@ $('#measureSel').onclick=()=>showBottom('measure');
 $('#measureAll').onclick=()=>{select([]);showBottom('measure');};
 $('#clash').onclick=runClash;
 $('#openParam').onclick=()=>{expandDock('right');showRight('param');};
-$('#paramReset').onclick=()=>{state.params={...DEFAULT_PARAMS};$('#ledPower').value=DEFAULT_PARAMS.ledPower;buildModel();renderAll();log('パラメータを初期値に戻しました');};
+$('#paramReset').onclick=()=>{state.params={...DEFAULT_PARAMS};state.dirty={};if(DEFAULT_PARAMS.ledPower!=null)$('#ledPower').value=DEFAULT_PARAMS.ledPower;if(isStatic()){renderParam();}else{buildModel();renderAll();}log('パラメータを初期値に戻しました');};
+$('#exportParams').onclick=async()=>{const data={product:PRODUCT.assyInst,model:state.model,scenario:state.scenario,params:state.params,changed:Object.keys(state.dirty),exported:new Date().toISOString()};const s=JSON.stringify(data,null,2);
+  try{await navigator.clipboard.writeText(s);log('CAD 再生成パラメータ (JSON) をクリップボードにコピーしました。params.json に保存して <b>python3 wheelchair-cad/regen.py params.json</b> を実行してください','g');}catch{log('クリップボードに書き込めませんでした。出力タブの JSON をコピーしてください','w');}
+  $('#out').insertAdjacentHTML('beforeend',`<pre style="margin:4px 0;color:var(--muted)">${s}</pre>`);showBottom('out');};
+$$('#modelSwitch button').forEach(b=>b.onclick=()=>switchModel(b.dataset.model));
 $('#paramOpt').onclick=()=>{const t=TARGETS[0].target;let it=0;while(state.totalMass>t&&it<40){if(!PRODUCT.optimizeStep(state.params))break;buildModel();it++;}
   renderAll();expandDock('right');showRight('param');log(`質量最適化: ${it} 反復 → 総質量 ${fmt(state.totalMass,0)} g (目標 ≤ ${t} g)`,state.totalMass<=t?'g':'w');};
 $('#exportJson').onclick=async()=>{const data={product:PRODUCT.assyInst,params:state.params,results:computeResults(),steps:seqSorted().map((r,i)=>({step:i+1,id:r.def.id,name:r.state.name,tool:r.state.tool,direction:repVec(r).toArray().map(v=>+v.toFixed(1))})),parts:PART_DEFS.map(d=>({id:d.id,...parts.get(d.id).state,volume_cm3:+(parts.get(d.id).vol/1000).toFixed(3),mass_g:+parts.get(d.id).mass.toFixed(2),group:d.group}))};
@@ -142,12 +146,13 @@ $('#exportJson').onclick=async()=>{const data={product:PRODUCT.assyInst,params:s
 $('#copyBom').onclick=async()=>{const tsv=['部品番号\t名称\tEnglish\tAssy\t材質\t数量\t体積cm3\t質量g\tMakeBuy\t工程\t工具',...PART_DEFS.map(d=>{const r=parts.get(d.id);return [d.id,r.state.name,d.en,d.group,r.state.mat,r.state.qty,(r.vol/1000).toFixed(2),r.mass.toFixed(1),r.state.mb,r.state.seq,r.state.tool].join('\t');})].join('\n');try{await navigator.clipboard.writeText(tsv);log('BOM (TSV) をコピーしました','g');}catch{log('クリップボードに書き込めませんでした','w');}};
 function syncControls(){$$('[data-rm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rm===state.renderMode));$$('[data-cm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.cm===state.colorMode));$$('[data-es]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.es===state.explodeStyle));$$('[data-sq]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.sq===state.explodeSeq));$$('[data-ax]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ax===state.section.axis));$('#secOn').checked=state.section.on;$('#secPos').value=state.section.pos;}
 document.addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea'))return;const k=e.key.toLowerCase();
-  if(k==='f')fitAll();else if(k==='e')animateExplode(state.explode>50?0:100,900);else if(k===' '){e.preventDefault();togglePlay();}else if(k==='arrowright'){e.preventDefault();$('#stepNext').click();}else if(k==='arrowleft'){e.preventDefault();$('#stepPrev').click();}
+  if(k==='f')fitAll();else if(k==='m'&&PRODUCT.models){const i=PRODUCT.models.findIndex(x=>x.key===state.model);switchModel(PRODUCT.models[(i+1)%PRODUCT.models.length].key);}else if(k==='e')animateExplode(state.explode>50?0:100,900);else if(k===' '){e.preventDefault();togglePlay();}else if(k==='arrowright'){e.preventDefault();$('#stepNext').click();}else if(k==='arrowleft'){e.preventDefault();$('#stepPrev').click();}
   else if(k==='escape'){if(document.body.classList.contains('present'))setPresent(false);else select([]);}else if(k==='i')goTo(VIEWS.iso);else if(k==='p')setPresent(!document.body.classList.contains('present'));else if(k==='s')$('#toggleSec').click();else if(k==='l')toggleLabels();
   else if(k==='h'&&state.selection.size)$('#hideSel').click();else if(k==='a'&&e.ctrlKey){e.preventDefault();select(PART_DEFS.map(d=>d.id));}});
 function renderAll(){renderTree();renderProps();renderBom();renderSteps();renderMeasure();renderParam();renderSets();}
 
 /* ───────── init ───────── */
+if(PRODUCT.models){const ms=$('#modelSwitch');ms.classList.add('show');ms.innerHTML=PRODUCT.models.map(m=>`<button data-model="${m.key}" aria-pressed="${m.key===state.model}" title="${m.title||''}">${m.label}</button>`).join('');ms.querySelectorAll('button').forEach(b=>b.onclick=()=>switchModel(b.dataset.model));}
 $('#prodMark').textContent=PRODUCT.mark;$('#prodName').textContent=PRODUCT.name;$('#prodTag').textContent=PRODUCT.tag;$('#crumbA').textContent=PRODUCT.crumbA;$('#crumbB').textContent=PRODUCT.crumbB;$('#revTag').textContent=PRODUCT.rev;document.title=PRODUCT.name;$('#ledRow').hidden=!PRODUCT.hasLed;
 resize();buildModel();renderAll();applyCamera();fitAll(0);applyCamera();
 const presets=[['初期ビュー (等角)',{...VIEWS.iso}],['正面',{...VIEWS.front}],['全分解 (順次)',{...VIEWS.iso,explode:100}],['断面 X · 透過',{theta:0.35,phi:1.25,section:{on:true,axis:'x',pos:0,flip:false},renderMode:'ghost'}]];

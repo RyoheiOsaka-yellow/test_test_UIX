@@ -93,15 +93,26 @@ function renderProps(){
 let rebuildTimer=null;
 function computeResults(){const gm={};for(const g of GROUPS)gm[g.id]=PART_DEFS.filter(d=>d.group===g.id).reduce((t,d)=>t+parts.get(d.id).mass,0);return PRODUCT.results(state.ctx,state.assyBox||new THREE.Box3(),gm,state.totalMass);}
 function renderParam(){
-  const el=$('#param');const p=state.params;const res=computeResults();
-  el.innerHTML=`<div class="psec"><h4>設計パラメータ</h4>${PARAM_DEFS.length?'':`<div class="pempty">${PRODUCT.paramNote||'このモデルにはパラメータがありません。'}</div>`}${PARAM_DEFS.map(pd=>`<div class="param"><div class="t"><span>${pd.label}<small>${pd.k}</small></span><output>${fmt(p[pd.k],pd.step<1?1:0)} ${pd.unit}</output></div><input type="range" data-param="${pd.k}" min="${pd.min}" max="${pd.max}" step="${pd.step}" value="${p[pd.k]}" aria-label="${pd.label}"></div>`).join('')}</div>
+  const el=$('#param');const p=state.params;const res=computeResults();const stat=isStatic();const dirtyN=Object.keys(state.dirty).length;
+  let html=`<div class="psec"><h4>設計パラメータ${stat&&dirtyN?`<span class="dirty">未反映 ${dirtyN}</span>`:''}</h4>${PARAM_DEFS.length?'':`<div class="pempty">${PRODUCT.paramNote||'このモデルにはパラメータがありません。'}</div>`}${stat&&PARAM_DEFS.length?`<div class="pempty" style="padding-bottom:6px">${curModel().paramNote||'固定ジオメトリです。'}${dirtyN?`<div style="margin-top:6px"><button class="mini" id="paramExport2">変更を JSON で書き出し</button> <button class="mini" id="paramRevert">変更を破棄</button></div>`:''}</div>`:''}${PARAM_DEFS.map(pd=>`<div class="param"><div class="t"><span>${pd.label}<small>${pd.k}</small>${state.dirty[pd.k]!=null?`<span class="dirty" title="生成時: ${state.dirty[pd.k]}">変更</span>`:''}</span><output>${fmt(p[pd.k],pd.step<1?1:0)} ${pd.unit}</output></div><input type="range" data-param="${pd.k}" min="${pd.min}" max="${pd.max}" step="${pd.step}" value="${p[pd.k]}" aria-label="${pd.label}"></div>`).join('')}</div>
     <div class="psec"><h4>目標と計算結果</h4><table class="targets"><thead><tr><th>項目</th><th>計算値</th><th>目標</th><th></th></tr></thead><tbody>
-    ${TARGETS.map(t=>{const v=res[t.k];const ok=v<=t.target;return `<tr><td>${t.label}</td><td>${fmt(v,t.unit==='g'?0:1)} ${t.unit}</td><td>${t.op} ${t.target} ${t.unit}</td><td><span class="stat ${ok?'ok':'bad'}"><i></i>${ok?'OK':'NG'}</span></td></tr>`;}).join('')}</tbody></table></div>
-    <div class="psec"><h4>質量内訳 (サブAssy)</h4>${GROUPS.map(g=>{const m=PART_DEFS.filter(d=>d.group===g.id).reduce((s,d)=>s+parts.get(d.id).mass,0);return `<div class="prow"><span class="k"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${g.color};margin-right:6px"></span>${g.id}</span><span class="v">${fmt(m,0)} g<div class="bar"><i style="width:${m/state.totalMass*100}%;background:${g.color}"></i></div></span></div>`;}).join('')}</div>`;
+    ${TARGETS.map(t=>{const v=res[t.k];const ok=v<=t.target;return `<tr><td>${t.label}</td><td>${fmt(v,t.unit==='g'?0:t.unit==='個'?0:1)} ${t.unit}</td><td>${t.op} ${t.target} ${t.unit}</td><td><span class="stat ${ok?'ok':'bad'}"><i></i>${ok?'OK':'NG'}</span></td></tr>`;}).join('')}</tbody></table></div>`;
+  if(typeof SCENARIOS!=='undefined'&&SCENARIOS.length>1&&!curModel().noScenarios){
+    const base=scenarioStats(SCENARIOS[0]);const rows=SCENARIOS.map(sc=>({sc,st:scenarioStats(sc)}));const maxP=Math.max(...rows.map(r=>r.st.pieces));
+    const dl=(v,b,u,d=0)=>{const x=v-b;return `<span class="delta ${x<0?'neg':x>0?'pos':''}">${x>0?'+':''}${fmt(x,d)}${u}</span>`;};
+    html+=`<div class="psec"><h4>部品数削減シナリオ</h4>${rows.map(({sc,st})=>`<label class="scen ${state.scenario===sc.id?'active':''}" data-scen="${sc.id}"><input type="radio" name="scen" ${state.scenario===sc.id?'checked':''}><span><b style="font-weight:500">${sc.name}</b></span><span class="n"><b>${st.pieces}</b> 点 · ${st.numbers} 品番</span><span class="d">${sc.desc}</span></label>`).join('')}</div>
+    <div class="psec"><h4>シナリオ比較 (ベースライン比)</h4><table class="cmp"><thead><tr><th>案</th><th>点数</th><th>品番</th><th>締結</th><th>質量</th></tr></thead><tbody>${rows.map(({sc,st})=>`<tr class="${state.scenario===sc.id?'active':''}" data-scen="${sc.id}"><td>${sc.id} ${sc.name}<div class="bar"><i style="width:${st.pieces/maxP*100}%"></i></div></td><td>${st.pieces}<br>${dl(st.pieces,base.pieces,'')}</td><td>${st.numbers}<br>${dl(st.numbers,base.numbers,'')}</td><td>${st.fasteners}<br>${dl(st.fasteners,base.fasteners,'')}</td><td>${fmt(st.mass,0)} g<br>${dl(st.mass,base.mass,' g')}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  html+=`<div class="psec"><h4>質量内訳 (サブAssy)</h4>${GROUPS.map(g=>{const m=PART_DEFS.filter(d=>d.group===g.id).reduce((s,d)=>s+parts.get(d.id).mass,0);return `<div class="prow"><span class="k"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${g.color};margin-right:6px"></span>${g.id}</span><span class="v">${fmt(m,0)} g<div class="bar"><i style="width:${m/state.totalMass*100}%;background:${g.color}"></i></div></span></div>`;}).join('')}</div>`;
+  el.innerHTML=html;
   el.querySelectorAll('[data-param]').forEach(inp=>{inp.oninput=e=>{const k=e.target.dataset.param,pd=PARAM_DEFS.find(x=>x.k===k);p[k]=+e.target.value;e.target.previousElementSibling.querySelector('output').textContent=`${fmt(p[k],pd.step<1?1:0)} ${pd.unit}`;
-    if(k==='ledHue'){applyMaterials();return;}clearTimeout(rebuildTimer);rebuildTimer=setTimeout(()=>{buildModel();renderAll();log(`パラメータ ${k} = ${p[k]} → モデル再生成`);},60);};});
+    if(k==='ledHue'){applyMaterials();return;}
+    if(isStatic()){if(p[k]!==DEFAULT_PARAMS[k])state.dirty[k]=DEFAULT_PARAMS[k];else delete state.dirty[k];clearTimeout(rebuildTimer);rebuildTimer=setTimeout(renderParam,400);return;}
+    clearTimeout(rebuildTimer);rebuildTimer=setTimeout(()=>{buildModel();renderAll();log(`パラメータ ${k} = ${p[k]} → モデル再生成`);},60);};});
+  el.querySelectorAll('[data-scen]').forEach(n=>n.onclick=e=>{if(n.dataset.scen!==state.scenario)setScenario(n.dataset.scen);});
+  const ex2=el.querySelector('#paramExport2');if(ex2)ex2.onclick=()=>$('#exportParams').click();
+  const rv=el.querySelector('#paramRevert');if(rv)rv.onclick=()=>{state.params={...DEFAULT_PARAMS};state.dirty={};renderParam();};
 }
-
 /* ───────── BOM / steps / measure ───────── */
 function renderBom(){
   const rows=PART_DEFS.map((d,i)=>{const rt=parts.get(d.id),s=rt.state;const g=GROUPS.find(x=>x.id===d.group);

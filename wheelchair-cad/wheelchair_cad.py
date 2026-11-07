@@ -8,6 +8,10 @@ from cadquery import Vector as V
 from cadlib import *
 
 P = dict(seatWidth=400, seatDepth=420, seatHeightF=480, seatHeightR=440, wheelInch=24, camber=3.0, backH=380, casterInch=5, axleOffset=0)
+if '--params' in sys.argv:   # JSON exported from the dashboard (設計 → CAD 再生成パラメータを書き出し)
+    pj = json.load(open(sys.argv[sys.argv.index('--params') + 1], encoding='utf-8'))
+    P.update({k: float(v) for k, v in (pj.get('params', pj)).items() if k in P})
+    print('params override:', P)
 sw, sd, shf, shr = P['seatWidth'], P['seatDepth'], P['seatHeightF'], P['seatHeightR']
 Rw, cr = P['wheelInch'] * 25.4 / 2, P['casterInch'] * 25.4 / 2
 yr, xf, xr = sw / 2 + 12, sd / 2, -sd / 2
@@ -25,8 +29,10 @@ MATERIALS = {
 }
 GROUPS = [('A1','駆動輪 Assy','#3aa0d8'),('A2','フレーム Assy','#e39b2c'),('A3','シート Assy','#8b5cd6'),('A4','走行安全部品','#3fae6a')]
 PARTS = []   # dicts: id, name, en, group, mat, mb, color, tool, inst:[(solid, ex)]
-def part(id, name, en, group, mat, mb, color, tool, inst, shell=False, qty=None):
-    PARTS.append(dict(id=id, name=name, en=en, group=group, mat=mat, mb=mb, color=color, tool=tool, inst=inst, shell=shell, qty=qty or len(inst)))
+import re
+FASTENER = re.compile('ボルト|ナット|ピン|ニップル|リベット')
+def part(id, name, en, group, mat, mb, color, tool, inst, shell=False, qty=None, alt=False):
+    PARTS.append(dict(id=id, name=name, en=en, group=group, mat=mat, mb=mb, color=color, tool=tool, inst=inst, shell=shell, qty=qty or len(inst), alt=alt, fastener=bool(FASTENER.search(name))))
     print(f'{id:6} {name:18} x{len(inst):<3} {sum(s.Volume() for s,_ in inst)/1000:8.1f} cm3  {time.time()-T0:5.1f}s', flush=True)
 
 def side(solid, s, local_y=0.0):
@@ -232,27 +238,83 @@ part('P-409','六角ボルト M6×40','Hex Bolt M6×40','A4','SUS304','buy','#b9
 part('P-410','六角ナット M6 (転倒防止)','Hex Nut M6 nyloc','A4','SUS304','buy','#aab2bd','スパナ 10 mm',inst_an)
 part('P-411','転倒防止クランプ','Anti-tip Clamp (camber tube)','A4','アルミ 6061','make','#3a3e45','六角レンチ 5 mm',inst_ac)
 
+# ───────── 代替部品 (部品数削減シナリオ用) ─────────
+# S1: ストレートプルスポーク (ニップル一体) + アイレット付きリム
+sp_alt, eyelets = [], []
+for i in range(24):
+    a = i / 24 * 2 * math.pi; yh = 22 if i % 2 else -22
+    ar = a + math.radians(12)
+    p_h = V(36*math.cos(a), yh, 36*math.sin(a)); p_r = V(270*math.cos(ar), yh*0.25, 270*math.sin(ar))
+    d = (p_r - p_h).normalized()
+    sp_alt.append(straight_tube(p_h.toTuple(), p_r.toTuple(), 1.0).union(straight_tube((p_r - d*14).toTuple(), (p_r + d*2).toTuple(), 2.6)).val())
+    eyelets.append(straight_tube((p_r - d*4).toTuple(), (p_r + d*4).toTuple(), 4.5).val())
+rim_alt = rim_s
+for e in eyelets: rim_alt = rim_alt.fuse(e)
+wheel_part('P-103B','スポーク (ストレートプル・ニップル一体)','Straight-pull Spoke with integrated thread end','SUS304','buy','#c9cfd8','スポークレンチ',sp_alt,380)
+PARTS[-1]['alt']=True
+wheel_part('P-102B','リム 24" (ねじ付アイレット)','Rim 24" with threaded eyelets','アルミ 6061','buy','#1f2226','手作業',[rim_alt],320)
+PARTS[-1]['alt']=True
+# S2: クランプ一体型アクスルプレート + ピンチボルト M8×40 ×4
+ring = cq.Workplane("XY").circle(23).circle(16.2).extrude(26).union(cq.Workplane("XY").center(0,-27).rect(24,16).extrude(26))
+ring = ring.cut(cq.Workplane("XY").center(0,-27).rect(24,2.5).extrude(26)).val()
+inst=[];pb=[]
+for s_ in S:
+    y=s_*(yr+24)
+    plate_c = plate_s.translate(V(ax,y,Rw+8)).fuse(place(ring,(ax,y-11*s_,Rw+25),ROT_Z_TO_Y))
+    inst.append((plate_c,exv(0,s_*90,-160)))
+    for dz in (-10,10): pb.append((place(hex_bolt(8,40),(ax+16,y-11*s_,Rw-4+dz),[((0,1,0),-90)]),exv(0,s_*130,-160)))
+part('P-202B','アクスルプレート (クランプ一体)','Axle Plate with integrated camber-tube clamp','A2','アルミ 7005','make','#33363c','六角レンチ 6 mm',inst,alt=True)
+part('P-203B','ピンチボルト M8×40','Pinch Bolt M8×40','A2','SUS304','buy','#b9c1cc','スパナ 13 mm',pb,alt=True)
+# S3: ベアリング一体圧入キャスターホイール
+inst=[]
+for s_ in S:
+    yc=s_*cyc; w = cwheel.translate(V(cx+20,yc,cr))
+    for yy in (-6,6): w = w.fuse(place(cq.Workplane("XY").circle(11).circle(4).extrude(7),(cx+20,yc+yy,cr),ROT_Z_TO_Y))
+    inst.append((w,exv(200,s_*120,-110)))
+part('P-213B','キャスターホイール 5" (ベアリング一体)','Caster Wheel 5" with pressed-in bearings','A2','ポリウレタン (ソリッド)','buy','#1a1c20','スパナ 13 mm',inst,alt=True)
+# S4: クリップオンサイドガード (工具不要)
+sg_c = sg.fuse(cq.Workplane("XY").center(-90,0).rect(30,18).extrude(14).val().translate(V(0,0,-87.5))).fuse(cq.Workplane("XY").center(90,0).rect(30,18).extrude(14).val().translate(V(0,0,-87.5)))
+part('P-222B','サイドガード (クリップオン)','Clip-on Side Guard (CFRP, tool-free)','A2','CFRP','buy','#1c1e22','手作業',[(sg_c.translate(V(ax+40,s_*(yr+32),shr+65)),exv(0,s_*70,230)) for s_ in S],alt=True)
+# S5: ストラップ一体シートスリング (面ファスナー固定)
+sl = sling
+for s_ in S:
+    for x in (xr+80, xf-80): sl = sl.fuse(strap.translate(V(x, s_*(yr), -24)).translate(V(0,0,0)))
+part('P-303B','シートスリング (ストラップ一体)','Seat Sling with integrated hook-and-loop straps','A3','ポリエステル布','buy','#232529','手作業 (面ファスナー)',[(place(sl,(0,0,zmid+4),[((0,1,0),-slope)]),exv(0,0,180))],alt=True)
+
+SCENARIOS = [
+  dict(id='S0',name='ベースライン (現行設計)',desc='53 品番 / 254 点の現行構成',remove=[],add=[]),
+  dict(id='S1',name='ストレートプルスポーク',desc='ニップルを廃止しスポーク端にねじ一体化。リムはねじ付アイレット。',remove=['P-102','P-103','P-104'],add=['P-102B','P-103B']),
+  dict(id='S2',name='クランプ一体型アクスルプレート',desc='M8 ボルト・ナット 16 点をピンチボルト 4 本に。プレートにカンバーチューブクランプを一体化。',remove=['P-202','P-203','P-204'],add=['P-202B','P-203B']),
+  dict(id='S3',name='ベアリング一体キャスター',desc='608 ベアリングを圧入済みホイールとして調達。',remove=['P-213','P-216'],add=['P-213B']),
+  dict(id='S4',name='クリップオンサイドガード',desc='取付ボルト 4 本を廃止し、クリップタブで工具不要に。',remove=['P-222','P-223'],add=['P-222B']),
+  dict(id='S5',name='ストラップ一体スリング',desc='固定ストラップとボルト 12 点を廃止し、面ファスナー一体化。',remove=['P-303','P-304','P-305'],add=['P-303B']),
+]
+SCENARIOS.append(dict(id='S6',name='全案適用',desc='S1〜S5 をすべて適用',remove=sorted({r for sc in SCENARIOS for r in sc['remove']}),add=sorted({a for sc in SCENARIOS for a in sc['add']})))
+
 # ───────── sequence (disassembly order) ─────────
-SEQ = ['P-301','P-110','P-111','P-109','P-108','P-107','P-105','P-106','P-104','P-103','P-102','P-101','P-112',
+SEQ = ['P-301','P-110','P-111','P-109','P-108','P-107','P-105','P-106','P-104','P-103','P-103B','P-102','P-102B','P-101','P-112',
        'P-409','P-410','P-408','P-407','P-411','P-405','P-406','P-402','P-403','P-401','P-404',
-       'P-209','P-208','P-207','P-206','P-307','P-306','P-205','P-223','P-222','P-305','P-304','P-303',
-       'P-220','P-221','P-219','P-218','P-215','P-214','P-216','P-213','P-212','P-217','P-211','P-210','P-203','P-204','P-202','P-224','P-201']
+       'P-209','P-208','P-207','P-206','P-307','P-306','P-205','P-223','P-222','P-222B','P-305','P-304','P-303','P-303B',
+       'P-220','P-221','P-219','P-218','P-215','P-214','P-216','P-213','P-213B','P-212','P-217','P-211','P-210','P-203','P-204','P-203B','P-202','P-202B','P-224','P-201']
 assert sorted(SEQ)==sorted(p['id'] for p in PARTS), set(SEQ)^set(p['id'] for p in PARTS)
 
 # ───────── export ─────────
 os.makedirs('out', exist_ok=True)
 tol = float(sys.argv[1]) if len(sys.argv)>1 else 0.7
-out = {'params':P,'materials':MATERIALS,'groups':GROUPS,'seq':SEQ,'parts':[]}
+out = {'params':P,'materials':MATERIALS,'groups':GROUPS,'seq':SEQ,'scenarios':SCENARIOS,'parts':[]}
 tri_total=0
 for p in PARTS:
-    rec = dict(id=p['id'],name=p['name'],en=p['en'],group=p['group'],mat=p['mat'],mb=p['mb'],color=p['color'],tool=p['tool'],shell=p['shell'],qty=p['qty'],pieces=len(p['inst']),inst=[])
+    rec = dict(id=p['id'],name=p['name'],en=p['en'],group=p['group'],mat=p['mat'],mb=p['mb'],color=p['color'],tool=p['tool'],shell=p['shell'],qty=p['qty'],pieces=len(p['inst']),alt=p['alt'],fastener=p['fastener'],inst=[])
     for sol,ex in p['inst']:
         m = mesh_record(sol, ex, tol, 0.45); tri_total += m['n']; rec['inst'].append(m)
     out['parts'].append(rec)
 json.dump(out, open('out/model.json','w'))
+base=[p for p in PARTS if not p['alt']]
+print(f'baseline {len(base)} parts / {sum(len(p["inst"]) for p in base)} pieces · alt parts {len(PARTS)-len(base)}')
 print(f'parts {len(PARTS)}  pieces {sum(len(p["inst"]) for p in PARTS)}  triangles {tri_total}  json {os.path.getsize("out/model.json")/1e6:.1f} MB  {time.time()-T0:.0f}s')
 if '--step' in sys.argv:
     asm = cq.Assembly(name='ActiveChair_Assy')
     for p in PARTS:
+        if p['alt']: continue
         for k,(sol,_) in enumerate(p['inst']): asm.add(sol, name=f"{p['id']}_{k+1}", color=cq.Color(p['color']))
     asm.save('out/wheelchair_assembly.step'); print('STEP written', os.path.getsize('out/wheelchair_assembly.step')/1e6, 'MB', f'{time.time()-T0:.0f}s')

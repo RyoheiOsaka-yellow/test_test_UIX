@@ -15,8 +15,7 @@ studio-core/            # 共通コア（ここを編集して build.sh で各�
 ├── 4c_ui.js            # 入力・ラベル・ループ・レイアウト・初期化
 └── build.sh            # cat で結合して ../volatrap-studio, ../wheelchair-studio に出力
 volatrap-studio/index.html        # 生成物（単体で開ける）
-wheelchair-studio/index.html      # 生成物（ライブパラメトリック版）
-wheelchair-cad-studio/index.html  # 生成物（CAD 版: 53 品番 / 254 点、メッシュ埋め込み 2.3 MB）
+wheelchair-studio/index.html      # 生成物（CAD + ライブ統合版、3.3 MB。3_wheelchair_cadmodel.js を同梱）
 wheelchair-cad/                   # CadQuery (OpenCascade) モデル → out/model.json, out/*.step, gen_js.py で 3_wheelchair_cad.js を生成
 ```
 
@@ -150,10 +149,17 @@ wheelchair-cad/                   # CadQuery (OpenCascade) モデル → out/mod
 
 ---
 
+## 6.4 複数モデルとシナリオ（コアの汎用機構）
+
+- `PRODUCT.models=[{key,label,activate(),static,tag,rev,paramNote,noScenarios}]` があるとアプリバーに切替が出ます。`activate()` は製品ファイル側で `let` 宣言した `DEFAULT_PARAMS / PARAM_DEFS / TARGETS / ALL_PART_DEFS / PART_DEFS / N_STEPS / SCENARIOS` を差し替えます。コアは `switchModel()` → `resetModel()` で parts Map を破棄して再生成します。
+- `static:true` のモデルではスライダー変更が `state.dirty` に記録され、`#exportParams` で JSON 書き出し（`regen.py` の入力）になります。
+- `SCENARIOS=[{id,name,desc,remove:[ids],add:[ids]}]` と `applyScenario(id)`（製品側）、`scenarioStats()`（コア: `def.vol`・`def.pieces`・`def.fastener`・`def.alt` から点数 / 品番 / 締結 / 質量を算出）で比較表を描画します。
+
 ## 6.5 CAD パイプライン（wheelchair-cad/）
 
 ```
-wheelchair_cad.py  ──(CadQuery B-rep)──▶  out/model.json ──(gen_js.py)──▶ studio-core/3_wheelchair_cad.js ──(build.sh)──▶ wheelchair-cad-studio/index.html
+wheelchair_cad.py  ──(CadQuery B-rep)──▶  out/model.json ──(gen_js.py)──▶ studio-core/3_wheelchair_cadmodel.js ──(build.sh)──▶ wheelchair-studio/index.html
+       ▲ params.json (ダッシュボードから書き出し)        regen.py が上の 3 段を 1 コマンドで実行
                    └──(--step)────────▶  out/wheelchair_assembly.step
 ```
 

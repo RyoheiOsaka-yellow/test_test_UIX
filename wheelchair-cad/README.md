@@ -1,15 +1,34 @@
 # wheelchair-cad — CadQuery (OpenCascade) による車椅子 B-rep モデル
 
-`wheelchair_cad.py` はアクティブ車椅子を **53 品番 / 254 点**の B-rep ソリッドとして生成し、
+`wheelchair_cad.py` はアクティブ車椅子を **53 品番 / 254 点**（+ 代替部品 7 品番）の B-rep ソリッドとして生成し、
 スタジオ用メッシュ (`out/model.json`) と STEP アセンブリ (`out/wheelchair_assembly.step`) を書き出します。
 体積・重心は OpenCascade のカーネル値で、質量 = 体積 × 材質密度です。
 
 ```
-pip install cadquery            # 2.8 で確認
-python3 wheelchair_cad.py 0.7 --step   # 引数: テセレーション公差 mm / --step で STEP も出力
-python3 gen_js.py               # out/model.json → ../studio-core/3_wheelchair_cad.js
-(cd ../studio-core && ./build.sh)      # → ../wheelchair-cad-studio/index.html
+pip install cadquery                       # 2.8 で確認
+python3 regen.py                           # 既定パラメータで再生成 → JS 生成 → スタジオビルド（1 コマンド, 約 15 秒）
+python3 regen.py params.json               # ダッシュボード「設計 → CAD 再生成パラメータを書き出し」の JSON を反映
+python3 regen.py params.json --step        # STEP アセンブリも書き出す
 ```
+
+個別に実行する場合: `wheelchair_cad.py [公差] [--params file] [--step]` → `gen_js.py` → `../studio-core/build.sh`。
+出力先は `../wheelchair-studio/index.html`（CAD / ライブ統合版。アプリバーで切替）。
+
+## 部品数削減シナリオ
+
+`SCENARIOS` に「削除する品番」「追加する代替品番 (`alt=True`)」の組で定義します。ダッシュボードの CAD モード →「パラメータ」タブで切替・比較できます。
+
+| 案 | 内容 | 点数 | 品番 |
+| --- | --- | --- | --- |
+| S0 ベースライン | 現行構成 | 254 | 53 |
+| S1 ストレートプルスポーク | ニップル 48 点廃止、リムをねじ付アイレットに | 206 | 52 |
+| S2 クランプ一体型アクスルプレート | M8 ボルト・ナット 16 点 → ピンチボルト 4 本 | 242 | 52 |
+| S3 ベアリング一体キャスター | 608 ベアリング 4 点を圧入済みホイールに | 250 | 52 |
+| S4 クリップオンサイドガード | 取付ボルト 4 本廃止 | 250 | 52 |
+| S5 ストラップ一体スリング | ストラップ 4 + ボルト 8 点廃止 | 242 | 51 |
+| S6 全案適用 | S1〜S5 | 174 | 47 |
+
+代替部品の質量差もカーネル体積から算出され、比較表に Δ で表示されます。
 
 ## 部品構成（サブAssy → 品番 × 点数）
 

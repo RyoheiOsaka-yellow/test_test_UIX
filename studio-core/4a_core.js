@@ -3,9 +3,11 @@
 const state={
   params:{...DEFAULT_PARAMS}, explode:0, explodeScale:1, explodeStyle:'axis', explodeSeq:'seq', renderMode:'solid', colorMode:'material',
   section:{on:false,axis:'x',pos:0,flip:false}, selection:new Set(), hidden:new Set(), grid:true, axes:true, shadow:true,
-  edges:false, persp:true, turntable:false, led:true, labels:false, trails:true, ghostBase:false, hover:null, views:[], collapsed:new Set(), playing:false, playDir:1, filter:'', clashes:[]
+  edges:false, persp:true, turntable:false, led:true, labels:false, trails:true, ghostBase:false, hover:null, views:[], collapsed:new Set(), playing:false, playDir:1, filter:'', clashes:[], model:(PRODUCT.models||[{key:'default'}])[0].key, scenario:'S0', dirty:{}
 };
 const parts=new Map();
+const curModel=()=>(PRODUCT.models||[]).find(m=>m.key===state.model)||{};
+const isStatic=()=>!!curModel().static;
 const log=(msg,cls='')=>{const o=$('#out');const t=new Date().toLocaleTimeString('ja-JP',{hour12:false});o.insertAdjacentHTML('beforeend',`<div><span class="t">${t}</span> <span class="${cls}">${msg}</span></div>`);o.scrollTop=o.scrollHeight;};
 
 /* ───────── renderer / scene ───────── */
@@ -32,7 +34,7 @@ const illuMat=new THREE.MeshLambertMaterial({color:0xf7f8fa,polygonOffset:true,p
 const ghostMat=new THREE.MeshBasicMaterial({color:0x2f7de1,transparent:true,opacity:0.08,depthWrite:false,side:THREE.DoubleSide});
 let glowMat=null;
 // explode trails
-const trailGeo=new THREE.BufferGeometry(); trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(PART_DEFS.length*2*3),3));
+const trailGeo=new THREE.BufferGeometry(); trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(512*2*3),3));
 const trailMat=new THREE.LineDashedMaterial({color:0x5d6675,dashSize:3,gapSize:2.5,transparent:true,opacity:0.7});
 const trails=new THREE.LineSegments(trailGeo,trailMat); trails.frustumCulled=false; scene.add(trails);
 const ghostGroup=new THREE.Group(); scene.add(ghostGroup);
@@ -218,3 +220,26 @@ function setPersp(on){const nf=on?35:6;const k=Math.tan(THREE.MathUtils.degToRad
 function select(ids,add=false){if(!add)state.selection.clear();for(const id of ids)if(state.selection.has(id)&&add)state.selection.delete(id);else state.selection.add(id);onSelectionChange();}
 function onSelectionChange(){applyMaterials();renderTree();renderProps();renderBom();renderMeasure();$('#stSel').textContent=`${state.selection.size}/${PART_DEFS.length} 部品を選択`;}
 function partsIn(pred){return PART_DEFS.filter(pred).map(d=>d.id);}
+
+/* ───────── model / scenario switching ───────── */
+function resetModel(keepParams){
+  for(const rt of parts.values()){rt.mat.dispose();}parts.clear();
+  state.selection.clear();state.hidden.clear();state.clashes=[];state.explode=0;explodeAnim=null;state.playing=false;setPlayIcon();
+  if(!keepParams){state.params={...DEFAULT_PARAMS};state.dirty={};}
+  buildModel();renderAll();syncControls();applyExplode();$('#hudClash').hidden=true;$('#stSel').textContent=`0/${PART_DEFS.length} 部品を選択`;setTimeout(()=>fitAll(400),60);
+}
+function switchModel(key){
+  if(!PRODUCT.models||key===state.model)return;const m=PRODUCT.models.find(x=>x.key===key);if(!m)return;
+  const keep={...state.params};state.model=key;m.activate();state.params={...DEFAULT_PARAMS,...keep};
+  if(typeof applyScenario==='function')applyScenario(state.scenario);
+  $('#prodTag').textContent=m.tag||PRODUCT.tag;$('#revTag').textContent=m.rev||PRODUCT.rev;$('#ledRow').hidden=!PRODUCT.hasLed;
+  $$('#modelSwitch button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.model===key));
+  resetModel(true);log(`モデル切替: ${m.label}${m.static?' (固定ジオメトリ · パラメータ変更は再生成が必要)':''}`);
+}
+function setScenario(id){if(typeof applyScenario!=='function')return;state.scenario=id;applyScenario(id);resetModel(true);$('#prodTag').textContent=`· CAD ${PART_DEFS.length} 品番 / ${PART_DEFS.reduce((n,d)=>n+(d.pieces||d.qty),0)} 点 · ${id}`;const sc=(typeof SCENARIOS!=='undefined'?SCENARIOS:[]).find(s=>s.id===id);log(`シナリオ: ${sc?sc.name:id} → ${PART_DEFS.length} 品番 / ${PART_DEFS.reduce((n,d)=>n+(d.pieces||d.qty),0)} 点`);}
+function scenarioStats(sc){ // from kernel volumes, no geometry build needed
+  const all=(typeof ALL_PART_DEFS!=='undefined'?ALL_PART_DEFS:PART_DEFS);const rm=new Set(sc.remove||[]),ad=new Set(sc.add||[]);
+  const defs=all.filter(d=>(d.alt?ad.has(d.id):!rm.has(d.id)));
+  let mass=0,pieces=0,fast=0;for(const d of defs){const st=parts.get(d.id)&&parts.get(d.id).state;const mat=st?st.mat:d.mat;const q=st?st.qty:d.qty;const vol=d.vol!=null?d.vol:(parts.get(d.id)?parts.get(d.id).vol:0);mass+=vol/1000*(MATERIALS[mat]||{d:1}).d*(d.qtyInGeom?1:q);pieces+=d.pieces||q;if(d.fastener)fast+=d.pieces||q;}
+  return {numbers:defs.length,pieces,fasteners:fast,mass};
+}

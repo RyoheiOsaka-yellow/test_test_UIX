@@ -57,6 +57,29 @@ svg.i{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stro
 .abtn:hover{background:rgba(255,255,255,.22)}
 .abtn[aria-pressed="true"]{background:var(--accent-ink);color:var(--accent)}
 
+/* model switch + scenarios */
+.mswitch{display:none;gap:0;border:1px solid rgba(255,255,255,.35);border-radius:3px;overflow:hidden;height:26px}
+.mswitch.show{display:inline-flex}
+.mswitch button{background:none;border:0;color:inherit;padding:0 10px;font-size:12px;white-space:nowrap;border-right:1px solid rgba(255,255,255,.3)}
+.mswitch button:last-child{border-right:0}
+.mswitch button[aria-pressed="true"]{background:var(--accent-ink);color:var(--accent);font-weight:500}
+.dirty{display:inline-block;padding:1px 7px;border-radius:9px;background:var(--warn);color:#fff;font-size:10.5px;font-weight:600;margin-left:6px}
+.scen{display:grid;grid-template-columns:18px 1fr auto;gap:4px 8px;align-items:start;padding:6px 10px;border-bottom:1px solid var(--line2);cursor:pointer;font-size:12.5px}
+.scen:hover{background:var(--panel2)}
+.scen.active{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.scen input{margin:3px 0 0;accent-color:var(--accent)}
+.scen .d{color:var(--muted);font-size:11.5px;grid-column:2/4}
+.scen .n{font:11.5px var(--mono);color:var(--muted);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.scen .n b{color:var(--text);font-weight:500}
+.delta{font-family:var(--mono);font-size:11px}
+.delta.neg{color:var(--ok)}.delta.pos{color:var(--bad)}
+.cmp{width:100%;border-collapse:collapse;font-size:11.5px}
+.cmp th{font-weight:500;color:var(--muted);text-align:right;padding:4px 8px;border-bottom:1px solid var(--line2);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase}
+.cmp th:first-child,.cmp td:first-child{text-align:left}
+.cmp td{padding:4px 8px;border-bottom:1px solid var(--line2);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cmp td:first-child{font-family:var(--sans)}
+.cmp tr.active td{background:var(--accent-soft)}
+.cmp .bar{margin-top:3px;height:4px}
 /* ribbon */
 .ribbon{background:var(--chrome);border-bottom:1px solid var(--line);flex:none;position:relative;z-index:30}
 .rtabs{display:flex;gap:2px;padding:4px 8px 0;border-bottom:1px solid var(--line2);align-items:flex-end}
@@ -276,6 +299,7 @@ body.present .ribbon,body.present .status,body.present .dock,body.present .vp-hu
     <div class="mark" id="prodMark">VT</div>
     <div class="name"><span id="prodName">VolaTrap Assembly Studio</span> <span id="prodTag">· 3D 分解 / 設計ダッシュボード</span></div>
     <div class="crumb"><span id="crumbA">VolaTrap_Product.1</span><span>›</span><b id="crumbB">VolaTrap Assy.1</b></div>
+    <div class="mswitch" id="modelSwitch" role="tablist" aria-label="モデル切替"></div>
     <label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="search" type="search" placeholder="部品を検索 (名称 / 部品番号)" aria-label="部品を検索"></label>
     <button class="abtn" id="present" aria-pressed="false" title="プレゼンモード (P)"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4"/></svg>プレゼン</button>
     <button class="abtn" id="resetUi" title="レイアウトを初期化"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M9 3v18M3 15h18"/></svg>レイアウト</button>
@@ -391,7 +415,7 @@ body.present .ribbon,body.present .status,body.present .dock,body.present .vp-hu
     <div class="rpanel" data-rp="design" hidden>
       <div class="rgroup">
         <div class="row">
-          <button class="tb" id="openParam">パラメータを開く</button><button class="tb" id="paramReset">初期値に戻す</button><button class="tb" id="paramOpt">質量最適化を実行</button>
+          <button class="tb" id="openParam">パラメータを開く</button><button class="tb" id="paramReset">初期値に戻す</button><button class="tb" id="paramOpt">質量最適化を実行</button><button class="tb" id="exportParams" title="CAD 再生成用の JSON をコピー">CAD 再生成パラメータを書き出し</button>
         </div><div class="cap">Parametric</div>
       </div>
       <div class="rgroup">
@@ -482,7 +506,7 @@ body.present .ribbon,body.present .status,body.present .dock,body.present .vp-hu
   <footer class="status">
     <span id="stSel">0/0 部品を選択</span><span id="stTri">— 三角形</span><span id="stMass">総質量 —</span>
     <span class="sp"></span>
-    <span><kbd>左ドラッグ</kbd> 回転 · <kbd>右/中</kbd> 移動 · <kbd>ホイール</kbd> ズーム · <kbd>Space</kbd> 分解再生 · <kbd>←→</kbd> 工程 · <kbd>F</kbd> 全体 · <kbd>P</kbd> プレゼン</span>
+    <span><kbd>左ドラッグ</kbd> 回転 · <kbd>右/中</kbd> 移動 · <kbd>ホイール</kbd> ズーム · <kbd>Space</kbd> 分解再生 · <kbd>←→</kbd> 工程 · <kbd>F</kbd> 全体 · <kbd>M</kbd> モデル切替 · <kbd>P</kbd> プレゼン</span>
     <span id="stFps">— fps</span>
   </footer>
 </div>
@@ -640,9 +664,11 @@ const PRODUCT={
 const state={
   params:{...DEFAULT_PARAMS}, explode:0, explodeScale:1, explodeStyle:'axis', explodeSeq:'seq', renderMode:'solid', colorMode:'material',
   section:{on:false,axis:'x',pos:0,flip:false}, selection:new Set(), hidden:new Set(), grid:true, axes:true, shadow:true,
-  edges:false, persp:true, turntable:false, led:true, labels:false, trails:true, ghostBase:false, hover:null, views:[], collapsed:new Set(), playing:false, playDir:1, filter:'', clashes:[]
+  edges:false, persp:true, turntable:false, led:true, labels:false, trails:true, ghostBase:false, hover:null, views:[], collapsed:new Set(), playing:false, playDir:1, filter:'', clashes:[], model:(PRODUCT.models||[{key:'default'}])[0].key, scenario:'S0', dirty:{}
 };
 const parts=new Map();
+const curModel=()=>(PRODUCT.models||[]).find(m=>m.key===state.model)||{};
+const isStatic=()=>!!curModel().static;
 const log=(msg,cls='')=>{const o=$('#out');const t=new Date().toLocaleTimeString('ja-JP',{hour12:false});o.insertAdjacentHTML('beforeend',`<div><span class="t">${t}</span> <span class="${cls}">${msg}</span></div>`);o.scrollTop=o.scrollHeight;};
 
 /* ───────── renderer / scene ───────── */
@@ -669,7 +695,7 @@ const illuMat=new THREE.MeshLambertMaterial({color:0xf7f8fa,polygonOffset:true,p
 const ghostMat=new THREE.MeshBasicMaterial({color:0x2f7de1,transparent:true,opacity:0.08,depthWrite:false,side:THREE.DoubleSide});
 let glowMat=null;
 // explode trails
-const trailGeo=new THREE.BufferGeometry(); trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(PART_DEFS.length*2*3),3));
+const trailGeo=new THREE.BufferGeometry(); trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(512*2*3),3));
 const trailMat=new THREE.LineDashedMaterial({color:0x5d6675,dashSize:3,gapSize:2.5,transparent:true,opacity:0.7});
 const trails=new THREE.LineSegments(trailGeo,trailMat); trails.frustumCulled=false; scene.add(trails);
 const ghostGroup=new THREE.Group(); scene.add(ghostGroup);
@@ -856,6 +882,29 @@ function select(ids,add=false){if(!add)state.selection.clear();for(const id of i
 function onSelectionChange(){applyMaterials();renderTree();renderProps();renderBom();renderMeasure();$('#stSel').textContent=`${state.selection.size}/${PART_DEFS.length} 部品を選択`;}
 function partsIn(pred){return PART_DEFS.filter(pred).map(d=>d.id);}
 
+/* ───────── model / scenario switching ───────── */
+function resetModel(keepParams){
+  for(const rt of parts.values()){rt.mat.dispose();}parts.clear();
+  state.selection.clear();state.hidden.clear();state.clashes=[];state.explode=0;explodeAnim=null;state.playing=false;setPlayIcon();
+  if(!keepParams){state.params={...DEFAULT_PARAMS};state.dirty={};}
+  buildModel();renderAll();syncControls();applyExplode();$('#hudClash').hidden=true;$('#stSel').textContent=`0/${PART_DEFS.length} 部品を選択`;setTimeout(()=>fitAll(400),60);
+}
+function switchModel(key){
+  if(!PRODUCT.models||key===state.model)return;const m=PRODUCT.models.find(x=>x.key===key);if(!m)return;
+  const keep={...state.params};state.model=key;m.activate();state.params={...DEFAULT_PARAMS,...keep};
+  if(typeof applyScenario==='function')applyScenario(state.scenario);
+  $('#prodTag').textContent=m.tag||PRODUCT.tag;$('#revTag').textContent=m.rev||PRODUCT.rev;$('#ledRow').hidden=!PRODUCT.hasLed;
+  $$('#modelSwitch button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.model===key));
+  resetModel(true);log(`モデル切替: ${m.label}${m.static?' (固定ジオメトリ · パラメータ変更は再生成が必要)':''}`);
+}
+function setScenario(id){if(typeof applyScenario!=='function')return;state.scenario=id;applyScenario(id);resetModel(true);$('#prodTag').textContent=`· CAD ${PART_DEFS.length} 品番 / ${PART_DEFS.reduce((n,d)=>n+(d.pieces||d.qty),0)} 点 · ${id}`;const sc=(typeof SCENARIOS!=='undefined'?SCENARIOS:[]).find(s=>s.id===id);log(`シナリオ: ${sc?sc.name:id} → ${PART_DEFS.length} 品番 / ${PART_DEFS.reduce((n,d)=>n+(d.pieces||d.qty),0)} 点`);}
+function scenarioStats(sc){ // from kernel volumes, no geometry build needed
+  const all=(typeof ALL_PART_DEFS!=='undefined'?ALL_PART_DEFS:PART_DEFS);const rm=new Set(sc.remove||[]),ad=new Set(sc.add||[]);
+  const defs=all.filter(d=>(d.alt?ad.has(d.id):!rm.has(d.id)));
+  let mass=0,pieces=0,fast=0;for(const d of defs){const st=parts.get(d.id)&&parts.get(d.id).state;const mat=st?st.mat:d.mat;const q=st?st.qty:d.qty;const vol=d.vol!=null?d.vol:(parts.get(d.id)?parts.get(d.id).vol:0);mass+=vol/1000*(MATERIALS[mat]||{d:1}).d*(d.qtyInGeom?1:q);pieces+=d.pieces||q;if(d.fastener)fast+=d.pieces||q;}
+  return {numbers:defs.length,pieces,fasteners:fast,mass};
+}
+
 /* ───────── tree ───────── */
 const ICONS={eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',eyeOff:'<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A10 10 0 0 1 21 12a10 10 0 0 1-2 3M6.6 6.6A10 10 0 0 0 3 12a10 10 0 0 0 11 6.9"/></svg>',chev:'<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',chevD:'<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>'};
 function renderTree(){
@@ -950,15 +999,26 @@ function renderProps(){
 let rebuildTimer=null;
 function computeResults(){const gm={};for(const g of GROUPS)gm[g.id]=PART_DEFS.filter(d=>d.group===g.id).reduce((t,d)=>t+parts.get(d.id).mass,0);return PRODUCT.results(state.ctx,state.assyBox||new THREE.Box3(),gm,state.totalMass);}
 function renderParam(){
-  const el=$('#param');const p=state.params;const res=computeResults();
-  el.innerHTML=`<div class="psec"><h4>設計パラメータ</h4>${PARAM_DEFS.length?'':`<div class="pempty">${PRODUCT.paramNote||'このモデルにはパラメータがありません。'}</div>`}${PARAM_DEFS.map(pd=>`<div class="param"><div class="t"><span>${pd.label}<small>${pd.k}</small></span><output>${fmt(p[pd.k],pd.step<1?1:0)} ${pd.unit}</output></div><input type="range" data-param="${pd.k}" min="${pd.min}" max="${pd.max}" step="${pd.step}" value="${p[pd.k]}" aria-label="${pd.label}"></div>`).join('')}</div>
+  const el=$('#param');const p=state.params;const res=computeResults();const stat=isStatic();const dirtyN=Object.keys(state.dirty).length;
+  let html=`<div class="psec"><h4>設計パラメータ${stat&&dirtyN?`<span class="dirty">未反映 ${dirtyN}</span>`:''}</h4>${PARAM_DEFS.length?'':`<div class="pempty">${PRODUCT.paramNote||'このモデルにはパラメータがありません。'}</div>`}${stat&&PARAM_DEFS.length?`<div class="pempty" style="padding-bottom:6px">${curModel().paramNote||'固定ジオメトリです。'}${dirtyN?`<div style="margin-top:6px"><button class="mini" id="paramExport2">変更を JSON で書き出し</button> <button class="mini" id="paramRevert">変更を破棄</button></div>`:''}</div>`:''}${PARAM_DEFS.map(pd=>`<div class="param"><div class="t"><span>${pd.label}<small>${pd.k}</small>${state.dirty[pd.k]!=null?`<span class="dirty" title="生成時: ${state.dirty[pd.k]}">変更</span>`:''}</span><output>${fmt(p[pd.k],pd.step<1?1:0)} ${pd.unit}</output></div><input type="range" data-param="${pd.k}" min="${pd.min}" max="${pd.max}" step="${pd.step}" value="${p[pd.k]}" aria-label="${pd.label}"></div>`).join('')}</div>
     <div class="psec"><h4>目標と計算結果</h4><table class="targets"><thead><tr><th>項目</th><th>計算値</th><th>目標</th><th></th></tr></thead><tbody>
-    ${TARGETS.map(t=>{const v=res[t.k];const ok=v<=t.target;return `<tr><td>${t.label}</td><td>${fmt(v,t.unit==='g'?0:1)} ${t.unit}</td><td>${t.op} ${t.target} ${t.unit}</td><td><span class="stat ${ok?'ok':'bad'}"><i></i>${ok?'OK':'NG'}</span></td></tr>`;}).join('')}</tbody></table></div>
-    <div class="psec"><h4>質量内訳 (サブAssy)</h4>${GROUPS.map(g=>{const m=PART_DEFS.filter(d=>d.group===g.id).reduce((s,d)=>s+parts.get(d.id).mass,0);return `<div class="prow"><span class="k"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${g.color};margin-right:6px"></span>${g.id}</span><span class="v">${fmt(m,0)} g<div class="bar"><i style="width:${m/state.totalMass*100}%;background:${g.color}"></i></div></span></div>`;}).join('')}</div>`;
+    ${TARGETS.map(t=>{const v=res[t.k];const ok=v<=t.target;return `<tr><td>${t.label}</td><td>${fmt(v,t.unit==='g'?0:t.unit==='個'?0:1)} ${t.unit}</td><td>${t.op} ${t.target} ${t.unit}</td><td><span class="stat ${ok?'ok':'bad'}"><i></i>${ok?'OK':'NG'}</span></td></tr>`;}).join('')}</tbody></table></div>`;
+  if(typeof SCENARIOS!=='undefined'&&SCENARIOS.length>1&&!curModel().noScenarios){
+    const base=scenarioStats(SCENARIOS[0]);const rows=SCENARIOS.map(sc=>({sc,st:scenarioStats(sc)}));const maxP=Math.max(...rows.map(r=>r.st.pieces));
+    const dl=(v,b,u,d=0)=>{const x=v-b;return `<span class="delta ${x<0?'neg':x>0?'pos':''}">${x>0?'+':''}${fmt(x,d)}${u}</span>`;};
+    html+=`<div class="psec"><h4>部品数削減シナリオ</h4>${rows.map(({sc,st})=>`<label class="scen ${state.scenario===sc.id?'active':''}" data-scen="${sc.id}"><input type="radio" name="scen" ${state.scenario===sc.id?'checked':''}><span><b style="font-weight:500">${sc.name}</b></span><span class="n"><b>${st.pieces}</b> 点 · ${st.numbers} 品番</span><span class="d">${sc.desc}</span></label>`).join('')}</div>
+    <div class="psec"><h4>シナリオ比較 (ベースライン比)</h4><table class="cmp"><thead><tr><th>案</th><th>点数</th><th>品番</th><th>締結</th><th>質量</th></tr></thead><tbody>${rows.map(({sc,st})=>`<tr class="${state.scenario===sc.id?'active':''}" data-scen="${sc.id}"><td>${sc.id} ${sc.name}<div class="bar"><i style="width:${st.pieces/maxP*100}%"></i></div></td><td>${st.pieces}<br>${dl(st.pieces,base.pieces,'')}</td><td>${st.numbers}<br>${dl(st.numbers,base.numbers,'')}</td><td>${st.fasteners}<br>${dl(st.fasteners,base.fasteners,'')}</td><td>${fmt(st.mass,0)} g<br>${dl(st.mass,base.mass,' g')}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  html+=`<div class="psec"><h4>質量内訳 (サブAssy)</h4>${GROUPS.map(g=>{const m=PART_DEFS.filter(d=>d.group===g.id).reduce((s,d)=>s+parts.get(d.id).mass,0);return `<div class="prow"><span class="k"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${g.color};margin-right:6px"></span>${g.id}</span><span class="v">${fmt(m,0)} g<div class="bar"><i style="width:${m/state.totalMass*100}%;background:${g.color}"></i></div></span></div>`;}).join('')}</div>`;
+  el.innerHTML=html;
   el.querySelectorAll('[data-param]').forEach(inp=>{inp.oninput=e=>{const k=e.target.dataset.param,pd=PARAM_DEFS.find(x=>x.k===k);p[k]=+e.target.value;e.target.previousElementSibling.querySelector('output').textContent=`${fmt(p[k],pd.step<1?1:0)} ${pd.unit}`;
-    if(k==='ledHue'){applyMaterials();return;}clearTimeout(rebuildTimer);rebuildTimer=setTimeout(()=>{buildModel();renderAll();log(`パラメータ ${k} = ${p[k]} → モデル再生成`);},60);};});
+    if(k==='ledHue'){applyMaterials();return;}
+    if(isStatic()){if(p[k]!==DEFAULT_PARAMS[k])state.dirty[k]=DEFAULT_PARAMS[k];else delete state.dirty[k];clearTimeout(rebuildTimer);rebuildTimer=setTimeout(renderParam,400);return;}
+    clearTimeout(rebuildTimer);rebuildTimer=setTimeout(()=>{buildModel();renderAll();log(`パラメータ ${k} = ${p[k]} → モデル再生成`);},60);};});
+  el.querySelectorAll('[data-scen]').forEach(n=>n.onclick=e=>{if(n.dataset.scen!==state.scenario)setScenario(n.dataset.scen);});
+  const ex2=el.querySelector('#paramExport2');if(ex2)ex2.onclick=()=>$('#exportParams').click();
+  const rv=el.querySelector('#paramRevert');if(rv)rv.onclick=()=>{state.params={...DEFAULT_PARAMS};state.dirty={};renderParam();};
 }
-
 /* ───────── BOM / steps / measure ───────── */
 function renderBom(){
   const rows=PART_DEFS.map((d,i)=>{const rt=parts.get(d.id),s=rt.state;const g=GROUPS.find(x=>x.id===d.group);
@@ -1144,7 +1204,11 @@ $('#measureSel').onclick=()=>showBottom('measure');
 $('#measureAll').onclick=()=>{select([]);showBottom('measure');};
 $('#clash').onclick=runClash;
 $('#openParam').onclick=()=>{expandDock('right');showRight('param');};
-$('#paramReset').onclick=()=>{state.params={...DEFAULT_PARAMS};$('#ledPower').value=DEFAULT_PARAMS.ledPower;buildModel();renderAll();log('パラメータを初期値に戻しました');};
+$('#paramReset').onclick=()=>{state.params={...DEFAULT_PARAMS};state.dirty={};if(DEFAULT_PARAMS.ledPower!=null)$('#ledPower').value=DEFAULT_PARAMS.ledPower;if(isStatic()){renderParam();}else{buildModel();renderAll();}log('パラメータを初期値に戻しました');};
+$('#exportParams').onclick=async()=>{const data={product:PRODUCT.assyInst,model:state.model,scenario:state.scenario,params:state.params,changed:Object.keys(state.dirty),exported:new Date().toISOString()};const s=JSON.stringify(data,null,2);
+  try{await navigator.clipboard.writeText(s);log('CAD 再生成パラメータ (JSON) をクリップボードにコピーしました。params.json に保存して <b>python3 wheelchair-cad/regen.py params.json</b> を実行してください','g');}catch{log('クリップボードに書き込めませんでした。出力タブの JSON をコピーしてください','w');}
+  $('#out').insertAdjacentHTML('beforeend',`<pre style="margin:4px 0;color:var(--muted)">${s}</pre>`);showBottom('out');};
+$$('#modelSwitch button').forEach(b=>b.onclick=()=>switchModel(b.dataset.model));
 $('#paramOpt').onclick=()=>{const t=TARGETS[0].target;let it=0;while(state.totalMass>t&&it<40){if(!PRODUCT.optimizeStep(state.params))break;buildModel();it++;}
   renderAll();expandDock('right');showRight('param');log(`質量最適化: ${it} 反復 → 総質量 ${fmt(state.totalMass,0)} g (目標 ≤ ${t} g)`,state.totalMass<=t?'g':'w');};
 $('#exportJson').onclick=async()=>{const data={product:PRODUCT.assyInst,params:state.params,results:computeResults(),steps:seqSorted().map((r,i)=>({step:i+1,id:r.def.id,name:r.state.name,tool:r.state.tool,direction:repVec(r).toArray().map(v=>+v.toFixed(1))})),parts:PART_DEFS.map(d=>({id:d.id,...parts.get(d.id).state,volume_cm3:+(parts.get(d.id).vol/1000).toFixed(3),mass_g:+parts.get(d.id).mass.toFixed(2),group:d.group}))};
@@ -1152,12 +1216,13 @@ $('#exportJson').onclick=async()=>{const data={product:PRODUCT.assyInst,params:s
 $('#copyBom').onclick=async()=>{const tsv=['部品番号\t名称\tEnglish\tAssy\t材質\t数量\t体積cm3\t質量g\tMakeBuy\t工程\t工具',...PART_DEFS.map(d=>{const r=parts.get(d.id);return [d.id,r.state.name,d.en,d.group,r.state.mat,r.state.qty,(r.vol/1000).toFixed(2),r.mass.toFixed(1),r.state.mb,r.state.seq,r.state.tool].join('\t');})].join('\n');try{await navigator.clipboard.writeText(tsv);log('BOM (TSV) をコピーしました','g');}catch{log('クリップボードに書き込めませんでした','w');}};
 function syncControls(){$$('[data-rm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rm===state.renderMode));$$('[data-cm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.cm===state.colorMode));$$('[data-es]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.es===state.explodeStyle));$$('[data-sq]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.sq===state.explodeSeq));$$('[data-ax]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ax===state.section.axis));$('#secOn').checked=state.section.on;$('#secPos').value=state.section.pos;}
 document.addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea'))return;const k=e.key.toLowerCase();
-  if(k==='f')fitAll();else if(k==='e')animateExplode(state.explode>50?0:100,900);else if(k===' '){e.preventDefault();togglePlay();}else if(k==='arrowright'){e.preventDefault();$('#stepNext').click();}else if(k==='arrowleft'){e.preventDefault();$('#stepPrev').click();}
+  if(k==='f')fitAll();else if(k==='m'&&PRODUCT.models){const i=PRODUCT.models.findIndex(x=>x.key===state.model);switchModel(PRODUCT.models[(i+1)%PRODUCT.models.length].key);}else if(k==='e')animateExplode(state.explode>50?0:100,900);else if(k===' '){e.preventDefault();togglePlay();}else if(k==='arrowright'){e.preventDefault();$('#stepNext').click();}else if(k==='arrowleft'){e.preventDefault();$('#stepPrev').click();}
   else if(k==='escape'){if(document.body.classList.contains('present'))setPresent(false);else select([]);}else if(k==='i')goTo(VIEWS.iso);else if(k==='p')setPresent(!document.body.classList.contains('present'));else if(k==='s')$('#toggleSec').click();else if(k==='l')toggleLabels();
   else if(k==='h'&&state.selection.size)$('#hideSel').click();else if(k==='a'&&e.ctrlKey){e.preventDefault();select(PART_DEFS.map(d=>d.id));}});
 function renderAll(){renderTree();renderProps();renderBom();renderSteps();renderMeasure();renderParam();renderSets();}
 
 /* ───────── init ───────── */
+if(PRODUCT.models){const ms=$('#modelSwitch');ms.classList.add('show');ms.innerHTML=PRODUCT.models.map(m=>`<button data-model="${m.key}" aria-pressed="${m.key===state.model}" title="${m.title||''}">${m.label}</button>`).join('');ms.querySelectorAll('button').forEach(b=>b.onclick=()=>switchModel(b.dataset.model));}
 $('#prodMark').textContent=PRODUCT.mark;$('#prodName').textContent=PRODUCT.name;$('#prodTag').textContent=PRODUCT.tag;$('#crumbA').textContent=PRODUCT.crumbA;$('#crumbB').textContent=PRODUCT.crumbB;$('#revTag').textContent=PRODUCT.rev;document.title=PRODUCT.name;$('#ledRow').hidden=!PRODUCT.hasLed;
 resize();buildModel();renderAll();applyCamera();fitAll(0);applyCamera();
 const presets=[['初期ビュー (等角)',{...VIEWS.iso}],['正面',{...VIEWS.front}],['全分解 (順次)',{...VIEWS.iso,explode:100}],['断面 X · 透過',{theta:0.35,phi:1.25,section:{on:true,axis:'x',pos:0,flip:false},renderMode:'ghost'}]];

@@ -57,6 +57,29 @@ svg.i{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stro
 .abtn:hover{background:rgba(255,255,255,.22)}
 .abtn[aria-pressed="true"]{background:var(--accent-ink);color:var(--accent)}
 
+/* model switch + scenarios */
+.mswitch{display:none;gap:0;border:1px solid rgba(255,255,255,.35);border-radius:3px;overflow:hidden;height:26px}
+.mswitch.show{display:inline-flex}
+.mswitch button{background:none;border:0;color:inherit;padding:0 10px;font-size:12px;white-space:nowrap;border-right:1px solid rgba(255,255,255,.3)}
+.mswitch button:last-child{border-right:0}
+.mswitch button[aria-pressed="true"]{background:var(--accent-ink);color:var(--accent);font-weight:500}
+.dirty{display:inline-block;padding:1px 7px;border-radius:9px;background:var(--warn);color:#fff;font-size:10.5px;font-weight:600;margin-left:6px}
+.scen{display:grid;grid-template-columns:18px 1fr auto;gap:4px 8px;align-items:start;padding:6px 10px;border-bottom:1px solid var(--line2);cursor:pointer;font-size:12.5px}
+.scen:hover{background:var(--panel2)}
+.scen.active{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.scen input{margin:3px 0 0;accent-color:var(--accent)}
+.scen .d{color:var(--muted);font-size:11.5px;grid-column:2/4}
+.scen .n{font:11.5px var(--mono);color:var(--muted);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.scen .n b{color:var(--text);font-weight:500}
+.delta{font-family:var(--mono);font-size:11px}
+.delta.neg{color:var(--ok)}.delta.pos{color:var(--bad)}
+.cmp{width:100%;border-collapse:collapse;font-size:11.5px}
+.cmp th{font-weight:500;color:var(--muted);text-align:right;padding:4px 8px;border-bottom:1px solid var(--line2);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase}
+.cmp th:first-child,.cmp td:first-child{text-align:left}
+.cmp td{padding:4px 8px;border-bottom:1px solid var(--line2);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cmp td:first-child{font-family:var(--sans)}
+.cmp tr.active td{background:var(--accent-soft)}
+.cmp .bar{margin-top:3px;height:4px}
 /* ribbon */
 .ribbon{background:var(--chrome);border-bottom:1px solid var(--line);flex:none;position:relative;z-index:30}
 .rtabs{display:flex;gap:2px;padding:4px 8px 0;border-bottom:1px solid var(--line2);align-items:flex-end}

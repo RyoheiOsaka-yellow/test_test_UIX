@@ -1,5 +1,5 @@
 /* ───────── design data: アクティブ車椅子 (リジッドフレーム) ───────── */
-const MATERIALS={
+const LIVE_MATERIALS={
   'アルミ 7005':{d:2.78,cls:'metal'},'アルミ 6061':{d:2.70,cls:'metal'},'チタン Ti-6Al-4V':{d:4.43,cls:'metal'},'SUS304':{d:7.93,cls:'metal'},
   'CFRP':{d:1.55,cls:'composite'},'ナイロン 66':{d:1.14,cls:'plastic'},'ABS':{d:1.05,cls:'plastic'},'ポリウレタン (ソリッド)':{d:1.20,cls:'elastomer'},
   'タイヤ (空気入り 相当)':{d:0.45,cls:'elastomer'},'ゴム (グリップ)':{d:1.10,cls:'elastomer'},'ポリエステル布':{d:0.60,cls:'textile'},'ウレタンフォーム':{d:0.06,cls:'foam'}
@@ -10,8 +10,8 @@ const GROUPS=[
   {id:'A3',name:'シート Assy',color:'#8b5cd6'},
   {id:'A4',name:'走行安全部品',color:'#3fae6a'}
 ];
-const DEFAULT_PARAMS={seatWidth:400,seatDepth:420,seatHeightF:480,seatHeightR:440,wheelInch:24,camber:3,backH:380,casterInch:5,axleOffset:0};
-const PARAM_DEFS=[
+const LIVE_PARAMS={seatWidth:400,seatDepth:420,seatHeightF:480,seatHeightR:440,wheelInch:24,camber:3,backH:380,casterInch:5,axleOffset:0};
+const PARAM_DEFS_ALL=[
   {k:'seatWidth',label:'座幅',unit:'mm',min:340,max:480,step:10},
   {k:'seatDepth',label:'座奥行',unit:'mm',min:360,max:480,step:10},
   {k:'seatHeightF',label:'前座高',unit:'mm',min:430,max:530,step:5},
@@ -22,7 +22,7 @@ const PARAM_DEFS=[
   {k:'casterInch',label:'キャスター径',unit:'inch',min:3,max:6,step:1},
   {k:'axleOffset',label:'アクスル前後位置',unit:'mm',min:-60,max:60,step:5}
 ];
-const TARGETS=[
+const LIVE_TARGETS=[
   {k:'mass',label:'総質量',unit:'g',op:'≤',target:12000},
   {k:'width',label:'全幅 (JIS T 9201)',unit:'mm',op:'≤',target:700},
   {k:'length',label:'全長 (JIS T 9201)',unit:'mm',op:'≤',target:1200},
@@ -44,7 +44,7 @@ function frameMeshes(c){
   m.push(tube(V3(xf+160,120,-(sw/2-45)),V3(xf+160,120,sw/2-45),13,11)); // footrest cross bar
   return m;
 }
-const PART_DEFS=[
+const LIVE_PART_DEFS=[
   {id:'P-301',seq:1,tool:'手作業 (面ファスナー)',name:'シートクッション',en:'Seat Cushion (contoured foam)',group:'A3',mat:'ウレタンフォーム',mb:'buy',color:'#26282c',qty:1,
     build:c=>({pos:c.seatMid.clone().add(V3(0,34,0)),quat:rotZ(c.slope),explode:V3(0,300,0),meshes:[{g:box(c.p.seatDepth-30,50,c.sw-10)},{g:box(c.p.seatDepth-60,14,c.sw-40),pos:[0,32,0]}]})},
   {id:'P-103',seq:2,tool:'QR ボタン押下',name:'クイックリリースアクスル',en:'Quick-release Axle 1/2"',group:'A1',mat:'チタン Ti-6Al-4V',mb:'buy',color:'#c7cdd6',qty:2,qtyInGeom:true,
@@ -85,15 +85,42 @@ const PART_DEFS=[
   {id:'P-201',seq:17,tool:'—',name:'メインフレーム (リジッド)',en:'Rigid Main Frame φ32 t1.8',group:'A2',mat:'アルミ 7005',mb:'make',color:'#25282d',qty:1,shell:true,
     build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:frameMeshes(c)})}
 ];
-const N_STEPS=PART_DEFS.length;
+/* ───────── model binding: ライブ (プロシージャル) / CAD (CadQuery B-rep) ───────── */
+const CAD_TARGETS=[
+  {k:'mass',label:'総質量',unit:'g',op:'≤',target:12000},
+  {k:'width',label:'全幅 (JIS T 9201)',unit:'mm',op:'≤',target:700},
+  {k:'length',label:'全長 (JIS T 9201)',unit:'mm',op:'≤',target:1200},
+  {k:'height',label:'全高 (JIS T 9201)',unit:'mm',op:'≤',target:1200},
+  {k:'turn',label:'回転円直径',unit:'mm',op:'≤',target:1500},
+  {k:'pieces',label:'部品点数',unit:'個',op:'≤',target:220},
+  {k:'fasteners',label:'締結部品点数',unit:'個',op:'≤',target:90}
+];
+let MATERIALS={...LIVE_MATERIALS,...CAD_MODEL.materials};
+let DEFAULT_PARAMS,PARAM_DEFS,TARGETS,PART_DEFS,ALL_PART_DEFS,SCENARIOS=[],N_STEPS=0;
+let cadDefsCache=null;
+function reseq(defs){defs.forEach((d,i)=>d.seq=i+1);return defs;}
+function applyScenario(id){
+  const sc=SCENARIOS.find(s=>s.id===id)||SCENARIOS[0];
+  if(!sc){PART_DEFS=reseq(ALL_PART_DEFS.slice());N_STEPS=PART_DEFS.length;return;}
+  const rm=new Set(sc.remove),ad=new Set(sc.add);PART_DEFS=reseq(ALL_PART_DEFS.filter(d=>d.alt?ad.has(d.id):!rm.has(d.id)));N_STEPS=PART_DEFS.length;
+}
+function activateLive(){DEFAULT_PARAMS=LIVE_PARAMS;PARAM_DEFS=PARAM_DEFS_ALL;TARGETS=LIVE_TARGETS;ALL_PART_DEFS=LIVE_PART_DEFS;SCENARIOS=[];PART_DEFS=reseq(LIVE_PART_DEFS.slice());N_STEPS=PART_DEFS.length;}
+function activateCad(){if(!cadDefsCache)cadDefsCache=cadPartDefs();DEFAULT_PARAMS=Object.fromEntries(Object.entries(CAD_MODEL.params).map(([k,v])=>[k,+v]));PARAM_DEFS=PARAM_DEFS_ALL;TARGETS=CAD_TARGETS;ALL_PART_DEFS=cadDefsCache;SCENARIOS=CAD_MODEL.scenarios;applyScenario('S0');}
+activateCad();
+
 const PRODUCT={
-  mark:'WC',name:'Wheelchair Assembly Studio',tag:'· アクティブ車椅子 3D 分解 / 設計ダッシュボード',crumbA:'Wheelchair_Product.1',crumbB:'ActiveChair Assy.1',rev:'WC-2026-A · rev 01',assy:'ActiveChair Assy',assyInst:'ActiveChair Assy.1',
+  mark:'WC',name:'Wheelchair Assembly Studio',tag:'· CAD 53 品番 / 254 点 · CadQuery B-rep',crumbA:'Wheelchair_Product.1',crumbB:'ActiveChair Assy.1',rev:'WC-2026-B · CAD rev 02',assy:'ActiveChair Assy',assyInst:'ActiveChair Assy.1',
   hasLed:false,groundY:0,logo:false,ambient:0.55,keyLight:1.25,
+  models:[
+    {key:'cad',label:'CAD',title:'CadQuery (OpenCascade) B-rep · 固定ジオメトリ · 部品数シナリオ',activate:activateCad,static:true,tag:'· CAD 53 品番 / 254 点 · CadQuery B-rep',rev:'WC-2026-B · CAD rev 02',
+     paramNote:'CAD モードは固定ジオメトリです。スライダーの変更は <b>未反映</b> として記録され、「変更を JSON で書き出し」→ <code>python3 wheelchair-cad/regen.py params.json</code> で再生成すると反映されます（約 10 秒）。'},
+    {key:'live',label:'ライブ',title:'プロシージャル生成 · パラメータ即時反映',activate:activateLive,static:false,noScenarios:true,tag:'· ライブ 17 品番 · パラメトリック即時生成',rev:'WC-2026-A · rev 02'}
+  ],
   makeCtx(p){const sw=p.seatWidth,sd=p.seatDepth,shf=p.seatHeightF,shr=p.seatHeightR;const Rw=p.wheelInch*25.4/2,cr=p.casterInch*25.4/2;
     const zr=sw/2+12,xf=sd/2,xr=-sd/2,ax=-sd/2+45+p.axleOffset,zw=sw/2+76,cx=xf+70,cz=sw/2-32,cam=THREE.MathUtils.degToRad(p.camber);
     return {p,sw,sd,shf,shr,Rw,cr,zr,xf,xr,ax,zw,cx,cz,cam,seatMid:V3(0,(shf+shr)/2,0),slope:Math.atan2(shf-shr,sd),center:V3(0,(shf+shr)/2,0)};},
-  results(ctx,box,groupMass,total){const s=box.getSize(V3());const front=box.max.x-ctx.ax;return {mass:total,width:s.z,length:s.x,height:s.y,turn:2*Math.hypot(front,s.z/2),dump:ctx.shf-ctx.shr};},
-  optimizeStep(p){if(p.backH>300){p.backH-=10;return true;}if(p.seatDepth>380){p.seatDepth-=10;return true;}if(p.casterInch>4){p.casterInch-=1;return true;}return false;},
+  results(ctx,box,groupMass,total){const s=box.getSize(V3());const front=box.max.x-ctx.ax;const pieces=PART_DEFS.reduce((n,d)=>n+(d.pieces||d.qty),0);const fast=PART_DEFS.filter(d=>d.fastener).reduce((n,d)=>n+(d.pieces||d.qty),0);return {mass:total,width:s.z,length:s.x,height:s.y,turn:2*Math.hypot(front,s.z/2),dump:ctx.shf-ctx.shr,pieces,fasteners:fast};},
+  optimizeStep(p){if(SCENARIOS.length)return false;if(p.backH>300){p.backH-=10;return true;}if(p.seatDepth>380){p.seatDepth-=10;return true;}if(p.casterInch>4){p.casterInch-=1;return true;}return false;},
   nested:['P-101|P-103','P-101|P-104','P-101|P-102','P-103|P-104','P-102|P-104','P-101|P-202','P-103|P-202','P-201|P-202','P-201|P-203','P-201|P-204','P-201|P-206','P-201|P-303','P-201|P-301','P-201|P-402','P-201|P-401','P-203|P-207','P-203|P-302','P-204|P-205','P-301|P-303','P-201|P-208','P-202|P-208','P-201|P-302','P-203|P-303','P-203|P-301','P-101|P-208','P-104|P-208','P-402|P-202','P-101|P-402','P-104|P-402','P-101|P-401','P-104|P-401','P-102|P-401','P-303|P-302','P-301|P-302'],
   sets:[
     {name:'駆動系 (Drive)',color:'#3aa0d8',pred:d=>d.group==='A1'},
@@ -102,7 +129,10 @@ const PRODUCT={
     {name:'走行安全部品',color:'#3fae6a',pred:d=>d.group==='A4'},
     {name:'購入品 (Buy)',color:'#3b7dd8',pred:(d,st)=>st.mb==='buy'},
     {name:'自製品 (Make)',color:'#3fae5c',pred:(d,st)=>st.mb==='make'},
-    {name:'工具不要で外せる部品',color:'#6b6f7a',pred:(d,st)=>/手作業|QR/.test(st.tool)}
+    {name:'工具不要で外せる部品',color:'#6b6f7a',pred:(d,st)=>/手作業|QR/.test(st.tool)},
+    {name:'締結部品 (ボルト / ナット / ピン / ニップル)',color:'#8a929e',pred:d=>!!d.fastener},
+    {name:'ベアリング',color:'#aab2bd',pred:d=>/ベアリング/.test(d.name)},
+    {name:'代替部品 (シナリオで追加)',color:'#d9861c',pred:d=>!!d.alt}
   ],
-  hints:'ヒント: ▶ で分解再生（クッション → QR アクスル → 駆動輪 …）。JIS T 9201 の寸法目標は「パラメータ」タブで確認できます。'
+  hints:'ヒント: アプリバーの CAD / ライブ でモデルを切替 (M キー)。CAD モードの「パラメータ」タブで部品数削減シナリオを比較できます。'
 };
