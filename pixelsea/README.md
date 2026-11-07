@@ -1,9 +1,9 @@
-# pixelsea — 世界の海の生き物ドット絵集（エビ・ウミウシ・貝・鯨と大型魚・海藻・サンゴ・イカとタコ・クラゲ・カニとヤドカリ）
+# pixelsea — 世界の海の生き物ドット絵集（エビ・ウミウシ・貝・鯨と大型魚・海藻・サンゴ・イカとタコ・クラゲ・カニとヤドカリ・深海魚）
 
 ![every species](docs/montage.png)
 
 [patch-gg/pixelfx](https://github.com/patch-gg/pixelfx) と同じ考え方で作った、**コードから描かれるドット絵**の図鑑です。
-画像ファイルはひとつもありません。エビ 13 種、ウミウシ 12 種、貝 15 種、鯨・大型魚 15 種、海藻 11 種、サンゴ 13 種、イカ・タコ 15 種、クラゲ 12 種、カニ・ヤドカリ 13 種の計 119 種がそれぞれ `src/species/<category>/<name>.js` の小さなモジュールで、
+画像ファイルはひとつもありません。エビ 13 種、ウミウシ 12 種、貝 15 種、鯨・大型魚 15 種、海藻 11 種、サンゴ 13 種、イカ・タコ 15 種、クラゲ 12 種、カニ・ヤドカリ 13 種、深海魚 14 種の計 133 種がそれぞれ `src/species/<category>/<name>.js` の小さなモジュールで、
 時刻 `t` を渡すとその瞬間の姿を 64×48〜128×56 px のフレームに描きます。泳ぎ、脚の動き、触角の揺れ、エラの脈動、水管の伸び縮み、潮吹き、潮流に揺れる葉、ポリプの開閉、泡、水面のゆらめきまで全部コードです。
 
 - **ブラウザで動かす**: `npm run gallery` → http://localhost:8080/ でライブ再生。色替え、鏡像、背景切り替え、スプライトシートの書き出しができます。
@@ -92,6 +92,16 @@
 | ウリクラゲ（クシクラゲ）`jelly/urikurage` | オカヤドカリ `crab/okayadokari` |
 | | ユビワサンゴヤドカリ `crab/yubiwa` |
 
+| 深海魚 Deep-sea fish (14) | |
+|---|---|
+| チョウチンアンコウ `deepsea/chouchin` | ハダカイワシ `deepsea/hadakaiwashi` |
+| デメニギス `deepsea/demenigisu` | ヨコエソ `deepsea/yokoeso` |
+| ミツクリザメ `deepsea/mitsukuri` | ソコダラ（イバラヒゲ）`deepsea/sokodara` |
+| ラブカ `deepsea/rabuka` | シンカイクサウオ `deepsea/kusauo` |
+| ホウライエソ `deepsea/houraieso` | ニュウドウカジカ（ブロブフィッシュ）`deepsea/blobfish` |
+| オニキンメ `deepsea/onikinme` | ミズウオ `deepsea/mizuuo` |
+| フクロウナギ `deepsea/fukurounagi` | オオクチホシエソ `deepsea/hoshieso` |
+
 ## 使い方
 
 ```bash
@@ -147,6 +157,7 @@ src/species/     _lib.js   泡・影・コースティクス・砂地・イソ�
                  cephalopod/_body.js  イカ（外套膜・ひれ 3 種・頭と目・腕と触腕・噴射）とタコ（外套膜・目・うねる腕と吸盤）、色素胞の点滅
                  jelly/_body.js       クラゲの拍動（素早く縮んで浮き、ゆっくり沈む）・傘・縁の触手・口腕
                  crab/_body.js        カニ（甲羅 5 形・4 対の脚の横歩き・ハサミ・眼柄）とヤドカリ（貝殻と前半身）
+                 deepsea/_lib.js      マリンスノー・発光器の列・提灯（魚の体は giants/_body.js を流用）
                  <category>/<name>.js 種ごとの meta（和名・英名・学名・生息域・解説・サイズ・ループ）と draw(p, t, o)
 tools/           render / montage / catalog / previews / wallpaper / serve（PNG・GIF エンコーダ内蔵、npm 依存なし）
 gallery/         ライブ再生するギャラリー（index.html から読み込み）

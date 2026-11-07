@@ -118,6 +118,20 @@ import * as mokuzu from "./crab/mokuzu.js";
 import * as yashigani from "./crab/yashigani.js";
 import * as okayadokari from "./crab/okayadokari.js";
 import * as yubiwa from "./crab/yubiwa.js";
+import * as chouchin from "./deepsea/chouchin.js";
+import * as demenigisu from "./deepsea/demenigisu.js";
+import * as mitsukuri from "./deepsea/mitsukuri.js";
+import * as rabuka from "./deepsea/rabuka.js";
+import * as houraieso from "./deepsea/houraieso.js";
+import * as onikinme from "./deepsea/onikinme.js";
+import * as fukurounagi from "./deepsea/fukurounagi.js";
+import * as hadakaiwashi from "./deepsea/hadakaiwashi.js";
+import * as yokoeso from "./deepsea/yokoeso.js";
+import * as sokodara from "./deepsea/sokodara.js";
+import * as kusauo from "./deepsea/kusauo.js";
+import * as blobfish from "./deepsea/blobfish.js";
+import * as mizuuo from "./deepsea/mizuuo.js";
+import * as hoshieso from "./deepsea/hoshieso.js";
 
 export const categories = [
   { id: "shrimp", name: "Shrimp", ja: "エビ", blurb: "Reef cleaners, snappers, dancers and the ones on your plate, from every ocean." },
@@ -129,6 +143,7 @@ export const categories = [
   { id: "cephalopod", name: "Squid & octopus", ja: "イカ・タコ", blurb: "Jet-propelled, colour-shifting and far too clever: squids, cuttlefish and octopuses." },
   { id: "jelly", name: "Jellyfish", ja: "クラゲ", blurb: "Bells that pulse and trail: moon jellies, sea nettles, box jellies and the ones that glow." },
   { id: "crab", name: "Crabs & hermits", ja: "カニ・ヤドカリ", blurb: "Scuttlers in armour, from tide-pool hermits to the giant spider crab." },
+  { id: "deepsea", name: "Deep-sea fish", ja: "深海魚", blurb: "Lanterns, fangs and see-through heads: the fish of the dark below a thousand metres." },
 ];
 export const species = {
   "shrimp/harlequin": harlequin,
@@ -250,4 +265,18 @@ export const species = {
   "crab/honyadokari": honyadokari,
   "crab/okayadokari": okayadokari,
   "crab/yubiwa": yubiwa,
+  "deepsea/chouchin": chouchin,
+  "deepsea/demenigisu": demenigisu,
+  "deepsea/mitsukuri": mitsukuri,
+  "deepsea/rabuka": rabuka,
+  "deepsea/houraieso": houraieso,
+  "deepsea/onikinme": onikinme,
+  "deepsea/fukurounagi": fukurounagi,
+  "deepsea/hadakaiwashi": hadakaiwashi,
+  "deepsea/yokoeso": yokoeso,
+  "deepsea/sokodara": sokodara,
+  "deepsea/kusauo": kusauo,
+  "deepsea/blobfish": blobfish,
+  "deepsea/mizuuo": mizuuo,
+  "deepsea/hoshieso": hoshieso,
 };

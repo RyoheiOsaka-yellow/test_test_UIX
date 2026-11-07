@@ -1,6 +1,6 @@
 # Catalog / 図鑑
 
-119 species, every one a small piece of code in `src/species/<category>/<name>.js`.
+133 species, every one a small piece of code in `src/species/<category>/<name>.js`.
 
 | | 和名 | Name | Scientific name | Region | Size |
 |---|---|---|---|---|---|
@@ -132,6 +132,21 @@
 | ![](previews/crab-honyadokari.gif) | ホンヤドカリ | Common hermit crab (`crab/honyadokari`) | *Pagurus filholi* | Japan, Korea (tide pools) | 1–2 cm |
 | ![](previews/crab-okayadokari.gif) | オカヤドカリ | Land hermit crab (`crab/okayadokari`) | *Coenobita purpureus* | Okinawa and the Nansei Islands (beaches and coastal forest) | shell 3 cm |
 | ![](previews/crab-yubiwa.gif) | ユビワサンゴヤドカリ | Electric blue hermit crab (`crab/yubiwa`) | *Calcinus elegans* | Indo-Pacific reefs; Okinawa | shell 2 cm |
+| **深海魚 Deep-sea fish** | | | | | |
+| ![](previews/deepsea-chouchin.gif) | チョウチンアンコウ | Footballfish (`deepsea/chouchin`) | *Himantolophus sagamius* | Deep Pacific, 200–800 m; named for Sagami Bay | female 40 cm, male 4 cm |
+| ![](previews/deepsea-demenigisu.gif) | デメニギス | Barreleye (`deepsea/demenigisu`) | *Macropinna microstoma* | North Pacific, 600–800 m; Suruga Bay | 15 cm |
+| ![](previews/deepsea-mitsukuri.gif) | ミツクリザメ | Goblin shark (`deepsea/mitsukuri`) | *Mitsukurina owstoni* | Deep slopes worldwide, 200–1300 m; Sagami Bay and Suruga Bay | 3–4 m |
+| ![](previews/deepsea-rabuka.gif) | ラブカ | Frilled shark (`deepsea/rabuka`) | *Chlamydoselachus anguineus* | Deep slopes worldwide, 500–1000 m; Suruga Bay | 2 m |
+| ![](previews/deepsea-houraieso.gif) | ホウライエソ | Pacific viperfish (`deepsea/houraieso`) | *Chauliodus macouni* | North Pacific, 200–1500 m; Japan | 30 cm |
+| ![](previews/deepsea-onikinme.gif) | オニキンメ | Fangtooth (`deepsea/onikinme`) | *Anoplogaster cornuta* | Deep oceans worldwide, 500–2000 m | 16 cm |
+| ![](previews/deepsea-fukurounagi.gif) | フクロウナギ | Gulper eel (`deepsea/fukurounagi`) | *Eurypharynx pelecanoides* | Deep oceans worldwide, 500–3000 m | 75 cm |
+| ![](previews/deepsea-hadakaiwashi.gif) | ハダカイワシ | Lanternfish (`deepsea/hadakaiwashi`) | *Diaphus watasei* | Mesopelagic worldwide, 300–1000 m by day, near the surface by night | 10 cm |
+| ![](previews/deepsea-yokoeso.gif) | ヨコエソ | Bristlemouth (`deepsea/yokoeso`) | *Cyclothone alba* | Mesopelagic worldwide, 300–1500 m | 3–5 cm |
+| ![](previews/deepsea-sokodara.gif) | ソコダラ（イバラヒゲ） | Pacific grenadier (`deepsea/sokodara`) | *Coryphaenoides acrolepis* | North Pacific slopes, 300–3700 m; Japan | 90 cm |
+| ![](previews/deepsea-kusauo.gif) | シンカイクサウオ | Mariana snailfish (`deepsea/kusauo`) | *Pseudoliparis swirei* | Mariana Trench, 6000–8000 m; relatives off Japan to 8300 m | 25 cm |
+| ![](previews/deepsea-blobfish.gif) | ニュウドウカジカ（ブロブフィッシュ） | Blobfish (`deepsea/blobfish`) | *Psychrolutes marcidus* | Australia and New Zealand, 600–1200 m | 30 cm |
+| ![](previews/deepsea-mizuuo.gif) | ミズウオ | Longnose lancetfish (`deepsea/mizuuo`) | *Alepisaurus ferox* | Oceans worldwide, 200–1800 m; washed up on Suruga Bay beaches in winter | 2 m |
+| ![](previews/deepsea-hoshieso.gif) | オオクチホシエソ | Stoplight loosejaw (`deepsea/hoshieso`) | *Malacosteus niger* | Deep oceans worldwide, 500–1000 m | 25 cm |
 
 ## エビ Shrimp
 
@@ -1358,3 +1373,147 @@ tags: hermit crab, crustacean, land, okinawa, protected, loop
 A reef hermit crab dressed to be noticed: black legs ringed in electric blue, orange antennae and blue-and-black eyestalks, housed in a small cone or cerith shell. It picks algae off the rock and is a favourite of marine aquarists.
 
 tags: hermit crab, crustacean, reef, blue, okinawa, loop
+
+## 深海魚 Deep-sea fish
+
+Lanterns, fangs and see-through heads: the fish of the dark below a thousand metres.
+
+### チョウチンアンコウ — Footballfish
+
+*Himantolophus sagamius* · Deep Pacific, 200–800 m; named for Sagami Bay · female 40 cm, male 4 cm · `deepsea/chouchin` · 80×56 px, 4.6 s loop at 30 fps
+
+深海の提灯持ち。黒くイボだらけの球のような体で、口の上の柄の先に細菌の光る球をぶら下げ、針のような歯の口へ獲物を誘う。親指ほどの雄は匂いで雌を探し、その体に寄生して生きる。
+
+The lantern-fish of the abyss: a black, warty ball of a fish with a glowing bulb on a stalk over its mouth, lit by bacteria, dangled to draw prey into a jaw of needle teeth. The thumb-sized male finds a female by smell and lives as a parasite on her side.
+
+tags: deepsea, anglerfish, glow, lure, japan, loop
+
+### デメニギス — Barreleye
+
+*Macropinna microstoma* · North Pacific, 600–800 m; Suruga Bay · 15 cm · `deepsea/demenigisu` · 72×44 px, 4.4 s loop at 30 fps
+
+頭が透けている魚。緑色の筒状の目が透明なドームの中にあり、自分の頭蓋を通して真上を見上げ、クラゲの影を探してから前に回して食べる。小さな口の上の黒い点は目ではなく鼻孔。
+
+A fish with a see-through head: two green tubular eyes sit inside a transparent dome filled with fluid, looking straight up through its own skull for the silhouettes of jellyfish, then rotating forward to eat. The dark spots over its tiny mouth are not the eyes.
+
+tags: deepsea, transparent, eyes, japan, pacific, loop
+
+### ミツクリザメ — Goblin shark
+
+*Mitsukurina owstoni* · Deep slopes worldwide, 200–1300 m; Sagami Bay and Suruga Bay · 3–4 m · `deepsea/mitsukuri` · 112×48 px, 4.4 s loop at 30 fps
+
+ピンク色でたるんだ体の、生きた化石のサメ。刃のような吻の下に、罠のように顔から飛び出す顎をもち、イカや魚を捕らえる。1898年に相模湾の個体で記載され、今も日本近海で最も多く見つかる。
+
+A living fossil shark, pink and flabby, with a blade of a snout and a jaw that shoots forward out of its face like a trap to seize squid and fish. First described from Sagami Bay in 1898, it is still most often caught off Japan.
+
+tags: deepsea, shark, fossil, jaw, japan, loop
+
+### ラブカ — Frilled shark
+
+*Chlamydoselachus anguineus* · Deep slopes worldwide, 500–1000 m; Suruga Bay · 2 m · `deepsea/rabuka` · 120×44 px, 5 s loop at 30 fps
+
+六つのひだ状のえらと、トカゲのような頭、二十五列に並ぶ三百本の三叉の歯をもつウナギのようなサメ。恐竜の時代から姿を変えていない。ヘビのように身を縮めて襲うとされ、妊娠期間は脊椎動物で最長の3年半。
+
+An eel of a shark with six frilly gill slits, a lizard's head and three hundred trident teeth in twenty-five rows, unchanged since the age of dinosaurs. It is thought to lunge like a snake, and carries its young for three and a half years, longest of any vertebrate.
+
+tags: deepsea, shark, fossil, eel, japan, loop
+
+### ホウライエソ — Pacific viperfish
+
+*Chauliodus macouni* · North Pacific, 200–1500 m; Japan · 30 cm · `deepsea/houraieso` · 96×44 px, 4 s loop at 30 fps
+
+口に収まらないほど長い牙と、自分の半分ほどの魚を呑むために開く蝶番の頭骨、頭の上に垂らす長い背びれの棘のルアー。腹には発光器が列をなす。毎晩数百 m浮上して狩りをする。
+
+Fangs too long for its mouth, a hinged skull that swings open to swallow fish half its size, and a long first dorsal ray it dangles over its head as a lure. Rows of photophores light its belly. It rises hundreds of metres every night to hunt.
+
+tags: deepsea, fangs, glow, pacific, japan, loop
+
+### オニキンメ — Fangtooth
+
+*Anoplogaster cornuta* · Deep oceans worldwide, 500–2000 m · 16 cm · `deepsea/onikinme` · 64×44 px, 3.8 s loop at 30 fps
+
+体の大きさの割に魚でいちばん大きな歯。下顎の牙は長すぎて、口を閉じると脳の横の穴に収まる。鎧のような皮膚のずんぐりした黒い魚で、暗闇で触れたものに食らいつく。
+
+The biggest teeth of any fish for its size: fangs so long the lower pair slide into sockets beside its brain when it shuts its mouth. A stubby black fish with armour-plated skin, it hunts by blundering into whatever it touches in the dark.
+
+tags: deepsea, fangs, black, worldwide, loop
+
+### フクロウナギ — Gulper eel
+
+*Eurypharynx pelecanoides* · Deep oceans worldwide, 500–3000 m · 75 cm · `deepsea/fukurounagi` · 112×52 px, 4.8 s loop at 30 fps
+
+ほとんどが口。ペリカンの袋のような顎は体長の四分の一で、小さな頭骨にゆるくつながる。鞭のような尾の先にピンクの光をもつ。歯はほとんどなく、袋を風船のように広げて小さな甲殻類の群れを呑み込む。
+
+Mostly mouth: a pelican's pouch of a jaw a quarter of its length, hinged loosely to a tiny skull, trailing a whip of a tail with a pink light at the tip. It balloons the pouch open to engulf clouds of small crustaceans, having barely any teeth.
+
+tags: deepsea, eel, mouth, glow, worldwide, loop
+
+### ハダカイワシ — Lanternfish
+
+*Diaphus watasei* · Mesopelagic worldwide, 300–1000 m by day, near the surface by night · 10 cm · `deepsea/hadakaiwashi` · 64×36 px, 3 s loop at 30 fps
+
+地球でいちばん数の多い魚。重さにすれば全漁獲量を超える。触ると剥がれる銀の鱗とイワシのような体、腹には青緑のランプの列。毎晩海面へ上がって餌を食べる、地球最大の大移動の主役。
+
+The most numerous fish on Earth, by weight more than all fisheries catch: a herring-like fish with silver scales that fall off at a touch and rows of blue-green lamps on its belly. Every night it rises to the surface to feed, the greatest migration on the planet.
+
+tags: deepsea, glow, migration, silver, worldwide, loop
+
+### ヨコエソ — Bristlemouth
+
+*Cyclothone alba* · Mesopelagic worldwide, 300–1500 m · 3–5 cm · `deepsea/yokoeso` · 56×32 px, 3.4 s loop at 30 fps
+
+地球でいちばん個体数の多い脊椎動物。数百兆匹いるのに、ほとんど誰も知らない。指ほどの長さの半透明の魚で、ブラシのような歯の大きな口と腹の光の列をもち、あらゆる海の闇に漂う。
+
+The most abundant vertebrate on Earth, by the hundred trillion, and almost nobody has heard of it: a finger-length, half-transparent fish with a wide mouth of bristle teeth and a row of lights along its belly, hanging in the dark of every ocean.
+
+tags: deepsea, tiny, abundant, glow, worldwide, loop
+
+### ソコダラ（イバラヒゲ） — Pacific grenadier
+
+*Coryphaenoides acrolepis* · North Pacific slopes, 300–3700 m; Japan · 90 cm · `deepsea/sokodara` · 112×48 px, 4.8 s loop at 30 fps
+
+ネズミのような尾。大きな頭と大きな目をもち、体は鞭のように細くなる。深海底でいちばんふつうの大型魚で、泥の上を鼻を下にして漂い、死骸の匂いを探す。巨大な目はかすかな光を捉え、浮き袋を鳴らして仲間を呼ぶ。
+
+The rat-tail: a big-headed, big-eyed fish whose body tapers to a whip, the commonest large fish of the deep sea floor, cruising nose-down over the mud sniffing for carrion. Its enormous eyes catch the faintest glow; its swim bladder drums to call mates.
+
+tags: deepsea, floor, rattail, japan, pacific, loop
+
+### シンカイクサウオ — Mariana snailfish
+
+*Pseudoliparis swirei* · Mariana Trench, 6000–8000 m; relatives off Japan to 8300 m · 25 cm · `deepsea/kusauo` · 72×40 px, 4.4 s loop at 30 fps
+
+これまで見つかった中で最も深い場所に住む魚。水深8000 m、水圧800気圧の世界に住む、ピンク色で鱗のないオタマジャクシ形のクサウオ。柔らかくゼリーのような体で、海溝の底に群がる小さなエビを食べる。
+
+The deepest fish ever seen: a pink, scaleless, tadpole-shaped snailfish from eight kilometres down, where the pressure is eight hundred times the surface. It is soft, gelatinous and gentle, and eats the tiny shrimp that swarm the trench floor.
+
+tags: deepsea, trench, deepest, pink, loop
+
+### ニュウドウカジカ（ブロブフィッシュ） — Blobfish
+
+*Psychrolutes marcidus* · Australia and New Zealand, 600–1200 m · 30 cm · `deepsea/blobfish` · 64×44 px, 4.6 s loop at 30 fps
+
+「世界一醜い動物」に選ばれたが、それは不当。深海では大きな頭と垂れた鼻の普通の魚で、水圧が形を保っている。水面に引き上げられると、ゼリーのような肉がしぼんであの有名なピンクの塊になる。海底に座り、流れてくるものを食べる。
+
+Voted the world's ugliest animal, unfairly: at depth it is a normal-looking fish with a big head and drooping nose, held in shape by the pressure. Hauled to the surface, its gelatinous flesh sags into the famous pink blob. It sits on the bottom and eats what drifts past.
+
+tags: deepsea, blob, australia, ugly, cute, loop
+
+### ミズウオ — Longnose lancetfish
+
+*Alepisaurus ferox* · Oceans worldwide, 200–1800 m; washed up on Suruga Bay beaches in winter · 2 m · `deepsea/mizuuo` · 128×56 px, 4.8 s loop at 30 fps
+
+帆のような背びれと牙をもつ2 mの槍のような魚。身が水っぽいので「水魚」。何でも呑み込み、プラスチックも例外ではないため、冬に駿河湾の浜に打ち上がる個体は海洋ごみの調査に使われる。
+
+A two-metre spear of a fish with a sail of a dorsal fin, fangs, and watery flesh that gave it its name (mizu-uo, water fish). It swallows anything, including plastic, so stranded lancetfish on Suruga Bay beaches are used to survey ocean litter.
+
+tags: deepsea, sail, fangs, japan, plastic, loop
+
+### オオクチホシエソ — Stoplight loosejaw
+
+*Malacosteus niger* · Deep oceans worldwide, 500–1000 m · 25 cm · `deepsea/hoshieso` · 80×36 px, 4 s loop at 30 fps
+
+顎の蝶番がゆるく、口の底がないドラゴンフィッシュ。ほかの魚にはない技をもつ。目の下に赤いサーチライトがあるのだ。深海の生き物のほとんどは赤を見られないので、獲物に気づかれない光で狩る。赤を見る色素は、獲物が食べた植物由来。
+
+A black dragonfish with a jaw hinged so loosely it has no floor, and a trick no other fish has: a red searchlight under each eye. Almost nothing in the deep can see red, so it hunts shrimp by a light they cannot detect, seeing red with a pigment borrowed from the plants its prey ate.
+
+tags: deepsea, red light, dragonfish, glow, worldwide, loop
