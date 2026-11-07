@@ -97,6 +97,9 @@ await shot('31_real_overview', `a.camera.position.set(1150, 720, -1250); a.contr
 await shot('32_real_evening', `a.real.hour = 16.75; a.sun(); a.camera.position.set(700, 120, 300); a.controls.target.set(0, 60, 60);`);
 await shot('33_real_night', `a.real.hour = 20; a.sun(); a.camera.position.set(700, 220, 300); a.controls.target.set(0, 60, 60);`);
 await shot('34_real_close', `a.real.hour = 10; a.sun(); a.camera.position.set(120, 60, 120); a.controls.target.set(-40, 30, -20);`);
+await shot('35_road_day', `a.real.hour = 11; a.real.month = 6; a.sun(); a.camera.position.set(-150, 70, 60); a.controls.target.set(-60, 2, -40);`);
+await shot('36_road_street', `a.camera.position.set(-250, 18, 330); a.controls.target.set(-120, 3, 180);`);
+await shot('37_road_night', `a.real.hour = 20; a.sun(); a.roads().update(3); a.camera.position.set(-250, 18, 330); a.controls.target.set(-120, 3, 180);`);
 await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });
 await shot('08_blueprint', ``);
 await page.screenshot({ path: `${out}/09_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));

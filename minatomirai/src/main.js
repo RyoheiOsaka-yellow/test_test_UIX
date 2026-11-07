@@ -14,6 +14,7 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { initConstruction, compassSVG, TOWER_NAME } from './construct.js';
 import { initRealistic, realState } from './realistic.js';
+import { initRoadDetail } from './roads.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
@@ -244,7 +245,7 @@ const makeTextSprite = (text, color, { scale = 0.28, themeColor = null } = {}) =
 // ---------------------------------------------------------------------------
 const groups = {
   terrain: new THREE.Group(), water: new THREE.Group(), green: new THREE.Group(), roads: new THREE.Group(), buildings: new THREE.Group(), edges: new THREE.Group(),
-  bridges: new THREE.Group(), rails: new THREE.Group(), network: new THREE.Group(), station: new THREE.Group(), labels: new THREE.Group(), trees: new THREE.Group(),
+  bridges: new THREE.Group(), rails: new THREE.Group(), network: new THREE.Group(), station: new THREE.Group(), labels: new THREE.Group(), trees: new THREE.Group(), roadDetail: new THREE.Group(),
 };
 for (const [k, g] of Object.entries(groups)) { g.name = k; scene.add(g); }
 const floorGroups = new Map();   // level -> Group (駅構内)
@@ -252,7 +253,7 @@ FLOORS.forEach(f => { const g = new THREE.Group(); g.name = `floor${f.level}`; g
 
 let LEVEL_H = {};
 let expand = 1.0;            // フロア展開倍率
-let terrainSampler = () => 0; let terrainMesh = null; let realistic = null;
+let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null;
 const levelY = (lv, k = expand) => (LEVEL_H[lv] ?? lv * 6) * k;
 
 let buildingMesh = null, buildingMeta = null, buildingStarts = null;
@@ -412,7 +413,7 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displa
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform float uHover, uWindows, uTime, uHide, uNight, uReal; varying float vBid; varying vec3 vWPos;
-        float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }`)
+        float hash21(vec2 p) { p = fract(p * 0.1031); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }`)
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vBid - uHide) < 0.5) discard;')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         {
@@ -422,7 +423,7 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displa
           diffuseColor.rgb *= mix(0.55, 1.0, smoothstep(0.0, 28.0, h));
           if (uReal > 0.5) {
             // 建物ごとの外装の色味: 低層は暖色系の壁、高層はガラス寄り
-            float rb = hash21(vec2(vBid * 0.013, vBid * 0.071));
+            float rb = hash21(vec2(mod(vBid, 997.0) * 0.013, mod(vBid, 1009.0) * 0.071));
             vec3 tint = mix(vec3(0.93, 0.90, 0.85), vec3(0.78, 0.84, 0.92), rb);
             diffuseColor.rgb = mix(diffuseColor.rgb * tint, vec3(0.62, 0.72, 0.82), step(0.75, rb) * 0.5);
             diffuseColor.rgb /= mix(0.55, 1.0, smoothstep(0.0, 28.0, h)); diffuseColor.rgb *= mix(0.72, 1.0, smoothstep(0.0, 14.0, h));
@@ -432,7 +433,7 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displa
             vec2 cell = floor(vec2(u / 3.2, vWPos.y / 3.6));
             vec2 f = fract(vec2(u / 3.2, vWPos.y / 3.6));
             float win = step(0.18, f.x) * step(f.x, 0.82) * step(0.25, f.y) * step(f.y, 0.78);
-            float r = hash21(cell + vec2(vBid * 0.37, vBid * 1.13));
+            float r = hash21(mod(cell, 512.0) + vec2(mod(vBid, 251.0) * 0.37, mod(vBid, 509.0) * 1.13));
             float lit = step(0.62, r) * win;
             float flick = 0.85 + 0.15 * sin(uTime * 0.6 + r * 60.0);
             vec3 warm = mix(vec3(1.0, 0.82, 0.55), vec3(0.75, 0.9, 1.0), step(0.85, r));
@@ -1566,7 +1567,7 @@ bindToggle('chk-network', groups.network); bindToggle('chk-station', groups.stat
 document.getElementById('chk-edges').addEventListener('change', () => applyRepMode());
 bindToggle('chk-bridge', groups.bridges); bindToggle('chk-road', groups.roads); bindToggle('chk-rail', groups.rails); bindToggle('chk-water', groups.water); bindToggle('chk-terrain', groups.terrain); bindToggle('chk-labels', groups.labels); bindToggle('chk-green', groups.green);
 document.getElementById('chk-windows').addEventListener('change', e => { bldUniforms.uWindows.value = e.target.checked ? 1 : 0; });
-const applyTheme = name => { styleName = name; const t = T(); for (const fn of themed) fn(t); if (realistic) realistic.enable(!!t.real); if (!t.real) scene.background = scene.background || new THREE.Color(t.bg); document.getElementById('real-controls').style.display = t.real ? '' : 'none'; document.querySelectorAll('#style-presets button').forEach(b => b.classList.toggle('active', b.dataset.style === name)); document.getElementById('row-windows').style.display = t.bloom ? '' : 'none'; };
+const applyTheme = name => { styleName = name; const t = T(); for (const fn of themed) fn(t); if (realistic) realistic.enable(!!t.real); if (roadDetail) roadDetail.enable(!!t.real); { const c = document.getElementById('chk-network'); if (t.real && c.checked) { c.checked = false; c.dispatchEvent(new Event('change')); } else if (!t.real && !c.checked && c.dataset.autoOff) { c.checked = true; c.dispatchEvent(new Event('change')); } c.dataset.autoOff = t.real && !c.checked ? '1' : ''; } if (!t.real) scene.background = scene.background || new THREE.Color(t.bg); document.getElementById('real-controls').style.display = t.real ? '' : 'none'; document.querySelectorAll('#style-presets button').forEach(b => b.classList.toggle('active', b.dataset.style === name)); document.getElementById('row-windows').style.display = t.bloom ? '' : 'none'; };
 document.querySelectorAll('#style-presets button').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.style)));
 document.querySelectorAll('#rep-presets button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#rep-presets button').forEach(x => x.classList.remove('active')); b.classList.add('active'); repMode = b.dataset.rep; applyRepMode(); }));
 const dispInput = document.getElementById('disp-amount'), dispValue = document.getElementById('disp-value');
@@ -1723,6 +1724,7 @@ async function init() {
   initConstructionUI();
   rebuildTower();
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
+  roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState });
   initRealUI();
   applyTheme(styleName);
   setProgress(1, '完了');
@@ -1730,7 +1732,7 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), real: realState, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
@@ -1763,6 +1765,7 @@ function animate() {
   stepFlow(dt); stepRouteFlow(dt); updateHover(performance.now());
   updateLabels();
   if (realistic) realistic.update(dt);
+  if (roadDetail) roadDetail.update(dt);
   composer.render();
 }
 function initRealUI() {
@@ -1771,7 +1774,7 @@ function initRealUI() {
   hourEl.value = realState.hour; monthEl.value = realState.month; fmt();
   const upd = () => { realState.hour = Number(hourEl.value); realState.month = Number(monthEl.value); fmt(); if (T().real) { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; } };
   hourEl.addEventListener('input', upd); monthEl.addEventListener('input', upd);
-  for (const [id, key] of [['r-shadows', 'shadows'], ['r-ao', 'ao'], ['r-refl', 'reflections'], ['r-photo', 'photo']]) { const el = document.getElementById(id); el.checked = realState[key]; el.addEventListener('change', () => { realState[key] = el.checked; realistic.applyOptions(); }); }
+  for (const [id, key] of [['r-shadows', 'shadows'], ['r-ao', 'ao'], ['r-refl', 'reflections'], ['r-photo', 'photo'], ['r-roads', 'roads'], ['r-traffic', 'traffic']]) { const el = document.getElementById(id); el.checked = realState[key]; el.addEventListener('change', () => { realState[key] = el.checked; realistic.applyOptions(); if (roadDetail) roadDetail.applyOptions(); }); }
   document.querySelectorAll('#r-presets button').forEach(b => b.addEventListener('click', () => { hourEl.value = b.dataset.h; upd(); }));
 }
 init().catch(e => { loadingText.textContent = `読み込みエラー: ${e.message}`; console.error(e); });

@@ -5,7 +5,7 @@ import { Water } from 'three/addons/objects/Water.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const LAT = 35.4578, LON = 139.6318;   // みなとみらい駅
-export const realState = { hour: 15.0, month: 11, shadows: true, ao: true, reflections: true, photo: true, exposure: 1.0 };
+export const realState = { hour: 15.0, month: 11, shadows: true, ao: true, reflections: true, photo: true, roads: true, traffic: true, exposure: 1.0 };
 
 // 太陽位置 (高度・方位) : 簡易式。JST、均時差は無視
 export function sunDirection(hour, month) {

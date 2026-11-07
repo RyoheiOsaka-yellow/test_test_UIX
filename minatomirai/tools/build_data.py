@@ -572,6 +572,29 @@ def build_network(nodes, ways, cache, elev_fn):
             out_links.append([remap[l["a"]], remap[l["b"]], VTYPE[l["vt"]], 1 if l["ow"] else 0] + [c for p in l["p"] for c in (dm(p[0]), dm(p[1]))])
     return out_nodes, out_links
 
+# ---- 橋梁の路面高さ (車線経路用) ---------------------------------------------
+def make_bridge_sampler(brf, zoff):
+    """橋梁 LOD2 の三角形から、(x, y) 直下の最も高い面の高さ (標高, zoff 補正後) を返す関数。"""
+    from shapely.strtree import STRtree
+    tris = []; zs = []
+    for g, f in brf.items():
+        for tri in f["tris"]:
+            (x0, y0, z0), (x1, y1, z1), (x2, y2, z2) = tri
+            if abs((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)) < 0.05: continue   # 垂直面・退化
+            tris.append(Polygon([(x0, y0), (x1, y1), (x2, y2)])); zs.append(tri)
+    tree = STRtree(tris)
+    def f(x, y):
+        pt = Point(x, y); best = None
+        for i in tree.query(pt):
+            if not tris[i].intersects(pt): continue
+            (x0, y0, z0), (x1, y1, z1), (x2, y2, z2) = zs[i]
+            det = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2)
+            l0 = ((y1 - y2) * (x - x2) + (x2 - x1) * (y - y2)) / det; l1 = ((y2 - y0) * (x - x2) + (x0 - x2) * (y - y2)) / det
+            z = l0 * z0 + l1 * z1 + (1 - l0 - l1) * z2 - zoff
+            if best is None or z > best: best = z
+        return best
+    return f
+
 # ---- 駅 構内 近似モデル -----------------------------------------------------
 def rect(cx, cy, dx, dy, length, width, along=0.0, across=0.0):
     """中心(cx,cy)から軸(dx,dy)方向に along, 直交方向に across ずらした長方形 (長さ length, 幅 width)。"""
@@ -812,6 +835,8 @@ def main():
     print("  bridges", len(brf), "verts", len(rverts), "tris", len(ridx) // 3)
 
     print("roads ..."); roads = build_roads_from_mvt(); print("  polygons", len(roads))
+    print("road detail ..."); from road_detail import build_road_detail
+    road_detail, road_marks = build_road_detail(nodes, ways, cache, way_coords, to_local, roads, BOXPOLY, dm, bridge_h=make_bridge_sampler(brf, zoff))
     print("water ..."); water = build_water(nodes, ways, rels, cache); print("  sea", len(water["sea"]), "inland", len(water["inland"]))
     print("green ..."); green = build_green(nodes, ways, rels, cache); print("  polygons", len(green))
     print("trees ..."); trees = build_trees(nodes, ways, cache); print("  trees/lamps", len(trees))
@@ -886,7 +911,7 @@ def main():
         "terrain": tmeta,
         "buildings": {"starts": bstarts, "meta": bmetas},
         "bridges": {"starts": rstarts, "meta": rmetas},
-        "roads": roads, "water": water, "green": green, "rails": rails, "poi": pois, "trees": trees,
+        "roads": roads, "water": water, "green": green, "rails": rails, "poi": pois, "trees": trees, "roadDetail": road_detail,
         "network": {"nodes": nnodes, "links": nlinks, "vtypes": {v: k for k, v in VTYPE.items() if k}},
         "stations": [{"st": s["st"], "lv": s["lv"], "cat": s["cat"], "n": s["n"], "r": ring_dm(s["r"])} for s in spaces],
         "labels": labels,
@@ -894,6 +919,7 @@ def main():
     }
     blobs = {
         "terrain": ([dm(v) for v in tgrid], "h"),
+        "road_marks": (road_marks, "h"),
         "bldg_pos": ([c for v in bverts for c in v], "h"),
         "bldg_idx": (bidx, "I"),
         "brid_pos": ([c for v in rverts for c in v], "h"),
