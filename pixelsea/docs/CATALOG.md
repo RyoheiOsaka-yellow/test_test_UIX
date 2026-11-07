@@ -1,6 +1,6 @@
 # Catalog / 図鑑
 
-55 species, every one a small piece of code in `src/species/<category>/<name>.js`.
+79 species, every one a small piece of code in `src/species/<category>/<name>.js`.
 
 | | 和名 | Name | Scientific name | Region | Size |
 |---|---|---|---|---|---|
@@ -63,6 +63,32 @@
 | ![](previews/giants-oarfish.gif) | リュウグウノツカイ | Giant oarfish (`giants/oarfish`) | *Regalecus glesne* | Deep open ocean worldwide, 200–1000 m; washes up on the Sea of Japan coast | 8 m, to 11 m |
 | ![](previews/giants-coelacanth.gif) | シーラカンス | Coelacanth (`giants/coelacanth`) | *Latimeria chalumnae* | Comoros, Mozambique Channel, South Africa, 150–700 m | 2 m |
 | ![](previews/giants-arapaima.gif) | ピラルク | Arapaima (`giants/arapaima`) | *Arapaima gigas* | Amazon and Essequibo basins (freshwater) | 3 m |
+| **海藻 Seaweed** | | | | | |
+| ![](previews/seaweed-kombu.gif) | マコンブ | Kombu kelp (`seaweed/kombu`) | *Saccharina japonica* | Hokkaido, northern Japan, Russian Far East | 3–6 m |
+| ![](previews/seaweed-wakame.gif) | ワカメ | Wakame (`seaweed/wakame`) | *Undaria pinnatifida* | Japan, Korea, China; invasive worldwide | 1–2 m |
+| ![](previews/seaweed-hijiki.gif) | ヒジキ | Hijiki (`seaweed/hijiki`) | *Sargassum fusiforme* | Japan, Korea, China (rocky intertidal) | 50 cm – 1 m |
+| ![](previews/seaweed-hondawara.gif) | アカモク（ホンダワラ類） | Sargassum weed (`seaweed/hondawara`) | *Sargassum horneri* | Japan, Korea, China; drifts across the North Pacific | 3–7 m |
+| ![](previews/seaweed-aosa.gif) | アオサ | Sea lettuce (`seaweed/aosa`) | *Ulva (Monostroma) spp.* | Rocky shores worldwide | 10–30 cm |
+| ![](previews/seaweed-tengusa.gif) | マクサ（テングサ） | Agar weed (`seaweed/tengusa`) | *Gelidium elegans* | Japan, Korea (rocky subtidal) | 10–30 cm |
+| ![](previews/seaweed-giant-kelp.gif) | ジャイアントケルプ | Giant kelp (`seaweed/giant-kelp`) | *Macrocystis pyrifera* | California, Chile, South Africa, Australia, New Zealand | 30–45 m |
+| ![](previews/seaweed-nori.gif) | スサビノリ | Nori laver (`seaweed/nori`) | *Neopyropia yezoensis* | Japan, Korea, China (cultivated on nets) | 15–30 cm |
+| ![](previews/seaweed-umibudo.gif) | クビレヅタ（海ぶどう） | Sea grapes (`seaweed/umibudo`) | *Caulerpa lentillifera* | Okinawa, Philippines, Southeast Asia | 5–10 cm |
+| ![](previews/seaweed-kajime.gif) | カジメ | Kajime kelp (`seaweed/kajime`) | *Ecklonia cava* | Pacific coast of Japan, Korea | 1–2 m |
+| ![](previews/seaweed-miru.gif) | ミル | Dead man's fingers (`seaweed/miru`) | *Codium fragile* | Japan and the North Pacific; spread worldwide | 20–40 cm |
+| **サンゴ Coral** | | | | | |
+| ![](previews/coral-table.gif) | テーブル状ミドリイシ | Table coral (`coral/table`) | *Acropora hyacinthus* | Indo-Pacific reefs; Okinawa, Great Barrier Reef | 1–3 m across |
+| ![](previews/coral-staghorn.gif) | スギノキミドリイシ | Staghorn coral (`coral/staghorn`) | *Acropora muricata* | Indo-Pacific reefs; Okinawa, Great Barrier Reef | branches to 2 m |
+| ![](previews/coral-porites.gif) | ハマサンゴ | Boulder coral (`coral/porites`) | *Porites lobata* | Indo-Pacific reefs | to 6 m across, 1000 years old |
+| ![](previews/coral-favia.gif) | キクメイシ | Brain coral (`coral/favia`) | *Dipsastraea speciosa* | Indo-Pacific reefs; Okinawa, Kii Peninsula | 30 cm – 1 m |
+| ![](previews/coral-hammer.gif) | ナガレハナサンゴ | Hammer coral (`coral/hammer`) | *Fimbriaphyllia ancora* | Indo-Pacific reefs, sheltered lagoons | colonies to 1 m |
+| ![](previews/coral-dendronephthya.gif) | ウミトサカ（トゲトサカ） | Carnation tree coral (`coral/dendronephthya`) | *Dendronephthya sp.* | Indo-Pacific; Izu, Okinawa, Red Sea walls and overhangs | 30 cm – 1 m |
+| ![](previews/coral-sea-fan.gif) | ウミウチワ | Sea fan (`coral/sea-fan`) | *Annella mollis* | Indo-Pacific; Okinawa, Andaman Sea, Red Sea | 1–2 m |
+| ![](previews/coral-isobana.gif) | イソバナ | Red gorgonian (`coral/isobana`) | *Melithaea japonica* | Japan (Sagami Bay, Izu, Kii), Korea | 30–60 cm |
+| ![](previews/coral-organ-pipe.gif) | クダサンゴ | Organ pipe coral (`coral/organ-pipe`) | *Tubipora musica* | Indo-Pacific reefs; Okinawa, Red Sea | colonies 10–30 cm |
+| ![](previews/coral-red-coral.gif) | アカサンゴ | Japanese red coral (`coral/red-coral`) | *Corallium japonicum* | Japan (Kochi, Okinawa, Ogasawara), 100–300 m deep | 20–40 cm |
+| ![](previews/coral-leather.gif) | ウミキノコ | Mushroom leather coral (`coral/leather`) | *Sarcophyton sp.* | Indo-Pacific reefs; Okinawa lagoons | 20 cm – 1 m |
+| ![](previews/coral-goniopora.gif) | ハナガササンゴ | Flowerpot coral (`coral/goniopora`) | *Goniopora sp.* | Indo-Pacific reefs, turbid lagoons | colonies 20–50 cm |
+| ![](previews/coral-fungia.gif) | クサビライシ | Mushroom coral (`coral/fungia`) | *Fungia fungites* | Indo-Pacific reefs, sandy lagoon floors | 10–20 cm |
 
 ## エビ Shrimp
 
@@ -629,3 +655,251 @@ tags: fish, fossil, deep, lobe-finned, africa, loop
 The giant of the Amazon, one of the largest freshwater fish: an olive torpedo whose scales flush red toward the tail (pirarucu, 'red fish'). It must surface to gulp air every few minutes, and its scales are armour tough enough to turn piranha teeth.
 
 tags: fish, freshwater, giant, amazon, air-breather, loop
+
+## 海藻 Seaweed
+
+Kelp forests, nori and sea grapes: the weeds that sway, feed and shelter the rest.
+
+### マコンブ — Kombu kelp
+
+*Saccharina japonica* · Hokkaido, northern Japan, Russian Far East · 3–6 m · `seaweed/kombu` · 72×72 px, 4.8 s loop at 30 fps
+
+出汁の昆布。オリーブ褐色でしわの寄った革のような長いリボンが、爪のような付着器で冷たい岩に根を張る。乾けば和食の出汁の要、生きていれば稚魚やウニの住む森。
+
+The kelp of dashi: long leathery ribbons, olive-brown and wrinkled, anchored to cold rocks by a claw of a holdfast. Dried, it is the base of Japanese soup stock; alive, it is a forest where young fish and urchins live.
+
+tags: seaweed, kelp, brown, japan, food, loop
+
+### ワカメ — Wakame
+
+*Undaria pinnatifida* · Japan, Korea, China; invasive worldwide · 1–2 m · `seaweed/wakame` · 64×68 px, 4.4 s loop at 30 fps
+
+味噌汁のワカメ。中肋に沿って羽のように切れ込む褐色の葉と、根元のひだひだの胞子葉（めかぶ）。日本の海の在来種だが、船に乗って欧州やニュージーランド、カリフォルニアに広がった。
+
+The seaweed in your miso soup: a feathery brown blade cut into lobes along a midrib, with a frilled, spore-bearing ruffle (mekabu) at its base. Native to Japan's coasts, it has ridden ships to Europe, New Zealand and California.
+
+tags: seaweed, kelp, brown, japan, food, loop
+
+### ヒジキ — Hijiki
+
+*Sargassum fusiforme* · Japan, Korea, China (rocky intertidal) · 50 cm – 1 m · `seaweed/hijiki` · 64×56 px, 4 s loop at 30 fps
+
+波の当たる岩に生える褐色の藻。枝には数珠のようにふくらんだ小さな葉が並ぶ。春に刈り取り、煮て干すと真っ黒になり、煮物のヒジキになる。
+
+A bushy brown weed of wave-washed rocks, its branches strung with small swollen leaflets like beads. Harvested in spring, boiled and dried, it turns jet black and becomes the hijiki of simmered side dishes.
+
+tags: seaweed, brown, japan, intertidal, food, loop
+
+### アカモク（ホンダワラ類） — Sargassum weed
+
+*Sargassum horneri* · Japan, Korea, China; drifts across the North Pacific · 3–7 m · `seaweed/hondawara` · 64×80 px, 4.6 s loop at 30 fps
+
+ガスの入った浮き袋を連ねて海底から立ち上がる褐藻。春にちぎれて「流れ藻」となり、大きな筏になって外洋を漂い、稚魚やトビウオの卵、ウミガメの隠れ家になる。
+
+A brown weed that stands up from the bottom on strings of gas-filled floats, then tears free in spring and drifts in great rafts that shelter young fish, flying-fish eggs and sea turtles out in the open ocean.
+
+tags: seaweed, brown, float, japan, drift, loop
+
+### アオサ — Sea lettuce
+
+*Ulva (Monostroma) spp.* · Rocky shores worldwide · 10–30 cm · `seaweed/aosa` · 64×48 px, 3.8 s loop at 30 fps
+
+細胞二層の薄さの鮮やかな緑の膜。世界中の岩や潮だまりにしわくちゃに広がる。栄養の多い水で急速に増え、乾かして砕けばお好み焼きの青のり。
+
+Bright green sheets only two cells thick, crumpled over rocks and tide pools everywhere in the world. It grows fast where the water is rich, and dried and crumbled it is the green aonori on okonomiyaki.
+
+tags: seaweed, green, intertidal, worldwide, food, loop
+
+### マクサ（テングサ） — Agar weed
+
+*Gelidium elegans* · Japan, Korea (rocky subtidal) · 10–30 cm · `seaweed/tengusa` · 56×48 px, 4 s loop at 30 fps
+
+潮下帯の岩に生える針金のように細かく枝分かれした紅藻。煮出して固めればところてんや寒天になり、同じ寒天が世界中の実験室で培地として使われている。
+
+A wiry, finely branched red weed from the rocks below the tide. Boiled and strained, its jelly sets into tokoroten and kanten (agar), the same gel every microbiology lab grows its cultures on.
+
+tags: seaweed, red, japan, agar, food, loop
+
+### ジャイアントケルプ — Giant kelp
+
+*Macrocystis pyrifera* · California, Chile, South Africa, Australia, New Zealand · 30–45 m · `seaweed/giant-kelp` · 64×104 px, 5 s loop at 30 fps
+
+海の巨木。一日に50 cmも伸び、葉のひとつひとつが自分の浮き袋で支えられ、岩から水面の天蓋まで届く。ラッコはこれに体を巻きつけて眠る。
+
+The redwood of the sea, growing half a metre a day: a rope of stipe hung with blades, each held up by its own gas float, reaching from the rocks to a canopy on the surface. Sea otters wrap themselves in it to sleep.
+
+tags: seaweed, kelp, brown, forest, california, loop
+
+### スサビノリ — Nori laver
+
+*Neopyropia yezoensis* · Japan, Korea, China (cultivated on nets) · 15–30 cm · `seaweed/nori` · 64×48 px, 4 s loop at 30 fps
+
+寿司の海苔。細胞一層の紫紅色の膜で、干潮のたびに空気にさらされる岩や網に育つ。貝殻の中に潜む世代があることは1949年に英国の植物学者が発見するまで謎だった。
+
+The purple-red sheets of sushi nori, a single cell thick, that grow on rocks and nets where they are left high and dry at every low tide. Its whole life cycle was unknown until a British botanist found its hidden shell-boring stage in 1949.
+
+tags: seaweed, red, japan, intertidal, food, loop
+
+### クビレヅタ（海ぶどう） — Sea grapes
+
+*Caulerpa lentillifera* · Okinawa, Philippines, Southeast Asia · 5–10 cm · `seaweed/umibudo` · 56×44 px, 3.6 s loop at 30 fps
+
+浅い砂地を這う匍匐枝に、キャビアほどの緑の粒が房になる。歯でぷちぷち弾ける食感が人気で、沖縄で1980年代から養殖されている。粒と粒の間に仕切りがない、巨大な一個の細胞。
+
+Green bunches of tiny bubbles on runners over sandy shallows, each the size of a caviar egg and popping the same way between the teeth. Farmed in Okinawa since the 1980s, it is one giant cell with no walls between its 'grapes'.
+
+tags: seaweed, green, okinawa, sand, food, loop
+
+### カジメ — Kajime kelp
+
+*Ecklonia cava* · Pacific coast of Japan, Korea · 1–2 m · `seaweed/kajime` · 72×72 px, 4.6 s loop at 30 fps
+
+小さな木のような海藻。1 mほどの硬い茎の上に羽状の葉が冠のように広がる。アワビやサザエ、根魚が育つ「藻場」をつくり、これが枯れると磯焼けが始まる。
+
+A small tree of a kelp: a stiff stalk a metre tall topped with a crown of pinnate blades. Beds of it are the 'seaweed forests' (moba) where abalone, turban snails and rockfish grow up, and where urchin barrens begin when the forest dies.
+
+tags: seaweed, kelp, brown, japan, forest, loop
+
+### ミル — Dead man's fingers
+
+*Codium fragile* · Japan and the North Pacific; spread worldwide · 20–40 cm · `seaweed/miru` · 56×52 px, 4.2 s loop at 30 fps
+
+深緑でビロードのような手触りの、二股に分かれる指のような海藻。無数の糸が織りなす一個の巨大な細胞。ミルクイ（海松貝）の名はこの藻の下に隠れることから、海松色は平安の昔からの色名。
+
+Dark green, velvety, forking fingers of weed, spongy to the touch: a single huge cell woven from countless filaments. The 'mirugai' clam is named for hiding under it, and its colour (miru-iro) was a dye shade of old Japan.
+
+tags: seaweed, green, japan, velvet, loop
+
+## サンゴ Coral
+
+Tables, antlers, boulders, fans and flowers: the animals that build the reef.
+
+### テーブル状ミドリイシ — Table coral
+
+*Acropora hyacinthus* · Indo-Pacific reefs; Okinawa, Great Barrier Reef · 1–3 m across · `coral/table` · 80×48 px, 4.4 s loop at 30 fps
+
+短い柱の上に広がる食卓のようなサンゴ。天板は上を向いた小枝の芝生で、その先端ひとつひとつにポリプがある。成長が速く白化にも弱いが、礁の小魚の半分がこの屋根の下に隠れる。
+
+A dinner table of coral on a short stalk, its top a lawn of tiny upturned branchlets, each tipped with a polyp. Fast-growing and first to bleach, it makes the roof under which half a reef's small fish shelter.
+
+tags: coral, hard coral, acropora, reef, table, loop
+
+### スギノキミドリイシ — Staghorn coral
+
+*Acropora muricata* · Indo-Pacific reefs; Okinawa, Great Barrier Reef · branches to 2 m · `coral/staghorn` · 72×56 px, 4.2 s loop at 30 fps
+
+鹿の角のようなサンゴ。円柱の枝が何度も分かれ、年に手のひら一枚分伸びる。先端は白っぽく、こぶの一つ一つがポリプ。茂みはスズメダイの保育所で、台風で真っ先になぎ倒される。
+
+Antlers of coral: cylinders that branch and branch again, growing a hand's length a year, with a pale growing tip and a polyp in every bump. Thickets of it are nurseries for damselfish, and the first to be flattened by a typhoon.
+
+tags: coral, hard coral, acropora, reef, branching, loop
+
+### ハマサンゴ — Boulder coral
+
+*Porites lobata* · Indo-Pacific reefs · to 6 m across, 1000 years old · `coral/porites` · 72×48 px, 4.6 s loop at 30 fps
+
+生きた岩の塊。家ほどの大きさのドームは、針の頭ほどのポリプが年に数 mmずつ積み上げたもので、年輪のように何世紀もの海水温を記録している。表面にはイバラカンザシが鮮やかならせんを立てる。
+
+A boulder that is alive: a dome of coral as big as a house, laid down a few millimetres a year by polyps the size of a pinhead, so its layers record centuries of sea temperature like tree rings. Christmas-tree worms burrow into it in bright spirals.
+
+tags: coral, hard coral, massive, reef, old, loop
+
+### キクメイシ — Brain coral
+
+*Dipsastraea speciosa* · Indo-Pacific reefs; Okinawa, Kii Peninsula · 30 cm – 1 m · `coral/favia` · 64×44 px, 5 s loop at 30 fps
+
+菊の花のような杯が敷き詰められたドーム。杯の一つ一つがポリプの住まいで、壁は褐色、中心は緑や灰色。夜になると杯のすべてが触手を広げて咲く。
+
+A dome tiled with chrysanthemum-eye cups (kikume-ishi), each a polyp's home with its own ring of tentacles, the walls between them brown and the centres green or grey. By night every cup blooms.
+
+tags: coral, hard coral, massive, reef, night, loop
+
+### ナガレハナサンゴ — Hammer coral
+
+*Fimbriaphyllia ancora* · Indo-Pacific reefs, sheltered lagoons · colonies to 1 m · `coral/hammer` · 72×44 px, 4.4 s loop at 30 fps
+
+骨格を長い触手の房で覆い隠すサンゴ。触手の先はT字の錨や槌の形で、緑やベージュ、クリーム色。草原のようにいっせいに揺れ、隣のサンゴを刺して縄張りを守る。
+
+A coral that hides its skeleton under a mop of long tentacles, each ending in a T-shaped anchor or hammer, in green, tan and cream, all swaying together in the current like a field of grass. The tentacles sting their neighbours to hold ground.
+
+tags: coral, hard coral, euphyllia, tentacles, reef, loop
+
+### ウミトサカ（トゲトサカ） — Carnation tree coral
+
+*Dendronephthya sp.* · Indo-Pacific; Izu, Okinawa, Red Sea walls and overhangs · 30 cm – 1 m · `coral/dendronephthya` · 64×60 px, 4.8 s loop at 30 fps
+
+ガラスの木のような軟質サンゴ。ピンクや紫、橙の半透明の幹に、骨片がトゲとなって透けて見え、枝先には八本腕のポリプの房。流れがあると水を吸って膨らみ、止まると小さくしぼむ。
+
+A soft coral like a tree of glass: translucent stems in pink, purple or orange, stiffened by spicules that show through as spines, with clusters of eight-armed polyps at every tip. It swells with water to feed in the current and shrinks to a nub when it stops.
+
+tags: coral, soft coral, pink, wall, current, loop
+
+### ウミウチワ — Sea fan
+
+*Annella mollis* · Indo-Pacific; Okinawa, Andaman Sea, Red Sea · 1–2 m · `coral/sea-fan` · 72×64 px, 5 s loop at 30 fps
+
+流れを横切るように一枚の平たい扇に育つヤギ類。枝が繋がり合って格子になり、全ての枝に小さなポリプが並んでプランクトンを濾す。表面にはこぶに化けたピグミーシーホースが住む。
+
+A gorgonian that grows as a single flat fan set across the current, a lattice of branches that join and rejoin, every strand lined with tiny polyps sieving plankton. Pygmy seahorses live on its surface, disguised as its knobs.
+
+tags: coral, gorgonian, fan, current, wall, loop
+
+### イソバナ — Red gorgonian
+
+*Melithaea japonica* · Japan (Sagami Bay, Izu, Kii), Korea · 30–60 cm · `coral/isobana` · 64×56 px, 4.6 s loop at 30 fps
+
+ダイビングスポットでおなじみの「磯の花」。赤や橙の枝の扇が、ポリプの開く夜や流れのある時に白く花咲く。潮通しのよい壁に付き、前にはキンギョハナダイの群れ。
+
+The 'shore flower' of Japanese dive sites: a red or orange fan of branches that bloom white when the polyps open, usually on a current-swept wall with a school of anthias in front of it.
+
+tags: coral, gorgonian, red, japan, wall, loop
+
+### クダサンゴ — Organ pipe coral
+
+*Tubipora musica* · Indo-Pacific reefs; Okinawa, Red Sea · colonies 10–30 cm · `coral/organ-pipe` · 60×44 px, 4.2 s loop at 30 fps
+
+灰緑色のポリプのふわふわの下に、血のように赤い管の束の骨格が隠れている。パイプオルガンのように並んだ管は床で繋がる。軟質サンゴなのに硬い骨を作り、赤い骨格は浜に打ち上げられる。
+
+Under a fuzz of grey-green polyps hides a skeleton of blood-red tubes, bundled like the pipes of an organ and joined by floors. It is a soft coral that builds a hard one; the red skeleton washes up on beaches long after the polyps are gone.
+
+tags: coral, soft coral, red, tubes, reef, loop
+
+### アカサンゴ — Japanese red coral
+
+*Corallium japonicum* · Japan (Kochi, Okinawa, Ogasawara), 100–300 m deep · 20–40 cm · `coral/red-coral` · 60×52 px, 5 s loop at 30 fps
+
+宝飾の「血赤珊瑚」。深く暗い冷たい海で、白いポリプを散らした血のように赤い枝が10年に数 mmだけ育つ。緻密な赤い骨格は古代から細工され、今は採取量が制限されている。
+
+The precious coral of jewellers: a fan of blood-red branches dotted with white polyps, growing a few millimetres a decade in the cold dark below the reef. Its dense red skeleton has been carved since antiquity and is now protected by harvest limits.
+
+tags: coral, precious, deep, red, japan, loop
+
+### ウミキノコ — Mushroom leather coral
+
+*Sarcophyton sp.* · Indo-Pacific reefs; Okinawa lagoons · 20 cm – 1 m · `coral/leather` · 64×48 px, 5.2 s loop at 30 fps
+
+キノコの形の軟質サンゴ。太い柄の上の革のような傘は、ある時はつるりと裸で、次の時は何千本ものポリプの毛に覆われる。数週間ごとに蝋のような薄皮を脱いで体を清める。
+
+A soft coral shaped like a mushroom: a thick stalk and a folded leathery cap that is bare one hour and furred with thousands of extended polyps the next. It sheds its skin in a waxy sheet every few weeks to stay clean.
+
+tags: coral, soft coral, leather, lagoon, reef, loop
+
+### ハナガササンゴ — Flowerpot coral
+
+*Goniopora sp.* · Indo-Pacific reefs, turbid lagoons · colonies 20–50 cm · `coral/goniopora` · 64×48 px, 5 s loop at 30 fps
+
+花束のような硬質サンゴ。昼間、ポリプの一つ一つが長い柄を伸ばし、先端に24本の触手がヒナギクのように開く。ドーム全体が揺れる花の鉢になり、触れると一瞬で岩の中に消える。
+
+A stony coral that looks like a bouquet: by day every polyp stretches out on a long stalk, a ring of twenty-four tentacles opening at its tip like a daisy, so the whole dome becomes a swaying pot of flowers that vanishes into the rock when touched.
+
+tags: coral, hard coral, flowers, polyps, reef, loop
+
+### クサビライシ — Mushroom coral
+
+*Fungia fungites* · Indo-Pacific reefs, sandy lagoon floors · 10–20 cm · `coral/fungia` · 64×40 px, 4.4 s loop at 30 fps
+
+皿ほどの大きさの一個のポリプだけでできたサンゴ。群体をつくらず、何にも付かずに砂の上に転がっている。骨格はキノコのひだのように放射状の板の円盤。ひっくり返されると体を膨らませて起き上がり、ゆっくり砂の上を移動する。
+
+A coral that is one single polyp the size of a plate, lying loose on the sand with no colony and no attachment. Its skeleton is a disc of radiating blades like a mushroom's gills; it can inflate to right itself when flipped, and shuffle slowly across the bottom.
+
+tags: coral, hard coral, solitary, sand, lagoon, loop

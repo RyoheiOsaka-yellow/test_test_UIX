@@ -54,12 +54,38 @@ import * as sailfish from "./giants/sailfish.js";
 import * as oarfish from "./giants/oarfish.js";
 import * as coelacanth from "./giants/coelacanth.js";
 import * as arapaima from "./giants/arapaima.js";
+import * as kombu from "./seaweed/kombu.js";
+import * as wakame from "./seaweed/wakame.js";
+import * as hijiki from "./seaweed/hijiki.js";
+import * as hondawara from "./seaweed/hondawara.js";
+import * as aosa from "./seaweed/aosa.js";
+import * as tengusa from "./seaweed/tengusa.js";
+import * as giantKelp from "./seaweed/giant-kelp.js";
+import * as nori from "./seaweed/nori.js";
+import * as umibudo from "./seaweed/umibudo.js";
+import * as kajime from "./seaweed/kajime.js";
+import * as miru from "./seaweed/miru.js";
+import * as tableCoral from "./coral/table.js";
+import * as staghorn from "./coral/staghorn.js";
+import * as porites from "./coral/porites.js";
+import * as favia from "./coral/favia.js";
+import * as hammer from "./coral/hammer.js";
+import * as dendronephthya from "./coral/dendronephthya.js";
+import * as seaFan from "./coral/sea-fan.js";
+import * as isobana from "./coral/isobana.js";
+import * as organPipe from "./coral/organ-pipe.js";
+import * as redCoral from "./coral/red-coral.js";
+import * as leather from "./coral/leather.js";
+import * as goniopora from "./coral/goniopora.js";
+import * as fungia from "./coral/fungia.js";
 
 export const categories = [
   { id: "shrimp", name: "Shrimp", ja: "エビ", blurb: "Reef cleaners, snappers, dancers and the ones on your plate, from every ocean." },
   { id: "nudibranch", name: "Nudibranch", ja: "ウミウシ", blurb: "Sea slugs in every color they can find, from tide pools to the open sea." },
   { id: "shell", name: "Shellfish", ja: "貝", blurb: "Clams, scallops, oysters, snails and a nautilus: the ones that carry their house." },
   { id: "giants", name: "Whales & big fish", ja: "鯨・大型魚", blurb: "Whales, sharks, tunas, rays and the biggest bony fish: the ones you measure in metres." },
+  { id: "seaweed", name: "Seaweed", ja: "海藻", blurb: "Kelp forests, nori and sea grapes: the weeds that sway, feed and shelter the rest." },
+  { id: "coral", name: "Coral", ja: "サンゴ", blurb: "Tables, antlers, boulders, fans and flowers: the animals that build the reef." },
 ];
 export const species = {
   "shrimp/harlequin": harlequin,
@@ -117,4 +143,28 @@ export const species = {
   "giants/oarfish": oarfish,
   "giants/coelacanth": coelacanth,
   "giants/arapaima": arapaima,
+  "seaweed/kombu": kombu,
+  "seaweed/wakame": wakame,
+  "seaweed/hijiki": hijiki,
+  "seaweed/hondawara": hondawara,
+  "seaweed/aosa": aosa,
+  "seaweed/tengusa": tengusa,
+  "seaweed/giant-kelp": giantKelp,
+  "seaweed/nori": nori,
+  "seaweed/umibudo": umibudo,
+  "seaweed/kajime": kajime,
+  "seaweed/miru": miru,
+  "coral/table": tableCoral,
+  "coral/staghorn": staghorn,
+  "coral/porites": porites,
+  "coral/favia": favia,
+  "coral/hammer": hammer,
+  "coral/dendronephthya": dendronephthya,
+  "coral/sea-fan": seaFan,
+  "coral/isobana": isobana,
+  "coral/organ-pipe": organPipe,
+  "coral/red-coral": redCoral,
+  "coral/leather": leather,
+  "coral/goniopora": goniopora,
+  "coral/fungia": fungia,
 };
