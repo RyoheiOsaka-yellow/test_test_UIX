@@ -924,3 +924,5 @@ body.page-home.is-ready main { opacity: 1; transform: none; transition: opacity 
 .hero--brush .hero__cards .hex-ic { display: grid; place-items: center; line-height: 1; font-family: var(--font-en); font-weight: 700; color: #fff; }
 .hero--brush .hero__cards .hex-ic[style*="--yellow"] { color: #141414; }
 .mega .hex-ic, .hero__card .hex-ic, .feature .hex-ic, .svc__num { line-height: 1; }
+
+.header__logo small, .header__tagline { white-space: nowrap; }
