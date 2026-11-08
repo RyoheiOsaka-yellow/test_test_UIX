@@ -79,7 +79,8 @@
 <main id="main">
 
 <section class="hero">
-  <canvas class="hero__canvas" data-hero-canvas aria-hidden="true"></canvas>
+  <canvas class="hero__canvas" data-fluid data-bg="#f8f5ec" data-strength="1" aria-hidden="true"></canvas>
+  <div class="hero__hexgrid" aria-hidden="true"></div>
   <div class="hero__grain" aria-hidden="true"></div>
   <div class="hero__inner">
     <div>
@@ -115,27 +116,27 @@
     </div>
     <div class="svc-grid reveal-stagger">
       <a class="svc svc--yellow" href="./bicycle/index.html">
-        <div class="svc__media"><img src="./assets/img/hero-road.jpg" alt="走行中の自転車" loading="lazy"><span class="svc__num">01</span></div>
+        <div class="hexmedia"><img src="./assets/img/hero-road.jpg" alt="走行中の自転車" loading="lazy"><span class="svc__num">01</span></div>
         <div class="svc__body"><span class="en">Bicycle Field Service</span><h3>出張自転車修理</h3><p>品川区・目黒区・渋谷区・港区・大田区（世田谷・江東・中央・千代田も対応）へ訪問。パンク修理からタイヤ・ブレーキ・チェーン・カギまで、出張費・税込みの明朗料金。</p><span class="link-arrow">詳しく見る <span class="arrow">→</span></span></div>
       </a>
       <a class="svc svc--blue" href="./wheelchair/index.html">
-        <div class="svc__media"><img src="./assets/img/hero-wheelchair.jpg" alt="車いす" loading="lazy"><span class="svc__num">02</span></div>
+        <div class="hexmedia"><img src="./assets/img/hero-wheelchair.jpg" alt="車いす" loading="lazy"><span class="svc__num">02</span></div>
         <div class="svc__body"><span class="en">Wheelchair Field Service</span><h3>出張車いす修理</h3><p>車いすの修理・メンテナンスを出張で。カワムラサイクル、日進医療器、松永製作所、ミキ、ニックなど各メーカーの部品交換に対応します。</p><span class="link-arrow">詳しく見る <span class="arrow">→</span></span></div>
       </a>
       <a class="svc svc--cyan" href="./airstation/index.html">
-        <div class="svc__media"><img src="./assets/img/install-08.jpg" alt="電動空気入れエアステーション設置例" loading="lazy"><span class="svc__num">03</span></div>
+        <div class="hexmedia"><img src="./assets/img/install-08.jpg" alt="電動空気入れエアステーション設置例" loading="lazy"><span class="svc__num">03</span></div>
         <div class="svc__body"><span class="en">Electric Air Station</span><h3>電動空気入れ エアステーション</h3><p>日本国産製コンプレッサーの電動空気入れを販売・設置。補修部品を常時在庫し、緊急修理にも対応。建物のコンセプトに合わせたカラーリングも可能です。</p><span class="link-arrow">詳しく見る <span class="arrow">→</span></span></div>
       </a>
       <a class="svc svc--magenta" href="./plus/index.html#ebike">
-        <div class="svc__media"><img src="./assets/img/ebike-red.jpg" alt="電動アシスト自転車" loading="lazy" style="object-fit:contain;background:#fff;padding:6%"><span class="svc__num">04</span></div>
+        <div class="hexmedia"><img src="./assets/img/ebike-red.jpg" alt="電動アシスト自転車" loading="lazy" style="object-fit:cover;background:#fff"><span class="svc__num">04</span></div>
         <div class="svc__body"><span class="en">E-bike Sales</span><h3>電動アシスト自転車販売</h3><p>法人様向けに、ノーパンクタイヤへ履き替えた電動アシスト自転車を販売。パンクで業務を止めない社用車・配達車に。</p><span class="link-arrow">詳しく見る <span class="arrow">→</span></span></div>
       </a>
       <a class="svc svc--orange" href="./plus/index.html#rack">
-        <div class="svc__media"><img src="./assets/img/bike-racks.jpg" alt="駐輪場の2段式ラック" loading="lazy"><span class="svc__num">05</span></div>
+        <div class="hexmedia"><img src="./assets/img/bike-racks.jpg" alt="駐輪場の2段式ラック" loading="lazy"><span class="svc__num">05</span></div>
         <div class="svc__body"><span class="en">Parking Rack Repair</span><h3>駐輪場ラック修理</h3><p>2段式ラック・スライドラックの修理メンテナンス。マンション・商業施設・駐輪場管理会社様の保守をサポートします。</p><span class="link-arrow">詳しく見る <span class="arrow">→</span></span></div>
       </a>
       <a class="svc" href="./plus/index.html#maintenance">
-        <div class="svc__media"><img src="./assets/img/tube-valve.jpg" alt="バルブとチューブ" loading="lazy"><span class="svc__num">06</span></div>
+        <div class="hexmedia"><img src="./assets/img/tube-valve.jpg" alt="バルブとチューブ" loading="lazy"><span class="svc__num">06</span></div>
         <div class="svc__body"><span class="en">Maintenance Plan</span><h3>定期メンテナンス</h3><p>ご利用の自転車・車いすに合わせたメンテナンス・修理計画をご提案。台数の多い法人様・施設様に、計画的な保守を。</p><span class="link-arrow">詳しく見る <span class="arrow">→</span></span></div>
       </a>
     </div>
@@ -151,11 +152,11 @@
         <p class="lead">自転車修理株式会社として創業し、出張修理のノウハウを積み重ねてきました。国内メーカー製（一部を除き日本製）の部品を使い、訪問時に確実に修理を完了できるよう、事前のヒアリングを大切にしています。</p>
         <div class="btn-row" style="margin-top:8px"><a class="btn" href="./company/index.html">会社情報 <span class="arrow">→</span></a><a class="link-arrow" href="./bicycle/guide/index.html">ご依頼方法を見る <span class="arrow">→</span></a></div>
       </div>
-      <div class="stats reveal-stagger">
-        <div class="stat"><b>2012</b><span>創業年（旧社名：自転車修理株式会社）</span></div>
-        <div class="stat"><b><span data-count="9">0</span><small>区</small></b><span>出張対応エリア（東京都）＋ 川崎・横浜（車いす）</span></div>
-        <div class="stat"><b><span data-count="60">0</span><small>+</small></b><span>出張修理メニュー（出張費・税込みで明示）</span></div>
-        <div class="stat"><b><span data-count="100">0</span><small>社+</small></b><span>法人・施設のご利用実績（金融・建設・ホテル・公共ほか）</span></div>
+      <div class="hex-stats reveal-stagger">
+        <div class="hex-stat"><b>2012</b><span>創業年<br>（旧社名：自転車修理株式会社）</span></div>
+        <div class="hex-stat"><b><span data-count="9">0</span><small>区</small></b><span>出張対応エリア（東京都）<br>＋ 川崎・横浜（車いす）</span></div>
+        <div class="hex-stat"><b><span data-count="60">0</span><small>+</small></b><span>出張修理メニュー<br>（出張費・税込みで明示）</span></div>
+        <div class="hex-stat"><b><span data-count="100">0</span><small>社+</small></b><span>法人・施設のご利用実績<br>（金融・建設・ホテル・公共ほか）</span></div>
       </div>
     </div>
   </div>
@@ -184,7 +185,7 @@
       <button class="chip" data-filter="retail">商業・飲食</button>
     </div>
     <div class="reveal">
-      <div class="logo-wall is-collapsed" data-logo-wall>
+      <div class="honeycomb honeycomb--logos is-collapsed" data-logo-wall>
 <figure data-cat="finance"><img src="./assets/logos/p32_001.png" alt="" loading="lazy"></figure>
 <figure data-cat="finance"><img src="./assets/logos/p32_002.png" alt="" loading="lazy"></figure>
 <figure data-cat="finance"><img src="./assets/logos/p32_003.png" alt="" loading="lazy"></figure>
@@ -423,6 +424,9 @@
 <div class="mobile-bar"><a href="tel:0363219997">📞 電話で予約</a><a href="./contact/index.html">メール相談</a></div>
 <a class="totop" href="#" aria-label="ページ上部へ">↑</a>
 <script src="./assets/js/main.js" defer></script>
-<script src="./assets/js/hero.js" defer></script><script src="./assets/js/ring.js" defer></script>
+<script src="./assets/js/honeycomb.js" defer></script>
+<script src="./assets/js/hero.js" defer></script>
+<script src="./assets/js/fluid.js" defer></script>
+<script src="./assets/js/ring.js" defer></script>
 </body>
 </html>

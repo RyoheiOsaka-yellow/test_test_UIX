@@ -77,7 +77,7 @@
   const lb = $('.lightbox');
   if (lb) {
     const img = $('img', lb);
-    $$('.gallery figure').forEach(f => f.addEventListener('click', () => { img.src = $('img', f).src; img.alt = $('img', f).alt; lb.classList.add('is-open'); }));
+    $$('.gallery figure, .honeycomb--gallery figure').forEach(f => f.addEventListener('click', () => { img.src = $('img', f).src; img.alt = $('img', f).alt; lb.classList.add('is-open'); }));
     lb.addEventListener('click', () => lb.classList.remove('is-open'));
     document.addEventListener('keydown', e => { if (e.key === 'Escape') lb.classList.remove('is-open'); });
   }
@@ -89,10 +89,10 @@
       $$('[data-filter]').forEach(c => c.classList.remove('is-active')); ch.classList.add('is-active');
       const f = ch.dataset.filter;
       $$('figure', wall).forEach(fig => { fig.style.display = (f === 'all' || fig.dataset.cat === f) ? '' : 'none'; });
-      wall.classList.remove('is-collapsed');
+      wall.classList.remove('is-collapsed'); window.BF_HONEYCOMB && window.BF_HONEYCOMB();
     }));
     const more = $('[data-logo-more]');
-    more && more.addEventListener('click', () => { wall.classList.remove('is-collapsed'); more.remove(); });
+    more && more.addEventListener('click', () => { wall.classList.remove('is-collapsed'); more.remove(); window.BF_HONEYCOMB && window.BF_HONEYCOMB(); });
   }
 
   /* ---------- cursor glow ---------- */
@@ -149,6 +149,36 @@
       form.style.display = 'none'; const s = $('.form-success'); s.classList.add('is-shown');
       $('[data-mail-link]', s).href = `mailto:info@bfserv.co.jp?subject=${subject}&body=${encodeURIComponent(lines)}`;
     });
+  }
+
+  /* ---------- fluid canvas on sub-page heroes (fluid.js picks it up) ---------- */
+  $$('.page-hero:not([data-no-fluid])').forEach(hero => {
+    const c = document.createElement('canvas'); c.className = 'page-hero__fluid'; c.setAttribute('data-fluid', '');
+    const bg = getComputedStyle(hero).backgroundColor.match(/\d+/g);
+    if (bg) c.dataset.bg = '#' + bg.slice(0, 3).map(n => (+n).toString(16).padStart(2, '0')).join('');
+    c.dataset.strength = '0.8'; c.setAttribute('aria-hidden', 'true');
+    hero.prepend(c);
+  });
+
+  /* ---------- floating hex field ---------- */
+  $$('.hero, .page-hero, .cta, [data-hexfield]').forEach(sec => {
+    const f = document.createElement('div'); f.className = 'hexfield'; f.setAttribute('aria-hidden', 'true');
+    const n = sec.classList.contains('hero') ? 9 : 6;
+    for (let i = 0; i < n; i++) {
+      const h = document.createElement('i');
+      const size = 40 + Math.random() * 120;
+      h.style.width = size + 'px'; h.style.left = (Math.random() * 100) + '%'; h.style.top = (Math.random() * 100) + '%';
+      h.style.setProperty('--dur', (10 + Math.random() * 14) + 's'); h.style.setProperty('--dx', (Math.random() * 80 - 40) + 'px'); h.style.setProperty('--dy', (Math.random() * -90) + 'px'); h.style.setProperty('--rot', (Math.random() * 90 - 45) + 'deg');
+      h.style.animationDelay = (-Math.random() * 12) + 's'; h.dataset.depth = (0.2 + Math.random() * 0.8).toFixed(2);
+      if (Math.random() < 0.3) h.classList.add('fill');
+      f.appendChild(h);
+    }
+    sec.prepend(f);
+  });
+  if (!reduce && window.matchMedia('(hover: hover)').matches) {
+    let mx = 0, my = 0;
+    window.addEventListener('pointermove', e => { mx = e.clientX / innerWidth - .5; my = e.clientY / innerHeight - .5; }, { passive: true });
+    (function par() { $$('.hexfield i').forEach(h => { const d = +h.dataset.depth; h.style.marginLeft = (mx * 40 * d) + 'px'; h.style.marginTop = (my * 30 * d) + 'px'; }); requestAnimationFrame(par); })();
   }
 
   /* ---------- year ---------- */

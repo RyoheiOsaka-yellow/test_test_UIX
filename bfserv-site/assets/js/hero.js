@@ -1,8 +1,7 @@
 /* BFSERV — WebGL ribbon hero
    Flowing vivid ribbons (green / yellow / blue / orange / magenta) over a sand-white field.
    Falls back to a CSS gradient when WebGL is unavailable. */
-(() => {
-  const canvas = document.querySelector('[data-hero-canvas]');
+window.BF_RIBBONS = function (canvas) {
   if (!canvas) return;
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const gl = canvas.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'high-performance' });
@@ -124,4 +123,4 @@
     if (!reduce || intensity < 0.99) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-})();
+};

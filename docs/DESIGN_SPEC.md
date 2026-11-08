@@ -54,7 +54,8 @@
 ### 2-2. トーン＆マナー
 - **White × Sand × Vivid**：白ベースにサンドベージュの文章パネル、サービスごとのビビッドカラー。
 - **Helvetica × Noto Sans JP**：英字はHelvetica Neue（代替 Inter）、和文はNoto Sans JP。カテゴリ・見出しラベルは細め（weight 300-500）。
-- **Hexagon**：ロゴの六角形をアイコン・番号・取引先タイル・装飾に展開。
+- **Hexagon**：ロゴの六角形をサイト全体の造形言語に。ハニカム配置（取引先ロゴ・対応エリア・事例ギャラリー）、六角マスク画像（下層ヒーロー・サービスカード）、六角統計タイル、六角ボタン／矢印／ハンバーガー／FAQ番号、ハニカム背景パターン（サンド面・フッター）、浮遊する六角形。
+- **Paint**：絵の具が混ざるようなWebGL流体シミュレーションをヒーロー背景に。ブランド6色がかき混ぜられ、マウス操作で反応。
 - **Motion**：流れるリボン（WebGLシェーダー）、スクロールリビール、3Dリング、パララックス、ページ遷移カーテン。動くが煩くない（prefers-reduced-motion 対応）。
 
 ---
@@ -146,12 +147,15 @@ SP：ハンバーガー → フルスクリーンドロワー（円形クリッ�
 - 英字ラベル（eyebrow）：12px / tracking .22em / uppercase / 六角ビュレット
 
 ### 5-3. コンポーネント
-`.btn`（インク／アクセント／ゴースト／ライト、ホバーでアクセント面がせり上がる）、`.svc`（サービスカード）、`.feature`（六角番号付き）、`.step`（番号大）、`.area`、`.price-table`、`.acc`（アコーディオン）、`.tabs`、`.product`、`.swatch`、`.gallery`＋`.lightbox`、`.tel-block`、`.stats`、`.ring-stage`、`.marquee-band`、`.notice`
+`.btn`（インク／アクセント／ゴースト／ライト、ホバーでアクセント面がせり上がる）、`.svc`（サービスカード）、`.feature`（六角番号付き）、`.step`（番号大）、`.area`、`.price-table`、`.acc`（アコーディオン）、`.tabs`、`.product`、`.swatch`、`.gallery`＋`.lightbox`、`.tel-block`、`.stats`、`.ring-stage`、`.marquee-band`、`.notice`、`.honeycomb`（--logos / --areas / --gallery）、`.hex-frame`、`.hexmedia`、`.hex-stats`、`.hexfield`
 
 ### 5-4. モーション
 | 名称 | 実装 | 備考 |
 |---|---|---|
-| Hero ribbons | WebGL（simplex noise + fbm、6本のリボン） | `hero.js`、非対応時はCSSグラデーション |
+| Paint fluid（絵の具） | WebGL流体シミュレーション（Navier–Stokes：移流・渦度・圧力解法）。顔料を乗算合成でガッシュ風に混色、厚み勾配で凹凸ライティング、紙目ノイズ | `fluid.js`。トップのヒーローと各下層ページのヒーロー背景。マウス／指でかき混ぜ可能。自動ブラシが常時かき混ぜる。float描画非対応時は `hero.js` のリボンにフォールバック |
+| Hero ribbons（フォールバック） | WebGL（simplex noise + fbm、6本のリボン） | `hero.js` |
+| Floating hexes | 各ヒーロー・CTAに六角形の輪郭／塗りを浮遊させ、マウスでパララックス | `main.js` hexfield |
+| CTA ribbons | SVGストロークのダッシュオフセットを流す | CSS keyframes |
 | Reveal | IntersectionObserver + CSS transition | `.reveal` `.reveal-stagger` |
 | 3D Ring | CSS 3D transform（rotateY×translateZ）＋rAF | `ring.js`、ドラッグ慣性、背面減光 |
 | Parallax | scrollでtranslateY | `.split__media--parallax` |
@@ -164,7 +168,7 @@ SP：ハンバーガー → フルスクリーンドロワー（円形クリッ�
 ## 6. 技術構成
 
 - **静的サイト（ビルド依存なし）**：HTML/CSS/Vanilla JS。`bfserv-site/_src/` のページ本文＋パーシャル（head/header/footer/logowall）を `build.py`（標準ライブラリのみ）で結合。
-- **外部依存**：Google Fonts（Inter / Noto Sans JP）のみ。ライブラリ不使用（GSAP等なし）で軽量。
+- **外部依存**：Google Fonts（Inter / Noto Sans JP）のみ。ライブラリ不使用（GSAP等なし）で軽量。流体シミュレーションも自前実装（約300行、WebGL2→WebGL1 half-floatの順で初期化）。
 - **パス**：全リンク相対（`{{root}}` 展開）。任意のサブディレクトリ／静的ホスティング（GitHub Pages, Netlify, Xserver 等）で動作。
 - **SEO**：title/description/OG、`LocalBusiness` の JSON-LD、見出し階層、alt、`aria-current`。
 - **アクセシビリティ**：スキップリンク、フォーカスリング、aria-expanded/aria-selected、キーボード操作可能なリング、カラーコントラスト（黄アクセント上は黒文字）。
@@ -176,7 +180,7 @@ bfserv-site/
 ├ _src/pages/   ページ本文（<!-- meta --> ヘッダー付き）
 ├ _src/partials/ head.html / header.html / footer.html / logowall.html
 ├ assets/css/main.css   デザインシステム
-├ assets/js/ main.js / hero.js / ring.js / prices.js
+├ assets/js/ main.js / fluid.js（絵の具流体）/ hero.js（リボン・フォールバック）/ ring.js（3Dリング）/ honeycomb.js（ハニカム配置）/ prices.js
 ├ assets/img/  写真   assets/logos/ 取引先ロゴ   assets/brand/ ロゴSVG
 └ build.py     python3 build.py で再生成
 ```
