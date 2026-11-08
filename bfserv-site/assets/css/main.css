@@ -915,3 +915,12 @@ body.page-home.is-ready main { opacity: 1; transform: none; transition: opacity 
 
 .hero__big { position: relative; }
 .hero__rule { position: absolute; left: 50%; top: 50%; bottom: auto; width: 100vw; height: 1px; }
+
+/* --- v5: logo sizing, pill number centering --- */
+.header__logo svg { height: 40px; }
+.header__logo { gap: 10px; }
+@media (max-width: 720px) { .header__logo svg { height: 34px; } }
+.footer__brand svg { height: 46px; }
+.hero--brush .hero__cards .hex-ic { display: grid; place-items: center; line-height: 1; font-family: var(--font-en); font-weight: 700; color: #fff; }
+.hero--brush .hero__cards .hex-ic[style*="--yellow"] { color: #141414; }
+.mega .hex-ic, .hero__card .hex-ic, .feature .hex-ic, .svc__num { line-height: 1; }
