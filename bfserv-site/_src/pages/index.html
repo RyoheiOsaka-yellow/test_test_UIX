@@ -6,40 +6,38 @@ nav: home
 body_class: page-home
 scripts: <script src="{{root}}assets/js/ring.js" defer></script>
 -->
-<section class="hero">
-  <canvas class="hero__canvas" data-fluid data-bg="#f8f5ec" data-strength="1" aria-hidden="true"></canvas>
-  <div class="hero__hexgrid" aria-hidden="true"></div>
-  <div class="hero__grain" aria-hidden="true"></div>
-  <div class="hero__inner">
-    <div>
-      <h1 class="hero__title">
-        <span class="en">Field service for every wheel — Tokyo</span>
-        <span class="line"><span class="word">直しに、</span></span>
-        <span class="line"><span class="word">行きます。</span></span>
-      </h1>
-      <p class="hero__lead">自転車も、車いすも、空気入れも。東京の街へ、ビーエフサーブが出張修理に伺います。法人様の駐輪場管理から、ご家庭の一台まで。</p>
-      <div class="hero__actions btn-row">
-        <a class="btn btn--lg" href="./bicycle/index.html">出張自転車修理を見る <span class="arrow">→</span></a>
-        <a class="btn btn--lg btn--ghost" href="tel:0363219997">03-6321-9997</a>
-      </div>
-    </div>
-    <div class="hero__side">
-      <a class="hero__card" href="./bicycle/index.html"><span class="hex-ic" style="background:var(--yellow);color:#141414">01</span><div><b>出張自転車修理</b><span>品川・港・渋谷・目黒・大田 ほか東京9区</span></div></a>
-      <a class="hero__card" href="./wheelchair/index.html"><span class="hex-ic" style="background:var(--blue)">02</span><div><b>出張車いす修理</b><span>東京都内・川崎・横浜。各メーカー部品交換</span></div></a>
-      <a class="hero__card" href="./airstation/index.html"><span class="hex-ic" style="background:var(--cyan)">03</span><div><b>電動空気入れ エアステーション</b><span>日本製コンプレッサー。販売・設置・保守</span></div></a>
+<section class="hero hero--brush">
+  <div class="brush" aria-hidden="true">
+    <div class="brush__fill"><div class="brush__iso">
+      <img class="brush__photo" src="./assets/img/hero-road.jpg" alt="">
+      <div class="brush__tint"></div>
+      <canvas class="brush__paint" data-fluid data-bg="#ffffff" data-strength="0.9"></canvas>
+    </div></div>
+    <svg class="brush__cover brush__cover--land" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"><path d="M520 -140 C440 260 560 760 900 800 C1220 840 1380 420 1760 140" pathLength="1"/></svg>
+    <svg class="brush__cover brush__cover--port" viewBox="0 0 900 1600" preserveAspectRatio="xMidYMid slice"><path d="M1060 180 C800 420 940 780 640 1000 C400 1180 60 1220 -160 1520" pathLength="1"/></svg>
+  </div>
+  <div class="hero__center">
+    <h1 class="hero__big" data-split><span class="line">直すために、</span><span class="line">駆けつける。</span></h1>
+    <div class="hero__rule" aria-hidden="true"></div>
+    <p class="hero__en">Field service for every wheel — Tokyo.</p>
+    <div class="hero__ctas"><a class="btn btn--lg" href="./bicycle/index.html">出張自転車修理を見る <span class="arrow">→</span></a><a class="btn btn--lg btn--ghost" href="tel:0363219997">03-6321-9997</a></div>
+    <div class="hero__cards">
+      <a href="./bicycle/index.html"><span class="hex-ic" style="background:var(--yellow);color:#141414">01</span>出張自転車修理</a>
+      <a href="./wheelchair/index.html"><span class="hex-ic" style="background:var(--blue)">02</span>出張車いす修理</a>
+      <a href="./airstation/index.html"><span class="hex-ic" style="background:var(--cyan)">03</span>エアステーション</a>
     </div>
   </div>
-  <div class="hero__scroll"><i></i>Scroll</div>
+  <div class="hero__scrolldown" aria-hidden="true"><span>Scroll down</span><i></i></div>
 </section>
 
-<div class="marquee-band marquee-band--tilt" style="--accent:var(--yellow);--accent-ink:#141414" aria-hidden="true">
+<div class="marquee-wrap"><div class="marquee-band marquee-band--tilt" style="--accent:var(--yellow);--accent-ink:#141414" aria-hidden="true">
   <div class="marquee"><span>Bicycle Repair</span><span>Wheelchair Repair</span><span>Air Station</span><span>On-site Service</span><span>Tokyo</span></div>
-</div>
+</div></div>
 
 <section class="section" id="services">
   <div class="container">
     <div class="section-head reveal">
-      <div><span class="eyebrow">Our Business</span><h2 class="h-1">ビーエフサーブの<br>商品やサービス</h2></div>
+      <div><span class="eyebrow">Services</span><h2 class="h-1">ビーエフサーブの商品やサービス</h2></div>
       <p class="lead">東京都内を中心に、出張修理・定期メンテナンス・機器販売をワンストップで。<br>「自転車にまつわる困りごと」を、現場で解決します。</p>
     </div>
     <div class="svc-grid reveal-stagger">
@@ -71,6 +69,10 @@ scripts: <script src="{{root}}assets/js/ring.js" defer></script>
   </div>
 </section>
 
+<div class="pstrip" aria-hidden="true"><div class="pstrip__track">
+  <img src="./assets/img/install-05.jpg" alt=""><img src="./assets/img/bike-racks.jpg" alt=""><img src="./assets/img/custom-02.jpg" alt=""><img src="./assets/img/install-10.jpg" alt=""><img src="./assets/img/hero-wheelchair.jpg" alt=""><img src="./assets/img/install-01.jpg" alt=""><img src="./assets/img/custom-05.jpg" alt=""><img src="./assets/img/install-06.jpg" alt=""><img src="./assets/img/ebike-childseat.jpg" alt=""><img src="./assets/img/install-13.jpg" alt="">
+</div></div>
+
 <section class="section">
   <div class="container">
     <div class="split">
@@ -93,7 +95,7 @@ scripts: <script src="{{root}}assets/js/ring.js" defer></script>
 <section class="section ring-section" id="clients">
   <div class="container">
     <div class="section-head reveal">
-      <div><span class="eyebrow">Clients</span><h2 class="h-1">多くの企業に<br>ご利用いただいています。</h2></div>
+      <div><span class="eyebrow">Clients</span><h2 class="h-1">多くの企業にご利用いただいています。</h2></div>
       <p class="lead">官公庁・在日大使館・病院・介護施設・教育機関・ビル・マンション・商業施設・駐輪場管理など、幅広い法人様の自転車・車いすを現場でサポートしています。</p>
     </div>
   </div>

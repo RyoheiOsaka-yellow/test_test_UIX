@@ -41,7 +41,27 @@
   const io = new IntersectionObserver(entries => {
     entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); } });
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
-  $$('.reveal, .reveal-stagger').forEach(el => io.observe(el));
+  $$('.reveal, .reveal-stagger, .c-frag, .section-head .eyebrow, .split > div > .eyebrow').forEach(el => io.observe(el));
+
+  /* ---------- char split (headline + section labels) ---------- */
+  function split(el) {
+    [...el.childNodes].forEach(node => {
+      if (node.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        [...node.textContent].forEach(ch => { const s = document.createElement('span'); s.className = 'char'; s.textContent = ch === ' ' ? ' ' : ch; frag.appendChild(s); });
+        node.replaceWith(frag);
+      } else if (node.nodeType === 1 && !node.classList.contains('char')) split(node);
+    });
+  }
+  $$('.section-head .eyebrow, .split > div > .eyebrow, [data-split]').forEach(split);
+  const big = $('[data-split]');
+  if (big) { $$('.char', big).forEach((c, i) => { c.style.transitionDelay = (1.3 + i * 0.045) + 's'; }); requestAnimationFrame(() => requestAnimationFrame(() => big.classList.add('is-in'))); }
+
+  /* ---------- intro ---------- */
+  requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.add('is-ready')));
+
+  /* ---------- photo strip loop ---------- */
+  $$('.pstrip__track').forEach(t => { t.innerHTML += t.innerHTML; });
 
   /* ---------- counters ---------- */
   const cio = new IntersectionObserver(entries => {
@@ -93,14 +113,6 @@
     }));
     const more = $('[data-logo-more]');
     more && more.addEventListener('click', () => { wall.classList.remove('is-collapsed'); more.remove(); window.BF_HONEYCOMB && window.BF_HONEYCOMB(); });
-  }
-
-  /* ---------- cursor glow ---------- */
-  if (!reduce && window.matchMedia('(hover: hover)').matches) {
-    const g = document.createElement('div'); g.className = 'glow'; document.body.appendChild(g);
-    let gx = 0, gy = 0, tx = 0, ty = 0;
-    window.addEventListener('pointermove', e => { tx = e.clientX; ty = e.clientY; document.body.classList.add('has-glow'); }, { passive: true });
-    (function loop() { gx += (tx - gx) * .12; gy += (ty - gy) * .12; g.style.transform = `translate(${gx - 260}px, ${gy - 260}px)`; requestAnimationFrame(loop); })();
   }
 
   /* ---------- parallax media ---------- */
@@ -161,7 +173,7 @@
   });
 
   /* ---------- floating hex field ---------- */
-  $$('.hero, .page-hero, .cta, [data-hexfield]').forEach(sec => {
+  $$('.page-hero, .cta, [data-hexfield]').forEach(sec => {
     const f = document.createElement('div'); f.className = 'hexfield'; f.setAttribute('aria-hidden', 'true');
     const n = sec.classList.contains('hero') ? 9 : 6;
     for (let i = 0; i < n; i++) {
