@@ -1,0 +1,50 @@
+<!-- meta
+title: お問い合わせ
+desc: 出張自転車修理・車いす修理・エアステーションのお問い合わせ。電話 03-6321-9997（受付 AM10:00〜PM6:00）またはメールフォームから。法人様・施設様のご相談も承ります。
+accent: green
+nav: contact
+-->
+<section class="page-hero" style="padding-bottom:48px">
+  <div class="hex-deco" style="width:520px;height:580px;right:-160px;top:-120px"></div>
+  <div class="container">
+    <ul class="breadcrumb"><li><a href="{{root}}index.html">HOME</a></li><li>お問い合わせ</li></ul>
+    <h1 class="reveal is-in"><span class="en">Contact</span>お問い合わせ</h1>
+    <p class="lead">お電話での予約が最短です。メールの場合は、自転車・車いすの写真を添えていただくと、お見積りがスムーズです。</p>
+  </div>
+</section>
+
+<section class="section" style="padding-top:48px">
+  <div class="container contact-grid">
+    <div>
+      <div class="tel-block reveal"><span class="eyebrow eyebrow--light">Hotline</span><div class="big"><a href="tel:0363219997">03-6321-9997</a></div><dl><dt>予約受付</dt><dd>AM10:00〜PM6:00</dd><dt>土曜日</dt><dd>不定期営業</dd><dt>日曜・祝祭日</dt><dd>定休日</dd></dl></div>
+      <div class="panel reveal" style="margin-top:16px;--d:.1s">
+        <h3 class="h-3" style="margin-bottom:12px">お電話前にご準備ください</h3>
+        <ul class="checks">
+          <li class="check"><span>①</span>お名前・ご住所・ご連絡先</li>
+          <li class="check"><span>②</span>ご依頼の修理内容（パンク、タイヤ交換 など）</li>
+          <li class="check"><span>③</span>メーカー・車種、タイヤサイズ（側面に記載）、バルブ形状</li>
+          <li class="check"><span>④</span>ご希望の出張日時</li>
+        </ul>
+        <a class="link-arrow" style="margin-top:14px" href="{{root}}bicycle/guide/index.html">ご依頼方法の詳細 <span class="arrow">→</span></a>
+      </div>
+    </div>
+    <div class="reveal" style="--d:.15s">
+      <form class="form" data-contact-form novalidate>
+        <div class="row">
+          <label>法人名・お名前<span class="req">必須</span><input type="text" name="お名前" required placeholder="例：株式会社○○ 山田太郎"><span class="error"></span></label>
+          <label>メールアドレス<span class="req">必須</span><input type="email" name="メール" required placeholder="example@example.com"><span class="error"></span></label>
+        </div>
+        <div class="row">
+          <label>ご連絡先（電話番号・携帯など）<span class="req">必須</span><input type="tel" name="電話" required placeholder="090-0000-0000"><span class="error"></span></label>
+          <label>お問い合わせ種別<select name="種別"><option>出張自転車修理</option><option>出張車いす修理</option><option>エアステーション（購入・設置）</option><option>エアステーション（修理・保守）</option><option>電動アシスト自転車販売</option><option>駐輪場ラック修理</option><option>定期メンテナンス</option><option>販売店について</option><option>その他</option></select></label>
+        </div>
+        <label>ご住所・出張先エリア<input type="text" name="エリア" placeholder="例：品川区大崎 ／ マンション名など"></label>
+        <label>お問い合わせ内容<textarea name="内容" rows="6" placeholder="車種・タイヤサイズ・症状・台数・ご希望日時など"></textarea></label>
+        <label>添付ファイル（写真など）<input type="file" name="添付" accept="image/*" multiple><span class="small muted">※ 写真はメールソフトでの送信時に添付してください。</span></label>
+        <label class="check" style="font-weight:400"><input type="checkbox" name="同意" required><span><a href="{{root}}privacy/index.html" style="text-decoration:underline">プライバシーポリシー</a>に同意します<span class="req">必須</span></span><span class="error"></span></label>
+        <div><button class="btn btn--lg" type="submit">内容を確認して送信 <span class="arrow">→</span></button></div>
+      </form>
+      <div class="form-success"><h3 class="h-3" style="margin-bottom:8px">ありがとうございます。</h3><p class="small" style="margin-bottom:14px">下のボタンを押すと、入力内容を本文に入れた状態でメールソフトが開きます。写真があれば添付のうえ送信してください。担当より折り返しご連絡いたします。</p><a class="btn" data-mail-link href="#">メールソフトで送信する <span class="arrow">→</span></a></div>
+    </div>
+  </div>
+</section>

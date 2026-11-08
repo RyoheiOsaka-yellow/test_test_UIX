@@ -1,0 +1,55 @@
+<!-- meta
+title: 出張自転車修理 料金表（出張費・税込）
+desc: 出張自転車修理の料金表。パンク修理、チューブ交換、タイヤ交換、ブレーキ、変速、チェーン、カギ、メンテナンス。品川区・港区・渋谷区・目黒区・大田区・世田谷区・江東区・千代田区・中央区共通、出張費・消費税込み。
+accent: yellow
+nav: bicycle
+scripts: <script src="{{root}}assets/js/prices.js" defer></script>
+-->
+<section class="page-hero" style="padding-bottom:40px">
+  <div class="hex-deco" style="width:420px;height:470px;right:-120px;bottom:-200px"></div>
+  <div class="container">
+    <ul class="breadcrumb"><li><a href="{{root}}index.html">HOME</a></li><li><a href="{{root}}bicycle/index.html">出張自転車修理</a></li><li>料金表</li></ul>
+    <h1 class="reveal is-in"><span class="en">Price List — Tax &amp; Travel Included</span>料金表</h1>
+    <p class="lead">出張費・消費税込みの料金です。品川区・港区・渋谷区・目黒区・大田区・世田谷区・江東区・千代田区・中央区の共通料金。複数台の場合はご相談ください。</p>
+    <div class="area-grid" style="margin-top:28px;grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">
+      <div class="area"><b>品川区</b><span>Shinagawa</span></div><div class="area"><b>港区</b><span>Minato</span></div><div class="area"><b>渋谷区</b><span>Shibuya</span></div><div class="area"><b>目黒区</b><span>Meguro</span></div><div class="area"><b>大田区</b><span>Ota</span></div>
+      <div class="area area--sub"><b>世田谷区</b><span>Setagaya</span></div><div class="area area--sub"><b>江東区</b><span>Koto</span></div><div class="area area--sub"><b>千代田区</b><span>Chiyoda</span></div><div class="area area--sub"><b>中央区</b><span>Chuo</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--sand" style="padding-top:40px">
+  <div class="container">
+    <div class="price-tools">
+      <input type="search" placeholder="メニューを検索（例：パンク、20インチ、ブレーキ）" data-price-search aria-label="料金メニュー検索">
+      <span class="small muted">決済：現金・カード・電子マネー／法人様は請求書払い可</span>
+    </div>
+    <nav class="price-nav" data-price-nav aria-label="料金カテゴリ"></nav>
+    <div data-prices="bicycle"></div>
+    <div class="price-empty">該当するメニューが見つかりませんでした。お電話でお問い合わせください。</div>
+    <div class="notice" style="margin-top:24px">予約当日の天候によって作業が難しいと判断した場合、ご相談のうえ日程を変更することがあります。料金は予告なく変更される場合があります。</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="grid grid-2">
+      <div class="panel reveal">
+        <span class="eyebrow">Before You Call</span>
+        <h3 class="h-3" style="margin-bottom:12px">お電話前にご確認ください</h3>
+        <ul class="feature-list">
+          <li class="feature" style="padding:14px 18px"><span class="hex-ic" style="width:40px;height:44px;font-size:12px">1</span><div><h3 style="font-size:15px">メーカー・車種</h3><p>電動アシスト、シティサイクル、クロスバイク など</p></div></li>
+          <li class="feature" style="padding:14px 18px"><span class="hex-ic" style="width:40px;height:44px;font-size:12px">2</span><div><h3 style="font-size:15px">タイヤのサイズ</h3><p>例：26×1-1/2、20×2.00、700×32C。タイヤ側面に記載があります。</p></div></li>
+          <li class="feature" style="padding:14px 18px"><span class="hex-ic" style="width:40px;height:44px;font-size:12px">3</span><div><h3 style="font-size:15px">バルブの形状</h3><p>英式（イギリス式）・米式（アメリカ式）・仏式（フレンチ式）</p></div></li>
+        </ul>
+        <a class="link-arrow" style="margin-top:16px" href="{{root}}bicycle/guide/index.html">ご依頼方法の詳細 <span class="arrow">→</span></a>
+      </div>
+      <div class="tel-block reveal" style="--d:.1s">
+        <span class="eyebrow eyebrow--light">Reservation</span>
+        <div class="big"><a href="tel:0363219997">03-6321-9997</a></div>
+        <dl><dt>受付</dt><dd>AM10:00〜PM6:00</dd><dt>土曜</dt><dd>不定期営業</dd><dt>日曜・祝日</dt><dd>定休日</dd></dl>
+        <div class="btn-row" style="margin-top:16px"><a class="btn btn--light" href="{{root}}contact/index.html">メールで相談 <span class="arrow" style="background:rgba(0,0,0,.08)">→</span></a></div>
+      </div>
+    </div>
+  </div>
+</section>
