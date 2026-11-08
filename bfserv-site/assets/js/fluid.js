@@ -214,9 +214,10 @@
     return true;
   }
 
-  canvases.forEach(c => {
-    let ok = false;
+  // lazy: start a simulation only when its canvas is actually visible (hidden pages / off-screen heroes stay idle)
+  const boot = c => { if (c.dataset.fluidBooted) return; c.dataset.fluidBooted = '1'; let ok = false;
     try { ok = initFluid(c); } catch (e) { console.warn('fluid fallback:', e.message); }
-    if (!ok && window.BF_RIBBONS) window.BF_RIBBONS(c);
-  });
+    if (!ok && window.BF_RIBBONS) window.BF_RIBBONS(c); };
+  const lazy = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && e.boundingClientRect.width > 0) { boot(e.target); lazy.unobserve(e.target); } }), { threshold: 0 });
+  canvases.forEach(c => lazy.observe(c));
 })();
