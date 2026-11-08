@@ -903,3 +903,15 @@ body.page-home.is-ready main { opacity: 1; transform: none; transition: opacity 
 
 .brush__iso { position: absolute; inset: 0; isolation: isolate; overflow: hidden; }
 .brush__fill { overflow: hidden; }
+
+/* --- hero layout v4: everything centered in one column --- */
+.hero__center { display: grid; justify-items: center; gap: 0; padding: 4vh 0 8vh; }
+.hero__rule { top: auto; bottom: auto; position: absolute; left: 50%; }
+.hero__ctas { margin-top: clamp(36px, 6vh, 64px); animation-delay: 2s; }
+.hero--brush .hero__cards { position: static; margin-top: 18px; justify-content: center; flex-wrap: wrap; animation-delay: 2.3s; }
+.hero--brush .hero__cards a { background: rgba(255,255,255,.78); }
+.hero__ctas .btn { min-width: 232px; }
+@media (max-width: 720px) { .hero__ctas { flex-direction: column; width: min(100%, 320px); } .hero__ctas .btn { width: 100%; } .hero--brush .hero__cards { gap: 8px; } .hero--brush .hero__cards a { font-size: 12px; padding: 8px 14px 8px 8px; } }
+
+.hero__big { position: relative; }
+.hero__rule { position: absolute; left: 50%; top: 50%; bottom: auto; width: 100vw; height: 1px; }
