@@ -1,0 +1,344 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ANGLEX 導入 PoC 計画書・機能一覧</title><link rel="stylesheet" href="doc.css"><style>
+.pcover{height:257mm;border-radius:6pt;background:#13130f url('img/b01_hero.png') center/cover no-repeat;position:relative;color:#fff;margin-bottom:8mm}
+.pcover .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(19,19,15,.92) 0%,rgba(19,19,15,.35) 16%,rgba(19,19,15,.35) 30%,rgba(19,19,15,.7) 52%,rgba(19,19,15,.95) 100%);border-radius:6pt}
+.pcover .top{position:absolute;left:12mm;right:12mm;top:12mm;display:flex;justify-content:space-between;font-size:9.5pt;color:#e8dfcf;letter-spacing:.06em}
+.pcover .in{position:absolute;left:12mm;right:12mm;bottom:14mm}.pcover .brand{font-size:40pt;font-weight:800;letter-spacing:.14em}.pcover .sub{letter-spacing:.3em;color:#e8dfcf;font-size:10pt;margin-top:2pt}
+.pcover .doc{font-size:25pt;font-weight:700;margin-top:10mm;line-height:1.3}.pcover .lead{font-size:11.5pt;color:#efe9dc;margin-top:6pt;max-width:160mm}
+.pcover .meta{margin-top:12mm;display:grid;grid-template-columns:30mm 1fr;gap:3pt 6pt;font-size:10pt;color:#efe9dc;max-width:130mm}.pcover .meta dt{color:#bdb8aa}.pcover .meta dd{margin:0}
+.pcover .to{font-size:13pt;border-bottom:1px solid rgba(255,255,255,.6);display:inline-block;min-width:80mm;padding-bottom:2pt}
+.part{display:flex;align-items:center;gap:10pt;margin:0 0 6pt;padding:8pt 12pt;border-radius:5pt;background:#1f1e1a;color:#fff}.part .p{font-size:10pt;letter-spacing:.2em;color:#f3c99a}.part h1{font-size:17pt;color:#fff}
+.sec{display:flex;align-items:baseline;gap:8pt;margin:12pt 0 6pt;break-after:avoid}.sec .n{font-size:20pt;font-weight:800;color:var(--accent);line-height:1}.sec h2{border:0;margin:0;padding:0;font-size:15pt}
+.q3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5mm}.q3 .card b.n{display:block;font-size:20pt;color:var(--accent);line-height:1;margin-bottom:3pt}
+.flow{display:flex;align-items:stretch;gap:0;margin:8pt 0 4pt}.flow .f{flex:1;border:1.5px solid var(--accent);background:#fff7f1;border-radius:5pt;padding:6pt 7pt;position:relative;margin-right:14pt;font-size:9pt}.flow .f:last-child{margin-right:0}
+.flow .f:not(:last-child)::after{content:'';position:absolute;right:-12pt;top:50%;margin-top:-6pt;border-left:9pt solid var(--accent);border-top:6pt solid transparent;border-bottom:6pt solid transparent}
+.flow .f b{display:block;font-size:10.5pt;color:var(--accent)}.flow .f.next{border:1.5px dashed #b8b4a8;background:#f6f5f1;color:#6a6a62}.flow .f.next b{color:#7a7a72}.flow .f.next::after{border-left-color:#b8b4a8}
+.flowcap{display:flex;gap:6pt;font-size:8.5pt;color:var(--ink3);margin-bottom:6pt}.flowcap span{display:inline-flex;align-items:center;gap:4pt}.flowcap i{display:inline-block;width:14pt;height:9pt;border-radius:2pt;border:1.5px solid var(--accent);background:#fff7f1}.flowcap i.n{border:1.5px dashed #b8b4a8;background:#f6f5f1}
+.stp{display:grid;grid-template-columns:1fr 1fr;gap:5mm 6mm}.stp figure{margin:0}.stp .h{font-weight:700;margin:0 0 2pt}.stp .h b{display:inline-block;background:var(--accent);color:#fff;border-radius:50%;width:15pt;height:15pt;line-height:15pt;text-align:center;font-size:9pt;margin-right:4pt}
+.stp p{font-size:9pt;margin:2pt 0 0;color:var(--ink2)}
+.vt{font-size:8.8pt}.vt th,.vt td{padding:3pt 5pt}.vt td:first-child{white-space:nowrap;font-weight:700;color:var(--accent2)}.vt .cat{white-space:nowrap}
+.gantt{font-size:8.8pt}.gantt th,.gantt td{padding:3pt 4pt;text-align:center}.gantt td:first-child,.gantt th:first-child{text-align:left;white-space:nowrap}.gantt td.on{background:#f3d6c4}.gantt td.on2{background:#c9dcea}.gantt td.ms{color:var(--accent);font-weight:700}
+.eval{font-size:8.6pt}.eval th,.eval td{padding:4pt 5pt;height:20pt}.eval td.blank{min-width:22mm}
+.legend{display:flex;gap:10pt;flex-wrap:wrap;font-size:9pt;margin:4pt 0 8pt}
+.m{display:inline-block;padding:0 6pt;border-radius:9pt;font-size:8pt;font-weight:700;white-space:nowrap;line-height:14pt;border:1px solid}
+.m.poc{background:var(--accent);color:#fff;border-color:var(--accent)}.m.demo{background:#e6eff6;color:var(--accent2);border-color:#b9d0e2}.m.next{background:#f1f1ee;color:#77776f;border-color:#d6d4cc}
+.ft{font-size:8.8pt;margin-top:4pt}.ft th,.ft td{padding:3pt 5pt}.ft td:first-child{font-weight:700;width:46mm}.ft td:last-child{width:19mm;text-align:center}
+.cathead{display:flex;align-items:baseline;gap:8pt;margin:10pt 0 4pt;break-after:avoid}.cathead .n{font-size:16pt;font-weight:800;color:var(--accent);line-height:1}.cathead h3{margin:0;color:var(--ink);font-size:13pt}.cathead .cnt{font-size:8.5pt;color:var(--ink3)}
+.shots2{display:grid;grid-template-columns:1fr 1fr;gap:4mm}.shots3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm}.shots2 figure,.shots3 figure{margin:0}
+.ov{font-size:9pt}.ov td:nth-child(n+3){text-align:center;white-space:nowrap}.ov td:first-child{white-space:nowrap;font-weight:700}
+.note{font-size:8.5pt;color:var(--ink3)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:6mm;align-items:start}
+.cat{break-inside:auto}
+.shots2 img,.shots3 img,.stp img{aspect-ratio:16/9;object-fit:cover;object-position:top center}
+.solo{width:72%;margin:4pt auto 6pt}
+</style></head><body>
+
+<!-- 表紙 -->
+<div class="pcover page"><div class="veil"></div>
+<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 1 版　2026 年 11 月 9 日</span></div>
+<div class="in"><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE ・ 図面に、語らせる</div>
+<div class="doc">ANGLEX 導入 PoC 計画書<br>および 開発済み機能一覧</div>
+<div class="lead">配管支持金具の積算を、図面の読込から 3D での確認、重量・見積まで。まずは「初期段階」に絞って、貴社の実図面と実務で効果を確かめます。</div>
+<dl class="meta"><dt>提出先</dt><dd><span class="to">　　　　　　　　　　　　　　御中</span></dd><dt>提出元</dt><dd>ワールド化成</dd><dt>対象</dt><dd>ANGLEX 2026 年 11 月版（v1 / v2 画面、通常版・オフライン版）</dd><dt>期間（案）</dt><dd>約 6 週間（準備 1 週・検証 3 週・評価 1 週・予備 1 週）</dd></dl></div></div>
+
+<!-- はじめに -->
+<h2>はじめに</h2>
+<p>本書は、ANGLEX を貴社でお試しいただく PoC（実証検証）の計画と、これまでに開発した機能の一覧をまとめたものです。</p>
+<p>ANGLEX には、図面の読込から販売会社・加工工場との見積の受け渡しまで、多くの機能があります。PoC ではそのすべてを一度に確かめるのではなく、<b>積算の起点となる「初期段階」</b>に絞ります。図面を正しく読めるか、担当者が 3D で確認して重量と見積まで出せるか、現行より速く確認漏れなく進められるか、の 3 点です。</p>
+<div class="callout"><b>本書の構成</b><br>第 1 部　PoC 計画（目的・範囲・検証項目と合格基準・進め方・体制・ご準備いただくもの・評価シート）<br>第 2 部　開発済み機能一覧（画面イメージ付き。各機能に「PoC で検証」「参考デモ」「次段階」の区分を付けています）</div>
+<h3>目次</h3>
+<ol class="toc">
+<li>第 1 部　PoC 計画
+<ol><li>PoC の目的</li><li>検証の範囲（初期段階）</li><li>検証の流れ（画面イメージ）</li><li>検証項目と合格基準（案）</li><li>進め方とスケジュール（案）</li><li>体制と役割</li><li>ご準備いただくもの</li><li>図面データの取扱い</li><li>評価と次段階</li><li>付録　評価シート（記入用）</li></ol></li>
+<li>第 2 部　開発済み機能一覧
+<ol><li>一覧の見方と全体像</li><li>図面の読込・部材認識</li><li>3D モデリング・部材配置</li><li>3D 表示・操作</li><li>確認・品質管理</li><li>重量・積算・帳票</li><li>業務フロー・多社連携</li><li>シミュレータ</li><li>書出し・外部連携</li><li>画面・動作環境</li></ol></li>
+</ol>
+
+<!-- 第1部 -->
+<div style="break-before:page"></div>
+<div class="part"><span class="p">PART 1</span><h1>PoC 計画</h1></div>
+
+<div class="sec"><span class="n">1</span><h2>PoC の目的</h2></div>
+<p>初期段階の PoC で、次の 3 つの問いに数字で答えを出します。</p>
+<div class="q3">
+<div class="card accent"><b class="n">Q1</b><h4>貴社の図面を正しく読めるか</h4><p>DXF・PDF・スキャン画像の実図面から、部材の仕様・長さ・穴を拾えるか。読めないものを「要確認」として正しく示せるか。</p></div>
+<div class="card accent"><b class="n">Q2</b><h4>担当者が確認・修正して、見積まで出せるか</h4><p>認識結果を図面上と 3D で確認・修正し、重量計算書と見積書まで担当者自身で作れるか。</p></div>
+<div class="card accent"><b class="n">Q3</b><h4>現行より速く、漏れなく進められるか</h4><p>図面受領から見積書までの時間が短くなるか。溶接・穴・アンカーの確認漏れを防げるか。</p></div>
+</div>
+
+<div class="sec"><span class="n">2</span><h2>検証の範囲（初期段階）</h2></div>
+<p>積算の流れのうち、<b>図面の読込から見積書の出力まで</b>を PoC の対象とします。販売会社・加工工場との受け渡しや学習機能は、初期段階の結果を見てから次段階で検証します。</p>
+<div class="flow">
+<div class="f"><b>① 図面の読込</b>DXF・PDF・スキャン画像を読み込む</div>
+<div class="f"><b>② 部材の認識</b>仕様・長さ・穴を拾い、確定／推論／要判断に分ける</div>
+<div class="f"><b>③ 確認・修正</b>図面上と 3D で確認し、直す</div>
+<div class="f"><b>④ 重量・集計</b>JIS 質量で重量計算書を作る</div>
+<div class="f"><b>⑤ 見積書</b>明細を自動生成し PDF を出す</div>
+<div class="f next"><b>⑥ 受け渡し</b>販売会社・工場との共有（次段階）</div>
+</div>
+<div class="flowcap"><span><i></i>PoC で検証</span><span><i class="n"></i>次段階で検証</span></div>
+<table>
+<tr><th style="width:42mm">初期 PoC の対象外とするもの</th><th>理由と扱い</th></tr>
+<tr><td>販売会社・加工工場との受け渡し（A→B→C）、Rev 管理、役割別ビュー</td><td>社外の関係者の参加と運用ルールの決定が必要なため。初期段階の合格後に、関係会社を交えて次段階で検証します。画面はデモでご覧いただけます。</td></tr>
+<tr><td>認識・単価の学習機能</td><td>一定量の案件を流してから効果が出る機能のため。PoC 期間中の修正記録は残し、次段階の評価材料にします。</td></tr>
+<tr><td>サーバー版（部署内共有・メール通知）</td><td>PoC は PC 単体（オフライン版）で行い、社内ネットワークへの設置は不要とします。</td></tr>
+<tr><td>シミュレータ・外部形式の書出し・カレンダー連携</td><td>積算の初期段階には直接関係しないため。参考デモとしてご覧いただけます。</td></tr>
+</table>
+
+<div class="sec" style="break-before:page"><span class="n">3</span><h2>検証の流れ（画面イメージ）</h2></div>
+<p>担当者は次の 4 つの場面を順に操作します。PoC ではそれぞれの場面で、正しさと所要時間を記録します。</p>
+<div class="stp">
+<figure><p class="h"><b>1</b>図面を読み込み、認識結果を見る</p><img src="img/p01_recognition.png"><p>スキャン画像を読み込むと、部材ごとに仕様・長さ・加工（穴）・確信度・状態が一覧で出ます。OCR で読んだ注記の元の文字も並べて表示します。</p></figure>
+<figure><p class="h"><b>2</b>図面の上で確認・修正する</p><img src="img/p02_drawing.png"><p>スキャン画像の上に、認識した部材（矩形）・穴（円）・文字を重ねて表示します。違うものはクリックで直せます。</p></figure>
+<figure><p class="h"><b>3</b>3D で確認し、見落としをなくす</p><img src="img/p11_tour_gauge.png"><p>部材に寄ると、溶接・穴・アンカーの未確認箇所を 1 つずつ中央に寄せて確認できます。断面図で穴の位置も確かめられます。</p></figure>
+<figure><p class="h"><b>4</b>重量計算書と見積書を出す</p><img src="img/p04_schedules.png"><p>部材・ボルト類・溶接・穴・仕上げ面積を自動で集計し、重量計算書（PDF・Excel）と見積書を出力します。</p></figure>
+</div>
+
+<div class="sec" style="break-before:page"><span class="n">4</span><h2>検証項目と合格基準（案）</h2></div>
+<p>合格基準は、キックオフで貴社と協議のうえ確定します。下表は弊社の社内検証結果をもとにした<b>目安</b>です。</p>
+<table class="vt">
+<tr><th style="width:9mm">No</th><th style="width:16mm">区分</th><th style="width:36mm">検証項目</th><th>確認方法</th><th style="width:44mm">合格基準（案）</th></tr>
+<tr><td>V1</td><td class="cat">読込</td><td>図面の読込</td><td>ご提供図面をすべて読み込む</td><td>全件読込できる。読めない形式は変換手順を確立する</td></tr>
+<tr><td>V2</td><td class="cat">認識</td><td>部材の拾い出し</td><td>貴社の拾い出し表（正解）と部材単位で照合</td><td>DXF・ベクタ PDF で 90% 以上、スキャンで 80% 以上を拾う。拾えないものは「要確認」に出る</td></tr>
+<tr><td>V3</td><td class="cat">認識</td><td>仕様・長さ・穴の読取</td><td>部材仕様・長さ・穴径・穴数を正解と照合</td><td>仕様・長さ 80% 以上、穴 70% 以上。読めない項目は「要判断」として示される</td></tr>
+<tr><td>V4</td><td class="cat">確認</td><td>要確認箇所の抽出</td><td>溶接・穴・アンカー・推論部材が確認リストに出るか</td><td>正解で確認が必要な箇所の抽出漏れ 0 件</td></tr>
+<tr><td>V5</td><td class="cat">確認</td><td>修正のしやすさ</td><td>誤認識を図面上と 3D で修正し、時間を計る</td><td>1 図面あたりの修正 15 分以内</td></tr>
+<tr><td>V6</td><td class="cat">積算</td><td>重量の妥当性</td><td>重量計算書を現行の計算と比較</td><td>総重量の差 ±3% 以内。差の原因を説明できる</td></tr>
+<tr><td>V7</td><td class="cat">積算</td><td>見積明細の妥当性</td><td>品目・数量・金額を現行の見積と比較</td><td>主要品目の数量が一致し、金額差の内訳を説明できる</td></tr>
+<tr><td>V8</td><td class="cat">効果</td><td>所要時間</td><td>図面受領から見積書 PDF までを計測</td><td>現行比 50% 以上の短縮（目標）</td></tr>
+<tr><td>V9</td><td class="cat">操作性</td><td>担当者による操作</td><td>1 時間の説明後、担当者が単独で 1 案件を完了</td><td>完了できる。アンケート 5 段階で平均 3.5 以上</td></tr>
+<tr><td>V10</td><td class="cat">環境</td><td>動作環境・情報管理</td><td>貴社 PC でオフライン版を起動し、通信を確認</td><td>起動・OCR・PDF 出力が動く。外部への通信がない</td></tr>
+</table>
+<div class="callout small"><b>基準案の根拠（弊社社内検証・合成図面）</b>　デモ図面を画像化した検証で、きれいな画像は直線・矩形・穴を 100%、スキャン相当（200 dpi・ノイズあり）は直線・矩形 100%・穴 70〜90%、劣化した 150 dpi では 88% / 83% / 60% を拾いました。仕様注記の OCR はきれいな画像で 5 件中 5 件を読み取りました。実図面では様式や画質で結果が変わるため、PoC で貴社図面の実力値を測ります。</div>
+<p class="note">測定には ANGLEX の「実スキャン検証キット」を使います。正解表と認識結果を自動で照合し、項目別の再現率と報告書 PDF を出力します。</p>
+
+<div class="sec" style="break-before:page"><span class="n">5</span><h2>進め方とスケジュール（案）</h2></div>
+<p>検証は 2 回に分けて行います。1 回目は弊社が操作して認識の実力を測り、2 回目は貴社の担当者が操作して使い勝手と所要時間を測ります。</p>
+<table class="gantt">
+<tr><th style="width:52mm">作業</th><th>1 週</th><th>2 週</th><th>3 週</th><th>4 週</th><th>5 週</th><th>6 週</th></tr>
+<tr><td>キックオフ（目的・基準・図面選定の合意）</td><td class="ms">◆</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>準備（図面と正解表の提供、PC の準備）</td><td class="on2"></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>検証 1 回目：弊社操作で認識を測定（V1〜V4）</td><td></td><td class="on"></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>操作説明会（1 時間）</td><td></td><td class="ms">◆</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>検証 2 回目：貴社担当者が操作（V5〜V10）</td><td></td><td></td><td class="on"></td><td class="on"></td><td></td><td></td></tr>
+<tr><td>中間確認（課題の共有・調整）</td><td></td><td></td><td class="ms">◆</td><td></td><td></td><td></td></tr>
+<tr><td>集計・報告書作成</td><td></td><td></td><td></td><td></td><td class="on2"></td><td></td></tr>
+<tr><td>報告会（判定・次段階の協議）</td><td></td><td></td><td></td><td></td><td class="ms">◆</td><td></td></tr>
+<tr><td>予備（追加図面・再検証）</td><td></td><td></td><td></td><td></td><td></td><td class="on2"></td></tr>
+</table>
+<p class="note">期間は図面の件数と担当者のご都合により調整します。週 1 回、30 分程度の定例を想定しています。</p>
+
+<div class="sec"><span class="n">6</span><h2>体制と役割</h2></div>
+<table>
+<tr><th style="width:24mm">担当</th><th>ワールド化成</th><th>導入先（貴社）</th></tr>
+<tr><td>責任者</td><td>PoC 全体の計画・進行、報告書の作成</td><td>PoC の目的・合格基準の承認、判定</td></tr>
+<tr><td>準備</td><td>オフライン版の提供と導入手順、操作説明会</td><td>図面・正解表のご提供、PC の準備</td></tr>
+<tr><td>検証</td><td>検証 1 回目の操作と測定、問い合わせ対応、軽微な調整</td><td>検証 2 回目の操作（担当者 2〜3 名）、所要時間の記録、アンケート</td></tr>
+<tr><td>評価</td><td>結果の集計、課題と改善案の整理</td><td>結果の確認、現場目線での評価</td></tr>
+</table>
+
+<div class="sec" style="break-before:page"><span class="n">7</span><h2>ご準備いただくもの</h2></div>
+<table>
+<tr><th style="width:40mm">項目</th><th>内容</th></tr>
+<tr><td>図面 10〜20 件</td><td>実際の積算で使った図面。DXF・PDF・スキャン画像を混ぜて、簡単・標準・複雑の 3 段階を含めてください。社外秘の箇所は塗りつぶし可です。</td></tr>
+<tr><td>正解表</td><td>上記図面の拾い出し表（部材の仕様・長さ・本数・穴）、重量計算、見積書。現行の Excel 等そのままで構いません。</td></tr>
+<tr><td>現行の所要時間</td><td>上記図面の積算にかかった時間の目安（図面受領から見積書まで）。</td></tr>
+<tr><td>PC 1〜2 台</td><td>Windows 10 / 11（64 bit）または macOS 12 以降。メモリは 16 GB 以上を推奨（最小 8 GB）。Chrome または Edge の最新版。詳細は別紙「ハードウェア構成 回答書」をご参照ください。</td></tr>
+<tr><td>担当者 2〜3 名</td><td>積算を担当されている方。操作説明会（1 時間）と、検証 2 回目の操作（各 2〜3 時間程度）にご協力ください。</td></tr>
+</table>
+
+<div class="sec"><span class="n">8</span><h2>図面データの取扱い</h2></div>
+<ul>
+<li><b>図面は社外に出ません。</b>PoC はオフライン版（単一の HTML ファイル）で行います。読込・認識・OCR・帳票出力はすべて PC の中で処理し、外部への通信は発生しません。</li>
+<li><b>外部の生成 AI には送りません。</b>図面の認識と OCR は PC 内の処理で行います。</li>
+<li><b>弊社が図面を扱う場合</b>（検証 1 回目）は、秘密保持契約の範囲で取り扱い、PoC 終了後に削除し、削除のご報告をします。</li>
+<li>PoC 期間中に作成したデータ（3D モデル・修正記録・帳票）は貴社 PC に残ります。報告書には、ご了承いただいた範囲の画面と数値のみを掲載します。</li>
+</ul>
+
+<div class="sec"><span class="n">9</span><h2>評価と次段階</h2></div>
+<div class="two">
+<div class="card"><h4>判定の考え方</h4><ul class="small"><li>V1〜V10 の結果を評価シートにまとめ、報告会で判定します。</li><li>基準に届かない項目は、原因（図面様式・画質・未対応の部材など）と改善策を示します。</li><li>改善で解決できる項目は、予備期間で再検証します。</li></ul></div>
+<div class="card accent"><h4>次段階（合格後の候補）</h4><ul class="small"><li>販売会社・加工工場との受け渡し（A→B→C）と権限</li><li>部署内共有のサーバー版と期限通知</li><li>認識・単価の学習による精度向上</li><li>貴社固有の製品・様式への対応（ファミリ追加）</li></ul></div>
+</div>
+
+<div class="sec" style="break-before:page"><span class="n">付</span><h2>評価シート（記入用）</h2></div>
+<p class="small">検証のたびに記入し、報告会で使います。「結果」には測定値を、「判定」には ○ / △ / × を記入してください。</p>
+<table class="eval">
+<tr><th style="width:9mm">No</th><th style="width:34mm">検証項目</th><th style="width:42mm">合格基準（確定値）</th><th>結果（測定値）</th><th style="width:13mm">判定</th><th style="width:34mm">課題・コメント</th></tr>
+<tr><td>V1</td><td>図面の読込</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V2</td><td>部材の拾い出し</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V3</td><td>仕様・長さ・穴の読取</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V4</td><td>要確認箇所の抽出</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V5</td><td>修正のしやすさ</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V6</td><td>重量の妥当性</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V7</td><td>見積明細の妥当性</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V8</td><td>所要時間</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V9</td><td>担当者による操作</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V10</td><td>動作環境・情報管理</td><td></td><td class="blank"></td><td></td><td></td></tr>
+</table>
+<h3>図面ごとの記録</h3>
+<table class="eval">
+<tr><th style="width:9mm">No</th><th style="width:30mm">図面名</th><th style="width:16mm">形式</th><th style="width:16mm">難易度</th><th>部材 拾い出し<br>（拾えた / 正解）</th><th>穴<br>（読めた / 正解）</th><th>重量差 %</th><th>所要時間<br>（現行 / ANGLEX）</th></tr>
+<tr><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>3</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>4</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>5</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>6</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>7</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>9</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>10</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+<!-- 第2部 -->
+<div style="break-before:page"></div>
+<div class="part"><span class="p">PART 2</span><h1>開発済み機能一覧</h1></div>
+<div class="sec"><span class="n">1</span><h2>一覧の見方と全体像</h2></div>
+<p>各機能に、初期 PoC での扱いを示す区分を付けています。「参考デモ」の機能も PoC 中にご覧いただけます。</p>
+<div class="legend"><span><span class="m poc">PoC で検証</span>　初期 PoC の検証項目に含む</span><span><span class="m demo">参考デモ</span>　PoC 中に操作・閲覧できる（評価対象外）</span><span><span class="m next">次段階</span>　次段階で検証する</span></div>
+<table class="ov">
+<tr><th style="width:8mm">#</th><th>分類</th><th>主な内容</th><th>機能数</th><th>PoC で検証</th></tr>
+<tr><td>2</td><td>図面の読込・部材認識</td><td style="text-align:left">DXF・PDF・スキャン画像、OCR、図面上の修正、検証キット</td><td>11</td><td>8</td></tr>
+<tr><td>3</td><td>3D モデリング・部材配置</td><td style="text-align:left">ファミリ 34 種、カタログ 151 製品、配管へ取付、接合</td><td>9</td><td>4</td></tr>
+<tr><td>4</td><td>3D 表示・操作</td><td style="text-align:left">回す・中央へ・寄る、見どころ表示、分解、表示スタイル</td><td>8</td><td>2</td></tr>
+<tr><td>5</td><td>確認・品質管理</td><td style="text-align:left">確認の旗、ウィザード、見どころ送り、断面ゲージ、溶接記号</td><td>8</td><td>5</td></tr>
+<tr><td>6</td><td>重量・積算・帳票</td><td style="text-align:left">JIS 質量、集計表、重量計算書、見積書、加工指示書</td><td>8</td><td>5</td></tr>
+<tr><td>7</td><td>業務フロー・多社連携</td><td style="text-align:left">受け渡し・権限、Rev・監査ログ、ダッシュボード、期限通知</td><td>8</td><td>0</td></tr>
+<tr><td>8</td><td>シミュレータ</td><td style="text-align:left">ライブゲージ、X 線、限界探索、動画</td><td>1</td><td>0</td></tr>
+<tr><td>9</td><td>書出し・外部連携</td><td style="text-align:left">glTF・DXF・IFC・USD、プロジェクト JSON</td><td>3</td><td>0</td></tr>
+<tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、操作ガイド</td><td>5</td><td>3</td></tr>
+</table>
+<figure><img src="img/b01_hero_full.png"><figcaption>ANGLEX の作業画面（v1）。左: プロジェクトブラウザ、中央: 3D、右: プロパティ。選んだ部材の質量・原価がその場で出ます</figcaption></figure>
+
+<div class="cat" style="break-before:page">
+<div class="cathead"><span class="n">2</span><h3>図面の読込・部材認識</h3><span class="cnt">図面から部材を拾い、確かさを 3 段階で示す</span></div>
+<div class="shots2"><figure><img src="img/p01_recognition.png"><figcaption>スキャン図面の認識結果。仕様・長さ・穴・確信度・状態と、OCR の元の文字</figcaption></figure><figure><img src="img/p02_drawing.png"><figcaption>図面ビュー。スキャン画像の上に認識した部材・穴・文字を重ね、クリックで修正</figcaption></figure></div>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>DXF の読込</td><td>レイヤ・ブロック・寸法・文字を実際に解析し、部材候補を抽出</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>PDF 図面の読込</td><td>ベクタ PDF は線と文字を、画像 PDF はスキャンと同じ手順で解析</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>スキャン画像のベクタ化</td><td>直線・矩形・円・斜線を抽出。ノイズ除去と ±4° の傾き補正</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>限定 OCR</td><td>部材仕様・穴・長さの注記だけを読む（英数字と日本語の限定語彙）。PC 内で処理</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>部材認識とリスク行列</td><td>確定・推論・要判断の 3 状態に分け、間違えたときの手戻りの大きさで優先度を付ける</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>図面上での修正</td><td>スキャン画像の上で矩形（部材）・円（穴）・文字をクリックして直す</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>穴・アンカー注記の紐づけ</td><td>「2-φ15」などの注記を最寄りの部材に結び付け、3D の穴位置に反映</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>実スキャン検証キット</td><td>正解表と認識結果を自動で照合し、再現率と報告書 PDF を出力（PoC の測定に使用）</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>IFC・3D 形式の読込</td><td>IFC、glTF・OBJ・STL・FBX を参照モデルとして読込</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>DWG・JWW の読込</td><td>サーバー版の変換機能で DXF に変換して読込</td><td><span class="m next">次段階</span></td></tr>
+<tr><td>認識の学習</td><td>図面上の修正を記録し、同じ様式の次回の図面で自動的に効かせる。図面様式×営業所の目標管理</td><td><span class="m next">次段階</span></td></tr>
+</table>
+</div>
+
+<div class="cat" style="break-before:page">
+<div class="cathead"><span class="n">3</span><h3>3D モデリング・部材配置</h3><span class="cnt">足りないものを、3D の中で足す</span></div>
+<div class="shots3"><figure><img src="img/p03_placed3d.png"><figcaption>図面から読み込んだ部材に寄った状態。穴と要確認の旗、断面ゲージ</figcaption></figure><figure><img src="img/b03_context.png"><figcaption>部品に触れると出るコンテキストバー</figcaption></figure><figure><img src="img/b04_showroom.png"><figcaption>カタログ ショールーム（151 製品）</figcaption></figure></div>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>ファミリ 34 種</td><td>門型架台・ブラケット・吊り金具など。寸法を変えると形・穴・溶接・質量が連動</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>コンテキストバー</td><td>部材に触れて「＋隣に」「＋穴」「＋溶接」、寸法を ±5 mm で調整</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>移動・直接ドラッグ・自動密着</td><td>ギズモや部材の直接ドラッグで移動（5 mm 刻み）。接する部材にぴたりと合わせる</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>接合と日本語の加工指示</td><td>溶接・ボルト・U ボルトの接合。「MF-1 と LB-1 を隅肉溶接 6」などの文章で指示</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>カタログとショールーム</td><td>カタログ 151 製品・700 SKU から選ぶだけで 3D に並ぶ</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>配管へ取付</td><td>近くの配管に「◎ 呼び径」が出て、口径と U ボルト穴ピッチを同時に合わせる</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>等ピッチ配置・複数選択</td><td>配管に沿った等間隔配置、まとめて整列・複製・削除</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>ボルト接合の提案</td><td>重なった板の穴が一致すると、ボルト接合を提案</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>取付プレビュー</td><td>確定前に半透明の完成形と変更内容を表示</td><td><span class="m demo">参考デモ</span></td></tr>
+</table>
+</div>
+
+<div class="cat" style="break-before:page">
+<div class="cathead"><span class="n">4</span><h3>3D 表示・操作</h3><span class="cnt">ぐるぐる回して、見たい部材を掴んで中央へ</span></div>
+<div class="shots3"><figure><img src="img/p10_spot.png"><figcaption>部材に寄った状態。関係するラベルだけ残し、穴・溶接の数をピルに表示</figcaption></figure><figure><img src="img/b07_explode.png"><figcaption>分解表示とバルーン番号</figcaption></figure><figure><img src="img/p05_viewmarks.png"><figcaption>視点ブックマーク（PDF の撮影角度・ツアー再生）</figcaption></figure></div>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>基本操作</td><td>左ドラッグで回す、右ドラッグで掴む。部材のクリックで中央へ、ダブルクリックで寄る、空白のダブルクリックで全体へ</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>迷わないための表示</td><td>掴んだ部材のピル、回転中心の十字、視点の履歴（戻る・進む）、初回の操作ガイド</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>見どころ表示・自動回り込み</td><td>寄った部材のラベルだけを残す。触らなければ部材の周りをゆっくり回る</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>ミニマップ・タッチ操作</td><td>全体の俯瞰図で移動。タブレットでは長押しで部材を掴む</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>表示スタイル</td><td>リアル・陰影＋エッジ・隠線・ワイヤ・半透明・CAD 図面色（役割別の色分け）</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>分解・単独表示・断面</td><td>部材・部品単位の分解とバルーン番号、部品の単独表示、断面ボックス</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>高品質描画</td><td>接触陰影・環境光・めっきの質感・ボルトのねじ山・溶接ビード</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>視点ブックマーク</td><td>視点に名前とメモを付けて保存。PDF の撮影角度に指定、順に寄るツアー再生と録画</td><td><span class="m demo">参考デモ</span></td></tr>
+</table>
+</div>
+
+<div class="cat" style="break-before:page">
+<div class="cathead"><span class="n">5</span><h3>確認・品質管理</h3><span class="cnt">人が確認すべき箇所を、確認してから渡す</span></div>
+<div class="shots3"><figure><img src="img/b09_wizard.png"><figcaption>まとめて確認ウィザード</figcaption></figure><figure><img src="img/p11_tour_gauge.png"><figcaption>見どころの「次へ」送りと断面ゲージ</figcaption></figure><figure><img src="img/p06_gate.png"><figcaption>未確認が残ると受け渡しを止めるゲート</figcaption></figure></div>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>確認の旗</td><td>溶接・穴・アンカー・図面根拠など、人が確認すべき箇所を 3D 上に旗で表示</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>まとめて確認ウィザード</td><td>確認事項をカードで送り、3D がその箇所へ自動で寄る</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>見どころの「次へ」送り</td><td>未確認の旗を 1 つずつ中央に寄せ、✓ で確認済みに。誰が・いつ・どの視点で確認したかを記録</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>断面ゲージ</td><td>断面図で穴の位置を確認。ドラッグで位置、ダブルクリックで径を修正（端あきの目安つき）</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>溶接記号（JIS Z 3021）</td><td>工場溶接・現場溶接を記号で区別し、3D と帳票に表示</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>ズレ補正</td><td>部材間の隙間、レベルとの段差、穴の端あき不足を検出し、まとめて補正</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>作業保存</td><td>作業の途中をスナップショットで保存し、いつでも戻せる</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>受け渡し・確定前のゲート</td><td>未確認があると止める。理由を付けた上書きは監査ログに記録</td><td><span class="m next">次段階</span></td></tr>
+</table>
+</div>
+
+<div class="cat" style="break-before:page">
+<div class="cathead"><span class="n">6</span><h3>重量・積算・帳票</h3><span class="cnt">同じ 3D モデルから、重量も見積も指示書も</span></div>
+<div class="shots2"><figure><img src="img/p04_schedules.png"><figcaption>集計表（部材・ボルト類・溶接・穴・仕上げ面積）</figcaption></figure><figure><img src="img/b16_estimate.png"><figcaption>見積ワークフロー（明細・権限・書出し）</figcaption></figure></div>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>JIS 質量計算</td><td>形鋼・板・管・ボルト類・溶接・めっき付着量（JIS G 3192 / G 3452 / H 8641）</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>集計表</td><td>部材・ボルト類・溶接・穴・仕上げ面積・インスタンス一覧。モデルと常に同期</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>重量計算書</td><td>PDF・Excel（数式入り）・CSV で出力</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>見積の自動生成</td><td>材料・加工・めっき・ボルト類・管理費の明細をモデルから作成</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>見積書</td><td>PDF・Excel・CSV・印刷。日本語フォント埋込済み</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>加工指示書</td><td>穴座標・溶接記号・分解図・確認リストを含む工場向けの PDF</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>分解図・組立図</td><td>バルーン番号付き分解図、組立順と現場作業の組立図（PDF）</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>学習単価</td><td>加工工場の回答単価を蓄積し、次の見積に適用</td><td><span class="m next">次段階</span></td></tr>
+</table>
+</div>
+
+<div class="cat" style="break-before:page">
+<div class="cathead"><span class="n">7</span><h3>業務フロー・多社連携</h3><span class="cnt">見せる数字は権限で分け、往復を見える化</span></div>
+<div class="shots3"><figure><img src="img/b08_flow.png"><figcaption>業務フロー パネル（6 段階）</figcaption></figure><figure><img src="img/b13_roleview_C.png"><figcaption>加工工場の画面（工場単価・納期のみ）</figcaption></figure><figure><img src="img/p07_review_summary.png"><figcaption>受け渡し先で見る確認リスト</figcaption></figure></div>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>業務フロー パネル</td><td>モデル → 確認 → 重量 → 見積 → 共有 → 確定 の「いまどこか」と次に押すボタン</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>A→B→C の受け渡し</td><td>見積作成・販売会社・加工工場の間で、共有リンクで見積を受け渡す</td><td><span class="m next">次段階</span></td></tr>
+<tr><td>項目単位の権限</td><td>販売価格・利益率・工場単価を、会社ごとに見せる・見せない（サーバー側でも検証）</td><td><span class="m next">次段階</span></td></tr>
+<tr><td>Rev・監査ログ・比較</td><td>受け渡しごとに改訂を凍結。誰が何を変えたか、Rev 間の差分と理由を表示</td><td><span class="m next">次段階</span></td></tr>
+<tr><td>役割専用ビュー</td><td>販売会社・加工工場には、入力すべき列と「残り n 行」だけを表示</td><td><span class="m next">次段階</span></td></tr>
+<tr><td>確認結果の受け渡し</td><td>見積に「A社確認済 ✓ / 未確認」を表示し、確認したときの視点に戻れる</td><td><span class="m next">次段階</span></td></tr>
+<tr><td>ダッシュボード・期限通知・打合せ予約</td><td>案件横断の一覧、期限超過のバッジと催促文、Google・Outlook / Teams の打合せ予約</td><td><span class="m next">次段階</span></td></tr>
+<tr><td>営業所の仕分け</td><td>案件・見積を営業所ごとに分けて表示・集計</td><td><span class="m next">次段階</span></td></tr>
+</table>
+</div>
+
+<div class="cat" style="break-before:page">
+<div class="cathead"><span class="n">8</span><h3>シミュレータ</h3><span class="cnt">部品の役割と、荷重に対する余裕を目で見る</span></div>
+<figure class="solo"><img src="img/p14_sim.png"><figcaption>シミュレータ v3。左に部品ボタン、右にライブゲージ（応力比・たわみ・ボルト・アンカー）</figcaption></figure>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>シミュレータ v3</td><td>部品ごとの役割表示、応力比・たわみ・ボルト・アンカーのライブゲージ、X 線表示、荷重倍率と限界探索、組立のストーリー動画。簡易モデルのため、設計計算書の代わりにはなりません</td><td><span class="m demo">参考デモ</span></td></tr>
+</table>
+
+<div class="cathead"><span class="n">9</span><h3>書出し・外部連携</h3><span class="cnt">他のソフトへ、同じモデルを渡す</span></div>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>3D 形式の書出し</td><td>glTF / GLB、USD / USDZ（質量・衝突形状付きの SimReady パッケージ）</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>プロジェクトの保存</td><td>プロジェクト JSON で保存・読込。作業の受け渡しに利用</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>CAD・BIM 形式の書出し</td><td>DXF、IFC（JSON）</td><td><span class="m next">次段階</span></td></tr>
+</table>
+</div>
+
+<div class="cat" style="break-before:page">
+<div class="cathead"><span class="n">10</span><h3>画面・動作環境</h3><span class="cnt">慣れた人にも、初めての人にも</span></div>
+<div class="shots3"><figure><img src="img/v01_signin.png"><figcaption>v2: サインイン</figcaption></figure><figure><img src="img/v04_chat.png"><figcaption>v2: チャットで概算（製品 → サイズ → 仕上げ → 数量）</figcaption></figure><figure><img src="img/v05_3d.png"><figcaption>v2: 5 ステップの 3D 詳細</figcaption></figure></div>
+<table class="ft">
+<tr><th>機能</th><th>できること</th><th>区分</th></tr>
+<tr><td>v1 / v2 の 2 つの画面</td><td>経験者向けの BIM ワークスペース（v1）と、初めてでも迷わないステップ型（v2）。同じデータのままボタン 1 つで切替</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>オフライン版</td><td>単一の HTML ファイル（約 35 MB）。インストール不要、外部通信なしで OCR・PDF 出力まで動作</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>操作ガイド・ショートカット</td><td>初回の操作ガイド、「?」キーでショートカット一覧</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>チャットで概算</td><td>製品・サイズ・仕上げ・数量を選ぶだけで概算見積</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>サーバー版</td><td>部署内での案件共有、期限のメール通知、学習の共有（追加ソフト不要の Node サーバー）</td><td><span class="m next">次段階</span></td></tr>
+</table>
+<div class="callout small" style="margin-top:10pt"><b>お問い合わせ</b>　本書の内容、PoC の進め方、対象図面の選定については、提出元のワールド化成までお問い合わせください。合格基準とスケジュールは、キックオフで貴社と協議のうえ確定します。</div>
+</div>
+
+</body></html>
