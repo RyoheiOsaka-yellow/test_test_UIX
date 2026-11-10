@@ -222,6 +222,7 @@ class Merger {
       parent.add(m);
     }
     this.buckets.clear();
+    if (this._seats){ PEOPLE.seated.push({ parent, seats:this._seats }); this._seats = null; }
   }
 }
 

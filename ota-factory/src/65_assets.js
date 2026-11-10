@@ -1,4 +1,6 @@
-// ================= 実物 3D モデル（NVIDIA SimReady, CC BY 4.0 — codepawl/simready-glb 経由）=================
+// ================= 実物 3D モデル =================
+// ・NVIDIA SimReady（CC BY 4.0、codepawl/simready-glb 経由）：実行時にネットワークから読込、距離別 LOD
+// ・同梱モデル（models/）：Sketchfab CC BY 4.0 の工作機械・ロボット（Objaverse 収録分を最適化）
 // 手続き生成の工場に、実在のフォークリフト・パレット・ラック・工具・安全設備などの GLB を重ねる。
 // 読込は非同期：先に手続きモデル（fallback）を見せ、届いた順に差し替える。オフラインでも手続きモデルで成立する。
 const HF = "https://huggingface.co/datasets/codepawl/simready-glb/resolve/main/";
@@ -43,35 +45,68 @@ const ASSET_CATALOG = {   // key: { a: asset 名, n: 表示名, tris: 元の三�
   printer3d:  { a:"equipment_3d_printer_b01",             n:"3D プリンタ",                tris:394 },
   scope:      { a:"testingTool_oscilloscope_b01",         n:"オシロスコープ",             tris:175 },
   chair:      { a:"chair_office_amf_black_a01",           n:"オフィスチェア",             tris:32 },
+  spillKit:   { a:"fireProtection_spillKit_cabinet_wheeled_a01", n:"漏洩対策キット",          tris:227 },
+  flamCab:    { a:"cabinet_drum_flammable_a02",           n:"危険物保管庫（ドラム用）",   tris:185 },
+  recycle:    { a:"wasteManagement_recyclingBin_multiStream_a01", n:"分別ごみ箱",             tris:38 },
+  packTable:  { a:"table_packing_heavyduty_c01",          n:"梱包作業台",                 tris:98 },
+  stepLadder: { a:"ladder_step_aluminium_b02",            n:"脚立",                       tris:29 },
+  workbench:  { a:"furniture_workbench_modular_b01",      n:"作業台（モジュール式）",     tris:35 },
+  toolbox:    { a:"storage_toolbox_carry_hardCase_b01",   n:"工具箱",                     tris:194 },
+  barricade:  { a:"environment_barricade_a01",            n:"バリケード",                 tris:110 },
+  // ---- リポジトリ同梱モデル（models/、Sketchfab CC BY 4.0／Objaverse 収録分を最適化）----
+  mcMill:     { url:"models/mill.glb",  n:"マシニングセンタ", ry0:-Math.PI/2, tris:64, tint:1.7,  credit:{ t:"Cutter Machine", by:"Francesco Coldesina", lic:"CC BY 4.0", link:"https://sketchfab.com/models/ea44a8bafd6e4beb87e3258e5e308007" } },
+  cncLathe:   { url:"models/turn.glb",  n:"CNC 旋盤",         ry0:Math.PI,    tris:216, credit:{ t:"CNC Machine", by:"canhoto.appu", lic:"CC BY 4.0", link:"https://sketchfab.com/models/c4adbed644704e378779b610127e2e97" } },
+  punchPress: { url:"models/punch.glb", n:"タレットパンチプレス", ry0:0, anim:true, tris:176, credit:{ t:"EMZ 3612 MII", by:"vexhibition", lic:"CC BY 4.0", link:"https://sketchfab.com/models/08c38d43b01f4840887ff8495062b715" } },
+  manualLathe:{ url:"models/lathe.glb", n:"汎用旋盤（治具製作用）", ry0:0, tris:44, credit:{ t:"Lathe Machine", by:"Centurion University", lic:"CC BY 4.0", link:"https://sketchfab.com/models/ff59679ac00248868e8236f39848eb55" } },
+  irb:        { url:"models/irb.glb",   n:"産業用ロボット（展示）", ry0:0, tris:92, credit:{ t:"IRB 2400 Industrial Robot (UPDATED)", by:"RJGonzalez23", lic:"CC BY 4.0", link:"https://sketchfab.com/models/7d43d485dbc342cb9359cb68a9dfa93a" } },
 };
-const AS = { on:true, quality:"lod1", loader:null, cache:{}, placed:[], loaded:0, total:0, failed:0, bytes:0 };
+function assetCredit(key){ const c = ASSET_CATALOG[key]; return c.credit ? `「${c.credit.t}」 by ${c.credit.by}（${c.credit.lic}）` : "NVIDIA SimReady（CC BY 4.0）"; }
+const AS = { on:true, quality:"lod1", loader:null, cache:{}, placed:[], loaded:0, total:0, failed:0, nearLoading:0, nearShown:0 };
 function assetLoader(){ if (AS.loader) return AS.loader; const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder);
   const k = new KTX2Loader().setTranscoderPath("https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/libs/basis/").detectSupport(renderer); l.setKTX2Loader(k); AS.loader = l; return l; }
-// 重いアセット（原型 30 万三角形超）は選択品質より 1 段軽い LOD を使う
-function effQuality(c){ const q = AS.quality; if (c.tris <= 300 || q === "lod2") return q; return q === "glb" ? "lod1" : "lod2"; }
-function assetURL(c){ const q = effQuality(c); return q === "glb" ? `${HF}glb/${c.a}.glb` : `${HF}lods/${c.a}/${c.a}_${q}.glb`; }
 { const qp = new URLSearchParams(location.search).get("assets"); if (qp === "off") AS.on = false; else if (["lod1","lod2","glb"].includes(qp||"")) AS.quality = qp; }
-function loadAsset(key){ const c = ASSET_CATALOG[key]; const ck = key + "@" + AS.quality; if (AS.cache[ck]) return AS.cache[ck];
-  AS.cache[ck] = assetLoader().loadAsync(assetURL(c)).then(g => { const sc = g.scene; sc.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(sc); const size = bb.getSize(new THREE.Vector3()); const ctr = bb.getCenter(new THREE.Vector3());
-    sc.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; if (o.material && o.material.transparent && o.material.opacity > 0.98) o.material.transparent = false; } });
-    return { scene: sc, bb, size, ctr }; }); return AS.cache[ck]; }
-// opts: parent, x, y, z, ry, scale, fit:{w|d|h}, fallback(Group), eqId, hideFallback(true)
+// ---- 距離別 LOD：遠景用を先に読み、カメラが近づいた物だけ近景用を後から読み込んで差し替える ----
+// 品質設定 → [遠景, 近景]。原型 30 万三角形超の重いモデルは近景を 1 段軽くする。
+const LOD_SET = { lod2:["lod3","lod2"], lod1:["lod2","lod1"], glb:["lod2","glb"] };
+const LOD_DOWN = { glb:"lod1", lod1:"lod2", lod2:"lod3", lod3:"lod3" };
+function variantOf(c, which){ if (c.url) return "local"; const [far, near] = LOD_SET[AS.quality]; if (which === "far") return far; return c.tris > 300 ? LOD_DOWN[near] : near; }
+function assetURL(c, v){ return c.url ? c.url : v === "glb" ? `${HF}glb/${c.a}.glb` : `${HF}lods/${c.a}/${c.a}_${v}.glb`; }
+function loadAsset(key, v){ const c = ASSET_CATALOG[key]; const ck = key + "@" + v; if (AS.cache[ck]) return AS.cache[ck];
+  AS.cache[ck] = assetLoader().loadAsync(assetURL(c, v)).then(g => { const root = new THREE.Group(); root.add(g.scene); g.scene.rotation.y = c.ry0 || 0; root.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(root); const size = bb.getSize(new THREE.Vector3()); const ctr = bb.getCenter(new THREE.Vector3());
+    root.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; if (o.material && o.material.transparent && o.material.opacity > 0.98) o.material.transparent = false; if (c.tint && o.material && o.material.color) o.material.color.multiplyScalar(c.tint); } });
+    return { scene: root, bb, size, ctr, anims: g.animations || [] }; }); return AS.cache[ck]; }
+function makeInst(r, rec){ const { opts, key } = rec; const c = ASSET_CATALOG[key]; const inst = r.scene.clone(true); let s = opts.scale || 1;
+  if (opts.fit){ const f = opts.fit; const sx = f.w ? f.w / r.size.x : Infinity, sz = f.d ? f.d / r.size.z : Infinity, sy = f.h ? f.h / r.size.y : Infinity; s = Math.min(sx, sz, sy); if (!isFinite(s)) s = 1; }
+  inst.scale.setScalar(s); inst.position.set(-r.ctr.x * s, -r.bb.min.y * s, -r.ctr.z * s); inst.userData.assetInst = true; if (opts.core) inst.userData.extra = true;
+  rec.radius = 0.5 * Math.hypot(r.size.x, r.size.y, r.size.z) * s; rec.nearDist = 10 + 6 * rec.radius;
+  if (c.anim && r.anims.length && !rec.mixer){ const mx = new THREE.AnimationMixer(inst); mx.clipAction(r.anims[0]).play(); rec.mixer = mx; rec.animEntry = { update(t, dt){ mx.update(dt * 0.6); } }; ANIM.push(rec.animEntry); }
+  return inst; }
+// opts: parent, x, y, z, ry, scale, fit:{w|d|h}, fallback(Group), core(true=設備本体の差し替え。箱計算は fallback を使い、クリックは設備として扱う)
 function placeAsset(key, opts={}){
   const c = ASSET_CATALOG[key]; if (!c) return null; const holder = new THREE.Group(); holder.name = "asset_" + key; holder.position.set(opts.x||0, opts.y||0, opts.z||0); holder.rotation.y = opts.ry||0;
-  holder.userData.extra = true; holder.userData.asset = key; holder.userData.layer = "assets"; if (opts.eqId) holder.userData.eqId = opts.eqId;
+  holder.userData.layer = "assets"; if (opts.core) holder.userData.assetCore = key; else { holder.userData.extra = true; holder.userData.asset = key; }
   if (opts.fallback){ opts.fallback.userData.fallback = true; holder.add(opts.fallback); }
-  (opts.parent || scene).add(holder); const rec = { holder, key, opts, inst:null }; AS.placed.push(rec); AS.total++;
+  (opts.parent || scene).add(holder); const rec = { holder, key, opts, far:null, near:null, nearReq:false, radius:1, nearDist:16 }; AS.placed.push(rec); AS.total++;
   if (AS.on) attachAsset(rec); return holder;
 }
-function attachAsset(rec){ const { holder, key, opts } = rec; loadAsset(key).then(r => { if (rec.inst) return; const inst = r.scene.clone(true); let s = opts.scale || 1;
-    if (opts.fit){ const f = opts.fit; const sx = f.w ? f.w / r.size.x : Infinity, sz = f.d ? f.d / r.size.z : Infinity, sy = f.h ? f.h / r.size.y : Infinity; s = Math.min(sx, sz, sy); if (!isFinite(s)) s = 1; }
-    inst.scale.setScalar(s); inst.position.set(-r.ctr.x * s, -r.bb.min.y * s, -r.ctr.z * s); inst.userData.assetInst = true; holder.add(inst); rec.inst = inst;
-    if (opts.fallback && opts.hideFallback !== false) opts.fallback.visible = false; AS.loaded++; assetStatus(); dirtyShadow(); })
+function attachAsset(rec){ const { holder, key, opts } = rec; const c = ASSET_CATALOG[key]; loadAsset(key, variantOf(c, "far")).then(r => { if (rec.far || rec.dead) return; const inst = makeInst(r, rec); holder.add(inst); rec.far = inst; inst.visible = AS.on;
+    if (opts.fallback && opts.hideFallback !== false) opts.fallback.visible = !AS.on; AS.loaded++; assetStatus(); dirtyShadow(); })
   .catch(err => { AS.failed++; console.warn("asset load failed", key, err?.message || err); assetStatus(); }); }
-function assetStatus(){ const el = document.getElementById("assetStatus"); if (!el) return; const done = AS.loaded + AS.failed; el.textContent = AS.on ? (done < AS.total ? `実物モデル ${AS.loaded}/${AS.total} 読込中…` : `実物モデル ${AS.loaded} 点${AS.failed? `（${AS.failed} 失敗）`:""}`) : "実物モデル OFF"; el.style.color = done < AS.total ? "var(--acc)" : "var(--sub)"; }
-function setAssetsOn(on){ AS.on = on; for (const rec of AS.placed){ if (rec.inst) rec.inst.visible = on; if (rec.opts.fallback) rec.opts.fallback.visible = !on || !rec.inst; if (on && !rec.inst) attachAsset(rec); } assetStatus(); dirtyShadow(); }
-function setAssetQuality(q){ if (q === AS.quality) return; AS.quality = q; AS.cache = {}; AS.loaded = 0; AS.failed = 0; for (const rec of AS.placed){ if (rec.inst){ rec.holder.remove(rec.inst); rec.inst = null; } if (rec.opts.fallback) rec.opts.fallback.visible = true; if (AS.on) attachAsset(rec); } assetStatus(); }
-function removeAssetsOf(parent){ for (let i = AS.placed.length - 1; i >= 0; i--){ const rec = AS.placed[i]; let p = rec.holder.parent, inside = false; while (p){ if (p === parent){ inside = true; break; } p = p.parent; } if (inside){ rec.holder.parent?.remove(rec.holder); AS.placed.splice(i, 1); AS.total--; if (rec.inst) AS.loaded--; } } assetStatus(); }
+const _awp = new THREE.Vector3();
+function updateAssetLOD(){ if (!AS.on) return; const cp = camera.position;
+  for (const rec of AS.placed){ if (!rec.far) continue; const c = ASSET_CATALOG[rec.key]; const nv = variantOf(c, "near"); if (c.url || nv === variantOf(c, "far")) continue;
+    rec.holder.getWorldPosition(_awp); const d = _awp.distanceTo(cp);
+    if (d < rec.nearDist){ let vis = true; for (let p = rec.holder; p; p = p.parent) if (!p.visible){ vis = false; break; } if (!vis) continue;
+      if (rec.near){ if (!rec.near.visible){ rec.near.visible = true; rec.far.visible = false; AS.nearShown++; assetStatus(); } }
+      else if (!rec.nearReq && AS.nearLoading < 4){ rec.nearReq = true; AS.nearLoading++; loadAsset(rec.key, nv).then(r => { if (rec.dead) return; const inst = makeInst(r, rec); inst.visible = false; rec.holder.add(inst); rec.near = inst; }).catch(() => {}).finally(() => { AS.nearLoading--; }); } }
+    else if (d > rec.nearDist * 1.25 && rec.near && rec.near.visible){ rec.near.visible = false; rec.far.visible = true; AS.nearShown--; assetStatus(); } } }
+function assetStatus(){ const el = document.getElementById("assetStatus"); if (!el) return; const done = AS.loaded + AS.failed; el.textContent = AS.on ? (done < AS.total ? `実物モデル ${AS.loaded}/${AS.total} 読込中…` : `実物モデル ${AS.loaded} 点${AS.nearShown? `（近景高精細 ${AS.nearShown}）`:""}${AS.failed? `（${AS.failed} 失敗）`:""}`) : "実物モデル OFF"; el.style.color = done < AS.total ? "var(--acc)" : "var(--sub)"; }
+function setAssetsOn(on){ AS.on = on; for (const rec of AS.placed){ const nearOn = rec.near && rec.near.visible; if (rec.far) rec.far.visible = on && !nearOn; if (rec.near && !on){ rec.near.visible = false; AS.nearShown = Math.max(0, AS.nearShown - 1); } if (rec.opts.fallback) rec.opts.fallback.visible = !on || !rec.far; if (on && !rec.far) attachAsset(rec); } assetStatus(); dirtyShadow(); }
+function setAssetQuality(q){ if (q === AS.quality) return; AS.quality = q; AS.loaded = 0; AS.failed = 0; AS.nearShown = 0;
+  for (const rec of AS.placed){ if (ASSET_CATALOG[rec.key].url){ if (rec.far) AS.loaded++; continue; } for (const k of ["far","near"]) if (rec[k]){ rec.holder.remove(rec[k]); rec[k] = null; } rec.nearReq = false; if (rec.opts.fallback) rec.opts.fallback.visible = true; if (AS.on) attachAsset(rec); } assetStatus(); }
+function removeAssetsOf(parent){ for (let i = AS.placed.length - 1; i >= 0; i--){ const rec = AS.placed[i]; let p = rec.holder.parent, inside = false; while (p){ if (p === parent){ inside = true; break; } p = p.parent; }
+    if (inside){ rec.dead = true; rec.holder.parent?.remove(rec.holder); AS.placed.splice(i, 1); AS.total--; if (rec.far) AS.loaded--; if (rec.near && rec.near.visible) AS.nearShown--; if (rec.animEntry){ const k = ANIM.indexOf(rec.animEntry); if (k >= 0) ANIM.splice(k, 1); } } } assetStatus(); }
 // 手続きモデルを fallback 用の Group にまとめる（Merger を使う既存関数を流用）
 function fallbackGroup(fn){ const m = new Merger(); const g = new THREE.Group(); fn(m, g); m.flush(g); return g; }
 
@@ -107,6 +142,15 @@ function buildAssets(){
   // 北側：圧縮機・エアドライヤ（コンプレッサ室脇）、ダンプカート（ごみ置場）、ごみ箱
   placeAsset("compressor", { parent:site, x:-47.4, z:-38.8, ry:0 }); placeAsset("airDryer", { parent:site, x:-45.3, z:-38.9 }); placeAsset("tiltTruck", { parent:site, x:-51.5, z:-25.5, ry:0.3 }); placeAsset("trash", { parent:site, x:10, z:-31.0 });
   placeAsset("eyewash", { parent:site, x:-15.2, z:-31.3, ry:-Math.PI/2 });
+  // v1.0 追加：漏洩対策キット・危険物保管庫・分別ごみ箱・梱包台・脚立・作業台・工具箱・バリケード
+  placeAsset("spillKit", { parent:g1, x:-42.6, z:-9.6, ry:Math.PI/2 }); placeAsset("spillKit", { parent:site, x:-15.4, z:-33.6, ry:-Math.PI/2 }); placeAsset("flamCab", { parent:site, x:-43.0, z:-39.0 });
+  placeAsset("recycle", { parent:g1, x:35.2, z:6.5, ry:-Math.PI/2 }); placeAsset("recycle", { parent:g3, x:17.0, y:lv[2], z:4.2, ry:Math.PI/2 }); placeAsset("recycle", { parent:g2, x:-35.3, y:lv[1], z:8.0, ry:Math.PI/2 });
+  placeAsset("packTable", { parent:g1, x:38.6, z:-1.4, ry:Math.PI }); placeAsset("stepLadder", { parent:g1, x:19.2, z:-27.9, ry:0.3 }); placeAsset("workbench", { parent:g1, x:15.3, z:14.2, ry:-Math.PI/2 });
+  placeAsset("toolbox", { parent:g1, x:13.0, y:0.82, z:10.6, ry:0.4 }); placeAsset("barricade", { parent:g1, x:37.2, z:-9.8, ry:Math.PI/2 }); placeAsset("barricade", { parent:g1, x:37.2, z:-0.6, ry:Math.PI/2 });
+  // 同梱モデル：工具室の汎用旋盤、ショールームの産業用ロボット
+  placeAsset("manualLathe", { parent:g1, x:10.6, z:15.6, ry:Math.PI, fit:{ w:3.4 } });
+  placeAsset("irb", { parent:g1, x:-19.0, z:12.6, ry:Math.PI, fit:{ w:3.0 } });
+  { const d = g1.getObjectByName("showDemo"); if (d){ g1.remove(d); d.position.set(0, 0, 0); d.rotation.y = 0; placeAsset("cncLathe", { parent:g1, x:-23, y:0.4, z:10, ry:Math.PI, fallback:d, fit:{ w:3.9 } }); } }
 }
 // ---------- 配置：レーンの工程ごとの小物（生成・再生成のたびに呼ぶ）----------
 const LANE_ASSETS = {   // kind → [asset, dx, dz, ry, opts]（局所座標：+z が正面＝通路側）
@@ -127,18 +171,28 @@ const LANE_ASSETS = {   // kind → [asset, dx, dz, ry, opts]（局所座標：+
   panel:  [["toolCab", 0, 1, 0, { front:true, dx:0.6 }]],
   laser:  [["palletB", 0, 1, 0, { front:true, dx:-0.5 }]],
   brake:  [["handTruck", 0, 1, 0, { front:true, dx:0.6 }]],
+  punch:  [["palletB", 0, 1, 0, { front:true, dx:0.7 }]],
   demo:   [["cobot", -0.2, 0.6, 0.4, { y:0.3 }]],
 };
-function laneAssets(obj){ removeAssetsOf(obj.group); for (const s of obj.sts.concat(obj.aux)){ const list = LANE_ASSETS[s.kind]; if (!list || !s.units) continue;
+const LANE_MODELS = { mc5:"mcMill", lathe:"cncLathe", punch:"punchPress" };   // 設備本体を同梱モデルに差し替える工程
+function replaceCore(grp, key, s, ry, pad){ const fp = s.fp; const off = (typeof FP_OFF !== "undefined" && FP_OFF[s.type]) || [0, 0]; const fb = new THREE.Group(); grp.children.filter(c => !c.isSprite && !c.userData.extra && !c.userData.asset && !c.userData.assetCore).forEach(c => fb.add(c)); grp.add(fb);
+  placeAsset(key, { parent:grp, x:off[0], z:off[1], ry, fallback:fb, core:true, fit:{ w:fp[0] + pad[0], d:fp[1] + pad[1] } });
+  const e = EQ_OBJ[grp.userData.eqId]?.data; if (e && ASSET_CATALOG[key].credit) e.spec["3D モデル"] = assetCredit(key); }
+function laneAssets(obj){ removeAssetsOf(obj.group); for (const s of obj.sts.concat(obj.aux)){ const list = LANE_ASSETS[s.kind] || []; if (!s.units) continue;
     for (const u of s.units){ const grp = obj.group.children.find(c => c.userData.eqId && c.userData.eqId === `${obj.lane.id}-S${s.idx}${s.n>1? String.fromCharCode(97+u.k) : ""}`); if (!grp) continue; const fp = s.fp;
+      if (LANE_MODELS[s.kind]) replaceCore(grp, LANE_MODELS[s.kind], s, 0, [-0.5, -0.5]);
+      lanePeople(obj, grp, s);
       for (const [key, dx, dz, ry, o={}] of list){ const px = o.front ? (o.dx||0) * fp[0]*0.5 : dx, pz = o.front ? fp[1]/2 + 0.9 : (o.dz !== undefined ? o.dz : dz);
-        if (o.replace){ const fb = new THREE.Group(); grp.children.filter(c => !c.isSprite && !c.userData.extra).forEach(c => fb.add(c)); grp.add(fb); placeAsset(key, { parent:grp, x:0, z:0, ry, fallback:fb, fit:{ w:fp[0]+0.4, d:fp[1]+0.9 } }); }
+        if (o.replace) replaceCore(grp, key, s, ry, [0.4, 0.9]);
         else placeAsset(key, { parent:grp, x:px, y:o.y||0, z:pz, ry }); } } } }
+// 工程の要員：手作業は最大 3 人、監視付き・自動は要員 0.3 人以上なら 1 人を機械の正面に立たせる
+function lanePeople(obj, grp, s){ const n = s.auto === "manual" ? Math.min(3, Math.ceil(s.ppl)) : (s.ppl >= 0.3 ? 1 : 0); const fp = s.fp; const off = (typeof FP_OFF !== "undefined" && FP_OFF[s.type]) || [0, 0];
+  for (let i = 0; i < n; i++){ const w = makePerson("hall"); w.userData.extra = true; w.position.set(off[0] + (n === 1 ? fp[0] * 0.24 : (i - (n - 1) / 2) * fp[0] * 0.3), 0, off[1] + fp[1] / 2 + 0.5); w.rotation.y = Math.PI + (i - (n - 1) / 2) * 0.35; grp.add(w); } }
 // ---------- 動く物：フォークリフト（手続きモデルを fallback に）----------
 function assetMover(key, fallback){ const holder = placeAsset(key, { parent:MOVERS, x:0, z:0, fallback }); return holder; }
 // ---------- パレットラック：実物ラック 4 m × 2 ＋ パレット（手続きラックを fallback に）----------
 function makeRackAsset(levels=3, bays=4){ const g = new THREE.Group(); const fb = makeRack(levels, bays);
-  placeAsset("rack", { parent:g, x:-2, z:0, fallback:fb }); placeAsset("rack", { parent:g, x:2, z:0 });
+  placeAsset("rack", { parent:g, x:-2, z:0, fallback:fb, core:true }); placeAsset("rack", { parent:g, x:2, z:0 });
   const rnd = sRand("rackAsset" + levels + bays); const floorKeys = ["palletA","palletC","palletA","palletB"];
   for (let i=0;i<4;i++){ const x = -3 + i*2; if (rnd() < 0.8) placeAsset(floorKeys[i % 4], { parent:g, x, z:-0.45, ry:(rnd()-0.5)*0.2 }); if (rnd() < 0.6) placeAsset("palletB", { parent:g, x, z:0.55, ry:(rnd()-0.5)*0.2 });
     if (rnd() < 0.7) placeAsset("palletB", { parent:g, x, y:2.1, z:-0.45, ry:(rnd()-0.5)*0.15 }); if (levels >= 4 && rnd() < 0.5) placeAsset("crate", { parent:g, x, y:2.1, z:0.55 }); }

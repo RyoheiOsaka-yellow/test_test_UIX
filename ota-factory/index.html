@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>XANTALOS（ザンタロス）大田区 — 開発一体型工場 3D構想モデル v0.9</title>
+<title>XANTALOS（ザンタロス）大田区 — 開発一体型工場 3D構想モデル v1.0</title>
 <style>
   :root { --bg:#0d1117; --panel:#161b22d9; --line:#30363d; --txt:#e6edf3; --sub:#9da7b3; --acc:#f2c744; --acc2:#58a6ff; --good:#3fb950; --bad:#f85149; }
   * { box-sizing:border-box; }
@@ -84,11 +84,11 @@
 <div id="views" class="panel"><span class="lbl">視点</span></div>
 
 <div id="stats" class="panel">
-  <h3>計画概要 — XANTALOS 大田区（構想 v0.9）</h3>
+  <h3>計画概要 — XANTALOS 大田区（構想 v1.0）</h3>
   <div id="statsBody"></div>
 </div>
 
-<div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div><div class="sep"></div><div class="row"><span class="sub">実物モデルの品質</span><select id="assetQ" class="btn sm"><option value="lod2">軽量</option><option value="lod1" selected>標準</option><option value="glb">最高</option></select></div><div class="sub" style="margin-top:6px">3D モデル：NVIDIA SimReady（CC BY 4.0）を <a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a> から読込。初回はネットワークから取得します。</div></div>
+<div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div><div class="sep"></div><div class="row"><span class="sub">実物モデルの品質</span><select id="assetQ" class="btn sm"><option value="lod2">軽量</option><option value="lod1" selected>標準</option><option value="glb">最高</option></select></div><div class="sub" style="margin-top:4px">遠くの物は軽いモデル、近づいた物だけ高精細モデルを後から読み込みます。</div><div class="sub" style="margin-top:6px">3D モデル：小物・車両は NVIDIA SimReady（CC BY 4.0、<a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a> から実行時に読込）。工作機械・ロボットは Sketchfab の CC BY 4.0 モデル、人物は Quaternius（CC0）。クリックで作者名を表示します。</div></div>
 <div id="bim" class="panel"><h3>BIM・MEP 系統 <span class="sub" id="bimSum"></span></h3><div id="bimSys"></div><div class="sep"></div>
   <div class="row"><span class="sub">幹線高さの調整（選択系統）</span><select id="bimSysSel" class="btn sm"></select></div><input id="bimH" type="range" min="-3" max="3" step="0.1" value="0"><div class="sub" id="bimHLabel">±0.0 m</div>
   <div class="sep"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="clashBtn">干渉チェック</button><button class="btn sm" id="clearBtn">保守スペース</button><button class="btn sm" id="xrayBtn">X線表示</button><button class="btn sm" id="mepCsv">数量 CSV</button></div><div id="clashList" style="margin-top:6px"></div><div id="clearList" style="margin-top:6px"></div></div>
@@ -123,6 +123,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 // ===== src/05_logo.js =====
 // XANTALOS ロゴ（PNG, base64 埋め込み：file:// でも単体 HTML でも読める）
@@ -286,7 +287,9 @@ const TOUR = [
   { cam:{ yaw:-0.9, pitch:0.4, dist:60, target:[-20,11.5,10] }, mode:"floor", floor:3, title:"3F 設計フロア・カフェテリア",
     text:"CAD/CAE 40席、会議室群、全社のカフェテリア。木天井の下で設計とソフトが日常的に交わる。" },
   { cam:{ yaw:-2.2, pitch:0.42, dist:20, target:[41,1,-22] }, mode:"floor", floor:1, title:"実物モデル：受入置場（NVIDIA SimReady）",
-    text:"フォークリフト・ハンドパレット・パレット・木箱・ラック・踏台など、NVIDIA SimReady の実物 3D モデル（CC BY 4.0）約 130 点を配置。レーンを組み替えると工程に応じた小物が自動で付く。" },
+    text:"フォークリフト・パレット・ラック・工具・安全設備など NVIDIA SimReady の実物モデル約 190 点。遠くの物は軽いモデルで表示し、近づいた物だけ高精細モデルを後から読み込む。" },
+  { cam:{ yaw:0.25, pitch:0.3, dist:17, target:[-24,1.6,-24] }, mode:"floor", floor:1, lane:"L1", title:"実機モデルと作業者",
+    text:"マシニングセンタと CNC 旋盤は Sketchfab の CC BY モデル、作業者は Quaternius の CC0 キャラクター（歩行・待機アニメ付き）。機械の正面に工程の要員が立ち、通路を巡回する。オフィスの着席者は姿勢を焼き込んで 1 メッシュにまとめている。" },
   { cam:{ yaw:-0.6, pitch:0.18, dist:70, target:[-30,4,24] }, mode:"ext", title:"前庭プラザ・来客アプローチ",
     text:"歩道から樹木とベンチの前庭を抜けてロビーへ。西側はソーラーカーポート駐車場 32台。" },
 ];
@@ -434,9 +437,9 @@ Object.assign(STATION_TYPES, {
 });
 Object.assign(LANE_RECIPES, {
   sheet:   { n:"板金・溶接 レーン", mode:"flow", color:0xff9f43, unitName:"個",
-    stations:[["load",1],["laser",1],["brake",1],["weld",2],["finish",1],["store",1]], aux:[],
+    stations:[["load",1],["laser",1],["punch",1],["brake",1],["weld",2],["finish",1],["store",1]], aux:[],
     overhead:["toolRail","boom","cams"], os:["edge","sched","mes","qai","cmms"], params:{},
-    desc:"レーザー切断→曲げ→ロボット溶接×2→仕上げ→ストア。カバー・架台・ブラケット類を内製。", supplies:"板金部品" },
+    desc:"レーザー切断→タレットパンチ→曲げ→ロボット溶接×2→仕上げ→ストア。カバー・架台・ブラケット類を内製。", supplies:"板金部品" },
   paint:   { n:"塗装 レーン", mode:"flow", color:0x2ec4b6, unitName:"個",
     stations:[["mask",1],["booth",1],["oven",1],["store",1]], aux:[],
     overhead:["boom","cams"], os:["edge","mes","qai"], params:{},
@@ -484,6 +487,10 @@ BOM["大型構造部品"].outsource = { unitCost:120, leadDays:45, n:"大物加�
 BOM["制御盤"].outsource = { unitCost:180, leadDays:30, n:"盤メーカーへ外注" };
 // 社内化の候補レシピと推奨区画
 const INHOUSE = { "板金部品":{ recipe:"sheet", slot:"yard" }, "塗装部品":{ recipe:"paint", slot:"yard2" }, "精密部品":{ recipe:"precision", slot:"mach-N" }, "大型構造部品":{ recipe:"heavy", slot:"mach-S" }, "制御盤":{ recipe:"panel", slot:"elab" } };
+
+// ---- v1.0：タレットパンチプレス工程 ----
+STATION_TYPES.punch = { n:"タレットパンチプレス", kind:"punch", fp:[7.2,5.0], ct:8, unit:"min", auto:"auto", ppl:0.3, capex:95,
+  spec:{ 型式:"サーボ式タレットパンチプレス 30 t（想定）", 加工範囲:"3050×1525", 金型:"58 ステーション", 電源:"35 kVA" } };
 
 // ===== src/20_core.js =====
 // ================= 基本セットアップ =================
@@ -710,6 +717,7 @@ class Merger {
       parent.add(m);
     }
     this.buckets.clear();
+    if (this._seats){ PEOPLE.seated.push({ parent, seats:this._seats }); this._seats = null; }
   }
 }
 
@@ -1168,7 +1176,7 @@ const EQ_OBJ = {};      // id -> { group, data }
 function compactGroup(grp){
   grp.updateMatrixWorld(true); const buckets = new Map(), remove = []; const inv = grp.matrixWorld.clone().invert(); const rel = new THREE.Matrix4();
   grp.traverse(o => { if (!o.isMesh || o.isInstancedMesh || o.isSprite || o.userData.dyn || o.userData.plan || Array.isArray(o.material)) return;
-    let p = o.parent; while (p && p !== grp){ if (p.userData.joints || p.userData.dyn) return; p = p.parent; }
+    let p = o.parent; while (p && p !== grp){ if (p.userData.joints || p.userData.dyn || p.userData.fallback || p.userData.asset || p.userData.assetCore) return; p = p.parent; }
     rel.multiplyMatrices(inv, o.matrixWorld); const g = o.geometry.clone().applyMatrix4(rel); if (!buckets.has(o.material)) buckets.set(o.material, []); buckets.get(o.material).push(g); remove.push(o); });
   remove.forEach(o => o.parent.remove(o));
   for (const [mat, geos] of buckets){ const m = new THREE.Mesh(mergeGeometries(geos, false), mat); geos.forEach(g=>g.dispose()); m.castShadow = m.receiveShadow = true; grp.add(m); }
@@ -1414,7 +1422,7 @@ function deskCluster(m, x, z, people, ry=0){ // 4席アイランド（m: Merger�
   m.box(3.2, 0.5, 0.05, std(0xcbd5df), x, 0.72, z, rot);   // 中央パーティション
   { const p = R(1.9, 0); m.box(0.4, 0.5, 0.4, M.pot, p[0], 0, p[1], rot); m.box(0.5, 0.7, 0.5, M.plant, p[0], 0.5, p[1], rot); }
 }
-function seatedPerson(m, x, z, ry){ m.box(0.42, 0.55, 0.26, Math.random()<0.5? M.shirt : M.uniform2, x, 0.48, z, ry); m.cyl(0.11, 0.24, M.skin, x, 1.02, z, 10); m.box(0.4, 0.12, 0.45, M.uniform, x, 0.45, z, ry); }
+function seatedPerson(m, x, z, ry){ (m._seats || (m._seats = [])).push([x, z, ry]); m.box(0.42, 0.55, 0.26, Math.random()<0.5? M.shirt : M.uniform2, x, 0.48, z, ry); m.cyl(0.11, 0.24, M.skin, x, 1.02, z, 10); m.box(0.4, 0.12, 0.45, M.uniform, x, 0.45, z, ry); }
 function meetingRoom(m, x0, x1, z0, z1, y){ const cx=(x0+x1)/2, cz=(z0+z1)/2, L = Math.min(x1-x0-2, 4.5);
   m.box(L, 0.05, 1.3, M.desk, cx, y+0.73, cz); m.box(0.12, 0.73, 1.0, M.darkSteel, cx-L/2+0.4, y, cz); m.box(0.12, 0.73, 1.0, M.darkSteel, cx+L/2-0.4, y, cz);
   for (let i=0;i<Math.floor(L/0.8); i++) for (const dz of [-1.0, 1.0]){ const px = cx-L/2+0.5+i*0.8; m.box(0.46, 0.08, 0.46, M.chair, px, y+0.42, cz+dz); m.box(0.44, 0.5, 0.06, M.chair, px, y+0.5, cz+dz+Math.sign(dz)*0.2); m.cyl(0.03, 0.42, M.darkSteel, px, y, cz+dz, 8); }
@@ -1422,7 +1430,7 @@ function meetingRoom(m, x0, x1, z0, z1, y){ const cx=(x0+x1)/2, cz=(z0+z1)/2, L 
 }
 function sofaSet(m, x, z, y, ry=0){ m.box(2.0, 0.42, 0.9, std(0x6b7c8a,{roughness:0.95}), x, y, z, ry); m.box(2.0, 0.4, 0.2, std(0x6b7c8a,{roughness:0.95}), x, y+0.42, z-0.35, ry); m.box(1.0, 0.4, 0.6, M.timber, x, y, z+1.2, ry); }
 function cafeTable(m, x, z, y){ m.cyl(0.55, 0.04, M.timber, x, y+0.72, z, 20); m.cyl(0.04, 0.72, M.darkSteel, x, y, z, 8); m.cyl(0.25, 0.02, M.darkSteel, x, y, z, 14);
-  for (let k=0;k<4;k++){ const a = k*Math.PI/2; const px = x+Math.cos(a)*0.85, pz = z+Math.sin(a)*0.85; m.box(0.4, 0.06, 0.4, M.chair, px, y+0.42, pz, -a); m.cyl(0.02, 0.42, M.darkSteel, px, y, pz, 6); m.box(0.4, 0.42, 0.05, M.chair, px+Math.cos(a)*0.2, y+0.48, pz+Math.sin(a)*0.2, -a); if (Math.random()<0.35) seatedPerson(m, px, pz, -a+Math.PI/2); } }
+  for (let k=0;k<4;k++){ const a = k*Math.PI/2; const px = x+Math.cos(a)*0.85, pz = z+Math.sin(a)*0.85; m.box(0.4, 0.06, 0.4, M.chair, px, y+0.42, pz, -a); m.cyl(0.02, 0.42, M.darkSteel, px, y, pz, 6); m.box(0.4, 0.42, 0.05, M.chair, px+Math.cos(a)*0.2, y+0.48, pz+Math.sin(a)*0.2, -a); if (Math.random()<0.35) seatedPerson(m, px, pz, -a-Math.PI/2); } }
 function plantBig(m, x, z, y){ m.cyl(0.35, 0.5, M.pot, x, y, z, 12); m.cyl(0.04, 1.2, M.trunk, x, y+0.5, z, 6); m.add(G.sph(0.6, 10), M.plant, new THREE.Matrix4().setPosition(x, y+1.9, z)); m.add(G.sph(0.45, 10), M.plant, new THREE.Matrix4().setPosition(x+0.3, y+1.5, z-0.2)); }
 function lockerRow(m, x0, x1, z, y){ for (let x=x0; x<x1; x+=0.45) { m.box(0.42, 1.8, 0.5, std(0x9aa5ae,{metalness:0.4}), x+0.22, y, z); m.box(0.3, 0.02, 0.02, M.darkSteel, x+0.22, y+1.0, z+0.26); } }
 
@@ -1458,7 +1466,7 @@ function buildInterior(){
   // ---- 1F ロビー・ショールーム ----
   F1.box(4.0, 1.1, 0.8, M.timber, -40, 0, 8); F1.box(4.2, 0.05, 0.9, M.deskWhite, -40, 1.1, 8);  plantBig(F1, -42.5, 15, 0); plantBig(F1, -31, 16, 0);
   F1.box(5, 2.4, 0.08, M.monitor, -37, 1.0, 16.8); F1.box(4.8, 2.2, 0.02, M.screen, -37, 1.1, 16.75);
-  F1.box(5.0, 0.4, 3.0, std(0xe4e4e0), -23, 0, 10); const demo = makeLathe(); demo.position.set(-23, 0.4, 10); demo.rotation.y = Math.PI; g1.add(demo);    // 実機展示（開発機スケールモデル代替）
+  F1.box(5.0, 0.4, 3.0, std(0xe4e4e0), -23, 0, 10); const demo = makeLathe(); demo.name = "showDemo"; demo.position.set(-23, 0.4, 10); demo.rotation.y = Math.PI; g1.add(demo);    // 実機展示（開発機スケールモデル代替）
   F1.box(1.2, 1.0, 0.8, std(0xe4e4e0), -27.5, 0, 14); F1.box(1.0, 0.7, 0.03, M.screen, -27.5, 1.0, 13.6);   // 説明パネル
   for (const x of [-20, -17]) plantBig(F1, x, 16.5, 0);
   F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]) F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz);  // 休憩・更衣
@@ -1556,6 +1564,14 @@ function makeDemoStage(){ const g = new THREE.Group(); const w = 10, d = 7;
   for (const x of [-4.5, 4.5]) { cylAt(g, 0.05, 3.0, M.darkSteel, x, 0.3, -d/2+0.6, {seg:6}); boxAt(g, 0.4, 0.3, 0.3, M.lampWarm, x, 3.2, -d/2+0.6); }
   boxAt(g, 1.2, 0.9, 0.6, M.deskWhite, 4.2, 0.3, -0.5); boxAt(g, 0.5, 0.35, 0.03, M.screen, 4.2, 1.25, -0.6); return g; }
 function makeTestCellStation(){ const g = makeTestCell(); return g; }
+
+// ---- v1.0：タレットパンチプレス（同梱モデル読込前の手続きモデル）----
+function makePunchPress(){ const g = new THREE.Group(); const red = std(0xc23b3b, { roughness:0.45, metalness:0.2 });
+  boxAt(g, 6.4, 0.35, 2.4, M.machineDark, 0, 0, -1.0); boxAt(g, 6.2, 2.1, 1.7, M.machineDark, 0, 0.35, -1.3); boxAt(g, 6.2, 0.5, 2.6, M.machineDark, 0, 1.95, -0.85);       // C フレーム
+  boxAt(g, 6.6, 0.1, 2.6, red, 0, 0.9, 0.9); for (const x of [-2.8, -1.0, 1.0, 2.8]) for (const z of [0.1, 1.9]) boxAt(g, 0.08, 0.9, 0.08, M.steel, x, 0, z);                // テーブル
+  cylAt(g, 0.6, 0.5, M.machineWhite, -0.4, 1.7, -0.2, { rot:[Math.PI/2, 0, 0], seg:22 }); boxAt(g, 3.0, 0.5, 0.06, red, 1.2, 1.2, 0.02);                                     // タレットカバー
+  boxAt(g, 0.7, 1.2, 0.6, red, -3.7, 0, 1.6); boxAt(g, 0.6, 0.45, 0.05, M.monitor, -3.7, 1.25, 1.6); boxAt(g, 0.54, 0.38, 0.02, M.screen, -3.7, 1.28, 1.63);                  // 操作盤
+  signalTower(g, 2.8, 2.45, -1.3); return g; }
 
 // ===== src/55_overhead.js =====
 // ================= 天井側の設備：精緻版クレーン・ジブクレーン・ツールレール・エネルギーブーム・ガントリーローダ・レーザー投影・カメラ =================
@@ -1689,7 +1705,7 @@ let activeLane = null, activeModule = null;
 
 const BUILDERS = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, robotcell:()=>makeRobotCell(true),
   load:makeLoadStation, wash:makeWash, store:makeStore, asmA:()=>makeAssembly("A"), asmB:()=>makeAssembly("B"), panel:makePanelStation, wiring:makeWiringStation, ptest:makePowerTest,
-  laser:makeLaserCutter, brake:makePressBrake, weld:makeWeldCell, finish:makeFinishBooth, mask:makeMaskStation, booth:makePaintBooth, oven:makeOven, demoPrep:makeDemoPrep, demo:makeDemoStage, tcell:()=>{ const g = makeTestCellStation(); g.scale.set(0.76, 0.85, 0.8); return g; } };
+  laser:makeLaserCutter, brake:makePressBrake, weld:makeWeldCell, finish:makeFinishBooth, mask:makeMaskStation, booth:makePaintBooth, oven:makeOven, demoPrep:makeDemoPrep, demo:makeDemoStage, punch:makePunchPress, tcell:()=>{ const g = makeTestCellStation(); g.scale.set(0.76, 0.85, 0.8); return g; } };
 
 // 実際のモデル寸法から占有寸法を測る（宣言値より大きければ上書き）
 const FP_CACHE = {};
@@ -1714,7 +1730,7 @@ function layoutLane(lane, sts){
   const [x0, x1, z0, z1] = lane.area; const usable = x1 - x0 - 1.0; const sideC = k => (typeof CLEARANCE !== "undefined" && CLEARANCE[k]) ? CLEARANCE[k][1] : 0.6; let gap = 0.6;
   const rows = [[]]; let cur = 0, row = 0;
   const units = []; for (const s of sts){ if (s.kind === "ref") { units.push({ s, ref:true }); continue; } for (let k=0;k<s.n;k++) units.push({ s, k, w:s.fp[0], d:s.fp[1] }); }
-  let prevKind = null; for (const u of units){ if (u.ref) continue; gap = Math.max(0.6, sideC(u.s.kind), prevKind ? sideC(prevKind) : 0); if (cur + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } rows[row].push(u); u.row = row; u.off = cur; cur += u.w + gap; prevKind = u.s.kind; }
+  let prevKind = null; for (const u of units){ if (u.ref) continue; gap = prevKind ? Math.max(0.6, sideC(u.s.kind), sideC(prevKind)) : 0; if (cur + gap + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } else cur += gap; rows[row].push(u); u.row = row; u.off = cur; cur += u.w; prevKind = u.s.kind; }
   // 行ごとの奥行とピッチ（行0-1 間は 4 m 通路、以降は 2.5 m）
   let zTop = z0 + 0.5; const rowInfo = [];
   rows.forEach((r, i) => { const d = Math.max(...r.map(u=>u.d), 2); const aisle = i===0? 0 : (i%2===1? 2.6 : 1.8); zTop += aisle; rowInfo.push({ zTop, d, len: r.length? r[r.length-1].off + r[r.length-1].w : 0 }); zTop += d; });
@@ -1900,12 +1916,12 @@ const SYSTEMS = {
 // 設備種別が必要とする系統
 const NEEDS = { mc5:["CA","CW","EL","IT","EA"], hmc:["CA","CW","EL","IT","EA"], lathe:["CA","CW","EL","IT","EA"], gantry:["CA","CW","EL","IT","EA"], edm:["CW","EL","IT"], grind:["CW","EL","IT","EA"], robotcell:["CA","EL","IT"], wash:["CW","EL"], store:["EL","IT"], load:["IT"],
   asmA:["CA","EL","IT"], asmB:["CA","EL","IT"], bench:["CA","EL"], testcell:["EL","IT","EA"], tcell:["EL","IT","EA"], cmm:["EL","IT"], elab:["EL","IT"], panel:["EL","IT"], wiring:["CA","EL"], ptest:["EL","IT"], hil:["EL","IT"], server:["EL","IT","CH"], toolroom:["CA","EL"],
-  laser:["CA","EL","IT","EA"], brake:["EL","IT"], weld:["CA","EL","IT","EA"], finish:["CA","EA"], mask:["CW"], booth:["CA","EL","EA"], oven:["EL","EA"], demo:["EL","IT"], crane:["EL"], agv:[] };
+  laser:["CA","EL","IT","EA"], punch:["CA","EL","IT"], brake:["EL","IT"], weld:["CA","EL","IT","EA"], finish:["CA","EA"], mask:["CW"], booth:["CA","EL","EA"], oven:["EL","EA"], demo:["EL","IT"], crane:["EL"], agv:[] };
 
 // 設備種別ごとの設計負荷：EL kVA / CA L/min(ANR) / CW L/min / EA m³/h / IT ポート
 const LOADS = { mc5:{EL:30,CA:300,CW:60,EA:900,IT:2}, hmc:{EL:35,CA:350,CW:80,EA:900,IT:2}, lathe:{EL:25,CA:200,CW:50,EA:600,IT:1}, gantry:{EL:80,CA:400,CW:120,EA:1500,IT:2}, edm:{EL:15,CW:30,IT:1}, grind:{EL:10,CW:40,EA:800,IT:1}, robotcell:{EL:6,CA:150,IT:2}, wash:{EL:12,CW:80}, store:{EL:2,IT:1}, load:{IT:1},
   asmA:{EL:20,CA:400,IT:4}, asmB:{EL:15,CA:300,IT:4}, bench:{EL:3,CA:100}, testcell:{EL:200,IT:4,EA:2000}, tcell:{EL:200,IT:4,EA:2000}, cmm:{EL:5,IT:1}, elab:{EL:20,IT:4}, panel:{EL:3,IT:1}, wiring:{EL:4,CA:120}, ptest:{EL:8,IT:1}, hil:{EL:30,IT:8}, server:{EL:150,IT:48,CH:60}, toolroom:{EL:5,CA:100},
-  laser:{EL:60,CA:600,IT:1,EA:3000}, brake:{EL:25,IT:1}, weld:{EL:45,CA:150,IT:1,EA:2500}, finish:{CA:200,EA:2000}, mask:{CW:40}, booth:{EL:40,CA:800,EA:12000}, oven:{EL:30,EA:1500}, demo:{EL:15,IT:2}, crane:{EL:40} };
+  laser:{EL:60,CA:600,IT:1,EA:3000}, punch:{EL:35,CA:300,IT:1}, brake:{EL:25,IT:1}, weld:{EL:45,CA:150,IT:1,EA:2500}, finish:{CA:200,EA:2000}, mask:{CW:40}, booth:{EL:40,CA:800,EA:12000}, oven:{EL:30,EA:1500}, demo:{EL:15,IT:2}, crane:{EL:40} };
 const LOAD_UNIT = { EL:"kVA", CA:"L/min", CW:"L/min", EA:"m³/h", IT:"port", CH:"kW", SA:"m³/h", FP:"—" };
 // 負荷 → サイズ（簡易）: 配管は流量から呼び径、ダクトは風速 12 m/s の角ダクト、ラックは電流から幅
 function sizeFor(sys, load){ const S = SYSTEMS[sys];
@@ -2032,7 +2048,7 @@ function clashCheck(){
 
 // ---- 保守スペース（設備周りの開放寸法）チェック ----
 const CLEARANCE = { mc5:[1.0,0.8], hmc:[1.2,0.8], lathe:[1.0,0.6], gantry:[1.5,1.0], edm:[0.8,0.6], grind:[0.8,0.6], robotcell:[0.6,0.6], wash:[0.8,0.6], store:[1.0,0.3], load:[0.8,0.3],
-  asmA:[2.0,1.5], asmB:[2.0,1.5], testcell:[1.0,1.0], tcell:[1.0,1.0], cmm:[1.0,0.8], panel:[1.0,0.5], wiring:[0.8,0.5], ptest:[0.8,0.5], laser:[1.2,1.0], brake:[1.5,0.6], weld:[0.8,0.6], finish:[0.8,0.5], mask:[0.8,0.5], booth:[1.5,1.0], oven:[1.5,0.8], demo:[1.0,1.0], hil:[1.0,0.6], server:[1.2,0.8], rack:[1.2,0.3], dock:[0,0], bigdoor:[0,0], crane:[0,0], agv:[0,0] };
+  punch:[1.5,0.8], asmA:[2.0,1.5], asmB:[2.0,1.5], testcell:[1.0,1.0], tcell:[1.0,1.0], cmm:[1.0,0.8], panel:[1.0,0.5], wiring:[0.8,0.5], ptest:[0.8,0.5], laser:[1.2,1.0], brake:[1.5,0.6], weld:[0.8,0.6], finish:[0.8,0.5], mask:[0.8,0.5], booth:[1.5,1.0], oven:[1.5,0.8], demo:[1.0,1.0], hil:[1.0,0.6], server:[1.2,0.8], rack:[1.2,0.3], dock:[0,0], bigdoor:[0,0], crane:[0,0], agv:[0,0] };
 // [前後, 左右] m。箱を拡張した「保守ゾーン」が他設備のコア箱や MEP 立下りと交差すれば違反
 function clearanceCheck(){ const boxes = {}; for (const id in EQ_OBJ){ const o = EQ_OBJ[id]; if (!o.group.visible || ["crane","agv","bigdoor","dock"].includes(o.data.kind)) continue; const b = new THREE.Box3(); o.group.updateMatrixWorld(true); o.group.traverse(m => { if (!m.isMesh || m.isSprite) return; let p = m; while (p && p !== o.group){ if (p.userData.extra) return; p = p.parent; } b.union(new THREE.Box3().setFromObject(m)); }); if (!b.isEmpty()) boxes[id] = b; }
   const res = []; const ids = Object.keys(boxes);
@@ -2295,15 +2311,16 @@ function buildMovers(){
     [[-12,-16],[-12,-12],[2,-12],[2,-16]],
     [[4,-8],[4,-4],[16,-4],[16,-8]],
   ];
-  routes.forEach((r, i)=>{ const w = makeWorker("hall"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(pts[0]); movers.push(new PathMover(w, pts, 0.9+ (i%3)*0.15, { pause: 2 + i%4 })); });
+  routes.forEach((r, i)=>{ const w = makePerson("hall"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(pts[0]); movers.push(new PathMover(w, pts, 0.9+ (i%3)*0.15, { pause: 2 + i%4 })); });
   // 2F/3F 歩行者（バルコニー・テラス・通路）
   const lv = BLD.lv;
   [[lv[1], [[-34,1.0],[30,1.0]]], [lv[1], [[-20,20.5],[20,20.5]]], [lv[2], [[-30,1.8],[30,1.8]]], [lv[1], [[-5,15],[20,15]]], [lv[2], [[-34,15],[-12,15]]]].forEach(([y, r], i)=>{
-    const w = makeWorker("office"); (y===lv[1]? floorGroup(2) : floorGroup(3)).add(w); const pts = r.map(([x,z])=>[x,y,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,y,z])); movers.push(new PathMover(w, pts, 0.8, { pause:3+i })); });
+    const w = makePerson("office"); (y===lv[1]? floorGroup(2) : floorGroup(3)).add(w); const pts = r.map(([x,z])=>[x,y,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,y,z])); movers.push(new PathMover(w, pts, 0.8, { pause:3+i })); });
   // 外構：歩行者
-  [[[-50,34],[-20,30],[-38,25],[-38,19]], [[20,38],[45,38],[45,30]], [[-10,36],[-30,36]]].forEach((r,i)=>{ const w = makeWorker("office"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,0,z])); movers.push(new PathMover(w, pts, 0.9, { pause:2 })); });
+  [[[-50,34],[-20,30],[-38,25],[-38,19]], [[20,38],[45,38],[45,30]], [[-10,36],[-30,36]]].forEach((r,i)=>{ const w = makePerson("office"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,0,z])); movers.push(new PathMover(w, pts, 0.9, { pause:2 })); });
   // 立ち作業者（固定）
-  for (const [x,z,ry] of [[-39,-21,0],[-25,-21,0.5],[-20,-9,-1.2],[-4,-12,0.4],[-1,-19,2.5],[12,-13,-0.7],[28,-4,1.5],[23,-26,0],[-11,9,0],[0,8,1.2],[-23,11,0.3]]){ const w = makeWorker("hall"); w.position.set(x,0,z); w.rotation.y = ry; MOVERS.add(w); }
+  // 固定の人物：受付・来客・計測室（機械前の作業者はレーン生成で配置する）
+  for (const [x,z,ry,kind] of [[-40,9.7,Math.PI,"office"],[-37.6,6.1,0.5,"office"],[-17.4,9.2,-Math.PI/2,"office"],[-11,11.4,Math.PI,"office"],[31.0,-1.2,2.6,"hall"]]){ const w = makePerson(kind); w.position.set(x,0,z); w.rotation.y = ry; (z > 2 ? floorGroup(1) : MOVERS).add(w); }
   // ---- トラック・フォークリフト ----
   const tr = makeTruck(); MOVERS.add(tr); movers.push(new PathMover(tr, [[54,0,80],[54,0,20],[54,0,-24],[47.5,0,-24],[54,0,-24],[54,0,60],[54,0,80]], 4.0, { pause:6, smoothTurn:true }));
   const tr2 = makeTruck(); tr2.position.set(48.5, 0, -16); tr2.rotation.y = Math.PI/2; MOVERS.add(tr2);  // ドック待機中
@@ -2311,12 +2328,15 @@ function buildMovers(){
 }
 function updateMovers(dt){
   simT += dt;
-  for (const m of movers){ m.update(dt); const w = m.obj.userData; if (w.legs){ const ph = m.moving ? Math.sin(simT*7 + m.obj.id)*0.45 : 0; w.legs[0].rotation.x = ph; w.legs[1].rotation.x = -ph; w.arms[0].rotation.x = -ph*0.7; w.arms[1].rotation.x = ph*0.7; } }
+  for (const m of movers){ m.update(dt); const w = m.obj.userData; w.moving = m.moving; w.speed = m.speed; if (w.legs && !(w.person && w.person.ready)){ const ph = m.moving ? Math.sin(simT*7 + m.obj.id)*0.45 : 0; w.legs[0].rotation.x = ph; w.legs[1].rotation.x = -ph; w.arms[0].rotation.x = -ph*0.7; w.arms[1].rotation.x = ph*0.7; } }
   for (const a of ANIM) a.update(simT, dt);
+  updatePeople(dt);
 }
 
 // ===== src/65_assets.js =====
-// ================= 実物 3D モデル（NVIDIA SimReady, CC BY 4.0 — codepawl/simready-glb 経由）=================
+// ================= 実物 3D モデル =================
+// ・NVIDIA SimReady（CC BY 4.0、codepawl/simready-glb 経由）：実行時にネットワークから読込、距離別 LOD
+// ・同梱モデル（models/）：Sketchfab CC BY 4.0 の工作機械・ロボット（Objaverse 収録分を最適化）
 // 手続き生成の工場に、実在のフォークリフト・パレット・ラック・工具・安全設備などの GLB を重ねる。
 // 読込は非同期：先に手続きモデル（fallback）を見せ、届いた順に差し替える。オフラインでも手続きモデルで成立する。
 const HF = "https://huggingface.co/datasets/codepawl/simready-glb/resolve/main/";
@@ -2361,35 +2381,68 @@ const ASSET_CATALOG = {   // key: { a: asset 名, n: 表示名, tris: 元の三�
   printer3d:  { a:"equipment_3d_printer_b01",             n:"3D プリンタ",                tris:394 },
   scope:      { a:"testingTool_oscilloscope_b01",         n:"オシロスコープ",             tris:175 },
   chair:      { a:"chair_office_amf_black_a01",           n:"オフィスチェア",             tris:32 },
+  spillKit:   { a:"fireProtection_spillKit_cabinet_wheeled_a01", n:"漏洩対策キット",          tris:227 },
+  flamCab:    { a:"cabinet_drum_flammable_a02",           n:"危険物保管庫（ドラム用）",   tris:185 },
+  recycle:    { a:"wasteManagement_recyclingBin_multiStream_a01", n:"分別ごみ箱",             tris:38 },
+  packTable:  { a:"table_packing_heavyduty_c01",          n:"梱包作業台",                 tris:98 },
+  stepLadder: { a:"ladder_step_aluminium_b02",            n:"脚立",                       tris:29 },
+  workbench:  { a:"furniture_workbench_modular_b01",      n:"作業台（モジュール式）",     tris:35 },
+  toolbox:    { a:"storage_toolbox_carry_hardCase_b01",   n:"工具箱",                     tris:194 },
+  barricade:  { a:"environment_barricade_a01",            n:"バリケード",                 tris:110 },
+  // ---- リポジトリ同梱モデル（models/、Sketchfab CC BY 4.0／Objaverse 収録分を最適化）----
+  mcMill:     { url:"models/mill.glb",  n:"マシニングセンタ", ry0:-Math.PI/2, tris:64, tint:1.7,  credit:{ t:"Cutter Machine", by:"Francesco Coldesina", lic:"CC BY 4.0", link:"https://sketchfab.com/models/ea44a8bafd6e4beb87e3258e5e308007" } },
+  cncLathe:   { url:"models/turn.glb",  n:"CNC 旋盤",         ry0:Math.PI,    tris:216, credit:{ t:"CNC Machine", by:"canhoto.appu", lic:"CC BY 4.0", link:"https://sketchfab.com/models/c4adbed644704e378779b610127e2e97" } },
+  punchPress: { url:"models/punch.glb", n:"タレットパンチプレス", ry0:0, anim:true, tris:176, credit:{ t:"EMZ 3612 MII", by:"vexhibition", lic:"CC BY 4.0", link:"https://sketchfab.com/models/08c38d43b01f4840887ff8495062b715" } },
+  manualLathe:{ url:"models/lathe.glb", n:"汎用旋盤（治具製作用）", ry0:0, tris:44, credit:{ t:"Lathe Machine", by:"Centurion University", lic:"CC BY 4.0", link:"https://sketchfab.com/models/ff59679ac00248868e8236f39848eb55" } },
+  irb:        { url:"models/irb.glb",   n:"産業用ロボット（展示）", ry0:0, tris:92, credit:{ t:"IRB 2400 Industrial Robot (UPDATED)", by:"RJGonzalez23", lic:"CC BY 4.0", link:"https://sketchfab.com/models/7d43d485dbc342cb9359cb68a9dfa93a" } },
 };
-const AS = { on:true, quality:"lod1", loader:null, cache:{}, placed:[], loaded:0, total:0, failed:0, bytes:0 };
+function assetCredit(key){ const c = ASSET_CATALOG[key]; return c.credit ? `「${c.credit.t}」 by ${c.credit.by}（${c.credit.lic}）` : "NVIDIA SimReady（CC BY 4.0）"; }
+const AS = { on:true, quality:"lod1", loader:null, cache:{}, placed:[], loaded:0, total:0, failed:0, nearLoading:0, nearShown:0 };
 function assetLoader(){ if (AS.loader) return AS.loader; const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder);
   const k = new KTX2Loader().setTranscoderPath("https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/libs/basis/").detectSupport(renderer); l.setKTX2Loader(k); AS.loader = l; return l; }
-// 重いアセット（原型 30 万三角形超）は選択品質より 1 段軽い LOD を使う
-function effQuality(c){ const q = AS.quality; if (c.tris <= 300 || q === "lod2") return q; return q === "glb" ? "lod1" : "lod2"; }
-function assetURL(c){ const q = effQuality(c); return q === "glb" ? `${HF}glb/${c.a}.glb` : `${HF}lods/${c.a}/${c.a}_${q}.glb`; }
 { const qp = new URLSearchParams(location.search).get("assets"); if (qp === "off") AS.on = false; else if (["lod1","lod2","glb"].includes(qp||"")) AS.quality = qp; }
-function loadAsset(key){ const c = ASSET_CATALOG[key]; const ck = key + "@" + AS.quality; if (AS.cache[ck]) return AS.cache[ck];
-  AS.cache[ck] = assetLoader().loadAsync(assetURL(c)).then(g => { const sc = g.scene; sc.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(sc); const size = bb.getSize(new THREE.Vector3()); const ctr = bb.getCenter(new THREE.Vector3());
-    sc.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; if (o.material && o.material.transparent && o.material.opacity > 0.98) o.material.transparent = false; } });
-    return { scene: sc, bb, size, ctr }; }); return AS.cache[ck]; }
-// opts: parent, x, y, z, ry, scale, fit:{w|d|h}, fallback(Group), eqId, hideFallback(true)
+// ---- 距離別 LOD：遠景用を先に読み、カメラが近づいた物だけ近景用を後から読み込んで差し替える ----
+// 品質設定 → [遠景, 近景]。原型 30 万三角形超の重いモデルは近景を 1 段軽くする。
+const LOD_SET = { lod2:["lod3","lod2"], lod1:["lod2","lod1"], glb:["lod2","glb"] };
+const LOD_DOWN = { glb:"lod1", lod1:"lod2", lod2:"lod3", lod3:"lod3" };
+function variantOf(c, which){ if (c.url) return "local"; const [far, near] = LOD_SET[AS.quality]; if (which === "far") return far; return c.tris > 300 ? LOD_DOWN[near] : near; }
+function assetURL(c, v){ return c.url ? c.url : v === "glb" ? `${HF}glb/${c.a}.glb` : `${HF}lods/${c.a}/${c.a}_${v}.glb`; }
+function loadAsset(key, v){ const c = ASSET_CATALOG[key]; const ck = key + "@" + v; if (AS.cache[ck]) return AS.cache[ck];
+  AS.cache[ck] = assetLoader().loadAsync(assetURL(c, v)).then(g => { const root = new THREE.Group(); root.add(g.scene); g.scene.rotation.y = c.ry0 || 0; root.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(root); const size = bb.getSize(new THREE.Vector3()); const ctr = bb.getCenter(new THREE.Vector3());
+    root.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; if (o.material && o.material.transparent && o.material.opacity > 0.98) o.material.transparent = false; if (c.tint && o.material && o.material.color) o.material.color.multiplyScalar(c.tint); } });
+    return { scene: root, bb, size, ctr, anims: g.animations || [] }; }); return AS.cache[ck]; }
+function makeInst(r, rec){ const { opts, key } = rec; const c = ASSET_CATALOG[key]; const inst = r.scene.clone(true); let s = opts.scale || 1;
+  if (opts.fit){ const f = opts.fit; const sx = f.w ? f.w / r.size.x : Infinity, sz = f.d ? f.d / r.size.z : Infinity, sy = f.h ? f.h / r.size.y : Infinity; s = Math.min(sx, sz, sy); if (!isFinite(s)) s = 1; }
+  inst.scale.setScalar(s); inst.position.set(-r.ctr.x * s, -r.bb.min.y * s, -r.ctr.z * s); inst.userData.assetInst = true; if (opts.core) inst.userData.extra = true;
+  rec.radius = 0.5 * Math.hypot(r.size.x, r.size.y, r.size.z) * s; rec.nearDist = 10 + 6 * rec.radius;
+  if (c.anim && r.anims.length && !rec.mixer){ const mx = new THREE.AnimationMixer(inst); mx.clipAction(r.anims[0]).play(); rec.mixer = mx; rec.animEntry = { update(t, dt){ mx.update(dt * 0.6); } }; ANIM.push(rec.animEntry); }
+  return inst; }
+// opts: parent, x, y, z, ry, scale, fit:{w|d|h}, fallback(Group), core(true=設備本体の差し替え。箱計算は fallback を使い、クリックは設備として扱う)
 function placeAsset(key, opts={}){
   const c = ASSET_CATALOG[key]; if (!c) return null; const holder = new THREE.Group(); holder.name = "asset_" + key; holder.position.set(opts.x||0, opts.y||0, opts.z||0); holder.rotation.y = opts.ry||0;
-  holder.userData.extra = true; holder.userData.asset = key; holder.userData.layer = "assets"; if (opts.eqId) holder.userData.eqId = opts.eqId;
+  holder.userData.layer = "assets"; if (opts.core) holder.userData.assetCore = key; else { holder.userData.extra = true; holder.userData.asset = key; }
   if (opts.fallback){ opts.fallback.userData.fallback = true; holder.add(opts.fallback); }
-  (opts.parent || scene).add(holder); const rec = { holder, key, opts, inst:null }; AS.placed.push(rec); AS.total++;
+  (opts.parent || scene).add(holder); const rec = { holder, key, opts, far:null, near:null, nearReq:false, radius:1, nearDist:16 }; AS.placed.push(rec); AS.total++;
   if (AS.on) attachAsset(rec); return holder;
 }
-function attachAsset(rec){ const { holder, key, opts } = rec; loadAsset(key).then(r => { if (rec.inst) return; const inst = r.scene.clone(true); let s = opts.scale || 1;
-    if (opts.fit){ const f = opts.fit; const sx = f.w ? f.w / r.size.x : Infinity, sz = f.d ? f.d / r.size.z : Infinity, sy = f.h ? f.h / r.size.y : Infinity; s = Math.min(sx, sz, sy); if (!isFinite(s)) s = 1; }
-    inst.scale.setScalar(s); inst.position.set(-r.ctr.x * s, -r.bb.min.y * s, -r.ctr.z * s); inst.userData.assetInst = true; holder.add(inst); rec.inst = inst;
-    if (opts.fallback && opts.hideFallback !== false) opts.fallback.visible = false; AS.loaded++; assetStatus(); dirtyShadow(); })
+function attachAsset(rec){ const { holder, key, opts } = rec; const c = ASSET_CATALOG[key]; loadAsset(key, variantOf(c, "far")).then(r => { if (rec.far || rec.dead) return; const inst = makeInst(r, rec); holder.add(inst); rec.far = inst; inst.visible = AS.on;
+    if (opts.fallback && opts.hideFallback !== false) opts.fallback.visible = !AS.on; AS.loaded++; assetStatus(); dirtyShadow(); })
   .catch(err => { AS.failed++; console.warn("asset load failed", key, err?.message || err); assetStatus(); }); }
-function assetStatus(){ const el = document.getElementById("assetStatus"); if (!el) return; const done = AS.loaded + AS.failed; el.textContent = AS.on ? (done < AS.total ? `実物モデル ${AS.loaded}/${AS.total} 読込中…` : `実物モデル ${AS.loaded} 点${AS.failed? `（${AS.failed} 失敗）`:""}`) : "実物モデル OFF"; el.style.color = done < AS.total ? "var(--acc)" : "var(--sub)"; }
-function setAssetsOn(on){ AS.on = on; for (const rec of AS.placed){ if (rec.inst) rec.inst.visible = on; if (rec.opts.fallback) rec.opts.fallback.visible = !on || !rec.inst; if (on && !rec.inst) attachAsset(rec); } assetStatus(); dirtyShadow(); }
-function setAssetQuality(q){ if (q === AS.quality) return; AS.quality = q; AS.cache = {}; AS.loaded = 0; AS.failed = 0; for (const rec of AS.placed){ if (rec.inst){ rec.holder.remove(rec.inst); rec.inst = null; } if (rec.opts.fallback) rec.opts.fallback.visible = true; if (AS.on) attachAsset(rec); } assetStatus(); }
-function removeAssetsOf(parent){ for (let i = AS.placed.length - 1; i >= 0; i--){ const rec = AS.placed[i]; let p = rec.holder.parent, inside = false; while (p){ if (p === parent){ inside = true; break; } p = p.parent; } if (inside){ rec.holder.parent?.remove(rec.holder); AS.placed.splice(i, 1); AS.total--; if (rec.inst) AS.loaded--; } } assetStatus(); }
+const _awp = new THREE.Vector3();
+function updateAssetLOD(){ if (!AS.on) return; const cp = camera.position;
+  for (const rec of AS.placed){ if (!rec.far) continue; const c = ASSET_CATALOG[rec.key]; const nv = variantOf(c, "near"); if (c.url || nv === variantOf(c, "far")) continue;
+    rec.holder.getWorldPosition(_awp); const d = _awp.distanceTo(cp);
+    if (d < rec.nearDist){ let vis = true; for (let p = rec.holder; p; p = p.parent) if (!p.visible){ vis = false; break; } if (!vis) continue;
+      if (rec.near){ if (!rec.near.visible){ rec.near.visible = true; rec.far.visible = false; AS.nearShown++; assetStatus(); } }
+      else if (!rec.nearReq && AS.nearLoading < 4){ rec.nearReq = true; AS.nearLoading++; loadAsset(rec.key, nv).then(r => { if (rec.dead) return; const inst = makeInst(r, rec); inst.visible = false; rec.holder.add(inst); rec.near = inst; }).catch(() => {}).finally(() => { AS.nearLoading--; }); } }
+    else if (d > rec.nearDist * 1.25 && rec.near && rec.near.visible){ rec.near.visible = false; rec.far.visible = true; AS.nearShown--; assetStatus(); } } }
+function assetStatus(){ const el = document.getElementById("assetStatus"); if (!el) return; const done = AS.loaded + AS.failed; el.textContent = AS.on ? (done < AS.total ? `実物モデル ${AS.loaded}/${AS.total} 読込中…` : `実物モデル ${AS.loaded} 点${AS.nearShown? `（近景高精細 ${AS.nearShown}）`:""}${AS.failed? `（${AS.failed} 失敗）`:""}`) : "実物モデル OFF"; el.style.color = done < AS.total ? "var(--acc)" : "var(--sub)"; }
+function setAssetsOn(on){ AS.on = on; for (const rec of AS.placed){ const nearOn = rec.near && rec.near.visible; if (rec.far) rec.far.visible = on && !nearOn; if (rec.near && !on){ rec.near.visible = false; AS.nearShown = Math.max(0, AS.nearShown - 1); } if (rec.opts.fallback) rec.opts.fallback.visible = !on || !rec.far; if (on && !rec.far) attachAsset(rec); } assetStatus(); dirtyShadow(); }
+function setAssetQuality(q){ if (q === AS.quality) return; AS.quality = q; AS.loaded = 0; AS.failed = 0; AS.nearShown = 0;
+  for (const rec of AS.placed){ if (ASSET_CATALOG[rec.key].url){ if (rec.far) AS.loaded++; continue; } for (const k of ["far","near"]) if (rec[k]){ rec.holder.remove(rec[k]); rec[k] = null; } rec.nearReq = false; if (rec.opts.fallback) rec.opts.fallback.visible = true; if (AS.on) attachAsset(rec); } assetStatus(); }
+function removeAssetsOf(parent){ for (let i = AS.placed.length - 1; i >= 0; i--){ const rec = AS.placed[i]; let p = rec.holder.parent, inside = false; while (p){ if (p === parent){ inside = true; break; } p = p.parent; }
+    if (inside){ rec.dead = true; rec.holder.parent?.remove(rec.holder); AS.placed.splice(i, 1); AS.total--; if (rec.far) AS.loaded--; if (rec.near && rec.near.visible) AS.nearShown--; if (rec.animEntry){ const k = ANIM.indexOf(rec.animEntry); if (k >= 0) ANIM.splice(k, 1); } } } assetStatus(); }
 // 手続きモデルを fallback 用の Group にまとめる（Merger を使う既存関数を流用）
 function fallbackGroup(fn){ const m = new Merger(); const g = new THREE.Group(); fn(m, g); m.flush(g); return g; }
 
@@ -2425,6 +2478,15 @@ function buildAssets(){
   // 北側：圧縮機・エアドライヤ（コンプレッサ室脇）、ダンプカート（ごみ置場）、ごみ箱
   placeAsset("compressor", { parent:site, x:-47.4, z:-38.8, ry:0 }); placeAsset("airDryer", { parent:site, x:-45.3, z:-38.9 }); placeAsset("tiltTruck", { parent:site, x:-51.5, z:-25.5, ry:0.3 }); placeAsset("trash", { parent:site, x:10, z:-31.0 });
   placeAsset("eyewash", { parent:site, x:-15.2, z:-31.3, ry:-Math.PI/2 });
+  // v1.0 追加：漏洩対策キット・危険物保管庫・分別ごみ箱・梱包台・脚立・作業台・工具箱・バリケード
+  placeAsset("spillKit", { parent:g1, x:-42.6, z:-9.6, ry:Math.PI/2 }); placeAsset("spillKit", { parent:site, x:-15.4, z:-33.6, ry:-Math.PI/2 }); placeAsset("flamCab", { parent:site, x:-43.0, z:-39.0 });
+  placeAsset("recycle", { parent:g1, x:35.2, z:6.5, ry:-Math.PI/2 }); placeAsset("recycle", { parent:g3, x:17.0, y:lv[2], z:4.2, ry:Math.PI/2 }); placeAsset("recycle", { parent:g2, x:-35.3, y:lv[1], z:8.0, ry:Math.PI/2 });
+  placeAsset("packTable", { parent:g1, x:38.6, z:-1.4, ry:Math.PI }); placeAsset("stepLadder", { parent:g1, x:19.2, z:-27.9, ry:0.3 }); placeAsset("workbench", { parent:g1, x:15.3, z:14.2, ry:-Math.PI/2 });
+  placeAsset("toolbox", { parent:g1, x:13.0, y:0.82, z:10.6, ry:0.4 }); placeAsset("barricade", { parent:g1, x:37.2, z:-9.8, ry:Math.PI/2 }); placeAsset("barricade", { parent:g1, x:37.2, z:-0.6, ry:Math.PI/2 });
+  // 同梱モデル：工具室の汎用旋盤、ショールームの産業用ロボット
+  placeAsset("manualLathe", { parent:g1, x:10.6, z:15.6, ry:Math.PI, fit:{ w:3.4 } });
+  placeAsset("irb", { parent:g1, x:-19.0, z:12.6, ry:Math.PI, fit:{ w:3.0 } });
+  { const d = g1.getObjectByName("showDemo"); if (d){ g1.remove(d); d.position.set(0, 0, 0); d.rotation.y = 0; placeAsset("cncLathe", { parent:g1, x:-23, y:0.4, z:10, ry:Math.PI, fallback:d, fit:{ w:3.9 } }); } }
 }
 // ---------- 配置：レーンの工程ごとの小物（生成・再生成のたびに呼ぶ）----------
 const LANE_ASSETS = {   // kind → [asset, dx, dz, ry, opts]（局所座標：+z が正面＝通路側）
@@ -2445,22 +2507,86 @@ const LANE_ASSETS = {   // kind → [asset, dx, dz, ry, opts]（局所座標：+
   panel:  [["toolCab", 0, 1, 0, { front:true, dx:0.6 }]],
   laser:  [["palletB", 0, 1, 0, { front:true, dx:-0.5 }]],
   brake:  [["handTruck", 0, 1, 0, { front:true, dx:0.6 }]],
+  punch:  [["palletB", 0, 1, 0, { front:true, dx:0.7 }]],
   demo:   [["cobot", -0.2, 0.6, 0.4, { y:0.3 }]],
 };
-function laneAssets(obj){ removeAssetsOf(obj.group); for (const s of obj.sts.concat(obj.aux)){ const list = LANE_ASSETS[s.kind]; if (!list || !s.units) continue;
+const LANE_MODELS = { mc5:"mcMill", lathe:"cncLathe", punch:"punchPress" };   // 設備本体を同梱モデルに差し替える工程
+function replaceCore(grp, key, s, ry, pad){ const fp = s.fp; const off = (typeof FP_OFF !== "undefined" && FP_OFF[s.type]) || [0, 0]; const fb = new THREE.Group(); grp.children.filter(c => !c.isSprite && !c.userData.extra && !c.userData.asset && !c.userData.assetCore).forEach(c => fb.add(c)); grp.add(fb);
+  placeAsset(key, { parent:grp, x:off[0], z:off[1], ry, fallback:fb, core:true, fit:{ w:fp[0] + pad[0], d:fp[1] + pad[1] } });
+  const e = EQ_OBJ[grp.userData.eqId]?.data; if (e && ASSET_CATALOG[key].credit) e.spec["3D モデル"] = assetCredit(key); }
+function laneAssets(obj){ removeAssetsOf(obj.group); for (const s of obj.sts.concat(obj.aux)){ const list = LANE_ASSETS[s.kind] || []; if (!s.units) continue;
     for (const u of s.units){ const grp = obj.group.children.find(c => c.userData.eqId && c.userData.eqId === `${obj.lane.id}-S${s.idx}${s.n>1? String.fromCharCode(97+u.k) : ""}`); if (!grp) continue; const fp = s.fp;
+      if (LANE_MODELS[s.kind]) replaceCore(grp, LANE_MODELS[s.kind], s, 0, [-0.5, -0.5]);
+      lanePeople(obj, grp, s);
       for (const [key, dx, dz, ry, o={}] of list){ const px = o.front ? (o.dx||0) * fp[0]*0.5 : dx, pz = o.front ? fp[1]/2 + 0.9 : (o.dz !== undefined ? o.dz : dz);
-        if (o.replace){ const fb = new THREE.Group(); grp.children.filter(c => !c.isSprite && !c.userData.extra).forEach(c => fb.add(c)); grp.add(fb); placeAsset(key, { parent:grp, x:0, z:0, ry, fallback:fb, fit:{ w:fp[0]+0.4, d:fp[1]+0.9 } }); }
+        if (o.replace) replaceCore(grp, key, s, ry, [0.4, 0.9]);
         else placeAsset(key, { parent:grp, x:px, y:o.y||0, z:pz, ry }); } } } }
+// 工程の要員：手作業は最大 3 人、監視付き・自動は要員 0.3 人以上なら 1 人を機械の正面に立たせる
+function lanePeople(obj, grp, s){ const n = s.auto === "manual" ? Math.min(3, Math.ceil(s.ppl)) : (s.ppl >= 0.3 ? 1 : 0); const fp = s.fp; const off = (typeof FP_OFF !== "undefined" && FP_OFF[s.type]) || [0, 0];
+  for (let i = 0; i < n; i++){ const w = makePerson("hall"); w.userData.extra = true; w.position.set(off[0] + (n === 1 ? fp[0] * 0.24 : (i - (n - 1) / 2) * fp[0] * 0.3), 0, off[1] + fp[1] / 2 + 0.5); w.rotation.y = Math.PI + (i - (n - 1) / 2) * 0.35; grp.add(w); } }
 // ---------- 動く物：フォークリフト（手続きモデルを fallback に）----------
 function assetMover(key, fallback){ const holder = placeAsset(key, { parent:MOVERS, x:0, z:0, fallback }); return holder; }
 // ---------- パレットラック：実物ラック 4 m × 2 ＋ パレット（手続きラックを fallback に）----------
 function makeRackAsset(levels=3, bays=4){ const g = new THREE.Group(); const fb = makeRack(levels, bays);
-  placeAsset("rack", { parent:g, x:-2, z:0, fallback:fb }); placeAsset("rack", { parent:g, x:2, z:0 });
+  placeAsset("rack", { parent:g, x:-2, z:0, fallback:fb, core:true }); placeAsset("rack", { parent:g, x:2, z:0 });
   const rnd = sRand("rackAsset" + levels + bays); const floorKeys = ["palletA","palletC","palletA","palletB"];
   for (let i=0;i<4;i++){ const x = -3 + i*2; if (rnd() < 0.8) placeAsset(floorKeys[i % 4], { parent:g, x, z:-0.45, ry:(rnd()-0.5)*0.2 }); if (rnd() < 0.6) placeAsset("palletB", { parent:g, x, z:0.55, ry:(rnd()-0.5)*0.2 });
     if (rnd() < 0.7) placeAsset("palletB", { parent:g, x, y:2.1, z:-0.45, ry:(rnd()-0.5)*0.15 }); if (levels >= 4 && rnd() < 0.5) placeAsset("crate", { parent:g, x, y:2.1, z:0.55 }); }
   return g; }
+
+// ===== src/66_people.js =====
+// ================= 人物モデル（Quaternius, CC0）：歩行・待機アニメ付きの作業者と、着席者の一括ベイク =================
+// 読込前・読込失敗時は従来の手続き人形（fallback）を表示する。
+const CHAR_FILES = { worker_m:"models/worker_m.glb", worker_f:"models/worker_f.glb", casual_m:"models/casual_m.glb", casual_f:"models/casual_f.glb" };
+const PEOPLE = { cache:{}, list:[], seated:[], count:0, baked:0 };
+const SKIN_TONES = [0xf1c9a5, 0xe7b48f, 0xd9a47c, 0xc68e6a];
+const P_SHIRT = [0xe9ecef, 0x9fb7d4, 0x5b7fa6, 0x2f3f57, 0xb9c4a0, 0xd9b99b, 0x7a8894, 0xc86b5a];
+const P_PANTS = [0x2a3345, 0x3a3f4a, 0x55606e, 0x6a5a48, 0x1f2630];
+const P_HAIR  = [0x2a211c, 0x3b2a1e, 0x1a1a1a, 0x5a4632, 0x6b6b6b];
+function loadChar(k){ if (!PEOPLE.cache[k]) PEOPLE.cache[k] = assetLoader().loadAsync(CHAR_FILES[k]).then(g => { g.scene.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(g.scene); return { scene:g.scene, anims:g.animations, h:bb.max.y - bb.min.y }; }); return PEOPLE.cache[k]; }
+// 役割ごとの配色。hall: 紺の作業服＋高視認ベスト＋ヘルメット、office: 私服
+function outfit(kind, rnd){ const pick = a => a[Math.floor(rnd() * a.length)];
+  return kind === "hall" ? { Skin:pick(SKIN_TONES), Shirt:0x2b3a55, Vest: rnd() < 0.7 ? 0xf28c28 : 0xd7e03a, Pants:0x1f2a40, Hat: rnd() < 0.75 ? 0xf6d33b : 0xf2f2f0, Face:0x1c1c1c, Hair:pick(P_HAIR), Belt:0x2a2a2a }
+                         : { Skin:pick(SKIN_TONES), Shirt:pick(P_SHIRT), Vest:pick(P_SHIRT), Pants:pick(P_PANTS), Hat:0x39424e, Face:0x1c1c1c, Hair:pick(P_HAIR), Belt:0x3a2a1e }; }
+function dressChar(root, of){ root.traverse(o => { if (!o.isMesh) return; const m = o.material.clone(); const c = of[m.name]; if (c !== undefined) m.color.set(c); m.roughness = 0.85; m.metalness = 0; o.material = m; o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; }); }
+
+// ---- 動く人物：手続き人形の Group を holder にして、読込後に差し替える ----
+function makePerson(kind = "hall"){
+  const g = makeWorker(kind); const idx = PEOPLE.count++; const rnd = sRand("person" + idx); const female = rnd() < 0.35; const key = (kind === "hall" ? "worker_" : "casual_") + (female ? "f" : "m");
+  g.userData.person = { kind, key, blend:0, ready:false }; g.userData.layer = "people";
+  loadChar(key).then(ch => { const root = SkeletonUtils.clone(ch.scene); const s = (1.66 + rnd() * 0.12) / ch.h; root.scale.setScalar(s); dressChar(root, outfit(kind, rnd));
+    g.children.forEach(c => { c.visible = false; }); g.add(root);
+    const mx = new THREE.AnimationMixer(root); const idle = mx.clipAction(ch.anims.find(a => a.name === "Idle")); const walk = mx.clipAction(ch.anims.find(a => a.name === "Walk"));
+    idle.play(); walk.play(); idle.time = rnd() * 4; walk.setEffectiveWeight(0); mx.update(0);
+    Object.assign(g.userData.person, { mx, idle, walk, root, ready:true }); PEOPLE.list.push(g); dirtyShadow(); }).catch(err => console.warn("character load failed", key, err?.message || err));
+  return g;
+}
+const _pwp = new THREE.Vector3();
+function updatePeople(dt){ const cp = camera.position;
+  for (let i = PEOPLE.list.length - 1; i >= 0; i--){ const g = PEOPLE.list[i]; const p = g.userData.person; let vis = true, top = g; for (let o = g; o; o = o.parent){ if (!o.visible) vis = false; top = o; } if (top !== scene){ PEOPLE.list.splice(i, 1); continue; } if (!vis) continue;
+    g.getWorldPosition(_pwp); if (_pwp.distanceToSquared(cp) > 160 * 160) continue;   // 遠景はアニメ更新を省く
+    const target = g.userData.moving ? 1 : 0; p.blend += (target - p.blend) * Math.min(1, dt * 6); p.walk.setEffectiveWeight(p.blend); p.idle.setEffectiveWeight(1 - p.blend);
+    p.walk.timeScale = clamp((g.userData.speed || 0.9) / 0.85, 0.8, 1.7); p.mx.update(dt); } }
+
+// ---- 着席者：SitDown の最終姿勢を静的ジオメトリに焼き、階ごとに 1 メッシュへ結合（描画 1 回）----
+function bakePose(ch, clipName){ const root = SkeletonUtils.clone(ch.scene); const mx = new THREE.AnimationMixer(root); const clip = ch.anims.find(a => a.name === clipName); const act = mx.clipAction(clip); act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; act.play(); mx.setTime(clip.duration * 0.999);
+  root.updateMatrixWorld(true); const anchor = new THREE.Vector3(); root.traverse(o => { if (o.isBone && o.name === "Hips") o.getWorldPosition(anchor); });
+  const parts = []; const v = new THREE.Vector3(); let minY = Infinity;
+  root.traverse(o => { if (!o.isSkinnedMesh) return; o.skeleton.update(); const src = o.geometry, pos = src.attributes.position, out = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++){ o.getVertexPosition(i, v); v.applyMatrix4(o.matrixWorld); out[i*3] = v.x; out[i*3+1] = v.y; out[i*3+2] = v.z; if (v.y < minY) minY = v.y; }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(out, 3)); if (src.index) geo.setIndex(Array.from(src.index.array)); geo.computeVertexNormals(); parts.push({ geo, mat:o.material.name }); });
+  return { parts, anchor, minY, h:ch.h }; }
+const PEOPLE_FB_MATS = () => [M.skin, M.shirt, M.uniform2, M.uniform];
+function bakeSeated(){ if (!PEOPLE.seated.length) return;
+  Promise.all(["casual_m", "casual_f"].map(loadChar)).then(chars => { const poses = chars.map(c => bakePose(c, "SitDown")); const mat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.85, metalness:0 }); const col = new THREE.Color(); const mtx = new THREE.Matrix4(), tmp = new THREE.Matrix4();
+    for (const grp of PEOPLE.seated){ if (grp.done || !grp.parent) continue; const geos = []; const rnd = sRand("seated" + grp.seats.length + grp.parent.name);
+      for (const [x, z, ry] of grp.seats){ const pose = poses[rnd() < 0.4 ? 1 : 0]; const of = outfit("office", rnd); const s = (1.62 + rnd() * 0.12) / pose.h;
+        mtx.makeRotationY(ry).setPosition(x, 0, z); tmp.makeScale(s, s, s); mtx.multiply(tmp); tmp.makeTranslation(-pose.anchor.x, -pose.minY, -pose.anchor.z + 0.12); mtx.multiply(tmp);
+        for (const part of pose.parts){ const g = part.geo.clone().applyMatrix4(mtx); const n = g.attributes.position.count; const ca = new Float32Array(n * 3); col.set(of[part.mat] ?? 0x888888); for (let i = 0; i < n; i++){ ca[i*3] = col.r; ca[i*3+1] = col.g; ca[i*3+2] = col.b; } g.setAttribute("color", new THREE.BufferAttribute(ca, 3)); geos.push(g); } }
+      const merged = mergeGeometries(geos, false); geos.forEach(g => g.dispose()); const mesh = new THREE.Mesh(merged, mat); mesh.castShadow = true; mesh.receiveShadow = false; mesh.name = "seatedPeople"; mesh.userData.layer = "people";
+      const fb = grp.parent.children.filter(c => c.isMesh && PEOPLE_FB_MATS().includes(c.material)); if (fb.length) mesh.position.y = fb[0].position.y; fb.forEach(c => { c.visible = false; c.userData.layer = null; });
+      mesh.visible = (typeof layerState === "undefined") || layerState.people !== false; grp.parent.add(mesh); grp.done = true; PEOPLE.baked += grp.seats.length; }
+    dirtyShadow(); }).catch(err => console.warn("seated bake failed", err?.message || err)); }
 
 // ===== src/70_ui.js =====
 // ================= UI・モード切替・ピック・ツアー・メインループ =================
@@ -2623,7 +2749,7 @@ function applyLaneForm(id, fd){ const o = LANE_OBJ[id]; const L = o ? o.lane : {
   const so = {}; const keys = typeof fd.keys === "function" ? [...fd.keys()] : []; for (const k of keys){ const [f, t] = k.split(":"); if (!t || !STATION_TYPES[t]) continue; so[t] = so[t] || {}; const v = fd.get(k); if (f==="ct") so[t].ct = +v; else if (f==="n") so[t].n = Math.max(1, +v|0); else if (f==="auto") so[t].auto = v; else if (f==="ppl") so[t].ppl = +v; }
   L.stationOv = (recipe === (o? o.lane.recipe : recipe) && keys.length) ? so : {}; if (L.override && L.stationOv[MAIN_STATION[recipe]]) L.stationOv[MAIN_STATION[recipe]].n = L.override[MAIN_STATION[recipe]];
   generateLane(L); if (!LANES.includes(L)) LANES.push(L); setActiveLane(L.id); afterLaneChange(); focusLane(L.id); }
-function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); buildMEP(); if ($("bim").style.display === "block") renderBim(); if (clrOn) runClearance(); if (clashMarks) runClash(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
+function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); bakeSeated(); buildMEP(); if ($("bim").style.display === "block") renderBim(); if (clrOn) runClearance(); if (clashMarks) runClash(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
 function focusLane(id){ const o = LANE_OBJ[id]; if (!o) return; const L = o.lane; if (walk.on) toggleWalk(false); setMode(L.floor); const [x0,x1,z0,z1] = L.area; const w = Math.max(x1-x0, z1-z0);
   setCam({ yaw: L.floor===2? -0.9 : -0.6, pitch:0.62, dist: w*1.35, target:[(x0+x1)/2, BLD.lv[L.floor-1]+2, (z0+z1)/2] }); setActiveLane(id); renderLanes(); renderOS(); }
 $("laneAdd").onclick = () => { let n = 6; while (LANE_OBJ["L"+n]) n++; const id = "L"+n; const fd = new Map([["recipe","precision"],["main","3"],["shifts","2"],["unattended","8"],["slot","recv"]]); applyLaneForm(id, fd); const card = document.querySelector(`.lane[data-id="${id}"] form`); if (card) card.hidden = false; };
@@ -2695,7 +2821,8 @@ toggleWalk = function(on){ _toggleWalk0(on); MEP.walk = on; applyMepVisibility()
 let xray = false, clashMarks = null;
 const XRAY_MATS = () => [M.gypsum, M.concrete, M.roofMetal, M.wallMetal, M.timber, M.timberDark, M.concreteWhite, M.spandrel, M.ceiling, M.ceilingGlow, M.hallGlow, M.epoxy, M.carpet, M.woodFloor, M.mullion, M.paving, M.asphalt, ...Object.values(FIN_MAT)];
 function setXray(on){ xray = on; for (const m of XRAY_MATS()){ if (!m) continue; if (on){ m.userData._op = m.opacity; m.userData._tr = m.transparent; m.transparent = true; m.opacity = 0.12; m.depthWrite = false; } else if (m.userData._op !== undefined){ m.opacity = m.userData._op; m.transparent = m.userData._tr; m.depthWrite = true; } m.needsUpdate = true; } $("xrayBtn").classList.toggle("on", on); dirtyShadow(); }
-function showAssetInfo(key){ const c = ASSET_CATALOG[key]; const p = $("info"); document.body.classList.add("info"); p.innerHTML = `<div class="sub">実物 3D モデル</div><h2>${pe(c.n)}</h2><table><tr><td>アセット</td><td>${pe(c.a)}</td></tr><tr><td>出典</td><td>NVIDIA SimReady（CC BY 4.0）<br><a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a></td></tr><tr><td>三角形数（原型）</td><td>${c.tris.toLocaleString()} k</td></tr><tr><td>品質</td><td>${AS.quality === "glb" ? "最高（原型）" : AS.quality === "lod1" ? "標準（LOD1）" : "軽量（LOD2）"}</td></tr></table><div class="sep"></div><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" id="infoClose">閉じる</button></div>`; p.style.display = "block"; $("infoClose").onclick = () => showInfo(null); }
+function showAssetInfo(key){ const c = ASSET_CATALOG[key]; const p = $("info"); document.body.classList.add("info"); const cr = c.credit;
+  p.innerHTML = `<div class="sub">実物 3D モデル</div><h2>${pe(c.n)}</h2><table>${cr ? `<tr><td>元モデル</td><td>${pe(cr.t)}</td></tr><tr><td>作者</td><td>${pe(cr.by)}</td></tr><tr><td>ライセンス</td><td>${pe(cr.lic)}（最適化して同梱）<br><a href="${cr.link}" target="_blank" style="color:var(--acc2)">Sketchfab で見る</a></td></tr>` : `<tr><td>アセット</td><td>${pe(c.a)}</td></tr><tr><td>出典</td><td>NVIDIA SimReady（CC BY 4.0）<br><a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a></td></tr><tr><td>表示</td><td>遠景 ${variantOf(c, "far").toUpperCase()} ／ 近景 ${variantOf(c, "near").toUpperCase()}</td></tr>`}<tr><td>三角形数（原型）</td><td>${c.tris.toLocaleString()} k</td></tr></table><div class="sep"></div><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" id="infoClose">閉じる</button></div>`; p.style.display = "block"; $("infoClose").onclick = () => showInfo(null); }
 function showMepInfo(m){ const p = $("info"); document.body.classList.add("info"); const S = SYSTEMS[m.sys]; p.innerHTML = `<div class="sub">MEP · ${pe(S.n)}</div><h2>${pe(m.name || m.kind || "")}</h2><table>
   <tr><td>系統</td><td>${pe(m.sys)} ${pe(S.n)}</td></tr><tr><td>種別</td><td>${S.kind==="pipe"?"配管":S.kind==="duct"?"ダクト":S.kind==="tray"?"ケーブルラック":"床トレンチ"}${m.trench?"（床トレンチ）":""}</td></tr>
   <tr><td>寸法</td><td>${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000)+" mm" : S.size.map(v=>Math.round(v*1000)).join("×")+" mm"}</td></tr>${m.length!==undefined? `<tr><td>延長</td><td>${m.length.toFixed(1)} m</td></tr>`:""}
@@ -2749,7 +2876,7 @@ addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; con
 
 // ================= 構築 & メインループ =================
 function build(){
-  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildFloorDetail(); buildMEP(); buildMovers(); buildAssets(); assetStatus();
+  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildFloorDetail(); buildMEP(); buildMovers(); buildAssets(); assetStatus(); bakeSeated();
   for (const k in LAYERS) { if (k === "green" || k === "context") LAYERS[k].userData.layer = k; }
   // 人・車両レイヤー：階グループ内の作業者にも付与
   scene.traverse(o => { if (o.userData.legs) o.userData.layer = "people"; });
@@ -2772,7 +2899,7 @@ function zoneAt(x, z, f){ for (const zn of ZONES){ if (zn[2] !== f) continue; if
 const floorPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
 function hoverUpdate(e, id0){
   let html = "", lb = null; hoverZone = null;
-  if (id0 && id0.asset){ const c = ASSET_CATALOG[id0.asset]; html = `<b>${pe(c.n)}</b><br><span>NVIDIA SimReady · ${pe(c.a)}</span>`; }
+  if (id0 && id0.asset){ const c = ASSET_CATALOG[id0.asset]; html = `<b>${pe(c.n)}</b><br><span>${pe(assetCredit(id0.asset))}</span>`; }
   else if (id0 && id0.mep){ const m = id0.mep, S = SYSTEMS[m.sys]; html = `<b>${pe(S.n)}</b><br>${pe(m.name || m.kind || "")}${m.length? ` · ${m.length.toFixed(1)} m` : ""}${m.sizeLabel? ` · ${pe(m.sizeLabel)}` : ""}`; }
   else if (id0){ const eq = EQUIP.find(x => x.id === id0); if (eq){ html = `<b>${pe(eq.id)}</b> ${pe(eq.name)}<br><span>${pe(zoneName(eq.zone))}${eq.lane? " · "+pe(eq.lane) : ""}</span>`; const o = EQ_OBJ[id0]; if (o) o.group.traverse(c => { if (c.isSprite && c.userData.kind === "eq" && !lb) lb = c; }); } }
   else if (!walk.on){ // 床のゾーン
@@ -2783,7 +2910,7 @@ function hoverUpdate(e, id0){
 cvsEl.addEventListener("pointerleave", () => { tip.style.display = "none"; hoverLabel = null; hoverZone = null; });
 function loop(){
   requestAnimationFrame(loop); if (window.__pauseRender) return; const dt = Math.min(0.05, clock.getDelta()); frame++;
-  updateLabels();
+  updateLabels(); if (frame % 12 === 0) updateAssetLOD();
   if (playing) updateMovers(dt);
   updateWalk(dt); applyCam();
   if (shadowDirty || (playing && frame % 3 === 0)){ renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
@@ -2791,7 +2918,7 @@ function loop(){
 }
 $("loadMsg").textContent = "敷地・建屋・設備を生成しています…";
 setTimeout(() => { try { build(); } catch (err) { $("loadMsg").textContent = "構築エラー: " + err.message; console.error(err); throw err; } loop(); }, 30);
-window.THREE = THREE; window.__factory = { scene, camera, renderer, AS, ASSET_CATALOG, setAssetQuality, buildMEP, clearanceCheck, LOADS, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
+window.THREE = THREE; window.__factory = { scene, camera, renderer, AS, PEOPLE, updateAssetLOD, ASSET_CATALOG, setAssetQuality, buildMEP, clearanceCheck, LOADS, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
 </script>
 </body>
 </html>

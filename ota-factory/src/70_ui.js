@@ -158,7 +158,7 @@ function applyLaneForm(id, fd){ const o = LANE_OBJ[id]; const L = o ? o.lane : {
   const so = {}; const keys = typeof fd.keys === "function" ? [...fd.keys()] : []; for (const k of keys){ const [f, t] = k.split(":"); if (!t || !STATION_TYPES[t]) continue; so[t] = so[t] || {}; const v = fd.get(k); if (f==="ct") so[t].ct = +v; else if (f==="n") so[t].n = Math.max(1, +v|0); else if (f==="auto") so[t].auto = v; else if (f==="ppl") so[t].ppl = +v; }
   L.stationOv = (recipe === (o? o.lane.recipe : recipe) && keys.length) ? so : {}; if (L.override && L.stationOv[MAIN_STATION[recipe]]) L.stationOv[MAIN_STATION[recipe]].n = L.override[MAIN_STATION[recipe]];
   generateLane(L); if (!LANES.includes(L)) LANES.push(L); setActiveLane(L.id); afterLaneChange(); focusLane(L.id); }
-function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); buildMEP(); if ($("bim").style.display === "block") renderBim(); if (clrOn) runClearance(); if (clashMarks) runClash(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
+function afterLaneChange(){ for (let i=LANES.length-1;i>=0;i--) if (!LANE_OBJ[LANES[i].id]) LANES.splice(i,1); refreshPlanTexture(); bakeSeated(); buildMEP(); if ($("bim").style.display === "block") renderBim(); if (clrOn) runClearance(); if (clashMarks) runClash(); renderLanes(); renderOS(); renderLedger(); renderPlant(); renderStats(); refreshLaneVis(); dirtyShadow(); }
 function focusLane(id){ const o = LANE_OBJ[id]; if (!o) return; const L = o.lane; if (walk.on) toggleWalk(false); setMode(L.floor); const [x0,x1,z0,z1] = L.area; const w = Math.max(x1-x0, z1-z0);
   setCam({ yaw: L.floor===2? -0.9 : -0.6, pitch:0.62, dist: w*1.35, target:[(x0+x1)/2, BLD.lv[L.floor-1]+2, (z0+z1)/2] }); setActiveLane(id); renderLanes(); renderOS(); }
 $("laneAdd").onclick = () => { let n = 6; while (LANE_OBJ["L"+n]) n++; const id = "L"+n; const fd = new Map([["recipe","precision"],["main","3"],["shifts","2"],["unattended","8"],["slot","recv"]]); applyLaneForm(id, fd); const card = document.querySelector(`.lane[data-id="${id}"] form`); if (card) card.hidden = false; };
@@ -230,7 +230,8 @@ toggleWalk = function(on){ _toggleWalk0(on); MEP.walk = on; applyMepVisibility()
 let xray = false, clashMarks = null;
 const XRAY_MATS = () => [M.gypsum, M.concrete, M.roofMetal, M.wallMetal, M.timber, M.timberDark, M.concreteWhite, M.spandrel, M.ceiling, M.ceilingGlow, M.hallGlow, M.epoxy, M.carpet, M.woodFloor, M.mullion, M.paving, M.asphalt, ...Object.values(FIN_MAT)];
 function setXray(on){ xray = on; for (const m of XRAY_MATS()){ if (!m) continue; if (on){ m.userData._op = m.opacity; m.userData._tr = m.transparent; m.transparent = true; m.opacity = 0.12; m.depthWrite = false; } else if (m.userData._op !== undefined){ m.opacity = m.userData._op; m.transparent = m.userData._tr; m.depthWrite = true; } m.needsUpdate = true; } $("xrayBtn").classList.toggle("on", on); dirtyShadow(); }
-function showAssetInfo(key){ const c = ASSET_CATALOG[key]; const p = $("info"); document.body.classList.add("info"); p.innerHTML = `<div class="sub">実物 3D モデル</div><h2>${pe(c.n)}</h2><table><tr><td>アセット</td><td>${pe(c.a)}</td></tr><tr><td>出典</td><td>NVIDIA SimReady（CC BY 4.0）<br><a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a></td></tr><tr><td>三角形数（原型）</td><td>${c.tris.toLocaleString()} k</td></tr><tr><td>品質</td><td>${AS.quality === "glb" ? "最高（原型）" : AS.quality === "lod1" ? "標準（LOD1）" : "軽量（LOD2）"}</td></tr></table><div class="sep"></div><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" id="infoClose">閉じる</button></div>`; p.style.display = "block"; $("infoClose").onclick = () => showInfo(null); }
+function showAssetInfo(key){ const c = ASSET_CATALOG[key]; const p = $("info"); document.body.classList.add("info"); const cr = c.credit;
+  p.innerHTML = `<div class="sub">実物 3D モデル</div><h2>${pe(c.n)}</h2><table>${cr ? `<tr><td>元モデル</td><td>${pe(cr.t)}</td></tr><tr><td>作者</td><td>${pe(cr.by)}</td></tr><tr><td>ライセンス</td><td>${pe(cr.lic)}（最適化して同梱）<br><a href="${cr.link}" target="_blank" style="color:var(--acc2)">Sketchfab で見る</a></td></tr>` : `<tr><td>アセット</td><td>${pe(c.a)}</td></tr><tr><td>出典</td><td>NVIDIA SimReady（CC BY 4.0）<br><a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a></td></tr><tr><td>表示</td><td>遠景 ${variantOf(c, "far").toUpperCase()} ／ 近景 ${variantOf(c, "near").toUpperCase()}</td></tr>`}<tr><td>三角形数（原型）</td><td>${c.tris.toLocaleString()} k</td></tr></table><div class="sep"></div><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" id="infoClose">閉じる</button></div>`; p.style.display = "block"; $("infoClose").onclick = () => showInfo(null); }
 function showMepInfo(m){ const p = $("info"); document.body.classList.add("info"); const S = SYSTEMS[m.sys]; p.innerHTML = `<div class="sub">MEP · ${pe(S.n)}</div><h2>${pe(m.name || m.kind || "")}</h2><table>
   <tr><td>系統</td><td>${pe(m.sys)} ${pe(S.n)}</td></tr><tr><td>種別</td><td>${S.kind==="pipe"?"配管":S.kind==="duct"?"ダクト":S.kind==="tray"?"ケーブルラック":"床トレンチ"}${m.trench?"（床トレンチ）":""}</td></tr>
   <tr><td>寸法</td><td>${S.kind==="pipe"? "φ"+Math.round(S.size[0]*2000)+" mm" : S.size.map(v=>Math.round(v*1000)).join("×")+" mm"}</td></tr>${m.length!==undefined? `<tr><td>延長</td><td>${m.length.toFixed(1)} m</td></tr>`:""}
@@ -284,7 +285,7 @@ addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; con
 
 // ================= 構築 & メインループ =================
 function build(){
-  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildFloorDetail(); buildMEP(); buildMovers(); buildAssets(); assetStatus();
+  buildSite(); buildBuilding(); buildInterior(); for (const L of LANES) generateLane(L); scene.add(FLOW_LINES); scene.add(LANE_LINK_LINES); LANE_LINK_LINES.visible = false; buildExteriorDetail(); buildInteriorDetail(); buildFloorDetail(); buildMEP(); buildMovers(); buildAssets(); assetStatus(); bakeSeated();
   for (const k in LAYERS) { if (k === "green" || k === "context") LAYERS[k].userData.layer = k; }
   // 人・車両レイヤー：階グループ内の作業者にも付与
   scene.traverse(o => { if (o.userData.legs) o.userData.layer = "people"; });
@@ -307,7 +308,7 @@ function zoneAt(x, z, f){ for (const zn of ZONES){ if (zn[2] !== f) continue; if
 const floorPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
 function hoverUpdate(e, id0){
   let html = "", lb = null; hoverZone = null;
-  if (id0 && id0.asset){ const c = ASSET_CATALOG[id0.asset]; html = `<b>${pe(c.n)}</b><br><span>NVIDIA SimReady · ${pe(c.a)}</span>`; }
+  if (id0 && id0.asset){ const c = ASSET_CATALOG[id0.asset]; html = `<b>${pe(c.n)}</b><br><span>${pe(assetCredit(id0.asset))}</span>`; }
   else if (id0 && id0.mep){ const m = id0.mep, S = SYSTEMS[m.sys]; html = `<b>${pe(S.n)}</b><br>${pe(m.name || m.kind || "")}${m.length? ` · ${m.length.toFixed(1)} m` : ""}${m.sizeLabel? ` · ${pe(m.sizeLabel)}` : ""}`; }
   else if (id0){ const eq = EQUIP.find(x => x.id === id0); if (eq){ html = `<b>${pe(eq.id)}</b> ${pe(eq.name)}<br><span>${pe(zoneName(eq.zone))}${eq.lane? " · "+pe(eq.lane) : ""}</span>`; const o = EQ_OBJ[id0]; if (o) o.group.traverse(c => { if (c.isSprite && c.userData.kind === "eq" && !lb) lb = c; }); } }
   else if (!walk.on){ // 床のゾーン
@@ -318,7 +319,7 @@ function hoverUpdate(e, id0){
 cvsEl.addEventListener("pointerleave", () => { tip.style.display = "none"; hoverLabel = null; hoverZone = null; });
 function loop(){
   requestAnimationFrame(loop); if (window.__pauseRender) return; const dt = Math.min(0.05, clock.getDelta()); frame++;
-  updateLabels();
+  updateLabels(); if (frame % 12 === 0) updateAssetLOD();
   if (playing) updateMovers(dt);
   updateWalk(dt); applyCam();
   if (shadowDirty || (playing && frame % 3 === 0)){ renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
@@ -326,4 +327,4 @@ function loop(){
 }
 $("loadMsg").textContent = "敷地・建屋・設備を生成しています…";
 setTimeout(() => { try { build(); } catch (err) { $("loadMsg").textContent = "構築エラー: " + err.message; console.error(err); throw err; } loop(); }, 30);
-window.THREE = THREE; window.__factory = { scene, camera, renderer, AS, ASSET_CATALOG, setAssetQuality, buildMEP, clearanceCheck, LOADS, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };
+window.THREE = THREE; window.__factory = { scene, camera, renderer, AS, PEOPLE, updateAssetLOD, ASSET_CATALOG, setAssetQuality, buildMEP, clearanceCheck, LOADS, clashCheck, mepSchedule, runClash, setXray, MEP, SYSTEMS, EQUIP, ZONES, BLD, SITE, DEMAND, assemblyScenarios, applyScenario, compareInhouse, LANE_SLOTS, setMode, setCam, setDay, focusEq, focusLane, FL, LAYERS, LANE_OBJ, generateLane, removeLane, allLaneKPI, computePlant, renderPlant, setActiveLane, setActiveModule, applyLaneForm, showLinks:(v)=>{ linksOn=v; renderPlant(); } };

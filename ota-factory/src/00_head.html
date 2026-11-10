@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>XANTALOS（ザンタロス）大田区 — 開発一体型工場 3D構想モデル v0.9</title>
+<title>XANTALOS（ザンタロス）大田区 — 開発一体型工場 3D構想モデル v1.0</title>
 <style>
   :root { --bg:#0d1117; --panel:#161b22d9; --line:#30363d; --txt:#e6edf3; --sub:#9da7b3; --acc:#f2c744; --acc2:#58a6ff; --good:#3fb950; --bad:#f85149; }
   * { box-sizing:border-box; }
@@ -84,11 +84,11 @@
 <div id="views" class="panel"><span class="lbl">視点</span></div>
 
 <div id="stats" class="panel">
-  <h3>計画概要 — XANTALOS 大田区（構想 v0.9）</h3>
+  <h3>計画概要 — XANTALOS 大田区（構想 v1.0）</h3>
   <div id="statsBody"></div>
 </div>
 
-<div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div><div class="sep"></div><div class="row"><span class="sub">実物モデルの品質</span><select id="assetQ" class="btn sm"><option value="lod2">軽量</option><option value="lod1" selected>標準</option><option value="glb">最高</option></select></div><div class="sub" style="margin-top:6px">3D モデル：NVIDIA SimReady（CC BY 4.0）を <a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a> から読込。初回はネットワークから取得します。</div></div>
+<div id="layers" class="panel"><h3>表示レイヤー</h3><div id="layerList"></div><div class="sep"></div><div class="row"><span class="sub">実物モデルの品質</span><select id="assetQ" class="btn sm"><option value="lod2">軽量</option><option value="lod1" selected>標準</option><option value="glb">最高</option></select></div><div class="sub" style="margin-top:4px">遠くの物は軽いモデル、近づいた物だけ高精細モデルを後から読み込みます。</div><div class="sub" style="margin-top:6px">3D モデル：小物・車両は NVIDIA SimReady（CC BY 4.0、<a href="https://huggingface.co/datasets/codepawl/simready-glb" target="_blank" style="color:var(--acc2)">codepawl/simready-glb</a> から実行時に読込）。工作機械・ロボットは Sketchfab の CC BY 4.0 モデル、人物は Quaternius（CC0）。クリックで作者名を表示します。</div></div>
 <div id="bim" class="panel"><h3>BIM・MEP 系統 <span class="sub" id="bimSum"></span></h3><div id="bimSys"></div><div class="sep"></div>
   <div class="row"><span class="sub">幹線高さの調整（選択系統）</span><select id="bimSysSel" class="btn sm"></select></div><input id="bimH" type="range" min="-3" max="3" step="0.1" value="0"><div class="sub" id="bimHLabel">±0.0 m</div>
   <div class="sep"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="clashBtn">干渉チェック</button><button class="btn sm" id="clearBtn">保守スペース</button><button class="btn sm" id="xrayBtn">X線表示</button><button class="btn sm" id="mepCsv">数量 CSV</button></div><div id="clashList" style="margin-top:6px"></div><div id="clearList" style="margin-top:6px"></div></div>
@@ -123,3 +123,4 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";

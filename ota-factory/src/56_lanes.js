@@ -4,7 +4,7 @@ let activeLane = null, activeModule = null;
 
 const BUILDERS = { mc5:makeMC5, hmc:makeHMC, lathe:makeLathe, gantry:makeGantry, edm:makeEDM, grind:makeGrinder, robotcell:()=>makeRobotCell(true),
   load:makeLoadStation, wash:makeWash, store:makeStore, asmA:()=>makeAssembly("A"), asmB:()=>makeAssembly("B"), panel:makePanelStation, wiring:makeWiringStation, ptest:makePowerTest,
-  laser:makeLaserCutter, brake:makePressBrake, weld:makeWeldCell, finish:makeFinishBooth, mask:makeMaskStation, booth:makePaintBooth, oven:makeOven, demoPrep:makeDemoPrep, demo:makeDemoStage, tcell:()=>{ const g = makeTestCellStation(); g.scale.set(0.76, 0.85, 0.8); return g; } };
+  laser:makeLaserCutter, brake:makePressBrake, weld:makeWeldCell, finish:makeFinishBooth, mask:makeMaskStation, booth:makePaintBooth, oven:makeOven, demoPrep:makeDemoPrep, demo:makeDemoStage, punch:makePunchPress, tcell:()=>{ const g = makeTestCellStation(); g.scale.set(0.76, 0.85, 0.8); return g; } };
 
 // 実際のモデル寸法から占有寸法を測る（宣言値より大きければ上書き）
 const FP_CACHE = {};
@@ -29,7 +29,7 @@ function layoutLane(lane, sts){
   const [x0, x1, z0, z1] = lane.area; const usable = x1 - x0 - 1.0; const sideC = k => (typeof CLEARANCE !== "undefined" && CLEARANCE[k]) ? CLEARANCE[k][1] : 0.6; let gap = 0.6;
   const rows = [[]]; let cur = 0, row = 0;
   const units = []; for (const s of sts){ if (s.kind === "ref") { units.push({ s, ref:true }); continue; } for (let k=0;k<s.n;k++) units.push({ s, k, w:s.fp[0], d:s.fp[1] }); }
-  let prevKind = null; for (const u of units){ if (u.ref) continue; gap = Math.max(0.6, sideC(u.s.kind), prevKind ? sideC(prevKind) : 0); if (cur + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } rows[row].push(u); u.row = row; u.off = cur; cur += u.w + gap; prevKind = u.s.kind; }
+  let prevKind = null; for (const u of units){ if (u.ref) continue; gap = prevKind ? Math.max(0.6, sideC(u.s.kind), sideC(prevKind)) : 0; if (cur + gap + u.w > usable && rows[row].length){ row++; rows[row] = []; cur = 0; } else cur += gap; rows[row].push(u); u.row = row; u.off = cur; cur += u.w; prevKind = u.s.kind; }
   // 行ごとの奥行とピッチ（行0-1 間は 4 m 通路、以降は 2.5 m）
   let zTop = z0 + 0.5; const rowInfo = [];
   rows.forEach((r, i) => { const d = Math.max(...r.map(u=>u.d), 2); const aisle = i===0? 0 : (i%2===1? 2.6 : 1.8); zTop += aisle; rowInfo.push({ zTop, d, len: r.length? r[r.length-1].off + r[r.length-1].w : 0 }); zTop += d; });

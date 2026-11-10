@@ -154,7 +154,9 @@ const TOUR = [
   { cam:{ yaw:-0.9, pitch:0.4, dist:60, target:[-20,11.5,10] }, mode:"floor", floor:3, title:"3F 設計フロア・カフェテリア",
     text:"CAD/CAE 40席、会議室群、全社のカフェテリア。木天井の下で設計とソフトが日常的に交わる。" },
   { cam:{ yaw:-2.2, pitch:0.42, dist:20, target:[41,1,-22] }, mode:"floor", floor:1, title:"実物モデル：受入置場（NVIDIA SimReady）",
-    text:"フォークリフト・ハンドパレット・パレット・木箱・ラック・踏台など、NVIDIA SimReady の実物 3D モデル（CC BY 4.0）約 130 点を配置。レーンを組み替えると工程に応じた小物が自動で付く。" },
+    text:"フォークリフト・パレット・ラック・工具・安全設備など NVIDIA SimReady の実物モデル約 190 点。遠くの物は軽いモデルで表示し、近づいた物だけ高精細モデルを後から読み込む。" },
+  { cam:{ yaw:0.25, pitch:0.3, dist:17, target:[-24,1.6,-24] }, mode:"floor", floor:1, lane:"L1", title:"実機モデルと作業者",
+    text:"マシニングセンタと CNC 旋盤は Sketchfab の CC BY モデル、作業者は Quaternius の CC0 キャラクター（歩行・待機アニメ付き）。機械の正面に工程の要員が立ち、通路を巡回する。オフィスの着席者は姿勢を焼き込んで 1 メッシュにまとめている。" },
   { cam:{ yaw:-0.6, pitch:0.18, dist:70, target:[-30,4,24] }, mode:"ext", title:"前庭プラザ・来客アプローチ",
     text:"歩道から樹木とベンチの前庭を抜けてロビーへ。西側はソーラーカーポート駐車場 32台。" },
 ];
@@ -302,9 +304,9 @@ Object.assign(STATION_TYPES, {
 });
 Object.assign(LANE_RECIPES, {
   sheet:   { n:"板金・溶接 レーン", mode:"flow", color:0xff9f43, unitName:"個",
-    stations:[["load",1],["laser",1],["brake",1],["weld",2],["finish",1],["store",1]], aux:[],
+    stations:[["load",1],["laser",1],["punch",1],["brake",1],["weld",2],["finish",1],["store",1]], aux:[],
     overhead:["toolRail","boom","cams"], os:["edge","sched","mes","qai","cmms"], params:{},
-    desc:"レーザー切断→曲げ→ロボット溶接×2→仕上げ→ストア。カバー・架台・ブラケット類を内製。", supplies:"板金部品" },
+    desc:"レーザー切断→タレットパンチ→曲げ→ロボット溶接×2→仕上げ→ストア。カバー・架台・ブラケット類を内製。", supplies:"板金部品" },
   paint:   { n:"塗装 レーン", mode:"flow", color:0x2ec4b6, unitName:"個",
     stations:[["mask",1],["booth",1],["oven",1],["store",1]], aux:[],
     overhead:["boom","cams"], os:["edge","mes","qai"], params:{},
@@ -352,3 +354,7 @@ BOM["大型構造部品"].outsource = { unitCost:120, leadDays:45, n:"大物加�
 BOM["制御盤"].outsource = { unitCost:180, leadDays:30, n:"盤メーカーへ外注" };
 // 社内化の候補レシピと推奨区画
 const INHOUSE = { "板金部品":{ recipe:"sheet", slot:"yard" }, "塗装部品":{ recipe:"paint", slot:"yard2" }, "精密部品":{ recipe:"precision", slot:"mach-N" }, "大型構造部品":{ recipe:"heavy", slot:"mach-S" }, "制御盤":{ recipe:"panel", slot:"elab" } };
+
+// ---- v1.0：タレットパンチプレス工程 ----
+STATION_TYPES.punch = { n:"タレットパンチプレス", kind:"punch", fp:[7.2,5.0], ct:8, unit:"min", auto:"auto", ppl:0.3, capex:95,
+  spec:{ 型式:"サーボ式タレットパンチプレス 30 t（想定）", 加工範囲:"3050×1525", 金型:"58 ステーション", 電源:"35 kVA" } };

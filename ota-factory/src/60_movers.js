@@ -57,15 +57,16 @@ function buildMovers(){
     [[-12,-16],[-12,-12],[2,-12],[2,-16]],
     [[4,-8],[4,-4],[16,-4],[16,-8]],
   ];
-  routes.forEach((r, i)=>{ const w = makeWorker("hall"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(pts[0]); movers.push(new PathMover(w, pts, 0.9+ (i%3)*0.15, { pause: 2 + i%4 })); });
+  routes.forEach((r, i)=>{ const w = makePerson("hall"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(pts[0]); movers.push(new PathMover(w, pts, 0.9+ (i%3)*0.15, { pause: 2 + i%4 })); });
   // 2F/3F 歩行者（バルコニー・テラス・通路）
   const lv = BLD.lv;
   [[lv[1], [[-34,1.0],[30,1.0]]], [lv[1], [[-20,20.5],[20,20.5]]], [lv[2], [[-30,1.8],[30,1.8]]], [lv[1], [[-5,15],[20,15]]], [lv[2], [[-34,15],[-12,15]]]].forEach(([y, r], i)=>{
-    const w = makeWorker("office"); (y===lv[1]? floorGroup(2) : floorGroup(3)).add(w); const pts = r.map(([x,z])=>[x,y,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,y,z])); movers.push(new PathMover(w, pts, 0.8, { pause:3+i })); });
+    const w = makePerson("office"); (y===lv[1]? floorGroup(2) : floorGroup(3)).add(w); const pts = r.map(([x,z])=>[x,y,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,y,z])); movers.push(new PathMover(w, pts, 0.8, { pause:3+i })); });
   // 外構：歩行者
-  [[[-50,34],[-20,30],[-38,25],[-38,19]], [[20,38],[45,38],[45,30]], [[-10,36],[-30,36]]].forEach((r,i)=>{ const w = makeWorker("office"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,0,z])); movers.push(new PathMover(w, pts, 0.9, { pause:2 })); });
+  [[[-50,34],[-20,30],[-38,25],[-38,19]], [[20,38],[45,38],[45,30]], [[-10,36],[-30,36]]].forEach((r,i)=>{ const w = makePerson("office"); MOVERS.add(w); const pts = r.map(([x,z])=>[x,0,z]); pts.push(...r.slice().reverse().map(([x,z])=>[x,0,z])); movers.push(new PathMover(w, pts, 0.9, { pause:2 })); });
   // 立ち作業者（固定）
-  for (const [x,z,ry] of [[-39,-21,0],[-25,-21,0.5],[-20,-9,-1.2],[-4,-12,0.4],[-1,-19,2.5],[12,-13,-0.7],[28,-4,1.5],[23,-26,0],[-11,9,0],[0,8,1.2],[-23,11,0.3]]){ const w = makeWorker("hall"); w.position.set(x,0,z); w.rotation.y = ry; MOVERS.add(w); }
+  // 固定の人物：受付・来客・計測室（機械前の作業者はレーン生成で配置する）
+  for (const [x,z,ry,kind] of [[-40,9.7,Math.PI,"office"],[-37.6,6.1,0.5,"office"],[-17.4,9.2,-Math.PI/2,"office"],[-11,11.4,Math.PI,"office"],[31.0,-1.2,2.6,"hall"]]){ const w = makePerson(kind); w.position.set(x,0,z); w.rotation.y = ry; (z > 2 ? floorGroup(1) : MOVERS).add(w); }
   // ---- トラック・フォークリフト ----
   const tr = makeTruck(); MOVERS.add(tr); movers.push(new PathMover(tr, [[54,0,80],[54,0,20],[54,0,-24],[47.5,0,-24],[54,0,-24],[54,0,60],[54,0,80]], 4.0, { pause:6, smoothTurn:true }));
   const tr2 = makeTruck(); tr2.position.set(48.5, 0, -16); tr2.rotation.y = Math.PI/2; MOVERS.add(tr2);  // ドック待機中
@@ -73,6 +74,7 @@ function buildMovers(){
 }
 function updateMovers(dt){
   simT += dt;
-  for (const m of movers){ m.update(dt); const w = m.obj.userData; if (w.legs){ const ph = m.moving ? Math.sin(simT*7 + m.obj.id)*0.45 : 0; w.legs[0].rotation.x = ph; w.legs[1].rotation.x = -ph; w.arms[0].rotation.x = -ph*0.7; w.arms[1].rotation.x = ph*0.7; } }
+  for (const m of movers){ m.update(dt); const w = m.obj.userData; w.moving = m.moving; w.speed = m.speed; if (w.legs && !(w.person && w.person.ready)){ const ph = m.moving ? Math.sin(simT*7 + m.obj.id)*0.45 : 0; w.legs[0].rotation.x = ph; w.legs[1].rotation.x = -ph; w.arms[0].rotation.x = -ph*0.7; w.arms[1].rotation.x = ph*0.7; } }
   for (const a of ANIM) a.update(simT, dt);
+  updatePeople(dt);
 }

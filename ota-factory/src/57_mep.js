@@ -13,12 +13,12 @@ const SYSTEMS = {
 // 設備種別が必要とする系統
 const NEEDS = { mc5:["CA","CW","EL","IT","EA"], hmc:["CA","CW","EL","IT","EA"], lathe:["CA","CW","EL","IT","EA"], gantry:["CA","CW","EL","IT","EA"], edm:["CW","EL","IT"], grind:["CW","EL","IT","EA"], robotcell:["CA","EL","IT"], wash:["CW","EL"], store:["EL","IT"], load:["IT"],
   asmA:["CA","EL","IT"], asmB:["CA","EL","IT"], bench:["CA","EL"], testcell:["EL","IT","EA"], tcell:["EL","IT","EA"], cmm:["EL","IT"], elab:["EL","IT"], panel:["EL","IT"], wiring:["CA","EL"], ptest:["EL","IT"], hil:["EL","IT"], server:["EL","IT","CH"], toolroom:["CA","EL"],
-  laser:["CA","EL","IT","EA"], brake:["EL","IT"], weld:["CA","EL","IT","EA"], finish:["CA","EA"], mask:["CW"], booth:["CA","EL","EA"], oven:["EL","EA"], demo:["EL","IT"], crane:["EL"], agv:[] };
+  laser:["CA","EL","IT","EA"], punch:["CA","EL","IT"], brake:["EL","IT"], weld:["CA","EL","IT","EA"], finish:["CA","EA"], mask:["CW"], booth:["CA","EL","EA"], oven:["EL","EA"], demo:["EL","IT"], crane:["EL"], agv:[] };
 
 // 設備種別ごとの設計負荷：EL kVA / CA L/min(ANR) / CW L/min / EA m³/h / IT ポート
 const LOADS = { mc5:{EL:30,CA:300,CW:60,EA:900,IT:2}, hmc:{EL:35,CA:350,CW:80,EA:900,IT:2}, lathe:{EL:25,CA:200,CW:50,EA:600,IT:1}, gantry:{EL:80,CA:400,CW:120,EA:1500,IT:2}, edm:{EL:15,CW:30,IT:1}, grind:{EL:10,CW:40,EA:800,IT:1}, robotcell:{EL:6,CA:150,IT:2}, wash:{EL:12,CW:80}, store:{EL:2,IT:1}, load:{IT:1},
   asmA:{EL:20,CA:400,IT:4}, asmB:{EL:15,CA:300,IT:4}, bench:{EL:3,CA:100}, testcell:{EL:200,IT:4,EA:2000}, tcell:{EL:200,IT:4,EA:2000}, cmm:{EL:5,IT:1}, elab:{EL:20,IT:4}, panel:{EL:3,IT:1}, wiring:{EL:4,CA:120}, ptest:{EL:8,IT:1}, hil:{EL:30,IT:8}, server:{EL:150,IT:48,CH:60}, toolroom:{EL:5,CA:100},
-  laser:{EL:60,CA:600,IT:1,EA:3000}, brake:{EL:25,IT:1}, weld:{EL:45,CA:150,IT:1,EA:2500}, finish:{CA:200,EA:2000}, mask:{CW:40}, booth:{EL:40,CA:800,EA:12000}, oven:{EL:30,EA:1500}, demo:{EL:15,IT:2}, crane:{EL:40} };
+  laser:{EL:60,CA:600,IT:1,EA:3000}, punch:{EL:35,CA:300,IT:1}, brake:{EL:25,IT:1}, weld:{EL:45,CA:150,IT:1,EA:2500}, finish:{CA:200,EA:2000}, mask:{CW:40}, booth:{EL:40,CA:800,EA:12000}, oven:{EL:30,EA:1500}, demo:{EL:15,IT:2}, crane:{EL:40} };
 const LOAD_UNIT = { EL:"kVA", CA:"L/min", CW:"L/min", EA:"m³/h", IT:"port", CH:"kW", SA:"m³/h", FP:"—" };
 // 負荷 → サイズ（簡易）: 配管は流量から呼び径、ダクトは風速 12 m/s の角ダクト、ラックは電流から幅
 function sizeFor(sys, load){ const S = SYSTEMS[sys];
@@ -145,7 +145,7 @@ function clashCheck(){
 
 // ---- 保守スペース（設備周りの開放寸法）チェック ----
 const CLEARANCE = { mc5:[1.0,0.8], hmc:[1.2,0.8], lathe:[1.0,0.6], gantry:[1.5,1.0], edm:[0.8,0.6], grind:[0.8,0.6], robotcell:[0.6,0.6], wash:[0.8,0.6], store:[1.0,0.3], load:[0.8,0.3],
-  asmA:[2.0,1.5], asmB:[2.0,1.5], testcell:[1.0,1.0], tcell:[1.0,1.0], cmm:[1.0,0.8], panel:[1.0,0.5], wiring:[0.8,0.5], ptest:[0.8,0.5], laser:[1.2,1.0], brake:[1.5,0.6], weld:[0.8,0.6], finish:[0.8,0.5], mask:[0.8,0.5], booth:[1.5,1.0], oven:[1.5,0.8], demo:[1.0,1.0], hil:[1.0,0.6], server:[1.2,0.8], rack:[1.2,0.3], dock:[0,0], bigdoor:[0,0], crane:[0,0], agv:[0,0] };
+  punch:[1.5,0.8], asmA:[2.0,1.5], asmB:[2.0,1.5], testcell:[1.0,1.0], tcell:[1.0,1.0], cmm:[1.0,0.8], panel:[1.0,0.5], wiring:[0.8,0.5], ptest:[0.8,0.5], laser:[1.2,1.0], brake:[1.5,0.6], weld:[0.8,0.6], finish:[0.8,0.5], mask:[0.8,0.5], booth:[1.5,1.0], oven:[1.5,0.8], demo:[1.0,1.0], hil:[1.0,0.6], server:[1.2,0.8], rack:[1.2,0.3], dock:[0,0], bigdoor:[0,0], crane:[0,0], agv:[0,0] };
 // [前後, 左右] m。箱を拡張した「保守ゾーン」が他設備のコア箱や MEP 立下りと交差すれば違反
 function clearanceCheck(){ const boxes = {}; for (const id in EQ_OBJ){ const o = EQ_OBJ[id]; if (!o.group.visible || ["crane","agv","bigdoor","dock"].includes(o.data.kind)) continue; const b = new THREE.Box3(); o.group.updateMatrixWorld(true); o.group.traverse(m => { if (!m.isMesh || m.isSprite) return; let p = m; while (p && p !== o.group){ if (p.userData.extra) return; p = p.parent; } b.union(new THREE.Box3().setFromObject(m)); }); if (!b.isEmpty()) boxes[id] = b; }
   const res = []; const ids = Object.keys(boxes);

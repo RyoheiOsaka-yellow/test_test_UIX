@@ -4,7 +4,7 @@ const EQ_OBJ = {};      // id -> { group, data }
 function compactGroup(grp){
   grp.updateMatrixWorld(true); const buckets = new Map(), remove = []; const inv = grp.matrixWorld.clone().invert(); const rel = new THREE.Matrix4();
   grp.traverse(o => { if (!o.isMesh || o.isInstancedMesh || o.isSprite || o.userData.dyn || o.userData.plan || Array.isArray(o.material)) return;
-    let p = o.parent; while (p && p !== grp){ if (p.userData.joints || p.userData.dyn) return; p = p.parent; }
+    let p = o.parent; while (p && p !== grp){ if (p.userData.joints || p.userData.dyn || p.userData.fallback || p.userData.asset || p.userData.assetCore) return; p = p.parent; }
     rel.multiplyMatrices(inv, o.matrixWorld); const g = o.geometry.clone().applyMatrix4(rel); if (!buckets.has(o.material)) buckets.set(o.material, []); buckets.get(o.material).push(g); remove.push(o); });
   remove.forEach(o => o.parent.remove(o));
   for (const [mat, geos] of buckets){ const m = new THREE.Mesh(mergeGeometries(geos, false), mat); geos.forEach(g=>g.dispose()); m.castShadow = m.receiveShadow = true; grp.add(m); }
@@ -250,7 +250,7 @@ function deskCluster(m, x, z, people, ry=0){ // 4席アイランド（m: Merger�
   m.box(3.2, 0.5, 0.05, std(0xcbd5df), x, 0.72, z, rot);   // 中央パーティション
   { const p = R(1.9, 0); m.box(0.4, 0.5, 0.4, M.pot, p[0], 0, p[1], rot); m.box(0.5, 0.7, 0.5, M.plant, p[0], 0.5, p[1], rot); }
 }
-function seatedPerson(m, x, z, ry){ m.box(0.42, 0.55, 0.26, Math.random()<0.5? M.shirt : M.uniform2, x, 0.48, z, ry); m.cyl(0.11, 0.24, M.skin, x, 1.02, z, 10); m.box(0.4, 0.12, 0.45, M.uniform, x, 0.45, z, ry); }
+function seatedPerson(m, x, z, ry){ (m._seats || (m._seats = [])).push([x, z, ry]); m.box(0.42, 0.55, 0.26, Math.random()<0.5? M.shirt : M.uniform2, x, 0.48, z, ry); m.cyl(0.11, 0.24, M.skin, x, 1.02, z, 10); m.box(0.4, 0.12, 0.45, M.uniform, x, 0.45, z, ry); }
 function meetingRoom(m, x0, x1, z0, z1, y){ const cx=(x0+x1)/2, cz=(z0+z1)/2, L = Math.min(x1-x0-2, 4.5);
   m.box(L, 0.05, 1.3, M.desk, cx, y+0.73, cz); m.box(0.12, 0.73, 1.0, M.darkSteel, cx-L/2+0.4, y, cz); m.box(0.12, 0.73, 1.0, M.darkSteel, cx+L/2-0.4, y, cz);
   for (let i=0;i<Math.floor(L/0.8); i++) for (const dz of [-1.0, 1.0]){ const px = cx-L/2+0.5+i*0.8; m.box(0.46, 0.08, 0.46, M.chair, px, y+0.42, cz+dz); m.box(0.44, 0.5, 0.06, M.chair, px, y+0.5, cz+dz+Math.sign(dz)*0.2); m.cyl(0.03, 0.42, M.darkSteel, px, y, cz+dz, 8); }
@@ -258,7 +258,7 @@ function meetingRoom(m, x0, x1, z0, z1, y){ const cx=(x0+x1)/2, cz=(z0+z1)/2, L 
 }
 function sofaSet(m, x, z, y, ry=0){ m.box(2.0, 0.42, 0.9, std(0x6b7c8a,{roughness:0.95}), x, y, z, ry); m.box(2.0, 0.4, 0.2, std(0x6b7c8a,{roughness:0.95}), x, y+0.42, z-0.35, ry); m.box(1.0, 0.4, 0.6, M.timber, x, y, z+1.2, ry); }
 function cafeTable(m, x, z, y){ m.cyl(0.55, 0.04, M.timber, x, y+0.72, z, 20); m.cyl(0.04, 0.72, M.darkSteel, x, y, z, 8); m.cyl(0.25, 0.02, M.darkSteel, x, y, z, 14);
-  for (let k=0;k<4;k++){ const a = k*Math.PI/2; const px = x+Math.cos(a)*0.85, pz = z+Math.sin(a)*0.85; m.box(0.4, 0.06, 0.4, M.chair, px, y+0.42, pz, -a); m.cyl(0.02, 0.42, M.darkSteel, px, y, pz, 6); m.box(0.4, 0.42, 0.05, M.chair, px+Math.cos(a)*0.2, y+0.48, pz+Math.sin(a)*0.2, -a); if (Math.random()<0.35) seatedPerson(m, px, pz, -a+Math.PI/2); } }
+  for (let k=0;k<4;k++){ const a = k*Math.PI/2; const px = x+Math.cos(a)*0.85, pz = z+Math.sin(a)*0.85; m.box(0.4, 0.06, 0.4, M.chair, px, y+0.42, pz, -a); m.cyl(0.02, 0.42, M.darkSteel, px, y, pz, 6); m.box(0.4, 0.42, 0.05, M.chair, px+Math.cos(a)*0.2, y+0.48, pz+Math.sin(a)*0.2, -a); if (Math.random()<0.35) seatedPerson(m, px, pz, -a-Math.PI/2); } }
 function plantBig(m, x, z, y){ m.cyl(0.35, 0.5, M.pot, x, y, z, 12); m.cyl(0.04, 1.2, M.trunk, x, y+0.5, z, 6); m.add(G.sph(0.6, 10), M.plant, new THREE.Matrix4().setPosition(x, y+1.9, z)); m.add(G.sph(0.45, 10), M.plant, new THREE.Matrix4().setPosition(x+0.3, y+1.5, z-0.2)); }
 function lockerRow(m, x0, x1, z, y){ for (let x=x0; x<x1; x+=0.45) { m.box(0.42, 1.8, 0.5, std(0x9aa5ae,{metalness:0.4}), x+0.22, y, z); m.box(0.3, 0.02, 0.02, M.darkSteel, x+0.22, y+1.0, z+0.26); } }
 
@@ -294,7 +294,7 @@ function buildInterior(){
   // ---- 1F ロビー・ショールーム ----
   F1.box(4.0, 1.1, 0.8, M.timber, -40, 0, 8); F1.box(4.2, 0.05, 0.9, M.deskWhite, -40, 1.1, 8);  plantBig(F1, -42.5, 15, 0); plantBig(F1, -31, 16, 0);
   F1.box(5, 2.4, 0.08, M.monitor, -37, 1.0, 16.8); F1.box(4.8, 2.2, 0.02, M.screen, -37, 1.1, 16.75);
-  F1.box(5.0, 0.4, 3.0, std(0xe4e4e0), -23, 0, 10); const demo = makeLathe(); demo.position.set(-23, 0.4, 10); demo.rotation.y = Math.PI; g1.add(demo);    // 実機展示（開発機スケールモデル代替）
+  F1.box(5.0, 0.4, 3.0, std(0xe4e4e0), -23, 0, 10); const demo = makeLathe(); demo.name = "showDemo"; demo.position.set(-23, 0.4, 10); demo.rotation.y = Math.PI; g1.add(demo);    // 実機展示（開発機スケールモデル代替）
   F1.box(1.2, 1.0, 0.8, std(0xe4e4e0), -27.5, 0, 14); F1.box(1.0, 0.7, 0.03, M.screen, -27.5, 1.0, 13.6);   // 説明パネル
   for (const x of [-20, -17]) plantBig(F1, x, 16.5, 0);
   F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]) F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz);  // 休憩・更衣
@@ -392,3 +392,11 @@ function makeDemoStage(){ const g = new THREE.Group(); const w = 10, d = 7;
   for (const x of [-4.5, 4.5]) { cylAt(g, 0.05, 3.0, M.darkSteel, x, 0.3, -d/2+0.6, {seg:6}); boxAt(g, 0.4, 0.3, 0.3, M.lampWarm, x, 3.2, -d/2+0.6); }
   boxAt(g, 1.2, 0.9, 0.6, M.deskWhite, 4.2, 0.3, -0.5); boxAt(g, 0.5, 0.35, 0.03, M.screen, 4.2, 1.25, -0.6); return g; }
 function makeTestCellStation(){ const g = makeTestCell(); return g; }
+
+// ---- v1.0：タレットパンチプレス（同梱モデル読込前の手続きモデル）----
+function makePunchPress(){ const g = new THREE.Group(); const red = std(0xc23b3b, { roughness:0.45, metalness:0.2 });
+  boxAt(g, 6.4, 0.35, 2.4, M.machineDark, 0, 0, -1.0); boxAt(g, 6.2, 2.1, 1.7, M.machineDark, 0, 0.35, -1.3); boxAt(g, 6.2, 0.5, 2.6, M.machineDark, 0, 1.95, -0.85);       // C フレーム
+  boxAt(g, 6.6, 0.1, 2.6, red, 0, 0.9, 0.9); for (const x of [-2.8, -1.0, 1.0, 2.8]) for (const z of [0.1, 1.9]) boxAt(g, 0.08, 0.9, 0.08, M.steel, x, 0, z);                // テーブル
+  cylAt(g, 0.6, 0.5, M.machineWhite, -0.4, 1.7, -0.2, { rot:[Math.PI/2, 0, 0], seg:22 }); boxAt(g, 3.0, 0.5, 0.06, red, 1.2, 1.2, 0.02);                                     // タレットカバー
+  boxAt(g, 0.7, 1.2, 0.6, red, -3.7, 0, 1.6); boxAt(g, 0.6, 0.45, 0.05, M.monitor, -3.7, 1.25, 1.6); boxAt(g, 0.54, 0.38, 0.02, M.screen, -3.7, 1.28, 1.63);                  // 操作盤
+  signalTower(g, 2.8, 2.45, -1.3); return g; }
