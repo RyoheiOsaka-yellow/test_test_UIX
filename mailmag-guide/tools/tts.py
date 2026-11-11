@@ -27,7 +27,7 @@ for i, text in enumerate(lines):
     audio = np.concatenate(parts[:-1])
     wav = f"{ROOT}/assets/audio/{i:02d}.wav"
     sf.write(wav, audio, sr)
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", wav, "-ar", "48000", "-b:a", "128k", wav[:-4] + ".mp3"], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", wav, "-af", "loudnorm=I=-16:TP=-1.5", "-ar", "48000", "-b:a", "128k", wav[:-4] + ".mp3"], check=True)
     os.remove(wav)
     durs.append(round(len(audio) / sr, 2))
 json.dump(durs, open(f"{ROOT}/assets/audio/durations.json", "w"))
