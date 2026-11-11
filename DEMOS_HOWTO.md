@@ -157,8 +157,11 @@ node build-static.js    # 公開用 dist/ を作り直す
 `demos.json` の `mobile` で決めます。
 
 ```json
-"mobile": { "dpr": 1.0, "skip": ["xad-store", "xbuild-factory", "xbuild-arena"] }
+"mobile": { "dpr": 1.0, "shift": { "home-xad": "-17%" }, "skip": ["xad-store", "xbuild-factory", "xbuild-arena"] }
 ```
+
+- `shift` … スマホでデモの絵柄が見出しに重なるスロットを上へずらす量（デモとポスターの両方が動く）。
+  縦長の画面では文字が画面の下半分に来るので、中央にロゴがあるデモで使います
 
 - `dpr` … 描画解像度の上限。多くのデモは端末の画素密度をそのまま描画に使うため、
   3倍の端末では9倍の画素を描くことになります。1.0 に抑えると描画量が9分の1です
@@ -169,6 +172,32 @@ node build-static.js    # 公開用 dist/ を作り直す
 （PCでは `keep` で保持し、一番大きく映っている1枚だけを動かす）という2点が効きます。
 見えていない iframe の描画はブラウザが止めるので、用意しておいても負荷は増えず、
 パネルに着いたときには読み込み済みですぐ動き出します。
+
+### PC での手加減と、滑らかさのための仕組み
+
+```json
+"desktop": { "dpr": 1.5, "pixels": 3200000 }
+```
+
+- `dpr` … PC での描画解像度の上限。`pixels` … 1つのデモが描く画素数の予算。大きな画面や
+  高精細ディスプレイほど倍率を下げます（1倍より下げることはありません）。4K でも描画量は一定です
+- **見えていないデモは止める**。画面から外れたデモには `ydemo-pause`、戻ったら `ydemo-resume` を送り、
+  デモ側の `requestAnimationFrame` を保留します（ビルド時に自動で仕込まれる）。`keep` で残したデモも
+  画面外では描画しません
+- **起動は1つずつ**。見えているデモが出てから、次に来るデモを順番に下準備します（同時に複数の
+  シェーダ準備が走ってスクロールが引っかかるのを避けるため）
+- **視差は CSS のスクロール連動アニメーション**（`animation-timeline: view()`）。対応ブラウザでは
+  スクロールと同じスレッドで動くので、デモが重くてもスクロールに遅れません。非対応ブラウザは従来どおり JS
+- three.js のシェーダ検査（`checkShaderErrors`）はビルド時に切っています。起動時の引っかかりが減ります
+- サイト側では、固定背景（`background-attachment:fixed`）とヘッダーのぼかしをやめています。
+  どちらも動く背景の上ではスクロールのたびに全面の描き直しを起こすためです
+
+### 1枚HTMLへの埋め込みは gzip
+
+デモ本体は gzip して base64 で `<script type="application/gzip" id="gz-demo-<id>">` に入れ、
+表示するときにブラウザの `DecompressionStream` で展開します（1枚HTMLが約半分になる）。
+`DecompressionStream` のない古いブラウザではポスターのままです。公開用（build-static.js）は
+ビルド時に展開して `/assets/demo/<id>.html` として置くので、この制約はありません。
 
 ---
 
@@ -225,8 +254,9 @@ HTML ファイルをそのまま送っていただければ、こちらで
 
 - `node build-demos.js` のたびに、cases.json / cases.en.json から事例一覧（`#/cases`）と各詳細（`#/case/<key>`）を
   1枚HTMLに組み込む。トップの RECORD カードやナビの「事例」はこのルートを指す。
-- 画像は各事例の1枚目だけ `assets/case/_thumb/`（`node demos/tools/case-thumbs.js` で生成、幅 800px）を
-  data URI で埋め込む。単体で開いても表示される。
+- 画像は全枚数を `assets/case/_thumb/`（`node demos/tools/case-thumbs.js` で生成。1枚目は幅 720px、
+  2枚目以降は幅 480px）から data URI で埋め込む。単体で開いても表示される。
+- 事例一覧には業種の絞り込み（cases.json の `tags`）が付く。選択肢は cases-append.js の `FILTER_TAGS`。
 - 公開用（build-static.js）はこの組み込みを外し、`/cases/`・`/cases/<key>/` の実ページを生成する。
   リンクも実 URL に書き換わる。
 

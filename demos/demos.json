@@ -116,8 +116,11 @@
     "home-careers": "fade"
   },
   "mobile": {
-    "_": "スマホでの手加減。dpr=描画解像度の上限 / skip=スマホでは動かさないデモ（ポスターのまま）。遅すぎる端末や失敗した端末は自動でポスターに戻る（ydemo-slow / ydemo-fail）",
+    "_": "スマホでの手加減。dpr=描画解像度の上限 / shift=絵柄が文字に重なるスロットを上へずらす量 / skip=スマホでは動かさないデモ（ポスターのまま）。遅すぎる端末や失敗した端末は自動でポスターに戻る（ydemo-slow / ydemo-fail）",
     "dpr": 1.0,
+    "shift": {
+      "home-xad": "-17%"
+    },
     "skip": [
       "xad-store",
       "xbuild-factory",
@@ -129,5 +132,10 @@
     "zerosum",
     "inkwhite",
     "xad-store"
-  ]
+  ],
+  "desktop": {
+    "_": "PC での手加減。dpr=描画解像度の上限 / pixels=1デモが描く画素数の予算（大きな画面ほど倍率を下げる。1未満にはしない）",
+    "dpr": 1.5,
+    "pixels": 3200000
+  }
 }

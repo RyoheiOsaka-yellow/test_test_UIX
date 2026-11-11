@@ -105,13 +105,23 @@ function prepare(id) {
   // WebGPU 依存のデモは対応ブラウザでだけ動かす（未対応ではポスターのまま）
   if (/navigator\.gpu/.test(s)) demoNeeds[id] = 'webgpu';
 
+  /* three.js は既定でシェーダーのエラー検査（getProgramInfoLog など）を行い、そのたびに
+     コンパイル完了を同期で待つ。新しい材質が出るたびに描画が止まる原因なので、公開用では切る */
+  s = s.replace(/checkShaderErrors:!0/g, 'checkShaderErrors:!1')
+       .replace(/new THREE\.WebGLRenderer\(([^()]*)\)/g, '(function(r){r.debug.checkShaderErrors=false;return r})(new THREE.WebGLRenderer($1))');
+
   /* スマホでの負荷を落とす。多くのデモは devicePixelRatio をそのまま描画解像度に
      使うため、3倍の端末では9倍の画素を描くことになる。ここで上限を被せておくと、
      デモ側に手を入れなくても描画量が数分の一になる。
      デモ本体より先に効かせる必要があるので先頭に置く */
-  s = '<script>(function(){try{if(!window.matchMedia("(max-width:900px)").matches)return;'
-    + 'var cap=Math.min(window.devicePixelRatio||1,' + JSON.stringify(mobileDpr) + ');'
-    + 'Object.defineProperty(window,"devicePixelRatio",{configurable:true,get:function(){return cap;}});'
+  /* PC でも上限を被せる。高精細ディスプレイ（2倍）では 4 倍の画素を描くことになり、
+     背景としては過剰で、コマ落ちの一番の原因になる。描く画素数に予算（既定 320 万画素）を置き、
+     そこから倍率を決める（1 未満にはしない＝ぼかさない、上限は既定 1.5） */
+  s = '<script>(function(){try{var d=window.devicePixelRatio||1,cap;'
+    + 'if(window.matchMedia("(max-width:900px)").matches){cap=' + JSON.stringify(mobileDpr) + ';}'
+    + 'else{var w=window.innerWidth||screen.width||1440,h=window.innerHeight||screen.height||900;'
+    + 'cap=Math.max(1,Math.min(' + JSON.stringify(desktopDpr) + ',Math.sqrt(' + JSON.stringify(desktopPixels) + '/(w*h))));}'
+    + 'cap=Math.min(d,cap);if(cap<d)Object.defineProperty(window,"devicePixelRatio",{configurable:true,get:function(){return cap;}});'
     + '}catch(e){}})();<\/script>\n' + s;
 
   /* 「動き出してよい」合図（ydemo-go）の受け口。
@@ -125,6 +135,13 @@ function prepare(id) {
   if ((conf.seed || []).includes(id)) {
     s = '<script>(function(){var x=0x9E3779B9;Math.random=function(){x=(x+0x6D2B79F5)|0;var t=Math.imul(x^(x>>>15),1|x);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};})();<\/script>\n' + s;
   }
+  /* 見えていないデモは描画ループごと止める。親が "ydemo-pause" / "ydemo-resume" を送り、
+     ここで requestAnimationFrame を差し替えて、止まっている間の予約は溜めておき、再開時にまとめて流す。
+     ブラウザ任せ（画面外 iframe の間引き）だと止まらない環境があり、裏で GPU を取り合ってコマ落ちする */
+  s = '<script>(function(){var raf=window.requestAnimationFrame.bind(window),q=[],paused=false;'
+    + 'window.requestAnimationFrame=function(cb){if(paused){q.push(cb);return 0;}return raf(cb);};'
+    + 'window.addEventListener("message",function(e){if(e.data==="ydemo-pause"){paused=true;}'
+    + 'else if(e.data==="ydemo-resume"&&paused){paused=false;var a=q;q=[];for(var i=0;i<a.length;i++)raf(a[i]);}});})();<\/script>\n' + s;
   s = '<script>(function(){window.__YFAIL=false;function fail(){if(window.__YFAIL)return;window.__YFAIL=true;try{parent.postMessage("ydemo-fail","*")}catch(e){}}'
     + 'window.__yfail=fail;window.addEventListener("error",function(e){if(e&&e.message&&/ResizeObserver/.test(e.message))return;fail()});'
     + 'window.addEventListener("unhandledrejection",fail);})();<\/script>\n'
@@ -146,11 +163,12 @@ function prepare(id) {
        ・スクリプトが例外で止まった（WebGL の拡張なし等）→ "ydemo-fail"。親は iframe を外してポスターのままにする
        ・描画はしているがコマ間隔が長すぎる（約 8fps 未満が続く）→ "ydemo-slow"。同じくポスターに戻す
      どちらも「真っ白な板がポスターに重なる」「カクカク動く」を防ぐため */
-  s += '\n<script>(function(){var last=0,run=0,n=0,slow=0,done=false;'
+  s += '\n<script>(function(){var last=0,run=0,n=0,slow=0,done=false,win=[];'
      + 'function t(ts){if(done||window.__YFAIL)return;n++;'
-     + 'var dt=last?ts-last:9999;last=ts;if(dt<120)run++;else{run=0;if(n>3&&dt>=160&&dt<5000)slow++;}'
+     + 'var dt=last?ts-last:9999;last=ts;win.push(dt<120?1:0);if(win.length>10)win.shift();run=0;for(var wi=0;wi<win.length;wi++)run+=win[wi];'
+     + 'if(dt>=160&&dt<5000&&n>3)slow++;'
      + 'if(slow>=40){done=true;try{parent.postMessage("ydemo-slow","*")}catch(e){}return}'
-     + 'if(((run>=6&&n>=10)||n>=120)&&window.__YREADY!==false){done=true;try{parent.postMessage("ydemo-ready","*")}catch(e){}'
+     + 'if(((run>=7&&n>=10)||n>=120)&&window.__YREADY!==false){done=true;try{parent.postMessage("ydemo-ready","*")}catch(e){}'
      + 'if(window!==window.parent&&!/[?&]hold=1/.test(location.search))setTimeout(function(){if(window.__ygo)window.__ygo()},20000);return}'
      + 'requestAnimationFrame(t)}requestAnimationFrame(t)})();<\/script>\n';
 
@@ -200,6 +218,12 @@ const cycleSec = Number(conf.cycleSec) > 0 ? Number(conf.cycleSec) : 45;
 const mobileConf = conf.mobile || {};
 const mobileDpr = Number(mobileConf.dpr) > 0 ? Number(mobileConf.dpr) : 1.25;
 const mobileSkip = Array.isArray(mobileConf.skip) ? mobileConf.skip : [];
+/* PC 向け。demos.json の "desktop" で指定する
+     dpr    … 描画解像度の上限（既定 1.5）
+     pixels … 1 デモが描く画素数の予算（既定 3200000）。大きな画面ほど倍率を下げる */
+const desktopConf = conf.desktop || {};
+const desktopDpr = Number(desktopConf.dpr) > 0 ? Number(desktopConf.dpr) : 1.5;
+const desktopPixels = Number(desktopConf.pixels) > 0 ? Number(desktopConf.pixels) : 3200000;
 for (const k of Object.keys(conf.slots || {}))
   if (!SLOTS[k]) throw new Error('demos.json: 知らないスロット名です → ' + k);
 
@@ -271,12 +295,15 @@ for (const e of edits) h = h.slice(0, e.at) + e.html + h.slice(e.at + e.len);
    dist ではさらに build-static.js が外部ファイル化して丸ごと取り除く。 */
 if (used.length) {
   const parts = [MK.tplA,
-    '<!-- パネル背景で動かすデモ本体。<template> の中は解析されるだけで実行されない。',
+    '<!-- パネル背景で動かすデモ本体（gzip + base64）。表示するときに展開して iframe に流し込む。',
     '     元ファイルは demos/src/ にあります。編集はそちらで行い node build-demos.js を実行してください -->'];
   for (const id of used) {
     const s = prepare(id);
-    console.log('  demo ' + id.padEnd(20) + (s.length / 1024).toFixed(0).padStart(5) + 'KB');
-    parts.push('<template id="tpl-demo-' + id + '">', s, '</template>');
+    // gzip + base64 で埋め込む（1枚HTMLを軽くする）。表示時に DecompressionStream で展開する。
+    // JS/JSON は 3〜4 分の1 になり、base64 の増分を差し引いても 2.5〜3 分の1 になる
+    const gz = require('zlib').gzipSync(Buffer.from(s, 'utf8'), { level: 9 }).toString('base64');
+    console.log('  demo ' + id.padEnd(20) + (s.length / 1024).toFixed(0).padStart(5) + 'KB → ' + (gz.length / 1024).toFixed(0).padStart(5) + 'KB');
+    parts.push('<script type="application/gzip" id="gz-demo-' + id + '">' + gz + '</script>');
   }
   parts.push(MK.tplB);
   const mainEnd = h.indexOf('\n</main>');
@@ -291,6 +318,12 @@ const placeholderRules = Object.entries(conf.placeholder || {}).map(([slot, bg])
   if (!SLOTS[slot]) throw new Error('demos.json placeholder: 知らないスロット名です → ' + slot);
   return '.panel__embed.is-live[data-slot="' + slot + '"]{background:' + bg + ';}';
 });
+// スマホで絵柄が文字に重なるスロットは、デモとポスターを上へずらす（demos.json の mobile.shift）
+const shiftRules = Object.entries((conf.mobile && conf.mobile.shift) || {}).map(([slot, v]) => {
+  if (!SLOTS[slot]) throw new Error('demos.json mobile.shift: 知らないスロット名です → ' + slot);
+  if (!/^-?\d+(\.\d+)?%$/.test(v)) throw new Error('demos.json mobile.shift: "-16%" のように書いてください → ' + slot);
+  return '@media (max-width:900px){ .panel__embed[data-slot="' + slot + '"]{top:' + v + ';} }';
+});
 if (used.length) {
   const CSS = [MK.cssA,
     '/* パネル背景で 1枚HTML のデモを動かす。',
@@ -299,6 +332,16 @@ if (used.length) {
     '/* 動画と同じ視差: 縦118%で敷いてスクロール量の18%だけ逆送りする（JS側で transform） */',
     '.panel__embed{position:absolute;left:0;top:-9%;width:100%;height:118%;z-index:0;overflow:hidden;pointer-events:none;will-change:transform;}',
     '@media (max-width:900px){ .panel__embed{top:0;height:100%;transform:none;} }',
+    ...shiftRules,
+    '/* 対応ブラウザでは視差を CSS のスクロール連動アニメーションで行う（合成スレッドで動くので、',
+    '   デモが重くてもスクロールに遅れない）。非対応ブラウザは JS で同じ動きを付ける */',
+    '@supports (animation-timeline: view()){',
+    '  @media (min-width:901px) and (prefers-reduced-motion:no-preference){',
+    '    .panel{view-timeline-name:--pnl;view-timeline-axis:block;}',
+    '    .panel__embed,.panel__media .panel__vid{animation:pnl-par linear both;animation-timeline:--pnl;animation-range:cover 0% cover 100%;}',
+    '  }',
+    '}',
+    '@keyframes pnl-par{from{transform:translate3d(0,-7.627%,0);}to{transform:translate3d(0,7.627%,0);}}',
     '/* デモが実際に動く環境では、ポスター静止画を最初から見せない。',
     '   ホストがデモと同じ背景を持ち、そこへデモの立ち上がり演出が描かれる */',
     '.panel__embed.is-live{background:#000;}',
@@ -360,6 +403,21 @@ if (used.length) {
   '           + \'<meta name="viewport" content="width=device-width,initial-scale=1">\'',
   '           + \'</head><body>\';',
   '  var TAIL = \'</body></html>\';',
+  '  /* 単一ファイル版のデモ本体は gzip + base64 で埋めてある。展開できないブラウザではポスターのまま */',
+  '  var GZ_OK = typeof DecompressionStream !== \'undefined\' && typeof Response !== \'undefined\' && typeof Blob !== \'undefined\' && !!Blob.prototype.stream;',
+  '  if (!hosts[0].getAttribute(\'data-demo-base\') && !GZ_OK) return;',
+  '  var srcCache = {};',
+  '  function source(id, cb) {',
+  '    if (srcCache[id]) { cb(srcCache[id]); return; }',
+  '    var el = document.getElementById(\'gz-demo-\' + id);',
+  '    if (!el) { cb(null); return; }',
+  '    try {',
+  '      var bin = atob(el.textContent), u = new Uint8Array(bin.length);',
+  '      for (var bi = 0; bi < bin.length; bi++) u[bi] = bin.charCodeAt(bi);',
+  '      new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream(\'gzip\'))).text()',
+  '        .then(function (t) { srcCache[id] = t; cb(t); }, function () { cb(null); });',
+  '    } catch (e) { cb(null); }',
+  '  }',
   '',
   '  var NEEDS = ' + JSON.stringify(demoNeeds) + ';',
   '  /* スマホでの手加減: 重いデモは動かさず（ポスターのまま）、画面外に出たものは破棄する。',
@@ -405,11 +463,11 @@ if (used.length) {
   '                 keep: !SMALL && (hosts[i].getAttribute(\'data-keep\') === \'1\' || fade),',
   '                 fade: fade,',
   '                 settle: st > 0 ? st : SETTLE_MS,',
-  '                 ratio: 0, near: false, dead: false, on: false, timer: 0 });',
+  '                 ratio: 0, vis: false, near: false, dead: false, on: false, shown: false, timer: 0 });',
   '  }',
   '  if (!slots.length) return;',
   '',
-  '  function build(slot, id) {',
+  '  function build(slot, id, cb) {',
   '    var f = document.createElement(\'iframe\');',
   '    f.setAttribute(\'title\', id);',
   '    f.setAttribute(\'aria-hidden\', \'true\');',
@@ -417,32 +475,38 @@ if (used.length) {
   '    f.setAttribute(\'scrolling\', \'no\');',
   '    f.setAttribute(\'sandbox\', \'allow-scripts\');',
   '    var base = slot.el.getAttribute(\'data-demo-base\');',
-  '    if (base) { f.src = base + id + \'.html\'; }',
-  '    else {',
-  '      var t = document.getElementById(\'tpl-demo-\' + id);',
-  '      if (!t) return null;',
-  '      f.srcdoc = HEAD + t.innerHTML + TAIL;',
-  '    }',
-  '    return f;',
+  '    if (base) { f.src = base + id + \'.html\'; cb(f); return; }',
+  '    source(id, function (t) {',
+  '      if (!t) { cb(null); return; }',
+  '      f.srcdoc = HEAD + t + TAIL;',
+  '      cb(f);',
+  '    });',
   '  }',
   '',
   '  /* 出す条件は2つ。どちらも満たすまでポスター/下地のままにする。',
   '     ・デモが実際に描き始めている（デモ側から "ydemo-ready" が届く）',
   '     ・最低待ち時間 settle を過ぎている（インクのように「育つ」絵のため） */',
-  '  function show(slot, id) {',
-  '    var f = build(slot, id);',
-  '    if (!f) return;',
+  '  function show(slot, id) { build(slot, id, function (f) {',
+  '    if (!f) {',                                         // 展開できなかった: ポスターのまま
+  '      slot.dead = true; slot.on = false;',
+  '      if (slot.timer) { clearInterval(slot.timer); slot.timer = 0; }',
+  '      slot.el.classList.remove(\'is-live\');',
+  '      return;',
+  '    }',
+  '    if (!slot.on) return;',                             // 展開を待つ間に画面から離れて片付けられた
   '    var old = slot.el.lastChild;',
   '    var hold = slot.fade ? 1600 : 1100;',   // 重ね終わってから前の1枚を外す',
   '    var painted = false, waited = false, shown = false;',
   '    function tryShow() {',
   '      if (shown || !painted || !waited) return;',
-  '      shown = true;',
+  '      shown = true; f.__shown = true; slot.shown = true;',
   '      requestAnimationFrame(function () { f.classList.add(\'is-on\'); });',
   '      // 重なり始めと同時に「動いてよい」と伝える。最初の絵はポスターと同じなので、',
   '      // 静止画がそのまま動き出したように見える（重ね終わってから動かすと「止まってから動く」感じが残る）',
   '      setTimeout(function () {',
   '        try { f.contentWindow.postMessage(\'ydemo-go\', \'*\'); } catch (e) {}',
+  '        syncRun(slot);',                                // 画面外で用意したものは、見えるまで止めておく
+  '        pump();',                                       // 次の1枚の用意へ
   '      }, 60);',
   '      if (old) setTimeout(function () {',
   '        if (old.parentNode) old.parentNode.removeChild(old);',
@@ -461,9 +525,10 @@ if (used.length) {
   '      slot.dead = true; slot.on = false;',
   '      if (slot.timer) { clearInterval(slot.timer); slot.timer = 0; }',
   '      slot.el.classList.remove(\'is-live\');',
+  '      pump();',
   '    };',
   '    slot.el.appendChild(f);',
-  '  }',
+  '  }); }',
   '',
   '  // デモ側から届く「描き始めた」合図を、その iframe に結びつける',
   '  window.addEventListener(\'message\', function (ev) {',
@@ -490,9 +555,43 @@ if (used.length) {
   '    /* keep 指定のデモは破棄しない。画面外の iframe はブラウザが描画を止めるので',
   '       負荷は増えず、育った状態（インクの模様など）が保たれ、戻ったとき続きから動く */',
   '    if (slot.keep) return;',
-  '    slot.on = false;',
+  '    slot.on = false; slot.shown = false;',
   '    if (slot.timer) { clearInterval(slot.timer); slot.timer = 0; }',
   '    while (slot.el.firstChild) slot.el.removeChild(slot.el.firstChild);',
+  '  }',
+  '',
+  '  /* 見えていないデモは止め、見えたら再開する（表示済みのものだけ。用意中は描かせて「描けた」合図を待つ） */',
+  '  function syncRun(slot) {',
+  '    var fr = slot.el.querySelectorAll(\'iframe\');',
+  '    for (var si = 0; si < fr.length; si++) {',
+  '      if (!fr[si].__shown) continue;',
+  '      try { fr[si].contentWindow.postMessage(slot.vis ? \'ydemo-resume\' : \'ydemo-pause\', \'*\'); } catch (e) {}',
+  '    }',
+  '  }',
+  '',
+  '  /* 先回りの用意は1枚ずつ。見えているデモが描き始めるまでは始めない。',
+  '     同時に何枚も立ち上げると CPU/GPU を取り合い、目の前の1枚が動き出すのが遅れる */',
+  '  var warmQ = [], warming = null, warmT = 0;',
+  '  function busy() {',
+  '    for (var b0 = 0; b0 < slots.length; b0++)',
+  '      if (slots[b0].on && !slots[b0].shown && slots[b0].ratio > 0.05) return true;',
+  '    return false;',
+  '  }',
+  '  function warm(slot) {',
+  '    if (slot.on || slot.dead || warmQ.indexOf(slot) !== -1) return;',
+  '    warmQ.push(slot); pump();',
+  '  }',
+  '  function pump() {',
+  '    if (warming && (warming.shown || !warming.on || warming.dead)) { warming = null; clearTimeout(warmT); }',
+  '    if (warming || busy()) return;',
+  '    while (warmQ.length) {',
+  '      var ws = warmQ.shift();',
+  '      if (ws.on || ws.dead) continue;',
+  '      if (SMALL && !ws.near && ws.ratio <= 0.05) continue;',   // スマホ: もう近くにない
+  '      warming = ws; start(ws);',
+  '      warmT = setTimeout(function () { warming = null; pump(); }, 8000);',
+  '      return;',
+  '    }',
   '  }',
   '',
   '  // 一番大きく映っている 1枚だけを動かし、それ以外は破棄して GPU を解放する',
@@ -502,8 +601,11 @@ if (used.length) {
   '         見えていない iframe の描画はブラウザが止めるので、次のパネルに着いたときには',
   '         読み込み済みですぐ動き出す（到着してから読み込む「白い間」をなくす） */',
   '      for (var s0 = 0; s0 < slots.length; s0++) {',
-  '        if (slots[s0].near || slots[s0].ratio > 0.05) start(slots[s0]); else stop(slots[s0]);',
+  '        if (slots[s0].ratio > 0.05) start(slots[s0]);',
+  '        else if (slots[s0].near) warm(slots[s0]);',
+  '        else stop(slots[s0]);',
   '      }',
+  '      pump();',
   '      return;',
   '    }',
   '    var best = null;',
@@ -511,6 +613,7 @@ if (used.length) {
   '      if (slots[k].ratio > 0.05 && (!best || slots[k].ratio > best.ratio)) best = slots[k];',
   '    for (var m = 0; m < slots.length; m++) if (slots[m] !== best) stop(slots[m]);',
   '    if (best) start(best);',
+  '    pump();',
   '  }',
   '',
   '  // 最初から画面に入っているスロットは IntersectionObserver を待たずに開始する',
@@ -519,6 +622,7 @@ if (used.length) {
   '    var vh0 = window.innerHeight || 1;',
   '    var vis = Math.max(0, Math.min(r0.bottom, vh0) - Math.max(r0.top, 0));',
   '    slots[e0].ratio = r0.height > 0 ? vis / r0.height : 0;',
+  '    slots[e0].vis = vis > 0;',
   '  }',
   '  arbitrate();',
   '',
@@ -530,7 +634,7 @@ if (used.length) {
   '      for (var pi2 = 0; pi2 < es.length; pi2++) {',
   '        if (!es[pi2].isIntersecting) continue;',
   '        for (var pj2 = 0; pj2 < slots.length; pj2++) {',
-  '          if (slots[pj2].el === es[pi2].target && slots[pj2].keep && !slots[pj2].on) start(slots[pj2]);',
+  '          if (slots[pj2].el === es[pi2].target && slots[pj2].keep && !slots[pj2].on) warm(slots[pj2]);',
   '        }',
   '        pre.unobserve(es[pi2].target);',
   '      }',
@@ -550,14 +654,19 @@ if (used.length) {
   '  var io = new IntersectionObserver(function (es) {',
   '    for (var n = 0; n < es.length; n++)',
   '      for (var q = 0; q < slots.length; q++)',
-  '        if (slots[q].el === es[n].target)',
+  '        if (slots[q].el === es[n].target) {',
   '          slots[q].ratio = es[n].isIntersecting ? es[n].intersectionRatio : 0;',
+  '          slots[q].vis = es[n].isIntersecting;',
+  '          syncRun(slots[q]);',
+  '        }',
   '    arbitrate();',
   '  }, { threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });',
   '  for (var r = 0; r < slots.length; r++) io.observe(slots[r].el);',
   '',
   '  /* 視差: 背景動画と同じく、スクロール量の18%だけ逆送りして写真の固定背景と見え方を揃える */',
+  '  var CSS_PAR = !!(window.CSS && CSS.supports && CSS.supports(\'animation-timeline: view()\'));',
   '  function embedParallax() {',
+  '    if (CSS_PAR) return;',                              // CSS 側で動かしている
   '    var vh = window.innerHeight;',
   '    // スマホは視差なし（CSS側の top:0/height:100% に任せ、inline transform で上書きしない）',
   '    if (window.innerWidth <= 900) {',
@@ -580,9 +689,11 @@ if (used.length) {
   '    ticking2 = true;',
   '    requestAnimationFrame(function () { embedParallax(); ticking2 = false; });',
   '  }',
-  '  window.addEventListener(\'scroll\', onScroll2, { passive: true });',
-  '  window.addEventListener(\'resize\', onScroll2, { passive: true });',
-  '  embedParallax();',
+  '  if (!CSS_PAR) {',
+  '    window.addEventListener(\'scroll\', onScroll2, { passive: true });',
+  '    window.addEventListener(\'resize\', onScroll2, { passive: true });',
+  '    embedParallax();',
+  '  }',
   '',
   '  /* 公開版（外部ファイル）のとき: 他ページのヒーローのデモを、このページが落ち着いてから裏で先読みしておく。',
   '     次のページを開いたとき、読み込み待ちなしで動き出す */',

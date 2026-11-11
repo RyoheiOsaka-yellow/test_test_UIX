@@ -210,12 +210,14 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
     if (b === -1) throw new Error('DEMO-EMBED:TPL:END が見つかりません');
     const block = base.slice(a, b);
     fs.mkdirSync(DEMO_DIR, { recursive: true });
-    const re = /<template id="tpl-demo-([a-z0-9_-]+)">\n([\s\S]*?)\n<\/template>/g;
+    // 単一ファイル版では gzip + base64 で埋めてあるので、展開してから書き出す
+    const re = /<script type="application\/gzip" id="gz-demo-([a-z0-9_-]+)">([A-Za-z0-9+\/=]+)<\/script>/g;
     let m, n = 0;
     while ((m = re.exec(block)) !== null) {
+      const body = require('zlib').gunzipSync(Buffer.from(m[2], 'base64')).toString('utf8');
       const page = '<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n'
                  + '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
-                 + '<title>' + m[1] + '</title>\n</head>\n<body>\n' + m[2] + '\n</body>\n</html>\n';
+                 + '<title>' + m[1] + '</title>\n</head>\n<body>\n' + body + '\n</body>\n</html>\n';
       fs.writeFileSync(DEMO_DIR + m[1] + '.html', page);
       n++;
     }

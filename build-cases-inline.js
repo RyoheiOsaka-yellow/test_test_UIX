@@ -192,7 +192,7 @@ function inline(h) {
     + '(function(){var M=window.__CASE_IMG,n=document.querySelectorAll("[data-case-img]");'
     + 'for(var i=0;i<n.length;i++){var u=M[n[i].getAttribute("data-case-img")];if(u)n[i].src=u;}})();</script>\n';
   const mi = h.indexOf('\n</main>');
-  const ti = h.indexOf('<template id="tpl-demo');
+  const ti = h.indexOf('DEMO-EMBED:TPL:START');
   if (mi === -1 || (ti !== -1 && mi > ti)) throw new Error('cases-inline: </main> の位置が特定できません');
   h = h.slice(0, mi) + '\n' + S_PAGES + '\n' + pages + E_PAGES + h.slice(mi);
   h = h.replace(cssAnchor, S_CSS + '\n' + CSS + '\n' + E_CSS + '\n' + cssAnchor);

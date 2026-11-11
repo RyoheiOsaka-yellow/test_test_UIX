@@ -12,7 +12,7 @@ fs.mkdirSync(OUT, { recursive: true });
   let n = 0, total = 0;
   const NEWS = require(REPO + 'news-append.js');
   // 事例は全画像（1枚目は 800px、2枚目以降は 640px・やや強めの圧縮で1枚HTMLの重さを抑える）
-  const jobs = cases.flatMap(c => c.imgs.map((im, i) => ({ src: im.src, out: OUT, w: i ? 560 : 800, q: i ? 0.55 : 0.68 })))
+  const jobs = cases.flatMap(c => c.imgs.map((im, i) => ({ src: im.src, out: OUT, w: i ? 480 : 720, q: i ? 0.52 : 0.64 })))
     .concat(NEWS.images(NEWS.load()).map(im => ({ src: im.src, out: REPO + 'assets/news/_thumb/', w: 800, q: 0.68 })));
   fs.mkdirSync(REPO + 'assets/news/_thumb/', { recursive: true });
   for (const job of jobs) {

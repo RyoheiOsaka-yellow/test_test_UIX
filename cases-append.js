@@ -26,6 +26,19 @@ const CSS = `/* ═════════════════════�
 .cases__head{max-width:42em;margin-bottom:clamp(40px,6vh,70px);}
 .cases__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--line-s);border:1px solid var(--line-s);}
 .ccard{display:block;background:var(--black);padding:0;transition:background .3s var(--ease);}
+.ccard[hidden]{display:none;}
+.cfilter{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 22px;}
+.cfilter__b{font:inherit;font-size:11px;letter-spacing:var(--ls-ui);line-height:1;color:var(--grey);background:none;border:1px solid var(--line);
+  padding:0 16px;min-height:36px;cursor:pointer;transition:color .3s var(--ease),background .3s var(--ease),border-color .3s var(--ease);}
+.cfilter__b:hover{color:var(--white);border-color:rgba(255,255,255,.55);}
+.cfilter__b.is-on{background:var(--white);color:var(--black);border-color:var(--white);}
+.cfilter__n{margin-left:auto;font-size:11px;letter-spacing:var(--ls-ui);color:var(--grey-d);}
+@media (max-width:900px){
+  .cfilter{flex-wrap:nowrap;overflow-x:auto;margin-right:calc(-1 * var(--pad));padding-right:var(--pad);scrollbar-width:none;}
+  .cfilter::-webkit-scrollbar{display:none;}
+  .cfilter__b{flex:none;min-height:44px;}
+  .cfilter__n{display:none;}
+}
 .ccard:hover{background:#0b0b0b;}
 .ccard__img{aspect-ratio:16/10;overflow:hidden;background:#111;}
 .ccard__img img{width:100%;height:100%;object-fit:cover;transition:transform 1s var(--ease);}
@@ -89,6 +102,9 @@ const COMMON = {
   cs_idx_lede:  ['工場のレイアウト検証から駅構内の3Dモデリング、点群データの活用、店頭販促のシミュレーション、人流データの分析まで。多くの事例はブラウザで動くデモを公開しています。',
                  'From factory layout studies and 3D modelling of station interiors to point-cloud data, in-store promotion simulation and mobility-data analysis. Most cases have a working demo that runs in the browser.'],
   cs_back_list: ['← 事例一覧へ戻る', '← All cases'],
+  cs_f_all: ['すべて', 'All'], cs_f_unit: ['件', 'cases'],
+  cs_f_0: ['製造', 'Manufacturing'], cs_f_1: ['建設', 'Construction'], cs_f_2: ['不動産', 'Real estate'], cs_f_3: ['公共', 'Public sector'],
+  cs_f_4: ['商業', 'Retail'], cs_f_5: ['スポーツ・地域', 'Sports & regions'], cs_f_6: ['その他', 'Other'],
   cs_open_demo: ['デモを開く ↗', 'Open demo ↗'],
   cs_open_press: ['プレスリリースを読む ↗', 'Read the press release ↗'],
   cs_spec_h:    ['仕様', 'Specifications'],
@@ -183,10 +199,12 @@ ${spec}
 `;
 }
 
+// 事例一覧の絞り込み（業種）。cases.json の tags（日本語）をそのままキーに使う
+const FILTER_TAGS = ['製造', '建設', '不動産', '公共', '商業', 'スポーツ・地域', 'その他'];
 function indexPageHtml(cases, dicts) {
   const cards = cases.map((c, i) => {
     const prod = productOf(c.eyebrow), d = dicts[i];
-    return `      <a class="ccard" href="/cases/${c.key}/">
+    return `      <a class="ccard" href="/cases/${c.key}/" data-tags="${esc(c.tags)}">
         <div class="ccard__img"><img src="${c.imgs[0] ? c.imgs[0].src : ''}" alt="${esc(d.e.title)}" loading="lazy" decoding="async"></div>
         <div class="ccard__body">
           <div class="ccard__tag"${prod ? '' : ` data-i18n="${d.p}tags"`}>${esc(prod ? prod.label : d.e.tags)}</div>
@@ -204,10 +222,19 @@ function indexPageHtml(cases, dicts) {
       <h1 class="title" style="font-size:clamp(26px,3.6vw,48px)" data-i18n="cs_idx_title">${COMMON.cs_idx_title[1]}</h1>
       <p class="lede" data-i18n="cs_idx_lede">${COMMON.cs_idx_lede[1]}</p>
     </div>
+    <div class="cfilter" role="group" aria-label="Filter by sector">
+      <button type="button" class="cfilter__b is-on" data-f="" aria-pressed="true" data-i18n="cs_f_all">${COMMON.cs_f_all[1]}</button>
+${FILTER_TAGS.filter(t => cases.some(c => c.tags.split(',').indexOf(t) !== -1)).map(t => `      <button type="button" class="cfilter__b" data-f="${t}" aria-pressed="false" data-i18n="cs_f_${FILTER_TAGS.indexOf(t)}">${COMMON['cs_f_' + FILTER_TAGS.indexOf(t)][1]}</button>`).join('\n')}
+      <span class="cfilter__n" aria-live="polite"><span data-cfn>${cases.length}</span> <span data-i18n="cs_f_unit">${COMMON.cs_f_unit[1]}</span></span>
+    </div>
     <div class="cases__grid">
 ${cards}
     </div>
   </section>
+  <script>(function(){var root=document.currentScript.parentNode,bs=root.querySelectorAll('.cfilter__b'),cs=root.querySelectorAll('.ccard'),n=root.querySelector('[data-cfn]');
+  function set(f){var k=0;for(var i=0;i<cs.length;i++){var on=!f||(','+cs[i].getAttribute('data-tags')+',').indexOf(','+f+',')!==-1;cs[i].hidden=!on;if(on)k++;}
+  for(var j=0;j<bs.length;j++){var a=bs[j].getAttribute('data-f')===f;bs[j].classList.toggle('is-on',a);bs[j].setAttribute('aria-pressed',a?'true':'false');}if(n)n.textContent=k;}
+  for(var b=0;b<bs.length;b++)bs[b].addEventListener('click',function(){set(this.getAttribute('data-f'));});})();</script>
 </div>
 `;
 }
