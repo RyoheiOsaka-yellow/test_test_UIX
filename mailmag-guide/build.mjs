@@ -1,6 +1,12 @@
 // Generates index.html (HyperFrames composition) from the scene list below.
 // Edit the text/timing here, then: npm run build && npm run check && npm run render
-import { writeFileSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync } from "node:fs";
+
+// Narration: narration.json holds one spoken line per scene; tools/tts.py turns it into
+// assets/audio/NN.mp3 + durations.json. Scenes are stretched so the narration always fits.
+const AUDIO = new URL("./assets/audio/durations.json", import.meta.url);
+const speech = existsSync(AUDIO) ? JSON.parse(readFileSync(AUDIO, "utf8")) : null;
+const VOICE_IN = 0.6, VOICE_OUT = 1.2;
 
 const CH = ["配信タイミング", "配信先", "件名・差出人", "デザイン", "本文", "最終確認"];
 
@@ -86,7 +92,7 @@ const scenes = [
     p: `スケジュール・配信対象件数・対象顧客を確認します。<br>問題なければ ${b("設定")} または ${b("すぐに配信")} をクリックします。` },
   { type: "step", ch: 6, n: 3, img: "68-2b", page: 68, h: "一覧へ戻る",
     p: `「配信日時を設定しました」と表示されたら、${b("一覧へ戻る")} をクリックします。` },
-  { type: "step", ch: 6, n: 4, img: "68-3", page: 68, z: [1.9, 30, 75], h: "稼働ステータスを確認する",
+  { type: "step", ch: 6, n: 4, img: "68-3", page: 68, z: [1.6, 30, 100], h: "稼働ステータスを確認する",
     p: `メール一覧の <b>稼働ステータス</b> で、配信の状況を確認できます。`,
     dl: [["配信中", "設定どおりにメールが配信されている状態"], ["予約中", "残りの表示時間が過ぎると「配信中」になります"],
          ["配信終了", "配信が終了しています"], ["編集中", "編集状態のため、メールは配信されません"]] },
@@ -108,7 +114,11 @@ const dur = (s) => {
   return Math.min(17, Math.max(8, Math.round((4 + textLen(s) / 9) * 2) / 2));
 };
 let t = 0;
-for (const s of scenes) { s.start = t; s.dur = dur(s); t += s.dur; }
+scenes.forEach((s, i) => {
+  s.start = t; s.dur = dur(s);
+  if (speech) s.dur = Math.max(s.type === "step" ? 7 : 3.5, Math.ceil((speech[i] + VOICE_IN + VOICE_OUT) * 2) / 2);
+  t += s.dur;
+});
 const TOTAL = t;
 
 // ---------- markup ----------
@@ -300,6 +310,7 @@ const doc = `<!doctype html>
     <div id="root" data-composition-id="main" data-start="0" data-duration="${TOTAL}" data-width="1920" data-height="1080">
       <div class="bg clip" id="bg" data-start="0" data-duration="${TOTAL}" data-track-index="0"></div>
       ${scenes.map(html).join("\n      ")}
+      ${speech ? scenes.map((s, i) => `<audio class="clip" id="V${i}" src="assets/audio/${String(i).padStart(2, "0")}.mp3" data-start="${s.start + VOICE_IN}" data-duration="${speech[i]}" data-track-index="30" data-volume="1"></audio>`).join("\n      ") : ""}
       <div class="progress clip" id="progress" data-start="0" data-duration="${TOTAL}" data-track-index="20"></div>
     </div>
     <script>
