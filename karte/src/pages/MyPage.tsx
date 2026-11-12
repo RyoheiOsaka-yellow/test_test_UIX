@@ -21,6 +21,8 @@ import {
 } from 'recharts';
 import {
   ArrowLeft,
+  Eye,
+  EyeOff,
   Bell,
   CalendarClock,
   ChevronLeft,
@@ -56,7 +58,7 @@ import {
   type Repair,
 } from '../data';
 import { DEFAULT_SIM, deferredCosts, openCost, projectScores, simulate } from '../sim';
-import { Empty, LEGEND, SeverityBadge, Stars, useStore } from '../ui';
+import { Empty, LEGEND, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
 import { Shot, kindOf } from '../Shot';
 
 type Variant = 'desktop' | 'tablet' | 'phone';
@@ -206,6 +208,7 @@ export default function MyPage() {
   const [ba, setBa] = useState<{ part: Part; seed: number; title: string; note: string } | null>(null);
   const [notify, setNotify] = useState({ mail: true, line: true, push: false });
   const [slide, setSlide] = useState(0);
+  const [present, setPresent] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
 
   const all = useMemo(() => store.findings.filter((f) => f.propertyId === id), [store.findings, id]);
@@ -417,7 +420,13 @@ export default function MyPage() {
                   </div>
                 </dl>
               )}
-              {selected.severity !== 'ok' && (
+              {selected.severity !== 'ok' && present && (
+                <p className="b2-status">
+                  <span>対応状況</span>
+                  <StatusBadge status={selected.status} />
+                </p>
+              )}
+              {selected.severity !== 'ok' && !present && (
                 <div className="b2-staff">
                   <label>
                     <span>対応状況</span>
@@ -816,17 +825,26 @@ export default function MyPage() {
 
   return (
     <div className={`mp-page ${paged ? 'paged' : ''}`}>
-      <div className="mp-toolbar no-print">
-        <Link to={`/properties/${p.id}`} className="btn light">
-          <ArrowLeft size={15} /> <span>物件詳細へ</span>
-        </Link>
-        <select className="mp-switch" value={p.id} onChange={(e) => navigate(`/karte/${e.target.value}`)} aria-label="物件を切り替え">
+      <div className={`mp-toolbar no-print ${present ? 'presenting' : ''}`}>
+        {present ? (
+          <b className="mp-present-tag">
+            <Eye size={15} /> お客様表示中
+          </b>
+        ) : (
+          <Link to={`/properties/${p.id}`} className="btn light">
+            <ArrowLeft size={15} /> <span>物件詳細へ</span>
+          </Link>
+        )}
+        <select className="mp-switch" hidden={present} value={p.id} onChange={(e) => navigate(`/karte/${e.target.value}`)} aria-label="物件を切り替え">
           {properties.map((q) => (
             <option key={q.id} value={q.id}>
               {q.name}({q.owner} 様)
             </option>
           ))}
         </select>
+        <button className={`btn light mp-present ${present ? 'on' : ''}`} onClick={() => setPresent(!present)} aria-pressed={present}>
+          {present ? <EyeOff size={15} /> : <Eye size={15} />} {present ? '社内表示に戻す' : 'お客様に見せる'}
+        </button>
         <div className="seg" role="group" aria-label="表示デバイス">
           <button className={variant === 'desktop' ? 'on' : ''} onClick={() => setVariant('desktop')}>
             <Monitor size={15} /> ブラウザ
@@ -850,7 +868,7 @@ export default function MyPage() {
               </span>
             </div>
             <div className="mp-user">
-              <span className="ic" title="担当物件の新着">
+              <span className="ic" title="担当物件の新着" hidden={present}>
                 <Bell size={18} />
                 <i>1</i>
               </span>

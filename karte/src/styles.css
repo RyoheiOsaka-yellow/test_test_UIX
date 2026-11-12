@@ -772,3 +772,12 @@ a.kpi:hover { border-color: var(--blue); }
 .v-phone .b2-staff p { font-size: 14px; }
 .v-phone .b2-staff .status-select { font-size: 16px; padding: 8px 10px; }
 @media (max-width: 700px) { .mp-switch { order: 3; flex: 1 1 100%; } .mp-toolbar { flex-wrap: wrap !important; } }
+
+/* お客様表示(社内向けの情報を隠す) */
+.mp-switch[hidden], .mp-user .ic[hidden] { display: none !important; }
+.mp-toolbar.presenting { background: #0d6b4f; }
+.mp-present-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; }
+.mp-present { white-space: nowrap; }
+.mp-present.on { background: #fff; color: #0d6b4f; border-color: #fff; }
+.b2-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; padding: 7px 10px; background: #f3f6fb; border-radius: 8px; font-weight: 700; }
+@media (max-width: 700px) { .mp-toolbar .btn.mp-present { font-size: 12.5px; padding: 6px 9px; } }
