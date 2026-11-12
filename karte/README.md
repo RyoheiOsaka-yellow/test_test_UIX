@@ -6,7 +6,8 @@
 ```bash
 npm install
 npm run dev     # http://localhost:5173
-npm run build   # dist/ に静的ファイルを出力
+npm run build        # dist/ に静的ファイルを出力
+npm run build:html   # tatemono-karte.html(1ファイルで動くHTML)を出力
 ```
 
 ## 画面
