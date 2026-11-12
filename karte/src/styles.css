@@ -335,3 +335,30 @@ a.kpi:hover { border-color: var(--blue); }
   .karte-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .memo { display: none; }
 }
+
+/* ---------- 修繕時期の目安 ---------- */
+.cycle { display: grid; gap: 6px; }
+.cycle-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) 210px; gap: 12px; align-items: center; }
+.cycle-label { font-weight: 700; font-size: 13px; }
+.cycle-track { position: relative; height: 18px; background: #eef1f6; border-radius: 4px; }
+.cycle-track.bare { background: none; height: 16px; }
+.cycle-track.bare i { position: absolute; transform: translateX(-50%); font-style: normal; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.cycle-track.bare i:first-child { transform: none; }
+.cycle-track.bare i:last-child { transform: translateX(-100%); }
+.cycle-band { position: absolute; top: 0; bottom: 0; background: #b9d0fb; border-radius: 4px; }
+.cycle-now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--navy); }
+.cycle-done { position: absolute; top: 3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--green); border: 2px solid #fff; }
+.cycle-state { font-size: 12.5px; font-weight: 700; }
+.cycle-state.ok { color: var(--green); }
+.cycle-state.pre { color: var(--muted); }
+.cycle-state.in { color: var(--amber); }
+.cycle-state.over { color: var(--red); }
+.cycle-legend a { color: var(--blue); text-decoration: underline; }
+.cycle-band.inline, .cycle-now.inline, .cycle-done.inline { position: static; display: inline-block; vertical-align: -2px; margin: 0 4px 0 10px; }
+.cycle-band.inline { width: 18px; height: 10px; margin-left: 0; }
+.cycle-now.inline { width: 2px; height: 14px; }
+.cycle-done.inline { width: 12px; height: 12px; border: 0; }
+@media (max-width: 760px) {
+  .cycle-row { grid-template-columns: minmax(0, 1fr); gap: 2px; margin-bottom: 8px; }
+  .cycle-axis { display: none; }
+}

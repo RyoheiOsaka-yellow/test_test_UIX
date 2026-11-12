@@ -38,6 +38,7 @@ import {
 } from '../data';
 import { DEFAULT_SIM, openCost, simulate, type SimParams } from '../sim';
 import { Empty, Photo, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
+import { CycleCard } from '../Cycle';
 
 const PIN_COLOR = { urgent: '#d92d20', watch: '#f5a524', ok: '#12925a' } as const;
 
@@ -463,6 +464,8 @@ export default function PropertyDetail() {
           )}
         </section>
       </div>
+
+      <CycleCard p={p} repairs={reps} ownerView={ownerView} />
 
       {/* 指摘事項一覧 */}
       <section className="card">
