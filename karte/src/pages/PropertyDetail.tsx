@@ -151,9 +151,9 @@ export default function PropertyDetail() {
         </div>
         <div className="actions no-print">
           {!ownerView && (
-            <button className="btn primary" onClick={toggleOwner}>
-              <Eye size={15} /> オーナー向け表示
-            </button>
+            <Link className="btn primary" to={`/mypage/${p.id}`}>
+              <Eye size={15} /> オーナー向けマイページ
+            </Link>
           )}
           <Link className="btn" to={`/properties/${p.id}/report`}>
             <Printer size={15} /> お客様向けカルテ(PDF)

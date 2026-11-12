@@ -563,3 +563,16 @@ export function matches(q: string, ...fields: string[]): boolean {
   const hay = norm(fields.join(' '));
   return terms.every((t) => hay.includes(t));
 }
+
+/** 同じ都道府県の物件の部位別平均(比較対象が3棟未満なら同じ支店) */
+export function regionAverage(p: Property): { scores: Record<Part, number>; count: number; label: string } {
+  let peers = properties.filter((q) => q.id !== p.id && q.pref === p.pref);
+  let label = `${p.pref}の物件`;
+  if (peers.length < 3) {
+    peers = properties.filter((q) => q.id !== p.id);
+    label = '当社管理の全物件';
+  }
+  const scores = {} as Record<Part, number>;
+  for (const part of PARTS) scores[part] = Math.round((peers.reduce((s, q) => s + q.scores[part], 0) / peers.length) * 10) / 10;
+  return { scores, count: peers.length, label };
+}

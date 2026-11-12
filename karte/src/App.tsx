@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Building2, ChartColumn, ClipboardList, LayoutDashboard, Lightbulb, Search } from 'lucide-react';
+import { Building2, ChartColumn, ClipboardList, LayoutDashboard, Lightbulb, Search, UserRound } from 'lucide-react';
 import { matches, properties, propertyById, repairs } from './data';
 import { SeverityBadge, StoreProvider, useStore } from './ui';
 import Dashboard from './pages/Dashboard';
@@ -10,6 +10,7 @@ import Records from './pages/Records';
 import Insights from './pages/Insights';
 import Analytics from './pages/Analytics';
 import Report from './pages/Report';
+import MyPage from './pages/MyPage';
 
 function GlobalSearch() {
   const { findings } = useStore();
@@ -160,13 +161,14 @@ function Shell() {
       <Route path="/properties" element={<Properties />} />
       <Route path="/properties/:id" element={<PropertyDetail />} />
       <Route path="/properties/:id/report" element={<Report />} />
+      <Route path="/mypage/:id" element={<MyPage />} />
       <Route path="/records" element={<Records />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/insights" element={<Insights />} />
     </Routes>
   );
 
-  if (loc.pathname.endsWith('/report')) return routes;
+  if (loc.pathname.endsWith('/report') || loc.pathname.startsWith('/mypage/')) return routes;
   if (ownerView) return <div className="owner-shell">{routes}</div>;
 
   return (
@@ -188,6 +190,9 @@ function Shell() {
           </NavLink>
           <NavLink to="/records">
             <ClipboardList size={17} /> 指摘・修繕データ
+          </NavLink>
+          <NavLink to="/mypage/P-0001">
+            <UserRound size={17} /> オーナー向けマイページ
           </NavLink>
           <NavLink to="/analytics">
             <ChartColumn size={17} /> データ分析
