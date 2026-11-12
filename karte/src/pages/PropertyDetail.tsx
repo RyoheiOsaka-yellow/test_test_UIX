@@ -40,8 +40,9 @@ import {
   type Repair,
 } from '../data';
 import { DEFAULT_SIM, openCost, simulate, type SimParams } from '../sim';
-import { Empty, LEGEND, PART_COLOR, Photo, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
+import { Empty, LEGEND, PART_COLOR, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
 import { CycleCard } from '../Cycle';
+import { Shot, kindOf } from '../Shot';
 
 const PIN_COLOR = { urgent: '#d92d20', watch: '#f5a524', ok: '#12925a' } as const;
 
@@ -313,7 +314,7 @@ export default function PropertyDetail() {
                   <small className="muted">写真 {selected.photos}枚(最大10枚まで登録可能)</small>
                   <div className="photos">
                     {Array.from({ length: Math.min(selected.photos, 5) }, (_, i) => (
-                      <Photo key={i} part={selected.part} seed={i + selected.pin.x} after={selected.severity === 'ok'} />
+                      <Shot key={i} part={selected.part} kind={kindOf(i)} index={i} seed={selected.pin.x} after={selected.severity === 'ok'} />
                     ))}
                     {selected.photos > 5 && <span className="photo-more">+{selected.photos - 5}</span>}
                   </div>
@@ -651,11 +652,11 @@ export default function PropertyDetail() {
             </header>
             <div className="ba">
               <figure>
-                <Photo part={beforeAfter.part} seed={3} label="修繕前(サンプル)" />
+                <Shot part={beforeAfter.part} kind="中景" seed={Number(beforeAfter.id.slice(2))} aged />
                 <figcaption>修繕前</figcaption>
               </figure>
               <figure>
-                <Photo part={beforeAfter.part} seed={3} after label="修繕後(サンプル)" />
+                <Shot part={beforeAfter.part} kind="中景" seed={Number(beforeAfter.id.slice(2))} after />
                 <figcaption>修繕後 {fmtDate(beforeAfter.date)}</figcaption>
               </figure>
             </div>

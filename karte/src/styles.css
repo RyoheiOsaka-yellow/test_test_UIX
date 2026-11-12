@@ -753,3 +753,10 @@ a.kpi:hover { border-color: var(--blue); }
 .v-phone .recharts-legend-wrapper { font-size: 14px !important; }
 .v-phone .mp-tabs button i, .v-phone .mp-card h2 i, .v-phone .b2-chips i { font-size: 14px; }
 .v-phone .mp-user .ic i { font-size: 11px; }
+
+/* 実写真 */
+.photos .shot, .rp-f-photos .shot, .ba .shot { aspect-ratio: 4 / 3; height: auto; border-radius: 6px; }
+.b2-photos button .shot { position: absolute; inset: 0; }
+.rp-title > div:first-child { flex: 1; }
+.rp-photo { width: 92px; flex: none; }
+.rp-photo .shot { aspect-ratio: 4 / 3; height: auto; border-radius: 6px; display: block; }

@@ -32,7 +32,8 @@ import {
 } from '../data';
 import { DEFAULT_SIM, openCost, simulate } from '../sim';
 import { CycleCard } from '../Cycle';
-import { Empty, LEGEND, Photo, SeverityBadge, Stars, useStore } from '../ui';
+import { Empty, LEGEND, SeverityBadge, Stars, useStore } from '../ui';
+import { Shot } from '../Shot';
 
 const PIN_COLOR = { urgent: '#d92d20', watch: '#f5a524', ok: '#12925a' } as const;
 const COMPANY = '(管理会社名)';
@@ -245,6 +246,9 @@ export default function Report() {
               {p.address} ／ 築{p.age}年({p.builtYear}年築)・{p.structure}・{p.floors}階建・{p.units}戸
             </p>
           </div>
+          <div className="rp-photo">
+            <Shot part="外壁" kind="全景" seed={0} after />
+          </div>
           <div className="rp-to">
             <b>{p.owner} 様</b>
             <span>点検実施日 {fmtDate(p.lastInspection)}</span>
@@ -300,7 +304,7 @@ export default function Report() {
           <i>2</i>建物の現在の状態
         </h2>
         <div className="rp-cond">
-          <RadarChart width={300} height={236} data={radarData} outerRadius="70%">
+          <RadarChart width={300} height={206} data={radarData} outerRadius="68%">
             <PolarGrid stroke="#d9dfe9" />
             <PolarAngleAxis dataKey="part" tick={{ fontSize: 12, fontWeight: 700, fill: '#1c2433' }} />
             <PolarRadiusAxis domain={[0, 10]} tick={false} axisLine={false} />
@@ -388,8 +392,8 @@ export default function Report() {
                   <p>{f.description}</p>
                 </div>
                 <div className="rp-f-photos">
-                  <Photo part={f.part} seed={f.pin.x} />
-                  <Photo part={f.part} seed={f.pin.x + 1} />
+                  <Shot part={f.part} kind="全景" seed={f.pin.x} />
+                  <Shot part={f.part} kind="中景" seed={f.pin.x} />
                 </div>
                 <dl className="rp-f-kv">
                   <dt>推奨時期</dt>

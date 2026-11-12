@@ -54,6 +54,7 @@ import {
 } from '../data';
 import { DEFAULT_SIM, deferredCosts, openCost, projectScores, simulate } from '../sim';
 import { Empty, LEGEND, SeverityBadge, Stars, useStore } from '../ui';
+import { Shot, kindOf } from '../Shot';
 
 type Variant = 'desktop' | 'tablet' | 'phone';
 const PIN = { urgent: '#d92d20', watch: '#f5a524', ok: '#12925a' } as const;
@@ -82,101 +83,15 @@ const rateCls = (score: number) => (score >= 7 ? 'good' : score >= 6 ? 'mid' : '
 
 // ---------- ダミー写真(全景・中景・近景) ----------
 
-const WALL: Record<Part, [string, string]> = {
-  外壁: ['#d8d2c6', '#f1ede4'],
-  屋根: ['#8b95a1', '#b8c2cc'],
-  防水: ['#a9b8ad', '#d3ded6'],
-  構造: ['#c3beb8', '#e5e1dc'],
-  設備: ['#b3bdca', '#dbe2ea'],
-};
-const SHOT_KINDS = ['全景', '中景', '近景'] as const;
-type ShotKind = (typeof SHOT_KINDS)[number];
-const kindOf = (i: number): ShotKind => (i === 0 ? '全景' : i === 1 ? '中景' : '近景');
-
-function Shot({ part, kind, seed, after }: { part: Part; kind: ShotKind; seed: number; after?: boolean }) {
-  const wall = WALL[part][after ? 1 : 0];
-  const s = (Math.round(seed) * 31) % 40;
-  const stain = after ? 'none' : '#00000018';
-  return (
-    <svg className="shot" viewBox="0 0 160 120" preserveAspectRatio="xMidYMid slice" role="img" aria-label={`${part}の${kind}写真(サンプル)`}>
-      {kind === '全景' && (
-        <>
-          <rect width="160" height="120" fill="#cfe3f5" />
-          <rect y="98" width="160" height="22" fill="#b8c2ae" />
-          <rect x="18" y="30" width="124" height="68" fill={wall} />
-          <rect x="14" y="26" width="132" height="6" fill="#7d8792" />
-          {[0, 1, 2].map((r) =>
-            [0, 1, 2, 3, 4].map((c) => (
-              <rect key={`${r}${c}`} x={27 + c * 23} y={38 + r * 20} width="13" height="11" fill="#8fa9c4" stroke="#fff" strokeWidth="1" />
-            )),
-          )}
-          {!after && (
-            <>
-              <ellipse cx={50 + s * 1.6} cy={56 + (s % 3) * 14} rx="13" ry="10" fill={stain} />
-              <circle cx={50 + s * 1.6} cy={56 + (s % 3) * 14} r="15" fill="none" stroke="#d92d20" strokeWidth="2.2" strokeDasharray="5 3" />
-            </>
-          )}
-        </>
-      )}
-      {kind === '中景' && (
-        <>
-          <rect width="160" height="120" fill={wall} />
-          {[24, 48, 72, 96].map((y) => (
-            <line key={y} x1="0" x2="160" y1={y} y2={y} stroke="#0000000f" />
-          ))}
-          <rect x="104" y="18" width="42" height="52" fill="#8fa9c4" stroke="#fff" strokeWidth="2.5" />
-          <line x1="125" x2="125" y1="18" y2="70" stroke="#fff" strokeWidth="2" />
-          {!after && (
-            <>
-              <ellipse cx={52 + s} cy="72" rx="26" ry="16" fill={stain} />
-              <path d={`M${40 + s} 22 l-5 18 l8 10 l-6 20 l9 12 l-4 20`} fill="none" stroke="#3b3632" strokeWidth="1.6" strokeLinecap="round" />
-              <rect x={22 + s} y="14" width="50" height="98" fill="none" stroke="#d92d20" strokeWidth="1.8" strokeDasharray="5 3" />
-            </>
-          )}
-        </>
-      )}
-      {kind === '近景' && (
-        <>
-          <rect width="160" height="120" fill={wall} />
-          {[30, 60, 90].map((y) => (
-            <line key={y} x1="0" x2="160" y1={y} y2={y} stroke="#0000000f" />
-          ))}
-          {!after && (
-            <>
-              <ellipse cx={96 - s / 2} cy="80" rx="30" ry="16" fill={stain} />
-              <path
-                d={`M${60 + s} 0 l-10 24 l14 14 l-12 26 l16 16 l-8 26 l6 14`}
-                fill="none"
-                stroke="#2f2a27"
-                strokeWidth="2.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path d={`M${64 + s} 38 l14 8 l10 -4`} fill="none" stroke="#2f2a27" strokeWidth="1.4" strokeLinecap="round" />
-              <rect x="8" y="88" width="46" height="22" rx="2" fill="#fff" stroke="#9aa5b6" />
-              <text x="31" y="103" textAnchor="middle" fontSize="10" fill="#1c2433">
-                幅 0.5mm
-              </text>
-            </>
-          )}
-        </>
-      )}
-      <text x="6" y="12" fontSize="9" fill="#00000066">
-        サンプル画像
-      </text>
-    </svg>
-  );
-}
-
 /** 修繕前後をスライダーで見比べる */
-function BeforeAfter({ part }: { part: Part }) {
+function BeforeAfter({ part, seed }: { part: Part; seed: number }) {
   const [pos, setPos] = useState(50);
   return (
     <div className="ba-slider">
       <div className="ba-stage">
-        <Shot part={part} kind="全景" seed={2} after />
+        <Shot part={part} kind="中景" seed={seed} after />
         <div className="ba-before" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-          <Shot part={part} kind="全景" seed={2} />
+          <Shot part={part} kind="中景" seed={seed} aged />
         </div>
         <span className="ba-line" style={{ left: `${pos}%` }} />
         <b className="ba-tag l">修繕前</b>
@@ -284,7 +199,7 @@ export default function MyPage() {
   const [compare, setCompare] = useState<'age' | 'region'>('age');
   const [chart, setChart] = useState<'cost' | 'cumulative' | 'score'>('cost');
   const [lightbox, setLightbox] = useState<{ f: Finding; i: number } | null>(null);
-  const [ba, setBa] = useState<{ part: Part; title: string; note: string } | null>(null);
+  const [ba, setBa] = useState<{ part: Part; seed: number; title: string; note: string } | null>(null);
   const [notify, setNotify] = useState({ mail: true, line: true, push: false });
   const [slide, setSlide] = useState(0);
   const scroller = useRef<HTMLDivElement>(null);
@@ -505,7 +420,7 @@ export default function MyPage() {
               <div className="b2-photos">
                 {Array.from({ length: Math.min(selected.photos, big ? 4 : 5) }, (_, i) => (
                   <button key={i} onClick={() => setLightbox({ f: selected, i })} aria-label={`写真${i + 1}を拡大`}>
-                    <Shot part={selected.part} kind={kindOf(i)} seed={selected.pin.x + i} after={selected.severity === 'ok'} />
+                    <Shot part={selected.part} kind={kindOf(i)} index={i} seed={selected.pin.x} after={selected.severity === 'ok'} />
                     <em>{kindOf(i)}</em>
                   </button>
                 ))}
@@ -523,7 +438,7 @@ export default function MyPage() {
               {selected.severity !== 'ok' && (
                 <button
                   className="mp-btn wide"
-                  onClick={() => setBa({ part: selected.part, title: `${selected.part}|${selected.location}`, note: `修繕した場合の仕上がりイメージです。概算 ${fmtYen(selected.estCost)}` })}
+                  onClick={() => setBa({ part: selected.part, seed: selected.pin.x, title: `${selected.part}|${selected.location}`, note: `修繕した場合の仕上がりイメージです。概算 ${fmtYen(selected.estCost)}` })}
                 >
                   修繕前後のイメージを見る <ChevronRight size={16} />
                 </button>
@@ -748,7 +663,7 @@ export default function MyPage() {
             <ul className="b4-cards">
               {reps.map((r: Repair) => (
                 <li key={r.id}>
-                  <button onClick={() => setBa({ part: r.part, title: `${r.place} ${r.work}`, note: `${fmtDate(r.date)} 完了 ／ ${fmtYen(r.cost)} ／ 施工: ${r.contractor}` })}>
+                  <button onClick={() => setBa({ part: r.part, seed: Number(r.id.slice(2)), title: `${r.place} ${r.work}`, note: `${fmtDate(r.date)} 完了 ／ ${fmtYen(r.cost)} ／ 施工: ${r.contractor}` })}>
                     <div>
                       <b>{fmtDate(r.date)}</b>
                       <span>
@@ -782,7 +697,7 @@ export default function MyPage() {
                     <td>
                       <button
                         className="mp-link"
-                        onClick={() => setBa({ part: r.part, title: `${r.place} ${r.work}`, note: `${fmtDate(r.date)} 完了 ／ ${fmtYen(r.cost)} ／ 施工: ${r.contractor}` })}
+                        onClick={() => setBa({ part: r.part, seed: Number(r.id.slice(2)), title: `${r.place} ${r.work}`, note: `${fmtDate(r.date)} 完了 ／ ${fmtYen(r.cost)} ／ 施工: ${r.contractor}` })}
                       >
                         詳細 <ChevronRight size={14} />
                       </button>
@@ -844,7 +759,7 @@ export default function MyPage() {
               <button className="nav" onClick={() => setLightbox({ f: lightbox.f, i: (lightbox.i + lightbox.f.photos - 1) % lightbox.f.photos })} aria-label="前の写真">
                 <ChevronLeft size={26} />
               </button>
-              <Shot part={lightbox.f.part} kind={kindOf(lightbox.i)} seed={lightbox.f.pin.x + lightbox.i} after={lightbox.f.severity === 'ok'} />
+              <Shot part={lightbox.f.part} kind={kindOf(lightbox.i)} index={lightbox.i} seed={lightbox.f.pin.x} after={lightbox.f.severity === 'ok'} />
               <button className="nav" onClick={() => setLightbox({ f: lightbox.f, i: (lightbox.i + 1) % lightbox.f.photos })} aria-label="次の写真">
                 <ChevronRight size={26} />
               </button>
@@ -852,7 +767,7 @@ export default function MyPage() {
             <div className="lb-thumbs">
               {Array.from({ length: lightbox.f.photos }, (_, i) => (
                 <button key={i} className={i === lightbox.i ? 'on' : ''} onClick={() => setLightbox({ f: lightbox.f, i })} aria-label={`写真${i + 1}`}>
-                  <Shot part={lightbox.f.part} kind={kindOf(i)} seed={lightbox.f.pin.x + i} after={lightbox.f.severity === 'ok'} />
+                  <Shot part={lightbox.f.part} kind={kindOf(i)} index={i} seed={lightbox.f.pin.x} after={lightbox.f.severity === 'ok'} />
                 </button>
               ))}
             </div>
@@ -869,9 +784,9 @@ export default function MyPage() {
                 <X size={22} />
               </button>
             </header>
-            <BeforeAfter part={ba.part} />
+            <BeforeAfter part={ba.part} seed={ba.seed} />
             <p>{ba.note}</p>
-            <p className="sub">つまみを左右に動かすと見比べられます。画像はデモ用のサンプルです。</p>
+            <p className="sub">つまみを左右に動かすと見比べられます。修繕前は、実写真に色あせと汚れを重ねたデモ用の加工画像です。</p>
           </div>
         </div>
       )}
