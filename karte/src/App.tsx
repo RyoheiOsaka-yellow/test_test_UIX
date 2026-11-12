@@ -9,6 +9,7 @@ import PropertyDetail from './pages/PropertyDetail';
 import Records from './pages/Records';
 import Insights from './pages/Insights';
 import Analytics from './pages/Analytics';
+import Report from './pages/Report';
 
 function GlobalSearch() {
   const { findings } = useStore();
@@ -158,12 +159,14 @@ function Shell() {
       <Route path="/" element={<Dashboard />} />
       <Route path="/properties" element={<Properties />} />
       <Route path="/properties/:id" element={<PropertyDetail />} />
+      <Route path="/properties/:id/report" element={<Report />} />
       <Route path="/records" element={<Records />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/insights" element={<Insights />} />
     </Routes>
   );
 
+  if (loc.pathname.endsWith('/report')) return routes;
   if (ownerView) return <div className="owner-shell">{routes}</div>;
 
   return (

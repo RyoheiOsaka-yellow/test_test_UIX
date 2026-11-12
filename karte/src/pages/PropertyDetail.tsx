@@ -155,9 +155,9 @@ export default function PropertyDetail() {
               <Eye size={15} /> オーナー向け表示
             </button>
           )}
-          <button className="btn" onClick={() => window.print()}>
-            <Printer size={15} /> 報告書(PDF)出力
-          </button>
+          <Link className="btn" to={`/properties/${p.id}/report`}>
+            <Printer size={15} /> お客様向けカルテ(PDF)
+          </Link>
         </div>
       </div>
 
