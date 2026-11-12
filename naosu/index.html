@@ -276,6 +276,29 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
 .toast .ic{width:16px;height:16px;stroke-width:2.6}
 @keyframes toast{0%{opacity:0}8%,88%{opacity:1}100%{opacity:0}}
 
+/* quick outcomes, address entry, follow-up */
+.footer{display:flex;flex-direction:column;gap:8px}
+.btnrow{display:flex;gap:8px}
+.btnrow .btn{flex:1;min-width:0;font-size:13.5px;min-height:46px;padding:0 8px}
+.btnrow .btn .ic{width:16px;height:16px}
+.st.follow{color:var(--high)}.st.none{color:var(--mute)}
+.field{width:100%;height:48px;border:1px solid var(--line);border-radius:var(--rb);background:var(--card);padding:0 12px;font:inherit;font-size:16px;color:var(--ink)}
+.field.err{border-color:var(--urgent);background:var(--urgent-soft)}
+.warnbox{display:flex;gap:8px;align-items:flex-start;background:var(--high-soft);color:var(--high);border-radius:var(--rb);padding:8px 10px;font-size:12.5px;font-weight:700;line-height:1.5}
+.warnbox .ic{width:16px;height:16px;margin-top:2px}
+.errmsg{color:var(--urgent);font-size:12px;font-weight:700}
+.stack{display:flex;flex-direction:column;gap:10px}
+.steps li.warn{color:var(--high);font-weight:700}
+.steps li.warn .dot{animation-name:dotwarn}
+@keyframes dotwarn{to{background:var(--high)}}
+.static,.static .reveal,.static .steps li,.static .steps .dot{animation:none}
+.static .steps li{opacity:1}.static .steps .dot{background:var(--low)}.static .steps li.warn .dot{background:var(--high)}
+.locchip{min-height:36px}
+.locchip.warn{border-color:var(--high);color:var(--high)}.locchip.warn .ic{color:var(--high)}
+.locchip em{font-style:normal;color:var(--brand);font-weight:700;flex:none}
+.modal .lead{color:var(--mute);font-size:12.5px;margin:-6px 0 12px}
+.modal .stack{margin-bottom:4px}
+
 /* small and short phones */
 @media (max-width:359px){
   body{font-size:13.5px}
@@ -286,6 +309,8 @@ textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:
   .slots{width:80px}.slot{width:36px;height:36px}
 }
 @media (max-height:620px){
+  .footer{gap:6px;padding-top:8px;padding-bottom:10px}
+  .footer .btn{min-height:44px}
   .sheet{max-height:56%}
   .counts{display:none}
   .steps{margin:10px 0;gap:6px}
@@ -389,7 +414,11 @@ function ph(k){
 
 /* ---------- data ---------- */
 const PRI={urgent:{l:'緊急',o:0,c:'var(--urgent)'},high:{l:'高',o:1,c:'#E07A1F'},mid:{l:'中',o:2,c:'#D39B00'},low:{l:'低',o:3,c:'var(--low)'}};
-const STL={dispatched:'差配済',working:'対応中',done:'完了'};
+const STL={dispatched:'差配済',working:'対応中',follow:'別途対応中',done:'完了',none:'対応不要'};
+const closed=i=>i.status=='done'||i.status=='none';
+const BLD=['メゾン桜丘','コーポ千歳','グランデ経堂','ハイツ若葉'];
+const FU={type:['業者の手配','見積もり','部材の発注','オーナー承認','再訪問'],to:['管理','営業','オーナー','協力業者'],due:['今日中','3日以内','1週間以内','未定']};
+const NONE=['すでに直っている','重複した報告','問題なし（誤報）','経過観察とする'];
 const ROLES={field:['現地スタッフ','巡回・清掃・発見','現'],mgmt:['管理','差配・業者手配','管'],sales:['営業','内見・募集・オーナー対応','営'],owner:['オーナー','所有物件の状況を確認','オ']};
 const PPL={
  sato:{n:'佐藤 健',r:'巡回スタッフ',i:'佐',pos:[122,186]},
@@ -430,15 +459,18 @@ const D={
   {id:3,name:'渡辺 様',bld:'コーポ千歳',ini:'渡',t:'昨日',st:'ok',text:'空室の募集状況を月に一度まとめて共有してほしいです。',note:'営業 高橋さんが返信済み'}
  ]
 };
-const S={screen:'onb',tab:'map',role:'field',sel:null,filter:'open',issueId:null,cam:null,draft:null,dsp:0,thread:null,sheet:null,toast:null,scn:0,loc:'世田谷区桜丘2丁目付近',justDone:false};
+const S={screen:'onb',tab:'map',role:'field',sel:null,filter:'open',issueId:null,cam:null,draft:null,dsp:0,thread:null,sheet:null,toast:null,scn:0,loc:'',geo:'pending',addr:'',fu:null,justDone:false};
 
 /* ---------- helpers ---------- */
 const issue=id=>D.issues.find(i=>i.id==id);
-const sorted=()=>[...D.issues].sort((a,b)=>(a.status=='done')-(b.status=='done')||PRI[a.pri].o-PRI[b.pri].o||b.id-a.id);
+const sorted=()=>[...D.issues].sort((a,b)=>closed(a)-closed(b)||PRI[a.pri].o-PRI[b.pri].o||b.id-a.id);
 const pill=p=>`<span class="pill p-${p}"><i></i>${PRI[p].l}</span>`;
 const stat=i=>`<span class="st ${i.status}">${i.status=='done'?ic('check'):''}${STL[i.status]}</span>`;
 const thumbKey=i=>i.after||i.shots[1];
-function row(i,sel){return `<button class="row ${sel?'sel':''}" data-act="open" data-arg="${i.id}"><span class="thumb">${ph(thumbKey(i))}</span><span class="body"><span class="ttl">${esc(i.title)}</span><span class="meta">${esc(i.bld)}・${esc(i.place)}</span><span class="meta">${i.dist} ・ ${i.status=='done'?'完了':PPL[i.who].n+'さん'}</span></span><span class="side">${i.status=='done'?'':pill(i.pri)}${stat(i)}</span></button>`}
+function row(i,sel){return `<button class="row ${sel?'sel':''}" data-act="open" data-arg="${i.id}"><span class="thumb">${ph(thumbKey(i))}</span><span class="body"><span class="ttl">${esc(i.title)}</span><span class="meta">${esc(i.bld)}・${esc(i.place)}</span><span class="meta">${i.dist?i.dist+' ・ ':''}${closed(i)?STL[i.status]:PPL[i.who].n+(i.route=='mgmt'?'':'さん')}</span></span><span class="side">${closed(i)?'':pill(i.pri)}${stat(i)}</span></button>`}
+const hasLoc=()=>S.geo=='ok'||S.geo=='manual';
+function locChip(){const g=S.geo;
+ return `<button class="locchip ${g=='ng'?'warn':''}" data-act="sheet" data-arg="addr" aria-label="場所を変更する">${ic(g=='ok'?'nav':'pin')}<span>${esc(g=='ok'?S.loc:g=='manual'?S.addr:g=='pending'?'現在地を確認しています':'現在地を取得できません')}</span>${g=='ng'?'<em>住所を入力</em>':''}</button>`}
 let toastT;
 function toast(m){S.toast=m;clearTimeout(toastT);toastT=setTimeout(()=>{S.toast=null;const t=document.querySelector('.toast');if(t)t.remove()},2600)}
 
@@ -447,7 +479,7 @@ function mapSVG(o={}){
  const vb=o.vb||'96 150 262 296';
  const pinPath='M0 0C-13-17-16-23-16-30A16 16 0 1 1 16-30C16-23 13-17 0 0Z';
  const mk=(ini)=>`<circle r="11" fill="#fff" stroke="var(--brand)" stroke-width="1.5"/><text y="3.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="var(--brand)">${ini}</text>`;
- const pins=(o.pins||[]).map(i=>{const dn=i.status=='done';return `<g class="pin ${S.sel==i.id?'sel':''}" data-act="pin" data-arg="${i.id}" transform="translate(${i.x} ${i.y})" tabindex="0" role="button" aria-label="${esc(i.title)}"><g transform="scale(${dn?.6:.82})"><path d="${pinPath}" fill="${dn?'var(--done)':PRI[i.pri].c}" stroke="#fff" stroke-width="2.5"/>${dn?'<path d="M-6-30l4 4 8-8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>':'<circle cy="-30" r="5.5" fill="#fff"/>'}</g></g>`}).join('');
+ const pins=(o.pins||[]).map(i=>{const dn=closed(i);return `<g class="pin ${S.sel==i.id?'sel':''}" data-act="pin" data-arg="${i.id}" transform="translate(${i.x} ${i.y})" tabindex="0" role="button" aria-label="${esc(i.title)}"><g transform="scale(${dn?.6:.82})"><path d="${pinPath}" fill="${dn?'var(--done)':PRI[i.pri].c}" stroke="#fff" stroke-width="2.5"/>${dn?'<path d="M-6-30l4 4 8-8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>':'<circle cy="-30" r="5.5" fill="#fff"/>'}</g></g>`}).join('');
  const staff=(o.staff||[]).map(k=>{const p=PPL[k];return `<g transform="translate(${p.pos[0]} ${p.pos[1]})">${mk(p.i)}</g>`}).join('');
  let route='';
  if(o.route){const [a,b]=o.route;const mx=(a[0]+b[0])/2+18,my=(a[1]+b[1])/2-14;const d=`M${a[0]} ${a[1]}Q${mx} ${my} ${b[0]} ${b[1]}`;
@@ -478,22 +510,22 @@ function header(title,sub){const r=ROLES[S.role];
  return `<header class="top pad"><div style="flex:1;min-width:0"><h1>${title}</h1>${sub?`<div class="sub">${sub}</div>`:''}</div><button class="rolechip" data-act="sheet" data-arg="role" aria-label="役割を切り替える">${r[0]}<span class="avatar s">${r[2]}</span></button></header>`}
 
 function vMap(){
- const open=D.issues.filter(i=>i.status!='done');
- const u=open.filter(i=>i.pri=='urgent').length,w=open.filter(i=>i.status=='working').length,d=D.issues.length-open.length;
+ const open=D.issues.filter(i=>!closed(i));
+ const u=open.filter(i=>i.pri=='urgent').length,w=open.filter(i=>i.status=='working'||i.status=='follow').length,d=D.issues.length-open.length;
  const sub={field:`近くに動ける修繕が${open.length}件あります`,mgmt:`未完了 ${open.length}件・うち緊急 ${u}件`,sales:'内見前に確認したい修繕が1件あります',owner:`所有物件の修繕 対応中 ${w}件`}[S.role];
  const sel=S.sel&&issue(S.sel);
- const list=sel?[sel,...sorted().filter(i=>i.id!=sel.id&&i.status!='done')]:sorted().filter(i=>i.status!='done');
+ const list=sel?[sel,...sorted().filter(i=>i.id!=sel.id&&!closed(i))]:sorted().filter(i=>!closed(i));
  return `<section class="screen home">${header('ナオス',sub)}
- <div class="mapwrap">${mapSVG({pins:D.issues,me:true,staff:['sato','suzuki','ito']})}<div class="locchip">${ic('nav')}<span>${esc(S.loc)}</span></div></div>
+ <div class="mapwrap">${mapSVG({pins:D.issues,me:hasLoc(),staff:['sato','suzuki','ito']})}${locChip()}</div>
  <div class="sheet"><div class="scroll pad"><div class="sheethead"><h2>近くの修繕</h2><span>優先度順</span></div>
- <div class="counts"><div class="count u"><b>${u}</b><span>緊急</span></div><div class="count w"><b>${w}</b><span>対応中</span></div><div class="count d"><b>${d}</b><span>完了</span></div></div>
+ <div class="counts"><div class="count u"><b>${u}</b><span>緊急</span></div><div class="count w"><b>${w}</b><span>対応中</span></div><div class="count d"><b>${d}</b><span>対応済み</span></div></div>
  <div class="list">${list.map(i=>row(i,sel&&i.id==sel.id)).join('')}</div></div></div></section>`}
 
 function vList(){
  const f=S.filter,all=sorted();
- const items=all.filter(i=>f=='all'||(f=='open'?i.status!='done':i.status=='done'));
+ const items=all.filter(i=>f=='all'||(f=='open'?!closed(i):closed(i)));
  return `<section class="screen">${header('案件','写真の報告から完了まで')}
- <div class="scroll pad"><div class="seg">${[['open','未完了'],['done','完了'],['all','すべて']].map(([k,l])=>`<button class="${f==k?'on':''}" data-act="filter" data-arg="${k}">${l}</button>`).join('')}</div>
+ <div class="scroll pad"><div class="seg">${[['open','未完了'],['done','対応済み'],['all','すべて']].map(([k,l])=>`<button class="${f==k?'on':''}" data-act="filter" data-arg="${k}">${l}</button>`).join('')}</div>
  <div class="list">${items.length?items.map(i=>row(i)).join(''):'<p class="empty">該当する案件はありません。<br>下のカメラから報告できます。</p>'}</div></div></section>`}
 
 function vCam(){const c=S.cam,rep=c.mode=='report';
@@ -504,36 +536,53 @@ function vCam(){const c=S.cam,rep=c.mode=='report';
  <div class="cambar pad"><div class="slots">${rep?[0,1].map(n=>`<div class="slot ${c.shots[n]?'f':''}">${c.shots[n]?ph(c.shots[n]):n+1}</div>`).join(''):''}</div>
  <button class="shutter" data-act="shutter" aria-label="撮影する"></button><div style="width:104px"></div></div></section>`}
 
-function vAnalyze(){const d=S.draft,s=d.s,p=PPL[s.who];
- return `<section class="screen"><header class="top pad"><button class="iconbtn" data-act="camclose" aria-label="やめる">${ic('x')}</button><h1>写真を確認しています</h1></header>
+function vAnalyze(){const d=S.draft,s=d.s,p=PPL[s.who],ok=S.geo=='ok',man=d.man;
+ const chips=(arr,cur,act)=>`<span class="chips">${arr.map(([k,l])=>`<button class="chip ${cur==k?'on':''}" data-act="${act}" data-arg="${esc(k)}">${l}</button>`).join('')}</span>`;
+ const place=ok?`<div class="card"><dl class="kv" style="margin:0"><dt>場所</dt><dd>${esc(s.bld)}　${esc(s.place)}<div class="meta">${esc(S.loc)}から特定</div></dd></dl></div>`
+ :`<div class="card stack">${man?'<div class="sec" style="margin:0">場所（入力済みの住所）</div>':`<div class="warnbox">${ic('pin')}<span>現在地を取得できませんでした。住所か物件名を入力してください。</span></div>`}
+  <input class="field ${d.err?'err':''}" id="addrinput" type="text" value="${esc(d.addr)}" placeholder="例）世田谷区桜丘2-14 メゾン桜丘" autocomplete="street-address" aria-label="住所または物件名">
+  ${d.err?'<p class="errmsg">場所を入力すると送信できます。</p>':''}${chips(BLD.map(b=>[b,b]),d.addr,'addrpick')}</div>`;
+ return `<section class="screen ${d.ready?'static':''}"><header class="top pad"><button class="iconbtn" data-act="camclose" aria-label="やめる">${ic('x')}</button><h1>報告内容の確認</h1></header>
  <div class="scroll pad"><div class="shots"><div>${ph(d.shots[0])}<span class="tag">全体</span></div><div>${ph(d.shots[1])}<span class="tag">アップ</span></div></div>
- <ul class="steps">${['位置情報を取得','傷み・汚れを検出','優先度を判定','差配先を決定'].map(t=>`<li><span class="dot">${ic('check')}</span>${t}</li>`).join('')}</ul>
- <div class="reveal" style="display:flex;flex-direction:column;gap:10px;padding-bottom:8px">
-  <div class="card"><dl class="kv" style="margin:0"><dt>内容</dt><dd>${esc(s.title)}</dd><dt>優先度</dt><dd><span class="chips">${Object.keys(PRI).map(k=>`<button class="chip ${d.pri==k?'on':''}" data-act="setpri" data-arg="${k}">${PRI[k].l}</button>`).join('')}</span></dd><dt>種類</dt><dd><span class="chips">${CATS.map(k=>`<button class="chip ${d.cat==k?'on':''}" data-act="setcat" data-arg="${k}">${k}</button>`).join('')}</span></dd><dt>場所</dt><dd>${esc(s.bld)}　${esc(s.place)}</dd><dt>検出</dt><dd class="meta" style="white-space:normal">${s.tags.join('・')}</dd></dl></div>
+ <ul class="steps"><li class="${ok||man?'':'warn'}"><span class="dot">${ic(ok||man?'check':'x')}</span>${ok?'位置情報を取得':man?'入力済みの住所を使用':'位置情報を取得できません（住所を入力）'}</li>${['傷み・汚れを検出','優先度を判定','差配先を決定'].map(t=>`<li><span class="dot">${ic('check')}</span>${t}</li>`).join('')}</ul>
+ <div class="reveal stack" style="padding-bottom:12px">${place}
+  <div class="card"><dl class="kv" style="margin:0"><dt>内容</dt><dd>${esc(s.title)}</dd><dt>優先度</dt><dd>${chips(Object.keys(PRI).map(k=>[k,PRI[k].l]),d.pri,'setpri')}</dd><dt>種類</dt><dd>${chips(CATS.map(k=>[k,k]),d.cat,'setcat')}</dd><dt>検出</dt><dd class="meta" style="white-space:normal">${s.tags.join('・')}</dd></dl></div>
   <div class="routebox"><span class="avatar gold">${p.i}</span><div style="flex:1;min-width:0"><div class="lbl">差配先</div><b>${s.route=='mgmt'?'管理 → '+p.n:p.n+'さん（'+p.r+'）'}</b><div class="meta">${s.why}</div></div></div>
  </div></div>
- <div class="footer pad reveal"><button class="btn" data-act="submit">この内容で送る</button></div></section>`}
+ <div class="footer pad reveal"><button class="btn" data-act="submit">この内容で送る</button><button class="btn ghost" data-act="selfdone">${ic('check')}その場で対応済みとして記録</button></div></section>`}
 
 function vDispatch(){const i=issue(S.issueId),p=PPL[i.who];
  const vb=`${i.x-110} ${i.y-110} 220 300`;
  const card=S.dsp==0?`<div class="dspcard"><h2>動ける人を探しています</h2><p class="meta">優先度「${PRI[i.pri].l}」・${esc(i.bld)}の近くから順に声をかけています</p><div class="cands"><span class="avatar">佐</span><span class="avatar gold">鈴</span><span class="avatar">伊</span></div><div class="bar"><i></i></div></div>`
  :`<div class="dspcard"><h2>${i.route=='mgmt'?'管理が受け付けました':'担当が決まりました'}</h2><div class="who" style="margin-top:10px"><span class="avatar">${p.i}</span><div class="body"><b>${p.n}${i.route=='mgmt'?'':'さん'}</b><span class="meta">${p.r}・${i.route=='mgmt'?'山田さんが手配':'受諾済み'}</span></div><div class="eta"><b class="num">${i.eta}</b><span>分で到着</span></div></div>
  <div class="notify"><span>${ic('check')}管理</span><span>${ic('check')}営業</span><span>${ic('check')}オーナー</span></div><button class="btn" data-act="open" data-arg="${i.id}">案件を見る</button></div>`;
- return `<section class="screen dsp"><div class="mapwrap">${mapSVG({vb,pins:[i],me:true,radar:S.dsp==0?[i.x,i.y]:null,staff:S.dsp==0?['sato','suzuki','ito']:[],route:S.dsp?[p.pos,[i.x,i.y]]:null,routeIni:p.i,move:true})}${card}</div></section>`}
+ return `<section class="screen dsp"><div class="mapwrap">${mapSVG({vb,pins:[i],me:hasLoc(),radar:S.dsp==0?[i.x,i.y]:null,staff:S.dsp==0?['sato','suzuki','ito']:[],route:S.dsp?[p.pos,[i.x,i.y]]:null,routeIni:p.i,move:true})}${card}</div></section>`}
 
-function vDetail(){const i=issue(S.issueId),p=PPL[i.who],dn=i.status=='done';
- const hero=dn?`<div class="pair"><div>${ph(i.shots[1])}<span class="tag">Before</span></div><div>${ph(i.after)}<span class="tag ok">After</span></div></div>`
+function vDetail(){const i=issue(S.issueId),p=PPL[i.who],dn=i.status=='done',cl=closed(i),fu=i.follow;
+ const hero=dn&&i.after?`<div class="pair"><div>${ph(i.shots[1])}<span class="tag">Before</span></div><div>${ph(i.after)}<span class="tag ok">After</span></div></div>`
  :`<div class="pair"><div>${ph(i.shots[0])}<span class="tag">全体</span></div><div>${ph(i.shots[1])}<span class="tag">アップ</span></div></div>`;
- const act=i.status=='dispatched'?`<button class="btn" data-act="begin">対応を始める</button>`:i.status=='working'?`<button class="btn gold" data-act="finish">${ic('camera')}完了写真を撮る</button>`:`<button class="btn ghost" data-act="tochat" data-arg="ms">${ic('chat')}チャットで続きを話す</button>`;
+ const act=cl?`<button class="btn ghost" data-act="tochat" data-arg="ms">${ic('chat')}チャットで続きを話す</button>`
+ :`<button class="btn" data-act="sheet" data-arg="done">${ic('check')}完了</button><div class="btnrow"><button class="btn ghost" data-act="sheet" data-arg="none">対応不要</button><button class="btn ghost" data-act="follow">${fu?'別途対応を変更':'別途対応が必要'}${ic('chev')}</button></div>`;
  return `<section class="screen"><div class="hero">${hero}<button class="iconbtn back" data-act="back" aria-label="戻る">${ic('back')}</button></div>
  <div class="scroll pad"><div class="dbody">
- ${dn&&S.justDone?`<div class="banner">${ic('check')}完了を管理・営業・オーナーに共有しました</div>`:''}
- <div><div class="tags">${pill(i.pri)}${stat(i)}<span class="meta">${esc(i.cat)}</span></div><h1>${esc(i.title)}</h1><p class="meta" style="margin-top:4px">${esc(i.bld)}　${esc(i.place)}・現在地から${i.dist}</p></div>
- ${dn?'':`<div class="minimap">${mapSVG({vb:`${i.x-110} ${i.y-90} 220 130`,pins:[i],route:[p.pos,[i.x,i.y]],routeIni:p.i,move:i.status=='working'})}</div>
+ ${cl&&S.justDone?`<div class="banner">${ic('check')}${dn?'完了':'対応不要'}を管理・営業・オーナーに共有しました</div>`:''}
+ <div><div class="tags">${cl?'':pill(i.pri)}${stat(i)}<span class="meta">${esc(i.cat)}</span></div><h1>${esc(i.title)}</h1><p class="meta" style="margin-top:4px;white-space:normal">${esc(i.bld)}　${esc(i.place)}${i.dist?'・現在地から'+i.dist:''}</p></div>
+ ${i.status=='none'?`<div class="card"><div class="sec">対応不要の理由</div><b>${esc(i.reason)}</b></div>`:''}
+ ${fu?`<div class="card"><div class="sec">別途対応</div><dl class="kv" style="margin:0"><dt>内容</dt><dd>${esc(fu.type)}</dd><dt>依頼先</dt><dd>${esc(fu.to)}</dd><dt>期限</dt><dd>${esc(fu.due)}</dd>${fu.memo?`<dt>メモ</dt><dd style="font-weight:400;overflow-wrap:anywhere">${esc(fu.memo)}</dd>`:''}</dl></div>`:''}
+ ${cl?'':`<div class="minimap">${mapSVG({vb:`${i.x-110} ${i.y-90} 220 130`,pins:[i],route:[p.pos,[i.x,i.y]],routeIni:p.i,move:i.status=='working'})}</div>
  <div class="card who"><span class="avatar">${p.i}</span><div class="body"><b>${p.n}${i.route=='mgmt'?'':'さん'}</b><span class="meta">${p.r}・${i.status=='working'?'向かっています':'受諾済み'}</span></div><div class="eta"><b class="num">${i.eta}</b><span>分で到着</span></div></div>`}
  <div><div class="sec">経過</div><ol class="tl">${i.log.map(l=>`<li><time>${l[0]}</time><i></i><span>${esc(l[1])}</span></li>`).join('')}</ol></div>
- ${dn?`<div><div class="sec">共有先</div><div class="notify" style="margin:0"><span>${ic('check')}管理 山田</span><span>${ic('check')}営業 高橋</span><span>${ic('check')}オーナー</span></div></div>`:`<button class="btn ghost sm" style="align-self:flex-start" data-act="tochat" data-arg="ms">${ic('chat')}この件を相談する</button>`}
+ ${cl?`<div><div class="sec">共有先</div><div class="notify" style="margin:0"><span>${ic('check')}管理 山田</span><span>${ic('check')}営業 高橋</span><span>${ic('check')}オーナー</span></div></div>`:`<button class="btn ghost sm" style="align-self:flex-start" data-act="tochat" data-arg="ms">${ic('chat')}この件を相談する</button>`}
  </div></div><div class="footer pad">${act}</div></section>`}
+
+function vFollow(){const i=issue(S.issueId),f=S.fu;
+ const grp=(k,l)=>`<div><div class="sec">${l}</div><div class="chips">${FU[k].map(v=>`<button class="chip ${f[k]==v?'on':''}" data-act="fuset" data-arg="${k}|${v}">${v}</button>`).join('')}</div></div>`;
+ return `<section class="screen static"><header class="top pad"><button class="iconbtn" data-act="todetail" aria-label="戻る">${ic('back')}</button><div style="flex:1;min-width:0"><h1>別途対応の依頼</h1><div class="sub">${esc(i.title)}・${esc(i.bld)}</div></div></header>
+ <div class="scroll pad"><div class="dbody">
+ <div class="card who"><span class="thumb">${ph(i.shots[1])}</span><div class="body"><b>${esc(i.title)}</b><span class="meta">${esc(i.bld)}　${esc(i.place)}</span></div>${pill(i.pri)}</div>
+ ${grp('type','必要な対応')}${grp('to','依頼先')}${grp('due','期限')}
+ <div><div class="sec">メモ（任意）</div><textarea id="fumemo" placeholder="例）手すりの溶接が必要。応急でテープ固定済み。" aria-label="メモ" style="margin:0">${esc(f.memo)}</textarea></div>
+ </div></div><div class="footer pad"><button class="btn" data-act="fusend">依頼を送る</button></div></section>`}
 
 function vChats(){
  return `<section class="screen">${header('チャット','管理・営業・現地・オーナー')}
@@ -556,6 +605,10 @@ function vVoices(){const L={open:['未対応','open'],prog:['対応中',''],ok:[
 function vSheet(){
  if(S.sheet=='role')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>どの立場で使いますか</h2>${Object.keys(ROLES).map(k=>`<button class="role ${S.role==k?'on':''}" data-act="role" data-arg="${k}"><span class="avatar ${S.role==k?'':'gold'}">${ROLES[k][2]}</span><span><b>${ROLES[k][0]}</b><span class="meta">${ROLES[k][1]}</span></span></button>`).join('')}</div></div>`;
  if(S.sheet=='voice')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>${S.role=='owner'?'気になることを教えてください':'オーナーから聞いた声'}</h2><textarea id="voicetext" placeholder="例）駐輪場の自転車が増えて通りにくい" aria-label="声の内容"></textarea><button class="btn" data-act="voiceadd">送る</button></div></div>`;
+ if(S.sheet=='done')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>完了にします</h2><p class="lead">写真があると、営業とオーナーにそのまま共有できます。</p><div class="stack"><button class="btn" data-act="finish">${ic('camera')}写真を撮って完了</button><button class="btn ghost" data-act="donenow">写真なしで完了</button></div></div></div>`;
+ if(S.sheet=='none')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>対応不要の理由</h2><p class="lead">選ぶとすぐに記録され、関係者に共有されます。</p>${NONE.map(n=>`<button class="role" data-act="noneset" data-arg="${n}"><b>${n}</b></button>`).join('')}</div></div>`;
+ if(S.sheet=='addr')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>場所を指定</h2><p class="lead">${S.geo=='ok'?'現在地を取得できています。別の場所を指定することもできます。':'現在地を取得できないときは、住所か物件名を入力してください。'}</p><div class="stack"><input class="field" id="addrsheet" type="text" value="${esc(S.addr)}" placeholder="例）世田谷区桜丘2-14 メゾン桜丘" autocomplete="street-address" aria-label="住所または物件名">
+  <div class="chips">${BLD.map(b=>`<button class="chip" data-act="addrquick" data-arg="${b}">${b}</button>`).join('')}</div><button class="btn" data-act="addrsave">この場所を使う</button><button class="btn ghost" data-act="georetry">${ic('nav')}現在地を取り直す</button></div></div></div>`;
  return ''}
 
 function nav(){const un=D.threads.reduce((a,t)=>a+t.unread,0),vo=D.voices.filter(v=>v.st=='open').length;
@@ -563,7 +616,7 @@ function nav(){const un=D.threads.reduce((a,t)=>a+t.unread,0),vo=D.voices.filter
  return `<nav class="nav" aria-label="メイン">${b('map','pin','マップ')}${b('list','list','案件')}<button class="shoot" data-act="report" aria-label="写真で報告する">${ic('camera')}報告</button>${b('chat','chat','チャット',un)}${b('voice','voice','声',vo)}</nav>`}
 
 function render(){
- const V={onb:vOnb,cam:vCam,analyze:vAnalyze,dispatch:vDispatch,detail:vDetail,thread:vThread};
+ const V={onb:vOnb,cam:vCam,analyze:vAnalyze,dispatch:vDispatch,detail:vDetail,follow:vFollow,thread:vThread};
  let h;
  if(S.screen=='main')h={map:vMap,list:vList,chat:vChats,voice:vVoices}[S.tab]()+nav();else h=V[S.screen]();
  h+=vSheet(); if(S.toast)h+=`<div class="toast" role="status">${ic('check')}${esc(S.toast)}</div>`;
@@ -576,6 +629,21 @@ function postCard(tid,from,id,text){const t=D.threads.find(x=>x.id==tid);t.msgs.
 function send(text){const t=D.threads.find(x=>x.id==S.thread);text=text.trim();if(!text)return;
  t.msgs.push({me:true,f:ROLES[S.role][0],t:now(),x:text});render();
  const id=t.id;setTimeout(()=>{t.msgs.push({f:t.reply[0],t:now(),x:t.reply[1]});if(S.screen=='thread'&&S.thread==id){const v=document.getElementById('chatinput').value;render();document.getElementById('chatinput').value=v}else{t.unread++;if(S.screen=='main')render()}},1500)}
+function setAddr(v){S.addr=v;S.geo='manual';S.sheet=null;toast('場所を設定しました')}
+function complete(i,how){i.status='done';const who=how.startsWith('完了写真')?PPL[i.who].n+(i.route=='mgmt'?'':'さん'):ROLES[S.role][0];
+ i.log.push([now(),`${who}が${how}、管理・営業・オーナーへ共有`]);
+ postCard('ms','ナオス 自動共有',i.id,`「${i.title}」が完了しました。${i.after?'Before / After を確認できます。':'写真なしで完了が記録されています。'}`);
+ const v=D.voices.find(x=>x.issue==i.id);if(v){v.st='done';if(v.thread)postCard(v.thread,'ナオス 自動共有',i.id)}
+ S.issueId=i.id;S.screen='detail';S.back='main';S.justDone=true;toast('完了を共有しました')}
+function createIssue(status){const d=S.draft,s=d.s,ok=S.geo=='ok';let bld=s.bld,dist=s.dist,manual=false;
+ if(!ok){const a=(d.addr||'').trim();if(!a){d.err=true;d.ready=true;render();const el=document.getElementById('addrinput');el.focus();el.scrollIntoView({block:'center'});return null}
+  bld=BLD.find(b=>a.includes(b))||a;dist='';manual=true;S.addr=a;S.geo='manual'}
+ const i={id:seq++,key:s.key,title:s.title,cat:d.cat,pri:d.pri,bld,place:s.place,x:s.x,y:s.y,dist,status,who:s.who,eta:s.eta,route:s.route,shots:d.shots,after:null,time:now(),
+  log:[[now(),`${ROLES[S.role][0]}が写真2枚で報告${manual?'（場所は手入力）':''}`],[now(),`優先度「${PRI[d.pri].l}」と判定、${s.route=='mgmt'?'管理へ差配':'近くの'+PPL[s.who].r+'へ差配'}`]]};
+ D.issues.push(i);if(d.voice){const v=D.voices.find(x=>x.id==d.voice);v.st='prog';v.issue=i.id}
+ S.scn++;S.issueId=i.id;S.draft=null;S.cam=null;return i}
+function requestGeo(){S.geo='pending';const fail=()=>{if(S.geo=='pending'){S.geo=S.addr?'manual':'ng';soft()}},soft=()=>{if(S.screen=='main'&&S.tab=='map'&&!S.sheet)render()};
+ try{if(!navigator.geolocation)throw 0;navigator.geolocation.getCurrentPosition(p=>{S.geo='ok';S.loc=`現在地 ${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`;soft()},fail,{timeout:6000});setTimeout(fail,7000)}catch(_){S.geo=S.addr?'manual':'ng'}}
 const A={
  start(){S.screen='main';S.tab='map'},
  tab(a){S.tab=a;S.sel=null;S.screen='main'},
@@ -588,22 +656,29 @@ const A={
  camclose(){S.screen=S.cam&&S.cam.mode=='done'?'detail':'main';S.cam=null;S.draft=null},
  shutter(){const c=S.cam;if(c.busy)return;c.busy=true;const f=document.getElementById('flash');f.classList.remove('go');void f.offsetWidth;f.classList.add('go');
   setTimeout(()=>{c.busy=false;
-   if(c.mode=='report'){c.shots.push(c.s.key+(c.shots.length?'_b':'_w'));if(c.shots.length==2){S.draft={s:c.s,shots:c.shots,pri:c.s.pri,cat:c.s.cat,voice:c.voice};S.screen='analyze'}}
-   else{const i=issue(c.id);i.status='done';i.after=c.after;i.log.push([now(),`${PPL[i.who].n}${i.route=='mgmt'?'':'さん'}が完了写真を送信、管理・営業・オーナーへ共有`]);
-    postCard('ms','ナオス 自動共有',i.id,`「${i.title}」が完了しました。Before / After を確認できます。`);
-    const v=D.voices.find(x=>x.issue==i.id);if(v){v.st='done';const t=D.threads.find(x=>x.id=='ow');if(v.thread)postCard(v.thread,'ナオス 自動共有',i.id)}
-    S.cam=null;S.screen='detail';S.justDone=true;toast('完了を共有しました')}
+   if(c.mode=='report'){c.shots.push(c.s.key+(c.shots.length?'_b':'_w'));if(c.shots.length==2){const dr=S.draft={s:c.s,shots:c.shots,pri:c.s.pri,cat:c.s.cat,voice:c.voice,addr:S.geo=='manual'?S.addr:'',man:S.geo=='manual',err:false,ready:false};S.screen='analyze';setTimeout(()=>{dr.ready=true},3100)}}
+   else{const i=issue(c.id);i.after=c.after;S.cam=null;complete(i,'完了写真を送信')}
    render()},320);return false},
  setpri(a){S.draft.pri=a},
  setcat(a){S.draft.cat=a},
- submit(){const d=S.draft,s=d.s,id=seq++;
-  D.issues.push({id,key:s.key,title:s.title,cat:d.cat,pri:d.pri,bld:s.bld,place:s.place,x:s.x,y:s.y,dist:s.dist,status:'dispatched',who:s.who,eta:s.eta,route:s.route,shots:d.shots,after:null,time:now(),
-   log:[[now(),`${ROLES[S.role][0]}が写真2枚で報告`],[now(),`優先度「${PRI[d.pri].l}」と判定、${s.route=='mgmt'?'管理へ差配':'近くの'+PPL[s.who].r+'へ差配'}`]]});
-  if(d.voice){const v=D.voices.find(x=>x.id==d.voice);v.st='prog';v.issue=id}
-  S.scn++;S.issueId=id;S.draft=null;S.cam=null;S.dsp=0;S.screen='dispatch';
-  setTimeout(()=>{const i=issue(id);i.log.push([now(),i.route=='mgmt'?`管理 山田さんが${PPL[i.who].n}を手配`:`${PPL[i.who].n}さんが受諾`]);postCard('sk','ナオス 自動共有',id);if(S.screen=='dispatch'&&S.issueId==id){S.dsp=1;render()}},3200)},
- begin(){const i=issue(S.issueId);i.status='working';i.log.push([now(),`${PPL[i.who].n}${i.route=='mgmt'?'':'さん'}が現地へ向かっています`]);toast('対応を始めました')},
- finish(){const i=issue(S.issueId);S.cam={mode:'done',id:i.id,after:({trash:'trash_a',rail:'rail_a',win:'win_a',light:'light_a'})[i.key],shots:[]};S.screen='cam'},
+ addrpick(a){S.draft.addr=a;S.draft.err=false},
+ submit(){const i=createIssue('dispatched');if(!i)return false;const id=i.id;S.dsp=0;S.screen='dispatch';
+  setTimeout(()=>{if(closed(i))return;i.log.push([now(),i.route=='mgmt'?`管理 山田さんが${PPL[i.who].n}を手配`:`${PPL[i.who].n}さんが受諾`]);postCard('sk','ナオス 自動共有',id);if(S.screen=='dispatch'&&S.issueId==id){S.dsp=1;render()}},3200)},
+ selfdone(){const i=createIssue('dispatched');if(!i)return false;complete(i,'その場で対応し、完了として記録')},
+ finish(){const i=issue(S.issueId);S.sheet=null;S.cam={mode:'done',id:i.id,after:({trash:'trash_a',rail:'rail_a',win:'win_a',light:'light_a'})[i.key],shots:[]};S.screen='cam'},
+ donenow(){S.sheet=null;complete(issue(S.issueId),'完了を記録（写真なし）')},
+ noneset(a){const i=issue(S.issueId);i.status='none';i.reason=a;i.log.push([now(),`${ROLES[S.role][0]}が「対応不要」と記録（${a}）`]);
+  postCard('ms','ナオス 自動共有',i.id,`「${i.title}」は対応不要となりました。理由：${a}`);const v=D.voices.find(x=>x.issue==i.id);if(v)v.st='done';
+  S.sheet=null;S.justDone=true;toast('対応不要として記録しました')},
+ follow(){const i=issue(S.issueId);S.fu=i.follow?{...i.follow}:{type:FU.type[0],to:FU.to[0],due:FU.due[1],memo:''};S.screen='follow'},
+ fuset(a){const [k,v]=a.split('|');S.fu[k]=v},
+ todetail(){S.screen='detail'},
+ fusend(){const i=issue(S.issueId),f=S.fu;f.memo=f.memo.trim();i.follow=f;i.status='follow';i.log.push([now(),`別途対応（${f.type}）を${f.to}へ依頼、期限：${f.due}`]);
+  postCard('ms','ナオス 自動共有',i.id,`「${i.title}」は別途対応が必要です。${f.type}を${f.to}へ依頼しました（期限：${f.due}）。`);
+  S.fu=null;S.screen='detail';S.justDone=false;toast('別途対応を依頼しました')},
+ addrquick(a){setAddr(a)},
+ addrsave(){const el=document.getElementById('addrsheet'),v=el.value.trim();if(!v){el.focus();return false}setAddr(v)},
+ georetry(){S.sheet=null;requestGeo();toast('現在地を確認しています')},
  thread(a){S.thread=a;D.threads.find(x=>x.id==a).unread=0;S.screen='thread';S.back='main'},
  tochat(a){S.tab='chat';A.thread(a)},
  quick(a){send(a);return false},
@@ -619,8 +694,9 @@ document.addEventListener('click',e=>{
  const r=A[el.dataset.act](el.dataset.arg);if(r!==false)render()});
 document.addEventListener('keydown',e=>{if((e.key=='Enter'||e.key==' ')&&e.target.matches('g[data-act]')){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}))}});
 document.addEventListener('submit',e=>{e.preventDefault();if(e.target.id=='chatform'){const i=document.getElementById('chatinput');send(i.value)}});
-/* real position when the browser allows it; otherwise the demo address stays */
-try{navigator.geolocation&&navigator.geolocation.getCurrentPosition(p=>{S.loc=`現在地 ${p.coords.latitude.toFixed(4)}, ${p.coords.longitude.toFixed(4)}`;if(S.screen=='main'&&S.tab=='map'&&!S.sheet)render()},()=>{}, {timeout:5000})}catch(_){}
+document.addEventListener('input',e=>{const t=e.target;if(t.id=='addrinput'){S.draft.addr=t.value;if(S.draft.err&&t.value.trim()){S.draft.err=false;t.classList.remove('err')}}else if(t.id=='fumemo')S.fu.memo=t.value});
+/* real position when the browser allows it; otherwise the address field takes over */
+requestGeo();
 render();
 </script>
 </body>
