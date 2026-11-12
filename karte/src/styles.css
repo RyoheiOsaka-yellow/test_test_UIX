@@ -362,3 +362,33 @@ a.kpi:hover { border-color: var(--blue); }
   .cycle-row { grid-template-columns: minmax(0, 1fr); gap: 2px; margin-bottom: 8px; }
   .cycle-axis { display: none; }
 }
+
+/* ---------- データ分析 ---------- */
+.filters.inline { padding: 0; border: 0; background: none; margin: 0; }
+.hint.link { color: var(--blue); font-weight: 700; }
+.note a { color: var(--blue); text-decoration: underline; }
+.tip { background: #fff; border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 10px; box-shadow: 0 6px 18px rgba(20, 30, 60, 0.14); display: grid; font-size: 12.5px; }
+.tip span { color: var(--muted); }
+.heat { display: grid; gap: 2px; }
+.heat-row { display: grid; grid-template-columns: 108px repeat(5, minmax(0, 1fr)); gap: 2px; align-items: stretch; }
+.heat-row.head b { text-align: center; font-size: 12px; color: var(--muted); padding-bottom: 2px; }
+.heat-row > span { font-size: 13px; font-weight: 700; display: grid; align-content: center; line-height: 1.3; }
+.heat-row > span small { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+.heat-cell { font-style: normal; display: grid; place-items: center; height: 48px; border-radius: 4px; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.heat-cell.none { background: var(--bg); color: var(--muted); }
+.heat-legend { display: flex; align-items: center; gap: 2px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.heat-legend i { width: 26px; height: 10px; }
+.heat-legend span { margin: 0 6px; }
+.inbar { display: inline-flex; align-items: center; gap: 8px; }
+.inbar b { min-width: 34px; text-align: right; }
+.inbar.wide b { min-width: 78px; }
+.inbar .track { width: 110px; height: 8px; border-radius: 4px; background: #e9edf4; overflow: hidden; }
+.inbar .track span { display: block; height: 100%; border-radius: 4px; }
+.costbar { margin-top: 14px; }
+.costbar small { color: var(--muted); font-size: 12px; }
+.costbar-track { display: flex; gap: 2px; height: 16px; margin: 4px 0 6px; }
+.costbar-track span { border-radius: 4px; cursor: pointer; min-width: 4px; }
+.costbar-track span.on { outline: 2px solid var(--navy); outline-offset: 1px; }
+.costbar-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; }
+.costbar-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+.trend-row { display: none; }

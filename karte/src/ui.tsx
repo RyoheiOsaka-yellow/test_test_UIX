@@ -62,6 +62,15 @@ export function useStore(): Store {
   return s;
 }
 
+/** 部位の識別色(色覚多様性に配慮した順序で検証済み)。緊急度の赤・黄・緑とは別系統 */
+export const PART_COLOR: Record<Part, string> = {
+  外壁: '#2a78d6',
+  屋根: '#eb6834',
+  防水: '#1baf7a',
+  構造: '#eda100',
+  設備: '#e87ba4',
+};
+
 // ---------- small components ----------
 
 export function SeverityBadge({ severity, short }: { severity: Severity; short?: boolean }) {
@@ -157,3 +166,10 @@ export function downloadCsv(filename: string, header: string[], rows: (string | 
 export function Empty({ children }: { children: ReactNode }) {
   return <div className="empty">{children}</div>;
 }
+
+/** グラフ凡例の共通設定: 系列の定義順のまま並べ、文字は本文色にする(色は丸印だけが担う) */
+export const LEGEND = {
+  itemSorter: null,
+  wrapperStyle: { fontSize: 12 },
+  formatter: (value: string) => <span style={{ color: '#1c2433' }}>{value}</span>,
+} as const;

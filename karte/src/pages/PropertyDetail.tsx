@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  LabelList,
   Legend,
   Line,
   LineChart,
@@ -37,7 +40,7 @@ import {
   type Repair,
 } from '../data';
 import { DEFAULT_SIM, openCost, simulate, type SimParams } from '../sim';
-import { Empty, Photo, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
+import { Empty, LEGEND, PART_COLOR, Photo, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
 import { CycleCard } from '../Cycle';
 
 const PIN_COLOR = { urgent: '#d92d20', watch: '#f5a524', ok: '#12925a' } as const;
@@ -85,6 +88,15 @@ export default function PropertyDetail() {
   const inspDays = daysBetween(TODAY, p.nextInspection);
   const trend = [...insp].reverse();
   const listed = findings.filter((f) => !part || f.part === part);
+  const repYears = (() => {
+    if (reps.length === 0) return [];
+    const first = Math.min(...reps.map((r) => Number(r.date.slice(0, 4))));
+    return Array.from({ length: 2026 - first + 1 }, (_, i) => {
+      const y = String(first + i);
+      return { year: `${y}年`, 修繕費: Math.round(reps.filter((r) => r.date.startsWith(y)).reduce((s, r) => s + r.cost, 0) / 10000) };
+    });
+  })();
+  const costParts = open.filter((f) => f.estCost > 0);
 
   const radarData = PARTS.map((k) => ({ part: k, 当物件: p.scores[k], 類似物件平均: peer.scores[k] }));
 
@@ -202,13 +214,17 @@ export default function PropertyDetail() {
               <div className={`rating r-${ratingLabel(p.overall)}`}>{ratingLabel(p.overall)}</div>
               <div className="trend">
                 <small>評価の推移</small>
-                <div className="trend-row">
-                  {trend.map((t, i) => (
-                    <span key={t.id}>
-                      <b className={i === trend.length - 1 ? 'cur' : ''}>{t.score.toFixed(1)}</b>
-                      <i>{t.date.slice(0, 4)}</i>
-                    </span>
-                  ))}
+                <div style={{ height: 92 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={trend.map((t) => ({ year: t.date.slice(0, 4), 総合評価: t.score }))} margin={{ top: 20, right: 16, left: 16, bottom: 0 }}>
+                      <XAxis dataKey="year" fontSize={11} tickLine={false} axisLine={{ stroke: '#cfd6e2' }} />
+                      <YAxis hide domain={['dataMin - 0.6', 'dataMax + 0.3']} />
+                      <Tooltip formatter={(v) => Number(v).toFixed(1)} />
+                      <Line dataKey="総合評価" stroke="#12925a" strokeWidth={2} dot={{ r: 4, fill: '#12925a', stroke: '#fff', strokeWidth: 2 }} isAnimationActive={false}>
+                        <LabelList dataKey="総合評価" position="top" fontSize={12} fontWeight={700} fill="#1c2433" formatter={(v: any) => Number(v).toFixed(1)} />
+                      </Line>
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
@@ -238,7 +254,7 @@ export default function PropertyDetail() {
                     <PolarRadiusAxis domain={[0, 10]} tick={false} axisLine={false} />
                     <Radar dataKey="類似物件平均" stroke="#5b6577" strokeWidth={1.5} strokeDasharray="4 4" fill="none" isAnimationActive={false} />
                     <Radar dataKey="当物件" stroke="#12925a" strokeWidth={2} fill="#12925a" fillOpacity={0.14} isAnimationActive={false} />
-                    <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
+                    <Legend iconType="plainline" {...LEGEND} />
                     <Tooltip formatter={(v) => Number(v).toFixed(1)} />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -343,7 +359,7 @@ export default function PropertyDetail() {
                       <XAxis dataKey="label" fontSize={11} tickLine={false} ticks={['現在', '5年後', '10年後', '15年後']} axisLine={{ stroke: '#cfd6e2' }} />
                       <YAxis fontSize={11} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => `${Math.round(v / 10000)}`} />
                       <Tooltip formatter={(v) => fmtMan(Number(v))} />
-                      <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
+                      <Legend iconType="plainline" {...LEGEND} />
                       <ReferenceLine x={`${sim.defer}年後`} stroke="#d92d20" strokeDasharray="3 3" />
                       <Line type="stepAfter" dataKey="neglect" name="放置した場合" stroke="#d92d20" strokeWidth={2} dot={false} isAnimationActive={false} />
                       <Line type="linear" dataKey="now" name="今修繕する場合" stroke="#12925a" strokeWidth={2} dot={false} isAnimationActive={false} />
@@ -430,6 +446,20 @@ export default function PropertyDetail() {
             修繕履歴
             {reps.length > 0 && <span className="hint"> 累計 {fmtYen(reps.reduce((s, r) => s + r.cost, 0))}</span>}
           </h3>
+          {repYears.length > 1 && (
+            <div style={{ height: 120 }}>
+              <ResponsiveContainer>
+                <BarChart data={repYears} margin={{ top: 18, right: 8, left: 8, bottom: 0 }}>
+                  <XAxis dataKey="year" fontSize={11} tickLine={false} axisLine={{ stroke: '#cfd6e2' }} />
+                  <YAxis hide />
+                  <Tooltip formatter={(v) => `${Number(v).toLocaleString()}万円`} cursor={{ fill: '#f1f4f9' }} />
+                  <Bar dataKey="修繕費" fill="#2a78d6" radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={false}>
+                    <LabelList dataKey="修繕費" position="top" fontSize={11} fill="#1c2433" formatter={(v: any) => (Number(v) ? `${Number(v).toLocaleString()}万円` : '')} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           {reps.length === 0 ? (
             <Empty>修繕の記録はまだありません</Empty>
           ) : (
@@ -531,6 +561,30 @@ export default function PropertyDetail() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {total > 0 && !part && (
+          <div className="costbar">
+            <small>概算費用の内訳(合計 {fmtMan(total)})</small>
+            <div className="costbar-track">
+              {costParts.map((f) => (
+                <span
+                  key={f.id}
+                  title={`${f.part}|${f.location}: ${fmtYen(f.estCost)}`}
+                  className={f.id === selectedId ? 'on' : ''}
+                  style={{ width: `${(f.estCost / total) * 100}%`, background: PART_COLOR[f.part] }}
+                  onClick={() => setSelectedId(f.id)}
+                />
+              ))}
+            </div>
+            <div className="costbar-legend">
+              {costParts.map((f) => (
+                <span key={f.id}>
+                  <i style={{ background: PART_COLOR[f.part] }} />
+                  {f.part}|{f.location} {fmtMan(f.estCost)}({Math.round((f.estCost / total) * 100)}%)
+                </span>
+              ))}
+            </div>
           </div>
         )}
         {!ownerView && <p className="note">対応状況を変更すると、下の連携記録に自動で追記されます。</p>}

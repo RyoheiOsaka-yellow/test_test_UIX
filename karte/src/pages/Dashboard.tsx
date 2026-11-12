@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CalendarClock, ChevronRight, CircleAlert, Hourglass, Wallet } from 'lucide-react';
-import { STATUSES, TODAY, addMonths, daysBetween, fmtDate, fmtMan, fmtYm, properties, propertyById } from '../data';
-import { Empty, StatusBadge, useStore } from '../ui';
+import { PARTS, STATUSES, TODAY, addMonths, daysBetween, fmtDate, fmtMan, fmtYm, properties, propertyById } from '../data';
+import { Empty, LEGEND, StatusBadge, useStore } from '../ui';
 
 const ME = '青木 涼';
 
@@ -42,9 +42,26 @@ export default function Dashboard() {
       .map((f) => ({ f, wait: daysBetween(f.statusDate, TODAY) }))
       .sort((a, b) => (a.f.dueBy! < b.f.dueBy! ? -1 : a.f.dueBy! > b.f.dueBy! ? 1 : b.wait - a.wait));
 
+    const byPart = PARTS.map((part) => {
+      const fs = open.filter((f) => f.part === part);
+      return {
+        part,
+        早急: fs.filter((f) => f.severity === 'urgent').length,
+        経過観察: fs.filter((f) => f.severity === 'watch').length,
+        cost: fs.reduce((s, f) => s + f.estCost, 0),
+      };
+    });
+    const bins = [
+      { bin: '6.0未満', lo: 0, hi: 6 },
+      { bin: '6.0〜6.9', lo: 6, hi: 7 },
+      { bin: '7.0〜7.9', lo: 7, hi: 8 },
+      { bin: '8.0〜8.9', lo: 8, hi: 9 },
+      { bin: '9.0以上', lo: 9, hi: 11 },
+    ].map((b) => ({ bin: b.bin, 棟数: props.filter((p) => p.overall >= b.lo && p.overall < b.hi).length }));
+
     const insp = [...overdue, ...soon].sort((a, b) => (a.nextInspection < b.nextInspection ? -1 : 1));
 
-    return { props, open, urgent, within3y, overdue, soon, byYear, pipeline, queue, insp };
+    return { props, open, urgent, within3y, overdue, soon, byYear, pipeline, queue, insp, byPart, bins };
   }, [findings, scope]);
 
   const maxPipe = Math.max(1, ...d.pipeline.map((p) => p.count));
@@ -128,8 +145,8 @@ export default function Dashboard() {
                 <XAxis dataKey="year" tickLine={false} axisLine={{ stroke: '#cfd6e2' }} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} width={48} />
                 <Tooltip formatter={(v) => `${Number(v).toLocaleString()}万円`} cursor={{ fill: '#f1f4f9' }} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="早急" stackId="a" fill="#d92d20" maxBarSize={44} />
+                <Legend iconType="circle" {...LEGEND} />
+                <Bar dataKey="早急" stackId="a" fill="#d92d20" stroke="#fff" strokeWidth={1} maxBarSize={44} />
                 <Bar dataKey="経過観察" stackId="a" fill="#f5a524" radius={[4, 4, 0, 0]} maxBarSize={44} />
               </BarChart>
             </ResponsiveContainer>
@@ -156,6 +173,52 @@ export default function Dashboard() {
           <p className="note">
             「未対応」「見積中」は社内、「提案済」はオーナー様の判断待ちです。行をクリックすると該当の指摘一覧を開きます。
           </p>
+        </section>
+      </div>
+
+      <div className="grid-2">
+        <section className="card">
+          <header>
+            <h2>部位別の未完了指摘</h2>
+            <span className="hint">件数。右端は概算額の合計</span>
+          </header>
+          <div style={{ height: 220 }}>
+            <ResponsiveContainer>
+              <BarChart data={d.byPart} layout="vertical" margin={{ top: 4, right: 84, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="#e7ebf2" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} fontSize={12} />
+                <YAxis type="category" dataKey="part" tickLine={false} axisLine={{ stroke: '#cfd6e2' }} fontSize={12} width={44} />
+                <Tooltip formatter={(v) => `${v}件`} cursor={{ fill: '#f1f4f9' }} />
+                <Legend iconType="circle" {...LEGEND} />
+                <Bar dataKey="早急" stackId="a" fill="#d92d20" stroke="#fff" strokeWidth={1} maxBarSize={20} isAnimationActive={false} />
+                <Bar dataKey="経過観察" stackId="a" fill="#f5a524" stroke="#fff" strokeWidth={1} maxBarSize={20} radius={[0, 4, 4, 0]} isAnimationActive={false}>
+                  <LabelList dataKey="cost" position="right" formatter={(v: any) => fmtMan(Number(v))} fontSize={12} fill="#667085" />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+
+        <section className="card">
+          <header>
+            <h2>総合評価の分布</h2>
+            <Link className="hint link" to="/analytics">
+              データ分析でさらに見る
+            </Link>
+          </header>
+          <div style={{ height: 220 }}>
+            <ResponsiveContainer>
+              <BarChart data={d.bins} margin={{ top: 20, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="#e7ebf2" vertical={false} />
+                <XAxis dataKey="bin" tickLine={false} axisLine={{ stroke: '#cfd6e2' }} fontSize={12} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} fontSize={12} width={30} />
+                <Tooltip formatter={(v) => `${v}棟`} cursor={{ fill: '#f1f4f9' }} />
+                <Bar dataKey="棟数" fill="#2a78d6" radius={[4, 4, 0, 0]} maxBarSize={56} isAnimationActive={false}>
+                  <LabelList dataKey="棟数" position="top" fontSize={12} fill="#1c2433" />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </section>
       </div>
 
