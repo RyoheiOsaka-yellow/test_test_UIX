@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>AAA プロトタイプ 仕様書(現時点)</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 16mm; }
+:root { --ink:#1a2238; --muted:#5e6880; --line:#d9dfea; --navy:#1b2545; --blue:#2a62d6; --soft:#f3f6fb; }
+* { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+body { margin:0; color:var(--ink); font-family:"Noto Sans CJK JP","Noto Sans JP","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif; font-size:10pt; line-height:1.65; }
+.page { max-width:180mm; margin:0 auto; }
+.cover { height:255mm; display:flex; flex-direction:column; justify-content:center; break-after:page; }
+.cover small { letter-spacing:.12em; color:var(--muted); font-size:10pt; }
+.cover h1 { font-size:30pt; margin:6mm 0 2mm; line-height:1.25; border:0; }
+.cover p.sub { font-size:13pt; color:var(--muted); margin:0 0 14mm; }
+.cover table { width:auto; }
+.cover td { border:0; padding:1.5mm 8mm 1.5mm 0; }
+.cover .bar { width:28mm; height:2mm; background:var(--navy); }
+h1 { font-size:15pt; margin:0 0 4mm; padding-bottom:1.5mm; border-bottom:2px solid var(--navy); break-after:avoid; }
+h1 span { color:var(--blue); margin-right:3mm; }
+section { break-before:page; }
+section.cont { break-before:auto; margin-top:9mm; }
+h2 { font-size:11.5pt; margin:6mm 0 2mm; break-after:avoid; }
+h2 code { font-size:9pt; font-weight:400; color:var(--muted); margin-left:2mm; }
+p { margin:0 0 2.5mm; }
+ul { margin:0 0 2.5mm; padding-left:1.3em; }
+li { margin-bottom:.6mm; }
+table { width:100%; border-collapse:collapse; margin:0 0 3mm; font-size:9.3pt; }
+th { background:var(--soft); text-align:left; padding:1.6mm 2.2mm; border:1px solid var(--line); white-space:nowrap; font-weight:700; }
+td { padding:1.25mm 2.2mm; border:1px solid var(--line); vertical-align:top; }
+tr { break-inside:avoid; }
+table { break-inside:avoid; }
+td.k { white-space:nowrap; font-weight:700; }
+code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:8.8pt; }
+figure { margin:2mm 0 4mm; break-inside:avoid; }
+figure img { width:100%; border:1px solid var(--line); border-radius:1.5mm; display:block; }
+figcaption { font-size:8.5pt; color:var(--muted); margin-top:1mm; }
+.row { display:flex; gap:4mm; align-items:flex-start; }
+.row figure { flex:1; }
+.phones figure { flex:0 0 40mm; }
+.note { background:var(--soft); border-left:1.2mm solid var(--blue); padding:2.5mm 3.5mm; margin:0 0 3mm; break-inside:avoid; }
+.warn { border-left-color:#d08a00; background:#fff7e6; }
+.formula { background:var(--soft); padding:2.5mm 3.5mm; margin:0 0 3mm; font-size:9.5pt; break-inside:avoid; }
+.toc td { border:0; border-bottom:1px dotted var(--line); padding:1.8mm 0; }
+.toc td:first-child { width:10mm; color:var(--blue); font-weight:700; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="cover">
+  <div class="bar"></div>
+  <small>修繕データ一元管理プロダクト</small>
+  <h1>AAA プロトタイプ<br>仕様書</h1>
+  <p class="sub">現時点の実装内容</p>
+  <table>
+    <tr><td>作成日</td><td>2026年11月12日</td></tr>
+    <tr><td>対象</td><td>単一HTML版プロトタイプ(tatemono-karte.html)</td></tr>
+    <tr><td>位置づけ</td><td>社内提案用デモ。表示データはすべて架空</td></tr>
+  </table>
+</div>
+
+<section style="break-before:auto">
+<h1><span>0</span>目次</h1>
+<table class="toc">
+<tr><td>1</td><td>概要</td></tr>
+<tr><td>2</td><td>画面構成</td></tr>
+<tr><td>3</td><td>画面別の仕様</td></tr>
+<tr><td>4</td><td>端末別の表示</td></tr>
+<tr><td>5</td><td>データ項目</td></tr>
+<tr><td>6</td><td>評価と試算のロジック</td></tr>
+<tr><td>7</td><td>技術構成</td></tr>
+<tr><td>8</td><td>現時点の制約と未実装</td></tr>
+<tr><td>9</td><td>画面に使っている調査結果の出典</td></tr>
+</table>
+</section>
+
+<section>
+<h1><span>1</span>概要</h1>
+<h2>1.1 目的</h2>
+<p>賃貸物件の修繕に関わる情報(点検結果、指摘事項、見積、修繕履歴、オーナーとのやり取り)を1か所にまとめて見える化し、次の3点を実現する。</p>
+<ul>
+<li>修繕がいつ必要かを、担当者がすぐ把握できる</li>
+<li>担当者がオーナーへ、根拠を示しながら分かりやすく説明できる</li>
+<li>社内とオーナーへの情報共有を一本化する</li>
+</ul>
+<h2>1.2 利用者</h2>
+<table>
+<tr><th>利用者</th><th>使い方</th></tr>
+<tr><td class="k">社員(担当者)</td><td>主な利用者。全画面を操作する。物件の状態把握、検索、対応状況の更新、オーナーへの説明</td></tr>
+<tr><td class="k">社員(管理職)</td><td>ダッシュボードとデータ分析で、全社・支店・担当者ごとの状況を見る</td></tr>
+<tr><td class="k">オーナー</td><td>自分では操作しない。担当者が「AAA(説明用)」画面を見せるか、A4レポートを受け取る</td></tr>
+</table>
+<h2>1.3 プロトタイプの範囲</h2>
+<div class="note warn">本プロトタイプは画面と操作の流れを確認するためのもので、データはすべて架空(48物件、固定の乱数から毎回同じ内容を生成)。サーバーやデータベースはなく、画面で変更した内容は再読み込みで元に戻る。</div>
+<table>
+<tr><th>できること</th><th>できないこと</th></tr>
+<tr><td>全画面の閲覧と画面間の移動、検索と絞り込み、並べ替え、グラフ表示、対応状況の変更(一時的)、試算条件の変更、CSV出力、A4レポートの印刷・PDF保存</td><td>データの保存、ログインと権限、指摘や写真の新規登録、既存システムとの連携、オーナーへの実際の通知</td></tr>
+</table>
+</section>
+
+<section>
+<h1><span>2</span>画面構成</h1>
+<p>左のメニューと画面上部の全体検索から各画面へ移動する。物件に関する画面は「物件詳細」を起点に、説明用画面とレポートへ進む。</p>
+<table>
+<tr><th>#</th><th>画面</th><th>URL(#以降)</th><th>役割</th></tr>
+<tr><td>1</td><td class="k">ダッシュボード</td><td><code>/</code></td><td>今日動くべき案件と全体の状況をつかむ</td></tr>
+<tr><td>2</td><td class="k">物件を探す</td><td><code>/properties</code></td><td>物件を条件で絞り込み、一覧から詳細へ進む</td></tr>
+<tr><td>3</td><td class="k">物件詳細</td><td><code>/properties/:id</code></td><td>1物件の状態・指摘・試算・履歴・やり取りをまとめて見て、対応状況を更新する</td></tr>
+<tr><td>4</td><td class="k">AAA(説明用)</td><td><code>/karte/:id</code></td><td>オーナーへの説明に使う4ブロック画面。ブラウザ・iPad・スマホの3表示</td></tr>
+<tr><td>5</td><td class="k">お客様向けレポート</td><td><code>/properties/:id/report</code></td><td>オーナーに渡すA4の報告書。印刷・PDF保存</td></tr>
+<tr><td>6</td><td class="k">指摘・修繕データ</td><td><code>/records</code></td><td>全物件の指摘・修繕・点検を横断して検索し、CSVで出力</td></tr>
+<tr><td>7</td><td class="k">データ分析</td><td><code>/analytics</code></td><td>築年数・部位・支店・担当者の切り口で傾向を見る</td></tr>
+<tr><td>8</td><td class="k">修繕の課題と狙い</td><td><code>/insights</code></td><td>公的資料にもとづく修繕の課題と、対応する画面の対応表</td></tr>
+</table>
+<h2>全画面共通</h2>
+<ul>
+<li><b>全体検索</b>: 画面上部。物件名・オーナー名・住所、指摘内容、修繕内容を横断して検索する。「/」キーで入力欄に移動。</li>
+<li><b>表記</b>: 緊急度は「要対応(早急)」「要対応(経過観察)」「問題なし」の3段階。対応状況は「未対応 → 見積中 → 提案済 → 承認済 → 工事中 → 完了」の6段階。</li>
+<li><b>基準日</b>: デモ上の今日は2026年11月12日で固定。</li>
+</ul>
+</section>
+
+<section>
+<h1><span>3</span>画面別の仕様</h1>
+
+<h2>3.1 ダッシュボード <code>/</code></h2>
+<figure><img src="spec-img/dashboard.jpg"><figcaption>ダッシュボード</figcaption></figure>
+<table>
+<tr><th>要素</th><th>内容</th></tr>
+<tr><td class="k">表示範囲の切り替え</td><td>「全社」と「自分の担当」</td></tr>
+<tr><td class="k">主要指標(4つ)</td><td>早急対応が必要な指摘、オーナー未提案の指摘、点検期限、今後3年の修繕推奨額(概算)</td></tr>
+<tr><td class="k">修繕推奨時期ごとの概算額</td><td>推奨時期ごとの概算費用を部位別に積み上げた棒グラフ</td></tr>
+<tr><td class="k">対応の進み具合</td><td>対応状況6段階ごとの件数</td></tr>
+<tr><td class="k">部位別の未完了指摘</td><td>外壁・屋根・防水・構造・設備ごとの件数</td></tr>
+<tr><td class="k">総合評価の分布</td><td>物件の総合評価の分布</td></tr>
+<tr><td class="k">優先して動く案件</td><td>早急対応で未完了の指摘の一覧。推奨時期を過ぎたものに印を付ける。行から物件詳細へ</td></tr>
+<tr><td class="k">点検期限</td><td>次回点検が近い、または過ぎた物件</td></tr>
+</table>
+
+<h2>3.2 物件を探す <code>/properties</code></h2>
+<figure><img src="spec-img/properties.jpg"><figcaption>物件を探す(「石神井」で検索した状態)</figcaption></figure>
+<table>
+<tr><th>要素</th><th>内容</th></tr>
+<tr><td class="k">キーワード</td><td>物件名・オーナー名・住所など。表記ゆれ(全角半角、大文字小文字)を吸収。空白区切りで複数語のAND検索</td></tr>
+<tr><td class="k">絞り込み</td><td>都道府県、構造、築年数の帯、指摘の有無(早急対応あり/経過観察のみ/指摘なし)、担当</td></tr>
+<tr><td class="k">一覧</td><td>列見出しで並べ替え。行から物件詳細へ</td></tr>
+<tr><td class="k">条件の保持</td><td>検索条件はURLに入るため、URLを共有すれば同じ結果を開ける</td></tr>
+</table>
+
+<h2>3.3 物件詳細 <code>/properties/:id</code></h2>
+<figure><img src="spec-img/detail.jpg"><figcaption>物件詳細</figcaption></figure>
+<table>
+<tr><th>要素</th><th>内容</th></tr>
+<tr><td class="k">注意の帯</td><td>早急対応の指摘や点検期限など、その物件でまず見るべきこと</td></tr>
+<tr><td class="k">建物コンディション</td><td>総合評価、5項目のレーダーチャート(類似物件平均と重ねて表示)、点検ごとの評価の推移</td></tr>
+<tr><td class="k">要修繕箇所</td><td>配置図上のピンと写真。修繕前後のイメージ表示</td></tr>
+<tr><td class="k">将来修繕シミュレーション</td><td>先送り年数・工事費上昇率・補修範囲の拡大率をスライダーで変えて試算</td></tr>
+<tr><td class="k">点検・修繕履歴</td><td>点検と修繕の一覧、年ごとの修繕費の棒グラフ</td></tr>
+<tr><td class="k">修繕時期の目安</td><td>国土交通省ガイドブックの修繕周期と、物件の築年数・修繕実績の照合</td></tr>
+<tr><td class="k">指摘一覧</td><td>対応状況をその場で変更できる。概算費用の内訳バー</td></tr>
+<tr><td class="k">やり取りの履歴</td><td>点検・見積・提案・オーナー連絡・承認・工事を時系列で表示</td></tr>
+<tr><td class="k">移動</td><td>「AAA(説明用)で開く」「お客様向けレポート(PDF)」</td></tr>
+</table>
+
+<h2 style="break-before:page">3.4 AAA(説明用) <code>/karte/:id</code></h2>
+<p>担当者がオーナーに画面を見せながら説明するための画面。4つのブロックで構成する。</p>
+<figure><img src="spec-img/aaa-desktop.jpg"><figcaption>AAA(説明用) ブラウザ表示</figcaption></figure>
+<table>
+<tr><th>ブロック</th><th>内容</th><th>操作</th></tr>
+<tr><td class="k">① 建物コンディション</td><td>総合評価(10点満点)と判定、次に必要な修繕の時期、5項目(外壁・屋根・防水・構造・設備)のレーダーチャート、項目ごとの点数と平均との差、評価の推移</td><td>比較対象を「築年数が近い物件」「同じ地域の物件」で切り替え。項目を押すと②の該当箇所へ</td></tr>
+<tr><td class="k">② 要修繕箇所の見える化</td><td>地図風の配置図に番号付きのピン。選んだ箇所の内容・推奨時期・概算費用・対応状況・写真(全景/中景/近景)</td><td>ピンか一覧で箇所を選ぶ。写真を押すと拡大。修繕前後をスライダーで見比べる。対応状況の変更と社内メモ</td></tr>
+<tr><td class="k">③ 将来修繕シミュレーション</td><td>修繕を先送りした場合の追加費用、放置した場合のリスク、利回りの比較</td><td>グラフを「修繕費の比較」「累積コスト」「建物評価の見通し」で切り替え</td></tr>
+<tr><td class="k">④ 点検・修繕履歴</td><td>点検履歴(点検日・総合評価・主な指摘・次回点検・報告書)と修繕履歴(日付・箇所・内容・金額)</td><td>—</td></tr>
+</table>
+<table>
+<tr><th>上部の操作</th><th>内容</th></tr>
+<tr><td class="k">物件の切り替え</td><td>別の物件の説明用画面へ移る</td></tr>
+<tr><td class="k">お客様に見せる</td><td>押している間は社内メモ、対応状況の変更、物件の切り替え(他のオーナー名)、新着バッジを隠す。対応状況は表示のみになる</td></tr>
+<tr><td class="k">表示の切り替え</td><td>ブラウザ / iPad / スマホ(4章)</td></tr>
+<tr><td class="k">通知設定</td><td>オーナーへの通知方法(メール・LINE・プッシュ通知)の選択。画面上の切り替えのみで、通知は送られない</td></tr>
+</table>
+
+<h2>3.5 お客様向けレポート <code>/properties/:id/report</code></h2>
+<div class="row">
+<figure style="flex:0 0 78mm"><img src="spec-img/report.jpg"><figcaption>お客様向けレポート(1ページ目)</figcaption></figure>
+<div>
+<p>オーナーに渡すA4縦の報告書。ブラウザの印刷機能で紙またはPDFにする。ページ数は指摘の件数に応じて増える(例の物件で3ページ)。</p>
+<table>
+<tr><th>#</th><th>章</th></tr>
+<tr><td>1</td><td>要点(物件の状態から自動で文章を組み立て)</td></tr>
+<tr><td>2</td><td>建物の状態(レーダーチャートと項目別の表)</td></tr>
+<tr><td>3</td><td>修繕時期の目安</td></tr>
+<tr><td>4</td><td>修繕が必要な箇所(番号付き配置図と一覧)</td></tr>
+<tr><td>5</td><td>なぜ今か(先送りした場合の試算)</td></tr>
+<tr><td>6</td><td>修繕計画</td></tr>
+<tr><td>7</td><td>点検・修繕の履歴</td></tr>
+<tr><td>8</td><td>今後の進め方</td></tr>
+</table>
+<p>会社名と電話番号は仮の表記(「(管理会社名)」「00-0000-0000」)。</p>
+</div>
+</div>
+
+<h2>3.6 指摘・修繕データ <code>/records</code></h2>
+<figure><img src="spec-img/records.jpg"><figcaption>指摘・修繕データ</figcaption></figure>
+<table>
+<tr><th>タブ</th><th>列</th></tr>
+<tr><td class="k">指摘</td><td>緊急度、物件、部位|箇所、指摘内容、指摘日、推奨時期、概算費用、対応状況。絞り込み結果の概算合計を表示</td></tr>
+<tr><td class="k">修繕</td><td>修繕日、物件、部位、修繕箇所、修繕内容、金額(税込)、施工会社。金額合計を表示</td></tr>
+<tr><td class="k">点検</td><td>点検日、物件、総合評価、主な指摘内容、次回点検、点検者</td></tr>
+</table>
+<p>キーワード検索(例:「防水 石神井」)と絞り込みができ、表示中の結果をCSVで出力できる。</p>
+
+<h2>3.7 データ分析 <code>/analytics</code></h2>
+<figure><img src="spec-img/analytics.jpg"><figcaption>データ分析</figcaption></figure>
+<table>
+<tr><th>グラフ</th><th>内容</th></tr>
+<tr><td class="k">築年数と総合評価</td><td>散布図。点を押すと物件詳細へ</td></tr>
+<tr><td class="k">築年帯 × 部位</td><td>どの築年帯でどの部位の指摘が多いかの色分け表</td></tr>
+<tr><td class="k">年ごとの修繕費</td><td>部位別の積み上げ棒グラフ</td></tr>
+<tr><td class="k">部位別の指摘、評価の分布</td><td>件数の棒グラフ</td></tr>
+<tr><td class="k">担当者ごとの負荷</td><td>担当物件と未完了の指摘の件数</td></tr>
+<tr><td class="k">支店別のまとめ</td><td>支店ごとの物件数・評価・指摘・概算額の表</td></tr>
+</table>
+<p>支店と構造で絞り込める。</p>
+
+<h2>3.8 修繕の課題と狙い <code>/insights</code></h2>
+<p>調査で確認した修繕の課題7点を、出典とともに示し、それぞれに対応する画面へのリンクを置く。出典は9章。</p>
+</section>
+
+<section>
+<h1><span>4</span>端末別の表示</h1>
+<p>AAA(説明用)は1つの画面を3通りに表示する。開いたときの画面幅とタッチ操作の有無から自動で選び、上部のボタンで手動でも切り替えられる。</p>
+<table>
+<tr><th>表示</th><th>自動で選ばれる条件</th><th>構成</th></tr>
+<tr><td class="k">ブラウザ</td><td>幅1100px以上(タッチ端末は1400px以上)</td><td>4ブロックを2列×2段に並べた1画面</td></tr>
+<tr><td class="k">iPad</td><td>幅700px以上で上記未満</td><td>①〜④を1ページずつ。上部タブか左右スワイプで移動。情報量はブラウザ表示と同等</td></tr>
+<tr><td class="k">スマホ</td><td>幅700px未満</td><td>①〜④を1ページずつスワイプ。文字は14px以上、表はカード形式に置き換え</td></tr>
+</table>
+<div class="row phones">
+<figure style="flex:1"><img src="spec-img/aaa-tablet.jpg"><figcaption>iPad表示(①)</figcaption></figure>
+<figure><img src="spec-img/aaa-phone1.jpg"><figcaption>スマホ表示 ①</figcaption></figure>
+<figure><img src="spec-img/aaa-phone2.jpg"><figcaption>スマホ表示 ②</figcaption></figure>
+</div>
+<p>そのほかの画面(ダッシュボード、検索、分析など)はパソコンのブラウザでの利用を想定している。実機のiPad・iPhoneでの確認は未実施。</p>
+</section>
+
+<section>
+<h1><span>5</span>データ項目</h1>
+<p>プロトタイプが内部で持っている項目。実データを入れる際の項目定義のたたき台になる。</p>
+<h2>5.1 物件</h2>
+<table>
+<tr><th>項目</th><th>内容</th></tr>
+<tr><td class="k">物件ID、物件名</td><td>例: P-0001</td></tr>
+<tr><td class="k">所在地</td><td>都道府県、市区町村、住所</td></tr>
+<tr><td class="k">支店、担当者</td><td>管理する支店と担当社員</td></tr>
+<tr><td class="k">オーナー</td><td>氏名、カナ</td></tr>
+<tr><td class="k">建物</td><td>竣工年、築年数、構造(木造/軽量鉄骨造/RC造)、階数、戸数</td></tr>
+<tr><td class="k">評価</td><td>5項目(外壁・屋根・防水・構造・設備)の点数と総合評価</td></tr>
+<tr><td class="k">配置図</td><td>建物と駐車場の位置と大きさ</td></tr>
+<tr><td class="k">点検</td><td>前回点検日、次回点検日</td></tr>
+<tr><td class="k">通知設定</td><td>メール、LINE、プッシュ通知の有無</td></tr>
+</table>
+<h2>5.2 指摘</h2>
+<table>
+<tr><th>項目</th><th>内容</th></tr>
+<tr><td class="k">指摘ID、物件ID</td><td>例: F-0001</td></tr>
+<tr><td class="k">部位、箇所</td><td>部位は5区分。箇所は自由記述(例: 北側、2Fバルコニー)</td></tr>
+<tr><td class="k">緊急度</td><td>要対応(早急)/要対応(経過観察)/問題なし</td></tr>
+<tr><td class="k">件名、説明</td><td>指摘の内容</td></tr>
+<tr><td class="k">指摘日、推奨修繕時期</td><td>推奨時期は「この月まで」</td></tr>
+<tr><td class="k">概算費用</td><td>円</td></tr>
+<tr><td class="k">対応状況、更新日</td><td>未対応/見積中/提案済/承認済/工事中/完了</td></tr>
+<tr><td class="k">配置図上の位置</td><td>ピンの座標</td></tr>
+<tr><td class="k">写真枚数、社内メモ</td><td>—</td></tr>
+</table>
+<h2>5.3 点検・修繕・やり取り</h2>
+<table>
+<tr><th>種類</th><th>項目</th></tr>
+<tr><td class="k">点検</td><td>点検ID、物件ID、点検日、総合評価、主な指摘内容、次回点検までの年数、点検者</td></tr>
+<tr><td class="k">修繕</td><td>修繕ID、物件ID、修繕日、部位、修繕箇所、修繕内容、金額、施工会社</td></tr>
+<tr><td class="k">やり取り</td><td>ID、物件ID、日付、種類(点検/指摘登録/見積/提案/オーナー連絡/承認/工事/報告書)、実施者、手段(メール/LINE/電話/訪問/マイページ)、内容、オーナーに見せてよい記録か</td></tr>
+</table>
+</section>
+
+<section>
+<h1><span>6</span>評価と試算のロジック</h1>
+<div class="note warn">以下の基準値と係数はすべてプロトタイプ用の仮置き。実運用の基準はデータ定義の作業で決める。</div>
+<h2>6.1 評価</h2>
+<table>
+<tr><th>項目</th><th>内容</th></tr>
+<tr><td class="k">項目別評価</td><td>外壁・屋根・防水・構造・設備をそれぞれ10点満点で評価</td></tr>
+<tr><td class="k">総合評価</td><td>5項目の平均(小数1桁)</td></tr>
+<tr><td class="k">判定</td><td>8点以上「優良」、7点台「良好」、6点台「注意」、6点未満「要改善」</td></tr>
+</table>
+<h2>6.2 類似物件との比較</h2>
+<table>
+<tr><th>比較対象</th><th>範囲</th></tr>
+<tr><td class="k">築年数が近い物件</td><td>同じ構造で築年数が±5年以内の物件の平均。3件に満たない場合は構造を問わず築年数±5年</td></tr>
+<tr><td class="k">同じ地域の物件</td><td>同じ都道府県の物件の平均。3件に満たない場合は全物件</td></tr>
+</table>
+<h2>6.3 先送りした場合の修繕費</h2>
+<div class="formula">n年後の修繕費 = 現在の概算費用 × (1 + 工事費の年間上昇率)<sup>n</sup> × (1 + 補修範囲の年間拡大率)<sup>n</sup></div>
+<table>
+<tr><th>前提</th><th>初期値</th><th>根拠</th></tr>
+<tr><td class="k">現在の概算費用</td><td>未完了の要対応指摘の概算費用の合計</td><td>—</td></tr>
+<tr><td class="k">先送り年数</td><td>5年</td><td>—</td></tr>
+<tr><td class="k">工事費の年間上昇率</td><td>3%</td><td>建設コストの上昇を踏まえた仮定(9章)</td></tr>
+<tr><td class="k">補修範囲の年間拡大率</td><td>8%</td><td>仮定。裏づける公的な統計は見つかっていない</td></tr>
+</table>
+<p>例の物件(サンライズコート石神井)では、現在398万円が5年後に約678万円となり、追加費用は約280万円。累積コストのグラフは、両方の場合に共通の小修繕費を毎年加えて15年分を表示する。</p>
+<h2>6.4 建物評価の見通し</h2>
+<ul>
+<li>放置した場合: 過去の点検での評価の低下ペース(年0.15〜0.45点の範囲に制限)がそのまま続くとして10年分を表示</li>
+<li>今修繕した場合: 指摘のある部位が8.5点まで回復し、その後は同じペースで低下</li>
+</ul>
+<h2>6.5 修繕時期の目安</h2>
+<p>国土交通省「民間賃貸住宅の計画修繕ガイドブック」の修繕周期と、物件の築年数・修繕実績を照らして「目安まであと○年」「目安時期に入っています」「目安時期を経過」「実施済み」を表示する。</p>
+<table>
+<tr><th>工事</th><th>目安(築年数)</th><th>工事</th><th>目安(築年数)</th></tr>
+<tr><td>外壁 塗装</td><td>11〜18年</td><td>階段・廊下 鉄部塗装</td><td>4〜10年</td></tr>
+<tr><td>屋根 塗装・補修</td><td>11〜15年</td><td>給湯器・エアコン 交換</td><td>11〜15年</td></tr>
+<tr><td>屋根 防水・葺替</td><td>21〜25年</td><td>給排水管 取替</td><td>30年</td></tr>
+<tr><td>階段・廊下 塗装・防水</td><td>11〜18年</td><td></td><td></td></tr>
+</table>
+<h2>6.6 利回りの比較</h2>
+<p>③に表示する「計画修繕を行った場合と行わなかった場合の利回り」は、国土交通省の資料の試算値をそのまま引用している(木造 2.78% と 2.13%、RC造 2.53% と 1.90%)。物件ごとの計算はしていない。</p>
+</section>
+
+<section class="cont">
+<h1><span>7</span>技術構成</h1>
+<table>
+<tr><th>項目</th><th>内容</th></tr>
+<tr><td class="k">配布形態</td><td>HTMLファイル1つ(約1MB)。プログラム・デザイン・写真をすべて内蔵し、ダブルクリックで開ける。通信は発生しない</td></tr>
+<tr><td class="k">使用技術</td><td>React、TypeScript、Vite、Recharts(グラフ)、lucide-react(アイコン)</td></tr>
+<tr><td class="k">データ</td><td>ファイル内で生成する架空データ。物件48件と、それに紐づく指摘・点検・修繕・やり取り</td></tr>
+<tr><td class="k">状態の保持</td><td>対応状況の変更などはブラウザのメモリ上のみ。再読み込みで初期状態に戻る</td></tr>
+<tr><td class="k">印刷</td><td>お客様向けレポートはA4縦に合わせた印刷用レイアウト</td></tr>
+<tr><td class="k">ソースコード</td><td>リポジトリの <code>karte/</code> フォルダ。<code>npm run build:html</code> で単一HTMLを生成</td></tr>
+</table>
+</section>
+
+<section class="cont">
+<h1><span>8</span>現時点の制約と未実装</h1>
+<table>
+<tr><th>区分</th><th>内容</th></tr>
+<tr><td class="k">データ</td><td>すべて架空。評価点、概算費用、推奨時期の基準は仮置き</td></tr>
+<tr><td class="k">保存</td><td>変更は保存されない。複数人での同時利用はできない</td></tr>
+<tr><td class="k">ログイン・権限</td><td>なし。担当者は固定の1名として表示</td></tr>
+<tr><td class="k">登録</td><td>指摘・点検・修繕の新規登録画面はない。「写真を追加」は表示のみ</td></tr>
+<tr><td class="k">写真</td><td>1枚の建物写真を全物件で共用し、切り出して全景・中景・近景としている。実際の損傷は写っていない。「修繕前」の画像は同じ写真を加工したもの</td></tr>
+<tr><td class="k">配置図</td><td>架空の配置(A棟・B棟)で、写真の建物とは一致しない</td></tr>
+<tr><td class="k">通知</td><td>設定の切り替え表示のみ。メール・LINE・プッシュ通知は送られない</td></tr>
+<tr><td class="k">連携</td><td>基幹システムや点検報告書との連携はない</td></tr>
+<tr><td class="k">会社情報</td><td>会社名、電話番号、ロゴは仮</td></tr>
+<tr><td class="k">動作確認</td><td>パソコンのブラウザ(Chromium)で確認。iPad・iPhoneの実機は未確認</td></tr>
+</table>
+</section>
+
+<section class="cont">
+<h1><span>9</span>画面に使っている調査結果の出典</h1>
+<table>
+<tr><th>出典</th><th>使っている内容</th></tr>
+<tr><td class="k">国土交通省<br>民間賃貸住宅の計画修繕ガイドブック</td><td>修繕周期の目安(6.5)。計画修繕の有無による利回りの試算(6.6)</td></tr>
+<tr><td class="k">国土交通省<br>賃貸住宅管理業者向けの資料</td><td>民間賃貸住宅 約1,530万戸。計画修繕を実施しているオーナーは約4割、未実施は約2割。管理業者の約2割が未実施、約4割が「ノウハウがない」と回答</td></tr>
+<tr><td class="k">国土交通省<br>2017年の調査</td><td>オーナー・管理に関する調査結果の数値(36.6%、22.8%、94.1%、12.3%)</td></tr>
+<tr><td class="k">国土交通省<br>賃貸住宅管理業者への立入検査</td><td>168社中118社に是正指導。うちオーナーへの定期報告に関する違反が17件</td></tr>
+<tr><td class="k">日本建設業連合会</td><td>建設資材の価格は5年で39%上昇、直近2年で9%上昇。建設コスト全体で7.3〜8.2%の上昇</td></tr>
+</table>
+<p>「先送りすると工事費が何割増えるか」「データが分散していることによる損失」を直接示す公的な統計は見つかっておらず、画面上でも仮定・仮説と明記している。</p>
+</section>
+
+</div>
+</body>
+</html>
