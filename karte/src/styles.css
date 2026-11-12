@@ -393,7 +393,7 @@ a.kpi:hover { border-color: var(--blue); }
 .costbar-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
 .trend-row { display: none; }
 
-/* ---------- お客様向けカルテ(A4) ---------- */
+/* ---------- お客様向けレポート(A4) ---------- */
 .report { background: #dfe3ea; min-height: 100vh; padding: 0 0 40px; overflow-x: auto; }
 .report-bar { position: sticky; top: 0; z-index: 10; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 20px; font-size: 13px; flex-wrap: wrap; }
 .sheet { width: 210mm; min-height: 297mm; margin: 20px auto; background: #fff; box-shadow: 0 4px 18px rgba(20, 30, 60, 0.18); padding: 11mm 13mm 9mm; display: flex; flex-direction: column; font-size: 12.5px; line-height: 1.6; color: var(--text); }
@@ -761,7 +761,7 @@ a.kpi:hover { border-color: var(--blue); }
 .rp-photo { width: 92px; flex: none; }
 .rp-photo .shot { aspect-ratio: 4 / 3; height: auto; border-radius: 6px; display: block; }
 
-/* 建物カルテ(説明用)を社員向けに */
+/* AAA(説明用)を社員向けに */
 .mp-switch { flex: 0 1 300px; min-width: 0; background: #ffffff1f; color: #fff; border: 1px solid #ffffff40; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
 .mp-switch option { color: var(--text); }
 .mp-user b small { font-weight: 400; color: #b9c3da; }

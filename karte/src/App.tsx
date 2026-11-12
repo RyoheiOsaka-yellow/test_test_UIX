@@ -192,7 +192,7 @@ function Shell() {
             <ClipboardList size={17} /> 指摘・修繕データ
           </NavLink>
           <NavLink to="/karte/P-0001">
-            <Presentation size={17} /> 建物カルテ(説明用)
+            <Presentation size={17} /> AAA(説明用)
           </NavLink>
           <NavLink to="/analytics">
             <ChartColumn size={17} /> データ分析

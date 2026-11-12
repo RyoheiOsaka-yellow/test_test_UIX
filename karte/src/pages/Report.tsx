@@ -49,7 +49,7 @@ function Sheet({ p, page, total, children }: { p: Property; page: number; total:
     <section className="sheet">
       <header className="sheet-head">
         <span>
-          <b>建物カルテ</b> {p.name}
+          <b>AAA</b> {p.name}
         </span>
         <span>
           発行日 {fmtDate(TODAY)} ／ {page} / {total}
@@ -60,7 +60,7 @@ function Sheet({ p, page, total, children }: { p: Property; page: number; total:
         <span>
           {COMPANY} {p.branch} ／ 担当 {p.staff}
         </span>
-        <span>本書の費用・時期は点検時点の概算です。正式なお見積りで確定します。 ／ AAA</span>
+        <span>本書の費用・時期は点検時点の概算です。正式なお見積りで確定します。</span>
       </footer>
     </section>
   );
@@ -228,9 +228,9 @@ export default function Report() {
     <div className="report">
       <div className="report-bar no-print">
         <Link to={`/properties/${p.id}`} className="btn light">
-          <ArrowLeft size={15} /> カルテに戻る
+          <ArrowLeft size={15} /> 物件詳細に戻る
         </Link>
-        <span>お客様にお渡しする建物カルテ(A4・{pages}ページ)</span>
+        <span>お客様にお渡しするAAAレポート(A4・{pages}ページ)</span>
         <button className="btn primary" onClick={() => window.print()}>
           <Printer size={15} /> 印刷 / PDFで保存
         </button>
@@ -240,7 +240,7 @@ export default function Report() {
       <Sheet p={p} page={1} total={pages}>
         <div className="rp-title">
           <div>
-            <small>建物カルテ ご報告書</small>
+            <small>AAA ご報告書</small>
             <h1>{p.name}</h1>
             <p>
               {p.address} ／ 築{p.age}年({p.builtYear}年築)・{p.structure}・{p.floors}階建・{p.units}戸

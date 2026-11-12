@@ -154,7 +154,7 @@ export default function Analytics() {
         <section className="card">
           <header>
             <h2>築年数と総合評価</h2>
-            <span className="hint">1点が1棟。右下ほど古くて状態が悪い。点をクリックでカルテへ</span>
+            <span className="hint">1点が1棟。右下ほど古くて状態が悪い。点をクリックで物件詳細へ</span>
           </header>
           <div style={{ height: 300 }}>
             <ResponsiveContainer>

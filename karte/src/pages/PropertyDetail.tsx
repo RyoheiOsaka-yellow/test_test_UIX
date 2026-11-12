@@ -131,7 +131,7 @@ export default function PropertyDetail() {
         <div>
           <h1>
             {p.name}
-            {ownerView && <span className="h1-sub"> 建物カルテ</span>}
+            {ownerView && <span className="h1-sub"> AAA</span>}
           </h1>
           <p className="sub">{p.address}</p>
           <div className="chips">
@@ -153,11 +153,11 @@ export default function PropertyDetail() {
         <div className="actions no-print">
           {!ownerView && (
             <Link className="btn primary" to={`/karte/${p.id}`}>
-              <Eye size={15} /> 建物カルテ(説明用)で開く
+              <Eye size={15} /> AAA(説明用)で開く
             </Link>
           )}
           <Link className="btn" to={`/properties/${p.id}/report`}>
-            <Printer size={15} /> お客様向けカルテ(PDF)
+            <Printer size={15} /> お客様向けレポート(PDF)
           </Link>
         </div>
       </div>

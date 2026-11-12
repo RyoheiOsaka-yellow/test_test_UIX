@@ -46,7 +46,7 @@ const ISSUES: Issue[] = [
     ],
     answer: '建物の状態を点数・配置図・写真で示し、「いつまでに・どこを・いくらで」を1画面で伝える。',
     to: '/karte/P-0001',
-    toLabel: '建物カルテ(説明用)を見る',
+    toLabel: 'AAA(説明用)を見る',
     sources: [0],
   },
   {
@@ -58,7 +58,7 @@ const ISSUES: Issue[] = [
     ],
     answer: '類似物件との比較・修繕時期の目安・費用試算を自動で用意し、担当者の経験に頼らず同じ根拠で提案できるようにする。',
     to: '/properties/P-0001',
-    toLabel: '建物カルテを見る',
+    toLabel: '物件詳細を見る',
     sources: [2, 0],
   },
   {

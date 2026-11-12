@@ -266,7 +266,7 @@ export default function Dashboard() {
                         </td>
                         <td className={`r num ${wait > 180 ? 'danger' : ''}`}>{wait}日</td>
                         <td className="r">
-                          <Link to={`/properties/${p.id}?f=${f.id}`} aria-label="カルテを開く" className="iconlink">
+                          <Link to={`/properties/${p.id}?f=${f.id}`} aria-label="物件詳細を開く" className="iconlink">
                             <ChevronRight size={16} />
                           </Link>
                         </td>

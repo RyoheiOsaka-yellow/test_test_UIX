@@ -756,7 +756,7 @@ export default function MyPage() {
   );
   const reportBtn = (
     <Link to={`/properties/${p.id}/report`} className="mp-btn primary">
-      <FileText size={big ? 20 : 16} /> {big ? 'お客様用PDF' : 'お客様向けカルテ(PDF)'}
+      <FileText size={big ? 20 : 16} /> {big ? 'お客様用PDF' : 'お客様向けレポート(PDF)'}
     </Link>
   );
 
@@ -844,7 +844,7 @@ export default function MyPage() {
         <div className={`mp v-${variant}`}>
           <header className="mp-head">
             <div>
-              <b>AAA 建物カルテ</b>
+              <b>AAA</b>
               <span>
                 {p.name} ／ {p.owner} 様
               </span>
