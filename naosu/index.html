@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#FFFFFF">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>ナオス 修繕リレー</title>
+<title>BBB 修繕リレー</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
 /* Layout: one app column that fills the phone; white chrome, grey ground, one corporate blue for actions, thin borders instead of shadows. */
@@ -626,7 +626,7 @@ function mapSVG(o={}){
 /* ---------- screens ---------- */
 function vOnb(){
  const f=[['camera','写真2枚で報告','全体とアップを撮るだけ。入力は不要です。'],['pin','優先度と位置で自動差配','緊急度に応じて、管理または近くの対応者へ届きます。'],['chat','完了まで全員で共有','管理・営業・オーナーが同じ記録を確認できます。']];
- return `<section class="screen onb pad"><div class="brandrow"><span class="mark">${ic('check')}</span><div><b>ナオス</b><span>修繕リレー</span></div></div>
+ return `<section class="screen onb pad"><div class="brandrow"><span class="mark">${ic('check')}</span><div><b>BBB</b><span>修繕リレー</span></div></div>
  <div><h1>建物の不具合を、見つけたその場で。</h1><p class="lead">報告から差配、完了の共有までを1つにまとめます。</p></div>
  <ul class="feats">${f.map(x=>`<li><span class="tile">${ic(x[0])}</span><div><b>${x[1]}</b><span>${x[2]}</span></div></li>`).join('')}</ul>
  <div style="margin-top:auto"><button class="btn" data-act="start">はじめる</button><p class="note">試作版のため、撮影にはサンプル写真を使用します。</p></div></section>`}
@@ -654,7 +654,7 @@ function vMap(){
   stats=cell('f1',open.length,'近くの依頼')+cell('f2',mine,'自分の担当','w')+cell('f3',fin,'今日の完了','d');
   extra=`<button class="avail ${S.avail?'on':''}" data-act="avail" role="switch" aria-checked="${S.avail}"><span class="body"><b>${S.avail?'いま対応できます':'いまは対応できません'}</b><span class="meta">${S.avail?'近くで依頼が出ると、ここに届きます':'オンにすると近くの依頼が届きます'}</span></span><span class="sw"></span></button>`;
   list=rows(withSel(sorted().filter(i=>!closed(i))))}
- return `<section class="screen home">${header('ナオス',sub)}
+ return `<section class="screen home">${header('BBB',sub)}
  <div class="mapwrap">${mapSVG({pins:S.role=='owner'?all.filter(i=>OWN.includes(i.bld)):all,me:hasLoc(),staff:S.role=='owner'?[]:CAND.map(c=>c[0])})}${locChip()}</div>
  <div class="sheet"><div class="scroll pad"><div class="sheethead"><h2>${head[0]}</h2><span>${head[1]}</span></div>
  <div class="counts">${stats}</div>${extra}
@@ -798,8 +798,8 @@ function send(text){const t=D.threads.find(x=>x.id==S.thread);text=text.trim();i
 function setAddr(v){S.addr=v;S.geo='manual';S.sheet=null;toast('場所を設定しました')}
 function complete(i,how){i.status='done';if(S.role=='field')i.doneBy='me';const who=how.startsWith('完了写真')?nm(i):ROLES[S.role][0];
  i.log.push([now(),`${who}が${how}、管理・営業・オーナーへ共有`]);
- postCard('ms','ナオス 自動共有',i.id,`「${i.title}」が完了しました。${i.after?'Before / After を確認できます。':'写真なしで完了が記録されています。'}`);
- const v=D.voices.find(x=>x.issue==i.id);if(v){v.st='done';if(v.thread)postCard(v.thread,'ナオス 自動共有',i.id)}
+ postCard('ms','BBB 自動共有',i.id,`「${i.title}」が完了しました。${i.after?'Before / After を確認できます。':'写真なしで完了が記録されています。'}`);
+ const v=D.voices.find(x=>x.issue==i.id);if(v){v.st='done';if(v.thread)postCard(v.thread,'BBB 自動共有',i.id)}
  S.issueId=i.id;S.screen='detail';S.back='main';S.justDone=true;buzz(30);toast('完了を共有しました')}
 function createIssue(status){const d=S.draft,s=d.s,ok=S.geo=='ok';let bld=s.bld,dist=s.dist,manual=false;
  if(!ok){const a=(d.addr||'').trim();if(!a){d.err=true;d.ready=true;render();const el=document.getElementById('addrinput');el.focus();el.scrollIntoView({block:'center'});return null}
@@ -848,12 +848,12 @@ const A={
  setcat(a){S.draft.cat=a},
  addrpick(a){S.draft.addr=a;S.draft.err=false},
  submit(){const i=createIssue('dispatched');if(!i)return false;const id=i.id;S.dsp=0;S.dspT0=Date.now();NUMS.cand=0;NUMS.near=400;S.screen='dispatch';
-  setTimeout(()=>{if(closed(i))return;i.log.push([now(),i.route=='mgmt'?`管理 山田さんが${PPL[i.who].n}を手配`:`${PPL[i.who].n}さんが受諾`]);postCard('sk','ナオス 自動共有',id);if(S.screen=='dispatch'&&S.issueId==id){S.dsp=1;render()}},3200)},
+  setTimeout(()=>{if(closed(i))return;i.log.push([now(),i.route=='mgmt'?`管理 山田さんが${PPL[i.who].n}を手配`:`${PPL[i.who].n}さんが受諾`]);postCard('sk','BBB 自動共有',id);if(S.screen=='dispatch'&&S.issueId==id){S.dsp=1;render()}},3200)},
  selfdone(){const i=createIssue('dispatched');if(!i)return false;complete(i,'その場で対応し、完了として記録')},
  finish(){const i=issue(S.issueId);S.sheet=null;S.cam={mode:'done',id:i.id,after:({trash:'trash_a',rail:'rail_a',win:'win_a',light:'light_a'})[i.key],shots:[]};S.screen='cam';startCam()},
  donenow(){S.sheet=null;complete(issue(S.issueId),'完了を記録（写真なし）')},
  noneset(a){const i=issue(S.issueId);i.status='none';i.reason=a;i.log.push([now(),`${ROLES[S.role][0]}が「対応不要」と記録（${a}）`]);
-  postCard('ms','ナオス 自動共有',i.id,`「${i.title}」は対応不要となりました。理由：${a}`);const v=D.voices.find(x=>x.issue==i.id);if(v)v.st='done';
+  postCard('ms','BBB 自動共有',i.id,`「${i.title}」は対応不要となりました。理由：${a}`);const v=D.voices.find(x=>x.issue==i.id);if(v)v.st='done';
   S.sheet=null;S.justDone=true;toast('対応不要として記録しました')},
  follow(){const i=issue(S.issueId);S.fu=i.follow?{...i.follow}:{type:FU.type[0],to:FU.to[0],due:FU.due[1],memo:''};S.screen='follow'},
  fuset(a){const [k,v]=a.split('|');S.fu[k]=v},
@@ -874,7 +874,7 @@ const A={
  ofcancel(){S.of.phase='pick';S.of.res={}},
 
  fusend(){const i=issue(S.issueId),f=S.fu;f.memo=f.memo.trim();i.follow=f;i.status='follow';i.log.push([now(),`別途対応（${f.type}）を${f.to}へ依頼、期限：${f.due}`]);
-  postCard('ms','ナオス 自動共有',i.id,`「${i.title}」は別途対応が必要です。${f.type}を${f.to}へ依頼しました（期限：${f.due}）。`);
+  postCard('ms','BBB 自動共有',i.id,`「${i.title}」は別途対応が必要です。${f.type}を${f.to}へ依頼しました（期限：${f.due}）。`);
   S.fu=null;S.screen='detail';S.justDone=false;toast('別途対応を依頼しました')},
  addrquick(a){setAddr(a)},
  addrsave(){const el=document.getElementById('addrsheet'),v=el.value.trim();if(!v){el.focus();return false}setAddr(v)},
