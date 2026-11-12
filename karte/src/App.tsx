@@ -177,7 +177,7 @@ function Shell() {
         <div className="brand">
           <Building2 size={20} />
           <div>
-            <b>建物カルテ</b>
+            <b>AAA</b>
             <small>修繕データ一元管理</small>
           </div>
         </div>

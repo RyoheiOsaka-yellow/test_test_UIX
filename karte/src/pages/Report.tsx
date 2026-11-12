@@ -60,7 +60,7 @@ function Sheet({ p, page, total, children }: { p: Property; page: number; total:
         <span>
           {COMPANY} {p.branch} ／ 担当 {p.staff}
         </span>
-        <span>本書の費用・時期は点検時点の概算です。正式なお見積りで確定します。</span>
+        <span>本書の費用・時期は点検時点の概算です。正式なお見積りで確定します。 ／ AAA</span>
       </footer>
     </section>
   );

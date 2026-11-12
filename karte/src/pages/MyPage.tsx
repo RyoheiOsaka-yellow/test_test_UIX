@@ -844,7 +844,7 @@ export default function MyPage() {
         <div className={`mp v-${variant}`}>
           <header className="mp-head">
             <div>
-              <b>建物カルテ</b>
+              <b>AAA 建物カルテ</b>
               <span>
                 {p.name} ／ {p.owner} 様
               </span>
