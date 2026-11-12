@@ -152,8 +152,8 @@ export default function PropertyDetail() {
         </div>
         <div className="actions no-print">
           {!ownerView && (
-            <Link className="btn primary" to={`/mypage/${p.id}`}>
-              <Eye size={15} /> オーナー向けマイページ
+            <Link className="btn primary" to={`/karte/${p.id}`}>
+              <Eye size={15} /> 建物カルテ(説明用)で開く
             </Link>
           )}
           <Link className="btn" to={`/properties/${p.id}/report`}>

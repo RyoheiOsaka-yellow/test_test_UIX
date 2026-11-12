@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -36,6 +36,8 @@ import {
 } from 'lucide-react';
 import {
   PARTS,
+  STATUSES,
+  properties,
   fmtDate,
   fmtMan,
   fmtYen,
@@ -47,6 +49,7 @@ import {
   regionAverage,
   repairsOf,
   type Finding,
+  type FindingStatus,
   type Inspection,
   type Part,
   type Property,
@@ -194,6 +197,7 @@ export default function MyPage() {
   const { id } = useParams();
   const p = propertyById.get(id ?? '');
   const store = useStore();
+  const navigate = useNavigate();
   const [variant, setVariant] = useState<Variant>(initialVariant);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [compare, setCompare] = useState<'age' | 'region'>('age');
@@ -412,6 +416,23 @@ export default function MyPage() {
                     <dd>{fmtYen(selected.estCost)}</dd>
                   </div>
                 </dl>
+              )}
+              {selected.severity !== 'ok' && (
+                <div className="b2-staff">
+                  <label>
+                    <span>対応状況</span>
+                    <select
+                      className={`status-select st-${selected.status}`}
+                      value={selected.status}
+                      onChange={(e) => store.setStatus(selected.id, e.target.value as FindingStatus)}
+                    >
+                      {STATUSES.map((st) => (
+                        <option key={st}>{st}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {selected.memo && <p>社内メモ: {selected.memo}</p>}
+                </div>
               )}
               <div className="b2-photo-head">
                 <b>写真 {selected.photos}枚</b>
@@ -735,7 +756,7 @@ export default function MyPage() {
   );
   const reportBtn = (
     <Link to={`/properties/${p.id}/report`} className="mp-btn primary">
-      <FileText size={big ? 20 : 16} /> {big ? 'レポート' : '報告書(PDF)出力'}
+      <FileText size={big ? 20 : 16} /> {big ? 'お客様用PDF' : 'お客様向けカルテ(PDF)'}
     </Link>
   );
 
@@ -797,8 +818,15 @@ export default function MyPage() {
     <div className={`mp-page ${paged ? 'paged' : ''}`}>
       <div className="mp-toolbar no-print">
         <Link to={`/properties/${p.id}`} className="btn light">
-          <ArrowLeft size={15} /> <span>社内画面に戻る</span>
+          <ArrowLeft size={15} /> <span>物件詳細へ</span>
         </Link>
+        <select className="mp-switch" value={p.id} onChange={(e) => navigate(`/karte/${e.target.value}`)} aria-label="物件を切り替え">
+          {properties.map((q) => (
+            <option key={q.id} value={q.id}>
+              {q.name}({q.owner} 様)
+            </option>
+          ))}
+        </select>
         <div className="seg" role="group" aria-label="表示デバイス">
           <button className={variant === 'desktop' ? 'on' : ''} onClick={() => setVariant('desktop')}>
             <Monitor size={15} /> ブラウザ
@@ -816,19 +844,20 @@ export default function MyPage() {
         <div className={`mp v-${variant}`}>
           <header className="mp-head">
             <div>
-              <b>建物カルテ(マイページ)</b>
-              <span>{p.name}</span>
+              <b>建物カルテ</b>
+              <span>
+                {p.name} ／ {p.owner} 様
+              </span>
             </div>
             <div className="mp-user">
-              <span className="ic">
-                <Mail size={18} />
-                <i>3</i>
-              </span>
-              <span className="ic">
+              <span className="ic" title="担当物件の新着">
                 <Bell size={18} />
                 <i>1</i>
               </span>
-              <b>{p.owner} 様</b>
+              <b>
+                {p.staff}
+                <small> 担当</small>
+              </b>
             </div>
           </header>
 
@@ -879,8 +908,8 @@ export default function MyPage() {
               <div className="mp-grid">{blocks}</div>
               <footer className="mp-foot">
                 <div>
-                  <b>お知らせ・通知</b>
-                  <small>点検結果や修繕提案などを、メール・LINE・プッシュ通知でお知らせします。</small>
+                  <b>オーナー様への通知設定</b>
+                  <small>点検結果や修繕提案を、オーナー様が選んだ方法(メール・LINE・プッシュ通知)でお知らせします。</small>
                 </div>
                 {notifyBar}
                 {reportBtn}
