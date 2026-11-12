@@ -348,6 +348,45 @@ img.ph,video.ph{object-fit:cover;display:block}
 .sample:active{background:rgba(255,255,255,.12)}
 .typing{align-self:flex-start}
 
+/* roles, offers, stalled */
+.st.open,.st.stall{color:var(--urgent)}
+.counts .count{padding:8px 10px}
+.avail{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;min-height:56px}
+.avail .body{flex:1;min-width:0}
+.avail b{display:block;font-size:13.5px}
+.avail.on{border-color:var(--brand-line);background:var(--brand-soft)}
+.sw{width:44px;height:26px;border-radius:13px;background:var(--done);position:relative;flex:none;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+.avail.on .sw{background:var(--brand)}.avail.on .sw::after{transform:translateX(18px)}
+.datetile{width:56px;height:56px;border-radius:6px;background:var(--brand-soft);color:var(--brand);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;font-size:11px;font-weight:700;line-height:1.3}
+.datetile b{font-family:var(--f-num);font-size:15px;font-weight:600}
+.ring{position:relative;width:52px;height:52px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:4}
+.ring .bg{stroke:var(--line)}.ring .fg{stroke:var(--brand);stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-num);font-size:17px;font-weight:600}
+.inchead{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.inchead h2{margin:0;flex:1}
+.inchead p{font-size:12px;color:var(--mute)}
+.modal .dstats{margin:12px 0}
+.btnrow .grow{flex:2}
+.offmap{height:clamp(120px,22vh,190px);flex:none;position:relative;background:#E9EDF2;overflow:hidden;border-bottom:1px solid var(--line)}
+.offmap svg{position:absolute;inset:0;width:100%;height:100%}
+.cand{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;min-height:60px}
+.cand .body{flex:1;min-width:0}
+.cand b{display:block;font-size:14px}
+.cand.on{border-color:var(--brand);background:var(--brand-soft)}
+.cand.busy{opacity:.6}
+.cand .box{width:22px;height:22px;border-radius:5px;border:1.5px solid var(--done);display:grid;place-items:center;color:#fff;flex:none}
+.cand.on .box{background:var(--brand);border-color:var(--brand)}
+.cand .box .ic{width:14px;height:14px;stroke-width:3}
+.tagfree{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--low-soft);color:var(--low);margin-left:6px;white-space:nowrap}
+.tagbusy{font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--bg);color:var(--mute);margin-left:6px;white-space:nowrap}
+.res{font-size:12px;font-weight:700;flex:none;color:var(--mute)}
+.res.yes{color:var(--low)}.res.wait{color:var(--brand)}
+.waitline{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700}
+.waitline b{font-family:var(--f-num);font-size:20px;color:var(--brand);font-weight:600}
+
 /* small and short phones */
 @media (max-width:359px){
   body{font-size:13.5px}
@@ -465,7 +504,7 @@ function ph(k){
 
 /* ---------- data ---------- */
 const PRI={urgent:{l:'緊急',o:0,c:'var(--urgent)'},high:{l:'高',o:1,c:'#E07A1F'},mid:{l:'中',o:2,c:'#D39B00'},low:{l:'低',o:3,c:'var(--low)'}};
-const STL={dispatched:'差配済',working:'対応中',follow:'別途対応中',done:'完了',none:'対応不要'};
+const STL={open:'未差配',dispatched:'移動中',working:'対応中',follow:'別途対応中',done:'完了',none:'対応不要'};
 const closed=i=>i.status=='done'||i.status=='none';
 const BLD=['メゾン桜丘','コーポ千歳','グランデ経堂','ハイツ若葉'];
 const FU={type:['業者の手配','見積もり','部材の発注','オーナー承認','再訪問'],to:['管理','営業','オーナー','協力業者'],due:['今日中','3日以内','1週間以内','未定']};
@@ -475,8 +514,18 @@ const PPL={
  sato:{n:'佐藤 健',r:'巡回スタッフ',i:'佐',pos:[122,186]},
  suzuki:{n:'鈴木 美咲',r:'清掃パートナー',i:'鈴',pos:[238,268]},
  glass:{n:'東和ガラス',r:'協力業者',i:'東',pos:[336,318]},
- ito:{n:'伊藤 大輔',r:'巡回スタッフ',i:'伊',pos:[290,440]}
+ ito:{n:'伊藤 大輔',r:'巡回スタッフ',i:'伊',pos:[290,440]},
+ ogawa:{n:'小川 真一',r:'近隣パートナー',i:'小',pos:[214,214]},
+ tanaka:{n:'田中 由美',r:'管理スタッフ',i:'田',pos:[112,330]},
+ me:{n:'あなた',r:'現地スタッフ',i:'自',pos:[176,306]}
 };
+/* people who can be offered a job: key, distance in metres from the site */
+const CAND=[['suzuki',280],['ogawa',450],['sato',620],['ito',780],['tanaka',900]];
+const VIEW=[{bld:'コーポ千歳',room:'202号室',day:'今日',time:'17:30',today:true,issue:102},{bld:'グランデ経堂',room:'103号室',day:'明日',time:'14:00',issue:101}];
+const OWN=['メゾン桜丘','コーポ千歳'];
+const LIMIT={urgent:60,high:180,mid:480,low:1440};
+const ago=m=>Date.now()-m*60000;
+const T=m=>{const d=new Date(ago(m));return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
 const ME=[176,306];
 const SCN=[
  {key:'trash',title:'ゴミ置き場の散乱',cat:'清掃・ゴミ',pri:'mid',bld:'メゾン桜丘',place:'1階 ゴミ置き場',x:158,y:262,dist:'60m',who:'suzuki',eta:4,route:'onsite',tags:['ゴミ袋 5点','収集日外','通路をふさいでいない'],why:'道具なしで片付けられるため、近くの清掃パートナーへ'},
@@ -484,17 +533,21 @@ const SCN=[
  {key:'win',title:'共用廊下の窓ガラス割れ',cat:'破損・危険',pri:'urgent',bld:'メゾン桜丘',place:'1階 共用廊下',x:150,y:270,dist:'50m',who:'glass',eta:35,route:'mgmt',tags:['ガラス破片','貫通あり','けがの恐れ'],why:'専門工事が必要なため、管理経由で協力業者を手配'}
 ];
 const CATS=['清掃・ゴミ','破損・危険','設備','その他'];
-let seq=106;
+let seq=110;
 const D={
  issues:[
-  {id:101,key:'win',title:'共用廊下の窓ガラス割れ',cat:'破損・危険',pri:'urgent',bld:'グランデ経堂',place:'1階 共用廊下',x:206,y:420,dist:'450m',status:'working',who:'glass',eta:25,route:'mgmt',shots:['win_w','win_b'],after:null,time:'09:12',
-   log:[['09:12','巡回中の佐藤さんが写真2枚で報告'],['09:13','優先度「緊急」と判定、管理へ差配'],['09:20','管理 山田さんが東和ガラスを手配'],['09:48','東和ガラスが現地へ出発']]},
-  {id:102,key:'rail',title:'外階段の手すり破損',cat:'破損・危険',pri:'high',bld:'コーポ千歳',place:'外階段 2階踊り場',x:304,y:206,dist:'620m',status:'dispatched',who:'sato',eta:12,route:'onsite',shots:['rail_w','rail_b'],after:null,time:'09:40',
-   log:[['09:40','営業 高橋さんが内見の下見中に報告'],['09:41','優先度「高」と判定、近くの巡回スタッフへ差配'],['09:43','佐藤さんが受諾']]},
-  {id:103,key:'trash',title:'ゴミ置き場の散乱',cat:'清掃・ゴミ',pri:'mid',bld:'ハイツ若葉',place:'敷地内 ゴミ置き場',x:322,y:398,dist:'780m',status:'dispatched',who:'ito',eta:9,route:'onsite',shots:['trash_w','trash_b'],after:null,time:'10:02',
-   log:[['10:02','入居者アプリからの通報を現地スタッフが撮影'],['10:03','優先度「中」と判定、近くの巡回スタッフへ差配']]},
-  {id:104,key:'light',title:'共用灯の球切れ',cat:'設備',pri:'low',bld:'コーポ千歳',place:'2階 共用廊下',x:296,y:196,dist:'610m',status:'done',who:'sato',eta:0,route:'onsite',shots:['rail_w','light_b'],after:'light_a',time:'昨日',
-   log:[['16:10','写真2枚で報告'],['16:11','優先度「低」と判定、巡回スタッフへ差配'],['17:02','佐藤さんが完了写真を送信、管理・営業・オーナーへ共有']]}
+  {id:101,key:'win',title:'共用廊下の窓ガラス割れ',cat:'破損・危険',pri:'urgent',bld:'グランデ経堂',place:'1階 共用廊下',x:206,y:420,dist:'450m',status:'dispatched',who:'glass',eta:25,route:'mgmt',shots:['win_w','win_b'],after:null,at:ago(48),
+   log:[[T(48),'巡回中の佐藤さんが写真2枚で報告'],[T(47),'優先度「緊急」と判定、管理へ差配'],[T(40),'管理 山田さんが東和ガラスを手配'],[T(12),'東和ガラスが現地へ出発']]},
+  {id:102,key:'rail',title:'外階段の手すり破損',cat:'破損・危険',pri:'high',bld:'コーポ千歳',place:'外階段 2階踊り場',x:304,y:206,dist:'620m',status:'working',who:'sato',eta:0,route:'onsite',shots:['rail_w','rail_b'],after:null,at:ago(80),
+   log:[[T(80),'営業 高橋さんが内見の下見中に報告'],[T(79),'優先度「高」と判定、近くの巡回スタッフへ差配'],[T(77),'佐藤さんが受諾'],[T(15),'佐藤さんが到着、対応を開始']]},
+  {id:103,key:'trash',title:'ゴミ置き場の散乱',cat:'清掃・ゴミ',pri:'mid',bld:'ハイツ若葉',place:'敷地内 ゴミ置き場',x:322,y:398,dist:'780m',status:'dispatched',who:'ito',eta:9,route:'onsite',shots:['trash_w','trash_b'],after:null,at:ago(560),
+   log:[[T(560),'入居者からの通報を現地スタッフが撮影'],[T(559),'優先度「中」と判定、近くの巡回スタッフへ差配'],[T(540),'伊藤さんが受諾（別件のため到着が遅れています）']]},
+  {id:105,key:'light',title:'エントランス照明の球切れ',cat:'設備',pri:'mid',bld:'メゾン桜丘',place:'1階 エントランス',x:166,y:256,dist:'220m',status:'open',who:null,eta:0,route:'onsite',shots:['rail_w','light_b'],after:null,at:ago(18),
+   log:[[T(18),'入居者からの連絡を管理が登録'],[T(18),'優先度「中」と判定、近くで手の空いている人を探しています']]},
+  {id:106,key:'trash',title:'駐輪場まわりのゴミ',cat:'清掃・ゴミ',pri:'low',bld:'グランデ経堂',place:'駐輪場',x:226,y:436,dist:'480m',status:'open',who:null,eta:0,route:'onsite',shots:['trash_w','trash_b'],after:null,at:ago(35),
+   log:[[T(35),'営業 高橋さんが内見の下見中に報告'],[T(35),'優先度「低」と判定、差配待ち']]},
+  {id:104,key:'light',title:'共用灯の球切れ',cat:'設備',pri:'low',bld:'コーポ千歳',place:'2階 共用廊下',x:296,y:196,dist:'610m',status:'done',who:'sato',eta:0,route:'onsite',shots:['rail_w','light_b'],after:'light_a',at:ago(1500),
+   log:[[T(1500),'写真2枚で報告'],[T(1499),'優先度「低」と判定、巡回スタッフへ差配'],[T(1448),'佐藤さんが完了写真を送信、管理・営業・オーナーへ共有']]}
  ],
  threads:[
   {id:'ms',name:'管理 ⇄ 営業',sub:'全物件の連絡',ini:'連',unread:2,reply:['管理 山田','承知しました。完了したらこのスレッドに写真つきで流れます。'],quick:['内見は明日14時です','完了見込みを教えてください','オーナーへは私から連絡します'],
@@ -510,19 +563,24 @@ const D={
   {id:3,name:'渡辺 様',bld:'コーポ千歳',ini:'渡',t:'昨日',st:'ok',text:'空室の募集状況を月に一度まとめて共有してほしいです。',note:'営業 高橋さんが返信済み'}
  ]
 };
-const S={screen:'onb',tab:'map',role:'field',sel:null,filter:'open',issueId:null,cam:null,draft:null,dsp:0,thread:null,sheet:null,toast:null,scn:0,loc:'',geo:'pending',addr:'',fu:null,justDone:false};
+const S={screen:'onb',tab:'map',role:'field',sel:null,filter:'open',issueId:null,cam:null,draft:null,dsp:0,thread:null,sheet:null,toast:null,scn:0,loc:'',geo:'pending',addr:'',fu:null,justDone:false,avail:true,inc:null,of:null,nextOffer:0};
 
 /* ---------- helpers ---------- */
 const issue=id=>D.issues.find(i=>i.id==id);
-const sorted=()=>[...D.issues].sort((a,b)=>closed(a)-closed(b)||PRI[a.pri].o-PRI[b.pri].o||b.id-a.id);
+const elapsed=i=>Math.max(0,Math.floor((Date.now()-i.at)/60000));
+const fmtEl=m=>m<60?m+'分':Math.floor(m/60)+'時間'+(m%60?m%60+'分':'');
+const stalled=i=>!closed(i)&&elapsed(i)>LIMIT[i.pri];
+const nm=i=>!i.who?'担当未定':i.who=='me'?'あなた':PPL[i.who].n+(i.route=='mgmt'?'':'さん');
+const busy=k=>D.issues.some(i=>!closed(i)&&i.who==k);
+const sorted=()=>[...D.issues].sort((a,b)=>closed(a)-closed(b)||stalled(b)-stalled(a)||PRI[a.pri].o-PRI[b.pri].o||b.id-a.id);
 const pill=p=>`<span class="pill p-${p}"><i></i>${PRI[p].l}</span>`;
 const stat=i=>`<span class="st ${i.status}">${i.status=='done'?ic('check'):''}${STL[i.status]}</span>`;
 const thumbKey=i=>i.after||i.shots[1];
-function row(i,sel){return `<button class="row ${sel?'sel':''}" data-act="open" data-arg="${i.id}"><span class="thumb">${ph(thumbKey(i))}</span><span class="body"><span class="ttl">${esc(i.title)}</span><span class="meta">${esc(i.bld)}・${esc(i.place)}</span><span class="meta">${i.dist?i.dist+' ・ ':''}${closed(i)?STL[i.status]:PPL[i.who].n+(i.route=='mgmt'?'':'さん')}${live(i)?' ・ あと'+num('eta'+i.id,i.eta)+'分':''}</span></span><span class="side">${closed(i)?'':pill(i.pri)}${stat(i)}</span></button>`}
+function row(i,sel){return `<button class="row ${sel?'sel':''}" data-act="open" data-arg="${i.id}"><span class="thumb">${ph(thumbKey(i))}</span><span class="body"><span class="ttl">${esc(i.title)}</span><span class="meta">${esc(i.bld)}・${esc(i.place)}</span><span class="meta">${i.dist?i.dist+' ・ ':''}${closed(i)?STL[i.status]:nm(i)}${live(i)?' ・ あと'+num('eta'+i.id,i.eta)+'分':''}</span></span><span class="side">${closed(i)?'':pill(i.pri)}${stalled(i)?`<span class="st stall">滞留 ${fmtEl(elapsed(i))}</span>`:stat(i)}</span></button>`}
 const hasLoc=()=>S.geo=='ok'||S.geo=='manual';
 function locChip(){const g=S.geo;
  return `<button class="locchip ${g=='ng'?'warn':''}" data-act="sheet" data-arg="addr" aria-label="場所を変更する">${ic(g=='ok'?'nav':'pin')}<span>${esc(g=='ok'?S.loc:g=='manual'?S.addr:g=='pending'?'現在地を確認しています':'現在地を取得できません')}</span>${g=='ng'?'<em>住所を入力</em>':''}</button>`}
-const live=i=>i.status=='dispatched'||i.status=='working';
+const live=i=>i.status=='dispatched';
 const num=(k,v,tag='span',dur)=>`<${tag} class="num" data-k="${k}" data-n="${v}"${dur?` data-d="${dur}"`:''}>${v}</${tag}>`;
 const bar=(k,v,cls='')=>`<div class="track"><i class="${cls}" data-bar="${k}" data-w="${v}" style="width:${v}%"></i></div>`;
 const SCORE={urgent:92,high:74,mid:48,low:21};
@@ -534,8 +592,8 @@ function animate(root){
   setTimeout(()=>{const t0=performance.now();const step=t=>{if(!el.isConnected)return;const p=Math.min(1,(t-t0)/d),e=1-Math.pow(1-p,3);el.textContent=Math.round(from+(to-from)*e);if(p<1)requestAnimationFrame(step)};requestAnimationFrame(step)},wait)});
  (root||document).querySelectorAll('[data-bar]').forEach(el=>{const k=el.dataset.bar,to=+el.dataset.w,from=k in BARS?BARS[k]:0;BARS[k]=to;if(from==to||RM)return;
   const wait=el.closest('.reveal')&&!el.closest('.static')?2700:30;el.style.transition='none';el.style.width=from+'%';void el.offsetWidth;el.style.transition='';setTimeout(()=>{if(el.isConnected)el.style.width=to+'%'},wait)})}
-function stepper(i){const off=i.status=='none',at={dispatched:1,working:2,follow:2,done:3,none:3}[i.status];
- const L=['報告','差配',i.status=='follow'?'別途対応':'対応',off?'対応不要':'完了'];
+function stepper(i){const off=i.status=='none',at={open:1,dispatched:2,working:2,follow:2,done:3,none:3}[i.status];
+ const L=['報告','差配',{follow:'別途対応',dispatched:'到着待ち',working:'対応中'}[i.status]||'対応',off?'対応不要':'完了'];
  return `<ol class="stepper" aria-label="進み具合">${L.map((l,n)=>{const dn=n<at||i.status=='done';return `<li class="${n<=at?'on':''} ${!dn&&n==at?'cur':''} ${off?'off':''}"><span class="dot">${dn?ic('check'):''}</span>${l}</li>`}).join('')}</ol>`}
 const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(_){}};
 let toastT;
@@ -577,17 +635,30 @@ function header(title,sub){const r=ROLES[S.role];
  return `<header class="top pad"><div style="flex:1;min-width:0"><h1>${title}</h1>${sub?`<div class="sub">${sub}</div>`:''}</div><button class="rolechip" data-act="sheet" data-arg="role" aria-label="役割を切り替える">${r[0]}<span class="avatar s">${r[2]}</span></button></header>`}
 
 function vMap(){
- const open=D.issues.filter(i=>!closed(i));
- const u=open.filter(i=>i.pri=='urgent').length,w=open.filter(i=>i.status=='working'||i.status=='follow').length,d=D.issues.length-open.length;
- const sub={field:`近くに動ける修繕が${open.length}件あります`,mgmt:`未完了 ${open.length}件・うち緊急 ${u}件`,sales:'内見前に確認したい修繕が1件あります',owner:`所有物件の修繕 対応中 ${w}件`}[S.role];
- const sel=S.sel&&issue(S.sel);
- const list=sel?[sel,...sorted().filter(i=>i.id!=sel.id&&!closed(i))]:sorted().filter(i=>!closed(i));
+ const all=D.issues,open=all.filter(i=>!closed(i)),u=open.filter(i=>i.pri=='urgent').length,w=open.filter(i=>i.status!='open').length,un=open.length-w,st=open.filter(stalled).length,d=all.length-open.length,pct=Math.round(d/all.length*100);
+ const sel=S.sel&&issue(S.sel),withSel=a=>sel?[sel,...a.filter(i=>i.id!=sel.id)]:a,rows=a=>a.map(i=>row(i,sel&&i.id==sel.id)).join('');
+ const cell=(k,v,l,c='')=>`<div class="count ${c}">${num(k,v,'b')}<span>${l}</span></div>`;
+ const prog=`<div class="prog"><div class="progtop"><span>本日の対応率（${d} / ${all.length}件）</span><b>${num('pct',pct)}%</b></div>${bar('pct',pct)}</div>`;
+ let sub,head,stats,extra='',list;
+ if(S.role=='mgmt'){sub=`未差配 ${un}件・滞留 ${st}件`;head=['差配ボード','滞留・優先度順'];
+  stats=cell('m1',un,'未差配','u')+cell('m2',st,'滞留','u')+cell('m3',w,'対応中','w')+cell('m4',d,'対応済み','d');extra=prog;list=rows(withSel(sorted().filter(i=>!closed(i))))}
+ else if(S.role=='sales'){const vs=VIEW.map(v=>{const i=issue(v.issue),ok=closed(i);return {...v,i,b:ok?['修繕完了','ok']:v.today?['要確認','open']:['間に合う見込み','']}});
+  sub=`内見予定 ${VIEW.length}件`;head=['内見と修繕','内見日時順'];
+  stats=cell('s1',VIEW.length,'内見予定')+cell('s2',vs.filter(v=>v.b[1]!='open').length,'問題なし','d')+cell('s3',vs.filter(v=>v.b[1]=='open').length,'要確認','u');
+  list=vs.map(v=>`<button class="row" data-act="open" data-arg="${v.i.id}"><span class="datetile">${v.day}<b>${v.time}</b></span><span class="body"><span class="ttl">${v.bld} ${v.room}</span><span class="meta">関連：${esc(v.i.title)}</span><span class="meta">${STL[v.i.status]}・${nm(v.i)}${live(v.i)?' ・ あと'+num('eta'+v.i.id,v.i.eta)+'分':''}</span></span><span class="side"><span class="vst ${v.b[1]}">${v.b[0]}</span></span></button>`).join('')}
+ else if(S.role=='owner'){const mine=sorted().filter(i=>OWN.includes(i.bld));
+  sub=OWN.join('・');head=['所有物件の修繕','対応中を上に表示'];
+  stats=cell('o1',mine.length,'今月の修繕')+cell('o2',mine.filter(i=>!closed(i)).length,'対応中','w')+cell('o3',42,'分 平均対応','d');list=rows(withSel(mine))}
+ else{const mine=open.filter(i=>i.who=='me').length,fin=all.filter(i=>i.doneBy=='me').length;
+  sub=S.avail?'近くの依頼を受け付けています':'依頼の受付を止めています';head=['近くの修繕','滞留・優先度順'];
+  stats=cell('f1',open.length,'近くの依頼')+cell('f2',mine,'自分の担当','w')+cell('f3',fin,'今日の完了','d');
+  extra=`<button class="avail ${S.avail?'on':''}" data-act="avail" role="switch" aria-checked="${S.avail}"><span class="body"><b>${S.avail?'いま対応できます':'いまは対応できません'}</b><span class="meta">${S.avail?'近くで依頼が出ると、ここに届きます':'オンにすると近くの依頼が届きます'}</span></span><span class="sw"></span></button>`;
+  list=rows(withSel(sorted().filter(i=>!closed(i))))}
  return `<section class="screen home">${header('ナオス',sub)}
- <div class="mapwrap">${mapSVG({pins:D.issues,me:hasLoc(),staff:['sato','suzuki','ito']})}${locChip()}</div>
- <div class="sheet"><div class="scroll pad"><div class="sheethead"><h2>近くの修繕</h2><span>優先度順</span></div>
- <div class="counts"><div class="count u">${num('cu',u,'b')}<span>緊急</span></div><div class="count w">${num('cw',w,'b')}<span>対応中</span></div><div class="count d">${num('cd',d,'b')}<span>対応済み</span></div></div>
- <div class="prog"><div class="progtop"><span>本日の対応率（${d} / ${D.issues.length}件）</span><b>${num('pct',Math.round(d/D.issues.length*100))}%</b></div>${bar('pct',Math.round(d/D.issues.length*100))}</div>
- <div class="list">${list.map(i=>row(i,sel&&i.id==sel.id)).join('')}</div></div></div></section>`}
+ <div class="mapwrap">${mapSVG({pins:S.role=='owner'?all.filter(i=>OWN.includes(i.bld)):all,me:hasLoc(),staff:S.role=='owner'?[]:CAND.map(c=>c[0])})}${locChip()}</div>
+ <div class="sheet"><div class="scroll pad"><div class="sheethead"><h2>${head[0]}</h2><span>${head[1]}</span></div>
+ <div class="counts">${stats}</div>${extra}
+ <div class="list">${list||'<p class="empty">表示する案件はありません。</p>'}</div></div></div></section>`}
 
 function vList(){
  const f=S.filter,all=sorted();
@@ -624,27 +695,44 @@ function vAnalyze(){const d=S.draft,s=d.s,p=PPL[s.who],ok=S.geo=='ok',man=d.man;
 function vDispatch(){const i=issue(S.issueId),p=PPL[i.who];
  const vb=`${i.x-110} ${i.y-110} 220 300`;
  const card=S.dsp==0?`<div class="dspcard"><h2>動ける人を探しています</h2><p class="meta">優先度「${PRI[i.pri].l}」・${esc(i.bld)}の近くから順に声をかけています</p><div class="dstats"><div>${num('cand',3,'b',2400)}<span>名に依頼中</span></div><div>${num('near',parseInt(i.dist)||60,'b',1200)}<span>m 最寄りの担当</span></div><div><b class="num" id="elapsed">0</b><span>秒 経過</span></div></div><div class="bar"><i></i></div></div>`
- :`<div class="dspcard"><h2>${i.route=='mgmt'?'管理が受け付けました':'担当が決まりました'}</h2><div class="who" style="margin-top:10px"><span class="avatar">${p.i}</span><div class="body"><b>${p.n}${i.route=='mgmt'?'':'さん'}</b><span class="meta">${p.r}・${i.route=='mgmt'?'山田さんが手配':'受諾済み'}</span></div><div class="eta">${num('eta'+i.id,i.eta,'b')}<span>分で到着</span></div></div>
+ :`<div class="dspcard"><h2>${i.route=='mgmt'?'管理が受け付けました':'担当が決まりました'}</h2><div class="who" style="margin-top:10px"><span class="avatar">${p.i}</span><div class="body"><b>${nm(i)}</b><span class="meta">${p.r}・${i.route=='mgmt'?'山田さんが手配':'受諾済み'}</span></div><div class="eta">${num('eta'+i.id,i.eta,'b')}<span>分で到着</span></div></div>
  <div class="notify"><span>${ic('check')}管理</span><span>${ic('check')}営業</span><span>${ic('check')}オーナー</span></div><p class="remain">残り約 ${num('rem'+i.id,i.eta*70)} m ・ 到着時刻は移動に合わせて更新されます</p><button class="btn" data-act="open" data-arg="${i.id}">案件を見る</button></div>`;
  return `<section class="screen dsp"><div class="mapwrap">${mapSVG({vb,pins:[i],me:hasLoc(),radar:S.dsp==0?[i.x,i.y]:null,staff:S.dsp==0?['sato','suzuki','ito']:[],route:S.dsp?[p.pos,[i.x,i.y]]:null,routeIni:p.i,move:true})}${card}</div></section>`}
 
-function vDetail(){const i=issue(S.issueId),p=PPL[i.who],dn=i.status=='done',cl=closed(i),fu=i.follow;
+function vDetail(){const i=issue(S.issueId),p=PPL[i.who]||null,dn=i.status=='done',cl=closed(i),fu=i.follow;
  const hero=dn&&i.after?`<div class="pair"><div>${ph(i.shots[1])}<span class="tag">Before</span></div><div>${ph(i.after)}<span class="tag ok">After</span></div></div>`
  :`<div class="pair"><div>${ph(i.shots[0])}<span class="tag">全体</span></div><div>${ph(i.shots[1])}<span class="tag">アップ</span></div></div>`;
- const act=cl?`<button class="btn ghost" data-act="tochat" data-arg="ms">${ic('chat')}チャットで続きを話す</button>`
+ const act=S.role=='owner'?`<button class="btn ghost" data-act="tochat" data-arg="ow">${ic('chat')}管理会社に問い合わせる</button>`:cl?`<button class="btn ghost" data-act="tochat" data-arg="ms">${ic('chat')}チャットで続きを話す</button>`
  :`<button class="btn" data-act="sheet" data-arg="done">${ic('check')}完了</button><div class="btnrow"><button class="btn ghost" data-act="sheet" data-arg="none">対応不要</button><button class="btn ghost" data-act="follow">${fu?'別途対応を変更':'別途対応が必要'}${ic('chev')}</button></div>`;
  return `<section class="screen"><div class="hero">${hero}<button class="iconbtn back" data-act="back" aria-label="戻る">${ic('back')}</button></div>
  <div class="scroll pad"><div class="dbody">
  ${cl&&S.justDone?`<div class="banner">${ic('check')}${dn?'完了':'対応不要'}を管理・営業・オーナーに共有しました</div>`:''}
- <div><div class="tags">${cl?'':pill(i.pri)}${stat(i)}<span class="meta">${esc(i.cat)}</span></div><h1>${esc(i.title)}</h1><p class="meta" style="margin-top:4px;white-space:normal">${esc(i.bld)}　${esc(i.place)}${i.dist?'・現在地から'+i.dist:''}</p></div>
+ <div><div class="tags">${cl?'':pill(i.pri)}${stat(i)}<span class="meta">${esc(i.cat)}</span></div><h1>${esc(i.title)}</h1><p class="meta" style="margin-top:4px;white-space:normal">${esc(i.bld)}　${esc(i.place)}${i.dist?'・現在地から'+i.dist:''}${cl?'':'・報告から'+fmtEl(elapsed(i))}</p></div>
+ ${stalled(i)?`<div class="warnbox">${ic('clock')}<span>目安（優先度「${PRI[i.pri].l}」は${fmtEl(LIMIT[i.pri])}以内）を過ぎています。担当の変更や追加を検討してください。</span></div>`:''}
  ${stepper(i)}
  ${i.status=='none'?`<div class="card"><div class="sec">対応不要の理由</div><b>${esc(i.reason)}</b></div>`:''}
  ${fu?`<div class="card"><div class="sec">別途対応</div><dl class="kv" style="margin:0"><dt>内容</dt><dd>${esc(fu.type)}</dd><dt>依頼先</dt><dd>${esc(fu.to)}</dd><dt>期限</dt><dd>${esc(fu.due)}</dd>${fu.memo?`<dt>メモ</dt><dd style="font-weight:400;overflow-wrap:anywhere">${esc(fu.memo)}</dd>`:''}</dl></div>`:''}
- ${cl?'':`<div class="minimap">${mapSVG({vb:`${i.x-110} ${i.y-90} 220 130`,pins:[i],route:[p.pos,[i.x,i.y]],routeIni:p.i,move:i.status=='working'})}</div>
- <div class="card who"><span class="avatar">${p.i}</span><div class="body"><b>${p.n}${i.route=='mgmt'?'':'さん'}</b><span class="meta">${p.r}・${i.status=='working'?'向かっています':'受諾済み'}</span></div><div class="eta">${num('eta'+i.id,i.eta,'b')}<span>分で到着</span></div></div>`}
+ ${cl?'':!p?`<div class="card who"><span class="avatar gold">?</span><div class="body"><b>担当未定</b><span class="meta" style="white-space:normal">近くで手の空いている人にオファーできます</span></div></div>`
+ :`${live(i)?`<div class="minimap">${mapSVG({vb:`${i.x-110} ${i.y-90} 220 130`,pins:[i],route:[p.pos,[i.x,i.y]],routeIni:p.i,move:true})}</div>`:''}
+ <div class="card who"><span class="avatar">${p.i}</span><div class="body"><b>${nm(i)}</b><span class="meta">${p.r}・${live(i)?'向かっています':'到着済み・対応中'}</span></div>${live(i)?`<div class="eta">${num('eta'+i.id,i.eta,'b')}<span>分で到着</span></div>`:`<span class="vst ok">到着済み</span>`}</div>`}
  <div><div class="sec">経過</div><ol class="tl">${i.log.map(l=>`<li><time>${l[0]}</time><i></i><span>${esc(l[1])}</span></li>`).join('')}</ol></div>
- ${cl?`<div><div class="sec">共有先</div><div class="notify" style="margin:0"><span>${ic('check')}管理 山田</span><span>${ic('check')}営業 高橋</span><span>${ic('check')}オーナー</span></div></div>`:`<button class="btn ghost sm" style="align-self:flex-start" data-act="tochat" data-arg="ms">${ic('chat')}この件を相談する</button>`}
+ ${cl?`<div><div class="sec">共有先</div><div class="notify" style="margin:0"><span>${ic('check')}管理 山田</span><span>${ic('check')}営業 高橋</span><span>${ic('check')}オーナー</span></div></div>`:`<div class="btnrow">${S.role=='owner'?'':`<button class="btn ${p?'ghost':''} sm" data-act="offer">${ic('pin')}${p?'別の人にオファー':'近くの人にオファー'}</button>`}${S.role=='owner'?'':`<button class="btn ghost sm" data-act="tochat" data-arg="ms">${ic('chat')}相談する</button>`}</div>`}
  </div></div><div class="footer pad">${act}</div></section>`}
+
+function vOffer(){const i=issue(S.issueId),o=S.of,pick=o.phase=='pick';
+ const RL={wait:['返答待ち','wait'],yes:['受諾','yes'],no:['見送り',''],off:['取り下げ','']};
+ const item=([k,dist])=>{const q=PPL[k],b=busy(k)&&i.who!=k||(!pick&&false),on=o.sel.includes(k),rs=o.res[k];
+  const info=`<span class="body"><b>${q.n}<span class="${b?'tagbusy':'tagfree'}">${b?'対応中':'手が空いている'}</span></b><span class="meta">${q.r}・${dist}m・徒歩${Math.ceil(dist/80)}分</span></span>`;
+  if(!pick)return on?`<div class="cand ${rs=='yes'?'on':''}"><span class="avatar ${rs=='yes'?'':'gold'}">${q.i}</span>${info}<span class="res ${RL[rs][1]}">${RL[rs][0]}</span></div>`:'';
+  return `<button class="cand ${on?'on':''} ${b?'busy':''}" data-act="ofsel" data-arg="${k}" aria-pressed="${on}"><span class="avatar ${on?'':'gold'}">${q.i}</span>${info}<span class="box">${on?ic('check'):''}</span></button>`};
+ const n=o.sel.length,win=o.sel.find(k=>o.res[k]=='yes');
+ const foot=pick?`<button class="btn" data-act="ofsend" ${n?'':'disabled style="opacity:.45"'}>${n?n+'名にオファーを送る':'送る相手を選んでください'}</button>`
+ :o.phase=='wait'?`<div class="waitline"><span>返答を待っています</span><span>残り <b id="ofleft">${o.left}</b> 秒</span></div><button class="btn ghost" data-act="ofcancel">オファーを取り消す</button>`
+ :`<div class="banner">${ic('check')}${PPL[win].n}さんが受けました。${num('eta'+i.id,i.eta)}分で到着します</div><button class="btn" data-act="todetail">案件に戻る</button>`;
+ return `<section class="screen static"><header class="top pad"><button class="iconbtn" data-act="${pick?'todetail':'ofcancel'}" aria-label="戻る">${ic('back')}</button><div style="flex:1;min-width:0"><h1>近くの人にオファー</h1><div class="sub">${esc(i.title)}・${esc(i.bld)}</div></div></header>
+ <div class="offmap">${mapSVG({vb:`${i.x-150} ${i.y-110} 300 200`,pins:[i],staff:(pick?CAND.map(c=>c[0]):o.sel)})}</div>
+ <div class="scroll pad"><div class="dbody"><div><div class="sec">${pick?'近い順（先に受けた人に決まり、ほかは自動で取り下げます）':'オファーの状況'}</div><div class="list" style="padding:0">${CAND.map(item).join('')}</div></div></div></div>
+ <div class="footer pad">${foot}</div></section>`}
 
 function vFollow(){const i=issue(S.issueId),f=S.fu;
  const grp=(k,l)=>`<div><div class="sec">${l}</div><div class="chips">${FU[k].map(v=>`<button class="chip ${f[k]==v?'on':''}" data-act="fuset" data-arg="${k}|${v}">${v}</button>`).join('')}</div></div>`;
@@ -676,6 +764,11 @@ function vVoices(){const L={open:['未対応','open'],prog:['対応中',''],ok:[
 function vSheet(){
  if(S.sheet=='role')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>どの立場で使いますか</h2>${Object.keys(ROLES).map(k=>`<button class="role ${S.role==k?'on':''}" data-act="role" data-arg="${k}"><span class="avatar ${S.role==k?'':'gold'}">${ROLES[k][2]}</span><span><b>${ROLES[k][0]}</b><span class="meta">${ROLES[k][1]}</span></span></button>`).join('')}</div></div>`;
  if(S.sheet=='voice')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>${S.role=='owner'?'気になることを教えてください':'オーナーから聞いた声'}</h2><textarea id="voicetext" placeholder="例）駐輪場の自転車が増えて通りにくい" aria-label="声の内容"></textarea><button class="btn" data-act="voiceadd">送る</button></div></div>`;
+ if(S.sheet=='incoming'){const i=issue(S.inc.id),m=parseInt(i.dist)||200,C=2*Math.PI*20;
+  return `<div class="ovl"><div class="modal pad" role="alertdialog" aria-label="新しい依頼"><div class="inchead"><div style="flex:1;min-width:0"><h2>近くで依頼が出ました</h2><p>受けられる場合は時間内に応答してください</p></div><div class="ring"><svg viewBox="0 0 48 48"><circle class="bg" cx="24" cy="24" r="20"/><circle class="fg" id="incring" cx="24" cy="24" r="20" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-S.inc.left/30)).toFixed(1)}"/></svg><b id="incleft">${S.inc.left}</b></div></div>
+  <div class="card who"><span class="thumb">${ph(i.shots[1])}</span><div class="body"><b>${esc(i.title)}</b><span class="meta">${esc(i.bld)}　${esc(i.place)}</span></div>${pill(i.pri)}</div>
+  <div class="dstats"><div><b>${m}</b><span>m 現在地から</span></div><div><b>${Math.ceil(m/80)}</b><span>分 徒歩</span></div><div><b>15</b><span>分 作業の目安</span></div></div>
+  <div class="btnrow"><button class="btn ghost" data-act="incno">見送る</button><button class="btn grow" data-act="incyes">受ける</button></div></div></div>`}
  if(S.sheet=='done')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>完了にします</h2><p class="lead">写真があると、営業とオーナーにそのまま共有できます。</p><div class="stack"><button class="btn" data-act="finish">${ic('camera')}写真を撮って完了</button><button class="btn ghost" data-act="donenow">写真なしで完了</button></div></div></div>`;
  if(S.sheet=='none')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>対応不要の理由</h2><p class="lead">選ぶとすぐに記録され、関係者に共有されます。</p>${NONE.map(n=>`<button class="role" data-act="noneset" data-arg="${n}"><b>${n}</b></button>`).join('')}</div></div>`;
  if(S.sheet=='addr')return `<div class="ovl" data-act="closesheet"><div class="modal pad" data-stop><h2>場所を指定</h2><p class="lead">${S.geo=='ok'?'現在地を取得できています。別の場所を指定することもできます。':'現在地を取得できないときは、住所か物件名を入力してください。'}</p><div class="stack"><input class="field" id="addrsheet" type="text" value="${esc(S.addr)}" placeholder="例）世田谷区桜丘2-14 メゾン桜丘" autocomplete="street-address" aria-label="住所または物件名">
@@ -687,7 +780,7 @@ function nav(){const un=D.threads.reduce((a,t)=>a+t.unread,0),vo=D.voices.filter
  return `<nav class="nav" aria-label="メイン">${b('map','pin','マップ')}${b('list','list','案件')}<button class="shoot" data-act="report" aria-label="写真で報告する">${ic('camera')}報告</button>${b('chat','chat','チャット',un)}${b('voice','voice','声',vo)}</nav>`}
 
 function render(){
- const V={onb:vOnb,cam:vCam,analyze:vAnalyze,dispatch:vDispatch,detail:vDetail,follow:vFollow,thread:vThread};
+ const V={onb:vOnb,cam:vCam,analyze:vAnalyze,dispatch:vDispatch,detail:vDetail,follow:vFollow,offer:vOffer,thread:vThread};
  let h;
  if(S.screen=='main')h={map:vMap,list:vList,chat:vChats,voice:vVoices}[S.tab]()+nav();else h=V[S.screen]();
  h+=vSheet(); if(S.toast)h+=`<div class="toast" role="status">${ic('check')}${esc(S.toast)}</div>`;
@@ -703,7 +796,7 @@ function send(text){const t=D.threads.find(x=>x.id==S.thread);text=text.trim();i
  t.msgs.push({me:true,f:ROLES[S.role][0],t:now(),x:text});t.typing=true;render();
  const id=t.id;setTimeout(()=>{t.typing=false;t.msgs.push({f:t.reply[0],t:now(),x:t.reply[1]});if(S.screen=='thread'&&S.thread==id){const v=document.getElementById('chatinput').value;render();document.getElementById('chatinput').value=v}else{t.unread++;if(S.screen=='main')render()}},1500)}
 function setAddr(v){S.addr=v;S.geo='manual';S.sheet=null;toast('場所を設定しました')}
-function complete(i,how){i.status='done';const who=how.startsWith('完了写真')?PPL[i.who].n+(i.route=='mgmt'?'':'さん'):ROLES[S.role][0];
+function complete(i,how){i.status='done';if(S.role=='field')i.doneBy='me';const who=how.startsWith('完了写真')?nm(i):ROLES[S.role][0];
  i.log.push([now(),`${who}が${how}、管理・営業・オーナーへ共有`]);
  postCard('ms','ナオス 自動共有',i.id,`「${i.title}」が完了しました。${i.after?'Before / After を確認できます。':'写真なしで完了が記録されています。'}`);
  const v=D.voices.find(x=>x.issue==i.id);if(v){v.st='done';if(v.thread)postCard(v.thread,'ナオス 自動共有',i.id)}
@@ -711,7 +804,7 @@ function complete(i,how){i.status='done';const who=how.startsWith('完了写真'
 function createIssue(status){const d=S.draft,s=d.s,ok=S.geo=='ok';let bld=s.bld,dist=s.dist,manual=false;
  if(!ok){const a=(d.addr||'').trim();if(!a){d.err=true;d.ready=true;render();const el=document.getElementById('addrinput');el.focus();el.scrollIntoView({block:'center'});return null}
   bld=BLD.find(b=>a.includes(b))||a;dist='';manual=true;S.addr=a;S.geo='manual'}
- const i={id:seq++,key:s.key,title:s.title,cat:d.cat,pri:d.pri,bld,place:s.place,x:s.x,y:s.y,dist,status,who:s.who,eta:s.eta,route:s.route,shots:d.shots,after:null,time:now(),
+ const i={id:seq++,key:s.key,title:s.title,cat:d.cat,pri:d.pri,bld,place:s.place,x:s.x,y:s.y,dist,status,who:s.who,eta:s.eta,route:s.route,shots:d.shots,after:null,at:Date.now(),
   log:[[now(),`${ROLES[S.role][0]}が写真2枚で報告${manual?'（場所は手入力）':''}`],[now(),`優先度「${PRI[d.pri].l}」と判定、${s.route=='mgmt'?'管理へ差配':'近くの'+PPL[s.who].r+'へ差配'}`]]};
  D.issues.push(i);if(d.voice){const v=D.voices.find(x=>x.id==d.voice);v.st='prog';v.issue=i.id}
  S.scn++;S.issueId=i.id;S.draft=null;S.cam=null;return i}
@@ -737,7 +830,7 @@ function takeShot(data){const c=S.cam;if(!c||c.busy)return;c.busy=true;buzz(15);
   else{const i=issue(c.id);i.after=data||c.after;S.cam=null;complete(i,'完了写真を送信')}
   render()},320)}
 const A={
- start(){S.screen='main';S.tab='map'},
+ start(){S.screen='main';S.tab='map';S.nextOffer=Date.now()+9000},
  tab(a){S.tab=a;S.sel=null;S.screen='main'},
  pin(a){S.sel=S.sel==a?null:+a},
  filter(a){S.filter=a},
@@ -764,7 +857,22 @@ const A={
   S.sheet=null;S.justDone=true;toast('対応不要として記録しました')},
  follow(){const i=issue(S.issueId);S.fu=i.follow?{...i.follow}:{type:FU.type[0],to:FU.to[0],due:FU.due[1],memo:''};S.screen='follow'},
  fuset(a){const [k,v]=a.split('|');S.fu[k]=v},
- todetail(){S.screen='detail'},
+ todetail(){S.screen='detail';S.of=null},
+ avail(){S.avail=!S.avail;if(S.avail)S.nextOffer=Date.now()+6000;toast(S.avail?'依頼の受付を始めました':'依頼の受付を止めました')},
+ incyes(){const i=issue(S.inc.id);i.who='me';i.route='onsite';i.status='dispatched';i.eta=Math.max(2,Math.ceil((parseInt(i.dist)||200)/80));i.log.push([now(),'あなたがオファーを受諾、現地へ向かっています']);
+  S.inc=null;S.sheet=null;S.issueId=i.id;S.screen='detail';S.back='main';S.justDone=false;S.nextOffer=Date.now()+60000;buzz(30);toast('依頼を受けました')},
+ incno(a){const i=issue(S.inc.id),k=['suzuki','ogawa','tanaka'].find(x=>!busy(x))||'tanaka';i.who=k;i.route='onsite';i.status='dispatched';i.eta=Math.ceil(CAND.find(c=>c[0]==k)[1]/80)+1;
+  i.log.push([now(),`あなたが${a=='auto'?'時間内に応答しなかったため':'見送ったため'}、${nm(i)}へオファー・受諾`]);S.inc=null;S.sheet=null;S.nextOffer=Date.now()+40000;toast('次の候補に回しました')},
+ offer(){const free=CAND.filter(c=>!busy(c[0])).map(c=>c[0]);S.of={id:S.issueId,sel:free.slice(0,2),phase:'pick',res:{},left:30};S.screen='offer'},
+ ofsel(k){const o=S.of,n=o.sel.indexOf(k);if(n>=0)o.sel.splice(n,1);else o.sel.push(k)},
+ ofsend(){const o=S.of,i=issue(o.id);if(!o.sel.length)return false;o.sel.sort((a,b)=>CAND.findIndex(c=>c[0]==a)-CAND.findIndex(c=>c[0]==b));o.phase='wait';o.left=30;o.sel.forEach(k=>o.res[k]='wait');
+  const alive=()=>S.of===o&&o.phase=='wait',show=()=>{if(S.screen=='offer'&&S.of===o)render()};
+  if(o.sel.length>1)setTimeout(()=>{if(alive()){o.res[o.sel[o.sel.length-1]]='no';show()}},2000);
+  setTimeout(()=>{if(!alive())return;const k=o.sel[0],old=i.who;o.sel.forEach(x=>{if(o.res[x]=='wait')o.res[x]='off'});o.res[k]='yes';o.phase='done';
+   i.who=k;i.route='onsite';i.status='dispatched';i.eta=Math.max(2,Math.ceil(CAND.find(c=>c[0]==k)[1]/80));
+   i.log.push([now(),`${ROLES[S.role][0]}が${o.sel.length}名にオファー、${nm(i)}が受諾${old&&old!=k?'（担当を変更）':''}`]);buzz(30);show()},4200)},
+ ofcancel(){S.of.phase='pick';S.of.res={}},
+
  fusend(){const i=issue(S.issueId),f=S.fu;f.memo=f.memo.trim();i.follow=f;i.status='follow';i.log.push([now(),`別途対応（${f.type}）を${f.to}へ依頼、期限：${f.due}`]);
   postCard('ms','ナオス 自動共有',i.id,`「${i.title}」は別途対応が必要です。${f.type}を${f.to}へ依頼しました（期限：${f.due}）。`);
   S.fu=null;S.screen='detail';S.justDone=false;toast('別途対応を依頼しました')},
@@ -776,7 +884,7 @@ const A={
  quick(a){send(a);return false},
  sheet(a){S.sheet=a},
  closesheet(){S.sheet=null},
- role(a){S.role=a;S.sheet=null;toast(ROLES[a][0]+'として表示しています')},
+ role(a){S.role=a;S.sheet=null;S.sel=null;if(a=='field')S.nextOffer=Date.now()+9000;toast(ROLES[a][0]+'として表示しています')},
  voiceadd(){const x=document.getElementById('voicetext').value.trim();if(!x){document.getElementById('voicetext').focus();return false}
   D.voices.unshift({id:Date.now(),name:S.role=='owner'?'あなた（オーナー）':'オーナー（聞き取り）',bld:'メゾン桜丘',ini:'声',t:now(),st:'open',text:x,scn:S.scn%SCN.length});S.sheet=null;toast('声を記録しました')}
 };
@@ -794,11 +902,21 @@ requestGeo();
 let ticks=0;
 setInterval(()=>{ticks++;
  const el=document.getElementById('elapsed');if(el&&S.dspT0)el.textContent=Math.floor((Date.now()-S.dspT0)/1000);
+ if(S.inc){S.inc.left--;const a=document.getElementById('incleft'),g=document.getElementById('incring');if(a)a.textContent=Math.max(0,S.inc.left);if(g)g.style.strokeDashoffset=(2*Math.PI*20*(1-S.inc.left/30)).toFixed(1);
+  if(S.inc.left<=0){A.incno('auto');render()}}
+ else if(S.role=='field'&&S.avail&&S.screen=='main'&&!S.sheet&&S.nextOffer&&Date.now()>S.nextOffer){const i=D.issues.find(x=>x.status=='open'&&!x.offered);
+  if(i){i.offered=true;S.inc={id:i.id,left:30};S.sheet='incoming';buzz([40,60,40]);render()}else S.nextOffer=0}
+ if(S.of&&S.of.phase=='wait'){S.of.left=Math.max(0,S.of.left-1);const a=document.getElementById('ofleft');if(a)a.textContent=S.of.left}
  if(ticks%6)return;
- D.issues.forEach(i=>{if(!live(i)||i.eta<=1)return;i.eta--;
-  document.querySelectorAll(`[data-k="eta${i.id}"]`).forEach(e=>{e.dataset.n=i.eta;e.classList.remove('tick');void e.offsetWidth;e.classList.add('tick')});
-  document.querySelectorAll(`[data-k="rem${i.id}"]`).forEach(e=>{e.dataset.n=i.eta*70})});
- animate()},1000);
+ let arrived=null;
+ D.issues.forEach(i=>{if(!live(i))return;
+  if(i.eta>1){i.eta--;
+   document.querySelectorAll(`[data-k="eta${i.id}"]`).forEach(e=>{e.dataset.n=i.eta;e.classList.remove('tick');void e.offsetWidth;e.classList.add('tick')});
+   document.querySelectorAll(`[data-k="rem${i.id}"]`).forEach(e=>{e.dataset.n=i.eta*70})}
+  else{i.eta=0;i.status='working';i.log.push([now(),`${nm(i)}が到着、対応を開始`]);arrived=i}});
+ const typing=/INPUT|TEXTAREA/.test((document.activeElement||{}).tagName||'');
+ if(arrived&&!S.sheet&&!typing&&(S.screen=='main'&&S.tab!='chat'&&S.tab!='voice'||S.screen=='detail')){if(S.screen=='detail'&&S.issueId==arrived.id)toast('担当が到着しました');render()}
+ else animate()},1000);
 render();
 </script>
 </body>
