@@ -51,7 +51,12 @@ out.push(new Paragraph({ children: [new PageBreak()] }));
 out.push(new Paragraph({ children: [run('改訂履歴', { size: 26, bold: true })], spacing: { after: 120 } }));
 T(['版', '日付', '内容', '作成・承認'], [['0.1', '2026/11/13', '初版(案)作成。プロトタイプの内容から要件を整理', ''], ['', '', '', ''], ['', '', '', '']], [8, 16, 56, 20]);
 out.push(new Paragraph({ children: [run('目次', { size: 26, bold: true })], spacing: { before: 300, after: 120 } }));
-out.push(new TableOfContents('目次', { hyperlink: true, headingStyleRange: '1-2' }));
+if (process.env.TOC) {
+  const toc = JSON.parse(process.env.TOC);
+  for (const [t, pg] of toc) out.push(new Paragraph({ spacing: { after: 60, line: 340 }, tabStops: [{ type: D.TabStopType.RIGHT, position: W, leader: D.LeaderType.DOT }], children: [run(t + '\t' + pg)] }));
+} else {
+  out.push(new TableOfContents('目次', { hyperlink: true, headingStyleRange: '1-2' }));
+}
 
 // ===== 1 =====
 H1('1. はじめに');
