@@ -34,6 +34,14 @@ table.g td.c { position:relative; }
 .bar.fix { background:var(--navy); color:#fff; }
 .bar.plan { background:#fff; color:var(--navy); border:1.5px dashed var(--navy); padding:2.5px 8px; }
 .bar.line { background:none; color:var(--navy); border-top:3px solid var(--navy); margin-top:14px; padding-top:1px; font-size:11.5px; font-weight:500; text-align:left; }
+table.g tr.grp td { background:#dfe3ea; font-weight:700; height:28px; padding:2px 10px; border-color:var(--line); }
+table.g tr.grp td.no { padding:0; }
+table.g td { height:36px; }
+table.g td.nm { width:auto; font-weight:500; }
+table.g td.dv { padding:3px 8px; font-size:12.5px; border-color:var(--line); line-height:1.35; }
+table.g td.who { text-align:center; font-size:12.5px; color:var(--muted); border-color:var(--line); }
+.bar.ms { background:#fff; color:#b00000; border:1.5px solid #b00000; padding:2.5px 8px; }
+table.g { min-width:1150px; }
 .star { color:#b00000; font-weight:700; }
 .legend { display:flex; gap:22px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin-top:6px; align-items:center; }
 .legend .bar { display:inline-block; margin:0 6px 0 0; vertical-align:middle; }
@@ -52,11 +60,11 @@ table.t td.k { white-space:nowrap; font-weight:700; background:#fafafa; }
 <div class="doc-head">
   <div>
     <div class="label">修繕データ一元管理「AAA」プロトタイプ</div>
-    <h1>今後の進め方および概略工程(案)</h1>
+    <h1>今後の進め方およびWBS(案)</h1>
   </div>
   <table>
     <tr><td>作成日</td><td>2026年11月13日</td></tr>
-    <tr><td>版</td><td>第1版(案)</td></tr>
+    <tr><td>版</td><td>第2版(案)</td></tr>
     <tr><td>位置づけ</td><td>協議用資料</td></tr>
   </table>
 </div>
@@ -64,33 +72,49 @@ table.t td.k { white-space:nowrap; font-weight:700; background:#fafafa; }
 
 <h2>1. 基本方針</h2>
 <ol>
-  <li>来週より週次の定例会議を設け、プロトタイプの機能確認と修正を繰り返しながら進める。</li>
-  <li>モックは11月内に完成させ、12月よりPoC(実証)に向けた計画に着手する。</li>
-  <li>検証は早期に行い、社内関係者の意見を集めたうえで内容に反映する。</li>
-  <li>本工程は現時点の想定であり、詳細(WBS)は定例会議にて週次で調整する。</li>
+  <li>来週より週次の定例会議を設け、プロトタイプ(モック)の機能確認と修正を繰り返しながら進める。</li>
+  <li>モックは完成を急がず、12月内を目途に確認を重ねて仕上げる。</li>
+  <li>データベースの整理は11月内に実施し、12月のデータ定義の確定につなげる。</li>
+  <li>12月よりPoC(実証)の定義および計画に着手する。検証は早期に行い、社内関係者の意見を反映する。</li>
+  <li>本WBSは現時点の想定であり、定例会議にて週次で調整する。</li>
 </ol>
 
-<h2>2. 概略工程</h2>
+<h2>2. WBS(概略工程)</h2>
 <div class="scroll">
 <table class="g">
-  <colgroup><col style="width:36px"><col style="width:300px"><col span="8"></colgroup>
-  <tr><th rowspan="2">No.</th><th rowspan="2">項目</th><th colspan="2">2026年11月</th><th colspan="3">12月</th><th colspan="3">2027年</th></tr>
+  <colgroup><col style="width:44px"><col style="width:236px"><col style="width:150px"><col style="width:52px"><col span="8"></colgroup>
+  <tr><th rowspan="2">No.</th><th rowspan="2">作業</th><th rowspan="2">成果物</th><th rowspan="2">担当</th><th colspan="2">2026年11月</th><th colspan="3">12月</th><th colspan="3">2027年</th></tr>
   <tr><th class="sub">中旬</th><th class="sub">下旬</th><th class="sub">上旬</th><th class="sub">中旬</th><th class="sub">下旬</th><th class="sub">1月</th><th class="sub">2月</th><th class="sub">3月</th></tr>
-<tr><td class="no">1</td><td class="nm"><b>週次定例会議</b><small>毎週開催。工程とWBSは定例の場で都度見直す</small></td><td colspan="8" class="c"><div class="bar line">毎週開催</div></td></tr>
-<tr><td class="no">2</td><td class="nm"><b>プロトタイプの機能確認・修正</b><small>定例で確認し、修正を繰り返す</small></td><td colspan="2" class="c"><div class="bar fix">確認・修正の繰り返し　<span style="color:#ffd0d0">★</span>完成</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
-<tr><td class="no">3</td><td class="nm"><b>プロトタイプのゴール設定</b><small>目的と最終到達点の検討</small></td><td colspan="1" class="c"><div class="bar fix">ゴール設定</div></td><td colspan="3" class="c"><div class="bar fix">最終到達点の検討</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
-<tr><td class="no">4</td><td class="nm"><b>データの確認・定義・整理</b><small>所在の確認、項目の定義、対象データの整理</small></td><td colspan="5" class="c"><div class="bar fix">確認 → 定義 → 整理</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
-<tr><td class="no">5</td><td class="nm"><b>早期検証・フィードバック収集</b><small>社内関係者による試用と意見の収集</small></td><td class="c"></td><td colspan="3" class="c"><div class="bar fix">社内での試用・意見収集</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
-<tr><td class="no">6</td><td class="nm"><b>PoCの定義</b><small>目的、対象範囲、評価の考え方</small></td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar fix">PoC定義</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
-<tr><td class="no">7</td><td class="nm"><b>PoCの計画・準備</b><small>体制、進め方、対象データの準備</small></td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar fix">計画・準備</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
-<tr><td class="no">8</td><td class="nm"><b>PoCの実施・評価</b><small>実施時期・期間は12月の計画で決定</small></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar plan">PoC実施(想定)</div></td><td colspan="1" class="c"><div class="bar plan">評価(想定)</div></td></tr>
-<tr><td class="no">9</td><td class="nm"><b>事業計画の要否検討</b><small>要否を判断のうえ、必要な場合に作成</small></td><td class="c"></td><td class="c"></td><td colspan="3" class="c"><div class="bar fix">要否の検討</div></td><td colspan="3" class="c"><div class="bar plan">作成(必要な場合)</div></td></tr>
+<tr class="grp"><td class="no">1</td><td colspan="11">プロジェクト運営</td></tr>
+<tr><td class="no">1.1</td><td class="nm">週次定例会議</td><td class="dv">議事メモ</td><td class="who">未定</td><td colspan="8" class="c"><div class="bar line">毎週開催</div></td></tr>
+<tr><td class="no">1.2</td><td class="nm">WBS・課題一覧の更新</td><td class="dv">WBS(最新版)</td><td class="who">未定</td><td colspan="8" class="c"><div class="bar line">定例の場で毎週見直し</div></td></tr>
+<tr class="grp"><td class="no">2</td><td colspan="11">プロトタイプ(モック)</td></tr>
+<tr><td class="no">2.1</td><td class="nm">ゴール設定</td><td class="dv">ゴール・完成条件</td><td class="who">未定</td><td colspan="1" class="c"><div class="bar fix">設定</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">2.2</td><td class="nm">機能確認・修正の繰り返し</td><td class="dv">修正版モック</td><td class="who">未定</td><td colspan="5" class="c"><div class="bar fix">確認 → 修正 → 再確認</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">2.3</td><td class="nm">社内関係者による試用・意見収集</td><td class="dv">意見一覧</td><td class="who">未定</td><td class="c"></td><td colspan="3" class="c"><div class="bar fix">試用・意見収集</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">2.4</td><td class="nm">モック完成</td><td class="dv">完成版モック</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="1" class="c"><div class="bar ms">★ 完成</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr class="grp"><td class="no">3</td><td colspan="11">データ</td></tr>
+<tr><td class="no">3.1</td><td class="nm">データの所在・形式の確認</td><td class="dv">データ所在一覧</td><td class="who">未定</td><td colspan="1" class="c"><div class="bar fix">確認</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">3.2</td><td class="nm">データベースの整理</td><td class="dv">テーブル・項目一覧</td><td class="who">未定</td><td colspan="2" class="c"><div class="bar fix">整理(11月内)</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">3.3</td><td class="nm">データ定義の確定</td><td class="dv">データ定義書</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar fix">定義の確定</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">3.4</td><td class="nm">PoC用データの準備</td><td class="dv">PoC用データ</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="1" class="c"><div class="bar fix">準備</div></td><td colspan="1" class="c"><div class="bar plan">準備</div></td><td class="c"></td><td class="c"></td></tr>
+<tr class="grp"><td class="no">4</td><td colspan="11">要件定義</td></tr>
+<tr><td class="no">4.1</td><td class="nm">要件定義書(初版)の作成</td><td class="dv">要件定義書 初版</td><td class="who">未定</td><td colspan="2" class="c"><div class="bar fix">初版作成</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">4.2</td><td class="nm">レビュー・更新</td><td class="dv">要件定義書 改訂版</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td colspan="3" class="c"><div class="bar fix">モック・データ定義を反映</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr class="grp"><td class="no">5</td><td colspan="11">PoC(実証)</td></tr>
+<tr><td class="no">5.1</td><td class="nm">PoCの定義</td><td class="dv">PoC定義書</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar fix">定義</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">5.2</td><td class="nm">PoCの計画・準備</td><td class="dv">PoC計画書</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar fix">計画・準備</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">5.3</td><td class="nm">PoCの実施・評価</td><td class="dv">評価報告</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar plan">実施(想定)</div></td><td colspan="1" class="c"><div class="bar plan">評価(想定)</div></td></tr>
+<tr class="grp"><td class="no">6</td><td colspan="11">事業計画</td></tr>
+<tr><td class="no">6.1</td><td class="nm">要否の検討</td><td class="dv">検討結果</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td colspan="3" class="c"><div class="bar fix">要否の検討</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">6.2</td><td class="nm">作成(必要な場合)</td><td class="dv">事業計画書</td><td class="who">未定</td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="3" class="c"><div class="bar plan">作成(必要な場合)</div></td></tr>
 </table>
 </div>
 <div class="legend">
   <span><span class="bar fix">　　</span>年内の予定</span>
   <span><span class="bar plan">　　</span>年明け以降の想定(12月の計画で決定)</span>
-  <span><span class="star">★</span> モック完成(11月末)</span>
+  <span><span class="bar ms">★</span>完成</span>
+  <span>担当は定例会議にて割り当てる</span>
 </div>
 
 <div class="cols">
@@ -99,8 +123,9 @@ table.t td.k { white-space:nowrap; font-weight:700; background:#fafafa; }
 <table class="t">
   <tr><th>時期</th><th>内容</th></tr>
   <tr><td class="k">11月第3週</td><td>週次定例会議の開始、プロトタイプのゴール設定</td></tr>
-  <tr><td class="k">11月末</td><td>モック完成</td></tr>
-  <tr><td class="k">12月</td><td>PoCの定義および計画、事業計画の要否判断</td></tr>
+  <tr><td class="k">11月末</td><td>データベースの整理、要件定義書(初版)</td></tr>
+  <tr><td class="k">12月</td><td>データ定義の確定、PoCの定義および計画、事業計画の要否判断</td></tr>
+  <tr><td class="k">12月末</td><td>モック完成</td></tr>
   <tr><td class="k">年明け以降</td><td>PoCの実施および評価(時期は12月に決定)</td></tr>
 </table>
 </div>
