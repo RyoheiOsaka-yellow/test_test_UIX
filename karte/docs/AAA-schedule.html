@@ -5,334 +5,118 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AAA プロトタイプ 今後の進め方(案)</title>
 <style>
-:root { --ink:#1a2238; --muted:#5e6880; --line:#dfe4ee; --bg:#f4f6fa; --card:#fff; --navy:#1b2545; --blue:#2a62d6; --blue-soft:#e6eefc; --green:#12825c; --green-soft:#e3f4ec; --amber:#b86a00; --amber-soft:#fff3dc; --red:#c8321f; }
-* { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--ink); font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Meiryo",system-ui,sans-serif; font-size:15px; line-height:1.7; }
-.wrap { max-width:1500px; margin:0 auto; padding:28px 28px 60px; }
-header.top { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; border-bottom:3px solid var(--navy); padding-bottom:12px; margin-bottom:20px; }
-header.top h1 { margin:0; font-size:26px; line-height:1.3; }
-header.top h1 small { display:block; font-size:13px; color:var(--muted); font-weight:500; letter-spacing:.08em; }
-header.top .meta { color:var(--muted); font-size:13px; text-align:right; }
-.draft { display:inline-block; background:var(--amber-soft); color:var(--amber); font-weight:700; border-radius:4px; padding:1px 8px; font-size:12px; margin-left:8px; vertical-align:middle; }
-h2 { font-size:19px; margin:34px 0 10px; display:flex; align-items:center; gap:10px; }
-h2 i { font-style:normal; background:var(--navy); color:#fff; border-radius:6px; min-width:28px; height:28px; display:grid; place-items:center; font-size:14px; }
-h3 { font-size:15px; margin:0 0 6px; }
-p { margin:0 0 10px; }
-.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
-.lead { color:var(--muted); margin-bottom:12px; max-width:75em; }
-.cols { display:grid; gap:14px; }
-.c2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
-.c3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
-.c4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
-@media (max-width:1000px){ .c3,.c4{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:640px){ .c2,.c3,.c4{ grid-template-columns:1fr; } .wrap{ padding:18px 16px 40px; } }
-/* 要点 */
-.key { border-left:5px solid var(--blue); }
-.key b.d { display:block; font-size:22px; line-height:1.3; color:var(--navy); }
-.key span { color:var(--muted); font-size:13px; }
-.key p { margin:6px 0 0; font-size:14px; }
-/* ガント */
-.gantt-wrap { overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:10px; }
-.gantt { min-width:1280px; }
-.g-row { display:grid; grid-template-columns:316px 1fr; border-top:1px solid #eef1f6; }
-.g-row.g-first { border-top:1.5px solid var(--line); }
-.g-label { padding:7px 10px 7px 12px; display:flex; gap:8px; align-items:center; border-right:1px solid var(--line); background:#fff; position:sticky; left:0; z-index:2; }
-.g-label b { display:block; font-size:13.5px; line-height:1.35; }
-.g-label small { display:block; color:var(--muted); font-size:11.5px; line-height:1.35; }
-.g-group { flex:0 0 84px; white-space:nowrap; font-size:11.5px; font-weight:700; color:#fff; background:var(--navy); border-radius:4px; text-align:center; padding:1px 0; }
-.g-group.ghost { background:none; }
-.g-track { display:grid; grid-template-columns:repeat(17,minmax(0,1fr)); align-items:center; position:relative; padding:6px 0; background-image:linear-gradient(to right,#eef1f6 1px,transparent 1px); background-size:calc(100%/17) 100%; }
-.g-off { grid-column:7/8; grid-row:1; align-self:stretch; margin:-6px 0; background:repeating-linear-gradient(135deg,#eef1f6 0 5px,#f8f9fc 5px 10px); }
-.g-line { grid-column:8/18; grid-row:1; align-self:stretch; margin:-6px 0; background:#fafbfd; z-index:0; border-left:1.5px dashed #b9c2d6; }
-.g-track > .bar { grid-row:1; z-index:1; }
-.bar { margin:0 3px; border-radius:5px; font-size:12px; font-weight:700; padding:4px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4; }
-.bar.fix { background:var(--blue); color:#fff; }
-.bar.plan { background:repeating-linear-gradient(135deg,#dbe6fb 0 6px,#eaf0fd 6px 12px); color:#1d3f8f; border:1.5px dashed #7d9be0; padding:2.5px 8px; }
-.bar.ms { background:var(--amber-soft); color:#7a4700; border:1.5px solid #e2a23c; padding:2.5px 4px; text-align:center; overflow:visible; position:relative; z-index:3; justify-self:start; margin-left:3px; }
-.bar.dot { background:none; color:var(--green); text-align:center; padding:0; font-size:13px; }
-.g-head { border-top:0; position:sticky; top:0; }
-.g-head .g-label { font-weight:700; font-size:13px; color:var(--muted); background:#f7f9fc; }
-.g-head .g-track { padding:0; background-color:#f7f9fc; grid-template-rows:auto auto; }
-.g-month { grid-row:1; font-weight:700; font-size:13px; padding:4px 8px; border-bottom:1px solid var(--line); border-left:1px solid var(--line); }
-.g-week { grid-row:2; text-align:center; font-size:12.5px; font-weight:700; padding:4px 0; line-height:1.25; }
-.g-week small { display:block; font-weight:400; color:var(--muted); font-size:10.5px; }
-.g-week.off { color:var(--muted); }
-.legend { display:flex; gap:18px; flex-wrap:wrap; font-size:13px; color:var(--muted); margin:10px 2px 0; align-items:center; }
+:root { --ink:#1c1c1c; --muted:#555; --line:#8a8a8a; --thin:#c9c9c9; --navy:#1f2f4f; --fill:#eef0f3; }
+* { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+body { margin:0; background:#fff; color:var(--ink); font-family:"Yu Gothic","Hiragino Kaku Gothic ProN","Noto Sans JP","Meiryo",sans-serif; font-size:14px; line-height:1.7; }
+.wrap { max-width:1280px; margin:0 auto; padding:32px 32px 48px; }
+.doc-head { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; }
+.doc-head table { border-collapse:collapse; font-size:12.5px; }
+.doc-head td { border:1px solid var(--line); padding:3px 12px; }
+.doc-head td:first-child { background:var(--fill); }
+.label { font-size:13px; letter-spacing:.1em; color:var(--muted); }
+h1 { font-family:"Yu Mincho","Hiragino Mincho ProN","Noto Serif JP",serif; font-size:26px; font-weight:700; margin:2px 0 0; letter-spacing:.04em; }
+.rule { border:0; border-top:3px double var(--navy); margin:14px 0 20px; }
+h2 { font-size:15.5px; margin:26px 0 8px; padding:3px 10px; border-left:6px solid var(--navy); background:var(--fill); letter-spacing:.04em; }
+p { margin:0 0 8px; }
+ol, ul { margin:0; padding-left:1.6em; }
+li { margin-bottom:2px; }
+table.g, table.t { width:100%; border-collapse:collapse; }
+.scroll { overflow-x:auto; }
+table.g { min-width:1000px; table-layout:fixed; border:1.5px solid var(--ink); }
+table.g th { background:var(--fill); border:1px solid var(--line); font-size:13px; padding:4px 2px; text-align:center; font-weight:700; }
+table.g th.sub { font-weight:500; font-size:12px; }
+table.g td { border:1px solid var(--thin); border-top-color:var(--line); border-bottom-color:var(--line); height:46px; padding:0; }
+table.g td.no { width:36px; text-align:center; border-color:var(--line); }
+table.g td.nm { width:300px; padding:5px 10px; border-color:var(--line); line-height:1.4; }
+table.g td.nm small { display:block; color:var(--muted); font-size:11.5px; }
+table.g td.c { position:relative; }
+.bar { margin:0 6px; padding:4px 8px; font-size:12.5px; font-weight:700; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bar.fix { background:var(--navy); color:#fff; }
+.bar.plan { background:#fff; color:var(--navy); border:1.5px dashed var(--navy); padding:2.5px 8px; }
+.bar.line { background:none; color:var(--navy); border-top:3px solid var(--navy); margin-top:14px; padding-top:1px; font-size:11.5px; font-weight:500; text-align:left; }
+.star { color:#b00000; font-weight:700; }
+.legend { display:flex; gap:22px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin-top:6px; align-items:center; }
 .legend .bar { display:inline-block; margin:0 6px 0 0; vertical-align:middle; }
-/* 表 */
-table { width:100%; border-collapse:collapse; font-size:14px; }
-th { text-align:left; font-size:12.5px; color:var(--muted); border-bottom:1.5px solid var(--line); padding:6px 10px; white-space:nowrap; }
-td { border-bottom:1px solid #eef1f6; padding:8px 10px; vertical-align:top; }
-tr:last-child td { border-bottom:0; }
-td.n { white-space:nowrap; font-weight:700; }
-.tbl { overflow-x:auto; padding:6px 8px; }
-.tag { display:inline-block; font-size:12px; font-weight:700; border-radius:4px; padding:0 7px; white-space:nowrap; }
-.tag.b { background:var(--blue-soft); color:#1d3f8f; }
-.tag.g { background:var(--green-soft); color:var(--green); }
-.tag.a { background:var(--amber-soft); color:var(--amber); }
-.tag.x { background:#eef1f6; color:var(--muted); }
-ul { margin:0; padding-left:1.2em; }
-li { margin-bottom:3px; }
-.lv { position:relative; }
-.lv .no { font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.06em; }
-.lv h3 { font-size:17px; }
-.lv.rec { border:2px solid var(--blue); }
-.lv.rec::after { content:"推奨の到達点"; position:absolute; top:-11px; right:14px; background:var(--blue); color:#fff; font-size:12px; font-weight:700; border-radius:4px; padding:0 8px; }
-.lv dl { margin:8px 0 0; display:grid; grid-template-columns:5.5em 1fr; gap:3px 8px; font-size:13.5px; }
-.lv dt { color:var(--muted); }
-.lv dd { margin:0; }
-.ans { background:var(--blue-soft); border-radius:8px; padding:12px 16px; font-weight:700; margin-bottom:12px; }
-.note { font-size:13px; color:var(--muted); margin-top:10px; }
-.check li { list-style:"☐  "; }
-@media print {
-  @page { size:A3 landscape; margin:10mm; }
-  body { background:#fff; font-size:12px; }
-  .wrap { max-width:none; padding:0; }
-  .gantt-wrap { overflow:visible; }
-  .gantt { min-width:0; }
-  .g-head, .g-label { position:static; }
-  h2 { break-after:avoid; }
-  .card, .g-row, tr { break-inside:avoid; }
-  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-}
+table.t { border:1.5px solid var(--ink); font-size:13.5px; }
+table.t th { background:var(--fill); border:1px solid var(--line); padding:5px 10px; text-align:left; white-space:nowrap; }
+table.t td { border:1px solid var(--line); padding:6px 10px; vertical-align:top; }
+table.t td.k { white-space:nowrap; font-weight:700; background:#fafafa; }
+.cols { display:grid; grid-template-columns:1fr 1fr; gap:0 28px; }
+@media (max-width:800px){ .cols{ grid-template-columns:1fr; } .wrap{ padding:20px 16px 36px; } .doc-head{ flex-direction:column; } }
+.foot { margin-top:22px; font-size:12.5px; color:var(--muted); text-align:right; }
+@media print { @page { size:A3 landscape; margin:12mm; } .wrap { max-width:none; padding:0; } .scroll{ overflow:visible; } h2, table { break-inside:avoid; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-<header class="top">
-  <h1><small>AAA(修繕データ一元管理)プロトタイプ</small>今後の進め方とスケジュール<span class="draft">案</span></h1>
-  <div class="meta">作成日 2026年11月12日<br>第1回の週次MTGで内容を確定する前提のたたき台</div>
-</header>
-
-<div class="cols c4">
-  <div class="card key"><span>来週から</span><b class="d">11/16の週</b><p>週次MTGを開始。初回でゴールと進め方を合意する。</p></div>
-  <div class="card key"><span>モック完成</span><b class="d">11/30(月)</b><p>確認と修正を2回まわし、機能を固定する。</p></div>
-  <div class="card key"><span>PoCの計画</span><b class="d">12月</b><p>12/18に定義を確定、12/25までに計画と準備を終える。</p></div>
-  <div class="card key"><span>PoC開始(想定)</span><b class="d">1/12の週</b><p>年明けから6週間。日程は12月の計画で確定する。</p></div>
+<div class="doc-head">
+  <div>
+    <div class="label">修繕データ一元管理「AAA」プロトタイプ</div>
+    <h1>今後の進め方および概略工程(案)</h1>
+  </div>
+  <table>
+    <tr><td>作成日</td><td>2026年11月13日</td></tr>
+    <tr><td>版</td><td>第1版(案)</td></tr>
+    <tr><td>位置づけ</td><td>協議用資料</td></tr>
+  </table>
 </div>
+<hr class="rule">
 
-<h2><i>1</i>全体スケジュール</h2>
-<p class="lead">年内(12/25まで)は日付を置いた計画、年明け以降は12月のPoC計画で確定させる想定です。週の表記は月曜始まり。11/23(月)は祝日、12/28の週は年末年始として作業を置いていません。</p>
-<div class="gantt-wrap"><div class="gantt">
-<div class="g-row g-head"><div class="g-label">作業</div><div class="g-track"><div class="g-month" style="grid-column:1/4">2026年11月</div><div class="g-month" style="grid-column:4/8">2026年12月</div><div class="g-month" style="grid-column:8/12">2027年1月</div><div class="g-month" style="grid-column:12/16">2027年2月</div><div class="g-month" style="grid-column:16/18">2027年3月</div><div class="g-week" style="grid-column:1">11/16<small>週</small></div><div class="g-week" style="grid-column:2">11/23<small>週</small></div><div class="g-week" style="grid-column:3">11/30<small>週</small></div><div class="g-week" style="grid-column:4">12/7<small>週</small></div><div class="g-week" style="grid-column:5">12/14<small>週</small></div><div class="g-week" style="grid-column:6">12/21<small>週</small></div><div class="g-week off" style="grid-column:7">12/28<small>年末年始</small></div><div class="g-week" style="grid-column:8">1/4<small>週</small></div><div class="g-week" style="grid-column:9">1/11<small>週</small></div><div class="g-week" style="grid-column:10">1/18<small>週</small></div><div class="g-week" style="grid-column:11">1/25<small>週</small></div><div class="g-week" style="grid-column:12">2/1<small>週</small></div><div class="g-week" style="grid-column:13">2/8<small>週</small></div><div class="g-week" style="grid-column:14">2/15<small>週</small></div><div class="g-week" style="grid-column:15">2/22<small>週</small></div><div class="g-week" style="grid-column:16">3/1<small>週</small></div><div class="g-week" style="grid-column:17">3/8<small>週</small></div></div></div>
-<div class="g-row g-first"><div class=g-label><span class="g-group">会議</span><div><b>週次MTG・WBS更新</b><small>毎週。WBSはこの場で見直す</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar dot" style="grid-column:1/2">●</div><div class="bar dot" style="grid-column:2/3">●</div><div class="bar dot" style="grid-column:3/4">●</div><div class="bar dot" style="grid-column:4/5">●</div><div class="bar dot" style="grid-column:5/6">●</div><div class="bar dot" style="grid-column:6/7">●</div><div class="bar dot" style="grid-column:8/9">●</div><div class="bar dot" style="grid-column:9/10">●</div><div class="bar dot" style="grid-column:10/11">●</div><div class="bar dot" style="grid-column:11/12">●</div><div class="bar dot" style="grid-column:12/13">●</div><div class="bar dot" style="grid-column:13/14">●</div><div class="bar dot" style="grid-column:14/15">●</div><div class="bar dot" style="grid-column:15/16">●</div><div class="bar dot" style="grid-column:16/17">●</div><div class="bar dot" style="grid-column:17/18">●</div></div></div>
-<div class="g-row g-first"><div class=g-label><span class="g-group">プロトタイプ</span><div><b>機能確認と修正の繰り返し</b><small>MTGで確認 → 翌週までに修正</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:1/3">確認・修正 2回</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>モック完成</b><small>11/30(月) 機能を固定</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar ms" style="grid-column:3/4">◆ 11/30 完成</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>PoC用の改修</b><small>実データ対応・入力と保存</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:4/7">設計・改修</div><div class="bar plan" style="grid-column:8/9">仕上げ</div></div></div>
-<div class="g-row g-first"><div class=g-label><span class="g-group">ゴール</span><div><b>プロトタイプのゴール設定</b><small>何を確かめるための物か</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar ms" style="grid-column:1/2">◆ 合意</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>最終到達点の決定</b><small>どこまで作り込むか</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar ms" style="grid-column:5/6">◆ 決定</div></div></div>
-<div class="g-row g-first"><div class=g-label><span class="g-group">データ</span><div><b>確認(所在と形式の棚卸し)</b><small>点検報告書・見積・写真・台帳</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:1/3">棚卸し</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>定義(項目・評価基準)</b><small>評価点の付け方、費用の出所</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:2/5">項目定義書</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>整理(PoC対象物件の実データ)</b><small>対象物件分を整えて投入</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:4/7">収集・整形</div><div class="bar plan" style="grid-column:8/9">投入</div></div></div>
-<div class="g-row g-first"><div class=g-label><span class="g-group">検証</span><div><b>社内フィードバック 第1回</b><small>担当者3〜5名に触ってもらう</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:2/3">実施</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>社内フィードバック 第2回</b><small>完成モックで再確認</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:3/5">実施・集計</div></div></div>
-<div class="g-row g-first"><div class=g-label><span class="g-group">PoC</span><div><b>PoC定義</b><small>目的・仮説・対象・成功基準</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:3/5">ドラフト</div><div class="bar ms" style="grid-column:5/6">◆ 12/18 確定</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>PoC計画・準備</b><small>体制・手順・記録方法</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:5/7">計画</div><div class="bar plan" style="grid-column:8/9">準備</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>PoC実施</b><small>実際のオーナー説明で使う</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar plan" style="grid-column:9/15">実施(6週間を想定)</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>評価・継続判断</b><small>結果のまとめと次の判断</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar plan" style="grid-column:15/17">評価</div></div></div>
-<div class="g-row g-first"><div class=g-label><span class="g-group">事業計画</span><div><b>簡易版(投資対効果の仮説)</b><small>A4 1枚。PoC定義と同時に</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar fix" style="grid-column:4/6">作成</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>本格版の要否判断</b><small>社内利用のみか、外販もあるか</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar ms" style="grid-column:5/6">◆ 判断</div></div></div>
-<div class="g-row"><div class=g-label><span class="g-group ghost"></span><div><b>本格版(必要な場合)</b><small>PoC結果を反映して完成</small></div></div><div class="g-track"><div class="g-off"></div><div class="g-line"></div><div class="bar plan" style="grid-column:10/17">骨子 → PoC結果を反映</div></div></div>
-</div></div>
+<h2>1. 基本方針</h2>
+<ol>
+  <li>来週より週次の定例会議を設け、プロトタイプの機能確認と修正を繰り返しながら進める。</li>
+  <li>モックは11月内に完成させ、12月よりPoC(実証)に向けた計画に着手する。</li>
+  <li>検証は早期に行い、社内関係者の意見を集めたうえで内容に反映する。</li>
+  <li>本工程は現時点の想定であり、詳細(WBS)は定例会議にて週次で調整する。</li>
+</ol>
+
+<h2>2. 概略工程</h2>
+<div class="scroll">
+<table class="g">
+  <colgroup><col style="width:36px"><col style="width:300px"><col span="8"></colgroup>
+  <tr><th rowspan="2">No.</th><th rowspan="2">項目</th><th colspan="2">2026年11月</th><th colspan="3">12月</th><th colspan="3">2027年</th></tr>
+  <tr><th class="sub">中旬</th><th class="sub">下旬</th><th class="sub">上旬</th><th class="sub">中旬</th><th class="sub">下旬</th><th class="sub">1月</th><th class="sub">2月</th><th class="sub">3月</th></tr>
+<tr><td class="no">1</td><td class="nm"><b>週次定例会議</b><small>毎週開催。工程とWBSは定例の場で都度見直す</small></td><td colspan="8" class="c"><div class="bar line">毎週開催</div></td></tr>
+<tr><td class="no">2</td><td class="nm"><b>プロトタイプの機能確認・修正</b><small>定例で確認し、修正を繰り返す</small></td><td colspan="2" class="c"><div class="bar fix">確認・修正の繰り返し　<span style="color:#ffd0d0">★</span>完成</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">3</td><td class="nm"><b>プロトタイプのゴール設定</b><small>目的と最終到達点の検討</small></td><td colspan="1" class="c"><div class="bar fix">ゴール設定</div></td><td colspan="3" class="c"><div class="bar fix">最終到達点の検討</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">4</td><td class="nm"><b>データの確認・定義・整理</b><small>所在の確認、項目の定義、対象データの整理</small></td><td colspan="5" class="c"><div class="bar fix">確認 → 定義 → 整理</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">5</td><td class="nm"><b>早期検証・フィードバック収集</b><small>社内関係者による試用と意見の収集</small></td><td class="c"></td><td colspan="3" class="c"><div class="bar fix">社内での試用・意見収集</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">6</td><td class="nm"><b>PoCの定義</b><small>目的、対象範囲、評価の考え方</small></td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar fix">PoC定義</div></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">7</td><td class="nm"><b>PoCの計画・準備</b><small>体制、進め方、対象データの準備</small></td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar fix">計画・準備</div></td><td class="c"></td><td class="c"></td><td class="c"></td></tr>
+<tr><td class="no">8</td><td class="nm"><b>PoCの実施・評価</b><small>実施時期・期間は12月の計画で決定</small></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td class="c"></td><td colspan="2" class="c"><div class="bar plan">PoC実施(想定)</div></td><td colspan="1" class="c"><div class="bar plan">評価(想定)</div></td></tr>
+<tr><td class="no">9</td><td class="nm"><b>事業計画の要否検討</b><small>要否を判断のうえ、必要な場合に作成</small></td><td class="c"></td><td class="c"></td><td colspan="3" class="c"><div class="bar fix">要否の検討</div></td><td colspan="3" class="c"><div class="bar plan">作成(必要な場合)</div></td></tr>
+</table>
+</div>
 <div class="legend">
-  <span><span class="bar fix">計画</span>年内の計画</span>
-  <span><span class="bar plan">想定</span>年明け以降の想定(12月に確定)</span>
-  <span><span class="bar ms">◆</span>決める日・完成日</span>
-  <span><span class="bar dot">●</span> 週次MTG</span>
+  <span><span class="bar fix">　　</span>年内の予定</span>
+  <span><span class="bar plan">　　</span>年明け以降の想定(12月の計画で決定)</span>
+  <span><span class="star">★</span> モック完成(11月末)</span>
 </div>
 
-<h2><i>2</i>主な節目</h2>
-<div class="card tbl"><table>
-<tr><th>日付</th><th>節目</th><th>この日までに決まっていること・出来ていること</th><th>確度</th></tr>
-<tr><td class="n">11/16の週</td><td class="n">キックオフ(第1回MTG)</td><td>プロトタイプのゴール、参加者と決める人、MTGの曜日、このスケジュール</td><td><span class="tag b">計画</span></td></tr>
-<tr><td class="n">11/23の週</td><td class="n">社内フィードバック 第1回</td><td>担当者3〜5名が実際に操作した結果と、修正の優先順位</td><td><span class="tag b">計画</span></td></tr>
-<tr><td class="n">11/30(月)</td><td class="n">モック完成</td><td>機能を固定した版。以降の変更はPoC用の改修として扱う</td><td><span class="tag b">計画</span></td></tr>
-<tr><td class="n">12/18(金)</td><td class="n">PoC定義の確定</td><td>目的・仮説・対象物件と担当者・成功基準。あわせて最終到達点と事業計画の要否を決める</td><td><span class="tag b">計画</span></td></tr>
-<tr><td class="n">12/25(金)</td><td class="n">PoC計画の確定</td><td>体制、手順、記録の取り方、実データの準備状況</td><td><span class="tag b">計画</span></td></tr>
-<tr><td class="n">1/12の週</td><td class="n">PoC開始</td><td>対象物件の実データが入った版で、オーナー説明に使い始める</td><td><span class="tag x">想定</span></td></tr>
-<tr><td class="n">3/5(金)</td><td class="n">継続判断</td><td>PoC結果のまとめと、本開発に進むかの判断材料</td><td><span class="tag x">想定</span></td></tr>
-</table></div>
-
-<h2><i>3</i>週次MTGの進め方</h2>
-<div class="cols c2">
-  <div class="card">
-    <h3>毎回の流れ(45分)</h3>
-    <table>
-      <tr><td class="n">5分</td><td>前回決めたことと宿題の確認</td></tr>
-      <tr><td class="n">15分</td><td>プロトタイプを動かして確認(前週の修正点)</td></tr>
-      <tr><td class="n">10分</td><td>気づきを「直す・保留・やらない」に仕分け</td></tr>
-      <tr><td class="n">10分</td><td>その週の議題(下表)</td></tr>
-      <tr><td class="n">5分</td><td>WBSの更新と、次回までの宿題の確認</td></tr>
-    </table>
-    <p class="note">修正の繰り返しは「MTGで確認 → 翌MTGまでに修正 → 再確認」の1週間サイクルです。WBSは下の初版を毎週この場で見直します。</p>
-  </div>
-  <div class="card tbl">
-    <h3>各回の議題(年内)</h3>
-    <table>
-      <tr><th>回</th><th>週</th><th>議題</th></tr>
-      <tr><td class="n">第1回</td><td class="n">11/16</td><td>キックオフ。ゴール設定、現プロトタイプの機能確認、データの棚卸しの分担</td></tr>
-      <tr><td class="n">第2回</td><td class="n">11/23</td><td>修正版の確認、データの所在の報告、社内フィードバック第1回の結果</td></tr>
-      <tr><td class="n">第3回</td><td class="n">11/30</td><td>モック完成の確認、PoC定義のドラフト、データ項目定義のレビュー</td></tr>
-      <tr><td class="n">第4回</td><td class="n">12/7</td><td>フィードバック第2回の結果、PoCの対象物件と担当者、投資対効果の仮説</td></tr>
-      <tr><td class="n">第5回</td><td class="n">12/14</td><td>PoC定義の確定、最終到達点の決定、事業計画の要否判断</td></tr>
-      <tr><td class="n">第6回</td><td class="n">12/21</td><td>PoC計画の確定、実データの準備状況、年明けの段取り</td></tr>
-    </table>
-  </div>
+<div class="cols">
+<div>
+<h2>3. 主な節目</h2>
+<table class="t">
+  <tr><th>時期</th><th>内容</th></tr>
+  <tr><td class="k">11月第3週</td><td>週次定例会議の開始、プロトタイプのゴール設定</td></tr>
+  <tr><td class="k">11月末</td><td>モック完成</td></tr>
+  <tr><td class="k">12月</td><td>PoCの定義および計画、事業計画の要否判断</td></tr>
+  <tr><td class="k">年明け以降</td><td>PoCの実施および評価(時期は12月に決定)</td></tr>
+</table>
+</div>
+<div>
+<h2>4. 協議のうえ決定する事項</h2>
+<table class="t">
+  <tr><th>事項</th><th>現時点の考え方</th></tr>
+  <tr><td class="k">プロトタイプのゴール</td><td>画面構成と見せ方について社内の合意を得ること</td></tr>
+  <tr><td class="k">最終的な到達点</td><td>一部物件の実データにより、実務で試用できる水準までを想定</td></tr>
+  <tr><td class="k">PoCの範囲</td><td>対象物件・期間・評価の観点を12月に定義</td></tr>
+  <tr><td class="k">事業計画の要否</td><td>社内利用にとどめるか、外部提供も視野に入れるかにより判断</td></tr>
+</table>
+</div>
 </div>
 
-<h2><i>4</i>プロトタイプのゴールと、最終的にどこまで持っていくか</h2>
-<p class="lead">プロトタイプは「何を確かめるための物か」で作り込みの深さが変わります。3段階に分け、段階2を最終到達点とする案です。</p>
-<div class="cols c3">
-  <div class="card lv">
-    <div class="no">段階1 ／ 11月末</div>
-    <h3>見せて合意するモック</h3>
-    <p>架空データで全画面が動く。いまの状態の延長。</p>
-    <dl><dt>確かめる</dt><dd>画面構成と見せ方が、担当者の説明の流れに合うか</dd><dt>データ</dt><dd>架空(48物件)</dd><dt>保存</dt><dd>されない</dd><dt>完成条件</dt><dd>社内フィードバックで出た「直す」項目がすべて反映されている</dd></dl>
-  </div>
-  <div class="card lv rec">
-    <div class="no">段階2 ／ 1〜2月(PoC)</div>
-    <h3>実データで試せる版</h3>
-    <p>限られた物件の実データを入れ、担当者が実際のオーナー説明で使う。</p>
-    <dl><dt>確かめる</dt><dd>説明の準備時間が減るか、オーナーに伝わるか、データを揃え続けられるか</dd><dt>データ</dt><dd>実データ(対象物件のみ)</dd><dt>保存</dt><dd>指摘・対応状況・写真を登録して残せる</dd><dt>追加機能</dt><dd>ログイン、入力画面、実物件の配置図と写真</dd></dl>
-  </div>
-  <div class="card lv">
-    <div class="no">段階3 ／ PoC後に判断</div>
-    <h3>本開発</h3>
-    <p>全物件・全担当者で使う業務システムとして作る。</p>
-    <dl><dt>位置づけ</dt><dd>プロトタイプの延長ではなく、PoC結果を要件にして作り直す</dd><dt>必要なもの</dt><dd>既存システム連携、権限、運用体制、予算</dd><dt>判断材料</dt><dd>PoCの結果と投資対効果</dd></dl>
-  </div>
-</div>
-<p class="note">段階2で止める理由: プロトタイプは速く変えられることが価値で、本番の品質(権限・連携・障害対応)まで求めると検証が遅れます。PoCで使えると分かった部分だけを本開発の要件にするほうが、手戻りが小さくなります。</p>
-
-<h2><i>5</i>データの確認・定義・整理</h2>
-<div class="cols c3">
-  <div class="card">
-    <h3><span class="tag b">確認</span> 11/16〜11/27</h3>
-    <p>いまどこに、どんな形で、誰が持っているかを洗い出す。</p>
-    <ul>
-      <li>点検報告書(紙・PDF・Excel)</li>
-      <li>指摘事項と写真の保管場所</li>
-      <li>見積・工事の実績と金額</li>
-      <li>物件・オーナーの台帳(基幹システム)</li>
-      <li>オーナーとの連絡履歴</li>
-    </ul>
-    <p class="note">成果物: データの所在一覧</p>
-  </div>
-  <div class="card">
-    <h3><span class="tag b">定義</span> 11/24〜12/11</h3>
-    <p>画面に出す項目の意味と基準を決める。</p>
-    <ul>
-      <li>5項目の評価点(10点満点)の付け方</li>
-      <li>緊急度(早急・経過観察・問題なし)の基準</li>
-      <li>概算費用の出し方と、誰が入れるか</li>
-      <li>類似物件の範囲(築年数・構造・地域)</li>
-      <li>将来試算の前提(工事費の上昇率など)</li>
-    </ul>
-    <p class="note">成果物: データ項目定義書</p>
-  </div>
-  <div class="card">
-    <h3><span class="tag b">整理</span> 12/7〜1/8</h3>
-    <p>PoC対象物件の分だけ、実データを揃えて入れる。</p>
-    <ul>
-      <li>対象物件の過去の点検・修繕を項目定義に合わせて整形</li>
-      <li>写真の選定と、箇所との紐づけ</li>
-      <li>配置図の用意</li>
-      <li>個人情報の扱いの確認</li>
-      <li>欠けているデータの記録(それ自体がPoCの発見)</li>
-    </ul>
-    <p class="note">成果物: PoC用データ一式</p>
-  </div>
-</div>
-<p class="note">いまのプロトタイプは評価点・費用・試算の前提をすべて仮の値で置いています。「定義」で実際の基準に置き換えられるかが、PoCに進めるかどうかの最大の分かれ目です。</p>
-
-<h2><i>6</i>PoCの定義(たたき台)</h2>
-<div class="card tbl"><table>
-<tr><th>項目</th><th>案</th><th>12/18までに決めること</th></tr>
-<tr><td class="n">目的</td><td>実データと実際のオーナー説明で、AAAが担当者の業務とオーナーの判断に役立つかを確かめる</td><td>確かめたい順番(業務の効率か、提案の通りやすさか)</td></tr>
-<tr><td class="n">検証する仮説</td><td>① 説明の準備時間が減る　② オーナーが修繕の必要性と時期を理解しやすくなる　③ 必要な情報をすぐ探せる　④ データを無理なく入れ続けられる</td><td>仮説ごとの測り方と目標値</td></tr>
-<tr><td class="n">対象</td><td>物件10〜20件、担当者3〜5名</td><td>物件と担当者の選定(構造や築年数が偏らないように)</td></tr>
-<tr><td class="n">期間</td><td>6週間(1/12〜2/19)</td><td>点検や提案の時期と重なる期間にできるか</td></tr>
-<tr><td class="n">測るもの</td><td>準備時間の前後比較、担当者とオーナーへの聞き取り、提案への反応、入力にかかった時間</td><td>いまの準備時間など、比較の元になる数字を年内に取れるか</td></tr>
-<tr><td class="n">やらないこと</td><td>全物件への展開、基幹システムとの自動連携、オーナーが自分でログインする機能</td><td>範囲外にする項目の合意</td></tr>
-</table></div>
-
-<h2><i>7</i>早めの検証とフィードバックの集め方</h2>
-<div class="cols c2">
-  <div class="card">
-    <h3>いつ・誰に</h3>
-    <table>
-      <tr><td class="n">11/23の週</td><td>担当者3〜5名。いまのプロトタイプを説明なしで触ってもらう</td></tr>
-      <tr><td class="n">11/30〜12/11</td><td>同じ担当者と、管理職。完成モックで再確認</td></tr>
-      <tr><td class="n">1月〜(PoC)</td><td>オーナー。実際の説明の場での反応</td></tr>
-    </table>
-    <p class="note">モック完成を待たずに11/23の週に1回目を行います。完成前に聞くほうが、直せる範囲が広いためです。</p>
-  </div>
-  <div class="card">
-    <h3>集め方</h3>
-    <ul>
-      <li>1人30分。「この物件の修繕を、オーナーに説明する準備をしてください」と頼み、操作を横で見る</li>
-      <li>迷った所・探した所・口に出した疑問をその場で記録する</li>
-      <li>終わりに3問だけ聞く: 実際に使う場面はあるか／足りない情報は何か／いまのやり方より手間が増える所はどこか</li>
-      <li>結果は1つの一覧にまとめ、週次MTGで「直す・保留・やらない」に仕分ける</li>
-    </ul>
-  </div>
-</div>
-
-<h2><i>8</i>事業計画は必要か</h2>
-<div class="ans">いまの段階で本格的な事業計画は不要です。ただし、PoC定義と同時に「投資対効果の仮説(A4 1枚)」は用意し、本格版が必要かどうかは12/14の週に判断する案です。</div>
-<div class="cols c3">
-  <div class="card">
-    <h3><span class="tag g">必要</span> 投資対効果の仮説(12月)</h3>
-    <p>PoCの成功基準を決めるには、「何がどれだけ良くなれば続けるのか」の物差しが要ります。</p>
-    <ul><li>減らせる作業時間の見込み</li><li>修繕提案が通りやすくなる効果の見込み</li><li>PoCと本開発のおおよその費用</li></ul>
-  </div>
-  <div class="card">
-    <h3><span class="tag a">場合による</span> 本格的な事業計画</h3>
-    <p>次のどれかに当てはまるなら必要です。</p>
-    <ul><li>他社への提供(外販)を視野に入れる</li><li>本開発に予算の承認や稟議が要る</li><li>専任の体制を組む</li></ul>
-    <p class="note">作る場合は1月に骨子、PoCの結果を入れて3月に完成。</p>
-  </div>
-  <div class="card">
-    <h3><span class="tag x">不要</span> 社内利用のみで小さく続ける場合</h3>
-    <p>社内の業務改善として小規模に続けるだけなら、投資対効果の1枚とPoC結果で判断できます。</p>
-  </div>
-</div>
-
-<h2><i>9</i>第1回MTG(11/16の週)で決めたいこと</h2>
-<div class="card">
-  <ul class="check cols c2" style="padding-left:1.6em">
-    <li>参加者と、最終的に決める人</li>
-    <li>MTGの曜日と時間</li>
-    <li>プロトタイプのゴール(4の段階分けでよいか)</li>
-    <li>データの棚卸しを誰が担当するか</li>
-    <li>社内フィードバックに協力してもらう担当者</li>
-    <li>社内利用のみか、外販も視野に入れるか</li>
-    <li>PoCに使える予算と開発体制の見通し</li>
-    <li>このスケジュールの修正点</li>
-  </ul>
-</div>
-
-<h2><i>10</i>WBS(初版)</h2>
-<p class="lead">担当は第1回MTGで割り当てます。毎週のMTGで期限と状況を更新します。</p>
-<div class="card tbl"><table>
-<tr><th>#</th><th>区分</th><th>作業</th><th>成果物</th><th>期限</th><th>担当</th><th>状況</th></tr>
-<tr><td>1</td><td>会議</td><td>キックオフの開催</td><td>合意事項メモ</td><td class="n">11/20</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>2</td><td>ゴール</td><td>プロトタイプのゴール設定</td><td>ゴールと完成条件</td><td class="n">11/20</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>3</td><td>プロトタイプ</td><td>機能確認と修正(1回目)</td><td>修正版</td><td class="n">11/20</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>4</td><td>データ</td><td>データの所在と形式の棚卸し</td><td>データの所在一覧</td><td class="n">11/27</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>5</td><td>検証</td><td>社内フィードバック第1回</td><td>気づき一覧</td><td class="n">11/27</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>6</td><td>プロトタイプ</td><td>機能確認と修正(2回目)</td><td>修正版</td><td class="n">11/27</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>7</td><td>プロトタイプ</td><td>モック完成</td><td>完成版HTML、仕様書の更新</td><td class="n">11/30</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>8</td><td>PoC</td><td>PoC定義のドラフト</td><td>PoC定義書(案)</td><td class="n">12/4</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>9</td><td>データ</td><td>項目と評価基準の定義</td><td>データ項目定義書</td><td class="n">12/11</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>10</td><td>検証</td><td>社内フィードバック第2回</td><td>気づき一覧(更新)</td><td class="n">12/11</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>11</td><td>事業計画</td><td>投資対効果の仮説</td><td>A4 1枚</td><td class="n">12/18</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>12</td><td>PoC</td><td>PoC定義の確定、最終到達点と事業計画の要否の決定</td><td>PoC定義書</td><td class="n">12/18</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>13</td><td>PoC</td><td>PoC計画の確定</td><td>PoC計画書</td><td class="n">12/25</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>14</td><td>データ</td><td>PoC対象物件の実データの収集と整形</td><td>PoC用データ一式</td><td class="n">1/8</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-<tr><td>15</td><td>プロトタイプ</td><td>PoC用の改修(実データ対応、入力と保存、ログイン)</td><td>PoC版</td><td class="n">1/8</td><td>未定</td><td><span class="tag x">未着手</span></td></tr>
-</table></div>
-<p class="note">年明け以降の作業(PoC実施、評価、事業計画の本格版)は、12/25のPoC計画の確定時にWBSへ追加します。</p>
+<p class="foot">本資料は協議用の案であり、定例会議での確認を踏まえて随時更新する。</p>
 </div>
 </body>
 </html>
