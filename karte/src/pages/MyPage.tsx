@@ -60,7 +60,7 @@ import {
   type Repair,
 } from '../data';
 import { DEFAULT_SIM, deferredCosts, openCost, projectScores, simulate } from '../sim';
-import { CheckBadge, CheckPlanTiles, Empty, LEGEND, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
+import { CheckBadge, CheckItems, CheckPlanTiles, Empty, LEGEND, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
 import { Shot, kindOf } from '../Shot';
 
 type Variant = 'desktop' | 'tablet' | 'phone';
@@ -657,6 +657,7 @@ export default function MyPage() {
                     </b>
                     <span>{i.summary}</span>
                     <small>{i.round}</small>
+                    <CheckItems items={i.items} />
                   </div>
                   <strong className={`mp-judge ${i.score != null ? rateCls(i.score) : 'plain'}`}>
                     {i.score != null ? i.score.toFixed(1) : i.result}
@@ -686,6 +687,7 @@ export default function MyPage() {
                     <td>
                       {i.summary}
                       <small className="ck-round">{i.round}</small>
+                      <CheckItems items={i.items} />
                     </td>
                     <td>
                       <Link to={`/properties/${p.id}/report`} className="pdf" aria-label="報告書を開く">

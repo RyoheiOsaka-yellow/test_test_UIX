@@ -14,7 +14,7 @@ import {
   repairs,
   SEVERITY_LABEL,
 } from '../data';
-import { CheckBadge, Empty, SeverityBadge, StatusBadge, downloadCsv, useStore } from '../ui';
+import { CheckBadge, CheckItems, Empty, SeverityBadge, StatusBadge, downloadCsv, useStore } from '../ui';
 
 type Tab = 'findings' | 'repairs' | 'inspections';
 const TABS: { key: Tab; label: string }[] = [
@@ -323,7 +323,10 @@ export default function Records() {
                         </td>
                         <td className="nowrap">{i.round}</td>
                         <td className="nowrap strong">{i.result}</td>
-                        <td>{i.summary}</td>
+                        <td>
+                      {i.summary}
+                      <CheckItems items={i.items} />
+                    </td>
                         <td className="nowrap">{i.by}</td>
                       </tr>
                     );

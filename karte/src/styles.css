@@ -813,3 +813,12 @@ a.kpi:hover { border-color: var(--blue); }
 .v-phone .ck-plan { grid-template-columns: 1fr; }
 .v-phone .ck-tile > small, .v-phone .ck-tile dl, .v-phone .ck-alert, .v-phone .ck { font-size: 14px; }
 .v-phone .ck-tile > b { font-size: 16px; }
+
+.ck-items { display: flex; flex-wrap: wrap; gap: 3px 5px; margin-top: 3px; font-size: 0.82em; }
+.ck-items > span { border-radius: 4px; padding: 0 6px; background: #eef1f6; color: var(--muted); white-space: nowrap; }
+.ck-items > span b { color: var(--green); }
+.ck-items > span.j-watch { background: var(--amber-bg); }
+.ck-items > span.j-watch b { color: var(--amber); }
+.ck-items > span.j-bad { background: var(--red-bg); }
+.ck-items > span.j-bad b { color: var(--red); }
+.v-phone .ck-items { font-size: 14px; }

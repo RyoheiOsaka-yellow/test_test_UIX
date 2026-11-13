@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CalendarClock, ChevronRight, CircleAlert, Hourglass, Wallet } from 'lucide-react';
-import { PARTS, STATUSES, TODAY, addMonths, daysBetween, fmtDate, fmtMan, fmtYm, properties, propertyById } from '../data';
-import { Empty, LEGEND, StatusBadge, useStore } from '../ui';
+import { PARTS, STATUSES, TODAY, addMonths, daysBetween, fmtDate, fmtMan, fmtYm, properties, propertyById, checkPlan } from '../data';
+import { CheckBadge, Empty, LEGEND, StatusBadge, useStore } from '../ui';
 
 const ME = '青木 涼';
 
@@ -59,9 +59,14 @@ export default function Dashboard() {
       { bin: '9.0以上', lo: 9, hi: 11 },
     ].map((b) => ({ bin: b.bin, 棟数: props.filter((p) => p.overall >= b.lo && p.overall < b.hi).length }));
 
-    const insp = [...overdue, ...soon].sort((a, b) => (a.nextInspection < b.nextInspection ? -1 : 1));
+    // 3種別(アフターサービス点検・継続審査・建物定期点検)の期限。超過と90日以内
+    const insp = props
+      .flatMap((p) => checkPlan(p).filter((c) => c.next).map((c) => ({ p, kind: c.kind, next: c.next!, label: c.nextLabel, last: c.last })))
+      .filter((x) => daysBetween(TODAY, x.next) <= 90)
+      .sort((a, b) => (a.next < b.next ? -1 : 1));
+    const soonAll = insp.filter((x) => x.next >= TODAY).length;
 
-    return { props, open, urgent, within3y, overdue, soon, byYear, pipeline, queue, insp, byPart, bins };
+    return { props, open, urgent, within3y, overdue, soon, soonAll, byYear, pipeline, queue, insp, byPart, bins };
   }, [findings, scope]);
 
   const maxPipe = Math.max(1, ...d.pipeline.map((p) => p.count));
@@ -112,12 +117,12 @@ export default function Dashboard() {
           <span className="ico blue">
             <CalendarClock size={18} />
           </span>
-          <small>点検期限</small>
+          <small>点検・審査の期限</small>
           <b>
             {d.overdue.length}
             <em>棟 超過</em>
           </b>
-          <span className="foot">90日以内に期限 {d.soon.length}棟</span>
+          <span className="foot">90日以内に予定 {d.soonAll}件(3種別)</span>
         </Link>
         <div className="kpi">
           <span className="ico green">
@@ -286,22 +291,23 @@ export default function Dashboard() {
 
         <section className="card">
           <header>
-            <h2>点検期限</h2>
+            <h2>点検・審査の期限</h2>
             <span className="hint">超過と90日以内</span>
           </header>
           {d.insp.length === 0 ? (
             <Empty>期限が近い物件はありません</Empty>
           ) : (
             <ul className="list">
-              {d.insp.slice(0, 9).map((p) => {
-                const days = daysBetween(TODAY, p.nextInspection);
+              {d.insp.slice(0, 9).map(({ p, kind, next, last }) => {
+                const days = daysBetween(TODAY, next);
                 return (
-                  <li key={p.id}>
+                  <li key={p.id + kind}>
                     <Link to={`/properties/${p.id}`}>
                       <span>
                         <b>{p.name}</b>
                         <small>
-                          {p.staff} ／ 前回 {fmtDate(p.lastInspection)}
+                          <CheckBadge kind={kind} short /> {p.staff}
+                          {last ? ` ／ 前回 ${fmtDate(last.date)}` : ''}
                         </small>
                       </span>
                       <span className={`pill ${days < 0 ? 'red' : 'amber'}`}>

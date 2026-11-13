@@ -585,7 +585,7 @@ export const CHECK_KINDS: CheckKind[] = ['アフターサービス点検', '継�
 export const CHECK_SHORT: Record<CheckKind, string> = { アフターサービス点検: 'アフター', 継続審査: '継続審査', 建物定期点検: '定期点検' };
 export const CHECK_NOTE: Record<CheckKind, string> = {
   アフターサービス点検: '引渡し後 1年・2年・5年・10年目に実施',
-  継続審査: '築10年目、以降5年ごとに実施',
+  継続審査: '築10年目、以降5年ごと。外壁・屋根・室内などを審査',
   建物定期点検: '2年ごと(評価が低い場合は1年ごと)に実施',
 };
 
@@ -600,6 +600,14 @@ export interface Check {
   summary: string;
   by: string;
   score?: number;
+  /** 継続審査の審査箇所ごとの判定 */
+  items?: CheckItem[];
+}
+
+export const REVIEW_AREAS = ['外壁', '屋根', '防水', '設備', '室内'] as const;
+export interface CheckItem {
+  area: (typeof REVIEW_AREAS)[number];
+  judge: '良好' | '要観察' | '要修繕';
 }
 
 export interface CheckPlan {
@@ -644,12 +652,22 @@ export const checks: Check[] = (() => {
     for (let y = 10; ; y += 5) {
       const date = addDays(addMonths(h, 12 * y), -Math.floor(r() * 40));
       if (date > TODAY) break;
-      const cond = r() < 0.18;
+      const items: CheckItem[] = REVIEW_AREAS.map((area) => {
+        const v = r();
+        return { area, judge: v < 0.74 ? '良好' : v < 0.95 ? '要観察' : '要修繕' };
+      });
+      const bad = items.filter((i) => i.judge === '要修繕').map((i) => i.area);
+      const watch = items.filter((i) => i.judge === '要観察').map((i) => i.area);
       out.push({
         id: cid(), propertyId: p.id, kind: '継続審査', date, round: `築${y}年 継続審査`,
-        result: cond ? '条件付き継続' : '継続可',
-        summary: cond ? '指摘箇所の修繕実施を継続の条件とする' : '建物の状態は基準を満たす',
-        by: '審査部',
+        result: bad.length > 0 ? '条件付き継続' : '継続可',
+        summary:
+          bad.length > 0
+            ? `${bad.join('・')}の修繕実施を継続の条件とする`
+            : watch.length > 0
+              ? `${watch.join('・')}は経過観察。その他は良好`
+              : '審査箇所はいずれも良好',
+        by: '審査部', items,
       });
     }
     for (const i of inspections.filter((x) => x.propertyId === p.id)) {

@@ -42,7 +42,7 @@ import {
   type Repair,
 } from '../data';
 import { DEFAULT_SIM, openCost, simulate, type SimParams } from '../sim';
-import { Empty, LEGEND, PART_COLOR, SeverityBadge, Stars, StatusBadge, useStore, CheckBadge, CheckPlanTiles } from '../ui';
+import { Empty, LEGEND, PART_COLOR, SeverityBadge, Stars, StatusBadge, useStore, CheckBadge, CheckItems, CheckPlanTiles } from '../ui';
 import { CycleCard } from '../Cycle';
 import { Shot, kindOf } from '../Shot';
 
@@ -443,7 +443,10 @@ export default function PropertyDetail() {
                     <td className="nowrap">{fmtDate(i.date)}</td>
                     <td className="nowrap">{i.round}</td>
                     <td className="nowrap strong">{i.result}</td>
-                    <td>{i.summary}</td>
+                    <td>
+                      {i.summary}
+                      <CheckItems items={i.items} />
+                    </td>
                     <td>
                       <button className="iconbtn" title="報告書を表示(デモでは印刷画面を開きます)" onClick={() => window.print()}>
                         <FileText size={15} />

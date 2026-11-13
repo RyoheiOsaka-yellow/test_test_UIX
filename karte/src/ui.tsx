@@ -15,6 +15,7 @@ import {
   fmtDate,
   fmtYm,
   type CheckKind,
+  type CheckItem,
   type CheckPlan,
 } from './data';
 
@@ -184,6 +185,20 @@ const CHECK_CLS: Record<CheckKind, string> = { アフターサービス点検: '
 
 export function CheckBadge({ kind, short }: { kind: CheckKind; short?: boolean }) {
   return <span className={`ck ${CHECK_CLS[kind]}`}>{short ? CHECK_SHORT[kind] : kind}</span>;
+}
+
+/** 継続審査の審査箇所ごとの判定 */
+export function CheckItems({ items }: { items?: CheckItem[] }) {
+  if (!items) return null;
+  return (
+    <span className="ck-items">
+      {items.map((i) => (
+        <span key={i.area} className={i.judge === '良好' ? 'j-ok' : i.judge === '要観察' ? 'j-watch' : 'j-bad'}>
+          {i.area} <b>{i.judge}</b>
+        </span>
+      ))}
+    </span>
+  );
 }
 
 /** 3種別(アフターサービス点検・継続審査・建物定期点検)の前回と次回 */
