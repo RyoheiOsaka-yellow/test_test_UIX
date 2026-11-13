@@ -30,6 +30,8 @@ import {
   fmtYen,
   fmtYm,
   inspectionsOf,
+  checksOf,
+  checkPlan,
   peerAverage,
   propertyById,
   ratingLabel,
@@ -40,7 +42,7 @@ import {
   type Repair,
 } from '../data';
 import { DEFAULT_SIM, openCost, simulate, type SimParams } from '../sim';
-import { Empty, LEGEND, PART_COLOR, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
+import { Empty, LEGEND, PART_COLOR, SeverityBadge, Stars, StatusBadge, useStore, CheckBadge, CheckPlanTiles } from '../ui';
 import { CycleCard } from '../Cycle';
 import { Shot, kindOf } from '../Shot';
 
@@ -76,6 +78,7 @@ export default function PropertyDetail() {
 
   const peer = peerAverage(p);
   const insp = inspectionsOf(p.id);
+  const cks = checksOf(p.id);
   const reps = repairsOf(p.id);
   const acts = store.activities.filter((a) => a.propertyId === p.id && (!ownerView || a.ownerVisible));
   const selected = findings.find((f) => f.id === selectedId) ?? null;
@@ -414,25 +417,33 @@ export default function PropertyDetail() {
             </h2>
             <span className="hint">過去の内容と費用の推移が分かる</span>
           </header>
-          <h3>点検履歴</h3>
-          <div className="table-wrap">
+          <h3>点検・審査の予定</h3>
+          <CheckPlanTiles plan={checkPlan(p)} />
+          <h3>
+            点検・審査の履歴 <small className="muted">{cks.length}件</small>
+          </h3>
+          <div className="table-wrap ck-scroll">
             <table className="tbl compact">
               <thead>
                 <tr>
-                  <th>点検日</th>
-                  <th className="r">総合評価</th>
-                  <th>主な指摘内容</th>
-                  <th>次回点検</th>
+                  <th>種別</th>
+                  <th>実施日</th>
+                  <th>回次</th>
+                  <th>結果</th>
+                  <th>内容</th>
                   <th>報告書</th>
                 </tr>
               </thead>
               <tbody>
-                {insp.map((i) => (
+                {cks.map((i) => (
                   <tr key={i.id}>
+                    <td className="nowrap">
+                      <CheckBadge kind={i.kind} short />
+                    </td>
                     <td className="nowrap">{fmtDate(i.date)}</td>
-                    <td className="r num">{i.score.toFixed(1)}</td>
+                    <td className="nowrap">{i.round}</td>
+                    <td className="nowrap strong">{i.result}</td>
                     <td>{i.summary}</td>
-                    <td className="nowrap">{i.nextInYears}年後</td>
                     <td>
                       <button className="iconbtn" title="報告書を表示(デモでは印刷画面を開きます)" onClick={() => window.print()}>
                         <FileText size={15} />

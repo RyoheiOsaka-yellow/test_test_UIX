@@ -10,6 +10,12 @@ import {
   type Part,
   type Severity,
   SEVERITY_LABEL,
+  CHECK_NOTE,
+  CHECK_SHORT,
+  fmtDate,
+  fmtYm,
+  type CheckKind,
+  type CheckPlan,
 } from './data';
 
 // ---------- store(ステータス変更などの操作をセッション内で保持) ----------
@@ -173,3 +179,34 @@ export const LEGEND = {
   wrapperStyle: { fontSize: 12 },
   formatter: (value: string) => <span style={{ color: '#1c2433' }}>{value}</span>,
 } as const;
+
+const CHECK_CLS: Record<CheckKind, string> = { アフターサービス点検: 'k-as', 継続審査: 'k-rv', 建物定期点検: 'k-pi' };
+
+export function CheckBadge({ kind, short }: { kind: CheckKind; short?: boolean }) {
+  return <span className={`ck ${CHECK_CLS[kind]}`}>{short ? CHECK_SHORT[kind] : kind}</span>;
+}
+
+/** 3種別(アフターサービス点検・継続審査・建物定期点検)の前回と次回 */
+export function CheckPlanTiles({ plan }: { plan: CheckPlan[] }) {
+  return (
+    <div className="ck-plan">
+      {plan.map((c) => (
+        <div key={c.kind} className={`ck-tile ${CHECK_CLS[c.kind]}`}>
+          <b>{c.kind}</b>
+          <small>{CHECK_NOTE[c.kind]}</small>
+          <dl>
+            <div>
+              <dt>前回</dt>
+              <dd>{c.last ? `${fmtDate(c.last.date)}　${c.last.result}` : '実施記録なし'}</dd>
+            </div>
+            <div>
+              <dt>次回</dt>
+              <dd className="strong">{c.next ? `${fmtYm(c.next)}　${c.nextLabel}` : c.nextLabel}</dd>
+            </div>
+          </dl>
+          {c.alert && <p className="ck-alert">{c.alert}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}

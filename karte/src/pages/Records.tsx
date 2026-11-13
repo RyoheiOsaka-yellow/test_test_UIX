@@ -7,19 +7,20 @@ import {
   fmtDate,
   fmtYen,
   fmtYm,
-  inspections,
+  checks,
+  CHECK_KINDS,
   matches,
   propertyById,
   repairs,
   SEVERITY_LABEL,
 } from '../data';
-import { Empty, SeverityBadge, StatusBadge, downloadCsv, useStore } from '../ui';
+import { CheckBadge, Empty, SeverityBadge, StatusBadge, downloadCsv, useStore } from '../ui';
 
 type Tab = 'findings' | 'repairs' | 'inspections';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'findings', label: '指摘事項' },
   { key: 'repairs', label: '修繕履歴' },
-  { key: 'inspections', label: '点検履歴' },
+  { key: 'inspections', label: '点検・審査履歴' },
 ];
 const LIMIT = 100;
 
@@ -32,6 +33,7 @@ export default function Records() {
   const sev = params.get('sev') ?? '';
   const st = params.get('st') ?? '';
   const year = params.get('year') ?? '';
+  const kind = params.get('kind') ?? '';
 
   const set = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -70,13 +72,14 @@ export default function Records() {
 
   const iRows = useMemo(
     () =>
-      inspections.filter((i) => {
+      checks.filter((i) => {
         const p = propertyById.get(i.propertyId)!;
-        if (!matches(q, i.summary, i.inspector, i.id, p.name, p.owner, p.address)) return false;
+        if (!matches(q, i.summary, i.by, i.id, i.kind, i.round, i.result, p.name, p.owner, p.address)) return false;
         if (year && !i.date.startsWith(year)) return false;
+        if (kind && i.kind !== kind) return false;
         return true;
       }),
-    [q, year],
+    [q, year, kind],
   );
 
   const count = tab === 'findings' ? fRows.length : tab === 'repairs' ? rRows.length : iRows.length;
@@ -103,11 +106,11 @@ export default function Records() {
       );
     } else {
       downloadCsv(
-        '点検履歴.csv',
-        ['点検ID', '物件', 'オーナー', '点検日', '総合評価', '主な指摘内容', '次回点検(年後)', '点検者'],
+        '点検・審査履歴.csv',
+        ['ID', '物件', 'オーナー', '種別', '実施日', '回次', '結果', '内容', '実施者'],
         iRows.map((i) => {
           const p = propertyById.get(i.propertyId)!;
-          return [i.id, p.name, p.owner, i.date, i.score, i.summary, i.nextInYears, i.inspector];
+          return [i.id, p.name, p.owner, i.kind, i.date, i.round, i.result, i.summary, i.by];
         }),
       );
     }
@@ -154,6 +157,14 @@ export default function Records() {
             </button>
           )}
         </label>
+        {tab === 'inspections' && (
+          <select value={kind} onChange={(e) => set('kind', e.target.value)} aria-label="種別">
+            <option value="">種別: すべて</option>
+            {CHECK_KINDS.map((v) => (
+              <option key={v}>{v}</option>
+            ))}
+          </select>
+        )}
         {tab !== 'inspections' && (
           <select value={part} onChange={(e) => set('part', e.target.value)} aria-label="部位">
             <option value="">部位: すべて</option>
@@ -286,12 +297,13 @@ export default function Records() {
               <table className="tbl hover">
                 <thead>
                   <tr>
-                    <th>点検日</th>
+                    <th>種別</th>
+                    <th>実施日</th>
                     <th>物件</th>
-                    <th className="r">総合評価</th>
-                    <th>主な指摘内容</th>
-                    <th>次回点検</th>
-                    <th>点検者</th>
+                    <th>回次</th>
+                    <th>結果</th>
+                    <th>内容</th>
+                    <th>実施者</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -299,6 +311,9 @@ export default function Records() {
                     const p = propertyById.get(i.propertyId)!;
                     return (
                       <tr key={i.id}>
+                        <td className="nowrap">
+                          <CheckBadge kind={i.kind} />
+                        </td>
                         <td className="nowrap">{fmtDate(i.date)}</td>
                         <td>
                           <Link className="strong rowlink" to={`/properties/${p.id}`}>
@@ -306,10 +321,10 @@ export default function Records() {
                           </Link>
                           <div className="muted small">{p.owner} 様</div>
                         </td>
-                        <td className="r num">{i.score.toFixed(1)}</td>
+                        <td className="nowrap">{i.round}</td>
+                        <td className="nowrap strong">{i.result}</td>
                         <td>{i.summary}</td>
-                        <td className="nowrap">{i.nextInYears}年後</td>
-                        <td className="nowrap">{i.inspector}</td>
+                        <td className="nowrap">{i.by}</td>
                       </tr>
                     );
                   })}

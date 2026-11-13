@@ -576,3 +576,116 @@ export function regionAverage(p: Property): { scores: Record<Part, number>; coun
   for (const part of PARTS) scores[part] = Math.round((peers.reduce((s, q) => s + q.scores[part], 0) / peers.length) * 10) / 10;
   return { scores, count: peers.length, label };
 }
+
+// ---------- 点検・審査(3種別) ----------
+// アフターサービス点検・継続審査の実施時期と結果区分はデモ用の仮の設定。
+
+export type CheckKind = 'アフターサービス点検' | '継続審査' | '建物定期点検';
+export const CHECK_KINDS: CheckKind[] = ['アフターサービス点検', '継続審査', '建物定期点検'];
+export const CHECK_SHORT: Record<CheckKind, string> = { アフターサービス点検: 'アフター', 継続審査: '継続審査', 建物定期点検: '定期点検' };
+export const CHECK_NOTE: Record<CheckKind, string> = {
+  アフターサービス点検: '引渡し後 1年・2年・5年・10年目に実施',
+  継続審査: '築10年目、以降5年ごとに実施',
+  建物定期点検: '2年ごと(評価が低い場合は1年ごと)に実施',
+};
+
+export interface Check {
+  id: string;
+  propertyId: string;
+  kind: CheckKind;
+  date: string;
+  /** 回次(例: 2年目点検、築15年 継続審査) */
+  round: string;
+  result: string;
+  summary: string;
+  by: string;
+  score?: number;
+}
+
+export interface CheckPlan {
+  kind: CheckKind;
+  last?: Check;
+  /** 次回予定日。予定がない場合は null */
+  next: string | null;
+  nextLabel: string;
+  alert?: string;
+}
+
+const AS_YEARS = [1, 2, 5, 10];
+const AS_WORK = ['建具の建付け調整', 'クロスの隙間補修', '外部シーリングの部分補修', '排水勾配の調整', '手すり固定部の増し締め', '共用灯の交換'];
+
+function handoverOf(p: Property, r: () => number): string {
+  const m = 1 + Math.floor(r() * 12);
+  const d = 5 + Math.floor(r() * 20);
+  return `${p.builtYear}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+const handover = new Map<string, string>();
+
+export const checks: Check[] = (() => {
+  const r = mulberry32(7741);
+  const out: Check[] = [];
+  let n = 0;
+  const cid = () => `C-${String(++n).padStart(4, '0')}`;
+  for (const p of properties) {
+    const h = handoverOf(p, r);
+    handover.set(p.id, h);
+    for (const y of AS_YEARS) {
+      const date = addDays(addMonths(h, 12 * y), Math.floor(r() * 20));
+      if (date > TODAY) continue;
+      const clean = r() < 0.45;
+      out.push({
+        id: cid(), propertyId: p.id, kind: 'アフターサービス点検', date, round: `${y}年目点検`,
+        result: clean ? '指摘なし' : '補修実施',
+        summary: clean ? '不具合は認められず' : `${AS_WORK[Math.floor(r() * AS_WORK.length)]}を実施`,
+        by: 'アフターサービス課',
+      });
+    }
+    for (let y = 10; ; y += 5) {
+      const date = addDays(addMonths(h, 12 * y), -Math.floor(r() * 40));
+      if (date > TODAY) break;
+      const cond = r() < 0.18;
+      out.push({
+        id: cid(), propertyId: p.id, kind: '継続審査', date, round: `築${y}年 継続審査`,
+        result: cond ? '条件付き継続' : '継続可',
+        summary: cond ? '指摘箇所の修繕実施を継続の条件とする' : '建物の状態は基準を満たす',
+        by: '審査部',
+      });
+    }
+    for (const i of inspections.filter((x) => x.propertyId === p.id)) {
+      out.push({
+        id: cid(), propertyId: p.id, kind: '建物定期点検', date: i.date, round: '定期点検',
+        result: `総合評価 ${i.score.toFixed(1)}`, summary: i.summary, by: i.inspector, score: i.score,
+      });
+    }
+  }
+  return out.sort((a, b) => (a.date < b.date ? 1 : -1));
+})();
+
+export function checksOf(id: string): Check[] {
+  return checks.filter((c) => c.propertyId === id);
+}
+
+/** 3種別それぞれの前回実施と次回予定 */
+export function checkPlan(p: Property): CheckPlan[] {
+  const mine = checksOf(p.id);
+  const h = handover.get(p.id)!;
+  const last = (k: CheckKind) => mine.find((c) => c.kind === k);
+  const asNext = AS_YEARS.map((y) => ({ y, date: addMonths(h, 12 * y) })).find((x) => x.date > TODAY);
+  let ry = 10;
+  while (addMonths(h, 12 * ry) <= TODAY) ry += 5;
+  const urgentOpen = findings.some((f) => f.propertyId === p.id && f.severity === 'urgent' && f.status !== '完了');
+  const reviewDate = addMonths(h, 12 * ry);
+  return [
+    {
+      kind: 'アフターサービス点検', last: last('アフターサービス点検'),
+      next: asNext ? asNext.date : null,
+      nextLabel: asNext ? `${asNext.y}年目点検` : '対象期間(引渡し後10年)終了',
+    },
+    {
+      kind: '継続審査', last: last('継続審査'), next: reviewDate, nextLabel: `築${ry}年 継続審査`,
+      alert: urgentOpen && daysBetween(TODAY, reviewDate) <= 730 ? '要対応(早急)の指摘が未完了。審査までの修繕を推奨' : undefined,
+    },
+    { kind: '建物定期点検', last: last('建物定期点検'), next: p.nextInspection, nextLabel: '定期点検' },
+  ];
+}

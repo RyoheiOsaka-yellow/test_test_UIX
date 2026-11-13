@@ -23,6 +23,8 @@ import {
   fmtYen,
   fmtYm,
   inspectionsOf,
+  checksOf,
+  CHECK_SHORT,
   peerAverage,
   propertyById,
   ratingLabel,
@@ -141,21 +143,21 @@ export default function Report() {
       </h2>
       <div className="rp-hist">
         <div>
-          <h3>点検</h3>
+          <h3>点検・審査</h3>
           <table className="rp-tbl compact">
             <thead>
               <tr>
-                <th>点検日</th>
-                <th className="r">評価</th>
-                <th>主な指摘</th>
+                <th>実施日</th>
+                <th>種別</th>
+                <th>結果・内容</th>
               </tr>
             </thead>
             <tbody>
-              {insp.slice(0, 4).map((i) => (
+              {checksOf(p.id).slice(0, 4).map((i) => (
                 <tr key={i.id}>
                   <td className="nowrap">{fmtDate(i.date)}</td>
-                  <td className="r num">{i.score.toFixed(1)}</td>
-                  <td>{i.summary}</td>
+                  <td className="nowrap">{CHECK_SHORT[i.kind]}</td>
+                  <td className="nowrap">{i.result}</td>
                 </tr>
               ))}
             </tbody>

@@ -45,6 +45,9 @@ import {
   fmtYen,
   fmtYm,
   inspectionsOf,
+  checksOf,
+  checkPlan,
+  type Check,
   peerAverage,
   propertyById,
   ratingLabel,
@@ -52,13 +55,12 @@ import {
   repairsOf,
   type Finding,
   type FindingStatus,
-  type Inspection,
   type Part,
   type Property,
   type Repair,
 } from '../data';
 import { DEFAULT_SIM, deferredCosts, openCost, projectScores, simulate } from '../sim';
-import { Empty, LEGEND, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
+import { CheckBadge, CheckPlanTiles, Empty, LEGEND, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
 import { Shot, kindOf } from '../Shot';
 
 type Variant = 'desktop' | 'tablet' | 'phone';
@@ -242,6 +244,8 @@ export default function MyPage() {
   const open = findings.filter((f) => f.severity !== 'ok' && f.status !== '完了');
   const selected = findings.find((f) => f.id === selectedId) ?? null;
   const insp = inspectionsOf(p.id);
+  const cks = checksOf(p.id).slice(0, 6);
+  const cksAll = checksOf(p.id).length;
   const reps = repairsOf(p.id);
   const peer = compare === 'age' ? peerAverage(p) : regionAverage(p);
   const total = openCost(all);
@@ -638,19 +642,25 @@ export default function MyPage() {
       </header>
       <div className="b4">
         <div>
+          <h3>点検・審査の予定</h3>
+          <CheckPlanTiles plan={checkPlan(p)} />
           <h3>
-            点検履歴一覧 <small>{insp.length}件</small>
+            点検・審査の履歴 <small>直近{cks.length}件(全{cksAll}件)</small>
           </h3>
           {big ? (
             <ul className="b4-cards">
-              {insp.map((i: Inspection) => (
+              {cks.map((i: Check) => (
                 <li key={i.id}>
                   <div>
-                    <b>{fmtDate(i.date)}</b>
+                    <b>
+                      {fmtDate(i.date)} <CheckBadge kind={i.kind} short />
+                    </b>
                     <span>{i.summary}</span>
-                    <small>次回点検 {i.nextInYears}年後</small>
+                    <small>{i.round}</small>
                   </div>
-                  <strong className={`mp-judge ${rateCls(i.score)}`}>{i.score.toFixed(1)}</strong>
+                  <strong className={`mp-judge ${i.score != null ? rateCls(i.score) : 'plain'}`}>
+                    {i.score != null ? i.score.toFixed(1) : i.result}
+                  </strong>
                 </li>
               ))}
             </ul>
@@ -658,20 +668,25 @@ export default function MyPage() {
             <table className="mp-tbl">
               <thead>
                 <tr>
-                  <th>点検日</th>
-                  <th className="r">総合評価</th>
-                  <th>主な指摘内容</th>
-                  <th>次回点検</th>
+                  <th>種別</th>
+                  <th>実施日</th>
+                  <th>結果</th>
+                  <th>内容</th>
                   <th>報告書</th>
                 </tr>
               </thead>
               <tbody>
-                {insp.map((i: Inspection) => (
+                {cks.map((i: Check) => (
                   <tr key={i.id}>
+                    <td className="nowrap">
+                      <CheckBadge kind={i.kind} short />
+                    </td>
                     <td className="nowrap">{fmtDate(i.date)}</td>
-                    <td className="r num strong">{i.score.toFixed(1)}</td>
-                    <td>{i.summary}</td>
-                    <td className="nowrap">{i.nextInYears}年後</td>
+                    <td className="nowrap strong">{i.result}</td>
+                    <td>
+                      {i.summary}
+                      <small className="ck-round">{i.round}</small>
+                    </td>
                     <td>
                       <Link to={`/properties/${p.id}/report`} className="pdf" aria-label="報告書を開く">
                         <FileText size={17} />
