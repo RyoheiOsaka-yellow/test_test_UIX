@@ -784,6 +784,38 @@ def osm_named_polys(nodes, ways, rels, cache):
                     if len(c) > 3 and c[0] == c[-1]: add(n, c, t)
     return out
 
+# ---- 建物の用途 (OSM の building / amenity / tourism / shop / office タグ) ------------
+USE_BY_BUILDING = {"house": "res", "detached": "res", "terrace": "res", "apartments": "res", "residential": "res", "dormitory": "res",
+                   "office": "off", "commercial": "off", "government": "off", "industrial": "off", "warehouse": "off",
+                   "retail": "ret", "supermarket": "ret", "hotel": "hot",
+                   "public": "pub", "school": "pub", "university": "pub", "hospital": "pub", "kindergarten": "pub", "train_station": "sta",
+                   "shrine": "att", "temple": "att", "church": "att"}
+def osm_building_use(nodes, ways, rels, cache):
+    """[{poly, u}] u: res 住宅 / off 業務 / ret 商業 / hot 宿泊 / pub 公共・教育・医療 / att 集客施設 / sta 駅 / None 不明"""
+    out = []
+    def use(t):
+        if t.get("tourism") in ("hotel", "hostel", "guest_house") or t.get("amenity") == "love_hotel": return "hot"
+        if t.get("shop") in ("mall", "department_store", "supermarket"): return "ret"
+        if t.get("tourism") in ("museum", "attraction", "gallery", "theme_park", "aquarium") or t.get("amenity") in ("theatre", "cinema", "arts_centre", "events_venue", "conference_centre", "exhibition_centre"): return "att"
+        if t.get("amenity") in ("townhall", "university", "hospital", "school", "police", "fire_station", "post_office", "library"): return "pub"
+        if t.get("office"): return "off"
+        return USE_BY_BUILDING.get(t.get("building"))
+    def add(pts, t):
+        if len(pts) > 3:
+            try:
+                p = Polygon(pts).buffer(0)
+                if not p.is_empty and p.area > 8: out.append({"poly": p, "u": use(t)})
+            except Exception: pass
+    for w, (nd, t) in ways.items():
+        if "building" in t and t["building"] not in ("roof", "no") and nd[0] == nd[-1]: add(way_coords(nodes, ways, w, cache), t)
+    for r, (m, t) in rels.items():
+        if t.get("type") == "multipolygon" and "building" in t:
+            for ty, ref, role in m:
+                if ty == "way" and ref in ways and role == "outer":
+                    c = way_coords(nodes, ways, ref, cache)
+                    if len(c) > 3 and c[0] == c[-1]: add(c, t)
+    return out
+
 # ---- コンテナ書き出し --------------------------------------------------------
 def write_pack(header, blobs, fn):
     body = b""
@@ -828,6 +860,18 @@ def main():
     order = sorted(bfeats.keys(), key=lambda g: -(bfeats[g]["meta"].get("bldg:measuredHeight") or 0))
     bverts, bidx, bstarts, bmetas = pack_meshes(bfeats, zoff, order, name_fn)
     print("  verts", len(bverts), "tris", len(bidx) // 3)
+    # 用途 u と建築面積 a (m2): OSM 建物ポリゴンに重心が入ればその用途と面積、無ければ外接矩形 × 0.6
+    uses = osm_building_use(nodes, ways, rels, cache); utree = STRtree([u["poly"] for u in uses]); import collections as _c; ucount = _c.Counter()
+    for bm in bmetas:
+        pt = Point(bm["c"][0] / 10, bm["c"][1] / 10)
+        hit = [uses[i] for i in utree.query(pt) if uses[i]["poly"].contains(pt)]
+        bb = bm["bb"]; bbarea = (bb[2] - bb[0]) * (bb[3] - bb[1]) / 100
+        if hit:
+            hit.sort(key=lambda u: -u["poly"].area); bm["u"] = hit[0]["u"]; bm["a"] = int(round(min(hit[0]["poly"].area, bbarea) if bm.get("parts", 1) == 1 else bbarea * 0.6))
+        else:
+            bm["u"] = None; bm["a"] = int(round(bbarea * 0.6))
+        ucount[bm["u"]] += 1
+    print("  building use", dict(ucount))
 
     print("bridges ..."); brf = load_meshes("dec_brid2.json", "idx_brid2.json"); brf3 = load_meshes("dec_brid3.json", "idx_brid3.json")
     brf.update(brf3)

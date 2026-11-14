@@ -100,6 +100,10 @@ await shot('34_real_close', `a.real.hour = 10; a.sun(); a.camera.position.set(12
 await shot('35_road_day', `a.real.hour = 11; a.real.month = 6; a.sun(); a.camera.position.set(-150, 70, 60); a.controls.target.set(-60, 2, -40);`);
 await shot('36_road_street', `a.camera.position.set(-250, 18, 330); a.controls.target.set(-120, 3, 180);`);
 await shot('37_road_night', `a.real.hour = 20; a.sun(); a.roads().update(3); a.camera.position.set(-250, 18, 330); a.controls.target.set(-120, 3, 180);`);
+await shot('40_people_morning', `a.applyTheme('paper'); a.setClock(8.25); a.camera.position.set(-520, 330, 420); a.controls.target.set(-40, 20, 250); for (let i = 0; i < 40; i++) a.people().update(0.05);`);
+await shot('41_people_sakuragicho', `a.setClock(18.25); a.camera.position.set(-170, 150, 880); a.controls.target.set(-30, 0, 660); for (let i = 0; i < 40; i++) a.people().update(0.05);`);
+await shot('43_people_night', `a.applyTheme('night'); a.setClock(18.25); a.camera.position.set(-520, 330, 420); a.controls.target.set(-40, 20, 250); for (let i = 0; i < 40; i++) a.people().update(0.05);`);
+await shot('44_people_real', `a.applyTheme('real'); a.setClock(8.5); a.camera.position.set(-35, 40, 745); a.controls.target.set(30, 3, 690); for (let i = 0; i < 40; i++) a.people().update(0.05);`);
 await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });
 await shot('08_blueprint', ``);
 await page.screenshot({ path: `${out}/09_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));

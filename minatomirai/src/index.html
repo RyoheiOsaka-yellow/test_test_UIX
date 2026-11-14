@@ -42,6 +42,8 @@ canvas { display: block; }
 .btn-row button:hover { background: rgba(80, 130, 200, 0.4); color: #fff; }
 .hint { font-size: 9px; color: #55667e; letter-spacing: 0.05em; }
 .note { font-size: 9px; color: #7d8aa5; line-height: 1.5; margin-top: 4px; }
+.p-stats { font-size: 11px; color: #c6d4e8; line-height: 1.6; margin: 4px 0; } .p-stats b { color: #ffd94d; font-weight: 600; }
+.p-table { width: 100%; border-collapse: collapse; font-size: 10px; color: #c6d4e8; margin-top: 4px; } .p-table th { text-align: right; color: #7d93b5; font-weight: normal; padding: 1px 0; } .p-table th:first-child, .p-table td:first-child { text-align: left; } .p-table td { text-align: right; padding: 1px 0; border-top: 1px solid rgba(120, 180, 255, 0.1); } .p-table sup { color: #ffb648; }
 
 #tooltip { position: fixed; z-index: 20; pointer-events: none; padding: 5px 10px; font-size: 12px; background: rgba(8, 12, 24, 0.9); border: 1px solid rgba(0, 229, 255, 0.45); border-radius: 6px; color: #eaf4ff; white-space: nowrap; transform: translate(12px, -28px); display: none; }
 #tooltip .tt-floor { color: #00e5ff; margin-right: 6px; font-size: 10px; }
@@ -193,14 +195,26 @@ canvas { display: block; }
         <div class="sec-title">フロア展開 <span id="expand-value">×1.0</span></div>
         <input type="range" id="floor-expand" min="0" max="3" step="0.05" value="1" />
         <div class="panel-sep"></div>
-        <div class="sec-title">人流シミュレーション</div>
+        <div class="sec-title">人の流れ（駅の乗降人員にもとづく推計モデル）</div>
         <div class="seg-row" id="flow-presets">
-            <button data-preset="off">オフ</button>
-            <button data-preset="morning" class="active">朝</button>
-            <button data-preset="day">昼</button>
-            <button data-preset="evening">夕</button>
-            <button data-preset="night">夜</button>
+            <button data-h="off">オフ</button>
+            <button data-h="8.25">朝</button>
+            <button data-h="12.25">昼</button>
+            <button data-h="18.25">夕</button>
+            <button data-h="21.5">夜</button>
         </div>
+        <div class="cal-row"><span>時刻</span><input type="range" id="p-hour" min="0" max="23.75" step="0.25" /><b id="p-hour-v"></b></div>
+        <div class="seg-row" style="margin:3px 0"><button id="p-play">▶ 1 日を再生</button></div>
+        <div class="seg-row" id="p-day"><button data-day="weekday" class="active">平日</button><button data-day="holiday">休日</button></div>
+        <div class="cal-row"><span>歩く速さ</span><input type="range" id="p-accel" min="1" max="30" step="1" value="8" /><b id="p-accel-v">×8</b></div>
+        <label class="row"><input type="checkbox" id="p-agents" checked /><span class="chip" style="background:#ffb347"></span>人（1 点が歩行者）</label>
+        <label class="row"><input type="checkbox" id="p-vol" checked /><span class="chip" style="background:linear-gradient(90deg,#2b6cff,#ffd84a,#ff2a30)"></span>通行量マップ（帯の太さ・色）</label>
+        <div class="legend" id="p-legend"></div>
+        <div id="p-stats" class="p-stats"></div>
+        <div id="p-spark"></div>
+        <div class="legend" style="margin-top:2px"><span>通行量（帯）:</span><span><i style="background:#2b6cff"></i>30</span><span><i style="background:#1acbd9"></i>130</span><span><i style="background:#ffd84a"></i>550</span><span><i style="background:#ff7326"></i>2,300</span><span><i style="background:#ff2a30"></i>10,000 人/時</span></div>
+        <table id="p-stations" class="p-table"></table>
+        <div class="note">駅の 1 日平均乗降人員（各社公表値）を、目的別の時間帯分布と建物の用途・規模で配分した仮のモデルです。実測の人流ではありません。<sup>仮</sup> は仮定値。</div>
         <div class="panel-sep"></div>
         <div class="sec-title">経路検索</div>
         <div class="btn-row">

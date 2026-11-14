@@ -15,6 +15,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { initConstruction, compassSVG, TOWER_NAME } from './construct.js';
 import { initRealistic, realState } from './realistic.js';
 import { initRoadDetail } from './roads.js';
+import { initPeople } from './people.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
@@ -185,7 +186,7 @@ composer.addPass(gtao);
 composer.addPass(bloom); composer.removePass(bloom); composer.addPass(bloom);
 composer.addPass(new OutputPass());
 const smaa = new SMAAPass(innerWidth, innerHeight); smaa.enabled = false; composer.addPass(smaa);
-onTheme(t => { bloom.enabled = t.bloom || (t.real && realState.hour >= 17.5) || (t.real && realState.hour < 6); });
+onTheme(t => { bloom.enabled = !!(t.bloom || (t.real && (realState.hour >= 17.5 || realState.hour < 6))); });   // undefined だと EffectComposer は有効扱いにするので必ず真偽値にする
 composer.setSize(innerWidth, innerHeight);
 const renderPass = composer.passes[0];
 
@@ -253,7 +254,7 @@ FLOORS.forEach(f => { const g = new THREE.Group(); g.name = `floor${f.level}`; g
 
 let LEVEL_H = {};
 let expand = 1.0;            // フロア展開倍率
-let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null;
+let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null;
 const levelY = (lv, k = expand) => (LEVEL_H[lv] ?? lv * 6) * k;
 
 let buildingMesh = null, buildingMeta = null, buildingStarts = null;
@@ -1153,6 +1154,7 @@ function selectBuilding(bid) {
   document.getElementById('chk-floorcat').addEventListener('change', e => { floorCatMode = e.target.checked; selUniforms.uCat.value = floorCatMode ? 1 : 0; });
   document.getElementById('btn-guide-template').addEventListener('click', () => download(new Blob(['\ufeff' + floorGuideTemplate(m.n ?? '', nFloors)], { type: 'text/csv' }), `floorguide_${(m.n ?? 'building').replace(/[\\/:*?"<>|]/g, '_')}.csv`));
   document.getElementById('btn-guide-load').addEventListener('click', () => guideFileInput.click());
+  if (people) { const f = people.buildingFlows(m.runtime ? -2 : bid); if (f && f.peak >= 1) { const ph = Math.floor(f.peakHour), pm = f.peakHour % 1 ? '30' : '00'; const d = document.createElement('div'); d.className = 'info-sub'; d.style.marginTop = '6px'; d.innerHTML = `人の出入り（駅との間・モデル推計）: いま 来る 約 ${Math.round(f.arrive).toLocaleString()} 人/時・出る 約 ${Math.round(f.leave).toLocaleString()} 人/時 ／ ピーク ${ph}:${pm} 頃 約 ${Math.round(f.peak).toLocaleString()} 人/時`; infoBody.appendChild(d); } }
   infoEl.style.display = 'block';
   document.getElementById('floor-gap').value = selUniforms.uGap.value;
 }
@@ -1271,6 +1273,7 @@ function addTowerLinks(ex, ey, lx, ly) {
   updateNetwork();
 }
 function updateNetwork() {
+  if (people) people.refreshHeights();
   const buckets = { 0: [], 1: [], 2: [], 3: [], 4: [] };
   for (const l of graph.links) {
     if (!linkVisible(l)) continue;
@@ -1305,7 +1308,7 @@ const registerPoints = m => { pointMaterials.push(m); return m; };
 // ---- 人流シミュレーション -------------------------------------------------------
 const MAX_AGENTS = 9000;
 const FLOW_PRESETS = { off: { count: 0, speedMul: 1 }, morning: { count: 6500, speedMul: 1.5 }, day: { count: 3000, speedMul: 1 }, evening: { count: 5500, speedMul: 1.3 }, night: { count: 900, speedMul: 0.7 } };
-let flowPreset = FLOW_PRESETS.morning;
+let flowPreset = FLOW_PRESETS.off;   // 旧ランダムウォーク粒子は廃止 (people.js の OD モデルに置き換え)
 const flow = { count: 0, speedMul: 1, li: new Int32Array(MAX_AGENTS), s: new Float32Array(MAX_AGENTS), dir: new Int8Array(MAX_AGENTS), speed: new Float32Array(MAX_AGENTS) };
 const flowPos = new Float32Array(MAX_AGENTS * 3);
 const flowGeo = new THREE.BufferGeometry(); flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3)); flowGeo.setDrawRange(0, 0);
@@ -1644,10 +1647,29 @@ const setBlueprint = on => {
 };
 bpBtn.addEventListener('click', () => setBlueprint(!blueprint));
 
-document.querySelectorAll('#flow-presets button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('#flow-presets button').forEach(x => x.classList.remove('active')); b.classList.add('active');
-  flowPreset = FLOW_PRESETS[b.dataset.preset]; flow.count = Math.min(flow.count, flowPreset.count); applyFlowPreset();
-}));
+// ---- 人流 (OD モデル) の操作 ----
+let lastSunUpdate = 0;
+function setClock(h, { fromPlay = false } = {}) {
+  realState.hour = h;
+  const hourEl = document.getElementById('r-hour'); if (hourEl && document.activeElement !== hourEl) hourEl.value = h;
+  const hh = Math.floor(h), mm = Math.round((h - hh) * 60); const v = document.getElementById('r-hour-v'); if (v) v.textContent = `${hh}:${String(mm).padStart(2, '0')}`;
+  if (T().real && realistic) { const now = performance.now(); if (!fromPlay || now - lastSunUpdate > 200) { lastSunUpdate = now; realistic.updateSun(); bloom.enabled = h >= 17.5 || h < 6; } }
+  if (people && !fromPlay) people.setHour(h);
+}
+function initPeopleUI() {
+  const $ = id => document.getElementById(id);
+  document.querySelectorAll('#flow-presets button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#flow-presets button').forEach(x => x.classList.remove('active')); b.classList.add('active');
+    if (b.dataset.h === 'off') { people.set({ on: false, playing: false }); $('p-play').classList.remove('active'); return; }
+    people.set({ on: true }); setClock(Number(b.dataset.h));
+  }));
+  $('p-hour').value = realState.hour;
+  $('p-hour').addEventListener('input', e => { document.querySelectorAll('#flow-presets button').forEach(x => x.classList.remove('active')); if (!people.state.on) people.set({ on: true }); setClock(Number(e.target.value)); });
+  $('p-play').addEventListener('click', () => { const on = !people.state.playing; people.set({ playing: on, on: true }); $('p-play').classList.toggle('active', on); $('p-play').textContent = on ? '■ 停止' : '▶ 1 日を再生'; });
+  document.querySelectorAll('#p-day button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#p-day button').forEach(x => x.classList.toggle('active', x === b)); people.set({ day: b.dataset.day }); }));
+  $('p-accel').addEventListener('input', e => { people.set({ accel: Number(e.target.value) }); $('p-accel-v').textContent = `×${e.target.value}`; });
+  $('p-agents').addEventListener('change', e => people.set({ agents: e.target.checked })); $('p-vol').addEventListener('change', e => people.set({ vol: e.target.checked }));
+}
 const routeBtn = document.getElementById('btn-route');
 routeBtn.addEventListener('click', () => { routeMode = !routeMode; routeBtn.classList.toggle('active', routeMode); clearRoute(); routeResult.textContent = routeMode ? '始点をクリック（歩行者ネットワーク上の点）' : ''; });
 document.getElementById('btn-route-clear').addEventListener('click', () => clearRoute());
@@ -1678,8 +1700,10 @@ canvas.addEventListener('pointerup', e => {
 let construction = null, placeMode = false;
 const setPlaceMode = on => { placeMode = on; document.getElementById('btn-site').classList.toggle('active', on); canvas.style.cursor = on ? 'crosshair' : ''; routeResult.textContent = on ? '地図上の敷地をクリックしてください' : ''; };
 const CP = { floors: ['c-floors', v => `${v} 階`], podFloors: ['c-pod', v => `${v} 層`], podHalf: ['c-podw', v => `${v * 2} m`], towerHalf: ['c-tw', v => `${v * 2} m`], officeRatio: ['c-office', v => `${v}%`], ang: ['c-ang', v => `${v}°`] };
+let peopleRebuildTimer = 0;
 function rebuildTower() {
   if (!construction) return;
+  if (people) { clearTimeout(peopleRebuildTimer); peopleRebuildTimer = setTimeout(() => people.rebuild(), 400); }
   construction.params.podHalfB = Math.round(construction.params.podHalf * 0.81);
   const overlaps = construction.build(); const b = construction.built; const p = construction.params;
   const area = Math.round(b.floorArea / 1000) * 1000;
@@ -1723,6 +1747,10 @@ async function init() {
   runtimeBuildings.set(construction.bid, construction.mesh);
   initConstructionUI();
   rebuildTower();
+  setProgress(0.95, '人流モデルを計算中…'); await nextFrame();
+  people = initPeople({ scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, onClock: h => setClock(h, { fromPlay: true }),
+    extraDest: () => { if (!construction || graph.towerLobby == null) return []; const p = construction.params; const upper = p.floors - p.podFloors - 3, nOff = Math.round(upper * p.officeRatio / 100), tA = (2 * p.towerHalf) ** 2 * 0.9, pA = 4 * p.podHalf * (p.podHalfB ?? p.podHalf * 0.81); return [{ n: TOWER_NAME, x: p.x, y: p.y, node: graph.towerLobby, off: nOff * tA / 22 + pA * p.podFloors / 150, vis: pA * p.podFloors / 12 + (upper - nOff) * tA / 60, food: pA * p.podFloors / 4000 + 6 }]; } });
+  people.set({ hour: realState.hour }); people.rebuild(); initPeopleUI(); onTheme(t => people.setTheme(t));
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
   roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState });
   initRealUI();
@@ -1732,7 +1760,7 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
@@ -1766,13 +1794,14 @@ function animate() {
   updateLabels();
   if (realistic) realistic.update(dt);
   if (roadDetail) roadDetail.update(dt);
+  if (people) people.update(dt);
   composer.render();
 }
 function initRealUI() {
   const hourEl = document.getElementById('r-hour'), monthEl = document.getElementById('r-month');
   const fmt = () => { const h = Math.floor(realState.hour), m = Math.round((realState.hour - h) * 60); document.getElementById('r-hour-v').textContent = `${h}:${String(m).padStart(2, '0')}`; document.getElementById('r-month-v').textContent = `${realState.month}月`; };
   hourEl.value = realState.hour; monthEl.value = realState.month; fmt();
-  const upd = () => { realState.hour = Number(hourEl.value); realState.month = Number(monthEl.value); fmt(); if (T().real) { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; } };
+  const upd = () => { realState.month = Number(monthEl.value); setClock(Number(hourEl.value)); fmt(); };
   hourEl.addEventListener('input', upd); monthEl.addEventListener('input', upd);
   for (const [id, key] of [['r-shadows', 'shadows'], ['r-ao', 'ao'], ['r-refl', 'reflections'], ['r-photo', 'photo'], ['r-roads', 'roads'], ['r-traffic', 'traffic']]) { const el = document.getElementById(id); el.checked = realState[key]; el.addEventListener('change', () => { realState[key] = el.checked; realistic.applyOptions(); if (roadDetail) roadDetail.applyOptions(); }); }
   document.querySelectorAll('#r-presets button').forEach(b => b.addEventListener('click', () => { hourEl.value = b.dataset.h; upd(); }));
