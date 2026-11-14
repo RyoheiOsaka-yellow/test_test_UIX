@@ -1,0 +1,8 @@
+[package]
+name = "dstvcheck"
+version = "0.1.0"
+edition = "2021"
+description = "ANGLEX が書き出した DSTV NC を、独立したパーサー（dstv crate）で読んで JSON にする検証用ツール"
+
+[dependencies]
+dstv = "0.8"

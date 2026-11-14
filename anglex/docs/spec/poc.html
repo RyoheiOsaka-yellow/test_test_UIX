@@ -34,7 +34,7 @@
 
 <!-- 表紙 -->
 <div class="pcover page"><div class="veil"></div>
-<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 2 版　2026 年 11 月 14 日</span></div>
+<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 3 版　2026 年 11 月 14 日</span></div>
 <div class="in"><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE ・ 図面に、語らせる</div>
 <div class="doc">ANGLEX 導入 PoC 計画書<br>および 開発済み機能一覧</div>
 <div class="lead">配管支持金具の積算を、図面の読込から 3D での確認、重量・見積まで。まずは「初期段階」に絞って、貴社の実図面と実務で効果を確かめます。</div>
@@ -107,8 +107,11 @@
 <tr><td>V8</td><td class="cat">効果</td><td>所要時間</td><td>図面受領から見積書 PDF までを計測</td><td>現行比 50% 以上の短縮（目標）</td></tr>
 <tr><td>V9</td><td class="cat">操作性</td><td>担当者による操作</td><td>1 時間の説明後、担当者が単独で 1 案件を完了</td><td>完了できる。アンケート 5 段階で平均 3.5 以上</td></tr>
 <tr><td>V10</td><td class="cat">環境</td><td>動作環境・情報管理</td><td>貴社 PC でオフライン版を起動し、通信を確認</td><td>起動・OCR・PDF 出力が動く。外部への通信がない</td></tr>
+<tr><td>V11</td><td class="cat">連携<br><span class="muted small">任意</span></td><td>IFC の受け渡し</td><td>書き出した IFC4 を、貴社の BIM ソフトまたは IFC ビューアで開く</td><td>部材の数・位置・断面名・穴・属性（仕様・材質・質量）が読める</td></tr>
+<tr><td>V12</td><td class="cat">連携<br><span class="muted small">任意</span></td><td>NC データ（DSTV）</td><td>同梱の照合テストピースを 1 本加工し、照合シートの図と見比べる</td><td>穴の面・位置・径が図と一致する（違う場合は書出し設定を切り替えて再確認）</td></tr>
 </table>
 <div class="callout small"><b>基準案の根拠（弊社社内検証・合成図面）</b>　デモ図面を画像化した検証で、きれいな画像は直線・矩形・穴を 100%、スキャン相当（200 dpi・ノイズあり）は直線・矩形 100%・穴 70〜90%、劣化した 150 dpi では 88% / 83% / 60% を拾いました。仕様注記の OCR はきれいな画像で 5 件中 5 件を読み取りました。実図面では様式や画質で結果が変わるため、PoC で貴社図面の実力値を測ります。</div>
+<p class="note">V11・V12 は任意項目です。BIM ソフトや加工機との受け渡しも確かめたい場合に実施します。IFC は独立した IFC エンジン（IfcOpenShell）で、NC データは別実装のパーサーで弊社検証済みですが、貴社でお使いのソフト・機械での確認はこの項目で行います。</p>
 <p class="note">測定には ANGLEX の「実スキャン検証キット」を使います。正解表と認識結果を自動で照合し、項目別の再現率と報告書 PDF を出力します。</p>
 
 <div class="sec" style="break-before:page"><span class="n">5</span><h2>進め方とスケジュール（案）</h2></div>
@@ -174,6 +177,8 @@
 <tr><td>V8</td><td>所要時間</td><td></td><td class="blank"></td><td></td><td></td></tr>
 <tr><td>V9</td><td>担当者による操作</td><td></td><td class="blank"></td><td></td><td></td></tr>
 <tr><td>V10</td><td>動作環境・情報管理</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V11</td><td>IFC の受け渡し（任意）</td><td></td><td class="blank"></td><td></td><td></td></tr>
+<tr><td>V12</td><td>NC データ（任意）</td><td></td><td class="blank"></td><td></td><td></td></tr>
 </table>
 <h3>図面ごとの記録</h3>
 <table class="eval">
@@ -198,7 +203,7 @@
 <div class="legend"><span><span class="m poc">PoC で検証</span>　初期 PoC の検証項目に含む</span><span><span class="m demo">参考デモ</span>　PoC 中に操作・閲覧できる（評価対象外）</span><span><span class="m next">次段階</span>　次段階で検証する</span></div>
 <table class="ov">
 <tr><th style="width:8mm">#</th><th>分類</th><th>主な内容</th><th>機能数</th><th>PoC で検証</th></tr>
-<tr><td>2</td><td>図面の読込・部材認識</td><td style="text-align:left">DXF・PDF・スキャン画像（TIFF 含む）、部材リスト、OCR、図面上の修正</td><td>14</td><td>9</td></tr>
+<tr><td>2</td><td>図面の読込・部材認識</td><td style="text-align:left">DXF・PDF・スキャン画像（TIFF 含む）、部材リスト、OCR、図面上の修正</td><td>15</td><td>9</td></tr>
 <tr><td>3</td><td>3D モデリング・部材配置</td><td style="text-align:left">ファミリ 34 種、カタログ 151 製品、配管へ取付、接合</td><td>9</td><td>4</td></tr>
 <tr><td>4</td><td>3D 表示・操作</td><td style="text-align:left">回す・中央へ・寄る、見どころ表示、分解、表示スタイル</td><td>8</td><td>2</td></tr>
 <tr><td>5</td><td>確認・品質管理</td><td style="text-align:left">確認の旗、ウィザード、見どころ送り、断面ゲージ、溶接記号</td><td>8</td><td>5</td></tr>
@@ -206,7 +211,7 @@
 <tr><td>7</td><td>業務フロー・多社連携</td><td style="text-align:left">受け渡し・権限、Rev・監査ログ、ダッシュボード、期限通知</td><td>8</td><td>0</td></tr>
 <tr><td>8</td><td>シミュレータ</td><td style="text-align:left">ライブゲージ、X 線、限界探索、動画</td><td>1</td><td>0</td></tr>
 <tr><td>9</td><td>書出し・外部連携</td><td style="text-align:left">IFC4・DXF・glTF・OBJ・STL・USD、DSTV NC ほか（全 19 種類）</td><td>5</td><td>0</td></tr>
-<tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、操作ガイド</td><td>5</td><td>3</td></tr>
+<tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、操作ガイド、ライセンス表示</td><td>6</td><td>3</td></tr>
 </table>
 <figure><img src="img/b01_hero_full.png"><figcaption>ANGLEX の作業画面（v1）。左: プロジェクトブラウザ、中央: 3D、右: プロパティ。選んだ部材の質量・原価がその場で出ます</figcaption></figure>
 
@@ -226,7 +231,8 @@
 <tr><td>実スキャン検証キット</td><td>正解表と認識結果を自動で照合し、再現率と報告書 PDF を出力（PoC の測定に使用）</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>部材リスト（CSV・Excel）の読込</td><td>既存の拾い出し表から仕様・長さ・数量の列を見つけ、そのまま 3D・重量・見積へ</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>SVG・ZIP の読込</td><td>SVG 図面の読込。ZIP にまとめた図面を一度に読込（30 件まで）</td><td><span class="m demo">参考デモ</span></td></tr>
-<tr><td>BIM・CAD・3D 形式の読込</td><td>IFC、STEP・IGES・BREP、glTF・OBJ・STL・FBX・PLY・3MF・Collada・3DS を参照モデルとして読込。DSTV NC（試験対応）は形鋼 1 本として配置</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>BIM・CAD・3D 形式の読込</td><td>IFC、STEP・IGES・BREP、glTF・OBJ・STL・FBX・PLY・3MF・Collada・3DS を参照モデルとして読込。DSTV NC は形鋼 1 本として配置</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>立体から部材への自動変換</td><td>STEP などの鋼材の立体から、断面・長さ・穴を読み取って部材に置き換え。元の立体と外形・穴位置を照合</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>DWG・JWW の読込</td><td>サーバー版の変換機能で DXF に変換して読込</td><td><span class="m next">次段階</span></td></tr>
 <tr><td>認識の学習</td><td>図面上の修正を記録し、同じ様式の次回の図面で自動的に効かせる。図面様式×営業所の目標管理</td><td><span class="m next">次段階</span></td></tr>
 </table>
@@ -324,10 +330,10 @@
 <div class="cathead"><span class="n">9</span><h3>書出し・外部連携</h3><span class="cnt">他のソフトへ、同じモデルを渡す（全 19 種類）</span></div>
 <table class="ft">
 <tr><th>機能</th><th>できること</th><th>区分</th></tr>
-<tr><td>BIM 形式の書出し（IFC4）</td><td>BIM ソフト・IFC ビューア向けの .ifc。実形状（穴つき）と、仕様・材質・質量・穴の属性。形状は面の集まりで、鋼材としての編集には未対応</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>BIM 形式の書出し（IFC4）</td><td>形鋼・板・管は断面の押し出し、穴は開口として出力（鋼材として扱える形）。仕様・材質・質量・穴の属性つき。独立した IFC エンジン（IfcOpenShell）で検証済み。商用 BIM ソフトでの読込は PoC で確認</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>CAD 形式の書出し</td><td>DXF 3D（立体）、DXF 加工図・加工図 SVG（板の展開図）</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>3D 形式の書出し</td><td>glTF / GLB、OBJ、STL、PLY、USD / USDZ（質量・衝突形状付きの SimReady パッケージ）、PNG 画像（4K）</td><td><span class="m demo">参考デモ</span></td></tr>
-<tr><td>加工データの書出し</td><td>DSTV NC（形鋼・板ごとの .nc1、試験対応）、穴座標 CSV、部品 JSON</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>加工データの書出し</td><td>DSTV NC（形鋼・板ごとの .nc1。照合テストピースと照合シート付き、機械の基準に合わせる設定あり）、穴座標 CSV、部品 JSON</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>プロジェクトの保存</td><td>プロジェクト JSON で保存・読込。作業の受け渡しに利用</td><td><span class="m demo">参考デモ</span></td></tr>
 </table>
 </div>
@@ -340,6 +346,7 @@
 <tr><td>v1 / v2 の 2 つの画面</td><td>経験者向けの BIM ワークスペース（v1）と、初めてでも迷わないステップ型（v2）。同じデータのままボタン 1 つで切替</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>オフライン版</td><td>単一の HTML ファイル（約 60 MB）。インストール不要、外部通信なしで OCR・PDF 出力・IFC／STEP 読込まで動作</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>操作ガイド・ショートカット</td><td>初回の操作ガイド、「?」キーでショートカット一覧</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>ライセンス表示</td><td>同梱している第三者ソフトウェア 16 件の一覧と全文を画面で表示。LGPL の STEP 読込ライブラリは差し替え可能</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>チャットで概算</td><td>製品・サイズ・仕上げ・数量を選ぶだけで概算見積</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>サーバー版</td><td>部署内での案件共有、期限のメール通知、学習の共有（追加ソフト不要の Node サーバー）</td><td><span class="m next">次段階</span></td></tr>
 </table>

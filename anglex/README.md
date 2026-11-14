@@ -181,7 +181,7 @@ GitHub Actions（`.github/workflows/anglex-thumbs.yml`）が、カタログ・�
 - **ストーリー再生**: 組立（6 秒）→ 開く（X 線＋ラベル）→ 分解 → 荷重を上げて限界（約 25 秒）。「● 動画」で canvas 録画（WebM）を保存でき、提案・社内説明に使えます。
 - **スケールバー**: 画面上の 1 m を表示。
 
-## 対応形式（読込 24 種類・書出し 19 種類）
+## 対応形式（読込 24 種類・書出し 19 種類）と、その検証
 一覧は `js/ui/formats.js` に 1 か所で定義し、画面の「対応形式一覧…」「すべての形式…」ダイアログ・テスト・資料で共用します。
 
 **読込**（ファイルを 3D 画面へドロップ、または「ファイル読込」。ZIP にまとめて一度に読めます）
@@ -191,10 +191,10 @@ GitHub Actions（`.github/workflows/anglex-thumbs.yml`）が、カタログ・�
 | 図面 | DXF / PDF / **SVG** / 画像（PNG・JPEG・BMP・WebP・**GIF・AVIF**）/ **TIFF** | そのまま | 線・円・文字 → 部材認識。画像と TIFF はベクタ化 + 限定 OCR |
 | 図面 | DWG / JWW / JWC / SXF（SFC・P21）/ DGN | サーバー版で変換 | DXF にして読込 |
 | 表 | **部材リスト CSV / TSV / Excel（xlsx・xls）** | そのまま | 仕様・長さ・数量・符号・備考の列 → 部材（数量ぶん配置）。列名のゆらぎを吸収、見出しなしでも各行から仕様を探す |
-| BIM・CAD | IFC / **STEP（stp・step）/ IGES（igs・iges）/ BREP** | そのまま | 参照モデル。IFC は属性から部材候補も |
+| BIM・CAD | IFC / **STEP（stp・step）/ IGES（igs・iges）/ BREP** | そのまま | 参照モデル。**鋼材の立体は部材へ自動変換**（下記）。IFC は属性から部材候補も |
 | BIM・CAD | RVT / RFA / SKP / 3DM | サーバー版で変換 | IFC・glTF にして読込 |
-| 3D メッシュ | glTF・GLB / OBJ / STL / FBX / **PLY / 3MF / Collada（dae）/ 3DS** | そのまま | 参照モデル |
-| 加工 | **DSTV NC（nc1・nc）** 【試験対応】 | そのまま | 形鋼 1 本（断面・長さ・穴）→ 単材として配置 |
+| 3D メッシュ | glTF・GLB / OBJ / STL / FBX / **PLY / 3MF / Collada（dae）/ 3DS** | そのまま | 参照モデル。1 つの立体として閉じた鋼材は部材へ自動変換 |
+| 加工 | **DSTV NC（nc1・nc）** | そのまま | 形鋼 1 本（断面・長さ・穴・長穴）→ 単材として配置。面・原点の基準は書出し設定と共通 |
 | その他 | **ZIP** / ANGLEX プロジェクト（json） | そのまま | ZIP は中の対応ファイルを順に読込（30 件まで） |
 
 太字が今回の追加です。STEP・IGES・BREP は OpenCASCADE（WASM, occt-import-js）、TIFF は UTIF.js で、どちらも PC 内で処理します（オフライン版に同梱）。
@@ -203,18 +203,21 @@ GitHub Actions（`.github/workflows/anglex-thumbs.yml`）が、カタログ・�
 
 | 用途 | 形式 | 中身 |
 |---|---|---|
-| BIM・CAD 連携 | **IFC4（.ifc）** | IfcProject → Site → Building → Storey（レベル）→ IfcElementAssembly（部材）→ IfcMember / IfcPlate / IfcPipeSegment / IfcMechanicalFastener / IfcFastener（溶接）。形状は実形状の三角形面（IfcTriangulatedFaceSet、穴つき）、属性は `Pset_ANGLEX_Assembly` / `Pset_ANGLEX_Part`（仕様・長さ・材質・仕上げ・質量・穴・溶接）、材質は IfcMaterial、色つき |
+| BIM・CAD 連携 | **IFC4（.ifc）** | IfcProject → Site → Building → Storey（レベル）→ IfcElementAssembly（部材）→ IfcMember / IfcPlate / IfcPipeSegment / IfcMechanicalFastener / IfcFastener（溶接）。**形鋼・板・管は断面の押し出し**（IfcLShapeProfileDef・IfcUShapeProfileDef・IfcRectangleProfileDef・IfcCircleHollowProfileDef など + IfcExtrudedAreaSolid）、**穴は開口**（IfcOpeningElement + IfcRelVoidsElement）、材質は IfcMaterialProfileSet（断面名つき）。ボルト・溶接・その他は三角形面。属性は `Pset_ANGLEX_Assembly` / `Pset_ANGLEX_Part`。「見た目どおり（すべて面）」も選べます |
 | BIM・CAD 連携 | **DXF 3D（3DFACE）** / DXF 加工図 / **加工図 SVG** / IFC-JSON（属性のみ） | 立体の DXF は部材ごとにレイヤ。IFC-JSON は形状なしで BIM ソフトでは開けません |
 | 3D 表示・製作 | glTF・GLB / **OBJ / STL / PLY / USDZ（単体）** / SimReady パッケージ / **PNG 画像（4K）** | OBJ・STL・PLY・DXF 3D・IFC は Z 上・mm |
-| 加工データ | **DSTV NC（.nc1 の ZIP）** 【試験対応】 / **穴座標 CSV** / **部品 JSON** | NC は形鋼・板ごとに 1 ファイル（ST ブロックと穴の BO ブロック） |
+| 加工データ | **DSTV NC（.nc1 の ZIP）** / **穴座標 CSV** / **部品 JSON** | NC は形鋼・板ごとに 1 ファイル（ST ヘッダー 24 行、AK 外形輪郭、BO 穴・長穴）。照合テストピースと照合シート（PDF）を同梱 |
 | 帳票・保存 | 重量計算書 PDF・Excel・CSV / ANGLEX プロジェクト | 見積書・加工指示書・分解図は見積の画面と部材のメニューから |
 
 - **3D 形式の詳細度**: ダイアログで「軽量（ねじ山・ビードの波紋を省く）／表示のまま／概略（溶接なし）」を選べます。一時的に粗い LOD で作り直して書き出し、終わると表示を元に戻します（`withLod`）。リボンの「IFC4」ボタンは軽量で書き出します
-- **IFC4 の確認範囲**: 書き出したファイルを ANGLEX 自身の IFC 読込（web-ifc）で読み戻し、要素数と外形寸法が一致することを自動テストで確認しています。形状は面の集まりなので、受け取った BIM ソフトで見る・干渉を確かめる・属性を読む用途向けです。鋼材として編集できる断面押し出しでの出力と、Revit・Tekla・Archicad での読込確認は未実施です
-- **DSTV NC の面の対応**: 山形鋼 B（垂直脚）= v・A（水平脚）= u、溝形鋼 web = v・ft = o・fb = u、平鋼・板 = v。x は始端からの長さ方向、y は面の幅方向。実機へ投入する前に、機械側の基準（面・原点）と必ず照合してください
+- **IFC4 の検証（独立した実装で確認）**: `dev/verify-external.mjs` が、書き出した IFC を IfcOpenShell（Bonsai / FreeCAD と同じ IFC エンジン）で読み直します。スキーマ検証（属性の数・型・WHERE ルール）は違反 0 件、形状は全 105 要素を生成（開口のブーリアン演算を含む）。「面の集まり版」と「断面押し出し版」を要素ごとに比べ、外形の差は最大 0.5 mm、体積の差は最大 1.6%（面版は穴が多角形のため）。ANGLEX 自身の IFC 読込（web-ifc）での読み戻しも `ux20` で確認
+- **IFC4 でまだ確認していないこと**: Revit・Tekla Structures・Archicad など商用ソフトでの読込は、この環境では実行できないため未確認です。確認手順は「PoC 計画書」の検証項目に入れてあります。部材の外にはみ出す穴（デモモデルの U ボルト穴など）は開口にせず、件数を警告します
+- **立体 → 部材の自動変換**（`js/import/solid.js`）: STEP・IGES・BREP・STL・OBJ などの立体を連結成分に分け、断面（山形鋼・溝形鋼・平鋼・板・角パイプ・鋼管・丸鋼）、寸法、長さ、平らな面の丸穴・長穴を読み取り、同じ位置・向きに ANGLEX の単材を置きます。隅の丸み（根元 R・脚先 R）があっても板厚を読めます。変換後に、元の立体と外形を比べ（1 mm 超で「要判断」）、各穴の中心が元の立体で空洞になっていることを確かめます。H 形鋼・T 形・曲げ加工品など未対応の断面は、参照モデルのまま残します。検証: 別の CAD カーネル（CadQuery / OpenCASCADE）で作った STEP 6 立体（`dev/samples/steel/`、`make_steel_step.py`）で、断面・長さ・穴 10 個がすべて正解と一致、外形差 0 mm（`ux21`）
+- **DSTV NC の検証と、機械ごとの基準**: 書き出した全ファイルを、公開されている別実装のパーサー（Rust の `dstv` crate、`dev/external/dstvcheck`）で読み直し、ヘッダー・外形輪郭・穴・長穴がすべて一致することを確認しています（標準設定と、面入替・終端原点・y 反転の設定の両方）。長穴は規格どおり始点（最初の円の中心）で書きます。機械によって違いうる基準は書出し時に選べます（山形鋼の面 v / u の入替、原点を終端に、y を反対側の縁から）。実機での確認は、ZIP に入る**照合テストピース**（穴を非対称に置いた L-50×50×6 L=300）を 1 本加工し、**照合シート（PDF）**の図と見比べる手順にしています。部材の外にはみ出す穴は NC に出さず、件数を警告します
 - **参照モデルの単位**: STEP・IGES・BREP・3MF は mm、Collada は m として読みます。OBJ・STL・PLY・FBX は大きさから推定します
-- **追加した同梱ライブラリとライセンス**: occt-import-js 0.0.23（STEP・IGES・BREP 読込、OpenCASCADE を含む。LGPL-2.1）、web-ifc 0.0.66（IFC 読込。MPL-2.0）、UTIF.js 3.1.0 と pako 1.0.11（TIFF 読込。MIT）。いずれも改変せずに `vendor/` に置き、オフライン版へ同梱しています。製品として配布する際は、各ライセンスの表示と LGPL の条件（差し替え可能であること）を確認してください
-- オフライン版の確認: `node dev/offline-formats.mjs dist/ANGLEX_v1_offline.html`（外部通信を遮断して TIFF・STEP の読込、IFC4 の書出しと読み戻し、追加ローダーを確認）
+- **ライセンス**: 同梱・利用している第三者ソフトウェア 16 件を `tools/build_licenses.py` の表で 1 か所管理し、`THIRD_PARTY_NOTICES.md`（配布物に添える表示）、`licenses/`（全文）、アプリ内の「ヘルプ → ライセンス」（全文つき）を生成します。コピーレフト系は 2 件: occt-import-js / Open CASCADE（LGPL-2.1 + OCCT 例外、STEP・IGES・BREP 読込）と web-ifc（MPL-2.0、IFC 読込）。どちらも改変せず、独立したファイルとして動的に読み込みます。LGPL への対応として、(1) ライセンス画面から利用者が自分の `occt-import-js.js` / `.wasm` に差し替えられる、(2) `vendor/occt/` を置き換えて再ビルドできる、(3) `--without-occt` で同梱しない版を作れる、の 3 つを用意しました。再配布の最終判断は法務・知財部門でご確認ください
+- オフライン版の確認: `node dev/offline-formats.mjs dist/ANGLEX_v1_offline.html`（外部通信を遮断して TIFF・STEP の読込、IFC4 の書出しと読み戻し、追加ローダーを確認。v1・v2 の両方で確認済み）
+- 外部ツールでの検証の準備: `python -m venv <venv> && <venv>/bin/pip install ifcopenshell pytest cadquery`、`(cd dev/external/dstvcheck && cargo build --release)`。実行: `ANGLEX_PY=<venv>/bin/python node dev/verify-external.mjs`
 - テスト: `dev/flows/ux20.js`（各形式のサンプルを作って読込 → 全形式を書出し → IFC・OBJ・STL・PLY・GLB の往復、DSTV NC の往復、ZIP、ダイアログ）。STEP・IGES・BREP のサンプルは `dev/samples/cad/`
 
 ## 3D の基本操作（回す・掴んで中央へ）

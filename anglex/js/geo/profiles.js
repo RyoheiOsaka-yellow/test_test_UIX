@@ -123,6 +123,7 @@ export function assignHoles(plates, holes = []) {
   for (const h of holes) {
     const pl = plates.find(q => q.name === h.face) || plates[0]; if (!pl) continue;
     const [u, v] = pl.map(h.z, h.s);
+    if (u < 0 || v < 0 || u > pl.w || v > pl.h) continue; // 中心が板の外にある穴は形状にしない（板の外に穴の縁だけが浮いた形になるのを防ぐ。NC・IFC の書出しでは除外数を警告する）
     pl.holes.push({ u, v, d: h.d, slot: h.slot ? { len: h.slot.len, ang: h.slot.dir === 's' ? Math.PI / 2 : 0 } : null, id: h.id, kind: h.kind || (h.slot ? 'slot' : 'round') });
   }
 }

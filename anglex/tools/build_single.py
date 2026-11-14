@@ -4,7 +4,7 @@ CDN ライブラリ（Three.js / PDF.js / pdf-lib / web-ifc / SheetJS / Poly Hav
 import os, re, base64, json, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 import sys
-OFFLINE = '--offline' in sys.argv; args = [a for a in sys.argv[1:] if not a.startswith('--')]
+OFFLINE = '--offline' in sys.argv; WITHOUT_OCCT = '--without-occt' in sys.argv; args = [a for a in sys.argv[1:] if not a.startswith('--')]  # --without-occt: LGPL の STEP 読込ライブラリを同梱しない
 HTML = args[0] if len(args) > 0 else 'index.html'; CSS = args[1] if len(args) > 1 else 'css/app.css'; OUT = args[2] if len(args) > 2 else ('dist/ANGLEX_offline.html' if OFFLINE else 'dist/ANGLEX.html')
 VEN = ROOT / 'vendor'
 def data_url(path, mime):
@@ -33,6 +33,7 @@ VENDOR_URLS = {
 vendor_data = {}
 if OFFLINE:
     for url, (fn, mime) in VENDOR_URLS.items():
+        if WITHOUT_OCCT and fn.startswith('occt/'): continue
         f = VEN / fn
         if not f.exists(): raise SystemExit('vendor file missing: ' + fn + ' (run the curl list in README / tools/vendor_three.py)')
         vendor_data[url] = data_url(f, mime)

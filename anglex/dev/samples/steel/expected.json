@@ -1,0 +1,105 @@
+[
+ {
+  "spec": "L-50x50x6",
+  "length": 600,
+  "holes": [
+   {
+    "face": "A",
+    "z": 50,
+    "s": 25,
+    "d": 15,
+    "slot": null
+   },
+   {
+    "face": "A",
+    "z": 550,
+    "s": 25,
+    "d": 15,
+    "slot": null
+   },
+   {
+    "face": "B",
+    "z": 300,
+    "s": 30,
+    "d": 11,
+    "slot": null
+   },
+   {
+    "face": "B",
+    "z": 150,
+    "s": 30,
+    "d": 11,
+    "slot": 25
+   }
+  ]
+ },
+ {
+  "spec": "[-75x40x5x7",
+  "length": 500,
+  "holes": [
+   {
+    "face": "web",
+    "z": 100,
+    "s": 37.5,
+    "d": 12,
+    "slot": null
+   },
+   {
+    "face": "web",
+    "z": 400,
+    "s": 37.5,
+    "d": 12,
+    "slot": null
+   }
+  ]
+ },
+ {
+  "spec": "FB-6x50",
+  "length": 300,
+  "holes": []
+ },
+ {
+  "spec": "PL-9x150x150",
+  "length": 150,
+  "holes": [
+   {
+    "face": "face",
+    "z": 25,
+    "s": 25,
+    "d": 15,
+    "slot": null
+   },
+   {
+    "face": "face",
+    "z": 25,
+    "s": 125,
+    "d": 15,
+    "slot": null
+   },
+   {
+    "face": "face",
+    "z": 125,
+    "s": 25,
+    "d": 15,
+    "slot": null
+   },
+   {
+    "face": "face",
+    "z": 125,
+    "s": 125,
+    "d": 15,
+    "slot": null
+   }
+  ]
+ },
+ {
+  "spec": "□-50x50x2.3",
+  "length": 400,
+  "holes": []
+ },
+ {
+  "spec": "STK-60.5x3.2",
+  "length": 350,
+  "holes": []
+ }
+]
