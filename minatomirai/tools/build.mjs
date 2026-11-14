@@ -19,13 +19,14 @@ const pack = readFileSync(join(root, 'data/minatomirai.pack')).toString('base64'
 let guide = ''; try { guide = readFileSync(join(root, 'data/floorguide.csv'), 'utf8'); } catch (e) { }
 // 下敷き画像 (公式フロアマップ) を data URL で埋め込む
 let zones = []; try { zones = JSON.parse(readFileSync(join(root, 'data/zones.json'), 'utf8')); } catch (e) { }
+let peopleCalib = null; try { peopleCalib = JSON.parse(readFileSync(join(root, 'data/people_calib.json'), 'utf8')); } catch (e) { }
 let ground = ''; try { ground = 'data:image/jpeg;base64,' + readFileSync(join(root, 'data/ground.jpg')).toString('base64'); } catch (e) { }
 let underlays = [];
 try {
   underlays = JSON.parse(readFileSync(join(root, 'data/underlays.json'), 'utf8')).map(u => ({ ...u, data: 'data:image/jpeg;base64,' + readFileSync(join(root, 'data/underlays', u.file)).toString('base64') }));
 } catch (e) { }
 const html = readFileSync(join(root, 'src/index.html'), 'utf8')
-  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};window.__UNDERLAYS=${JSON.stringify(underlays)};window.__ZONES=${JSON.stringify(zones)};window.__GROUND=${JSON.stringify(ground)};`)
+  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};window.__UNDERLAYS=${JSON.stringify(underlays)};window.__ZONES=${JSON.stringify(zones)};window.__GROUND=${JSON.stringify(ground)};window.__PEOPLE_CALIB=${JSON.stringify(peopleCalib)};`)
   .replace('/*__APP__*/', () => js);
 mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(join(root, 'dist/index.html'), html);

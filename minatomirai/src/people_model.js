@@ -14,7 +14,8 @@ export const GROUPS = [
   { key: 'visit', n: '来街（買物・観光）', color: '#ffb347' },
   { key: 'resident', n: '住民', color: '#6fdc7a' },
   { key: 'lunch', n: '昼食', color: '#ff6f91' },
-  { key: 'stroll', n: '回遊', color: '#c58bff' },
+  { key: 'stroll', n: '回遊', color: '#9a7bff' },
+  { key: 'event', n: 'イベント', color: '#e040fb' },
 ];
 
 export const STATION_DATA = [
@@ -47,6 +48,21 @@ export const DAY_TYPES = {
   weekday: { n: '平日', total: 1.0, commute: 0.50, visit: 0.36, resident: 0.14, lunch: 0.30, stroll: 1.0 },
   holiday: { n: '休日', total: 0.92, commute: 0.13, visit: 0.72, resident: 0.15, lunch: 0.30, stroll: 1.5 },
 };
+// イベント (仮定): 会場の収容人数規模の来場者が、開演前に最寄り駅から集まり、終演後に一斉に駅へ向かう
+export const EVENTS = {
+  karena: { n: 'K アリーナ横浜 公演（2 万人・18:00 開演 / 21:00 終演）', match: /K-?\s?Arena|Kアリーナ/i, people: 20000, arrive: [16, 17.25, 18], leave: [21, 21.25, 21.9] },
+  pia: { n: 'ぴあアリーナ MM 公演（1 万人・18:00 開演 / 20:30 終演）', match: /ぴあアリーナ/, people: 10000, arrive: [16, 17.25, 18], leave: [20.5, 20.75, 21.4] },
+  pacifico: { n: 'パシフィコ横浜 展示会（3 万人・10〜17 時）', match: /^パシフィコ横浜$|パシフィコ横浜展示ホール/, people: 30000, arrive: [9, 10.2, 13], leave: [14.5, 16.6, 18] },
+};
+const tri = (h, [a, p, b]) => h <= a || h >= b ? 0 : (h < p ? (h - a) / (p - a) : (b - h) / (b - p)) * 2 / (b - a);   // 面積 1 の三角パルス (1/時)
+// 雨天 (仮定): 屋根の無い区間は歩行コスト 1.7 倍 (屋内・地下・屋根付きへ寄る)、来街 0.8 倍、回遊 0.4 倍、公園の集客 0.1 倍
+export const RAIN = { cost: 1.7, visit: 0.8, stroll: 0.4, park: 0.1 };
+// 曜日 + 月 + 較正 を反映した発生条件。calib があれば 休日の総量と月別の係数を人流オープンデータに合わせる
+export function dayContext(dayKey, month, calib) {
+  const d = { ...DAY_TYPES[dayKey] };
+  if (calib) { if (dayKey === 'holiday' && calib.holidayTotal) d.total = calib.holidayTotal; const mf = (dayKey === 'holiday' ? calib.monthHol : calib.monthWk)?.[(month ?? 1) - 1]; if (mf) d.total *= mf; }
+  return d;
+}
 const BETA = { commute: 450, visit: 600, resident: 500 };   // 重力モデルの距離減衰 (m)
 const VT_W = { stairs: 1.6, esc: 1.15, elev: 2.5, slope: 1.1 };
 export const WALK_SPEED = 1.3;
@@ -91,14 +107,14 @@ function attraction(m, poi) {
   return { off, vis, res, food: food + (u === 'ret' ? Flow / 4000 : 0), u };
 }
 
-export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [] }) {
+export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], calib = null, scenario = {}, light = false }) {
   const t0 = Date.now();
   const nodes = graph.nodes, links = graph.links, N = nodes.length, L = links.length;
   // ---- 隣接 (歩行コスト付き)。code = リンク番号*2 + (a→b なら 1) ----
   const fadj = Array.from({ length: N }, () => []), radj = Array.from({ length: N }, () => []);
   const linkW = new Float32Array(L);
   for (let i = 0; i < L; i++) {
-    const l = links[i]; if (l.a === l.b) continue; const w = l.length * (VT_W[l.vt] ?? 1); linkW[i] = w;
+    const l = links[i]; if (l.a === l.b) continue; const w = l.length * (VT_W[l.vt] ?? 1) * (scenario.rain && !l.cov ? RAIN.cost : 1); linkW[i] = w;
     fadj[l.a].push(i * 2 + 1, l.b, w); radj[l.b].push(i * 2 + 1, l.a, w);
     if (!l.oneWay) { fadj[l.b].push(i * 2, l.a, w); radj[l.a].push(i * 2, l.b, w); }
   }
@@ -126,7 +142,8 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [] }
   // ---- 駅 (ホームのノードを発着点にする) ----
   const labelOf = Object.fromEntries((header.labels || []).filter(l => l.kind === 'station').map(l => [l.n, l.p]));
   const stations = [];
-  for (const sd of STATION_DATA) {
+  for (const sd0 of STATION_DATA) {
+    const sd = sd0.assumed && calib?.yokoDaily ? { ...sd0, daily: calib.yokoDaily, src: '人流オープンデータで較正' } : sd0;
     const spaces = (header.stations || []).filter(s => s.st === sd.st && (sd.lvMin === undefined || s.lv >= sd.lvMin) && (sd.lvMax === undefined || s.lv <= sd.lvMax));
     let src = [];
     for (const cat of ['platform', 'gate', 'concourse']) {
@@ -145,6 +162,7 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [] }
   const poiBy = new Map();
   for (const q of header.poi || []) { if (q.b == null || q.b < 0) continue; let e = poiBy.get(q.b); if (!e) poiBy.set(q.b, e = { shop: 0, food: 0, other: 0 }); if (q.c === '飲食') e.food++; else if (q.c === '物販') e.shop++; else e.other++; }
   const dests = [];
+  const meshOf = (x, y) => calib?.meshes?.find(q => x >= q.rect[0] && x < q.rect[2] && y >= q.rect[1] && y < q.rect[3]) ?? null;
   const addDest = (d, x0, y0, x1, y1) => {
     let cand = nodesInBox(x0 - 8, y0 - 8, x1 + 8, y1 + 8);
     if (cand.length > 40) { const step = cand.length / 40; cand = Array.from({ length: 40 }, (_, i) => cand[Math.floor(i * step)]); }
@@ -155,13 +173,15 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [] }
   };
   buildingMeta.forEach((m, i) => {
     if (!m || !m.bb || m.runtime) return; const w = attraction(m, poiBy.get(i)); if (w.off + w.vis + w.res < 1) return;
+    const mesh = meshOf(m.c[0] / 10, m.c[1] / 10); w.mesh = mesh ? mesh.id : null;
+    if (mesh) { w.off *= mesh.fOff ?? 1; w.vis *= mesh.fVis ?? 1; w.res *= mesh.fRes ?? 1; }
     addDest({ b: i, n: m.n, x: m.c[0] / 10, y: m.c[1] / 10, ...w }, m.bb[0] / 10, m.bb[1] / 10, m.bb[2] / 10, m.bb[3] / 10);
   });
   for (const rings of header.green || []) {   // 公園・緑地 (面積 4000 m2 以上) は来街・回遊の目的地
     const r = rings[0]; if (!r || r.length < 3) continue; const area = ringArea(r); if (area < 4000) continue;
     let sx = 0, sy = 0, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const [x, y] of r) { sx += x / 10; sy += y / 10; x0 = Math.min(x0, x / 10); y0 = Math.min(y0, y / 10); x1 = Math.max(x1, x / 10); y1 = Math.max(y1, y / 10); }
     const cx = sx / r.length, cy = sy / r.length;
-    const d = { b: -1, n: '公園・緑地', x: cx, y: cy, off: 0, vis: Math.sqrt(area) * 7, res: 0, food: 0, u: 'park' };
+    const d = { b: -1, n: '公園・緑地', x: cx, y: cy, off: 0, vis: Math.sqrt(area) * 7 * (scenario.rain ? RAIN.park : 1), res: 0, food: 0, u: 'park' };
     const cand = nearestNodes(cx, cy, Math.max(40, Math.sqrt(area) / 2), 6); if (!cand.length) continue;
     d.cand = cand; d.home = cand[0]; d.idx = dests.length; dests.push(d);
   }
@@ -169,6 +189,7 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [] }
 
   // ---- 駅 × 目的 × 方向 の配分 (重力モデル) と、1 トリップあたりのリンク通行量 U ----
   const WKEY = { commute: 'off', visit: 'vis', resident: 'res' };
+  const mVisit = scenario.rain ? RAIN.visit : 1, mStroll = scenario.rain ? RAIN.stroll : 1;
   const classes = [];
   const accumulate = (T, nodeP) => {   // nodeP: Float64Array(N) 各ノードが終点 (または起点) になる確率 → U[リンク] と平均距離
     const U = new Float32Array(L), q = nodeP; let md = 0;
@@ -189,7 +210,7 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [] }
         sum += w; ids.push(d.idx); nds.push(bn); cdf.push(sum);
       }
       if (!ids.length) continue;
-      for (let i = 0; i < ids.length; i++) nodeP[nds[i]] += (cdf[i] - (i ? cdf[i - 1] : 0)) / sum;
+      for (let i = 0; i < ids.length; i++) { const pr = (cdf[i] - (i ? cdf[i - 1] : 0)) / sum; nodeP[nds[i]] += pr; const d = dests[ids[i]]; (d.entr ??= new Map()).set(nds[i], (d.entr.get(nds[i]) ?? 0) + pr * S.daily); }
       const share = new Float32Array(dests.length); for (let i = 0; i < ids.length; i++) share[ids[i]] = (cdf[i] - (i ? cdf[i - 1] : 0)) / sum;
       const { U, md } = accumulate(T, nodeP);
       // 人の向き: 通勤・来街は out=到着 / in=帰り。住民は in=出発 (朝) / out=帰宅 (夕)
@@ -197,7 +218,7 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [] }
       const cache = new Map();
       classes.push({
         key: `${S.id}:${purpose}:${dir}`, station: si, purpose, dir, group: purpose === 'commute' ? 0 : purpose === 'visit' ? 1 : 2, U, meanDist: md, share,
-        rate: (h, day) => S.daily / 2 * day.total * day[purpose] * prof(PROFILE[profKey], h),
+        rate: (h, day) => S.daily / 2 * day.total * day[purpose] * (purpose === 'visit' ? mVisit : 1) * prof(PROFILE[profKey], h),
         sample: rnd => {
           const r = rnd() * sum; let lo = 0, hi = cdf.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < r) lo = mid + 1; else hi = mid; }
           const nd = nds[lo]; let p = cache.get(nd); if (!p) cache.set(nd, p = dir === 'out' ? pathOut(T, nd) : pathIn(T, nd)); return p;
@@ -235,17 +256,47 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [] }
   const reversePath = p => { const r = new Int32Array(p.length); for (let i = 0; i < p.length; i++) r[i] = p[p.length - 1 - i] ^ 1; return r; };
   let seed = 12345; const lcg = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   const monteCarlo = (sampler, n) => { const U = new Float32Array(L); let md = 0, ok = 0; for (let i = 0; i < n; i++) { const p = sampler(lcg); if (!p) continue; ok++; md += pathLen(p); for (let k = 0; k < p.length; k++) U[p[k] >> 1] += 1; } if (ok) { for (let i = 0; i < L; i++) U[i] /= ok; md /= ok; } return { U, md }; };
-  const lunch = makeLocal(topBy('off', 260), 'off', 'food', 160, 450, 800), stroll = makeLocal(topBy('vis', 200), 'vis', 'vis', 350, 1000, 1500);
-  const lu = monteCarlo(lunch.sample, 3000), su = monteCarlo(stroll.sample, 3000);
+  const lunch = makeLocal(light ? [] : topBy('off', 260), 'off', 'food', 160, 450, 800), stroll = makeLocal(light ? [] : topBy('vis', 200), 'vis', 'vis', 350, 1000, 1500);
+  const lu = monteCarlo(lunch.sample, light ? 0 : 3000), su = monteCarlo(stroll.sample, light ? 0 : 3000);
   classes.push({ key: 'lunch:out', group: 3, U: lu.U, meanDist: lu.md, rate: (h, day) => dailyAlight(day) * day.commute * day.lunch * prof(PROFILE.lunchOut, h), sample: lunch.sample });
   classes.push({ key: 'lunch:back', group: 3, U: lu.U, meanDist: lu.md, rate: (h, day) => dailyAlight(day) * day.commute * day.lunch * prof(PROFILE.lunchBack, h), sample: rnd => { const p = lunch.sample(rnd); return p && reversePath(p); } });
-  classes.push({ key: 'stroll', group: 4, U: su.U, meanDist: su.md, rate: (h, day) => dailyAlight(day) * day.visit * day.stroll * prof(PROFILE.stroll, h), sample: stroll.sample });
+  classes.push({ key: 'stroll', group: 4, U: su.U, meanDist: su.md, rate: (h, day) => dailyAlight(day) * day.visit * day.stroll * mStroll * prof(PROFILE.stroll, h), sample: stroll.sample });
 
+  // ---- イベント: 会場 ⇄ 駅 (駅の選択は 会場からの歩行距離と駅の規模) ----
+  let eventInfo = null;
+  const ev = scenario.event ? EVENTS[scenario.event] : null;
+  if (ev) {
+    const venue = dests.filter(d => d.n && ev.match.test(d.n)).sort((p, q) => q.vis - p.vis)[0];
+    if (venue) {
+      const opts = stations.map((S, si) => { let on = -1, od = Infinity, inn = -1, id = Infinity; for (const c of venue.cand) { if (S.out.dist[c] < od) { od = S.out.dist[c]; on = c; } if (S.in.dist[c] < id) { id = S.in.dist[c]; inn = c; } } return { S, si, on, od, inn, id, w: on < 0 ? 0 : Math.sqrt(S.daily) * Math.exp(-od / 500) }; });
+      const wsum = opts.reduce((a, o) => a + o.w, 0);
+      eventInfo = { n: ev.n, venue: venue.n, people: ev.people, split: opts.filter(o => o.w / wsum > 0.005).map(o => ({ n: o.S.n, share: o.w / wsum, m: Math.round(o.od) })).sort((p, q) => q.share - p.share) };
+      for (const o of opts) {
+        const sh = o.w / wsum; if (sh < 0.005) continue;
+        for (const dir of ['out', 'in']) {
+          const T = o.S[dir], nd = dir === 'out' ? o.on : o.inn, path = dir === 'out' ? pathOut(T, nd) : pathIn(T, nd); if (!path.length) continue;
+          const U = new Float32Array(L); for (let k = 0; k < path.length; k++) U[path[k] >> 1] += 1;
+          const share = new Float32Array(dests.length); share[venue.idx] = 1;
+          classes.push({ key: `event:${o.S.id}:${dir}`, station: o.si, dir, group: 5, U, meanDist: dir === 'out' ? o.od : o.id, share, event: true, rate: h => ev.people * sh * tri(h, dir === 'out' ? ev.arrive : ev.leave), sample: () => path });
+        }
+      }
+    }
+  }
   // ---- 集計 ----
   const volumes = (h, day, out = new Float32Array(L)) => { out.fill(0); for (const c of classes) { const r = c.rate(h, day); if (r <= 0) continue; const U = c.U; for (let i = 0; i < L; i++) out[i] += r * U[i]; } return out; };
   const walking = (h, day) => { const g = new Float32Array(GROUPS.length); for (const c of classes) g[c.group] += c.rate(h, day) * c.meanDist / WALK_SPEED / 3600; return g; };
   const stationFlows = (h, day) => stations.map((S, si) => { let toCity = 0, toStation = 0; for (const c of classes) if (c.station === si) { if (c.dir === 'out') toCity += c.rate(h, day); else toStation += c.rate(h, day); } return { n: S.n, toCity, toStation, assumed: !!S.assumed }; });
   // 建物 1 棟に出入りする人数 (人/時): 駅から来る人 + 駅へ向かう人
   const destFlows = (idx, h, day) => { let arrive = 0, leave = 0; for (const c of classes) if (c.share) { const r = c.rate(h, day) * c.share[idx]; if (c.dir === 'out') arrive += r; else leave += r; } return { arrive, leave }; };
-  return { stations, dests, classes, volumes, walking, stationFlows, destFlows, linkW, buildMs: Date.now() - t0 };
+  // 建物ごとの滞在人数 (駅から来た人 − 駅へ帰った人 の累積。4 時起点、0.25 時間刻み)。purposes を絞れる
+  const presence = (h, day, purposes = null) => {
+    const out = new Float64Array(dests.length);
+    for (const c of classes) {
+      if (!c.share || (purposes && !purposes.includes(c.purpose ?? 'event'))) continue;
+      let cum = 0; for (let t = 4; t < h; t += 0.25) cum += c.rate(t + 0.125, day) * 0.25; if (cum <= 0) continue;
+      const sg = c.dir === 'out' ? 1 : -1; for (let i = 0; i < out.length; i++) if (c.share[i] > 0) out[i] += sg * cum * c.share[i];
+    }
+    return out;
+  };
+  return { stations, dests, classes, volumes, walking, stationFlows, destFlows, presence, eventInfo, linkW, buildMs: Date.now() - t0 };
 }

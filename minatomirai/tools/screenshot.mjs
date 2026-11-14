@@ -104,6 +104,13 @@ await shot('40_people_morning', `a.applyTheme('paper'); a.setClock(8.25); a.came
 await shot('41_people_sakuragicho', `a.setClock(18.25); a.camera.position.set(-170, 150, 880); a.controls.target.set(-30, 0, 660); for (let i = 0; i < 40; i++) a.people().update(0.05);`);
 await shot('43_people_night', `a.applyTheme('night'); a.setClock(18.25); a.camera.position.set(-520, 330, 420); a.controls.target.set(-40, 20, 250); for (let i = 0; i < 40; i++) a.people().update(0.05);`);
 await shot('44_people_real', `a.applyTheme('real'); a.setClock(8.5); a.camera.position.set(-35, 40, 745); a.controls.target.set(30, 3, 690); for (let i = 0; i < 40; i++) a.people().update(0.05);`);
+{ const ui = `const $ = id => document.getElementById(id); const ev = v => { $('p-event').value = v; $('p-event').dispatchEvent(new Event('change')); }; const rain = v => { $('p-rain').checked = v; $('p-rain').dispatchEvent(new Event('change')); }; const rib = r => document.querySelector('#p-ribbon button[data-r="' + r + '"]').click(); const mesh = v => { $('p-mesh').checked = v; $('p-mesh').dispatchEvent(new Event('change')); }; const run = () => { for (let i = 0; i < 60; i++) { a.people().update(0.05); a.indoor().update(0.05); } };`;
+  await shot('50_los_morning', `${ui} a.applyTheme('paper'); rib('los'); a.setClock(8.25); a.camera.position.set(-120, 170, 860); a.controls.target.set(20, 0, 660); run();`);
+  await shot('51_event_karena', `${ui} a.applyTheme('night'); rib('diff'); ev('karena'); a.setClock(21.3); a.camera.position.set(-250, 900, 250); a.controls.target.set(-330, 0, -420); run();`);
+  await shot('52_rain_diff', `${ui} a.applyTheme('paper'); ev(''); rain(true); rib('diff'); a.setClock(12.5); a.camera.position.set(-380, 520, 560); a.controls.target.set(-20, 0, 200); run();`);
+  await shot('53_mesh_check', `${ui} rain(false); rib('volume'); mesh(true); a.setClock(13); a.camera.position.set(100, 2300, 900); a.controls.target.set(100, 0, 60); run();`);
+  await shot('54_indoor_markis', `${ui} mesh(false); a.setClock(13); const i = a.selectByName('MARK IS'); a.setGap(9); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 200, 150, cz + 170); a.controls.target.set(cx, 30, cz); run();`);
+  await page.evaluate(() => window.__app.select(-1)); }
 await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });
 await shot('08_blueprint', ``);
 await page.screenshot({ path: `${out}/09_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));

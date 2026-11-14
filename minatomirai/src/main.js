@@ -16,6 +16,7 @@ import { initConstruction, compassSVG, TOWER_NAME } from './construct.js';
 import { initRealistic, realState } from './realistic.js';
 import { initRoadDetail } from './roads.js';
 import { initPeople } from './people.js';
+import { initIndoor } from './indoor.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
@@ -254,7 +255,7 @@ FLOORS.forEach(f => { const g = new THREE.Group(); g.name = `floor${f.level}`; g
 
 let LEVEL_H = {};
 let expand = 1.0;            // フロア展開倍率
-let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null;
+let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null; let indoor = null;
 const levelY = (lv, k = expand) => (LEVEL_H[lv] ?? lv * 6) * k;
 
 let buildingMesh = null, buildingMeta = null, buildingStarts = null;
@@ -964,6 +965,7 @@ function showZoneDetail(zi) {
 }
 const setCatFilter = set => { catVisible.clear(); for (const c of set) catVisible.add(c); document.querySelectorAll('#cat-filter .cf').forEach(b => b.classList.toggle('active', catVisible.size === 0 || catVisible.has(b.dataset.cat))); applyCategoryFilter(); };
 const runtimeBuildings = new Map(); // bid -> mesh (実行時に生成した建物)
+const footprintPts = bid => { const src = buildingSource(bid), P = src.P, pts = []; for (let tr = src.t0; tr < src.t1; tr++) for (let k = 0; k < 3; k++) { const vi = src.I[tr * 3 + k]; pts.push([P.getX(vi), -P.getZ(vi)]); } return pts; };
 function buildingSource(bid) {
   const rm = runtimeBuildings.get(bid);
   if (rm) { const g = rm.geometry; return { P: g.attributes.position, I: g.index.array, t0: 0, t1: g.index.count / 3 }; }
@@ -1155,6 +1157,7 @@ function selectBuilding(bid) {
   document.getElementById('btn-guide-template').addEventListener('click', () => download(new Blob(['\ufeff' + floorGuideTemplate(m.n ?? '', nFloors)], { type: 'text/csv' }), `floorguide_${(m.n ?? 'building').replace(/[\\/:*?"<>|]/g, '_')}.csv`));
   document.getElementById('btn-guide-load').addEventListener('click', () => guideFileInput.click());
   if (people) { const f = people.buildingFlows(m.runtime ? -2 : bid); if (f && f.peak >= 1) { const ph = Math.floor(f.peakHour), pm = f.peakHour % 1 ? '30' : '00'; const d = document.createElement('div'); d.className = 'info-sub'; d.style.marginTop = '6px'; d.innerHTML = `人の出入り（駅との間・モデル推計）: いま 来る 約 ${Math.round(f.arrive).toLocaleString()} 人/時・出る 約 ${Math.round(f.leave).toLocaleString()} 人/時 ／ ピーク ${ph}:${pm} 頃 約 ${Math.round(f.peak).toLocaleString()} 人/時`; infoBody.appendChild(d); } }
+  if (indoor) { indoor.setBuilding(bid); const d = document.createElement('div'); d.className = 'info-sub'; d.id = 'indoor-info'; d.style.marginTop = '4px'; d.innerHTML = indoor.infoHTML(); infoBody.appendChild(d); }
   infoEl.style.display = 'block';
   document.getElementById('floor-gap').value = selUniforms.uGap.value;
 }
@@ -1185,6 +1188,7 @@ function declutterLabels() {
   }
 }
 function clearSelection() {
+  if (indoor) indoor.setBuilding(-1);
   if (sel.mesh) { selGroup.remove(sel.mesh); sel.mesh.geometry.dispose(); sel.mesh.material.dispose(); sel.mesh = null; }
   if (sel.lines) { selGroup.remove(sel.lines); sel.lines.geometry.dispose(); sel.lines.material.dispose(); sel.lines = null; }
   for (const sp of sel.markers) { selGroup.remove(sp); sp.material.map.dispose(); sp.material.dispose(); }
@@ -1237,10 +1241,10 @@ function buildNetwork(net) {
   const vt = net.vtypes;
   graph.nodes = net.nodes.map(([x, y, lv], i) => ({ id: i, x: x / 10, y: y / 10, lv }));
   net.links.forEach((l, li) => {
-    const [a, b, vtc, ow, ax, ay, bx, by] = l;
+    const [a, b, vtc, ow, ax, ay, bx, by, wd, fl] = l;
     const na = graph.nodes[a], nb = graph.nodes[b];
     const length = Math.max(0.5, Math.hypot(bx - ax, by - ay) / 10 + Math.abs(levelY(nb.lv, 1) - levelY(na.lv, 1)) * (vtc ? 1 : 0.2));
-    const link = { li, a, b, vt: vt[vtc] || null, vtc, oneWay: !!ow, ax: ax / 10, ay: ay / 10, bx: bx / 10, by: by / 10, length };
+    const link = { li, a, b, vt: vt[vtc] || null, vtc, oneWay: !!ow, ax: ax / 10, ay: ay / 10, bx: bx / 10, by: by / 10, length, w: (wd ?? 30) / 10, cross: !!((fl ?? 0) & 1), cov: !!((fl ?? 0) & 2) || na.lv < 0 || nb.lv < 0 };
     graph.links.push(link);
     if (!graph.adj.has(a)) graph.adj.set(a, []); graph.adj.get(a).push({ li, forward: true });
     if (!ow) { if (!graph.adj.has(b)) graph.adj.set(b, []); graph.adj.get(b).push({ li, forward: false }); }
@@ -1259,8 +1263,8 @@ function addTowerLinks(ex, ey, lx, ly) {
   if (!towerNodes) {
     const e = graph.nodes.length; graph.nodes.push({ id: e, x: ex, y: ey, lv: 0 }); const l = graph.nodes.length; graph.nodes.push({ id: l, x: lx, y: ly, lv: 0 });
     towerNodes = [e, l]; graph.towerLobby = l;
-    graph.links.push({ li: graph.links.length, a: e, b: l, vt: null, vtc: 0, oneWay: false, ax: ex, ay: ey, bx: lx, by: ly, length: 1, tower: true });
-    graph.links.push({ li: graph.links.length, a: e, b: e, vt: null, vtc: 0, oneWay: false, ax: ex, ay: ey, bx: ex, by: ey, length: 1, tower: true });
+    graph.links.push({ li: graph.links.length, a: e, b: l, vt: null, vtc: 0, oneWay: false, ax: ex, ay: ey, bx: lx, by: ly, length: 1, tower: true, w: 8, cross: false, cov: true });
+    graph.links.push({ li: graph.links.length, a: e, b: e, vt: null, vtc: 0, oneWay: false, ax: ex, ay: ey, bx: ex, by: ey, length: 1, tower: true, w: 6, cross: false, cov: false });
   }
   const [e, l] = towerNodes; graph.nodes[e].x = ex; graph.nodes[e].y = ey; graph.nodes[l].x = lx; graph.nodes[l].y = ly;
   let best = null, bd = 120;
@@ -1669,6 +1673,11 @@ function initPeopleUI() {
   document.querySelectorAll('#p-day button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#p-day button').forEach(x => x.classList.toggle('active', x === b)); people.set({ day: b.dataset.day }); }));
   $('p-accel').addEventListener('input', e => { people.set({ accel: Number(e.target.value) }); $('p-accel-v').textContent = `×${e.target.value}`; });
   $('p-agents').addEventListener('change', e => people.set({ agents: e.target.checked })); $('p-vol').addEventListener('change', e => people.set({ vol: e.target.checked }));
+  $('p-event').addEventListener('change', e => { people.set({ event: e.target.value || null }); if (indoor && sel.bid >= 0) indoor.setBuilding(sel.bid); });
+  $('p-rain').addEventListener('change', e => { people.set({ rain: e.target.checked }); if (indoor && sel.bid >= 0) indoor.setBuilding(sel.bid); });
+  document.querySelectorAll('#p-ribbon button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#p-ribbon button').forEach(x => x.classList.toggle('active', x === b)); people.set({ ribbon: b.dataset.r }); }));
+  $('p-signal').addEventListener('change', e => people.set({ signals: e.target.checked })); $('p-mesh').addEventListener('change', e => people.set({ meshes: e.target.checked }));
+  $('p-indoor').addEventListener('change', e => indoor.set({ on: e.target.checked }));
 }
 const routeBtn = document.getElementById('btn-route');
 routeBtn.addEventListener('click', () => { routeMode = !routeMode; routeBtn.classList.toggle('active', routeMode); clearRoute(); routeResult.textContent = routeMode ? '始点をクリック（歩行者ネットワーク上の点）' : ''; });
@@ -1748,9 +1757,11 @@ async function init() {
   initConstructionUI();
   rebuildTower();
   setProgress(0.95, '人流モデルを計算中…'); await nextFrame();
-  people = initPeople({ scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, onClock: h => setClock(h, { fromPlay: true }),
+  people = initPeople({ scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, calib: window.__PEOPLE_CALIB || null, getMonth: () => realState.month, onClock: h => setClock(h, { fromPlay: true }),
     extraDest: () => { if (!construction || graph.towerLobby == null) return []; const p = construction.params; const upper = p.floors - p.podFloors - 3, nOff = Math.round(upper * p.officeRatio / 100), tA = (2 * p.towerHalf) ** 2 * 0.9, pA = 4 * p.podHalf * (p.podHalfB ?? p.podHalf * 0.81); return [{ n: TOWER_NAME, x: p.x, y: p.y, node: graph.towerLobby, off: nOff * tA / 22 + pA * p.podFloors / 150, vis: pA * p.podFloors / 12 + (upper - nOff) * tA / 60, food: pA * p.podFloors / 4000 + 6 }]; } });
-  people.set({ hour: realState.hour }); people.rebuild(); initPeopleUI(); onTheme(t => people.setTheme(t));
+  people.set({ hour: realState.hour }); people.rebuild(); onTheme(t => people.setTheme(t));
+  indoor = initIndoor({ scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel: () => sel, getGap: () => selUniforms.uGap.value, footprintPts, terrainSampler, levelY, renderer });
+  initPeopleUI();
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
   roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState });
   initRealUI();
@@ -1760,7 +1771,7 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, indoor: () => indoor, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
@@ -1795,13 +1806,14 @@ function animate() {
   if (realistic) realistic.update(dt);
   if (roadDetail) roadDetail.update(dt);
   if (people) people.update(dt);
+  if (indoor) indoor.update(dt);
   composer.render();
 }
 function initRealUI() {
   const hourEl = document.getElementById('r-hour'), monthEl = document.getElementById('r-month');
   const fmt = () => { const h = Math.floor(realState.hour), m = Math.round((realState.hour - h) * 60); document.getElementById('r-hour-v').textContent = `${h}:${String(m).padStart(2, '0')}`; document.getElementById('r-month-v').textContent = `${realState.month}月`; };
   hourEl.value = realState.hour; monthEl.value = realState.month; fmt();
-  const upd = () => { realState.month = Number(monthEl.value); setClock(Number(hourEl.value)); fmt(); };
+  const upd = () => { const mo = Number(monthEl.value), ch = mo !== realState.month; realState.month = mo; setClock(Number(hourEl.value)); fmt(); if (ch && people) people.monthChanged(); };
   hourEl.addEventListener('input', upd); monthEl.addEventListener('input', upd);
   for (const [id, key] of [['r-shadows', 'shadows'], ['r-ao', 'ao'], ['r-refl', 'reflections'], ['r-photo', 'photo'], ['r-roads', 'roads'], ['r-traffic', 'traffic']]) { const el = document.getElementById(id); el.checked = realState[key]; el.addEventListener('change', () => { realState[key] = el.checked; realistic.applyOptions(); if (roadDetail) roadDetail.applyOptions(); }); }
   document.querySelectorAll('#r-presets button').forEach(b => b.addEventListener('click', () => { hourEl.value = b.dataset.h; upd(); }));

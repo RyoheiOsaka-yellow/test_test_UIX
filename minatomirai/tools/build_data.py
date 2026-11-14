@@ -469,7 +469,7 @@ def build_water(nodes, ways, rels, cache):
 
 VTYPE = {None: 0, "stairs": 1, "esc": 2, "elev": 3, "slope": 4}
 
-def build_network(nodes, ways, cache, elev_fn):
+def build_network(nodes, ways, cache, elev_fn, walk_polys=None, bld_polys=None):
     """OSM 歩行者系ウェイから多層ネットワーク (ノード=階層付き, リンク) を作る。"""
     ped = []
     for w, (nd, t) in ways.items():
@@ -487,7 +487,11 @@ def build_network(nodes, ways, cache, elev_fn):
             vt = "slope" if t.get("ramp") or t.get("footway") == "ramp" else None
         else:
             vt = None
-        ped.append({"id": w, "nodes": [n for n in nd if n in nodes], "pts": pts, "lv": way_level(t), "vt": vt, "oneway": t.get("oneway") in ("yes", "1") and vt == "esc"})
+        try: wtag = float(str(t.get("width", "")).replace("m", "").strip())
+        except ValueError: wtag = None
+        info = {"hw": h, "cross": t.get("footway") == "crossing" or bool(t.get("crossing")) and h in ("footway", "path"),
+                "cov": t.get("indoor") == "yes" or t.get("covered") in ("yes", "arcade", "roof") or t.get("tunnel") in ("yes", "building_passage") or h == "corridor", "w": wtag}
+        ped.append({"id": w, "nodes": [n for n in nd if n in nodes], "pts": pts, "lv": way_level(t), "vt": vt, "oneway": t.get("oneway") in ("yes", "1") and vt == "esc", "info": info})
     # ノードの階層 (非垂直ウェイの多数決)。複数階層が混在する場合は階層ごとにノードを分割。
     lv_votes = collections.defaultdict(collections.Counter)
     for w in ped:
@@ -537,7 +541,7 @@ def build_network(nodes, ways, cache, elev_fn):
         for i in range(len(seq) - 1):
             a, b = seq[i], seq[i + 1]
             if a == b: continue
-            links.append({"a": a, "b": b, "vt": w["vt"], "p": [w["pts"][i], w["pts"][i + 1]], "ow": w["oneway"]})
+            links.append({"a": a, "b": b, "vt": w["vt"], "p": [w["pts"][i], w["pts"][i + 1]], "ow": w["oneway"], "info": w["info"]})
     # 同一OSMノードが複数階層に分割されている場合、階層間を接続 (エレベーターなら elev, それ以外は stairs)
     by_node = collections.defaultdict(list)
     for (n, lv), i in node_ids.items(): by_node[n].append((lv, i))
@@ -566,10 +570,36 @@ def build_network(nodes, ways, cache, elev_fn):
     for i in sorted(keep):
         remap[i] = len(out_nodes); x, y, lv = node_list[i]
         out_nodes.append([dm(x), dm(y), lv])
+    # リンクの属性: 有効幅員 w (dm) と フラグ (1=横断歩道, 2=屋根あり/屋内)。混雑度・信号待ち・雨天シナリオに使う
+    from shapely.strtree import STRtree
+    wtree = STRtree(walk_polys) if walk_polys else None; btree = STRtree(bld_polys) if bld_polys else None
+    def link_attr(l):
+        info = l.get("info") or {}; lv = node_list[l["a"]][2]; (x0, y0), (x1, y1) = l["p"]; mid = Point((x0 + x1) / 2, (y0 + y1) / 2)
+        cov = bool(info.get("cov")) or lv < 0 or node_list[l["b"]][2] < 0
+        if not cov and btree is not None and any(bld_polys[i].contains(mid) for i in btree.query(mid)): cov = True
+        cross = bool(info.get("cross")) and l["vt"] is None
+        if info.get("w"): w = info["w"]
+        elif l["vt"] == "stairs": w = 2.5
+        elif l["vt"] == "esc": w = 1.2
+        elif l["vt"] == "elev": w = 1.5
+        elif cross: w = 5.0
+        else:
+            w = None
+            if lv == 0 and wtree is not None and not cov:   # 地上の歩道: PLATEAU 道路面から車道を引いた歩道ポリゴンの中での幅 (境界までの距離 × 2)
+                ws = []
+                for f in (0.25, 0.5, 0.75):
+                    pt = Point(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)
+                    for i in wtree.query(pt):
+                        if walk_polys[i].contains(pt): ws.append(2 * walk_polys[i].boundary.distance(pt)); break
+                if ws: ws.sort(); w = min(14.0, max(1.5, ws[len(ws) // 2]))
+            if w is None: w = 10.0 if info.get("hw") == "pedestrian" else 6.0 if cov else 5.0 if lv >= 1 else 2.5 if info.get("hw") == "path" else 3.0
+        return [dm(w), (1 if cross else 0) | (2 if cov else 0)]
     out_links = []
     for l in links:
         if l["a"] in keep and l["b"] in keep:
-            out_links.append([remap[l["a"]], remap[l["b"]], VTYPE[l["vt"]], 1 if l["ow"] else 0] + [c for p in l["p"] for c in (dm(p[0]), dm(p[1]))])
+            out_links.append([remap[l["a"]], remap[l["b"]], VTYPE[l["vt"]], 1 if l["ow"] else 0] + [c for p in l["p"] for c in (dm(p[0]), dm(p[1]))] + link_attr(l))
+    import collections as _c
+    print("  link widths (m):", dict(sorted(_c.Counter(min(12, round(l[8] / 10)) for l in out_links).items())), "crossings", sum(1 for l in out_links if l[9] & 1), "covered", sum(1 for l in out_links if l[9] & 2))
     return out_nodes, out_links
 
 # ---- 橋梁の路面高さ (車線経路用) ---------------------------------------------
@@ -888,7 +918,13 @@ def main():
     print("  pois", len(pois), "with level", sum(1 for q in pois if q["lv"] is not None), "assigned", sum(1 for q in pois if q["b"] >= 0))
     print("rails ..."); rails = build_rails(nodes, ways, cache); print("  ways", len(rails))
 
-    print("network ..."); nnodes, nlinks = build_network(nodes, ways, cache, tsample)
+    walk_polys = []
+    for rings in road_detail["walk"]:
+        try:
+            p = Polygon([(x / 10, y / 10) for x, y in rings[0]], [[(x / 10, y / 10) for x, y in r] for r in rings[1:]]).buffer(0)
+            if not p.is_empty: walk_polys += list(p.geoms) if hasattr(p, "geoms") else [p]
+        except Exception: pass
+    print("network ..."); nnodes, nlinks = build_network(nodes, ways, cache, tsample, walk_polys, [u["poly"] for u in uses])
     print("  nodes", len(nnodes), "links", len(nlinks))
 
     # OSM プラットフォーム
@@ -910,7 +946,7 @@ def main():
     for x, y, lv in snodes: nnodes.append([dm(x), dm(y), lv])
     for a, b, vt in slinks:
         xa, ya, _ = snodes[a]; xb, yb, _ = snodes[b]
-        nlinks.append([base + a, base + b, vt, 0, dm(xa), dm(ya), dm(xb), dm(yb)])
+        nlinks.append([base + a, base + b, vt, 0, dm(xa), dm(ya), dm(xb), dm(yb), 25 if vt else 80, 2])
     ground = [(i, n) for i, n in enumerate(nnodes[:base]) if n[2] == 0]
     joined = 0
     for e in exit_nodes:
@@ -920,7 +956,7 @@ def main():
             d = math.hypot(n[0] - dm(x), n[1] - dm(y))
             if d < bd: bd = d; best = i
         if best is not None:
-            nlinks.append([base + e, best, 0, 0, dm(x), dm(y), nnodes[best][0], nnodes[best][1]]); joined += 1
+            nlinks.append([base + e, best, 0, 0, dm(x), dm(y), nnodes[best][0], nnodes[best][1], 40, 2]); joined += 1
     print("  spaces", len(spaces), "exits joined", joined, "/", len(exit_nodes))
 
     # ランドマークラベル

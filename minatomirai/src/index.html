@@ -42,6 +42,8 @@ canvas { display: block; }
 .btn-row button:hover { background: rgba(80, 130, 200, 0.4); color: #fff; }
 .hint { font-size: 9px; color: #55667e; letter-spacing: 0.05em; }
 .note { font-size: 9px; color: #7d8aa5; line-height: 1.5; margin-top: 4px; }
+.p-select { flex: 1; min-width: 0; font-size: 10px; font-family: inherit; color: #dfe8f5; background: rgba(60, 90, 140, 0.25); border: 1px solid rgba(120, 180, 255, 0.3); border-radius: 5px; padding: 2px; }
+.p-scn { font-size: 10px; line-height: 1.6; color: #c6d4e8; background: rgba(255, 179, 0, 0.08); border: 1px solid rgba(255, 179, 0, 0.35); border-radius: 6px; padding: 5px 7px; margin: 4px 0; } .p-scn b { color: #ffd94d; font-weight: 600; }
 .p-stats { font-size: 11px; color: #c6d4e8; line-height: 1.6; margin: 4px 0; } .p-stats b { color: #ffd94d; font-weight: 600; }
 .p-table { width: 100%; border-collapse: collapse; font-size: 10px; color: #c6d4e8; margin-top: 4px; } .p-table th { text-align: right; color: #7d93b5; font-weight: normal; padding: 1px 0; } .p-table th:first-child, .p-table td:first-child { text-align: left; } .p-table td { text-align: right; padding: 1px 0; border-top: 1px solid rgba(120, 180, 255, 0.1); } .p-table sup { color: #ffb648; }
 
@@ -208,13 +210,22 @@ canvas { display: block; }
         <div class="seg-row" id="p-day"><button data-day="weekday" class="active">平日</button><button data-day="holiday">休日</button></div>
         <div class="cal-row"><span>歩く速さ</span><input type="range" id="p-accel" min="1" max="30" step="1" value="8" /><b id="p-accel-v">×8</b></div>
         <label class="row"><input type="checkbox" id="p-agents" checked /><span class="chip" style="background:#ffb347"></span>人（1 点が歩行者）</label>
-        <label class="row"><input type="checkbox" id="p-vol" checked /><span class="chip" style="background:linear-gradient(90deg,#2b6cff,#ffd84a,#ff2a30)"></span>通行量マップ（帯の太さ・色）</label>
+        <label class="row"><input type="checkbox" id="p-vol" checked /><span class="chip" style="background:linear-gradient(90deg,#2b6cff,#ffd84a,#ff2a30)"></span>帯を表示</label>
+        <div class="seg-row" id="p-ribbon" style="margin:2px 0 4px"><button data-r="volume" class="active">通行量</button><button data-r="los">混雑度</button><button data-r="diff">通常との差</button></div>
+        <label class="row"><input type="checkbox" id="p-signal" checked /><span class="chip chip-outline"></span>信号待ち・混雑による減速</label>
+        <label class="row"><input type="checkbox" id="p-indoor" checked /><span class="chip chip-outline"></span>建物内の人の動き（建物を選択時）</label>
+        <div class="sec-title" style="margin-top:6px">シナリオ（通常時と比較）</div>
+        <div class="cal-row"><span>イベント</span><select id="p-event" class="p-select"><option value="">なし</option><option value="karena">K アリーナ 公演 2 万人</option><option value="pia">ぴあアリーナ 公演 1 万人</option><option value="pacifico">パシフィコ 展示会 3 万人</option></select></div>
+        <label class="row"><input type="checkbox" id="p-rain" /><span class="chip" style="background:#5aa9ff"></span>雨天（屋根のある経路へ寄る）</label>
+        <div id="p-scn" class="p-scn" style="display:none"></div>
         <div class="legend" id="p-legend"></div>
         <div id="p-stats" class="p-stats"></div>
         <div id="p-spark"></div>
-        <div class="legend" style="margin-top:2px"><span>通行量（帯）:</span><span><i style="background:#2b6cff"></i>30</span><span><i style="background:#1acbd9"></i>130</span><span><i style="background:#ffd84a"></i>550</span><span><i style="background:#ff7326"></i>2,300</span><span><i style="background:#ff2a30"></i>10,000 人/時</span></div>
+        <div class="legend" id="p-rlegend" style="margin-top:2px"></div>
         <table id="p-stations" class="p-table"></table>
-        <div class="note">駅の 1 日平均乗降人員（各社公表値）を、目的別の時間帯分布と建物の用途・規模で配分した仮のモデルです。実測の人流ではありません。<sup>仮</sup> は仮定値。</div>
+        <label class="row"><input type="checkbox" id="p-mesh" /><span class="chip" style="background:#ffb300"></span>検証: 1km メッシュの昼間人口（実測とモデル）</label>
+        <div id="p-calib" class="note"></div>
+        <div class="note">駅の 1 日平均乗降人員（各社公表値）を、目的別の時間帯分布と建物の用途・規模で配分した推計モデルです。個々の歩行者は実測ではありません。<sup>較</sup> は実測データから推定した値。</div>
         <div class="panel-sep"></div>
         <div class="sec-title">経路検索</div>
         <div class="btn-row">
