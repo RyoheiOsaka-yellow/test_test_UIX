@@ -1,0 +1,26 @@
+// DSTV NC（.nc1 / .nc）の読込・書出し【試験対応】: 鋼材加工機（穴あけ・切断）向けの標準テキスト。ST ブロック（部材）と BO ブロック（穴）を扱う。
+// 面の対応（ANGLEX ⇔ DSTV）: 山形鋼 B（垂直脚）= v / A（水平脚）= u、溝形鋼 web = v / ft = o / fb = u、平鋼・板 face = v、角パイプ left = v / top = o / bottom = u / right = h
+// x = 始端からの長さ方向（ANGLEX の z）、y = 面の幅方向（ANGLEX の s）。実機へ投入する前に、機械側の基準（面・原点）と必ず照合してください
+import { parseSpec, sectionProps } from '../geo/profiles.js';
+const FACE_OUT = { L: { B: 'v', A: 'u' }, C: { web: 'v', ft: 'o', fb: 'u' }, LC: { web: 'v', ft: 'o', fb: 'u' }, FB: { face: 'v' }, PL: { face: 'v' }, SQ: { left: 'v', top: 'o', bottom: 'u', right: 'h' }, H: { web: 'v', ft: 'o', fb: 'u' } };
+const CODE = { L: 'L', C: 'U', LC: 'C', FB: 'B', PL: 'B', SQ: 'M', H: 'I', PIPE: 'RO', RB: 'RU' };
+const f2 = v => (Math.round(v * 100) / 100).toFixed(2).padStart(10, ' ');
+// 1 部品 → NC1 テキスト。pt: { spec, length, holes:[{face,z,s,d,slot}] , material }
+export function toNC1(pt, { order = '', drawing = '', mark = '', qty = 1 } = {}) {
+  const sp = parseSpec(pt.spec); if (!sp || !CODE[sp.kind]) return null; let props = null; try { props = sectionProps(sp); } catch { }
+  const dims = { L: [sp.A, sp.B, sp.t, sp.t], C: [sp.H, sp.B, sp.t2, sp.t1], LC: [sp.H, sp.A, sp.t, sp.t], FB: [sp.w, sp.t, sp.t, sp.t], PL: [sp.w || pt.width || 0, sp.t, sp.t, sp.t], SQ: [sp.B, sp.A, sp.t, sp.t], H: [sp.H, sp.B, sp.t2, sp.t1], PIPE: [sp.od, sp.od, sp.t, sp.t], RB: [sp.d, sp.d, 0, 0] }[sp.kind];
+  const L = pt.length || (sp.kind === 'PL' ? sp.h : 0) || 0; const name = String(pt.spec).replace(/^\[-?/, 'U').replace(/^□-?/, 'RHS').replace(/-/g, '').replace(/x/gi, '*');
+  const lines = ['ST', `** ANGLEX DSTV NC (trial) ${pt.spec} L=${Math.round(L * 10) / 10}`, '  ' + (order || '-'), '  ' + (drawing || '-'), '  ' + (mark || '-'), '  ' + (mark || '-'), '  ' + (pt.material || 'SS400'), '  ' + qty, '  ' + name, '  ' + CODE[sp.kind], f2(L), f2(dims[0]), f2(dims[1]), f2(dims[2]), f2(dims[3]), f2(0), f2(props?.w ?? 0), f2((props?.perim ?? 0) / 1000), f2(0), f2(0), f2(0), f2(0), '  ', '  ', '  ', '  '];
+  const map = FACE_OUT[sp.kind] || {}; const holes = (pt.holes || []).filter(h => map[h.face] || Object.keys(map).length === 0); if (holes.length) { lines.push('BO'); for (const h of holes) { const face = map[h.face] || 'v'; let ln = `  ${face}${f2(h.z)}u${f2(h.s)}${f2(h.d)}${f2(0)}`; if (h.slot && h.slot.len > h.d) ln += `l${f2(h.slot.len - h.d)}${f2(0)}${f2(h.slot.dir === 'z' || h.slot.dir == null ? 0 : 90)}`; lines.push(ln); } }
+  lines.push('EN'); return { text: lines.join('\r\n') + '\r\n', holes: holes.length, skipped: (pt.holes || []).length - holes.length };
+}
+// NC1 テキスト → { spec, length, holes(DSL 用), mark, qty, material, code, profile }
+export function parseNC1(text) {
+  const lines = String(text).split(/\r?\n/); let i = lines.findIndex(l => l.trim() === 'ST'); if (i < 0) throw new Error('DSTV NC の ST ブロックがありません'); const hdr = []; for (i = i + 1; i < lines.length && hdr.length < 24; i++) { const l = lines[i]; if (/^\*\*/.test(l.trim())) continue; if (/^[A-Z]{2}\s*$/.test(l.trim())) break; hdr.push(l.trim()); }
+  const num = k => parseFloat(String(hdr[k] || '').split(/[\s,]+/)[0]) || 0; const code = (hdr[7] || '').toUpperCase(); const L = num(8), h = num(9), b = num(10), tf = num(11), tw = num(12); const r = v => Math.round(v * 10) / 10;
+  let spec = null, IN = {}; if (code === 'L') { spec = `L-${r(h)}x${r(b)}x${r(tf || tw)}`; IN = { v: 'B', u: 'A', o: 'B', h: 'A' }; } else if (code === 'U') { spec = `[-${r(h)}x${r(b)}x${r(tw)}x${r(tf)}`; IN = { v: 'web', o: 'ft', u: 'fb', h: 'web' }; } else if (code === 'C') { spec = `LC-${r(h)}x${r(b)}x${r(tf || tw)}`; IN = { v: 'web', o: 'ft', u: 'fb', h: 'web' }; } else if (code === 'B') { const t = r(tf || tw || b), w = r(h); spec = w > 0 && w <= 300 ? `FB-${t}x${w}` : `PL-${t}x${w}x${r(L)}`; IN = { v: 'face', h: 'face', o: 'face', u: 'face' }; } else if (code === 'M') { spec = `□-${r(b)}x${r(h)}x${r(tf || tw)}`; IN = { v: 'left', o: 'top', u: 'bottom', h: 'right' }; } else if (code === 'I') { spec = `H-${r(h)}x${r(b)}x${r(tw)}x${r(tf)}`; IN = { v: 'web', o: 'ft', u: 'fb', h: 'web' }; } else if (code === 'RO') { spec = `STK-${r(h)}x${r(tf || tw)}`; } else if (code === 'RU') { spec = `RB-${r(h)}`; }
+  if (!spec || !parseSpec(spec)) throw new Error(`この断面（コード ${code || '?'}: ${hdr[6] || ''}）は未対応です`);
+  const holes = []; let inBO = false; for (const raw of lines) { const l = raw.trim(); if (/^[A-Z]{2}$/.test(l)) { inBO = l === 'BO'; continue; } if (!inBO || !l) continue; const m = l.match(/^([vouh])\s*(-?[\d.]+)\s*([a-z])?\s*(-?[\d.]+)\s+(-?[\d.]+)(?:\s+(-?[\d.]+))?(?:\s*([a-z])\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+))?/i); if (!m) continue; const hole = { face: IN[m[1].toLowerCase()] || 'A', z: +m[2], s: +m[4], d: +m[5] }; if (m[7] && /l/i.test(m[7]) && +m[8] > 0) hole.slot = { len: +m[8] + hole.d, dir: Math.abs(+m[10]) > 45 ? 's' : 'z' }; holes.push(hole); }
+  return { spec, length: r(L), holes, mark: hdr[3] && hdr[3] !== '-' ? hdr[3] : (hdr[2] !== '-' ? hdr[2] : ''), qty: Math.max(1, parseInt(hdr[5]) || 1), material: hdr[4] || 'SS400', code, profile: hdr[6] || '' };
+}
+export const holesToDSL = holes => holes.map(h => `${h.face}:z${Math.round(h.z * 10) / 10} s${Math.round(h.s * 10) / 10} d${h.d}${h.slot ? ' slot' + h.slot.len + (h.slot.dir || 'z') : ''}`).join('; ');

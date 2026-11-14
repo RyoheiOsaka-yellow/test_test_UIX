@@ -24,7 +24,7 @@
 .ft{font-size:8.8pt;margin-top:4pt}.ft th,.ft td{padding:3pt 5pt}.ft td:first-child{font-weight:700;width:46mm}.ft td:last-child{width:19mm;text-align:center}
 .cathead{display:flex;align-items:baseline;gap:8pt;margin:10pt 0 4pt;break-after:avoid}.cathead .n{font-size:16pt;font-weight:800;color:var(--accent);line-height:1}.cathead h3{margin:0;color:var(--ink);font-size:13pt}.cathead .cnt{font-size:8.5pt;color:var(--ink3)}
 .shots2{display:grid;grid-template-columns:1fr 1fr;gap:4mm}.shots3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm}.shots2 figure,.shots3 figure{margin:0}
-.ov{font-size:9pt}.ov td:nth-child(n+3){text-align:center;white-space:nowrap}.ov td:first-child{white-space:nowrap;font-weight:700}
+.ov{font-size:9pt}.ov td:nth-child(n+3){text-align:center;white-space:nowrap}.ov td:first-child{white-space:nowrap;font-weight:700}.ov td:nth-child(2){white-space:nowrap;font-weight:700}.ov th{white-space:nowrap}
 .note{font-size:8.5pt;color:var(--ink3)}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:6mm;align-items:start}
 .cat{break-inside:auto}
@@ -34,7 +34,7 @@
 
 <!-- 表紙 -->
 <div class="pcover page"><div class="veil"></div>
-<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 1 版　2026 年 11 月 9 日</span></div>
+<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 2 版　2026 年 11 月 14 日</span></div>
 <div class="in"><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE ・ 図面に、語らせる</div>
 <div class="doc">ANGLEX 導入 PoC 計画書<br>および 開発済み機能一覧</div>
 <div class="lead">配管支持金具の積算を、図面の読込から 3D での確認、重量・見積まで。まずは「初期段階」に絞って、貴社の実図面と実務で効果を確かめます。</div>
@@ -198,32 +198,35 @@
 <div class="legend"><span><span class="m poc">PoC で検証</span>　初期 PoC の検証項目に含む</span><span><span class="m demo">参考デモ</span>　PoC 中に操作・閲覧できる（評価対象外）</span><span><span class="m next">次段階</span>　次段階で検証する</span></div>
 <table class="ov">
 <tr><th style="width:8mm">#</th><th>分類</th><th>主な内容</th><th>機能数</th><th>PoC で検証</th></tr>
-<tr><td>2</td><td>図面の読込・部材認識</td><td style="text-align:left">DXF・PDF・スキャン画像、OCR、図面上の修正、検証キット</td><td>11</td><td>8</td></tr>
+<tr><td>2</td><td>図面の読込・部材認識</td><td style="text-align:left">DXF・PDF・スキャン画像（TIFF 含む）、部材リスト、OCR、図面上の修正</td><td>14</td><td>9</td></tr>
 <tr><td>3</td><td>3D モデリング・部材配置</td><td style="text-align:left">ファミリ 34 種、カタログ 151 製品、配管へ取付、接合</td><td>9</td><td>4</td></tr>
 <tr><td>4</td><td>3D 表示・操作</td><td style="text-align:left">回す・中央へ・寄る、見どころ表示、分解、表示スタイル</td><td>8</td><td>2</td></tr>
 <tr><td>5</td><td>確認・品質管理</td><td style="text-align:left">確認の旗、ウィザード、見どころ送り、断面ゲージ、溶接記号</td><td>8</td><td>5</td></tr>
 <tr><td>6</td><td>重量・積算・帳票</td><td style="text-align:left">JIS 質量、集計表、重量計算書、見積書、加工指示書</td><td>8</td><td>5</td></tr>
 <tr><td>7</td><td>業務フロー・多社連携</td><td style="text-align:left">受け渡し・権限、Rev・監査ログ、ダッシュボード、期限通知</td><td>8</td><td>0</td></tr>
 <tr><td>8</td><td>シミュレータ</td><td style="text-align:left">ライブゲージ、X 線、限界探索、動画</td><td>1</td><td>0</td></tr>
-<tr><td>9</td><td>書出し・外部連携</td><td style="text-align:left">glTF・DXF・IFC・USD、プロジェクト JSON</td><td>3</td><td>0</td></tr>
+<tr><td>9</td><td>書出し・外部連携</td><td style="text-align:left">IFC4・DXF・glTF・OBJ・STL・USD、DSTV NC ほか（全 19 種類）</td><td>5</td><td>0</td></tr>
 <tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、操作ガイド</td><td>5</td><td>3</td></tr>
 </table>
 <figure><img src="img/b01_hero_full.png"><figcaption>ANGLEX の作業画面（v1）。左: プロジェクトブラウザ、中央: 3D、右: プロパティ。選んだ部材の質量・原価がその場で出ます</figcaption></figure>
 
 <div class="cat" style="break-before:page">
-<div class="cathead"><span class="n">2</span><h3>図面の読込・部材認識</h3><span class="cnt">図面から部材を拾い、確かさを 3 段階で示す</span></div>
+<div class="cathead"><span class="n">2</span><h3>図面の読込・部材認識</h3><span class="cnt">図面から部材を拾い、確かさを 3 段階で示す（読込は全 24 種類）</span></div>
 <div class="shots2"><figure><img src="img/p01_recognition.png"><figcaption>スキャン図面の認識結果。仕様・長さ・穴・確信度・状態と、OCR の元の文字</figcaption></figure><figure><img src="img/p02_drawing.png"><figcaption>図面ビュー。スキャン画像の上に認識した部材・穴・文字を重ね、クリックで修正</figcaption></figure></div>
 <table class="ft">
 <tr><th>機能</th><th>できること</th><th>区分</th></tr>
 <tr><td>DXF の読込</td><td>レイヤ・ブロック・寸法・文字を実際に解析し、部材候補を抽出</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>PDF 図面の読込</td><td>ベクタ PDF は線と文字を、画像 PDF はスキャンと同じ手順で解析</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>スキャン画像のベクタ化</td><td>直線・矩形・円・斜線を抽出。ノイズ除去と ±4° の傾き補正</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>TIFF・各種画像の読込</td><td>スキャナ標準の TIFF、PNG・JPEG・BMP・WebP・GIF・AVIF を PC 内で展開して読込</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>限定 OCR</td><td>部材仕様・穴・長さの注記だけを読む（英数字と日本語の限定語彙）。PC 内で処理</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>部材認識とリスク行列</td><td>確定・推論・要判断の 3 状態に分け、間違えたときの手戻りの大きさで優先度を付ける</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>図面上での修正</td><td>スキャン画像の上で矩形（部材）・円（穴）・文字をクリックして直す</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>穴・アンカー注記の紐づけ</td><td>「2-φ15」などの注記を最寄りの部材に結び付け、3D の穴位置に反映</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>実スキャン検証キット</td><td>正解表と認識結果を自動で照合し、再現率と報告書 PDF を出力（PoC の測定に使用）</td><td><span class="m poc">PoC で検証</span></td></tr>
-<tr><td>IFC・3D 形式の読込</td><td>IFC、glTF・OBJ・STL・FBX を参照モデルとして読込</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>部材リスト（CSV・Excel）の読込</td><td>既存の拾い出し表から仕様・長さ・数量の列を見つけ、そのまま 3D・重量・見積へ</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>SVG・ZIP の読込</td><td>SVG 図面の読込。ZIP にまとめた図面を一度に読込（30 件まで）</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>BIM・CAD・3D 形式の読込</td><td>IFC、STEP・IGES・BREP、glTF・OBJ・STL・FBX・PLY・3MF・Collada・3DS を参照モデルとして読込。DSTV NC（試験対応）は形鋼 1 本として配置</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>DWG・JWW の読込</td><td>サーバー版の変換機能で DXF に変換して読込</td><td><span class="m next">次段階</span></td></tr>
 <tr><td>認識の学習</td><td>図面上の修正を記録し、同じ様式の次回の図面で自動的に効かせる。図面様式×営業所の目標管理</td><td><span class="m next">次段階</span></td></tr>
 </table>
@@ -318,12 +321,14 @@
 <tr><td>シミュレータ v3</td><td>部品ごとの役割表示、応力比・たわみ・ボルト・アンカーのライブゲージ、X 線表示、荷重倍率と限界探索、組立のストーリー動画。簡易モデルのため、設計計算書の代わりにはなりません</td><td><span class="m demo">参考デモ</span></td></tr>
 </table>
 
-<div class="cathead"><span class="n">9</span><h3>書出し・外部連携</h3><span class="cnt">他のソフトへ、同じモデルを渡す</span></div>
+<div class="cathead"><span class="n">9</span><h3>書出し・外部連携</h3><span class="cnt">他のソフトへ、同じモデルを渡す（全 19 種類）</span></div>
 <table class="ft">
 <tr><th>機能</th><th>できること</th><th>区分</th></tr>
-<tr><td>3D 形式の書出し</td><td>glTF / GLB、USD / USDZ（質量・衝突形状付きの SimReady パッケージ）</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>BIM 形式の書出し（IFC4）</td><td>BIM ソフト・IFC ビューア向けの .ifc。実形状（穴つき）と、仕様・材質・質量・穴の属性。形状は面の集まりで、鋼材としての編集には未対応</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>CAD 形式の書出し</td><td>DXF 3D（立体）、DXF 加工図・加工図 SVG（板の展開図）</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>3D 形式の書出し</td><td>glTF / GLB、OBJ、STL、PLY、USD / USDZ（質量・衝突形状付きの SimReady パッケージ）、PNG 画像（4K）</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>加工データの書出し</td><td>DSTV NC（形鋼・板ごとの .nc1、試験対応）、穴座標 CSV、部品 JSON</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>プロジェクトの保存</td><td>プロジェクト JSON で保存・読込。作業の受け渡しに利用</td><td><span class="m demo">参考デモ</span></td></tr>
-<tr><td>CAD・BIM 形式の書出し</td><td>DXF、IFC（JSON）</td><td><span class="m next">次段階</span></td></tr>
 </table>
 </div>
 
@@ -333,7 +338,7 @@
 <table class="ft">
 <tr><th>機能</th><th>できること</th><th>区分</th></tr>
 <tr><td>v1 / v2 の 2 つの画面</td><td>経験者向けの BIM ワークスペース（v1）と、初めてでも迷わないステップ型（v2）。同じデータのままボタン 1 つで切替</td><td><span class="m poc">PoC で検証</span></td></tr>
-<tr><td>オフライン版</td><td>単一の HTML ファイル（約 35 MB）。インストール不要、外部通信なしで OCR・PDF 出力まで動作</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>オフライン版</td><td>単一の HTML ファイル（約 60 MB）。インストール不要、外部通信なしで OCR・PDF 出力・IFC／STEP 読込まで動作</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>操作ガイド・ショートカット</td><td>初回の操作ガイド、「?」キーでショートカット一覧</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>チャットで概算</td><td>製品・サイズ・仕上げ・数量を選ぶだけで概算見積</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>サーバー版</td><td>部署内での案件共有、期限のメール通知、学習の共有（追加ソフト不要の Node サーバー）</td><td><span class="m next">次段階</span></td></tr>

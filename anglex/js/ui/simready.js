@@ -18,7 +18,7 @@ function buildUsdz(entries) {
 }
 function matKey(m) { return m.uuid; }
 async function textureToPng(tex) { try { const img = tex.image; if (!img) return null; let c; if (img instanceof HTMLCanvasElement) c = img; else { c = document.createElement('canvas'); c.width = img.width || 512; c.height = img.height || 512; c.getContext('2d').drawImage(img, 0, 0); } const url = c.toDataURL('image/png'); return Uint8Array.from(atob(url.split(',')[1]), ch => ch.charCodeAt(0)); } catch (e) { return null; } }
-export async function exportSimReady(app, { name = null, lod = 400 } = {}) {
+export async function exportSimReady(app, { name = null, lod = 400, usdzOnly = false } = {}) {
   const root = app.viewer.modelRoot; const base = (name || app.project.name).replace(/[^\w぀-ヿ一-鿿-]+/g, '_'); const t = toast('SimReady パッケージ生成中…', 'info', 30000);
   try {
     root.updateWorldMatrix(true, true); const meshes = []; root.traverse(o => { if (o.isMesh && o.visible && !o.userData.helper && !o.userData.ref) meshes.push(o); });
@@ -48,6 +48,7 @@ export async function exportSimReady(app, { name = null, lod = 400 } = {}) {
     // USDZ: 無圧縮 ZIP・64 byte 整列（usda + テクスチャ）。Omniverse / Reality Composer / Blender で直接開ける
     const usdzFiles = { [`${base}.usda`]: files[`${base}.usda`] }; for (const [k, v] of Object.entries(files)) if (k.startsWith('textures/')) usdzFiles[k] = v;
     files[`${base}.usdz`] = buildUsdz(usdzFiles);
+    if (usdzOnly) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([files[`${base}.usdz`]], { type: 'model/vnd.usdz+zip' })); a.download = `${base}.usdz`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); t.remove(); toast('USDZ を書き出しました（iPhone / iPad の AR 表示、Omniverse、Blender で開けます）', 'ok', 6000); return; }
     // GLB
     try { const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js'); const glb = await new Promise((res, rej) => new GLTFExporter().parse(root, res, rej, { binary: true, onlyVisible: true })); files[`${base}.glb`] = new Uint8Array(glb); } catch (e) { console.warn('glb', e); }
     // メタデータ（BOM）

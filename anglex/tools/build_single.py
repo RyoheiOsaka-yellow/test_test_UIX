@@ -22,6 +22,12 @@ VENDOR_URLS = {
     'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-simd-lstm.wasm.js': ('tesseract/tesseract-core-simd-lstm.wasm.js', 'text/javascript'),
     'https://tessdata.projectnaptha.com/4.0.0_fast/eng.traineddata.gz': ('tesseract/eng.traineddata.gz', 'application/gzip'),
     'https://tessdata.projectnaptha.com/4.0.0_fast/jpn.traineddata.gz': ('tesseract/jpn.traineddata.gz', 'application/gzip'),
+    'https://cdn.jsdelivr.net/npm/web-ifc@0.0.66/web-ifc-api.js': ('web-ifc/web-ifc-api.js', 'text/javascript'),
+    'https://cdn.jsdelivr.net/npm/web-ifc@0.0.66/web-ifc.wasm': ('web-ifc/web-ifc.wasm', 'application/wasm'),
+    'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js': ('occt/occt-import-js.js', 'text/javascript'),
+    'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.wasm': ('occt/occt-import-js.wasm', 'application/wasm'),
+    'https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js': ('utif/UTIF.js', 'text/javascript'),
+    'https://cdn.jsdelivr.net/npm/pako@1.0.11/dist/pako.min.js': ('utif/pako.min.js', 'text/javascript'),
     'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr': ('dl.polyhaven.org_file_ph-assets_HDRIs_hdr_1k_studio_small_09_1k.hdr', 'application/octet-stream'),
 }
 vendor_data = {}

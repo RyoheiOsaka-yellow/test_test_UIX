@@ -39,7 +39,7 @@
       </div>
       <div class="rpanel" data-panel="import">
         <div class="rgroup"><div class="rgroup-title">図面・BIM 読込</div><button class="rbtn big" id="btnImport"><span class="ri">⤓</span>ファイル読込</button><button class="rbtn" id="btnDrawing">図面ビュー</button><button class="rbtn" id="btn3d">3D ビュー</button></div>
-        <div class="rgroup"><div class="rgroup-title">対応形式</div><div class="rtext">DXF（実パース）/ PDF（ベクター）/ IFC（web-ifc）/ glTF・OBJ・STL・FBX<br>DWG・JWW・SFC/P21・RVT・DGN・SKP・3DM → サーバ変換（<span id="convStatus">未設定</span>）</div></div>
+        <div class="rgroup"><div class="rgroup-title">対応形式</div><div class="rtext">DXF・SVG・PDF・画像・TIFF / 部材リスト CSV・Excel / IFC・STEP・IGES / glTF・OBJ・STL・FBX・PLY・3MF・DAE・3DS / DSTV NC / ZIP<br>DWG・JWW・SFC/P21・RVT・DGN・SKP・3DM → サーバ変換（<span id="convStatus">未設定</span>）　<button class="rbtn" id="btnFormats" title="読込・書出しの対応形式を一覧で見る">対応形式一覧…</button></div></div>
         <div class="rgroup"><div class="rgroup-title">デモ</div><button class="rbtn" id="btnDemoDxf">サンプル DXF</button><button class="rbtn" id="btnDemoModel">サンプルモデル</button></div>
       </div>
       <div class="rpanel" data-panel="view">
@@ -51,7 +51,7 @@
       </div>
       <div class="rpanel" data-panel="project">
         <div class="rgroup"><div class="rgroup-title">プロジェクト</div><button class="rbtn big" id="btnDashboard" title="案件横断: 見積状態・担当・合計・期限。自分の番を上に"><span class="ri">▦</span>ダッシュボード</button><button class="rbtn" id="btnNew">新規</button><button class="rbtn" id="btnOpen">開く</button><button class="rbtn" id="btnSave2">保存</button><button class="rbtn" id="btnRename">名称変更</button></div>
-        <div class="rgroup"><div class="rgroup-title">書出し</div><button class="rbtn" id="btnExpJson">JSON</button><button class="rbtn" id="btnExpGltf">glTF/GLB</button><button class="rbtn" id="btnExpDxf">DXF 加工図</button><button class="rbtn" id="btnExpIfc">IFC-JSON</button><button class="rbtn" id="btnExpSimReady" title="USD + GLB + PBR テクスチャ + metadata（BOM/質量/重心）+ サムネイルの ZIP">SimReady パッケージ</button><button class="rbtn" id="btnShot">画像</button></div>
+        <div class="rgroup"><div class="rgroup-title">書出し</div><button class="rbtn" id="btnExpJson">JSON</button><button class="rbtn" id="btnExpGltf">glTF/GLB</button><button class="rbtn" id="btnExpDxf">DXF 加工図</button><button class="rbtn" id="btnExpIfc">IFC-JSON</button><button class="rbtn" id="btnExpSimReady" title="USD + GLB + PBR テクスチャ + metadata（BOM/質量/重心）+ サムネイルの ZIP">SimReady パッケージ</button><button class="rbtn" id="btnExpIfc4" title="IFC4（.ifc）: BIM ソフト・IFC ビューア向け。実形状（穴つき）と属性">IFC4</button><button class="rbtn" id="btnExpAll" title="IFC4・OBJ・STL・PLY・USDZ・DXF 3D・加工図 SVG・DSTV NC・穴座標 CSV・部品 JSON・PNG ほか、すべての書出し形式">すべての形式…</button><button class="rbtn" id="btnShot">画像</button></div>
         <div class="rgroup"><div class="rgroup-title">帳票</div><button class="rbtn" id="btnWeightPdf">重量計算書 PDF</button><button class="rbtn" id="btnWeightXlsx">重量計算書 XLSX</button><button class="rbtn" id="btnWeightCsv">重量計算書 CSV</button><button class="rbtn" id="btnEstPdf">見積書 PDF</button></div>
         <div class="rgroup"><div class="rgroup-title">設定</div><button class="rbtn" id="btnRates">単価表</button><button class="rbtn" id="btnAdmin" title="拠点マスタ・ユーザーの所属・CSV 一括取込">営業所・ユーザー</button><button class="rbtn" id="btnLevels">レベル</button><button class="rbtn" id="btnUsers">アカウント</button></div>
       </div>

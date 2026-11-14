@@ -90,7 +90,7 @@ python3 tools/build_single.py --offline index.html css/app.css dist/ANGLEX_v1_of
 python3 tools/build_single.py --offline v2.html css/app_v2.css dist/ANGLEX_v2_offline.html
 node dev/offline-check.mjs dist/ANGLEX_v1_offline.html           # 外部通信を全遮断して起動・3D・PDF/XLSX を検証
 ```
-three.js（本体＋使用する addons）、pdf-lib、fontkit、HarfBuzz サブセッタ、SheetJS、pdf.js、日本語フォント、スタジオ環境光を同梱した単一 HTML（約 35 MB）。外部通信なしで 3D・帳票・図面 PDF 読込が動作します（倉庫／工場／屋外の環境光、Poly Haven テクスチャ、Web フォント、IFC 読込、外部 LLM は要インターネット）。
+three.js（本体＋使用する addons）、pdf-lib、fontkit、HarfBuzz サブセッタ、SheetJS、pdf.js、日本語フォント、スタジオ環境光、OCR、IFC 読込（web-ifc）、STEP・IGES 読込（OpenCASCADE）、TIFF 読込を同梱した単一 HTML（約 60 MB）。外部通信なしで 3D・帳票・図面 PDF 読込・IFC／STEP 読込が動作します（倉庫／工場／屋外の環境光、Poly Haven テクスチャ、Web フォント、外部 LLM は要インターネット）。
 
 ## ドキュメント（PDF）
 `node dev/render-docs.mjs` で `docs/spec/*.html` を `docs/pdf/` に PDF 化します（同梱の日本語フォントで印刷）。
@@ -180,6 +180,42 @@ GitHub Actions（`.github/workflows/anglex-thumbs.yml`）が、カタログ・�
 - **モード**: 分解（選択部材）、X 線（ghost）、ラベル（全部品名）、スロー組立（組立順 assemblySeq に従って部品が順に現れる）。
 - **ストーリー再生**: 組立（6 秒）→ 開く（X 線＋ラベル）→ 分解 → 荷重を上げて限界（約 25 秒）。「● 動画」で canvas 録画（WebM）を保存でき、提案・社内説明に使えます。
 - **スケールバー**: 画面上の 1 m を表示。
+
+## 対応形式（読込 24 種類・書出し 19 種類）
+一覧は `js/ui/formats.js` に 1 か所で定義し、画面の「対応形式一覧…」「すべての形式…」ダイアログ・テスト・資料で共用します。
+
+**読込**（ファイルを 3D 画面へドロップ、または「ファイル読込」。ZIP にまとめて一度に読めます）
+
+| 分類 | 形式（拡張子） | 読み方 | 取り込まれるもの |
+|---|---|---|---|
+| 図面 | DXF / PDF / **SVG** / 画像（PNG・JPEG・BMP・WebP・**GIF・AVIF**）/ **TIFF** | そのまま | 線・円・文字 → 部材認識。画像と TIFF はベクタ化 + 限定 OCR |
+| 図面 | DWG / JWW / JWC / SXF（SFC・P21）/ DGN | サーバー版で変換 | DXF にして読込 |
+| 表 | **部材リスト CSV / TSV / Excel（xlsx・xls）** | そのまま | 仕様・長さ・数量・符号・備考の列 → 部材（数量ぶん配置）。列名のゆらぎを吸収、見出しなしでも各行から仕様を探す |
+| BIM・CAD | IFC / **STEP（stp・step）/ IGES（igs・iges）/ BREP** | そのまま | 参照モデル。IFC は属性から部材候補も |
+| BIM・CAD | RVT / RFA / SKP / 3DM | サーバー版で変換 | IFC・glTF にして読込 |
+| 3D メッシュ | glTF・GLB / OBJ / STL / FBX / **PLY / 3MF / Collada（dae）/ 3DS** | そのまま | 参照モデル |
+| 加工 | **DSTV NC（nc1・nc）** 【試験対応】 | そのまま | 形鋼 1 本（断面・長さ・穴）→ 単材として配置 |
+| その他 | **ZIP** / ANGLEX プロジェクト（json） | そのまま | ZIP は中の対応ファイルを順に読込（30 件まで） |
+
+太字が今回の追加です。STEP・IGES・BREP は OpenCASCADE（WASM, occt-import-js）、TIFF は UTIF.js で、どちらも PC 内で処理します（オフライン版に同梱）。
+
+**書出し**（リボン／ツールストリップの「書出し」→「すべての形式…」）
+
+| 用途 | 形式 | 中身 |
+|---|---|---|
+| BIM・CAD 連携 | **IFC4（.ifc）** | IfcProject → Site → Building → Storey（レベル）→ IfcElementAssembly（部材）→ IfcMember / IfcPlate / IfcPipeSegment / IfcMechanicalFastener / IfcFastener（溶接）。形状は実形状の三角形面（IfcTriangulatedFaceSet、穴つき）、属性は `Pset_ANGLEX_Assembly` / `Pset_ANGLEX_Part`（仕様・長さ・材質・仕上げ・質量・穴・溶接）、材質は IfcMaterial、色つき |
+| BIM・CAD 連携 | **DXF 3D（3DFACE）** / DXF 加工図 / **加工図 SVG** / IFC-JSON（属性のみ） | 立体の DXF は部材ごとにレイヤ。IFC-JSON は形状なしで BIM ソフトでは開けません |
+| 3D 表示・製作 | glTF・GLB / **OBJ / STL / PLY / USDZ（単体）** / SimReady パッケージ / **PNG 画像（4K）** | OBJ・STL・PLY・DXF 3D・IFC は Z 上・mm |
+| 加工データ | **DSTV NC（.nc1 の ZIP）** 【試験対応】 / **穴座標 CSV** / **部品 JSON** | NC は形鋼・板ごとに 1 ファイル（ST ブロックと穴の BO ブロック） |
+| 帳票・保存 | 重量計算書 PDF・Excel・CSV / ANGLEX プロジェクト | 見積書・加工指示書・分解図は見積の画面と部材のメニューから |
+
+- **3D 形式の詳細度**: ダイアログで「軽量（ねじ山・ビードの波紋を省く）／表示のまま／概略（溶接なし）」を選べます。一時的に粗い LOD で作り直して書き出し、終わると表示を元に戻します（`withLod`）。リボンの「IFC4」ボタンは軽量で書き出します
+- **IFC4 の確認範囲**: 書き出したファイルを ANGLEX 自身の IFC 読込（web-ifc）で読み戻し、要素数と外形寸法が一致することを自動テストで確認しています。形状は面の集まりなので、受け取った BIM ソフトで見る・干渉を確かめる・属性を読む用途向けです。鋼材として編集できる断面押し出しでの出力と、Revit・Tekla・Archicad での読込確認は未実施です
+- **DSTV NC の面の対応**: 山形鋼 B（垂直脚）= v・A（水平脚）= u、溝形鋼 web = v・ft = o・fb = u、平鋼・板 = v。x は始端からの長さ方向、y は面の幅方向。実機へ投入する前に、機械側の基準（面・原点）と必ず照合してください
+- **参照モデルの単位**: STEP・IGES・BREP・3MF は mm、Collada は m として読みます。OBJ・STL・PLY・FBX は大きさから推定します
+- **追加した同梱ライブラリとライセンス**: occt-import-js 0.0.23（STEP・IGES・BREP 読込、OpenCASCADE を含む。LGPL-2.1）、web-ifc 0.0.66（IFC 読込。MPL-2.0）、UTIF.js 3.1.0 と pako 1.0.11（TIFF 読込。MIT）。いずれも改変せずに `vendor/` に置き、オフライン版へ同梱しています。製品として配布する際は、各ライセンスの表示と LGPL の条件（差し替え可能であること）を確認してください
+- オフライン版の確認: `node dev/offline-formats.mjs dist/ANGLEX_v1_offline.html`（外部通信を遮断して TIFF・STEP の読込、IFC4 の書出しと読み戻し、追加ローダーを確認）
+- テスト: `dev/flows/ux20.js`（各形式のサンプルを作って読込 → 全形式を書出し → IFC・OBJ・STL・PLY・GLB の往復、DSTV NC の往復、ZIP、ダイアログ）。STEP・IGES・BREP のサンプルは `dev/samples/cad/`
 
 ## 3D の基本操作（回す・掴んで中央へ）
 - **左ドラッグ＝空間をぐるぐる回す**（既定）。右ドラッグで画面全体を掴んで動かす。
@@ -276,7 +312,7 @@ node server/server.js --port 8080            # → http://localhost:8080/  デ�
 | LOD | 200 / 300 / 400 切替（根元R・ねじ山・ビード波紋） |
 | 表示スタイル | リアル / 陰影+エッジ / 隠線 / ワイヤ / 半透明、断面ボックス、分解 |
 | 干渉チェック | 板単位 AABB、接合済み接触は除外 |
-| IFC | 読込（web-ifc）、書出し（IFC 風 JSON: IfcMember / IfcPlate / IfcMechanicalFastener / IfcFastener） |
+| IFC | 読込（web-ifc）、書出し（IFC4 の .ifc: 実形状 + 属性。IFC 風 JSON も残しています） |
 
 ## 3状態モデル（リスク行列 Case B）
 読込・推論した部材は **確定／推論／要判断** を保持します。境界は `js/bim/risk.js` のリスク行列で決まります:

@@ -9,7 +9,7 @@
 | `anglex/dist/ANGLEX_v1.html` | **v1 UI**（リボン＋プロジェクトブラウザ＋プロパティの BIM ワークスペース型） | 最新の全機能。`dist/ANGLEX.html` と同一 |
 | `anglex/dist/ANGLEX_v2.html` | **v2 UI**（サインイン → モード選択 → 案件管理 / チャット見積 / 5 ステップ 3D 詳細。最初に共有いただいたデモの見た目） | 同じエンジンを内包。右上「⇄ UI v1」で相互切替 |
 | `anglex/dist/ANGLEX.html` | v1 と同一（Netlify では `/dist/ANGLEX.html`） | |
-| `anglex/dist/ANGLEX_v1_offline.html` / `ANGLEX_v2_offline.html` | オフライン版（約 35 MB） | Three.js・PDF・OCR（Tesseract 英語＋日本語）・スタジオ HDRI を同梱。ネット接続なしで起動・PDF・XLSX・OCR まで動く |
+| `anglex/dist/ANGLEX_v1_offline.html` / `ANGLEX_v2_offline.html` | オフライン版（約 60 MB） | Three.js・PDF・OCR（Tesseract 英語＋日本語）・IFC 読込・STEP／IGES 読込・TIFF 読込・スタジオ HDRI を同梱。ネット接続なしで起動・PDF・XLSX・OCR まで動く |
 
 通常版（約 5.5 MB）は 3D ライブラリ（Three.js）・PDF ライブラリ・HDRI/テクスチャを CDN から読むため、ネット接続が必要です。フォント（JIS サブセット TrueType）は両方とも埋込済み。
 
@@ -36,7 +36,8 @@
 | データ | `data/catalog.js`, `data/sections.js` | 日栄インテック カタログ 151 製品 / 700 SKU（Drive 2 シートから生成）、JIS 形鋼・管・ボルト寸法表 |
 | 幾何 | `geo/profiles.js`, `geo/fasteners.js`, `geo/welds.js`, `geo/materials.js` | 形鋼の板構成＋実穴、面取り六角ボルト／螺旋ねじ、隅肉・突合せビード、PBR 材質（スパングル亜鉛、ヘアライン SUS、汚れムラ、Poly Haven テクスチャ、HDRI） |
 | BIM | `bim/families.js`, `bim/model.js`, `bim/params.js`, `bim/build.js`, `bim/weight.js`, `bim/cost.js`, `bim/joints.js`, `bim/risk.js`, `bim/review.js` | 34 ファミリ（parts(p) が単一ソース）、タイプ/インスタンス/レベル/Undo、式パラメータ、JIS 質量・めっき付着、原価、接合・日本語指示、Case B リスク行列、確認事項・ズレ検出 |
-| 取込 | `import/dxf.js`, `import/pdf.js`, `import/ifc.js`, `import/mesh.js`, `import/recognize.js`, `import/convert.js` | DXF 実パース、PDF.js、web-ifc、glTF/OBJ/STL/FBX、部材認識、DWG/JWW 変換（サーバ） |
+| 取込 | `import/dxf.js`, `import/svg.js`, `import/pdf.js`, `import/raster.js`, `import/ocr.js`, `import/table.js`, `import/ifc.js`, `import/mesh.js`, `import/nc1.js`, `import/recognize.js`, `import/convert.js` | DXF 実パース、SVG、PDF.js、画像・TIFF のベクタ化と限定 OCR、部材リスト（CSV・Excel）、web-ifc、glTF/OBJ/STL/FBX/PLY/3MF/DAE/3DS、STEP/IGES/BREP（OpenCASCADE）、DSTV NC、部材認識、DWG/JWW 変換（サーバ） |
+| 書出し | `ui/exports.js`, `ui/exportsMore.js`, `ui/simready.js`, `ui/formats.js` | IFC4、DXF 3D・加工図 DXF／SVG、glTF・OBJ・STL・PLY・USD／USDZ、DSTV NC、穴座標 CSV、部品 JSON、PNG。対応形式の一覧（`formats.js`）をダイアログ・テスト・資料で共用 |
 | ビューワ | `viewer/scene.js` | Three.js（r180）: GTAO/SMAA、HDRI、表示スタイル（リアル／陰影＋エッジ／隠線／ワイヤ／半透明／CAD 図面色）、断面ボックス、分解（部材／部品）、ピッキング、CSS2D ラベル、スクショ。操作: 左ドラッグ＝回す（既定）・右ドラッグ＝掴む、部材クリックで中央へ／ダブルクリックで寄る、慣性・境界・回転中心の十字、視点の履歴（Alt+← / →）、自動回り込み、直接ドラッグ、タッチ長押し |
 | 3D 操作 UI | `ui/focuspill.js`, `ui/spotTour.js`, `ui/viewmarks.js`, `ui/sectionGauge.js`, `ui/minimap.js`, `ui/guide.js` | 掴んだ部材のピル（見どころの数・履歴・自動回り）、見どころの「次へ」送り（✓ で確認記録）、視点ブックマーク（📷 PDF の撮影角度・ツアー再生・WebM 録画）、断面ゲージ（穴のホバー表示・ドラッグで位置／ダブルクリックで径）、ミニマップ、初回操作ガイド |
 | シミュレータ | `bim/solver.js`, `ui/simulator.js` | v3: 部品ボタン・ライブゲージ（応力比・たわみ・ボルト・アンカー）・X 線・荷重倍率・限界探索・ストーリー動画 |
@@ -110,6 +111,7 @@ ANGLEX は「ファミリ → parts リスト」が単一ソースで、3D・質
 Astra が具体的にどの製品／ライブラリを指すか（URL）を教えていただければ、上記 A/B のどちらが適切か、必要な変換（座標系・単位・材質）まで落とし込みます。
 
 ## 6. 開発の流れ（コミット要約・新しい順）
+- 対応形式の拡充（11/14）: 読込 24 種類（SVG・TIFF・GIF／AVIF・部材リスト CSV／TSV／Excel・STEP・IGES・BREP・PLY・3MF・Collada・3DS・DSTV NC・ZIP を追加）、書出し 19 種類（IFC4・DXF 3D・加工図 SVG・OBJ・STL・PLY・USDZ 単体・PNG 4K・DSTV NC・穴座標 CSV・部品 JSON を追加）。対応形式ダイアログ、3D 書出しの詳細度、オフライン版に IFC／STEP／TIFF の読込ライブラリを同梱。導入 PoC 計画書・機能一覧（PDF、提出元 ワールド化成）
 - 3D の動かし方を一新（10/31〜11/01）: 左ドラッグ＝空間を回す（既定）・右ドラッグ＝掴む、部材をクリック（掴む）で画面中央へ、空白のダブルクリックで全体へ。慣性と境界、ミニマップ、タッチ長押しで掴む。掴んだ部材のピル、回転中心の十字、部材のダブルクリックで寄る（画面の 6 割）。寄ったときの見どころ表示（他部材のラベルを隠し穴・溶接・確認の数）、視点の履歴、自動回り込み。見どころの「次へ」送り（N / ✓）、視点ブックマーク（📷 PDF で見積・指示書の撮影角度）、断面ゲージ。確認結果を A→B→C の受け渡しに乗せる（見積ヘッダ「A社確認済 ✓ / 未確認」・PDF の確認リスト・ゲートから見どころ送り）、断面ゲージの寸法入力（ドラッグで穴位置・ダブルクリックで径）、ブックマークのツアー再生と録画
 - 営業所の仕分け（拠点マスタ・ユーザー所属・案件/見積の branch・一覧フィルタ・サーバー絞込）、学習単価マスタ（C社回答の蓄積・適用・見直し候補）、組立確認（工具スペース・保温厚・組立順・組立図 PDF）、ラスター図面のベクタ化（ノイズ除去・円は生の連結成分から先に判定）と認識の学習ループ。合成スキャンでの実測: きれいな画像は直線・矩形・穴 100%、スキャン相当は直線・矩形 100%・穴 70〜90%、劣化 150 dpi は 88 / 83 / 60%、OCR 仕様注記はきれいな画像で 5/5（回答書・仕様書に転記）。限定 OCR（Tesseract.js 同梱、部材仕様・穴・長さのみ）、スキャン画像の上での修正と学習、実スキャン検証キット（dev/raster-real.mjs）。業務フローに次の一手バナー・受け渡しタイムライン・催促文。期限通知の自動化（バッジ・一覧、サーバー版はメール自動送信）、日本語 OCR（限定語彙）、デスキュー、検証キットの PDF 入力と報告書 PDF 出力、穴・アンカー注記の部材紐づけ、B/C ビューの「残り n 行」モード、穴位置の 3D 反映（図面の円 → 実位置）、C社の前回回答流用、検証結果 CSV の取込、穴からのボルト接合提案、B社の利益率流用、学習の状態タブ（出し入れ・図面様式×営業所の目標管理）、提案接合のウィザード連携、打合せ予約（Google / Outlook・Teams / .ics）、片側穴からのボルト提案、サーバー版の学習統計共有と週次まとめ、v3 シミュレータ（部品ボタン・ライブゲージ・限界探索・ストーリー動画）
 - 受け渡しの通知文・回答期限、確定前チェック、案件横断ダッシュボード、オフライン版ビルド（ライブラリ同梱・外部通信遮断テスト）、仕様書／提案書／ハードウェア回答書（docs/pdf）

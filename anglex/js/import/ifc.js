@@ -1,7 +1,11 @@
 // IFC 読込: web-ifc（WASM）でジオメトリ＋プロパティ抽出。IfcMember / IfcPlate / IfcBeam / IfcColumn / IfcPipeSegment / IfcMechanicalFastener をサポート部材候補に
 import * as THREE from 'three';
 let ifcApi = null;
-export async function loadWebIfc() { if (ifcApi) return ifcApi; const mod = await import('https://cdn.jsdelivr.net/npm/web-ifc@0.0.66/web-ifc-api.js'); const api = new mod.IfcAPI(); api.SetWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.66/', true); await api.Init(); ifcApi = { api, mod }; return ifcApi; }
+const WEBIFC_WASM = 'https://cdn.jsdelivr.net/npm/web-ifc@0.0.66/web-ifc.wasm'; /* オフライン版ではこの URL が同梱データに置き換わる */
+const WEBIFC_JS = 'https://cdn.jsdelivr.net/npm/web-ifc@0.0.66/web-ifc-api.js';
+// オフライン版では URL が data: に置き換わる。数 MB の data: URL を直接 import / WASM 読込に渡すとブラウザが落ちることがあるため、Blob URL に移してから使う
+async function blobUrl(url, type) { if (!url.startsWith('data:')) return url; const buf = await (await fetch(url)).arrayBuffer(); return URL.createObjectURL(new Blob([buf], { type })); }
+export async function loadWebIfc() { if (ifcApi) return ifcApi; const jsUrl = await blobUrl(WEBIFC_JS, 'text/javascript'), wasmUrl = await blobUrl(WEBIFC_WASM, 'application/wasm'); const mod = await import(/* @vite-ignore */ jsUrl); const api = new mod.IfcAPI(); await api.Init(() => wasmUrl, true); ifcApi = { api, mod }; return ifcApi; }
 export async function parseIFC(arrayBuffer, { onProgress = null } = {}) {
   const { api, mod } = await loadWebIfc(); const modelID = api.OpenModel(new Uint8Array(arrayBuffer), { COORDINATE_TO_ORIGIN: true });
   const group = new THREE.Group(); group.name = 'IFC'; const elements = []; const matCache = new Map();

@@ -1,0 +1,19 @@
+// オフライン版の対応形式チェック（外部遮断）: 1 ステップずつ実行して、どこまで動くかを出力する
+import pw from '/opt/node-tools/node_modules/playwright/index.js'; const { chromium } = pw;
+import http from 'http'; import fs from 'fs'; import path from 'path';
+const root = path.resolve(new URL('..', import.meta.url).pathname); const file = process.argv[2] || 'dist/ANGLEX_v1_offline.html'; const PORT = 8141;
+const server = http.createServer((req, res) => { let p = decodeURIComponent(req.url.split('?')[0]); const f = path.join(root, p); fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end('nf'); return; } res.writeHead(200, { 'content-type': f.endsWith('.html') ? 'text/html' : 'application/octet-stream' }); res.end(d); }); });
+await new Promise(r => server.listen(PORT, r));
+const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } }); await ctx.addInitScript(() => { window.__anglexNoGuide = true; }); const page = await ctx.newPage();
+const blocked = []; await page.route('**/*', route => { const u = route.request().url(); if (u.startsWith('http://localhost:' + PORT) || u.startsWith('data:') || u.startsWith('blob:')) return route.continue(); blocked.push(u.slice(0, 80)); return route.abort('internetdisconnected'); });
+page.on('pageerror', e => console.log('[pageerror]', e.message.slice(0, 200))); page.on('crash', () => console.log('[crash]'));
+await page.goto(`http://localhost:${PORT}/${file}?quality=0&view=3d`, { waitUntil: 'load' }); await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 }).catch(() => console.log('ready timeout')); await page.waitForTimeout(1500);
+const step = async (name, fn) => { try { const r = await page.evaluate(fn); console.log(name, JSON.stringify(r)); } catch (e) { console.log(name, 'FAILED', String(e.message).slice(0, 200)); } };
+await step('TIFF', async () => { const ras = await import('anglex:js/import/raster.js'); try { await ras.decodeTiff(new File([new Uint8Array(8)], 'x.tif')); } catch { } const rgba = new Uint8Array(40 * 30 * 4).fill(255); const t = globalThis.UTIF.encodeImage(rgba, 40, 30); const cv = await ras.decodeTiff(new File([t], 'a.tif')); return [cv.width, cv.height]; });
+await step('STEP', async () => { const mesh = await import('anglex:js/import/mesh.js'); const buf = await (await fetch('/dev/samples/cad/cube.stp')).arrayBuffer(); const m = await mesh.loadMesh(new File([buf], 'cube.stp')); let tris = 0; m.object.traverse(o => { if (o.isMesh) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; }); return { kind: m.kind, tris }; });
+await step('IFC_EXPORT', async () => { const M = await import('anglex:js/ui/exportsMore.js'); const r = await M.withLod(app, 300, () => M.buildIFC(app)); window.__ifc = r.text; return { kb: Math.round(r.text.length / 1024), parts: r.stats.parts }; });
+await step('IFC_READ', async () => { const I = await import('anglex:js/import/ifc.js'); const back = await I.parseIFC(new TextEncoder().encode(window.__ifc).buffer); return { elements: back.elements.length }; });
+await step('PLY_3MF_LOADERS', async () => { const a = await import('three/addons/loaders/PLYLoader.js'); const b = await import('three/addons/loaders/3MFLoader.js'); const c = await import('three/addons/exporters/STLExporter.js'); return { ply: !!a.PLYLoader, mf: !!b.ThreeMFLoader, stl: !!c.STLExporter }; });
+console.log('BLOCKED', JSON.stringify([...new Set(blocked)].slice(0, 8)));
+await browser.close(); server.close();

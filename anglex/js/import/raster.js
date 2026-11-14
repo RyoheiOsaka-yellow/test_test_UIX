@@ -20,6 +20,10 @@ export async function imageToBinary(src, { maxPx = 2200, deskew = true, _rot = 0
   if (deskew && !_rot) { const a = estimateSkew(bin, w, hgt); if (Math.abs(a) >= 0.3 && Math.abs(a) <= 4) { const r = await imageToBinary(src, { maxPx, deskew: false, _rot: a }); r.skew = a; return r; } }
   return { bin, w, h: hgt, scale: s, thr, speckles, skew: _rot || 0, canvas: c };
 }
+// TIFF（スキャナの標準形式。ブラウザは直接表示できない）: UTIF.js で 1 ページ目を RGBA へ展開して canvas にする
+const UTIF_JS = 'https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js', PAKO_JS = 'https://cdn.jsdelivr.net/npm/pako@1.0.11/dist/pako.min.js';
+const addScript = url => new Promise((res, rej) => { const s = document.createElement('script'); s.src = url; s.onload = res; s.onerror = () => rej(new Error('ライブラリを取得できません: ' + url.slice(0, 60))); document.head.appendChild(s); });
+export async function decodeTiff(file) { if (!globalThis.UTIF) { if (!globalThis.pako) await addScript(PAKO_JS); await addScript(UTIF_JS); } const buf = await file.arrayBuffer(); const ifds = globalThis.UTIF.decode(buf); if (!ifds.length) throw new Error('TIFF にページがありません'); const page = ifds.reduce((a, b) => ((b.t256?.[0] || 0) * (b.t257?.[0] || 0) > (a.t256?.[0] || 0) * (a.t257?.[0] || 0) ? b : a), ifds[0]); globalThis.UTIF.decodeImage(buf, page, ifds); const rgba = globalThis.UTIF.toRGBA8(page); const w = page.width, h = page.height; if (!w || !h) throw new Error('TIFF を展開できません（未対応の圧縮）'); const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, w * h * 4), w, h), 0, 0); c.tiffPages = ifds.length; return c; }
 function loadImage(src) { return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('画像を読めません')); im.src = typeof src === 'string' ? src : URL.createObjectURL(src); }); }
 // 行方向・列方向のラン（連続した黒）を抽出し、隣接する行のランを束ねて 1 本の線にする
 // スキャンのごま塩ノイズ除去: 孤立した黒画素（8 近傍に黒が 1 以下）を白に、ほぼ囲まれた白画素（8 近傍に黒が 7 以上）を黒に。線（幅 2px 以上）は変わらない

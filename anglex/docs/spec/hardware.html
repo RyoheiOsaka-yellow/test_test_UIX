@@ -111,7 +111,7 @@
 <h2>8. 対応状況（磨き込みの結果）</h2>
 <p>ご質問に関連して、今回の回答に合わせて製品側で対応した項目と、今後の予定です。</p>
 <table><tr><th style="width:52mm">項目</th><th>内容</th><th style="width:22mm">状況</th></tr>
-<tr><td>オフライン版ビルド</td><td>three.js・PDF 生成・XLSX・図面 PDF 読込・日本語フォント・スタジオ環境光をすべて同梱した単一 HTML（v1 / v2、約 35 MB。うち OCR 約 13 MB）。外部通信を遮断した自動テストで起動・3D・帳票出力を確認</td><td><span class="tag ok">対応済</span></td></tr>
+<tr><td>オフライン版ビルド</td><td>three.js・PDF 生成・XLSX・図面 PDF 読込・日本語フォント・スタジオ環境光・IFC／STEP／TIFF の読込をすべて同梱した単一 HTML（v1 / v2、約 60 MB。うち OCR 約 13 MB、IFC・STEP 読込 約 19 MB）。外部通信を遮断した自動テストで起動・3D・帳票出力を確認</td><td><span class="tag ok">対応済</span></td></tr>
 <tr><td>軽量表示モード</td><td>内蔵 GPU やソフトウェア描画でも動くよう、後処理（接触陰影・MSAA）と写真テクスチャを自動で省く設定。URL パラメータまたは設定で切替</td><td><span class="tag ok">対応済</span></td></tr>
 <tr><td>社内サーバー型</td><td>Node.js サーバー（案件・見積 API、受け渡しリンク、監査ログ、期限通知の自動送信）。既存サーバー・仮想環境で動作。メール送信は社内 SMTP（SMTP_HOST / PORT / USER / PASS / FROM）を環境変数で指定</td><td><span class="tag ok">対応済</span></td></tr>
 <tr><td>カタログ サムネイルの同梱</td><td>151 製品の 3D サムネイルを事前生成して同梱。初回起動から即表示（低性能 PC でも描画負荷なし）</td><td><span class="tag ok">対応済</span></td></tr>

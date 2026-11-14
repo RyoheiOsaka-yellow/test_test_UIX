@@ -29,7 +29,7 @@
 <tr><td>帳票</td><td>PDF（pdf-lib + 日本語フォントサブセット）、XLSX（SheetJS）、CSV、GLB / USD</td><td>js/ui/pdfgen.js, reports.js</td></tr>
 <tr><td>保存・共有</td><td>ローカル（IndexedDB / localStorage）、社内サーバー（Node.js + JSON ストア、REST API、受け渡しトークン）</td><td>js/core/store.js, server/server.js</td></tr></table>
 <h3>2.2 配布形態</h3>
-<ul><li><b>単一 HTML（オンライン版）:</b> <code>dist/ANGLEX_v1.html</code> / <code>ANGLEX_v2.html</code>（約 5 MB）。three.js 等は CDN 参照。</li><li><b>単一 HTML（オフライン版）:</b> <code>dist/ANGLEX_v1_offline.html</code> / <code>ANGLEX_v2_offline.html</code>（約 35 MB）。three.js、pdf-lib、fontkit、HarfBuzz サブセッタ、SheetJS、pdf.js、日本語フォント、スタジオ環境光を同梱。外部通信なしで動作。</li><li><b>ソース配置:</b> 静的ファイル一式を任意の Web サーバーに配置（Netlify 設定同梱）。</li><li><b>社内サーバー:</b> <code>node server/server.js --port 8080</code>。案件・見積 API、受け渡しトークン、監査ログ。</li></ul>
+<ul><li><b>単一 HTML（オンライン版）:</b> <code>dist/ANGLEX_v1.html</code> / <code>ANGLEX_v2.html</code>（約 5 MB）。three.js 等は CDN 参照。</li><li><b>単一 HTML（オフライン版）:</b> <code>dist/ANGLEX_v1_offline.html</code> / <code>ANGLEX_v2_offline.html</code>（約 60 MB）。three.js、pdf-lib、fontkit、HarfBuzz サブセッタ、SheetJS、pdf.js、OCR、IFC・STEP・IGES・TIFF の読込、日本語フォント、スタジオ環境光を同梱。外部通信なしで動作。</li><li><b>ソース配置:</b> 静的ファイル一式を任意の Web サーバーに配置（Netlify 設定同梱）。</li><li><b>社内サーバー:</b> <code>node server/server.js --port 8080</code>。案件・見積 API、受け渡しトークン、監査ログ。</li></ul>
 
 <h2>3. 機能仕様</h2>
 <h3>3.1 図面読込と部材認識</h3>

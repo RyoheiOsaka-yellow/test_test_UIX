@@ -1086,3 +1086,8 @@ body.compact .detail-grid{grid-template-columns:1fr}body.compact #card3d{order:-
 .vm-pop .vm-tools{display:flex;align-items:center;gap:6px;margin:0 0 6px}.vm-pop .vm-note{font-size:11px;color:#666;white-space:normal;margin-top:2px}
 .section-gauge .sg-hint{font:9px var(--font, sans-serif);color:#888;margin-top:2px;white-space:nowrap}
 .section-gauge{z-index:14;background:rgba(255,255,255,.97)}.section-gauge canvas{margin:0 auto}
+/* 対応形式ダイアログ */
+.fmt-group{font-weight:700;margin:10px 0 4px;font-size:12.5px;color:#444}.fmt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.fmt-card{text-align:left;border:1px solid var(--line, #d9d4c5);border-radius:8px;background:#fff;padding:8px 10px;cursor:pointer;font:12px var(--font, sans-serif);color:#222}.fmt-card:hover{border-color:#b8482a;background:#fff8f4}.fmt-card.trial{border-style:dashed}
+.fmt-card .fmt-name{font-weight:700;font-size:13px}.fmt-card .fmt-ext{font:11px ui-monospace,monospace;color:#777;margin-left:6px}.fmt-card .fmt-note{color:#666;font-size:11px;margin-top:3px;line-height:1.45}
+.fmt-lod{display:flex;align-items:center;gap:6px;font-size:12px;margin:2px 0 4px}.fmt-lod select{font-size:12px}
