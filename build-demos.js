@@ -144,7 +144,12 @@ function prepare(id) {
     + 'else if(e.data==="ydemo-resume"&&paused){paused=false;var a=q;q=[];for(var i=0;i<a.length;i++)raf(a[i]);}});})();<\/script>\n' + s;
   s = '<script>(function(){window.__YFAIL=false;function fail(){if(window.__YFAIL)return;window.__YFAIL=true;try{parent.postMessage("ydemo-fail","*")}catch(e){}}'
     + 'window.__yfail=fail;window.addEventListener("error",function(e){if(e&&e.message&&/ResizeObserver/.test(e.message))return;fail()});'
-    + 'window.addEventListener("unhandledrejection",fail);})();<\/script>\n'
+    + 'window.addEventListener("unhandledrejection",fail);'
+    // WebGL が取れない端末: 親に知らせて全部ポスターに戻してもらう（webgl2→webgl の順に試すデモがあるので少し待って判定）
+    + 'var gc=HTMLCanvasElement.prototype.getContext,ok=false,tm=0;'
+    + 'HTMLCanvasElement.prototype.getContext=function(t){var c=gc.apply(this,arguments);'
+    + 'if(/webgl/.test(String(t))){if(c){ok=true;window.__YGLWAIT=false}else if(!tm){window.__YGLWAIT=true;tm=setTimeout(function(){if(!ok){window.__YFAIL=true;try{parent.postMessage("ydemo-nogl","*")}catch(e){}}},1200)}}'
+    + 'return c};})();<\/script>\n'
     + '<script>(function(){var hold=/[?&]hold=1/.test(location.search);window.__YGO=false;'
     + 'function go(){if(window.__YGO)return;window.__YGO=true;try{window.dispatchEvent(new Event("ydemo-go"))}catch(e){}}'
     + 'window.__ygo=go;window.addEventListener("message",function(e){if(e.data==="ydemo-go")go()});'
@@ -168,7 +173,7 @@ function prepare(id) {
      + 'var dt=last?ts-last:9999;last=ts;win.push(dt<120?1:0);if(win.length>10)win.shift();run=0;for(var wi=0;wi<win.length;wi++)run+=win[wi];'
      + 'if(dt>=160&&dt<5000&&n>3)slow++;'
      + 'if(slow>=40){done=true;try{parent.postMessage("ydemo-slow","*")}catch(e){}return}'
-     + 'if(((run>=7&&n>=10)||n>=120)&&window.__YREADY!==false){done=true;try{parent.postMessage("ydemo-ready","*")}catch(e){}'
+     + 'if(((run>=7&&n>=10)||n>=120)&&window.__YREADY!==false&&!window.__YGLWAIT){done=true;try{parent.postMessage("ydemo-ready","*")}catch(e){}'
      + 'if(window!==window.parent&&!/[?&]hold=1/.test(location.search))setTimeout(function(){if(window.__ygo)window.__ygo()},20000);return}'
      + 'requestAnimationFrame(t)}requestAnimationFrame(t)})();<\/script>\n';
 
@@ -349,6 +354,9 @@ if (used.length) {
     '   高さ基準で等倍に合わせるので、現れたデモと絵の大きさ・位置がそのまま一致する',
     '   （ポスターは横2:1で撮る。デモ側の縦画角が一定なら縦合わせで一致する） */',
     '.panel__embed[data-reveal="fade"]{background-image:var(--bg);background-size:auto 100%;background-position:center;background-repeat:no-repeat;}',
+    '/* スマホ用のポスター: セクションに --bg-sp（縦長の静止画）があればそちらを使う。',
+    '   横長のポスターを縦長の画面に敷くと絵柄の左右が切れるため */',
+    '@media (max-width:900px){ .panel__embed[data-reveal="fade"]{background-image:var(--bg-sp,var(--bg));background-size:var(--bg-sp-size,auto 100%);} }',
     ...placeholderRules,
     '/* 白背景デモ用: デモが動くときだけ、そのパネルの文字を黒系に反転する',
     '   （デモが動かない環境ではポスター写真のまま白文字が維持される） */',
@@ -395,8 +403,9 @@ if (used.length) {
   '  if (window.matchMedia(\'(prefers-reduced-motion: reduce)\').matches) return;',
   '  /* スマホも動かす（幅での除外はしない）。省データ設定と reduced-motion は尊重する */',
   '  if (navigator.connection && navigator.connection.saveData) return;',
-  '  try { if (!document.createElement(\'canvas\').getContext(\'webgl2\')) return; }',
-  '  catch (e) { return; }',
+  /* WebGL が使えるかの確認は親ではしない。親で canvas の WebGL コンテキストを同期で作ると、
+     読み込みの最中にメインスレッドが数百ms止まる。デモ側（iframe）が自分で検出して
+     "ydemo-nogl" を送ってくるので、そのとき全スロットをポスターに戻す */
   '',
   '  var CYCLE_MS = ' + (cycleSec * 1000) + ';',
   '  var HEAD = \'<!doctype html><html lang="ja"><head><meta charset="utf-8">\'',
@@ -532,6 +541,15 @@ if (used.length) {
   '',
   '  // デモ側から届く「描き始めた」合図を、その iframe に結びつける',
   '  window.addEventListener(\'message\', function (ev) {',
+  '    if (ev.data === \'ydemo-nogl\') {',                 // WebGL が無い端末: 全部ポスターに戻す
+  '      for (var gi = 0; gi < slots.length; gi++) {',
+  '        slots[gi].dead = true; slots[gi].on = false;',
+  '        if (slots[gi].timer) { clearInterval(slots[gi].timer); slots[gi].timer = 0; }',
+  '        while (slots[gi].el.firstChild) slots[gi].el.removeChild(slots[gi].el.firstChild);',
+  '        slots[gi].el.classList.remove(\'is-live\');',
+  '      }',
+  '      return;',
+  '    }',
   '    if (ev.data !== \'ydemo-ready\' && ev.data !== \'ydemo-fail\' && ev.data !== \'ydemo-slow\') return;',
   '    var fs2 = document.querySelectorAll(\'.panel__embed iframe\');',
   '    for (var mi = 0; mi < fs2.length; mi++) {',
@@ -581,13 +599,17 @@ if (used.length) {
   '    if (slot.on || slot.dead || warmQ.indexOf(slot) !== -1) return;',
   '    warmQ.push(slot); pump();',
   '  }',
+  // ページの先頭で止まっている間は先回りしない。アクセス直後に次のデモを裏で立ち上げると、
+  // その組み立て（スクリプト評価・シェーダ準備）の間、目の前で動いているデモが一瞬止まる。
+  // スクロールし始めてから隣のパネルだけを用意する（待ちはポスターが埋める）
+  '  function armed() { return (window.pageYOffset || document.documentElement.scrollTop || 0) > 40; }',
   '  function pump() {',
   '    if (warming && (warming.shown || !warming.on || warming.dead)) { warming = null; clearTimeout(warmT); }',
-  '    if (warming || busy()) return;',
+  '    if (warming || busy() || !armed()) return;',
   '    while (warmQ.length) {',
   '      var ws = warmQ.shift();',
   '      if (ws.on || ws.dead) continue;',
-  '      if (SMALL && !ws.near && ws.ratio <= 0.05) continue;',   // スマホ: もう近くにない
+  '      if (!ws.near && ws.ratio <= 0.05) continue;',   // もう近くにない
   '      warming = ws; start(ws);',
   '      warmT = setTimeout(function () { warming = null; pump(); }, 8000);',
   '      return;',
@@ -613,6 +635,7 @@ if (used.length) {
   '      if (slots[k].ratio > 0.05 && (!best || slots[k].ratio > best.ratio)) best = slots[k];',
   '    for (var m = 0; m < slots.length; m++) if (slots[m] !== best) stop(slots[m]);',
   '    if (best) start(best);',
+  '    for (var w0 = 0; w0 < slots.length; w0++) if (slots[w0].near && slots[w0].keep) warm(slots[w0]);',
   '    pump();',
   '  }',
   '',
@@ -627,30 +650,18 @@ if (used.length) {
   '  arbitrate();',
   '',
   '  if (!(\'IntersectionObserver\' in window)) { if (slots[0] && !slots[0].on) start(slots[0]); return; }',
-  '  // 破棄しない(keep)スロットは、画面に来るずっと手前から裏で読み込んで動かし始める。',
-  '  // 到達したときには既に描画が育っているので、白い空白や「後から急に出る」が起きない',
-  '  if (\'IntersectionObserver\' in window) {',
-  '    var pre = new IntersectionObserver(function (es) {',
-  '      for (var pi2 = 0; pi2 < es.length; pi2++) {',
-  '        if (!es[pi2].isIntersecting) continue;',
-  '        for (var pj2 = 0; pj2 < slots.length; pj2++) {',
-  '          if (slots[pj2].el === es[pi2].target && slots[pj2].keep && !slots[pj2].on) warm(slots[pj2]);',
-  '        }',
-  '        pre.unobserve(es[pi2].target);',
-  '      }',
-  '    }, { rootMargin: \'200% 0px 200% 0px\', threshold: 0 });',
-  '    for (var pk2 = 0; pk2 < slots.length; pk2++) if (slots[pk2].keep) pre.observe(slots[pk2].el);',
-  '  }',
-  '',
-  '  if (SMALL) {',
-  '    var nearIo = new IntersectionObserver(function (es) {',
-  '      for (var ni = 0; ni < es.length; ni++)',
-  '        for (var nj = 0; nj < slots.length; nj++)',
-  '          if (slots[nj].el === es[ni].target) slots[nj].near = es[ni].isIntersecting;',
-  '      arbitrate();',
-  '    }, { rootMargin: \'100% 0px 100% 0px\', threshold: 0 });',
-  '    for (var nk = 0; nk < slots.length; nk++) nearIo.observe(slots[nk].el);',
-  '  }',
+  // 画面から一画面以内（near）に来たスロットを裏で用意する。スマホは離れたら片付ける
+  '  var nearIo = new IntersectionObserver(function (es) {',
+  '    for (var ni = 0; ni < es.length; ni++)',
+  '      for (var nj = 0; nj < slots.length; nj++)',
+  '        if (slots[nj].el === es[ni].target) slots[nj].near = es[ni].isIntersecting;',
+  '    arbitrate();',
+  '  }, { rootMargin: \'100% 0px 100% 0px\', threshold: 0 });',
+  '  for (var nk = 0; nk < slots.length; nk++) nearIo.observe(slots[nk].el);',
+  '  var wasArmed = armed();',
+  '  window.addEventListener(\'scroll\', function () {',
+  '    var a = armed(); if (a === wasArmed) return; wasArmed = a; if (a) arbitrate();',
+  '  }, { passive: true });',
   '  var io = new IntersectionObserver(function (es) {',
   '    for (var n = 0; n < es.length; n++)',
   '      for (var q = 0; q < slots.length; q++)',
@@ -714,6 +725,13 @@ if (used.length) {
   '',
   '  /* WebGPU は「navigator.gpu がある」だけでは動かない環境がある（アダプタ無効など）。',
   '     実際にアダプタが取れるかを確かめてから始める */',
+  // 起動はページの最初の描画が済んでから。読み込みの最中に iframe を作り始めると、
+  // 文字や写真が出る前の時間が延びる
+  '  var boot0 = boot;',
+  '  boot = function (ok) {',
+  '    var run = function () { requestAnimationFrame(function () { requestAnimationFrame(function () { boot0(ok); }); }); };',
+  '    if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', run); else run();',
+  '  };',
   '  if (!needProbe) { boot(false); }',
   '  else if (!navigator.gpu || !navigator.gpu.requestAdapter) { boot(false); }',
   '  else {',
