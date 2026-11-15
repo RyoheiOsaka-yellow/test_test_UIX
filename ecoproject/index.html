@@ -436,7 +436,8 @@
         <div class="form__body">
           <h3 class="form__title">お問い合わせフォーム</h3>
           <p class="form__lead">内容を確認のうえ、担当者よりご連絡いたします。</p>
-          <form id="contactForm" action="contact.php" method="post" novalidate>
+          <!-- data-endpoint にフォーム送信サービスのURLを入れると直接送信。空の間はメールソフトを起動して送信 -->
+          <form id="contactForm" data-endpoint="" data-mail-user="ajisawa" data-mail-domain="e-project.jpn.com" novalidate>
             <div class="form__grid">
               <div class="field field--full">
                 <label for="f-type">お問い合わせ種別<span class="opt">任意</span></label>

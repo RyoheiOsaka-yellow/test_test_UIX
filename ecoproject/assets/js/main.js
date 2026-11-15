@@ -173,33 +173,49 @@
       status.classList.add('is-error');
     }
 
+    var endpoint = form.getAttribute('data-endpoint') || '';
+
+    // 送信サービス未設定の間は、入力内容を本文に入れてメールソフトを起動する
+    function openMailer() {
+      var f = form.elements;
+      var to = form.getAttribute('data-mail-user') + '@' + form.getAttribute('data-mail-domain');
+      var lines = [
+        '■ お問い合わせ種別： ' + (f.type.value || '（未選択）'),
+        '■ 会社名・管理組合名： ' + (f.company.value.trim() || '（未入力）'),
+        '■ お名前： ' + f.name.value.trim(),
+        '■ メールアドレス： ' + f.email.value.trim(),
+        '■ 電話番号： ' + (f.tel.value.trim() || '（未入力）'),
+        '',
+        '■ お問い合わせ内容',
+        f.message.value.trim()
+      ];
+      window.location.href = 'mailto:' + to +
+        '?subject=' + encodeURIComponent('【ホームページ】お問い合わせ') +
+        '&body=' + encodeURIComponent(lines.join('\r\n'));
+      status.textContent = 'メールソフトが起動します。内容をご確認のうえ、そのまま送信してください。';
+    }
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       status.textContent = '';
       status.classList.remove('is-error');
       if (!validate()) return;
+      if (form.elements.website.value !== '') return; // honeypot
+
+      if (!endpoint) { openMailer(); return; }
 
       submitBtn.disabled = true;
       status.textContent = '送信中です…';
-      fetch(form.action, {
+      fetch(endpoint, {
         method: 'POST',
         body: new FormData(form),
-        headers: { 'X-Requested-With': 'fetch', 'Accept': 'application/json' }
+        headers: { 'Accept': 'application/json' }
       })
         .then(function (res) {
-          return res.json().then(function (data) { return { ok: res.ok, data: data }; });
-        })
-        .then(function (r) {
-          if (r.ok && r.data && r.data.ok) { status.textContent = ''; done(); }
-          else { fail(r.data && r.data.message); }
+          if (res.ok) { status.textContent = ''; done(); } else { fail(); }
         })
         .catch(function () { fail(); })
         .then(function () { submitBtn.disabled = false; });
     });
-
-    // Fallback result when the form was posted without JavaScript and redirected back
-    var q = new URLSearchParams(window.location.search);
-    if (q.get('sent') === '1') { wrap.classList.add('is-sent'); }
-    else if (q.get('sent') === '0') { fail(); }
   }
 })();
