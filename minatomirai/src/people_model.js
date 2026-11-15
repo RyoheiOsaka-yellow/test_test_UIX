@@ -107,7 +107,7 @@ function attraction(m, poi) {
   return { off, vis, res, food: food + (u === 'ret' ? Flow / 4000 : 0), u };
 }
 
-export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], calib = null, scenario = {}, light = false }) {
+export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], calib = null, scenario = {}, light = false, nonRail = false }) {
   const t0 = Date.now();
   const nodes = graph.nodes, links = graph.links, N = nodes.length, L = links.length;
   // ---- 隣接 (歩行コスト付き)。code = リンク番号*2 + (a→b なら 1) ----
@@ -158,6 +158,17 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
     stations.push({ ...sd, src, x: cx, y: cy, out: tree(src, fadj), in: tree(src, radj) });
   }
 
+  // ---- 鉄道以外で来る人 (仮定): 駐車場・バス停・範囲の外周から歩き始める。最寄りの発着点からの距離で目的地を配分する ----
+  // 総量は「鉄道で来た人だけでは実測の昼間人口の 1/κ しか説明できない」分 (κ − 1 倍)。手段の内訳は仮定
+  if (nonRail) {
+    const rail = stations.reduce((a, S) => a + S.daily, 0), extra = rail * Math.max(0, (calib?.kappa ?? 2.2) - 1), box = header.box || [-1300, -1350, 1500, 1200];
+    const snapAll = pts => [...new Set((pts || []).map(q => nearestNodes(q[0] / 10, q[1] / 10, 90, 1)[0]).filter(v => v != null))];
+    const gate = []; nodes.forEach((n, i) => { if (n.lv === 0 && (n.x < box[0] + 30 || n.x > box[2] - 30 || n.y < box[1] + 30 || n.y > box[3] - 30) && fadj[i].length) gate.push(i); });
+    for (const md of [{ id: 'car', n: '駐車場（車）', share: 0.5, src: snapAll(header.parking) }, { id: 'bus', n: 'バス停', share: 0.15, src: snapAll(header.busStops) }, { id: 'walk', n: '範囲外から徒歩・自転車', share: 0.35, src: gate }]) {
+      if (!md.src.length) continue; let sx = 0, sy = 0; for (const i of md.src) { sx += nodes[i].x; sy += nodes[i].y; }
+      stations.push({ id: md.id, n: md.n, daily: extra * md.share, src: md.src, x: sx / md.src.length, y: sy / md.src.length, out: tree(md.src, fadj), in: tree(md.src, radj), nonRail: true, assumed: true, srcNote: '仮定' });
+    }
+  }
   // ---- 目的地 (建物・公園・追加の建物) ----
   const poiBy = new Map();
   for (const q of header.poi || []) { if (q.b == null || q.b < 0) continue; let e = poiBy.get(q.b); if (!e) poiBy.set(q.b, e = { shop: 0, food: 0, other: 0 }); if (q.c === '飲食') e.food++; else if (q.c === '物販') e.shop++; else e.other++; }
@@ -235,13 +246,13 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
     const cand = dests.filter(d => d[dkey] > 0), local = new Map();
     const get = oi => {
       let e = local.get(oi); if (e) return e; const o = origins[oi]; const T = tree([o.home], fadj, netR);
-      const nds = [], cdf = []; let sum = 0;
+      const nds = [], cdf = [], ids = []; let sum = 0;
       for (const d of cand) {
         if (d === o || Math.hypot(d.x - o.x, d.y - o.y) > euclid) continue;
         let bn = -1, bd = Infinity; for (const c of d.cand) if (T.dist[c] < bd) { bd = T.dist[c]; bn = c; }
-        if (bn < 0 || bd > netR || bd < 15) continue; sum += d[dkey] * Math.exp(-bd / beta); nds.push(bn); cdf.push(sum);
+        if (bn < 0 || bd > netR || bd < 15) continue; sum += d[dkey] * Math.exp(-bd / beta); nds.push(bn); cdf.push(sum); ids.push(d.idx);
       }
-      e = { T, nds, cdf, sum, paths: new Map() }; local.set(oi, e); return e;
+      e = { T, nds, cdf, ids, sum, paths: new Map() }; local.set(oi, e); return e;
     };
     const sample = rnd => {
       if (!origins.length) return null;
@@ -250,7 +261,9 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
       const r2 = rnd() * e.sum; let a = 0, b = e.cdf.length - 1; while (a < b) { const mid = (a + b) >> 1; if (e.cdf[mid] < r2) a = mid + 1; else b = mid; }
       const nd = e.nds[a]; let p = e.paths.get(nd); if (!p) e.paths.set(nd, p = pathOut(e.T, nd)); return p;
     };
-    return { sample };
+    // ある建物から次に向かう先の分布 [{idx, p, node}] (その建物が起点の候補に入っている場合)
+    const from = destIdx => { const oi = origins.findIndex(o => o.idx === destIdx); if (oi < 0) return []; const e = get(oi); return e.ids.map((id, i) => ({ idx: id, node: e.nds[i], p: (e.cdf[i] - (i ? e.cdf[i - 1] : 0)) / e.sum })).sort((a, b) => b.p - a.p); };
+    return { sample, from };
   };
   const pathLen = p => { let s = 0; for (let i = 0; i < p.length; i++) s += links[p[i] >> 1].length; return s; };
   const reversePath = p => { const r = new Int32Array(p.length); for (let i = 0; i < p.length; i++) r[i] = p[p.length - 1 - i] ^ 1; return r; };
@@ -268,7 +281,7 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
   if (ev) {
     const venue = dests.filter(d => d.n && ev.match.test(d.n)).sort((p, q) => q.vis - p.vis)[0];
     if (venue) {
-      const opts = stations.map((S, si) => { let on = -1, od = Infinity, inn = -1, id = Infinity; for (const c of venue.cand) { if (S.out.dist[c] < od) { od = S.out.dist[c]; on = c; } if (S.in.dist[c] < id) { id = S.in.dist[c]; inn = c; } } return { S, si, on, od, inn, id, w: on < 0 ? 0 : Math.sqrt(S.daily) * Math.exp(-od / 500) }; });
+      const opts = stations.map((S, si) => { let on = -1, od = Infinity, inn = -1, id = Infinity; for (const c of venue.cand) { if (S.out.dist[c] < od) { od = S.out.dist[c]; on = c; } if (S.in.dist[c] < id) { id = S.in.dist[c]; inn = c; } } return { S, si, on, od, inn, id, w: on < 0 || S.nonRail ? 0 : Math.sqrt(S.daily) * Math.exp(-od / 500) }; });
       const wsum = opts.reduce((a, o) => a + o.w, 0);
       eventInfo = { n: ev.n, venue: venue.n, people: ev.people, split: opts.filter(o => o.w / wsum > 0.005).map(o => ({ n: o.S.n, share: o.w / wsum, m: Math.round(o.od) })).sort((p, q) => q.share - p.share) };
       for (const o of opts) {
@@ -285,7 +298,7 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
   // ---- 集計 ----
   const volumes = (h, day, out = new Float32Array(L)) => { out.fill(0); for (const c of classes) { const r = c.rate(h, day); if (r <= 0) continue; const U = c.U; for (let i = 0; i < L; i++) out[i] += r * U[i]; } return out; };
   const walking = (h, day) => { const g = new Float32Array(GROUPS.length); for (const c of classes) g[c.group] += c.rate(h, day) * c.meanDist / WALK_SPEED / 3600; return g; };
-  const stationFlows = (h, day) => stations.map((S, si) => { let toCity = 0, toStation = 0; for (const c of classes) if (c.station === si) { if (c.dir === 'out') toCity += c.rate(h, day); else toStation += c.rate(h, day); } return { n: S.n, toCity, toStation, assumed: !!S.assumed }; });
+  const stationFlows = (h, day) => stations.map((S, si) => { let toCity = 0, toStation = 0; for (const c of classes) if (c.station === si) { if (c.dir === 'out') toCity += c.rate(h, day); else toStation += c.rate(h, day); } return { n: S.n, toCity, toStation, assumed: !!S.assumed, nonRail: !!S.nonRail }; });
   // 建物 1 棟に出入りする人数 (人/時): 駅から来る人 + 駅へ向かう人
   const destFlows = (idx, h, day) => { let arrive = 0, leave = 0; for (const c of classes) if (c.share) { const r = c.rate(h, day) * c.share[idx]; if (c.dir === 'out') arrive += r; else leave += r; } return { arrive, leave }; };
   // 建物ごとの滞在人数 (駅から来た人 − 駅へ帰った人 の累積。4 時起点、0.25 時間刻み)。purposes を絞れる
@@ -298,5 +311,5 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
     }
     return out;
   };
-  return { stations, dests, classes, volumes, walking, stationFlows, destFlows, presence, eventInfo, linkW, buildMs: Date.now() - t0 };
+  return { stations, dests, classes, volumes, walking, stationFlows, destFlows, presence, eventInfo, linkW, strollFrom: stroll.from, lunchFrom: lunch.from, pathOut, pathIn, buildMs: Date.now() - t0 };
 }

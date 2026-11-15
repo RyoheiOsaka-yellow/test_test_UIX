@@ -394,6 +394,32 @@ def build_trees(nodes, ways, cache):
             acc -= L
     return out
 
+def build_access(nodes, ways, cache):
+    """鉄道以外の来訪の発着点: 駐車場 (amenity=parking の点・面の重心) と バス停 (highway=bus_stop)。[x_dm, y_dm, 収容台数 (不明は 0)]"""
+    park = []; bus = []
+    for nid, (lon, lat, t) in nodes.items():
+        x, y = to_local(lon, lat)
+        if not inbox(x, y): continue
+        if t.get("amenity") == "parking" and t.get("access") not in ("private", "no"):
+            try: cap = int(t.get("capacity", 0))
+            except ValueError: cap = 0
+            park.append([dm(x), dm(y), cap])
+        elif t.get("highway") == "bus_stop" or (t.get("public_transport") == "platform" and t.get("bus") == "yes"): bus.append([dm(x), dm(y)])
+    for w, (nd, t) in ways.items():
+        if t.get("amenity") != "parking" or t.get("access") in ("private", "no"): continue
+        pts = way_coords(nodes, ways, w, cache)
+        if len(pts) < 3: continue
+        x = sum(p[0] for p in pts) / len(pts); y = sum(p[1] for p in pts) / len(pts)
+        if not inbox(x, y): continue
+        try: cap = int(t.get("capacity", 0))
+        except ValueError: cap = 0
+        park.append([dm(x), dm(y), cap])
+    # バス停は近接するもの (上下線・のりば) を 40 m 以内でまとめる
+    merged = []
+    for b in bus:
+        if all(math.hypot(b[0] - q[0], b[1] - q[1]) > 400 for q in merged): merged.append(b)
+    return park, merged
+
 def build_green(nodes, ways, rels, cache):
     """公園・緑地 (OSM leisure=park/garden, landuse=grass/recreation_ground, natural=wood/scrub)。"""
     polys = []
@@ -919,6 +945,7 @@ def main():
     print("water ..."); water = build_water(nodes, ways, rels, cache); print("  sea", len(water["sea"]), "inland", len(water["inland"]))
     print("green ..."); green = build_green(nodes, ways, rels, cache); print("  polygons", len(green))
     print("trees ..."); trees = build_trees(nodes, ways, cache); print("  trees/lamps", len(trees))
+    parking, bus_stops = build_access(nodes, ways, cache); print("  parking", len(parking), "capacity known", sum(1 for p in parking if p[2]), "bus stops", len(bus_stops))
     print("poi ..."); pois = assign_poi_to_buildings(build_poi(nodes, ways, cache), bmetas)
     print("  pois", len(pois), "with level", sum(1 for q in pois if q["lv"] is not None), "assigned", sum(1 for q in pois if q["b"] >= 0))
     print("rails ..."); rails = build_rails(nodes, ways, cache); print("  ways", len(rails))
@@ -996,7 +1023,7 @@ def main():
         "terrain": tmeta,
         "buildings": {"starts": bstarts, "meta": bmetas},
         "bridges": {"starts": rstarts, "meta": rmetas},
-        "roads": roads, "water": water, "green": green, "rails": rails, "poi": pois, "trees": trees, "roadDetail": road_detail,
+        "roads": roads, "water": water, "green": green, "rails": rails, "poi": pois, "trees": trees, "roadDetail": road_detail, "parking": parking, "busStops": bus_stops,
         "network": {"nodes": nnodes, "links": nlinks, "vtypes": {v: k for k, v in VTYPE.items() if k}},
         "stations": [{"st": s["st"], "lv": s["lv"], "cat": s["cat"], "n": s["n"], "r": ring_dm(s["r"])} for s in spaces],
         "labels": labels,

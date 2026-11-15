@@ -9,7 +9,8 @@ const MAXI = 4000;
 const CAT_W = { '飲食': 1.4, '物販': 1.2, 'サービス': 0.8, 'オフィス': 1.5, '宿泊': 0.7, '公共': 0.8, '医療': 0.6, 'その他': 0.6 };
 
 export function initIndoor(ctx) {
-  const { scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel, getGap, footprintPts, terrainSampler, levelY, renderer } = ctx;
+  const { scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel, getGap, footprintPts, terrainSampler, levelY, renderer, cores: coreData = [] } = ctx;
+  const parseFl = f => { const m = /^B(\d+)/.exec(f); return m ? -Number(m[1]) : Number(String(f).replace(/F.*/, '')) - 1; };
   const S = { on: true, flow: false };
   let B = null;   // 選択中の建物の館内モデル
   const agents = []; let acc = [0, 0, 0], statT = 0;
@@ -46,8 +47,10 @@ export function initIndoor(ctx) {
     const flo = []; let fsum = 0; for (const [fl, zs] of byFloor) { fsum += Math.max(1, zs.reduce((s, z) => s + (CAT_W[z.zone?.category] ?? 0.6), 0) * 0.5); flo.push({ fl, zs, cum: fsum }); }   // 区画のある階は、テナントの数と用途の重みに比例
     const plain = zones.length && (bf?.use === 'ret' || bf?.use === 'att') ? 0 : 1;   // 商業・集客施設で区画が取れているなら、区画の無い階には行かせない
     if (plain) for (let fl = 0; fl < floors; fl++) if (!byFloor.has(fl)) { fsum += 1; flo.push({ fl, zs: null, cum: fsum }); }
-    B = { bid, m, cores, ents, entSum, flo, fsum, floors, base, at, am, nm, len, wid, hasZones: zones.length > 0, bf, per: 1 };
-    buildGrids(sel, zones); points.visible = S.on; prefill(); refreshFlow();
+    // 昇降コア: 公式フロアマップから検出した位置 (data/cores.json) があれば階ごとに使い、無ければ長軸上の仮定位置
+    const real = new Map(); for (const c of coreData) { if (!m.n || !(m.n.includes(c.building) || c.building.includes(m.n))) continue; const fl = parseFl(c.floor); if (!real.has(fl)) real.set(fl, []); real.get(fl).push({ x: c.x, y: c.y, kind: c.kind, name: c.name }); }
+    B = { bid, m, cores, real, ents, entSum, flo, fsum, floors, base, at, am, nm, len, wid, hasZones: zones.length > 0, bf, per: 1 };
+    buildGrids(sel, zones); buildCoreMarks(); points.visible = S.on; prefill(); refreshFlow();
   }
   const floorY = fl => B.base + fl * FLOOR_H + 0.9 + Math.max(0, fl) * getGap();
   function pickTarget() {
@@ -61,7 +64,14 @@ export function initIndoor(ctx) {
   const GC = 1.5, flowGroup = new THREE.Group(); flowGroup.name = 'indoor-flow'; flowGroup.visible = false; scene.add(flowGroup);
   const RAMP = ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#b10026'].map(h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
   const pinPoly = (x, y, poly) => { let ins = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins; } return ins; };
-  function disposeGrids() { for (const o of [...flowGroup.children]) { flowGroup.remove(o); o.geometry.dispose(); o.material.map.dispose(); o.material.dispose(); } }
+  function disposeGrids() { for (const o of [...flowGroup.children]) { flowGroup.remove(o); o.geometry.dispose(); o.material.map?.dispose(); o.material.dispose(); } coreMarks = null; }
+  // 検出した昇降コアの目印 (エレベーター = 青、エスカレーター = 赤紫)
+  let coreMarks = null;
+  function buildCoreMarks() {
+    const list = [...B.real].flatMap(([fl, l]) => l.map(k => ({ fl, ...k }))); if (!list.length) return;
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(list.length * 3), 3)); const col = new Float32Array(list.length * 3); list.forEach((k, i) => { const c = new THREE.Color(k.kind === 'ev' ? '#1f6fff' : '#e0188f'); col.set([c.r, c.g, c.b], i * 3); }); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 9, sizeAttenuation: false, vertexColors: true, depthTest: false, transparent: true })); pts.renderOrder = 17; pts.frustumCulled = false; flowGroup.add(pts); coreMarks = { pts, list };
+  }
   function buildGrids(sel, zones) {
     B.grids = new Map(); const hull = sel.hull; if (!hull || hull.length < 3 || !zones.length) return;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const p of hull) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
@@ -101,7 +111,7 @@ export function initIndoor(ctx) {
   // 動線密度: 各区画へ向かう人と入口を通る人を、通路の経路に沿って足し合わせる (人/時、1.5 m セル)
   function refreshFlow() {
     if (!B?.grids?.size) { if (B) B.flowMax = 0; return; } const r = B.rate || rates(), sh = shares(), io = r[0] + r[1], mv = r[2];
-    const coreOf = (g, k, toCore) => { let best = null, bd = 1e9; for (const c of B.cores) { const ck = snap(g, c[0], c[1]), d = toCore ? field(g, ck)[k] : field(g, k)[ck]; if (d < bd) { bd = d; best = ck; } } return best; };
+    const coreOf = (g, k, toCore) => { let best = null, bd = 1e9; for (const c of (B.real.get(g.fl)?.map(q => [q.x, q.y]) ?? B.cores)) { const ck = snap(g, c[0], c[1]), d = toCore ? field(g, ck)[k] : field(g, k)[ck]; if (d < bd) { bd = d; best = ck; } } return best; };
     const cached = (g, key, mk) => { let v = g.pc.get(key); if (v === undefined) g.pc.set(key, v = mk()); return v; };
     for (const g of B.grids.values()) g.heat.fill(0);
     for (const [z, s] of sh.zones) { const g = B.grids.get(z.fl); if (!g) continue; const door = snap(g, z.zx, z.zy), pc = cached(g, 'z' + door, () => { const c = coreOf(g, door, false); return c == null ? null : pathCells(g, c, door); }); if (pc) { const w = s * (io + mv * 2); for (const k of pc) g.heat[k] += w; } }
@@ -120,9 +130,14 @@ export function initIndoor(ctx) {
   }
   function route(p, q) {
     const segs = []; if (p.fl === q.fl) { legs([p.x, p.y], [q.x, q.y], p.fl, segs); return segs; }
-    let c = B.cores[0], bd = Infinity; for (const k of B.cores) { const d = Math.hypot(k[0] - p.x, k[1] - p.y) + Math.hypot(k[0] - q.x, k[1] - q.y); if (d < bd) { bd = d; c = k; } }
-    const df = Math.abs(q.fl - p.fl), vT = df <= 4 ? df * FLOOR_H / 0.3 : 25 + df * FLOOR_H / 2.5;   // 4 層以内はエスカレーター (0.3 m/s 上昇)、それ以上はエレベーター (待ち 25 秒 + 2.5 m/s)
-    const gp = B.grids?.get(p.fl), gq = B.grids?.get(q.fl), cp = gp ? cellXY(gp, snap(gp, c[0], c[1])) : c, cq = gq ? cellXY(gq, snap(gq, c[0], c[1])) : c;   // コアは歩けるセルへ寄せる
+    const df = Math.abs(q.fl - p.fl), kind = df <= 4 ? 'esc' : 'ev';
+    let c = B.cores[0], c2 = null, bd = Infinity; const rp = B.real.get(p.fl), rq = B.real.get(q.fl);
+    if (rp && rq) {   // 検出済みのコア: 出発階で近いもの (4 層以内はエスカレーター優先) → 到着階ではその真上・真下に近いもの
+      const pick = (list, x, y, x2, y2) => { let b = null, d0 = Infinity; for (const k of list) { const d = Math.hypot(k.x - x, k.y - y) + (x2 == null ? 0 : Math.hypot(k.x - x2, k.y - y2)) + (k.kind === kind ? 0 : 25); if (d < d0) { d0 = d; b = k; } } return b; };
+      const a = pick(rp, p.x, p.y, q.x, q.y), b = pick(rq.filter(k => k.kind === a.kind).length ? rq.filter(k => k.kind === a.kind) : rq, a.x, a.y); c = [a.x, a.y]; c2 = [b.x, b.y];
+    } else for (const k of B.cores) { const d = Math.hypot(k[0] - p.x, k[1] - p.y) + Math.hypot(k[0] - q.x, k[1] - q.y); if (d < bd) { bd = d; c = k; } }
+    const vT = df <= 4 ? df * FLOOR_H / 0.3 : 25 + df * FLOOR_H / 2.5;   // 4 層以内はエスカレーター (0.3 m/s 上昇)、それ以上はエレベーター (待ち 25 秒 + 2.5 m/s)
+    const gp = B.grids?.get(p.fl), gq = B.grids?.get(q.fl), cB = c2 ?? c, cp = gp ? cellXY(gp, snap(gp, c[0], c[1])) : c, cq = gq ? cellXY(gq, snap(gq, cB[0], cB[1])) : cB;   // コアは歩けるセルへ寄せる
     legs([p.x, p.y], cp, p.fl, segs); segs.push({ x0: cp[0], y0: cp[1], f0: p.fl, x1: cq[0], y1: cq[1], f1: q.fl, T: vT }); legs(cq, [q.x, q.y], q.fl, segs); return segs;
   }
   function spawn(kind, progress) {
@@ -143,7 +158,7 @@ export function initIndoor(ctx) {
   }
   let lastHour = -99, lastDay = '';
   function update(dt) {
-    flowGroup.visible = !!(B && S.flow && B.grids?.size); if (flowGroup.visible) for (const g of B.grids.values()) g.mesh.position.y = floorY(g.fl) + 0.04;
+    flowGroup.visible = !!(B && S.flow && (B.grids?.size || coreMarks)); if (flowGroup.visible) { for (const g of B.grids.values()) g.mesh.position.y = floorY(g.fl) + 0.04; if (coreMarks) { const p = coreMarks.pts.geometry.attributes.position; coreMarks.list.forEach((k, i) => p.setXYZ(i, k.x, floorY(k.fl) + 0.6, -k.y)); p.needsUpdate = true; } }
     if (!B || !S.on) return; const ps = people.state;
     if (!ps.on) { if (agents.length) { agents.length = 0; geo.setDrawRange(0, 0); } return; }
     if (Math.abs(ps.hour - lastHour) > 0.3 || ps.day !== lastDay) { prefill(); if (S.flow) refreshFlow(); } else if (Math.abs(ps.hour - lastHour) > 0.05) { B.rate = rates(); if (S.flow) refreshFlow(); }
@@ -162,9 +177,10 @@ export function initIndoor(ctx) {
     statT += dt; if (statT > 0.5) { statT = 0; const el = document.getElementById('indoor-info'); if (el) el.innerHTML = infoHTML(); }
   }
   const fmt = v => Math.round(v).toLocaleString();
+  const coreNote = () => { if (!B) return ''; if (!B.real.size) return `${B.cores.length} か所（位置は仮定）`; let ev = 0, es = 0; for (const l of B.real.values()) for (const k of l) k.kind === 'ev' ? ev++ : es++; return `公式フロアマップから検出（エレベーター ${ev}・エスカレーター ${es}、${B.real.size} 階分）`; };
   function infoHTML() {
     if (!B) return ''; const f = B.bf, r = B.rate || [0, 0, 0];
-    return `館内の人の動き（推計）: 滞在 約 ${fmt(f?.presence ?? 0)} 人 ／ 入館 ${fmt(r[0])}・退館 ${fmt(r[1])}・館内移動 ${fmt(r[2])} 人/時<br>表示 ${fmt(agents.length)} 点（1 点 = ${B.per} 人）／ 入口 ${B.ents.length} か所・昇降コア ${B.cores.length} か所（仮定）<span style="color:#7f93b8"> ●執務階</span><span style="color:#c9d2e3"> ●退館</span> ほかは行き先の用途色`;
+    return `館内の人の動き（推計）: 滞在 約 ${fmt(f?.presence ?? 0)} 人 ／ 入館 ${fmt(r[0])}・退館 ${fmt(r[1])}・館内移動 ${fmt(r[2])} 人/時<br>表示 ${fmt(agents.length)} 点（1 点 = ${B.per} 人）／ 入口 ${B.ents.length} か所・昇降コア ${coreNote()}<span style="color:#7f93b8"> ●執務階</span><span style="color:#c9d2e3"> ●退館</span> ほかは行き先の用途色`;
   }
   function set(o) { const flowOnly = Object.keys(o).every(k => k === 'flow'); Object.assign(S, o); if (S.flow && B) refreshFlow(); if (flowOnly) return; points.visible = S.on && !!B; if (S.on && B) prefill(); else { agents.length = 0; geo.setDrawRange(0, 0); } }
   // 分析用: 階ごと・区画ごとの配分 (行き先に選ばれる割合)。滞在人数や来訪者数に掛けて使う
@@ -173,5 +189,5 @@ export function initIndoor(ctx) {
     let prev = 0; for (const f of B.flo) { const w = (f.cum - prev) / B.fsum; prev = f.cum; floors.set(f.fl, (floors.get(f.fl) ?? 0) + w); if (f.zs) { const tot = f.zs.reduce((s, z) => s + (CAT_W[z.zone?.category] ?? 0.6), 0); for (const z of f.zs) zones.set(z, w * (CAT_W[z.zone?.category] ?? 0.6) / tot); } }
     return { floors, zones };
   }
-  return { setBuilding, update, set, infoHTML, shares, state: S, get count() { return agents.length; }, get model() { return B; }, get flowMax() { return B?.flowMax ?? 0; }, get gridFloors() { return B?.grids ? [...B.grids.values()].map(g => ({ fl: g.fl, open: g.open, cells: g.cells.length })) : []; } };
+  return { setBuilding, update, set, infoHTML, shares, state: S, get count() { return agents.length; }, get model() { return B; }, get flowMax() { return B?.flowMax ?? 0; }, coreNote, get realCores() { return B ? [...B.real].flatMap(([fl, l]) => l.map(k => ({ fl, ...k }))) : []; }, get gridFloors() { return B?.grids ? [...B.grids.values()].map(g => ({ fl: g.fl, open: g.open, cells: g.cells.length })) : []; } };
 }

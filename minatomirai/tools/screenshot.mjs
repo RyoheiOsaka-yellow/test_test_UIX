@@ -124,6 +124,11 @@ await shot('44_people_real', `a.applyTheme('real'); a.setClock(8.5); a.camera.po
   await shot('75_zoning', `a.analysis().set({ layer: 'zoning', diff: 'none' }); ${TOP}`);
   await shot('80_indoor_flow', `const an = a.analysis(), p = a.people(); p.set({ vol: true, agents: true }); an.set({ layer: 'none' }); const i = a.selectByName('MARK IS'); a.setGap(11); a.indoor().set({ flow: true }); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 150, 190, cz + 150); a.controls.target.set(cx, 40, cz);`);
   await page.evaluate(() => { const a = window.__app; a.indoor().set({ flow: false }); a.select(-1); }); }
+{ const OBL = `a.camera.position.set(-560, 620, 760); a.controls.target.set(0, 0, 150);`;
+  await shot('90_bars', `const an = a.analysis(), p = a.people(); a.applyTheme('paper'); a.setClock(13); p.set({ vol: false, agents: false }); an.set({ layer: 'stay', style: 'bars', bmetric: 'none', diff: 'none', split: false }); ${OBL}`);
+  await shot('91_isochrone', `a.analysis().set({ layer: 'access', style: 'contour' }); a.camera.position.set(100, 2500, 700); a.controls.target.set(100, 0, 20);`);
+  await shot('93_flows', `const an = a.analysis(); an.set({ layer: 'none', style: 'flat' }); a.selectByName('MARK IS'); an.set({ flows: true }); a.camera.position.set(-760, 620, 900); a.controls.target.set(60, 40, 160);`);
+  await page.evaluate(() => { const a = window.__app; a.analysis().set({ flows: false }); a.select(-1); a.people().set({ vol: true, agents: true }); }); }
 await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });
 await shot('08_blueprint', ``);
 await page.screenshot({ path: `${out}/09_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));

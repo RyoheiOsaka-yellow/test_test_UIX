@@ -18,6 +18,7 @@ import { initRoadDetail } from './roads.js';
 import { initPeople } from './people.js';
 import { initIndoor } from './indoor.js';
 import { initAnalysis } from './analysis.js';
+import { initFlows } from './flows.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
@@ -256,7 +257,7 @@ FLOORS.forEach(f => { const g = new THREE.Group(); g.name = `floor${f.level}`; g
 
 let LEVEL_H = {};
 let expand = 1.0;            // フロア展開倍率
-let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null; let indoor = null; let analysis = null;
+let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null; let indoor = null; let analysis = null; let flows = null;
 const levelY = (lv, k = expand) => (LEVEL_H[lv] ?? lv * 6) * k;
 
 let buildingMesh = null, buildingMeta = null, buildingStarts = null;
@@ -1684,6 +1685,26 @@ function setClock(h, { fromPlay = false } = {}) {
   if (T().real && realistic) { const now = performance.now(); if (!fromPlay || now - lastSunUpdate > 200) { lastSunUpdate = now; realistic.updateSun(); bloom.enabled = h >= 17.5 || h < 6; } }
   if (people && !fromPlay) people.setHour(h);
 }
+// ---- 表示状態の保存・共有 (URL の #s=… と JSON ファイル) ----
+const encodeState = st => btoa(unescape(encodeURIComponent(JSON.stringify(st)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const decodeState = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));
+function getViewState() {
+  const r1 = v => Math.round(v * 10) / 10, ps = people.state;
+  return { v: 1, th: styleName, h: realState.hour, mo: realState.month, cam: [...camera.position.toArray().map(r1), ...controls.target.toArray().map(r1)], sel: sel.bid >= 0 ? (buildingMeta[sel.bid].n ?? sel.bid) : null, gap: r1(selUniforms.uGap.value),
+    pp: { on: ps.on, day: ps.day, rain: ps.rain, event: ps.event, ribbon: ps.ribbon, signals: ps.signals, agents: ps.agents, vol: ps.vol, look: ps.look, nonRail: ps.nonRail, accel: ps.accel, meshes: ps.meshes }, an: analysis.exportState(), ind: { flow: indoor.state.flow, on: indoor.state.on } };
+}
+function syncPeopleUI() {
+  const $ = id => document.getElementById(id), ps = people.state; $('p-rain').checked = ps.rain; $('p-event').value = ps.event ?? ''; $('p-signal').checked = ps.signals; $('p-agents').checked = ps.agents; $('p-vol').checked = ps.vol; $('p-mesh').checked = ps.meshes; $('p-nonrail').checked = ps.nonRail; $('p-accel').value = ps.accel; $('p-accel-v').textContent = `×${ps.accel}`; $('p-indoor').checked = indoor.state.on;
+  document.querySelectorAll('#p-ribbon button').forEach(b => b.classList.toggle('active', b.dataset.r === ps.ribbon)); document.querySelectorAll('#p-day button').forEach(b => b.classList.toggle('active', b.dataset.day === ps.day)); document.querySelectorAll('#p-look button').forEach(b => b.classList.toggle('active', b.dataset.l === ps.look)); document.querySelectorAll('#flow-presets button').forEach(b => b.classList.toggle('active', b.dataset.h === 'off' && !ps.on));
+}
+function applyViewState(st) {
+  if (!st || typeof st !== 'object') throw new Error('形式が違います'); if (st.th && THEMES[st.th]) applyTheme(st.th);
+  if (st.mo) { const me = document.getElementById('r-month'); me.value = st.mo; me.dispatchEvent(new Event('input')); }
+  if (st.pp) people.set(st.pp); if (typeof st.h === 'number') setClock(st.h); if (st.ind) indoor.set(st.ind); syncPeopleUI();
+  if (st.cam?.length === 6) { camera.position.fromArray(st.cam, 0); controls.target.fromArray(st.cam, 3); controls.update(); introStart = null; fly = null; }
+  if (st.sel != null) { const i = typeof st.sel === 'number' ? st.sel : buildingMeta.findIndex(m => m && m.n === st.sel); if (i >= 0) { selectBuilding(i); if (typeof st.gap === 'number') { selUniforms.uGap.value = st.gap; document.getElementById('floor-gap').value = st.gap; updateSelectionLayout(); } } } else if (sel.bid >= 0) clearSelection();
+  if (st.an) analysis.importState(st.an);
+}
 function initPeopleUI() {
   const $ = id => document.getElementById(id);
   document.querySelectorAll('#flow-presets button').forEach(b => b.addEventListener('click', () => {
@@ -1702,6 +1723,8 @@ function initPeopleUI() {
   document.querySelectorAll('#p-ribbon button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#p-ribbon button').forEach(x => x.classList.toggle('active', x === b)); people.set({ ribbon: b.dataset.r }); }));
   $('p-signal').addEventListener('change', e => people.set({ signals: e.target.checked })); $('p-mesh').addEventListener('change', e => people.set({ meshes: e.target.checked }));
   $('p-indoor').addEventListener('change', e => indoor.set({ on: e.target.checked }));
+  $('p-nonrail').addEventListener('change', e => { people.set({ nonRail: e.target.checked }); if (indoor && sel.bid >= 0) indoor.setBuilding(sel.bid); });
+  document.querySelectorAll('#p-look button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#p-look button').forEach(x => x.classList.toggle('active', x === b)); people.set({ look: b.dataset.l }); }));
 }
 const routeBtn = document.getElementById('btn-route');
 routeBtn.addEventListener('click', () => { routeMode = !routeMode; routeBtn.classList.toggle('active', routeMode); clearRoute(); routeResult.textContent = routeMode ? '始点をクリック（歩行者ネットワーク上の点）' : ''; });
@@ -1785,11 +1808,12 @@ async function init() {
   people = initPeople({ scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, calib: window.__PEOPLE_CALIB || null, getMonth: () => realState.month, onClock: h => setClock(h, { fromPlay: true }),
     extraDest: () => { if (!construction || graph.towerLobby == null) return []; const p = construction.params; const upper = p.floors - p.podFloors - 3, nOff = Math.round(upper * p.officeRatio / 100), tA = (2 * p.towerHalf) ** 2 * 0.9, pA = 4 * p.podHalf * (p.podHalfB ?? p.podHalf * 0.81); return [{ n: TOWER_NAME, x: p.x, y: p.y, node: graph.towerLobby, off: nOff * tA / 22 + pA * p.podFloors / 150, vis: pA * p.podFloors / 12 + (upper - nOff) * tA / 60, food: pA * p.podFloors / 4000 + 6 }]; } });
   people.set({ hour: realState.hour }); people.rebuild(); onTheme(t => people.setTheme(t));
-  indoor = initIndoor({ scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel: () => sel, getGap: () => selUniforms.uGap.value, footprintPts, terrainSampler, levelY, renderer });
+  indoor = initIndoor({ scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel: () => sel, getGap: () => selUniforms.uGap.value, footprintPts, terrainSampler, levelY, renderer, cores: window.__CORES || [] });
   initPeopleUI();
-  analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T, setNavEnabled: v => { activeControls.enabled = v; }, setClock: h => setClock(h), guides: () => [...floorGuide] });
+  flows = initFlows({ scene, people, buildingMeta, terrainSampler });
+  analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T, setNavEnabled: v => { activeControls.enabled = v; }, setClock: h => setClock(h), guides: () => [...floorGuide], flows, share: { get: getViewState, apply: applyViewState, hash: () => '#s=' + encodeState(getViewState()), link: () => location.href.split('#')[0] + '#s=' + encodeState(getViewState()) }, snapshot: () => { composer.render(); try { return canvas.toDataURL('image/jpeg', 0.86); } catch (e) { return null; } }, realMonth: () => realState.month });
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
-  roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState });
+  roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState, graph, carStop: li => people ? people.carStop(li) : false, timeScale: () => people ? people.timeScale() : 1 });
   initRealUI();
   applyTheme(styleName);
   setProgress(1, '完了');
@@ -1797,7 +1821,8 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, indoor: () => indoor, analysis: () => analysis, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  if (location.hash.startsWith('#s=')) { try { applyViewState(decodeState(location.hash.slice(3))); } catch (e) { console.warn('表示状態を復元できませんでした', e); } }
+  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, indoor: () => indoor, analysis: () => analysis, flows: () => flows, getViewState, applyViewState, encodeState, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();

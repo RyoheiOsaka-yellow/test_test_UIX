@@ -21,13 +21,14 @@ let guide = ''; try { guide = readFileSync(join(root, 'data/floorguide.csv'), 'u
 let zones = []; try { zones = JSON.parse(readFileSync(join(root, 'data/zones.json'), 'utf8')); } catch (e) { }
 let peopleCalib = null; try { peopleCalib = JSON.parse(readFileSync(join(root, 'data/people_calib.json'), 'utf8')); } catch (e) { }
 let stats = null; try { stats = JSON.parse(readFileSync(join(root, 'data/stats_mesh.json'), 'utf8')); } catch (e) { }
+let cores = []; try { cores = JSON.parse(readFileSync(join(root, 'data/cores.json'), 'utf8')); } catch (e) { }
 let ground = ''; try { ground = 'data:image/jpeg;base64,' + readFileSync(join(root, 'data/ground.jpg')).toString('base64'); } catch (e) { }
 let underlays = [];
 try {
   underlays = JSON.parse(readFileSync(join(root, 'data/underlays.json'), 'utf8')).map(u => ({ ...u, data: 'data:image/jpeg;base64,' + readFileSync(join(root, 'data/underlays', u.file)).toString('base64') }));
 } catch (e) { }
 const html = readFileSync(join(root, 'src/index.html'), 'utf8')
-  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};window.__UNDERLAYS=${JSON.stringify(underlays)};window.__ZONES=${JSON.stringify(zones)};window.__GROUND=${JSON.stringify(ground)};window.__PEOPLE_CALIB=${JSON.stringify(peopleCalib)};window.__STATS=${JSON.stringify(stats)};`)
+  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};window.__UNDERLAYS=${JSON.stringify(underlays)};window.__ZONES=${JSON.stringify(zones)};window.__GROUND=${JSON.stringify(ground)};window.__PEOPLE_CALIB=${JSON.stringify(peopleCalib)};window.__STATS=${JSON.stringify(stats)};window.__CORES=${JSON.stringify(cores)};`)
   .replace('/*__APP__*/', () => js);
 mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(join(root, 'dist/index.html'), html);

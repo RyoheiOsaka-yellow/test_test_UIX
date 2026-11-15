@@ -23,7 +23,7 @@ const UP = lin('#ff3b30'), DOWN = lin('#2b6cff');
 
 export function initPeople(ctx) {
   const { scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, extraDest = () => [], onClock, calib = null, getMonth = () => 1 } = ctx;
-  const S = { on: true, hour: 15, day: 'weekday', accel: 8, agents: true, vol: true, per: 1, real: false, dark: false, playing: false, rain: false, event: null, ribbon: 'volume', signals: true, meshes: false };
+  const S = { on: true, hour: 15, day: 'weekday', accel: 8, agents: true, vol: true, per: 1, real: false, dark: false, playing: false, rain: false, event: null, ribbon: 'volume', signals: true, meshes: false, nonRail: true, look: 'dots' };
   let model = null, base = null, L = 0, simT = 0;
   let gA, gB, dirX, dirY, hLen, visL, vol, baseVol, acc, sf, crossL, sigOff;
   // ---- 歩行者 ----
@@ -39,6 +39,9 @@ export function initPeople(ctx) {
     transparent: true, depthWrite: false,
   });
   const points = new THREE.Points(geo, pmat); points.frustumCulled = false; points.renderOrder = 6; points.name = 'people'; scene.add(points);
+  // 軌跡: 進行方向の後ろへ伸びる短い線 (速いほど長い。信号待ちの人は点のまま)
+  const tpos = new Float32Array(MAX * 6), tcol = new Float32Array(MAX * 6), tgeo = new THREE.BufferGeometry(); tgeo.setAttribute('position', new THREE.BufferAttribute(tpos, 3).setUsage(THREE.DynamicDrawUsage)); tgeo.setAttribute('color', new THREE.BufferAttribute(tcol, 3).setUsage(THREE.DynamicDrawUsage)); tgeo.setDrawRange(0, 0);
+  const trails = new THREE.LineSegments(tgeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false })); trails.frustumCulled = false; trails.renderOrder = 6; trails.visible = false; trails.name = 'people-trails'; scene.add(trails);
   const body = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.24, 0.95, 2, 6), new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }), MAX);
   body.instanceMatrix.setUsage(THREE.DynamicDrawUsage); body.frustumCulled = false; body.count = 0; body.visible = false; body.name = 'people-body'; scene.add(body);
   { const m = body.instanceMatrix.array; for (let i = 0; i < MAX; i++) { m[i * 16] = m[i * 16 + 5] = m[i * 16 + 10] = m[i * 16 + 15] = 1; } body.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 3), 3); body.instanceColor.setUsage(THREE.DynamicDrawUsage); }
@@ -67,7 +70,7 @@ export function initPeople(ctx) {
     volDirty = true;
   }
   const scenarioOn = () => S.rain || !!S.event;
-  const build = withScenario => buildPeopleModel({ graph, header, buildingMeta, extraDest: extraDest(), calib, scenario: withScenario ? { rain: S.rain, event: S.event } : {} });
+  const build = withScenario => buildPeopleModel({ graph, header, buildingMeta, extraDest: extraDest(), calib, nonRail: S.nonRail, scenario: withScenario ? { rain: S.rain, event: S.event } : {} });
   function rebuildScenario() {   // シナリオだけ変わったとき: 通常時のモデル (比較用) は使い回す
     model = scenarioOn() ? build(true) : base; acc = new Float32Array(model.classes.length);
     profileCache = null; baseProfileCache = null; reset(); volDirty = true; if (S.vol) updateVolumes(); updateStats(true);
@@ -141,7 +144,7 @@ export function initPeople(ctx) {
       while (acc[ci] >= 1 && n < 80) { acc[ci] -= 1; n++; spawn(ci, false); }
       if (acc[ci] > 80) acc[ci] = 0;
     }
-    const links = graph.links, real = S.real, yOff = real ? 0.87 : 1.2, m = body.instanceMatrix.array; let wait = 0;
+    const links = graph.links, real = S.real, yOff = real ? 0.87 : 1.2, m = body.instanceMatrix.array, trailOn = S.look === 'trails' && S.agents; let wait = 0;
     for (let i = 0; i < count; i++) {
       const p = path[i]; let k = step[i], code = p[k], li = code >> 1, l = links[li], s = sArr[i];
       // 信号待ち: 横断歩道の入口 (経路上で直前が横断歩道でないリンク) で赤なら止まる
@@ -160,16 +163,18 @@ export function initPeople(ctx) {
       const x = l.ax + (l.bx - l.ax) * t - dirY[li] * sg * o, yN = l.ay + (l.by - l.ay) * t + dirX[li] * sg * o;   // 左側通行: 進行方向の左へ寄せる
       const y = visL[li] ? gA[li] + (gB[li] - gA[li]) * t + yOff : -9999;
       pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = -yN;
+      if (trailOn) { const tl = hold ? 0 : (10 + spd[i] * 10) * sf[li] * (l.vt ? 0.3 : 1), o6 = i * 6, c = gcol[grp[i]], dim = S.dark ? 0.08 : 0.55; tpos[o6] = x; tpos[o6 + 1] = y; tpos[o6 + 2] = -yN; tpos[o6 + 3] = x - dirX[li] * sg * tl; tpos[o6 + 4] = y; tpos[o6 + 5] = -(yN - dirY[li] * sg * tl); tcol[o6] = c.r; tcol[o6 + 1] = c.g; tcol[o6 + 2] = c.b; tcol[o6 + 3] = c.r * dim + (S.dark ? 0 : 1 - dim); tcol[o6 + 4] = c.g * dim + (S.dark ? 0 : 1 - dim); tcol[o6 + 5] = c.b * dim + (S.dark ? 0 : 1 - dim); }
       if (real) { m[i * 16 + 12] = x; m[i * 16 + 13] = y; m[i * 16 + 14] = -yN; }
     }
     waiting = wait;
     geo.setDrawRange(0, count); geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
+    if (trailOn) { tgeo.setDrawRange(0, count * 2); tgeo.attributes.position.needsUpdate = true; tgeo.attributes.color.needsUpdate = true; }
     if (real) { body.count = count; body.instanceMatrix.needsUpdate = true; body.instanceColor.needsUpdate = true; }
     pmat.uniforms.uScale.value = renderer.domElement.clientHeight / 2;
     statT += dt; if (statT > 0.5) { statT = 0; updateStats(false); }
   }
   function applyVisibility() {
-    points.visible = S.on && S.agents; body.visible = S.on && S.agents && S.real; if (ribbon) ribbon.visible = S.on && S.vol; meshGroup.visible = S.meshes;
+    points.visible = S.on && S.agents; body.visible = S.on && S.agents && S.real; trails.visible = S.on && S.agents && S.look === 'trails'; trails.material.blending = S.dark ? THREE.AdditiveBlending : THREE.NormalBlending; pmat.uniforms.uOpacity.value = S.look === 'trails' ? 0.9 : 0.95; if (ribbon) ribbon.visible = S.on && S.vol; meshGroup.visible = S.meshes;
     pmat.blending = S.dark ? THREE.AdditiveBlending : THREE.NormalBlending; pmat.uniforms.uGain.value = S.dark ? 1.0 : S.real ? 0.9 : 0.7; pmat.uniforms.uMax.value = S.real ? 3.2 : 7; pmat.uniforms.uMin.value = S.dark ? 2.2 : S.real ? 2.0 : 2.8; pmat.uniforms.uSize.value = S.real ? 1.2 : 2.2; pmat.needsUpdate = true;
     rmat.opacity = S.ribbon === 'los' ? 0.6 : S.dark ? 0.75 : S.ribbon === 'diff' ? 0.85 : 0.7;
   }
@@ -177,7 +182,8 @@ export function initPeople(ctx) {
   function setHour(h, soft) { const jump = Math.abs(h - S.hour) > 0.3; S.hour = h; if (!soft && jump) reset(); if (model && S.vol) updateVolumes(); updateStats(true); }
   function set(o) {
     const before = { ...S }; Object.assign(S, o); if (!model) return;
-    if (S.rain !== before.rain || S.event !== before.event) rebuildScenario();
+    if (S.nonRail !== before.nonRail) rebuild();
+    else if (S.rain !== before.rain || S.event !== before.event) rebuildScenario();
     else if (S.day !== before.day) { profileCache = null; baseProfileCache = null; reset(); updateVolumes(); buildMeshOverlay(); }
     else if (S.on !== before.on) reset();
     if (S.ribbon !== before.ribbon) updateVolumes();
@@ -206,7 +212,7 @@ export function initPeople(ctx) {
     const cx = (S.hour / 24 * W).toFixed(1); svg += `<line x1="${cx}" y1="0" x2="${cx}" y2="${H}" stroke="#fff" stroke-width="1"/>`;
     for (const h of [6, 12, 18]) svg += `<text x="${h / 24 * W}" y="${H + 9}" font-size="8" fill="#7d93b5" text-anchor="middle">${h}時</text>`;
     el('p-spark').innerHTML = `<svg viewBox="0 0 ${W} ${H + 11}" width="100%" style="display:block">${svg}</svg><div class="note" style="margin-top:0">歩行中の人数の推移（最大 約 ${fmt(mx)} 人）${bp ? '／破線 = 通常時' : ''}</div>`;
-    el('p-stations').innerHTML = '<tr><th>駅（人/時）</th><th>駅→街</th><th>街→駅</th></tr>' + model.stationFlows(S.hour, d).map(s => `<tr><td>${s.n}${s.assumed ? `<sup>${calib ? '較' : '仮'}</sup>` : ''}</td><td>${fmt(s.toCity)}</td><td>${fmt(s.toStation)}</td></tr>`).join('');
+    el('p-stations').innerHTML = '<tr><th>駅（人/時）</th><th>駅→街</th><th>街→駅</th></tr>' + model.stationFlows(S.hour, d).map(s => `<tr><td>${s.n}${s.assumed ? `<sup>${s.nonRail ? '仮' : calib ? '較' : '仮'}</sup>` : ''}</td><td>${fmt(s.toCity)}</td><td>${fmt(s.toStation)}</td></tr>`).join('');
     // 帯の凡例
     el('p-rlegend').innerHTML = S.ribbon === 'los' ? '<span>混雑度（人/m/分）:</span>' + LOS.map((l, i) => `<span><i style="background:${l.c}"></i>${l.k} ${i === 0 ? '〜23' : i === LOS.length - 1 ? '82〜' : '〜' + l.max}</span>`).join('') + '<span>帯の幅 = 歩道の有効幅員</span>'
       : S.ribbon === 'diff' ? '<span>通常との差（人/時）:</span><span><i style="background:#ff3b30"></i>増える</span><span><i style="background:#2b6cff"></i>減る</span><span>太いほど差が大きい</span>'
@@ -219,9 +225,9 @@ export function initPeople(ctx) {
       const ei = model.eventInfo; if (ei) scn += `<br>${ei.venue} 来場 ${fmt(ei.people)} 人の利用駅: ${ei.split.map(s => `${s.n} ${Math.round(s.share * 100)}%（${s.m} m）`).join('、')}`; else if (S.event) scn += '<br>会場が見つかりません';
     }
     el('p-scn').innerHTML = scn; el('p-scn').style.display = scn ? '' : 'none';
-    if (el('p-calib')) el('p-calib').innerHTML = calib ? `<b>実測データで較正済み</b>（${calib.source}）<br>建物の集客力をメッシュ別の昼間人口に、休日の総量（×${calib.holidayTotal}）と月別係数（${getMonth()}月 ×${(S.day === 'holiday' ? calib.monthHol : calib.monthWk)[getMonth() - 1]}）を実測比に合わせています。横浜駅東口方面は ${fmt(calib.yokoDaily)} 人/日と推定。<br>鉄道で来た人だけで説明できるのは実測の昼間人口の約 ${Math.round(100 / calib.kappa)}% です（残りは車・バス・徒歩など）。時間帯分布は較正できていません（データが昼・深夜の 2 区分のため）。` : '';
+    if (el('p-calib')) el('p-calib').innerHTML = calib ? `<b>実測データで較正済み</b>（${calib.source}）<br>建物の集客力をメッシュ別の昼間人口に、休日の総量（×${calib.holidayTotal}）と月別係数（${getMonth()}月 ×${(S.day === 'holiday' ? calib.monthHol : calib.monthWk)[getMonth() - 1]}）を実測比に合わせています。横浜駅東口方面は ${fmt(calib.yokoDaily)} 人/日と推定。<br>鉄道で来た人だけで説明できるのは実測の昼間人口の約 ${Math.round(100 / calib.kappa)}% です。${S.nonRail ? '残りは駐車場・バス停・範囲の外周から歩く人として加えています（手段の内訳 車 50%・バス 15%・徒歩/自転車 35% は仮定）。' : '残り（車・バス・徒歩など）は流していません。'}時間帯分布は較正できていません（データが昼・深夜の 2 区分のため）。` : '';
   }
   // 建物ごとの出入り (駅との間の歩行者のみ) と滞在人数
   function buildingFlows(b) { if (!model) return null; const d = model.dests.find(x => (b === -2 ? x.extra : x.b === b)); if (!d) return null; const dd = day(); const f = model.destFlows(d.idx, S.hour, dd); let peak = 0, ph = 0; for (let h = 5; h < 24; h += 0.5) { const g = model.destFlows(d.idx, h, dd); if (g.arrive + g.leave > peak) { peak = g.arrive + g.leave; ph = h; } } return { ...f, peak, peakHour: ph, use: d.u, dest: d, presence: Math.max(0, model.presence(S.hour, dd)[d.idx]) }; }
-  return { rebuild, update, refreshHeights, setTheme, setHour, set, monthChanged, state: S, buildingFlows, day, dayOf: key => dayContext(key, getMonth(), calib), stat, get model() { return model; }, get base() { return base; }, get count() { return count; }, get waiting() { return waiting; }, get maxVol() { return stat.maxVol; }, get simT() { return simT; } };
+  return { rebuild, update, refreshHeights, setTheme, setHour, set, monthChanged, state: S, buildingFlows, day, graphNode: i => graph.nodes[i], carStop: li => S.on && S.signals && ((simT + sigOff[li]) % SIG_CYCLE) < SIG_GREEN + 3, timeScale: () => !S.on ? 1 : S.playing ? Math.max(S.accel, 40) : S.accel, dayOf: key => dayContext(key, getMonth(), calib), stat, get model() { return model; }, get base() { return base; }, get count() { return count; }, get waiting() { return waiting; }, get maxVol() { return stat.maxVol; }, get simT() { return simT; } };
 }

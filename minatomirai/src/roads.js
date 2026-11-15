@@ -25,11 +25,11 @@ function lightGeometry() {
 }
 
 export function initRoadDetail(ctx) {
-  const { header, blobs, terrainSampler, shapeFromRings, flatGeometry, group, bldUniforms, realState } = ctx;
+  const { header, blobs, terrainSampler, shapeFromRings, flatGeometry, group, bldUniforms, realState, graph = null, carStop = () => false, timeScale = () => 1 } = ctx;
   const rd = header.roadDetail; if (!rd) return null;
   let built = false, on = false;
   const surf = new THREE.Group(), marksG = new THREE.Group(), carsG = new THREE.Group(); group.add(surf, marksG, carsG);
-  let cars = null, lights = null, carList = [];
+  let cars = null, lights = null, carList = [], laneList = [], stopped = 0;
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(1, 1, 1), P = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
 
   function drape(g, lift) {
@@ -72,13 +72,31 @@ export function initRoadDetail(ctx) {
       }
       if (pts.length < 2) continue;
       const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
-      lanes.push({ pts, cum, len: cum[cum.length - 1], v: ln.v * (0.85 + Math.random() * 0.3) });
+      lanes.push({ pts, cum, len: cum[cum.length - 1], v: ln.v * (0.85 + Math.random() * 0.3), bridge: !!ln.b, stops: [], cars: [] });
+    }
+    // 横断歩道との交点 = 停止位置。歩行者信号が青の間、車はその手前で止まる (橋の上の車線は対象外)
+    if (graph) {
+      const xs = graph.links.map((l, i) => ({ l, i })).filter(o => o.l.cross && graph.nodes[o.l.a].lv === 0);
+      for (const ln of lanes) {
+        if (ln.bridge) continue; const P2 = ln.pts;
+        for (let k = 0; k < P2.length - 1; k++) {
+          const ax = P2[k].x, ay = -P2[k].z, bx = P2[k + 1].x, by = -P2[k + 1].z, minx = Math.min(ax, bx) - 1, maxx = Math.max(ax, bx) + 1, miny = Math.min(ay, by) - 1, maxy = Math.max(ay, by) + 1;
+          for (const { l, i } of xs) {
+            if (Math.max(l.ax, l.bx) < minx || Math.min(l.ax, l.bx) > maxx || Math.max(l.ay, l.by) < miny || Math.min(l.ay, l.by) > maxy) continue;
+            const rx = bx - ax, ry = by - ay, qx = l.bx - l.ax, qy = l.by - l.ay, den = rx * qy - ry * qx; if (Math.abs(den) < 1e-6) continue;
+            const t = ((l.ax - ax) * qy - (l.ay - ay) * qx) / den, u = ((l.ax - ax) * ry - (l.ay - ay) * rx) / den; if (t < 0 || t > 1 || u < -0.1 || u > 1.1) continue;
+            ln.stops.push({ s: ln.cum[k] + t * (ln.cum[k + 1] - ln.cum[k]), li: i });
+          }
+        }
+        ln.stops.sort((a, b) => a.s - b.s);
+      }
     }
     carList = [];
     for (const ln of lanes) {
       const nCar = Math.floor(ln.len / 55 + Math.random() * 0.9); const gap = ln.len / Math.max(nCar, 1);
-      for (let i = 0; i < nCar; i++) carList.push({ ln, s: (i + Math.random() * 0.5) * gap, c: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)] });
+      for (let i = 0; i < nCar; i++) { const c = { ln, s: (i + Math.random() * 0.5) * gap, v: ln.v, c: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], i: carList.length }; carList.push(c); ln.cars.push(c); }
     }
+    laneList = lanes;
     const N = carList.length;
     cars = new THREE.InstancedMesh(carGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.5, envMapIntensity: 1.2 }), N);
     lights = new THREE.InstancedMesh(lightGeometry(), new THREE.MeshBasicMaterial({ vertexColors: true }), N);
@@ -90,15 +108,31 @@ export function initRoadDetail(ctx) {
     console.log(`road detail: lanes ${lanes.length}, cars ${N}, marks ${n}; ms ${JSON.stringify(tm)} total ${Math.round(performance.now() - T0)}`);
   }
   const dir = new THREE.Vector3();
+  // 車の動き: 車線ごとに前の車との車間を保ち、赤信号 (歩行者が青) の横断歩道の手前で止まる。時間の進み方は歩行者と同じ倍率
+  function drive(h) {
+    let st = 0;
+    for (const ln of laneList) {
+      const cs = ln.cars, n = cs.length; if (!n) continue; if (n > 1) cs.sort((a, b) => a.s - b.s);
+      for (let k = 0; k < n; k++) {
+        const c = cs[k]; let lim = Infinity;
+        if (n > 1) { const ld = cs[(k + 1) % n]; lim = ((ld.s - c.s + ln.len) % ln.len) - 7.5; }
+        for (const sp of ln.stops) { const d = sp.s - 7 - c.s; if (d < -2.5) continue; if (carStop(sp.li)) { if (d < lim) lim = d; } break; }
+        const vdes = Math.min(ln.v, Math.sqrt(2 * 2.5 * Math.max(0, lim - 0.5))), dv = vdes - c.v; c.v = Math.max(0, c.v + Math.max(-7 * h, Math.min(2.2 * h, dv))); if (c.v < 0.3 && lim < 3) st++;
+      }
+      for (const c of cs) { c.s += c.v * h; if (c.s >= ln.len) c.s -= ln.len; }
+    }
+    stopped = st;
+  }
   function step(dt) {
     if (!cars) return;
+    let h = dt * timeScale(); while (h > 1e-4) { const q = Math.min(h, 0.4); drive(q); h -= q; }
     for (let i = 0; i < carList.length; i++) {
-      const c = carList[i], ln = c.ln; c.s += ln.v * dt; if (c.s >= ln.len) c.s -= ln.len;
+      const c = carList[i], ln = c.ln;
       // 区間を二分探索
       let lo = 0, hi = ln.cum.length - 1; while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (ln.cum[mid] <= c.s) lo = mid; else hi = mid; }
       const a = ln.pts[lo], b = ln.pts[lo + 1] || a; const segL = ln.cum[lo + 1] - ln.cum[lo] || 1; const t = (c.s - ln.cum[lo]) / segL;
       P.lerpVectors(a, b, t); dir.subVectors(b, a); dir.y = 0; if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0); dir.normalize();
-      Q.setFromAxisAngle(UP, Math.atan2(-dir.z, dir.x)); M.compose(P, Q, S); cars.setMatrixAt(i, M); lights.setMatrixAt(i, M);
+      Q.setFromAxisAngle(UP, Math.atan2(-dir.z, dir.x)); M.compose(P, Q, S); cars.setMatrixAt(c.i, M); lights.setMatrixAt(c.i, M);
     }
     cars.instanceMatrix.needsUpdate = true; lights.instanceMatrix.needsUpdate = true;
   }
@@ -107,5 +141,5 @@ export function initRoadDetail(ctx) {
   }
   function enable(v) { on = v; if (v && !built) build(); group.visible = v; applyOptions(); }
   function update(dt) { if (!on || !cars || !carsG.visible) return; step(dt); lights.visible = bldUniforms.uNight.value > 0.5; }
-  return { enable, update, applyOptions, get cars() { return cars; } };
+  return { enable, update, applyOptions, get cars() { return cars; }, get stopped() { return stopped; }, get stopCount() { return laneList.reduce((a, l) => a + l.stops.length, 0); } };
 }
