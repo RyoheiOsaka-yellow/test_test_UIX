@@ -6,6 +6,8 @@
   "multi": 1306,
   "known": 9759,
   "knownCount": 16,
+  "officialCount": 9,
+  "official": 7794,
   "ratio": 0.514,
   "otherRaw": 23915,
   "other": 12296,
@@ -27,19 +29,19 @@
    {
     "name": "MARK IS みなとみらい",
     "capacity": 900,
-    "kind": "案内サイト",
+    "kind": "公式",
     "est": 605
    },
    {
     "name": "横浜ワールドポーターズ",
     "capacity": 800,
-    "kind": "案内サイト",
+    "kind": "公式",
     "est": 1064
    },
    {
     "name": "みなとみらい公共駐車場（パシフィコ横浜）",
     "capacity": 1154,
-    "kind": "案内サイト",
+    "kind": "公式",
     "est": 2452
    },
    {
@@ -81,7 +83,7 @@
    {
     "name": "そごうパーキング館（横浜新都市ビル）",
     "capacity": 560,
-    "kind": "案内サイト",
+    "kind": "公式",
     "est": 984
    },
    {
@@ -105,7 +107,7 @@
    {
     "name": "横浜市馬車道地下駐車場",
     "capacity": 200,
-    "kind": "案内サイト",
+    "kind": "公式",
     "est": null
    }
   ],

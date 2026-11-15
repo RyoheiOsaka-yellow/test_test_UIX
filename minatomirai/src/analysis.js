@@ -9,7 +9,7 @@ import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { WALK_SPEED } from './people_model.js';
-import { LOS } from './people.js';
+import { LOS, SIG_CYCLE, SIG_GREEN } from './people.js';
 
 const BOX = [-1300, -1350, 1500, 1200], CELL = 10, NX = (BOX[2] - BOX[0]) / CELL, NY = (BOX[3] - BOX[1]) / CELL;
 const RAMPS = {
@@ -38,11 +38,11 @@ export const CATALOG = [
   { s: 'use', n: '各施設の公式フロアガイド（MARK IS、ランドマークプラザ、クイーンズスクエア、東急スクエア）', by: '各施設', g: '階・区画・店舗・昇降設備の記号', u: '建物内のテナント配置、区画形状。MARK IS はエレベーター・エスカレーターの位置も画像から検出' },
   { s: 'use', n: 'OpenStreetMap の駐車場・バス停', by: 'OpenStreetMap contributors', g: '点（駐車場 397・バス停 101）', u: '鉄道以外で来る人の発着点。駐車場は面積から収容台数も見積もる' },
   { s: 'use', n: '国土数値情報 バスルート (N07) 2011年度', by: '国土交通省', g: '系統別の線（平日・土曜・日祝の運行本数）', u: 'バスで来る人の量（範囲内 176 系統・平日 4,658 便）' },
-  { s: 'use', n: '主要施設の駐車場の収容台数', by: '各施設の公式サイト・駐車場案内サイト', g: '施設ごと（16 施設・計 9,759 台）', u: '車で来る人の量。台数が分からない施設は、延床からの見積もりに実数との比（0.51）を掛けて補正' },
+  { s: 'use', n: '主要施設の駐車場の収容台数', by: '各施設の公式サイト・駐車場案内サイト', g: '施設ごと（16 施設・計 9,759 台。うち 9 施設 7,794 台は公式情報で確認）', u: '車で来る人の量。台数が分からない施設は、延床からの見積もりに実数との比（0.51）を掛けて補正' },
   { s: 'use', n: 'みなとみらい公共駐車場の利用実績', by: '横浜市（市会資料）', g: '年間の駐車台数（2012年度 369,328 台 / 収容 1,154 台）', u: '駐車場の回転率（0.88 回/日）' },
   { s: 'ref', n: 'みなとみらい 21 地区の来街者数', by: '横浜市 都市整備局（記者発表）', g: '地区全体の年間値（2024年 約 8,260 万人、2025年から人流データで約 1 億 180 万人）', u: '手段別の内訳は公表されていないため、総量の目安としてのみ参照' },
   { s: 'use', n: 'PLATEAU 都市計画決定情報（用途地域・指定容積率）', by: '国土交通省 都市局', g: '面（MVT）→ 10 m 格子', u: '用途地域と指定容積率のヒートマップ' },
-  { s: 'can', n: '横浜市営バス GTFS-JP（現行ダイヤ）', by: '横浜市交通局 / 公共交通オープンデータセンター', g: '便ごとの停留所と時刻', u: '利用者登録で発行されるアクセストークンが必要。取り込みの仕組み（tools/fetch_gtfs_bus.py）は用意済みで、取得すれば 2011 年度の本数を現行の便数と時間帯別の分布に置き換えられる' },
+  { s: 'can', n: '横浜市営バス GTFS-JP（現行ダイヤ）', by: '横浜市交通局 / 公共交通オープンデータセンター', g: '便ごとの停留所と時刻', u: '利用者登録で発行されるアクセストークンが必要。取り込みの仕組み（tools/fetch_gtfs_bus.py）は用意済みで、取得すれば 2011 年度の本数を現行の便数と時間帯別の分布に置き換えられる。京急・相鉄・神奈中の GTFS は同センターに掲載が無い' },
   { s: 'can', n: 'PLATEAU 津波・高潮・洪水 浸水想定区域モデル（面）', by: '国土交通省 都市局', g: '面（3D Tiles）', u: '未使用。建物属性の浸水深で代用している' },
   { s: 'use', n: '経済センサス 500m メッシュ 産業小分類（e-Stat 統計GIS 表 T001164）', by: '総務省・経済産業省', g: '500m メッシュ・産業小分類の一部', u: '宿泊・集客施設・百貨店の従業者数、病院・診療所の数。飲食店（食堂・専門料理店など）はこの表に含まれない' },
   { s: 'can', n: '経済センサス 500m メッシュ 従業者規模別（表 T001165）', by: '総務省・経済産業省', g: '500m メッシュ', u: '未使用' },
@@ -57,7 +57,7 @@ export const CATALOG = [
 
 export function initAnalysis(ctx) {
   const { scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats, calib, getCamera, getSel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel, guideFor, poiOf, onTheme, setNavEnabled = () => {}, setClock = () => {}, guides = () => [], flows = null, share = null, snapshot = () => null, realMonth = () => 1 } = ctx;
-  const S = { layer: 'none', opacity: 0.8, bmetric: 'none', tab: 'heat', floorHeat: false, dark: false, open: true, diff: 'none', split: false, layer2: 'emp', splitX: 0.5, scUnit: 'mesh', scX: 'emp', scY: 'stay', range: null, tsTarget: 'all', tsPoint: null, tsOther: true, style: 'flat', flows: false, tsPolar: false, multi: false };
+  const S = { layer: 'none', opacity: 0.8, bmetric: 'none', tab: 'heat', floorHeat: false, dark: false, open: true, diff: 'none', split: false, layer2: 'emp', splitX: 0.5, scUnit: 'mesh', scX: 'emp', scY: 'stay', range: null, tsTarget: 'all', tsPoint: null, tsOther: true, style: 'flat', flows: false, tsPolar: false, multi: false, waitSel: null };
   const $ = id => document.getElementById(id);
   // ---- ヒートマップの面 (地形に沿わせる) ----
   const data = new Uint8Array(NX * NY * 4), tex = new THREE.DataTexture(data, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType); tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
@@ -254,19 +254,64 @@ export function initAnalysis(ctx) {
     el.innerHTML = `<div class="an-kpis">${kpi('歩行中', fmtN(walking), '人', 'モデル ' + hourTxt())}${kpi('建物に滞在', fmtN(stay), '人', 'モデル（駅来訪）')}${kpi(`実測 昼間人口（${hol ? '休日' : '平日'}）`, fmtN(obs), '人', '人流オープンデータ')}${kpi('夜間人口', fmtN(pop), '人', '国勢調査 2020')}${kpi('従業者数', fmtN(emp), '人', '経済センサス')}${kpi('津波 0.5m 以上の建物', fmtN(rb), '棟', `滞在 ${fmtN(rp)} 人（モデル）`)}</div>
       <div class="sec-title" style="margin-top:6px">滞在人数の多い建物（${hourTxt()}・モデル）</div><table class="p-table an-click">${top.map((o, k) => `<tr data-b="${o.dd.b}"><td>${k + 1}. ${o.dd.n ?? '（名称なし）'}</td><td>${USE[o.dd.u]?.[0] ?? ''}</td><td>${fmtN(o.p)}</td></tr>`).join('')}</table>
       <div class="sec-title" style="margin-top:6px">通行量の多い区間（人/時・混雑度）</div><table class="p-table an-click">${picks.map((p, k) => `<tr data-x="${p.x}" data-y="${p.y}"><td>${k + 1}. ${p.nm ? p.nm + ' 付近' : `(${Math.round(p.x)}, ${Math.round(p.y)})`}${p.lv ? `（${p.lv > 0 ? 'デッキ' : '地下'}）` : ''}</td><td style="color:${p.los.c}">${p.los.k}</td><td>${fmtN(p.v)}</td></tr>`).join('')}</table>
+      ${waitHTML()}
       ${sankeyHTML()}
       ${originHTML()}
-      <div class="btn-row" style="margin-top:6px"><button id="an-x-b">建物指標 CSV</button><button id="an-x-l">区間 GeoJSON</button><button id="an-x-m">メッシュ CSV</button></div>
+      <div class="btn-row" style="margin-top:6px"><button id="an-x-b">建物指標 CSV</button><button id="an-x-l">区間 GeoJSON</button><button id="an-x-m">メッシュ CSV</button><button id="an-x-w">信号待ち CSV</button></div>
       <div class="an-share"><div class="sec-title">表示状態の保存・共有</div><div class="btn-row" style="margin:2px 0"><button id="an-s-link">リンクをコピー</button><button id="an-s-save">状態を保存</button><button id="an-s-load">読み込む</button></div><div class="btn-row" style="margin:2px 0"><button id="an-s-report">レポートを出力（地図・表・グラフを 1 つの HTML に）</button></div><div id="an-s-msg" class="note" style="margin-top:0"></div></div>
       <div class="note" style="margin-top:0">行をクリックするとその場所へ移動します。集計の範囲は対象範囲（約 2.8 × 2.55 km）にかかるメッシュの合計で、範囲外を含みます。</div>`;
     el.querySelectorAll('tr[data-b]').forEach(tr => tr.addEventListener('click', () => { const b = Number(tr.dataset.b), m = buildingMeta[b]; selectBuilding(b); const x = m.c[0] / 10, z = -m.c[1] / 10, h = (m.h ?? 40); flyTo(new THREE.Vector3(x - 180 - h * 0.5, 120 + h * 0.8, z + 200 + h * 0.5), new THREE.Vector3(x, h * 0.35, z)); }));
     el.querySelectorAll('tr[data-x]').forEach(tr => tr.addEventListener('click', () => { const x = Number(tr.dataset.x), z = -Number(tr.dataset.y); flyTo(new THREE.Vector3(x - 90, 130, z + 110), new THREE.Vector3(x, 0, z)); }));
     $('an-x-b').addEventListener('click', exportBuildings); $('an-x-l').addEventListener('click', exportLinks); $('an-x-m').addEventListener('click', exportMesh);
+    $('an-x-w').addEventListener('click', exportWaits);
+    el.querySelectorAll('tr[data-wk]').forEach(tr => tr.addEventListener('click', () => { const x = Number(tr.dataset.wx), z = -Number(tr.dataset.wy); S.waitSel = Number(tr.dataset.wk); people.set({ waits: true }); const cb = document.getElementById('p-waits'); if (cb) cb.checked = true; flyTo(new THREE.Vector3(x - 110, 170, z + 140), new THREE.Vector3(x, 0, z)); renderRank(); }));
     const msg = t => { $('an-s-msg').textContent = t; };
     $('an-s-link').addEventListener('click', () => { if (!share) return; const u = share.link(); (navigator.clipboard?.writeText(u) ?? Promise.reject()).then(() => msg('リンクをコピーしました。開くと同じ表示になります。'), () => msg(u)); });
     $('an-s-save').addEventListener('click', () => { if (share) { download('minatomirai_view.json', JSON.stringify(share.get(), null, 1), 'application/json'); msg('表示状態を JSON で保存しました。'); } });
     $('an-s-load').addEventListener('click', () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.onchange = () => inp.files[0]?.text().then(t => { try { share.apply(JSON.parse(t.replace(/^\ufeff/, ''))); msg('読み込みました。'); } catch (e) { msg('読み込めませんでした: ' + e.message); } }); inp.click(); });
     $('an-s-report').addEventListener('click', () => { makeReport(); msg('レポートを出力しました。'); });
+  }
+  // ---- 信号待ち (交差点ごとの推計) ----
+  // 横断歩道 = 横断歩道のリンクが節点でつながったまとまり。その通行量 q (人/秒) から、到着が一様だとして
+  //   平均の待ち人数 = q × R² / (2C)、赤の終わりの最大 = q × R   (C = 周期 90 秒、R = 赤の長さ 52 秒)
+  // を出し、約 40 m の升目で交差点にまとめる。歩行者を動かして数える「信号待ちの柱」と同じ仮定の、ばらつきの無い値
+  const WAIT_CELL = 40, RED = SIG_CYCLE - SIG_GREEN; let crosswalks = null, waitCache = null;
+  function buildCrosswalks() {
+    const par = new Map(), find = v => { let r = v; while (par.get(r) !== r) r = par.get(r); par.set(v, r); return r; };
+    const ids = []; graph.links.forEach((l, i) => { if (!l.cross) return; ids.push(i); for (const v of [l.a, l.b]) if (!par.has(v)) par.set(v, v); par.set(find(l.a), find(l.b)); });
+    const by = new Map(); for (const i of ids) { const r = find(graph.links[i].a); let c = by.get(r); if (!c) by.set(r, c = { links: [], x: 0, y: 0 }); const l = graph.links[i]; c.links.push(i); c.x += (l.ax + l.bx) / 2; c.y += (l.ay + l.by) / 2; }
+    crosswalks = [...by.values()].map(c => ({ links: c.links, x: c.x / c.links.length, y: c.y / c.links.length, key: Math.round(c.x / c.links.length / WAIT_CELL) * 8192 + Math.round(c.y / c.links.length / WAIT_CELL) }));
+  }
+  const nameNear = (x, y, lim = 120) => { let nm = '', bd = lim; for (const dd of people.model.dests) { if (!dd.n || dd.n === '公園・緑地' || dd.extra) continue; const q = Math.hypot(dd.x - x, dd.y - y); if (q < bd) { bd = q; nm = dd.n; } } return nm; };
+  // その時刻の交差点ごとの値 (平均の待ち人数の多い順)
+  function waitStats(hour = people.state.hour, d = day()) {
+    if (!crosswalks) buildCrosswalks(); const vol = new Float32Array(graph.links.length); people.model.volumes(hour, d, vol); const cells = new Map();
+    for (const c of crosswalks) { let v = 0; for (const i of c.links) if (vol[i] > v) v = vol[i]; if (v < 1) continue; let e = cells.get(c.key); if (!e) cells.set(c.key, e = { key: c.key, x: 0, y: 0, n: 0, flow: 0 }); e.x += c.x; e.y += c.y; e.n++; e.flow += v; }
+    return [...cells.values()].map(e => { const q = e.flow / 3600; return { key: e.key, x: e.x / e.n, y: e.y / e.n, n: e.n, flow: e.flow, avg: q * RED * RED / (2 * SIG_CYCLE), peak: q * RED }; }).sort((a, b) => b.avg - a.avg);
+  }
+  // 1 日の推移 (30 分ごと): 全体の平均待ち人数と、交差点ごとの値。条件が変わるまで使い回す
+  function waitSeries() {
+    const ps = people.state, sig = [ps.day, ps.rain, ps.event, ps.nonRail, realMonth?.()].join('|'), model = people.model; if (waitCache?.sig === sig && waitCache.model === model) return waitCache;
+    const d = day(), hs = [], total = [], per = new Map();
+    for (let h = 0.25; h < 24; h += 0.5) { const st = waitStats(h, d); hs.push(h); total.push(st.reduce((a, q) => a + q.avg, 0)); for (const q of st) { let arr = per.get(q.key); if (!arr) per.set(q.key, arr = new Float32Array(48)); arr[hs.length - 1] = q.avg; } }
+    return (waitCache = { sig, model, hs, total, per });
+  }
+  function waitHTML() {
+    if (!people.state.signals) return '<div class="sec-title" style="margin-top:6px">信号待ちの多い交差点</div><div class="note" style="margin-top:0">「信号待ち・混雑による減速」を入れると表示します。</div>';
+    const st = waitStats(), top = st.slice(0, 10), tot = st.reduce((a, q) => a + q.avg, 0), ser = waitSeries(), selKey = S.waitSel != null && ser.per.has(S.waitSel) ? S.waitSel : null, own = selKey != null ? ser.per.get(selKey) : null;
+    const W = 300, H = 64, mx = Math.max(1, ...ser.total), my = own ? Math.max(0.5, ...own) : 1, X = h => h / 24 * W, line = (arr, m, col, wd) => `<polyline fill="none" stroke="${col}" stroke-width="${wd}" points="${ser.hs.map((h, i) => `${X(h).toFixed(1)},${(H - arr[i] / m * (H - 6)).toFixed(1)}`).join(' ')}"/>`;
+    let svg = [6, 12, 18].map(h => `<line x1="${X(h)}" y1="0" x2="${X(h)}" y2="${H}" stroke="rgba(120,180,255,0.15)"/><text x="${X(h)}" y="${H + 10}" font-size="8" fill="#7d93b5" text-anchor="middle">${h}時</text>`).join('') + line(ser.total, mx, '#4da3ff', 1.6) + (own ? line(own, my, '#ffb347', 1.6) : '') + `<line x1="${X(people.state.hour)}" y1="0" x2="${X(people.state.hour)}" y2="${H}" stroke="#00e5ff" stroke-dasharray="3 3"/>`;
+    const selRow = selKey != null ? st.find(q => q.key === selKey) : null;
+    return `<div class="sec-title" style="margin-top:6px">信号待ちの多い交差点（${hourTxt()}・推計）</div>
+      <table class="p-table an-click"><tr><th>交差点</th><th>平均</th><th>最大</th><th>横断 人/時</th></tr>${top.map((q, k) => { const nm = nameNear(q.x, q.y); return `<tr data-wk="${q.key}" data-wx="${q.x}" data-wy="${q.y}" class="${q.key === selKey ? 'sel' : ''}"><td>${k + 1}. ${nm ? nm + ' 付近' : `(${Math.round(q.x)}, ${Math.round(q.y)})`}</td><td>${q.avg.toFixed(1)}</td><td>${fmtN(q.peak)}</td><td>${fmtN(q.flow)}</td></tr>`; }).join('')}</table>
+      <svg viewBox="0 0 ${W} ${H + 12}" width="100%" style="display:block;margin-top:4px">${svg}</svg>
+      <div class="legend" style="margin-top:0"><span><i style="background:#4da3ff"></i>全体の平均待ち人数（最大 ${fmtN(mx)} 人）</span>${own ? `<span><i style="background:#ffb347"></i>選んだ交差点（最大 ${my.toFixed(1)} 人${selRow ? '・いま ' + selRow.avg.toFixed(1) + ' 人' : ''}）</span>` : ''}</div>
+      <div class="note" style="margin-top:0">いま全体で平均 約 ${fmtN(tot)} 人が信号を待っています（${st.length} 交差点）。「平均」は 1 周期をならした待ち人数、「最大」は赤の終わりの人数です。周期 ${SIG_CYCLE} 秒・青 ${SIG_GREEN} 秒をすべての横断歩道に仮定し、到着は一様としています。行をクリックすると、その交差点へ移動して 1 日の推移を重ねます。</div>`;
+  }
+  function exportWaits() {
+    const st = waitStats(), ser = waitSeries(), rows = [['rank', 'near', 'lon', 'lat', 'crosswalks', 'crossing_per_h', 'avg_waiting', 'peak_queue', 'hour', 'day', ...Array.from({ length: 24 }, (_, h) => `avg_${String(h).padStart(2, '0')}h`)]];
+    st.forEach((q, k) => { const [lo, la] = lonlat(q.x, q.y), a = ser.per.get(q.key); rows.push([k + 1, nameNear(q.x, q.y), lo.toFixed(6), la.toFixed(6), q.n, Math.round(q.flow), q.avg.toFixed(2), q.peak.toFixed(1), hourTxt(), people.state.day, ...Array.from({ length: 24 }, (_, h) => a ? ((a[h * 2] + a[h * 2 + 1]) / 2).toFixed(2) : 0)]); });
+    download(`minatomirai_signal_wait_${hourTxt().replace(':', '')}.csv`, csv(rows), 'text/csv');
   }
   // 来訪者の発地構成 (人流オープンデータ 市区町村単位発地別)。区単位の値で、対象範囲より広い
   function originHTML() {
@@ -479,7 +524,7 @@ export function initAnalysis(ctx) {
       ${f.next.length ? `<div class="sec-title" style="margin-top:6px">次に向かう先（この建物を出た人の行き先の割合）</div><table class="p-table an-click">${f.next.map(q => `<tr data-b="${q.b}"><td><i class="an-dot" style="background:${q.kind === 'stroll' ? '#9a7bff' : '#ff6f91'}"></i>${q.n}</td><td>${q.kind === 'stroll' ? '回遊' : '昼食'}</td><td>${Math.round(q.p * 100)}%</td></tr>`).join('')}</table>` : '<div class="note">回遊・昼食の起点になるほどの集客力・就業者数がないため、次の行き先は出ません。</div>'}`;
   }
   // ---- 表示状態の保存・共有とレポート ----
-  const STATE_KEYS = ['layer', 'opacity', 'bmetric', 'tab', 'floorHeat', 'diff', 'split', 'layer2', 'splitX', 'scUnit', 'scX', 'scY', 'range', 'tsTarget', 'tsPoint', 'tsOther', 'style', 'flows', 'tsPolar', 'multi'];
+  const STATE_KEYS = ['layer', 'opacity', 'bmetric', 'tab', 'floorHeat', 'diff', 'split', 'layer2', 'splitX', 'scUnit', 'scX', 'scY', 'range', 'tsTarget', 'tsPoint', 'tsOther', 'style', 'flows', 'tsPolar', 'multi', 'waitSel'];
   const exportState = () => Object.fromEntries(STATE_KEYS.map(k => [k, S[k]]));
   function importState(o) {
     if (!o) return; const st = {}; for (const k of STATE_KEYS) if (k in o) st[k] = o[k]; if (st.tsPoint) { pointMark.position.set(st.tsPoint.x, terrainSampler(st.tsPoint.x, st.tsPoint.y) + 2.5, -st.tsPoint.y); pointMark.visible = true; }
@@ -601,5 +646,5 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
     if ('style' in o || 'tsPolar' in o || 'multi' in o) { syncSeg(); restyle(); renderLegend(); renderMulti(); } if ('flows' in o) syncFlows();
     if ('tsTarget' in o) { if ($('an-ts-target')) $('an-ts-target').value = S.tsTarget; } if ('tab' in o) setTab(S.tab); else if (S.tab === 'ts') renderTS(); else if (S.tab === 'cmp') renderScatter(); if ('floorHeat' in o) { applyFloorHeat(); renderBuilding(); }
   };
-  return { update, onSelect, set, state: S, LAYERS, BM, floorStats, exportBuildings, exportLinks, exportMesh, capturing: () => capMode !== null || justCaptured, seriesOf, scatterData, exportState, importState, makeReport, sankeyHTML, get current() { return cur; }, get current2() { return cur2; } };
+  return { update, onSelect, set, state: S, LAYERS, BM, floorStats, exportBuildings, exportLinks, exportMesh, exportWaits, waitStats, waitSeries, capturing: () => capMode !== null || justCaptured, seriesOf, scatterData, exportState, importState, makeReport, sankeyHTML, get current() { return cur; }, get current2() { return cur2; } };
 }

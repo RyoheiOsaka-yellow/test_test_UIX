@@ -1,6 +1,7 @@
 // ガイドツアー: 「朝の通勤」「昼の滞在」「K アリーナ終演」などの場面を順に見せる。
 // 場面ごとに 視点・時刻・テーマ・人流と分析の表示 を切り替え、画面下に説明文を出す。終了すると開始前の表示に戻す。
-// 「編集」で、今の表示を場面として追加・上書きし、題と説明文を書き、並べ替えて、JSON ファイルに保存・読込できる。
+// 「編集」で、今の表示を場面として追加・上書きし、題と説明文と表示秒数を書き、並べ替えて、JSON ファイルに保存・読込できる。
+// 「発表」は操作パネルを隠した全画面表示、「HTML に書き出す」は全場面の画像と説明文を 1 つの HTML にまとめる。
 import * as THREE from 'three';
 import { EVENTS } from './people_model.js';
 
@@ -8,7 +9,7 @@ const fmt = n => (n >= 1000 ? Math.round(n / 100) * 100 : Math.round(n)).toLocal
 const hm = h => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
 
 export function initTour(ctx) {
-  const { getViewState, applyViewState, flyTo, people, buildingMeta, terrainSampler, onChange } = ctx;
+  const { getViewState, applyViewState, flyTo, people, buildingMeta, terrainSampler, onChange, snapshot } = ctx;
   const el = document.getElementById('tour'), $ = id => document.getElementById(id);
   let idx = -1, saved = null, auto = false, timer = null, autoT0 = 0;
   const bld = q => buildingMeta.findIndex(m => m && m.n && (q instanceof RegExp ? q.test(m.n) : m.n.includes(q)));
@@ -49,7 +50,9 @@ export function initTour(ctx) {
   ].filter(Boolean);
   // 場面の並び。組み込みの場面 (説明文の人数をその場で計算する) と、利用者が追加した場面 ({ title, text, state }) を混ぜて持つ
   const LS_KEY = 'mm_tour_v1';
-  let scenes = BUILTIN.slice(), edit = false;
+  let scenes = BUILTIN.slice(), edit = false, present = false, exporting = false;
+  const DUR = 13;   // 自動再生の 1 場面の秒数 (場面ごとに dur で変えられる)
+  const durOf = s => Math.min(120, Math.max(3, Number(s.dur) || DUR));
   // 追加した場面の説明文に使える差し込み
   const TOKENS = { '{時刻}': () => hm(people.state.hour), '{歩行者数}': () => fmt(people.count * people.state.per), '{信号待ち}': () => fmt(people.waiting * people.state.per), '{駅から街へ}': () => fmt(railOut(people.state.hour)), '{街から駅へ}': () => fmt(railIn(people.state.hour)) };
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -60,10 +63,10 @@ export function initTour(ctx) {
     return { st: { th: s.th, h: s.h, pp: { ...PP, ...(s.pp || {}) }, an: { ...AN, ...(s.an || {}) }, ind: s.ind ?? { on: saved?.ind?.on ?? true, flow: false }, sel: s.sel != null ? (buildingMeta[s.sel].n ?? s.sel) : null, gap: s.gap }, cam: null };
   }
   // 保存形式: 組み込みは { builtin: id }、追加・編集した場面は { title, text, state }
-  const serialize = () => ({ v: 1, app: 'minatomirai-tour', scenes: scenes.map(s => s.id ? { builtin: s.id } : { title: s.title, text: s.text, state: s.state }) });
+  const serialize = () => ({ v: 1, app: 'minatomirai-tour', scenes: scenes.map(s => s.id ? { builtin: s.id } : { title: s.title, text: s.text, dur: s.dur, state: s.state }) });
   function load(o) {
     if (!o || !Array.isArray(o.scenes)) throw new Error('ツアーのファイルではありません');
-    const list = o.scenes.map(q => q.builtin ? BUILTIN.find(b => b.id === q.builtin) : (q.state && typeof q.state === 'object' ? { title: String(q.title ?? '場面'), text: String(q.text ?? ''), state: q.state } : null)).filter(Boolean);
+    const list = o.scenes.map(q => q.builtin ? BUILTIN.find(b => b.id === q.builtin) : (q.state && typeof q.state === 'object' ? { title: String(q.title ?? '場面'), text: String(q.text ?? ''), dur: Number(q.dur) || undefined, state: q.state } : null)).filter(Boolean);
     if (!list.length) throw new Error('場面がありません'); scenes = list; onChange?.(scenes.length);
   }
   const persist = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(serialize())); } catch (e) { /* 保存できない環境では無視 */ } onChange?.(scenes.length); };
@@ -76,10 +79,11 @@ export function initTour(ctx) {
 
   function render() {
     const s = scenes[idx], last = idx === scenes.length - 1;
-    el.innerHTML = `<div class="tour-head"><span class="tour-step">${idx + 1} / ${scenes.length}</span><b>${esc(s.title)}</b><button id="tour-edit" class="tour-mini ${edit ? 'active' : ''}" title="場面の追加・編集・保存">編集</button><button id="tour-x" title="終了">×</button></div>
+    el.innerHTML = `<div class="tour-head"><span class="tour-step">${idx + 1} / ${scenes.length}</span><b>${esc(s.title)}</b><button id="tour-present" class="tour-mini ${present ? 'active' : ''}" title="操作パネルを隠して全画面で見せます（Esc で戻る）">発表</button><button id="tour-edit" class="tour-mini ${edit ? 'active' : ''}" title="場面の追加・編集・保存">編集</button><button id="tour-x" title="終了">×</button></div>
       ${edit ? `<input id="tour-title" class="tour-in" value="${esc(s.title)}" placeholder="場面の題" /><textarea id="tour-body" class="tour-in" rows="4" placeholder="説明文">${esc(s.id ? s.text().replace(/<br>/g, '\n') : s.text)}</textarea>
       <div class="tour-btns tour-small"><button id="tour-add" title="今の視点・時刻・表示を、この場面の次に追加します">＋ 今の表示を追加</button><button id="tour-over" title="この場面の視点・時刻・表示を、今の画面で置き換えます">今の表示で上書き</button><button id="tour-up" ${idx === 0 ? 'disabled' : ''} title="前へ移動">◀</button><button id="tour-down" ${last ? 'disabled' : ''} title="後ろへ移動">▶</button><button id="tour-del" ${scenes.length <= 1 ? 'disabled' : ''}>削除</button></div>
-      <div class="tour-btns tour-small"><button id="tour-save">ファイルに保存</button><button id="tour-load">ファイルを読込</button><button id="tour-reset" title="追加・編集を捨てて、最初の 10 場面に戻します">初期に戻す</button><input type="file" id="tour-file" accept=".json,application/json" style="display:none" /></div>
+      <div class="tour-btns tour-small"><button id="tour-save">ファイルに保存</button><button id="tour-load">ファイルを読込</button><button id="tour-html" title="全場面の画像と説明文を 1 つの HTML にまとめて保存します">HTML に書き出す</button><button id="tour-reset" title="追加・編集を捨てて、最初の 10 場面に戻します">初期に戻す</button><input type="file" id="tour-file" accept=".json,application/json" style="display:none" /></div>
+      <div class="note" style="margin:6px 0 0">自動再生でこの場面を表示する秒数 <input id="tour-dur" class="tour-in tour-dur" type="number" min="3" max="120" step="1" value="${durOf(s)}" /> 秒</div>
       <div class="note" style="margin:4px 0 6px">説明文には {時刻} {歩行者数} {信号待ち} {駅から街へ} {街から駅へ} を差し込めます。編集内容はこのブラウザに自動保存されます。</div>` : `<div class="tour-text">${textOf(s)}</div>`}
       <div class="tour-dots">${scenes.map((q, i) => `<i data-i="${i}" class="${i === idx ? 'cur' : ''}${q.id ? '' : ' own'}" title="${esc(q.title)}"></i>`).join('')}</div>
       <div class="tour-btns"><button id="tour-prev" ${idx === 0 ? 'disabled' : ''}>← 前へ</button><button id="tour-auto" class="${auto ? 'active' : ''}">${auto ? '■ 自動再生を止める' : '▶ 自動再生'}</button><button id="tour-next">${last ? '終了' : '次へ →'}</button></div>
@@ -87,11 +91,14 @@ export function initTour(ctx) {
     $('tour-x').onclick = stop; $('tour-prev').onclick = () => go(idx - 1); $('tour-next').onclick = () => last ? stop() : go(idx + 1);
     $('tour-auto').onclick = () => { auto = !auto; schedule(); render(); };
     $('tour-edit').onclick = () => { edit = !edit; if (edit) { auto = false; schedule(); } render(); };
+    $('tour-present').onclick = () => setPresent(!present);
     el.querySelectorAll('.tour-dots i').forEach(d => { d.onclick = () => go(+d.dataset.i); });
     if (!edit) return;
     const head = el.querySelector('.tour-head b'), dot = () => el.querySelectorAll('.tour-dots i')[idx];
     $('tour-title').oninput = e => { const m = materialize(idx); m.title = e.target.value; head.textContent = m.title; dot().classList.add('own'); persist(); };
     $('tour-body').oninput = e => { const m = materialize(idx); m.text = e.target.value; dot().classList.add('own'); persist(); };
+    $('tour-dur').onchange = e => { const m = materialize(idx); m.dur = Math.min(120, Math.max(3, Number(e.target.value) || DUR)); dot().classList.add('own'); persist(); };
+    $('tour-html').onclick = () => exportHTML();
     $('tour-add').onclick = () => { scenes.splice(idx + 1, 0, { title: '新しい場面', text: '', state: getViewState() }); idx++; persist(); render(); $('tour-title').select(); };
     $('tour-over').onclick = () => { const m = materialize(idx); m.state = getViewState(); persist(); render(); };
     const move = d => { const j = idx + d; if (j < 0 || j >= scenes.length) return; [scenes[idx], scenes[j]] = [scenes[j], scenes[idx]]; idx = j; persist(); render(); };
@@ -102,8 +109,34 @@ export function initTour(ctx) {
     $('tour-file').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { load(JSON.parse(await f.text())); persist(); go(0); } catch (err) { alert('読み込めませんでした: ' + err.message); } };
     $('tour-reset').onclick = () => { scenes = BUILTIN.slice(); try { localStorage.removeItem(LS_KEY); } catch (e) { /* 無視 */ } onChange?.(scenes.length); go(0); };
   }
-  const DUR = 13000;
-  function schedule() { clearTimeout(timer); timer = null; autoT0 = performance.now(); if (auto) timer = setTimeout(() => { if (idx < scenes.length - 1) go(idx + 1); else { auto = false; render(); } }, DUR); }
+  function schedule() { clearTimeout(timer); timer = null; autoT0 = performance.now(); if (auto && idx >= 0) timer = setTimeout(() => { if (idx < scenes.length - 1) go(idx + 1); else { auto = false; render(); } }, durOf(scenes[idx]) * 1000); }
+  // 発表表示: 操作パネルを隠し、できれば全画面にする
+  function setPresent(v) {
+    present = !!v; document.body.classList.toggle('presenting', present); if (present) edit = false;
+    try { if (present && !document.fullscreenElement) document.documentElement.requestFullscreen?.()?.catch?.(() => {}); else if (!present && document.fullscreenElement) document.exitFullscreen?.()?.catch?.(() => {}); } catch (e) { /* 全画面にできない環境ではパネルを隠すだけ */ }
+    if (idx >= 0) render();
+  }
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && present) setPresent(false); });
+  // ツアー全体を 1 つの HTML に書き出す: 場面ごとに表示を切り替えて画像を撮り、題と説明文を添える
+  async function buildHTML(onProgress) {
+    const keep = idx, parts = [], wait = ms => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < scenes.length; i++) {
+      const s = scenes[i], { st, cam } = resolve(s); applyViewState(st); people.update(0); const [pos, target] = cam ?? s.cam(); flyTo(pos, target, true); onProgress?.(i, scenes.length);
+      await wait(60); const img = snapshot?.() ?? null; parts.push({ title: s.title, text: textOf(s), img, when: `${st.th === 'night' ? '夜景' : st.th === 'real' ? 'リアル' : st.th === 'line' ? '線画' : '白図面'}・${st.pp?.day === 'holiday' ? '休日' : '平日'} ${hm(st.h ?? people.state.hour)}${st.pp?.rain ? '・雨天' : ''}${st.pp?.event ? '・イベント' : ''}` });
+    }
+    if (keep >= 0) go(Math.min(keep, scenes.length - 1), true);
+    const css = 'body{background:#0b1220;color:#dfe8f5;font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;max-width:1040px;margin:24px auto;padding:0 20px;line-height:1.7}h1{font-size:22px;letter-spacing:.08em}section{margin:34px 0;page-break-inside:avoid}h2{font-size:17px;color:#7fd4ff;margin:0 0 4px}h2 span{font-size:12px;color:#00e5ff;border:1px solid rgba(0,229,255,.5);border-radius:10px;padding:1px 9px;margin-right:10px}img{width:100%;border-radius:8px;border:1px solid rgba(120,180,255,.25);display:block;margin:8px 0}p{font-size:14px;margin:6px 0}.note{font-size:11px;color:#8ea2c2}nav{font-size:12px;columns:2;margin:10px 0 0}nav a{color:#9fc4ff;text-decoration:none;display:block}@media print{body{background:#fff;color:#111}h2{color:#036}.note{color:#555}nav a{color:#036}}';
+    return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>みなとみらい ガイドツアー</title><style>${css}</style></head><body>
+<h1>みなとみらい ガイドツアー</h1><div class="note">作成 ${new Date().toLocaleString('ja-JP')} ／ ${parts.length} 場面 ／ 人数は駅の乗降人員などの公表値と仮定から組み立てたモデルの推計で、実測ではありません。</div>
+<nav>${parts.map((q, i) => `<a href="#s${i + 1}">${i + 1}. ${esc(q.title)}</a>`).join('')}</nav>
+${parts.map((q, i) => `<section id="s${i + 1}"><h2><span>${i + 1} / ${parts.length}</span>${esc(q.title)}</h2><div class="note">${q.when}</div>${q.img ? `<img src="${q.img}" alt="${esc(q.title)}">` : '<div class="note">画像を取得できませんでした。</div>'}<p>${q.text}</p></section>`).join('\n')}
+<div class="note">出典: 3D都市モデル（Project PLATEAU）横浜市、OpenStreetMap contributors、地理院タイル、e-Stat 統計GIS、国土交通省 全国の人流オープンデータ ほか。</div></body></html>`;
+  }
+  async function exportHTML() {
+    if (exporting) return; exporting = true; const wasAuto = auto; auto = false; schedule(); const btn = $('tour-html');
+    try { const html = await buildHTML((i, n) => { const b = $('tour-html'); if (b) b.textContent = `書き出し中 ${i + 1} / ${n}`; }); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = 'minatomirai_tour.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+    finally { exporting = false; auto = wasAuto; if (idx >= 0) { render(); schedule(); } else if (btn) btn.textContent = 'HTML に書き出す'; }
+  }
   function go(i, instant = false) {
     if (i < 0 || i >= scenes.length) return; idx = i; const s = scenes[i], { st, cam } = resolve(s);
     applyViewState(st); people.update(0); const [pos, target] = cam ?? s.cam(); flyTo(pos, target, instant);
@@ -111,10 +144,10 @@ export function initTour(ctx) {
   }
   function start(i = 0, instant = false) { if (idx < 0) saved = getViewState(); el.style.display = 'block'; document.body.classList.add('touring'); go(Math.min(i, scenes.length - 1), instant); }
   function stop() {
-    if (idx < 0) return; clearTimeout(timer); timer = null; auto = false; edit = false; idx = -1; el.style.display = 'none'; el.innerHTML = ''; document.body.classList.remove('touring');
+    if (idx < 0) return; if (present) setPresent(false); clearTimeout(timer); timer = null; auto = false; edit = false; idx = -1; el.style.display = 'none'; el.innerHTML = ''; document.body.classList.remove('touring');
     if (saved) { const st = saved; saved = null; applyViewState({ ...st, pp: { ...st.pp, playing: false } }); }
   }
-  window.addEventListener('keydown', e => { if (idx < 0 || e.target.matches?.('input, select, textarea')) return; if (e.key === 'ArrowRight') go(Math.min(scenes.length - 1, idx + 1)); else if (e.key === 'ArrowLeft') go(idx - 1); else if (e.key === 'Escape') stop(); });
-  const update = () => { if (idx >= 0 && auto) { const p = $('tour-prog'); if (p) p.style.width = `${Math.min(100, (performance.now() - autoT0) / DUR * 100)}%`; } };
-  return { start, stop, go, update, serialize, load: o => { load(o); persist(); }, reset: () => { scenes = BUILTIN.slice(); try { localStorage.removeItem(LS_KEY); } catch (e) { /* 無視 */ } onChange?.(scenes.length); }, setEdit: v => { edit = !!v; if (idx >= 0) render(); }, get active() { return idx >= 0; }, get index() { return idx; }, get scenes() { return scenes.map(s => s.title); }, get count() { return scenes.length; }, setAuto: v => { auto = !!v; schedule(); if (idx >= 0) render(); } };
+  window.addEventListener('keydown', e => { if (idx < 0 || e.target.matches?.('input, select, textarea')) return; if (e.key === 'ArrowRight') go(Math.min(scenes.length - 1, idx + 1)); else if (e.key === 'ArrowLeft') go(idx - 1); else if (e.key === 'Escape') { if (present) setPresent(false); else stop(); } else if (e.key === ' ' && present) { e.preventDefault(); auto = !auto; schedule(); render(); } });
+  const update = () => { if (idx >= 0 && auto) { const p = $('tour-prog'); if (p) p.style.width = `${Math.min(100, (performance.now() - autoT0) / (durOf(scenes[idx]) * 1000) * 100)}%`; } };
+  return { start, stop, go, update, serialize, load: o => { load(o); persist(); }, reset: () => { scenes = BUILTIN.slice(); try { localStorage.removeItem(LS_KEY); } catch (e) { /* 無視 */ } onChange?.(scenes.length); }, setEdit: v => { edit = !!v; if (idx >= 0) render(); }, setPresent, buildHTML, get presenting() { return present; }, get active() { return idx >= 0; }, get index() { return idx; }, get scenes() { return scenes.map(s => s.title); }, get count() { return scenes.length; }, setAuto: v => { auto = !!v; schedule(); if (idx >= 0) render(); } };
 }

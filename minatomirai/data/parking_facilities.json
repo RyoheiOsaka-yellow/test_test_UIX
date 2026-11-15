@@ -1,18 +1,164 @@
 [
- {"name": "横浜ランドマークタワー・ランドマークプラザ", "capacity": 1400, "kind": "公式", "source": "横浜ランドマークタワー 公式サイト アクセス", "url": "https://www.yokohama-landmark.jp/access/", "match": ["横浜ランドマークタワー", "ランドマークプラザ"]},
- {"name": "クイーンズスクエア横浜", "capacity": 1700, "kind": "公式", "source": "クイーンズスクエア横浜 公式サイト アクセス", "url": "https://qsy-tqc.jp/access/", "match": ["クイーンズスクエア横浜", "クイーンズタワー", "クイーンズイースト", "横浜ベイホテル東急"]},
- {"name": "MARK IS みなとみらい", "capacity": 900, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://toku-p.earth-car.com/", "match": ["MARK IS"]},
- {"name": "横浜ワールドポーターズ", "capacity": 800, "kind": "案内サイト", "source": "ウォーカープラス 施設情報", "url": "https://www.walkerplus.com/spot/ar0314s23116/map.html", "match": ["World Porters", "ワールドポーターズ"]},
- {"name": "みなとみらい公共駐車場（パシフィコ横浜）", "capacity": 1154, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/minatomirai-16293/", "match": ["パシフィコ横浜$", "国立大ホール", "インターコンチネンタル"]},
- {"name": "パシフィコ横浜ノース駐車場", "capacity": 152, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/minatomirai-16293/", "match": ["パシフィコ横浜ノース"]},
- {"name": "横浜ハンマーヘッド", "capacity": 350, "kind": "公式", "source": "横浜ハンマーヘッド 公式サイト アクセス", "url": "https://www.hammerhead.co.jp/access/", "match": ["横浜ハンマーヘッド"]},
- {"name": "スカイビル駐車場", "capacity": 400, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/yokohama2-16382/", "match": ["横浜スカイビル"]},
- {"name": "タイムズ HULIC みなとみらい（コレットマーレ）", "capacity": 483, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/minatomirai-16293/", "match": ["ヒューリックみなとみらい"]},
- {"name": "横浜野村ビル駐車場", "capacity": 190, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/minatomirai-16293/", "match": ["横浜野村ビル"]},
- {"name": "横浜三井ビルディング駐車場", "capacity": 151, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/yokohama2-16382/", "match": ["横浜三井ビルディング"]},
- {"name": "そごうパーキング館（横浜新都市ビル）", "capacity": 560, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/yokohama2-16382/", "match": ["横浜新都市ビル"]},
- {"name": "横浜北仲ノット駐車場", "capacity": 89, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値（時間貸し分のみ）", "url": "https://odekake7.net/minatomirai-16293/", "match": ["ザ・タワー横浜北仲"], "noRatio": true},
- {"name": "横浜ベイクォーター", "capacity": 730, "kind": "公式", "source": "横浜ベイクォーター 公式サイト アクセス", "url": "https://www.yokohama-bayquarter.com/access/", "match": []},
- {"name": "横浜駅東口地下駐車場", "capacity": 500, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/yokohama2-16382/", "match": []},
- {"name": "横浜市馬車道地下駐車場", "capacity": 200, "kind": "案内サイト", "source": "駐車場案内サイトの掲載値", "url": "https://odekake7.net/minatomirai-16293/", "match": []}
+ {
+  "name": "横浜ランドマークタワー・ランドマークプラザ",
+  "capacity": 1400,
+  "kind": "公式",
+  "source": "横浜ランドマークタワー 公式サイト アクセス",
+  "url": "https://www.yokohama-landmark.jp/access/",
+  "match": [
+   "横浜ランドマークタワー",
+   "ランドマークプラザ"
+  ]
+ },
+ {
+  "name": "クイーンズスクエア横浜",
+  "capacity": 1700,
+  "kind": "公式",
+  "source": "クイーンズスクエア横浜 公式サイト アクセス",
+  "url": "https://qsy-tqc.jp/access/",
+  "match": [
+   "クイーンズスクエア横浜",
+   "クイーンズタワー",
+   "クイーンズイースト",
+   "横浜ベイホテル東急"
+  ]
+ },
+ {
+  "name": "MARK IS みなとみらい",
+  "capacity": 900,
+  "kind": "公式",
+  "source": "MARK IS みなとみらい 公式サイト アクセス（B1〜B3、900 台）",
+  "url": "https://www.mec-markis.jp/mm/access.html",
+  "match": [
+   "MARK IS"
+  ]
+ },
+ {
+  "name": "横浜ワールドポーターズ",
+  "capacity": 800,
+  "kind": "公式",
+  "source": "横浜ワールドポーターズ 公式サイト アクセス（約 800 台）",
+  "url": "https://www.yim.co.jp/static-pages/access",
+  "match": [
+   "World Porters",
+   "ワールドポーターズ"
+  ]
+ },
+ {
+  "name": "みなとみらい公共駐車場（パシフィコ横浜）",
+  "capacity": 1154,
+  "kind": "公式",
+  "source": "パシフィコ横浜 公式サイト よくある質問（1,154 台）",
+  "url": "https://www.pacifico.co.jp/faq",
+  "match": [
+   "パシフィコ横浜$",
+   "国立大ホール",
+   "インターコンチネンタル"
+  ]
+ },
+ {
+  "name": "パシフィコ横浜ノース駐車場",
+  "capacity": 152,
+  "kind": "案内サイト",
+  "source": "駐車場案内サイトの掲載値",
+  "url": "https://odekake7.net/minatomirai-16293/",
+  "match": [
+   "パシフィコ横浜ノース"
+  ]
+ },
+ {
+  "name": "横浜ハンマーヘッド",
+  "capacity": 350,
+  "kind": "公式",
+  "source": "横浜ハンマーヘッド 公式サイト アクセス",
+  "url": "https://www.hammerhead.co.jp/access/",
+  "match": [
+   "横浜ハンマーヘッド"
+  ]
+ },
+ {
+  "name": "スカイビル駐車場",
+  "capacity": 400,
+  "kind": "案内サイト",
+  "source": "駐車場案内サイトの掲載値",
+  "url": "https://odekake7.net/yokohama2-16382/",
+  "match": [
+   "横浜スカイビル"
+  ]
+ },
+ {
+  "name": "タイムズ HULIC みなとみらい（コレットマーレ）",
+  "capacity": 483,
+  "kind": "案内サイト",
+  "source": "駐車場案内サイトの掲載値",
+  "url": "https://odekake7.net/minatomirai-16293/",
+  "match": [
+   "ヒューリックみなとみらい"
+  ]
+ },
+ {
+  "name": "横浜野村ビル駐車場",
+  "capacity": 190,
+  "kind": "案内サイト",
+  "source": "駐車場案内サイトの掲載値",
+  "url": "https://odekake7.net/minatomirai-16293/",
+  "match": [
+   "横浜野村ビル"
+  ]
+ },
+ {
+  "name": "横浜三井ビルディング駐車場",
+  "capacity": 151,
+  "kind": "案内サイト",
+  "source": "駐車場案内サイトの掲載値",
+  "url": "https://odekake7.net/yokohama2-16382/",
+  "match": [
+   "横浜三井ビルディング"
+  ]
+ },
+ {
+  "name": "そごうパーキング館（横浜新都市ビル）",
+  "capacity": 560,
+  "kind": "公式",
+  "source": "そごう横浜店 公式サイト アクセス・駐車場（560 台）",
+  "url": "https://www.sogo-seibu.jp/yokohama/access",
+  "match": [
+   "横浜新都市ビル"
+  ]
+ },
+ {
+  "name": "横浜北仲ノット駐車場",
+  "capacity": 89,
+  "kind": "案内サイト",
+  "source": "駐車場案内サイトの掲載値（時間貸し分のみ）",
+  "url": "https://odekake7.net/minatomirai-16293/",
+  "match": [
+   "ザ・タワー横浜北仲"
+  ],
+  "noRatio": true
+ },
+ {
+  "name": "横浜ベイクォーター",
+  "capacity": 730,
+  "kind": "公式",
+  "source": "横浜ベイクォーター 公式サイト アクセス",
+  "url": "https://www.yokohama-bayquarter.com/access/",
+  "match": []
+ },
+ {
+  "name": "横浜駅東口地下駐車場",
+  "capacity": 500,
+  "kind": "案内サイト",
+  "source": "駐車場案内サイトの掲載値",
+  "url": "https://odekake7.net/yokohama2-16382/",
+  "match": []
+ },
+ {
+  "name": "横浜市馬車道地下駐車場",
+  "capacity": 200,
+  "kind": "公式",
+  "source": "横浜市 市営地下駐車場の現況資料（昇降横行式 173 台 + 自走式 27 台）",
+  "url": "https://www.city.yokohama.lg.jp/kurashi/machizukuri-kankyo/doro/anzenshisetsu/riyoannai/chika/parking.html",
+  "match": []
+ }
 ]

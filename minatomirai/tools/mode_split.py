@@ -55,7 +55,7 @@ def parking():
     known = sum(f["capacity"] for f in fac); use = [i for i, f in enumerate(fac) if f["match"] and not f.get("noRatio") and est[i] > 0]
     ratio = sum(fac[i]["capacity"] for i in use) / sum(est[i] for i in use)
     table = [{"name": f["name"], "capacity": f["capacity"], "kind": f["kind"], "est": round(est[i]) if f["match"] else None} for i, f in enumerate(fac)]
-    return {"osmCount": n, "tagged": tagged, "surface": round(surf / SPACE_M2), "multi": round(multi / SPACE_M2), "known": known, "knownCount": len(fac), "ratio": round(ratio, 3),
+    return {"osmCount": n, "tagged": tagged, "surface": round(surf / SPACE_M2), "multi": round(multi / SPACE_M2), "known": known, "knownCount": len(fac), "officialCount": sum(1 for f in fac if f["kind"] == "公式"), "official": sum(f["capacity"] for f in fac if f["kind"] == "公式"), "ratio": round(ratio, 3),
             "otherRaw": round(other), "other": round(other * ratio), "inBuilding": round(known + other * ratio), "bigBuildings": nb, "facilities": table,
             "points": [[c[0], c[1], fac[k]["capacity"]] for k, (fl, c) in sorted(pts.items())]}
 

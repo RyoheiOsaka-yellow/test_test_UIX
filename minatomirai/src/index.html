@@ -61,7 +61,7 @@ canvas { display: block; }
 .an-multi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 3px; } .an-multi div { position: relative; cursor: pointer; border: 1px solid rgba(120, 180, 255, 0.2); border-radius: 4px; overflow: hidden; line-height: 0; } .an-multi div.cur, .an-multi div:hover { border-color: #00e5ff; } .an-multi canvas { width: 100%; height: auto; } .an-multi span { position: absolute; left: 3px; top: 2px; font-size: 9px; line-height: 1.2; color: #fff; text-shadow: 0 0 3px #000; }
 .an-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; } .an-share { margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(120, 180, 255, 0.16); }
 .an-kpis { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; } .an-kpi { background: rgba(60, 90, 140, 0.18); border: 1px solid rgba(120, 180, 255, 0.18); border-radius: 6px; padding: 4px 6px; } .an-kpi span { display: block; font-size: 9px; color: #8ea2c2; } .an-kpi b { font-size: 14px; color: #ffd94d; font-weight: 600; } .an-kpi i { font-style: normal; font-size: 9px; color: #9fb3d1; margin-left: 2px; } .an-kpi em { display: block; font-style: normal; font-size: 8px; color: #6f84a6; }
-.an-click tr { cursor: pointer; } .an-click tr:hover td { color: #fff; background: rgba(0, 183, 217, 0.15); }
+.an-click tr { cursor: pointer; } .an-click tr.sel td { color: #ffb347; } .an-click tr:hover td { color: #fff; background: rgba(0, 183, 217, 0.15); }
 .an-ds { padding: 5px 0; border-top: 1px solid rgba(120, 180, 255, 0.1); font-size: 10px; line-height: 1.45; color: #8ea2c2; } .an-ds b { color: #eaf4ff; font-weight: normal; display: block; } .an-badge { float: right; font-size: 8px; color: #08101e; padding: 1px 5px; border-radius: 8px; margin-left: 6px; } .an-use { color: #c6d4e8; }
 .p-select { flex: 1; min-width: 0; font-size: 10px; font-family: inherit; color: #dfe8f5; background: rgba(60, 90, 140, 0.25); border: 1px solid rgba(120, 180, 255, 0.3); border-radius: 5px; padding: 2px; }
 .p-scn { font-size: 10px; line-height: 1.6; color: #c6d4e8; background: rgba(255, 179, 0, 0.08); border: 1px solid rgba(255, 179, 0, 0.35); border-radius: 6px; padding: 5px 7px; margin: 4px 0; } .p-scn b { color: #ffd94d; font-weight: 600; }
@@ -112,6 +112,14 @@ canvas { display: block; }
 .tour-bar { height: 2px; margin-top: 8px; background: rgba(120, 180, 255, 0.15); border-radius: 1px; overflow: hidden; }
 .tour-bar i { display: block; height: 100%; width: 0; background: #00e5ff; }
 body.touring #credit { display: none; }
+/* 発表表示: 操作パネルを隠し、説明文を大きくする */
+body.presenting #panel, body.presenting #analysis, body.presenting #info, body.presenting #credit, body.presenting #an-divider { display: none !important; }
+body.presenting #tour { left: 50%; bottom: 28px; width: min(900px, calc(100vw - 48px)); padding: 16px 22px 12px; }
+body.presenting .tour-head { font-size: 22px; }
+body.presenting .tour-text { font-size: 17px; line-height: 1.8; min-height: 0; }
+body.presenting .tour-step { font-size: 13px; }
+.tour-dur { width: 64px !important; display: inline-block; margin: 0 4px !important; padding: 2px 6px !important; }
+
 #credit { position: fixed; left: 280px; bottom: 8px; z-index: 9; font-size: 9px; color: #5f7095; text-align: left; line-height: 1.5; max-width: calc(100vw - 660px); }
 #credit a { color: #7fb2ff; }
 

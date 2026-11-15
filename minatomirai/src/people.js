@@ -21,7 +21,7 @@ export const LOS = [{ k: 'A', max: 23, c: '#5b8fd9' }, { k: 'B', max: 33, c: '#1
 const LOSC = LOS.map(l => lin(l.c));
 const losIndex = f => { for (let i = 0; i < LOS.length; i++) if (f < LOS[i].max) return i; return LOS.length - 1; };
 const speedFactor = f => f <= 23 ? 1 : Math.max(0.35, 1 - 0.65 * (f - 23) / (82 - 23));   // LOS A までは自由歩行、F で 35%
-const SIG_CYCLE = 90, SIG_GREEN = 38;   // 歩行者信号 (秒): 1 サイクル 90 秒のうち青 38 秒 (仮定)
+export const SIG_CYCLE = 90, SIG_GREEN = 38;   // 歩行者信号 (秒): 1 サイクル 90 秒のうち青 38 秒 (仮定)
 const UP = lin('#ff3b30'), DOWN = lin('#2b6cff');
 
 export function initPeople(ctx) {
@@ -120,7 +120,7 @@ export function initPeople(ctx) {
   }
   const day = () => dayContext(S.day, getMonth(), calib);
   // 鉄道以外の手段の内訳の説明 (tools/mode_split.py の見積もり。無ければ仮の割合)
-  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人（${M.bus.source}）。駐車台数のうち ${fmt(M.parking.known)} 台は ${M.parking.knownCount} 施設の公表値` : `手段の内訳 ${sh} は仮定`; };
+  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人（${M.bus.source}）。駐車台数のうち ${fmt(M.parking.known)} 台は ${M.parking.knownCount} 施設の公表値（うち ${M.parking.officialCount ?? 0} 施設は公式情報で確認）` : `手段の内訳 ${sh} は仮定`; };
   const green = li => !S.signals || ((simT + sigOff[li]) % SIG_CYCLE) < SIG_GREEN;
   function updateVolumes() {
     const d = day(); model.volumes(S.hour, d, vol); if (scenarioOn()) base.volumes(S.hour, d, baseVol); else baseVol.set(vol);
