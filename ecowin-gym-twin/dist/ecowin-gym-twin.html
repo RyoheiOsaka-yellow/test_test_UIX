@@ -586,6 +586,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <li>「空気の層」は、館内の空気温度を立体の格子（1m × 1m × 0.5m）に入れ、腰の高さの空気温度から離れた部分ほど濃く重ねて描いたものです。色は腰の高さの空気との差で、暖かい空気が赤、冷たい空気が青です。天井付近に溜まる暖気や、吹出しの温風・冷風の広がりが見えます。人の色は、立っている場所の床の色と同じ値です。</li>
       <li>体感温度（作用温度）は空気温度と放射温度の平均で、風が強い場所ほど空気温度の重みを大きくします（ASHRAE 55）。</li>
       <li>暑さ指数（WBGT）は 0.7×湿球温度＋0.3×黒球温度（屋内の式）。区分は日本スポーツ協会の熱中症予防運動指針によります。</li>
+      <li>3Dの中の流線は、噴流・まわりの空気の巻き込み・館内の循環・パネルまわりの上昇流や下降流・乱れを合わせた表示用の流れに、粒を乗せて描いたものです。床の色の風速や年間の計算とは別の、見た目のための表現です。</li>
       <li>風は吹出し口からの噴流として近似しています。吹出し風速はエアコンのみ 5.0m/s、ecowinハイブリッド 1.5m/s【推計】。暖房の温風は中央付近で人の高さに届いたあと浮き上がります。</li></ul>
     <h3>電力・料金</h3>
     <ul><li>消費電力は空調の出力を外気温に応じた効率（COP）で割り、送風機の電力を加えたものです。</li>
@@ -2262,26 +2263,25 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
   // ------------------------------------------------------------ 分布の描画（格子 → なめらかな画像）
   function makeFieldPainter(nx, ny, scale) {
     var w = nx * scale, h = ny * scale, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-    var ctx = cv.getContext('2d'), img = ctx.createImageData(w, h), q = new Int16Array(w * h);
+    var ctx = cv.getContext('2d'), img = ctx.createImageData(w, h), row = new Float32Array(w);
     var xi = new Uint16Array(w), xf = new Float32Array(w), yi = new Uint16Array(h), yf = new Float32Array(h), i;
     for (i = 0; i < w; i++) { var gx = M.clamp((i + 0.5) / scale - 0.5, 0, nx - 1.001); xi[i] = Math.floor(gx); xf[i] = gx - xi[i]; }
     for (i = 0; i < h; i++) { var gy = M.clamp((i + 0.5) / scale - 0.5, 0, ny - 1.001); yi[i] = Math.floor(gy); yf[i] = gy - yi[i]; }
     return {
       canvas: cv,
       paint: function (vals, lut, lo, hi, step, line) {
-        var d = img.data, inv = 511 / (hi - lo), p = 0, lr = line[0], lg = line[1], lb = line[2];
+        var d = img.data, inv = 511 / (hi - lo), p = 0, lr = line[0], lg = line[1], lb = line[2], is = 1 / step;
         for (var y = 0; y < h; y++) {
           var r0 = yi[y] * nx, r1 = r0 + nx, fy = yf[y];
           for (var x = 0; x < w; x++, p++) {
             var a = xi[x], fx = xf[x];
             var v0 = vals[r0 + a] + (vals[r0 + a + 1] - vals[r0 + a]) * fx, v1 = vals[r1 + a] + (vals[r1 + a + 1] - vals[r1 + a]) * fx;
-            var v = v0 + (v1 - v0) * fy, t = (v - lo) * inv;
-            var li = (t < 0 ? 0 : t > 511 ? 511 : t | 0) * 3, o = p * 4, lv = Math.floor(v / step);
-            q[p] = lv;
-            var edge = (x > 0 && q[p - 1] !== lv) || (y > 0 && q[p - w] !== lv);
-            if (edge) { d[o] = (lut[li] + lr) >> 1; d[o + 1] = (lut[li + 1] + lg) >> 1; d[o + 2] = (lut[li + 2] + lb) >> 1; }
-            else { d[o] = lut[li]; d[o + 1] = lut[li + 1]; d[o + 2] = lut[li + 2]; }
-            d[o + 3] = 255;
+            var v = v0 + (v1 - v0) * fy, t = (v - lo) * inv, li = (t < 0 ? 0 : t > 511 ? 511 : t | 0) * 3, o = p * 4;
+            // 等値線：いちばん近い線までの距離（画素）を、値の傾きから求めて濃さにする
+            var gxv = x > 0 ? v - row[x - 1] : 0, gyv = y > 0 ? v - row[x] : 0, gr = Math.sqrt(gxv * gxv + gyv * gyv) * is, fr = v * is; fr -= Math.floor(fr); if (fr > 0.5) fr = 1 - fr;
+            row[x] = v;
+            var k = gr > 0.004 ? 1.25 - fr / gr : 0; k = k < 0 ? 0 : k > 1 ? 0.42 : k * 0.42;
+            d[o] = lut[li] + (lr - lut[li]) * k; d[o + 1] = lut[li + 1] + (lg - lut[li + 1]) * k; d[o + 2] = lut[li + 2] + (lb - lut[li + 2]) * k; d[o + 3] = 255;
           }
         }
         ctx.putImageData(img, 0, 0);
@@ -2502,72 +2502,184 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
       return a;
     }
 
-    // 気流：流れの向きを示す短い線と、吹出しの空気のかたまりを示す煙。方式ごとに1組
+    // 画面上で一定の太さを持つ、なめらかな帯（流線と輻射の線に使う）。1本＝始点と終点を持つ1区間
+    var ribRes = { value: new THREE.Vector2(800, 600) };
+    function makeRibbons(n, order) {
+      var geo = new THREE.InstancedBufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, 1, 0], 3)); // x：区間のどちらの端か、y：帯のどちら側か
+      geo.setIndex([0, 1, 2, 0, 2, 3]);
+      var r = { A: new Float32Array(n * 3), B: new Float32Array(n * 3), C: new Float32Array(n * 3), W: new Float32Array(n * 4) }; // W＝始点の濃さ、終点の濃さ、始点の太さ、終点の太さ
+      var at = { iA: new THREE.InstancedBufferAttribute(r.A, 3), iB: new THREE.InstancedBufferAttribute(r.B, 3), iC: new THREE.InstancedBufferAttribute(r.C, 3), iW: new THREE.InstancedBufferAttribute(r.W, 4) };
+      for (var k in at) { at[k].setUsage(THREE.DynamicDrawUsage); geo.setAttribute(k, at[k]); }
+      geo.instanceCount = n;
+      var mat = new THREE.ShaderMaterial({
+        uniforms: { uRes: ribRes }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        vertexShader: [
+          'attribute vec3 iA; attribute vec3 iB; attribute vec3 iC; attribute vec4 iW; uniform vec2 uRes; varying vec3 vC; varying float vA; varying float vS;',
+          'void main(){',
+          '  vec4 a = projectionMatrix * modelViewMatrix * vec4(iA, 1.0); vec4 b = projectionMatrix * modelViewMatrix * vec4(iB, 1.0);',
+          '  float e = position.x; vA = mix(iW.x, iW.y, e); vC = iC; vS = position.y;',
+          '  if (a.w <= 0.05 || b.w <= 0.05 || vA <= 0.002) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }',
+          '  vec2 sa = a.xy / a.w * uRes; vec2 sb = b.xy / b.w * uRes; vec2 d = sb - sa; float len = length(d);',
+          '  vec2 nrm = len > 0.001 ? vec2(-d.y, d.x) / len : vec2(0.0, 1.0);',
+          '  vec4 p = mix(a, b, e); p.xy += nrm * position.y * mix(iW.z, iW.w, e) / uRes * 2.0 * p.w;',
+          '  gl_Position = p;',
+          '}'].join('\n'),
+        fragmentShader: 'varying vec3 vC; varying float vA; varying float vS;\nvoid main(){ float f = 1.0 - abs(vS); gl_FragColor = vec4(vC, vA * smoothstep(0.0, 0.75, f)); }'
+      });
+      r.obj = new THREE.Mesh(geo, mat); r.obj.frustumCulled = false; r.obj.renderOrder = order;
+      r.flush = function () { for (var k in at) at[k].needsUpdate = true; };
+      return r;
+    }
+
+    // パネルの近さの地図（0.5m格子）。パネルまわりの上昇・下降流に使う
+    var PGX = G.NX, PGY = G.NY, panelProx = new Float32Array(PGX * PGY);
+    function buildPanelProx() {
+      panelProx.fill(0);
+      panels.forEach(function (P) {
+        var i0 = Math.max(0, Math.floor((P.x - A.x0 - 3) / G.cell)), i1 = Math.min(PGX - 1, Math.ceil((P.x - A.x0 + 3) / G.cell));
+        var j0 = Math.max(0, Math.floor((P.y - A.y0 - 3) / G.cell)), j1 = Math.min(PGY - 1, Math.ceil((P.y - A.y0 + 3) / G.cell)), hw = M.PANEL.w / 2;
+        for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+          var x = M.gx(i) - P.x, y = M.gy(j) - P.y, along = P.axis === 'y' ? x : y, across = P.axis === 'y' ? y : x;
+          var da = Math.max(0, Math.abs(along) - hw), v = Math.exp(-(da * da + across * across) / 0.6), k = j * PGX + i;
+          if (v > panelProx[k]) panelProx[k] = v;
+        }
+      });
+    }
+    function proxAt(x, y) {
+      var i = Math.floor((x - A.x0) / G.cell), j = Math.floor((y - A.y0) / G.cell);
+      return i < 0 || j < 0 || i >= PGX || j >= PGY ? 0 : panelProx[j * PGX + i];
+    }
+
+    // 館内の空気の流れ（表示用）：吹出しの噴流、噴流への巻き込み、館内を回る循環、パネルまわりの上昇・下降流、乱れ
+    var fv = { x: 0, y: 0, z: 0 }, LY = A.y1 - A.y0;
+    function flowVel(mode, st, heat, x, y, z, t) {
+      var u0 = K.u0[mode] * st.fan, vx = 0, vy = 0, vz = 0;
+      if (u0 > 0.03) for (var i = 0; i < M.AC_UNITS.length; i++) {
+        var u = M.AC_UNITS[i], s = (y - u.y) * u.dir; if (s < -1.5 || s > 34) continue;
+        var ss = s < 0.3 ? 0.3 : s, az = M.jetAxisZ(ss, heat, u.z0), slope = (M.jetAxisZ(ss + 0.4, heat, u.z0) - az) / 0.4;
+        var l = x - (u.x + 0.03 * ss * Math.sin(0.45 * ss - 1.1 * t + u.x)), dz = z - az, b = 0.35 + 0.11 * ss, r2 = (l * l + dz * dz) / (b * b), c = u0 * (ss < 3.5 ? 1 : 3.5 / ss);
+        if (r2 < 9 && s > -0.3) { var g = Math.exp(-r2) * c / Math.sqrt(1 + slope * slope); vy += u.dir * g; vz += g * slope; }
+        if (r2 > 0.5 && r2 < 60 && s > 0) { var rr = Math.sqrt(l * l + dz * dz), en = 0.1 * c * b / rr; vx -= en * l / rr; vz -= en * dz / rr; } // 巻き込み
+      }
+      // 循環：低いところを中央へ、中央で上がり、天井に沿って外へ、壁際で下りる
+      var U = (mode === 'none' ? 0.05 : 0.05 + 0.1 * u0) + 0.04 * Math.min(2, Math.abs(st.G) * 3), eta = (y - A.y0) / LY, ze = z / H;
+      vy += U * Math.sin(6.2832 * eta) * Math.cos(3.1416 * ze);
+      vz -= U * (H / 3.1416) * (6.2832 / LY) * Math.cos(6.2832 * eta) * Math.sin(3.1416 * ze);
+      if (mode === 'eco') { // 暖かいパネルの前は上昇流、冷たいパネルの前は下降流
+        var px = proxAt(x, y);
+        if (px > 0.02) {
+          var k = (st.Tp - st.Ta) / 27, f = px * Math.exp(-z / 3.2);
+          vz += 0.42 * k * f;
+          var gx = proxAt(x + 0.5, y) - proxAt(x - 0.5, y), gy = proxAt(x, y + 0.5) - proxAt(x, y - 0.5), near = z < 1.4 ? 1 : 0;
+          vx += 0.3 * k * gx * near; vy += 0.3 * k * gy * near;
+        }
+      }
+      var sp = Math.sqrt(vx * vx + vy * vy + vz * vz), am = 0.035 + 0.2 * sp; // 乱れ：速いところほど大きくゆらぐ
+      fv.x = vx + am * Math.sin(0.83 * y + 1.31 * z + 0.7 * t) * Math.cos(0.57 * x - 0.4 * t + 1.3);
+      fv.y = vy + am * Math.sin(0.71 * x - 1.13 * z + 0.6 * t + 2.1) * Math.cos(0.49 * y + 0.5 * t);
+      fv.z = vz + am * 0.6 * Math.sin(0.93 * x + 0.77 * y - 0.8 * t + 0.7);
+      return sp;
+    }
+
+    // 流線：空気の流れに乗って漂う粒と、その通った跡（尾）。方式ごとに1組
     function gs() { return (Math.random() + Math.random() + Math.random() - 1.5) * 0.9; }
-    function makeWind(mode) {
-      var NP = mode === 'eco' ? 520 : 1300, pos = new Float32Array(NP * 6), col = new Float32Array(NP * 6), ps = [], puff = softPoints(NP, 4);
-      for (var i = 0; i < NP; i++) ps.push({ u: i % M.AC_UNITS.length, s: Math.random() * 30, lx: gs(), lz: gs(), life: Math.random() * 10 });
-      var geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-      var lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8 }));
-      lines.frustumCulled = false; lines.renderOrder = 5;
-      var obj = new THREE.Group(); obj.add(puff.obj); obj.add(lines); obj.visible = false; scene.add(obj);
+    var HOT = hex('#f0642c'), COLD = hex('#2f8fea');
+    function makeFlow(mode) {
+      var NP = mode === 'ac' ? 760 : mode === 'eco' ? 620 : 240, L = 18, rib = makeRibbons(NP * L, 5), puff = softPoints(NP, 4);
+      var P = new Float32Array(NP * 3), Hs = new Float32Array(NP * L * 3), life = new Float32Array(NP), age = new Float32Array(NP), heatTag = new Float32Array(NP), spd = new Float32Array(NP), rec = 0, tt = Math.random() * 50, started = false;
+      var obj = new THREE.Group(); obj.add(puff.obj); obj.add(rib.obj); obj.visible = false; scene.add(obj);
+      function spawn(i, st, heat, anywhere) {
+        var u0 = K.u0[mode] * st.fan, r = Math.random(), x, y, z, tag = 0;
+        if (!anywhere && u0 > 0.05 && r < 0.62) { // 吹出し口から
+          var un = M.AC_UNITS[(Math.random() * M.AC_UNITS.length) | 0], s = 0.3 + Math.random() * 0.8;
+          x = un.x + gs() * 0.25; y = un.y + un.dir * s; z = M.jetAxisZ(s, heat, un.z0) + gs() * 0.25; tag = heat ? 1 : -1;
+        } else if (!anywhere && mode === 'eco' && panels.length && Math.abs(st.Tp - st.Ta) > 3 && r < 0.8) { // パネルの前から
+          var pn = panels[(Math.random() * panels.length) | 0], off = (Math.random() < 0.5 ? -1 : 1) * (0.15 + Math.random() * 0.3), al = (Math.random() - 0.5) * M.PANEL.w;
+          x = pn.axis === 'y' ? pn.x + al : pn.x + off; y = pn.axis === 'y' ? pn.y + off : pn.y + al; z = 0.2 + Math.random() * 2.2; tag = st.Tp > st.Ta ? 0.8 : -0.8;
+        } else { x = A.x0 + 0.5 + Math.random() * (A.x1 - A.x0 - 1); y = A.y0 + 0.5 + Math.random() * (LY - 1); z = 0.3 + Math.random() * (H - 1); }
+        P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; heatTag[i] = tag; age[i] = 0; life[i] = 7 + Math.random() * 11;
+        for (var j = 0, o = i * L * 3; j < L; j++, o += 3) { Hs[o] = x; Hs[o + 1] = y; Hs[o + 2] = z; }
+      }
+      function advance(step, st, heat) { // 粒を流れに乗せて進め、通った跡を記録する
+        tt += step; rec += step;
+        var push = rec > 0.07; if (push) rec = 0;
+        for (var i = 0; i < NP; i++) {
+          var o = i * 3, x = P[o], y = P[o + 1], z = P[o + 2], sp = flowVel(mode, st, heat, x, y, z, tt);
+          x += fv.x * step; y += fv.y * step; z += fv.z * step; age[i] += step; spd[i] += (sp - spd[i]) * 0.2;
+          heatTag[i] *= 1 - 0.16 * step;
+          if (mode === 'eco') { var px = proxAt(x, y); if (px > 0.3 && z < 3) heatTag[i] += ((st.Tp > st.Ta ? 1 : -1) * px - heatTag[i]) * Math.min(1, 2 * step) * Math.min(1, Math.abs(st.Tp - st.Ta) / 15); }
+          if (age[i] > life[i] || x < A.x0 + 0.1 || x > A.x1 - 0.1 || y < A.y0 + 0.1 || y > A.y1 - 0.1) { spawn(i, st, heat, false); continue; }
+          if (z < 0.12) z = 0.12; else if (z > H - 0.3) z = H - 0.3;
+          P[o] = x; P[o + 1] = y; P[o + 2] = z;
+          if (push) { var h0 = i * L * 3; Hs.copyWithin(h0 + 3, h0, h0 + (L - 1) * 3); Hs[h0] = x; Hs[h0 + 1] = y; Hs[h0 + 2] = z; }
+        }
+      }
       return {
         obj: obj, on: false,
         update: function (dt, st, heat) {
-          var u0 = K.u0[mode] * st.fan; this.on = S.wind && u0 > 0.05; if (!this.on) return;
-          var load = 0.35 + 0.65 * Math.abs(st.lf), hot = hex(heat ? '#f0642c' : '#2f8fea'), neu = hex(C['--ink-3']);
-          for (var i = 0; i < NP; i++) {
-            var p = ps[i], o = i * 6, e = Math.exp(-(p.lx * p.lx + p.lz * p.lz)), vl = u0 * Math.min(1, 3.5 / p.s) * e;
-            p.s += Math.max(vl, 0.05) * dt; p.life -= dt;
-            if (p.life < 0 || p.s > D - 14 || vl < 0.07) { p.s = 0.3 + Math.random() * 1.2; p.lx = gs(); p.lz = gs(); p.life = 6 + Math.random() * 10; vl = u0 * e; }
-            var un = M.AC_UNITS[p.u], tail = M.clamp(vl * 0.45, 0.12, 1.5);
-            for (var q = 0; q < 2; q++) {
-              var s = Math.max(0.2, p.s - q * tail), b = 0.35 + 0.11 * s;
-              pos[o + q * 3] = M.clamp(un.x + p.lx * b * 0.8, A.x0 + 0.2, A.x1 - 0.2);
-              pos[o + q * 3 + 1] = M.clamp(M.jetAxisZ(s, heat, un.z0) + p.lz * b * 0.8, 0.12, H - 0.15);
-              pos[o + q * 3 + 2] = un.y + un.dir * s;
-            }
-            var f = M.clamp(p.s / 24, 0, 1), j = i * 3;
-            for (var k = 0; k < 3; k++) { var c = (hot[k] + (neu[k] - hot[k]) * f) / 255; col[o + k] = c; col[o + 3 + k] = c; puff.col[j + k] = (hot[k] + (neu[k] - hot[k]) * f * 0.6) / 255; }
-            puff.pos[j] = pos[o]; puff.pos[j + 1] = pos[o + 1]; puff.pos[j + 2] = pos[o + 2];
-            puff.size[i] = 0.9 + 0.2 * p.s; // 噴流は進むほど広がる
-            puff.alpha[i] = i % 2 ? 0 : 0.2 * load * (1 - f) * Math.min(1, p.s / 1.5);
+          this.on = S.wind; if (!this.on) return;
+          var i, j;
+          if (!started) { // 表示した瞬間から流れているように、数秒ぶん先に進めておく
+            for (i = 0; i < NP; i++) { spawn(i, st, heat, i % 3 === 0); age[i] = Math.random() * 5; }
+            for (i = 0; i < 130; i++) advance(0.05, st, heat);
+            started = true;
           }
-          geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; puff.flush();
+          advance(Math.min(dt, 0.05), st, heat);
+          var neu = hex(C['--ink-3']), pr = renderer.getPixelRatio();
+          for (i = 0; i < NP; i++) {
+            var o = i * 3, x = P[o], y = P[o + 1], z = P[o + 2], h0 = i * L * 3;
+            // 色：吹出しやパネルの熱を帯びた空気は暖色・寒色、まわりと混ざると無彩色に近づく
+            var a = Math.min(1, Math.abs(heatTag[i])), src = heatTag[i] > 0 ? HOT : COLD, cr = (neu[0] + (src[0] - neu[0]) * a) / 255, cg = (neu[1] + (src[1] - neu[1]) * a) / 255, cb = (neu[2] + (src[2] - neu[2]) * a) / 255;
+            var fade = Math.min(1, age[i] / 0.8) * Math.min(1, (life[i] - age[i]) / 1.2), base = fade * Math.min(0.95, 0.22 + 0.6 * spd[i] + 0.3 * a), wHead = (1.5 + 1.7 * Math.min(1, spd[i])) * pr;
+            for (j = 0; j < L; j++) {
+              var k = i * L + j, k3 = k * 3, k4 = k * 4, hb = h0 + j * 3, t0 = j / L, t1 = (j + 1) / L;
+              if (j === 0) { rib.A[k3] = x; rib.A[k3 + 1] = z; rib.A[k3 + 2] = y; } else { rib.A[k3] = Hs[hb - 3]; rib.A[k3 + 1] = Hs[hb - 1]; rib.A[k3 + 2] = Hs[hb - 2]; }
+              rib.B[k3] = Hs[hb]; rib.B[k3 + 1] = Hs[hb + 2]; rib.B[k3 + 2] = Hs[hb + 1];
+              rib.C[k3] = cr; rib.C[k3 + 1] = cg; rib.C[k3 + 2] = cb;
+              rib.W[k4] = base * (1 - t0) * (1 - t0); rib.W[k4 + 1] = base * (1 - t1) * (1 - t1); rib.W[k4 + 2] = wHead * (1 - 0.7 * t0); rib.W[k4 + 3] = wHead * (1 - 0.7 * t1);
+            }
+            // 熱を帯びた空気のかたまり（煙）
+            puff.pos[o] = x; puff.pos[o + 1] = z; puff.pos[o + 2] = y; puff.col[o] = cr; puff.col[o + 1] = cg; puff.col[o + 2] = cb;
+            puff.size[i] = 0.9 + 0.45 * Math.min(age[i], 6); puff.alpha[i] = i % 2 ? 0 : 0.16 * a * fade;
+          }
+          rib.flush(); puff.flush();
         }
       };
     }
-    var winds = { ac: makeWind('ac'), eco: makeWind('eco') };
+    var winds = { none: makeFlow('none'), ac: makeFlow('ac'), eco: makeFlow('eco') };
 
-    // 輻射の粒（暖房：パネルから外へ／冷房：パネルへ向かって）
-    var NR = 1800, ray3 = softPoints(NR, 6), rays = ray3.obj, rp = [], raysOn = false, RMAX = 6;
+    // 輻射の線：パネルの面からまっすぐ進む短い光の筋（暖房：外へ／冷房：パネルへ向かって）
+    var NR = 1500, ray3 = makeRibbons(NR, 6), rays = ray3.obj, rp = [], raysOn = false, RMAX = 6.5;
     rays.visible = false; scene.add(rays);
     function initRays() {
       rp = [];
-      for (var i = 0; i < NR; i++) rp.push({ p: panels.length ? i % panels.length : 0, side: i % 2 ? 1 : -1, a: Math.random() - 0.5, h: Math.random(), dl: gs() * 0.7, dv: gs() * 0.45, r: Math.random() * RMAX });
+      for (var i = 0; i < NR; i++) rp.push({ p: panels.length ? i % panels.length : 0, side: i % 2 ? 1 : -1, a: Math.random() - 0.5, h: Math.random(), dl: gs() * 0.75, dv: gs() * 0.5, r: Math.random() * RMAX, len: 0.35 + Math.random() * 0.5 });
+      buildPanelProx();
+    }
+    function rayPoint(q, P, r, out, o) {
+      var nx = r * q.side, lat = q.a * M.PANEL.w + q.dl * r, hz = M.PANEL.z0 + q.h * M.PANEL.h + q.dv * r;
+      out[o] = P.axis === 'y' ? P.x + lat : P.x + nx; out[o + 1] = hz; out[o + 2] = P.axis === 'y' ? P.y + nx : P.y + lat;
+      return hz > 0.05 && hz < H - 0.1 && out[o] > A.x0 && out[o] < A.x1 && out[o + 2] > A.y0 && out[o + 2] < A.y1;
     }
     function updateRays(dt, st, heat) {
       var d = Math.abs(st.Tp - st.Ta); raysOn = S.rays && panels.length > 0 && d > 2; if (!raysOn) return;
-      var hot = hex(heat ? '#ff8a3d' : '#59b6ff'), sp = (heat ? 1 : -1) * 2.0 * dt, act = M.clamp(d / 25, 0.15, 1) * NR;
+      var hot = hex(heat ? '#ff9a4d' : '#6cc0ff'), sp = (heat ? 1 : -1) * 3.2 * Math.min(dt, 0.05), act = M.clamp(d / 22, 0.2, 1) * NR, pr = renderer.getPixelRatio();
       for (var i = 0; i < NR; i++) {
-        var q = rp[i], o = i * 3;
-        if (i > act) { ray3.alpha[i] = 0; continue; }
+        var q = rp[i], o = i * 3, w = i * 4;
+        if (i > act) { ray3.W[w] = ray3.W[w + 1] = 0; continue; }
         q.r += sp;
         if (q.r > RMAX) q.r = 0.05; else if (q.r < 0.05) q.r = RMAX;
-        var P = panels[q.p], nx = q.r * q.side, lat = q.a * M.PANEL.w + q.dl * q.r, hz = M.PANEL.z0 + q.h * M.PANEL.h + q.dv * q.r;
-        var x = P.axis === 'y' ? P.x + lat : P.x + nx, y = P.axis === 'y' ? P.y + nx : P.y + lat;
-        if (x < A.x0 + 0.1 || x > A.x1 - 0.1 || y < A.y0 + 0.1 || y > A.y1 - 0.1 || hz < 0.05 || hz > H - 0.1) { ray3.alpha[i] = 0; continue; }
-        ray3.pos[o] = x; ray3.pos[o + 1] = hz; ray3.pos[o + 2] = y;
-        var f = q.r / RMAX;
-        ray3.size[i] = 0.22 + 0.5 * f; ray3.alpha[i] = 0.85 * Math.pow(1 - f, 1.3);
-        for (var k = 0; k < 3; k++) ray3.col[o + k] = hot[k] / 255;
+        var P = panels[q.p], f = q.r / RMAX, ok = rayPoint(q, P, q.r, ray3.A, o) && rayPoint(q, P, Math.max(0.02, q.r - q.len), ray3.B, o);
+        var al = ok ? 0.8 * Math.pow(1 - f, 1.4) * Math.min(1, q.r / 0.4) : 0;
+        ray3.W[w] = al; ray3.W[w + 1] = 0; ray3.W[w + 2] = 1.6 * pr; ray3.W[w + 3] = 0.6 * pr;
+        ray3.C[o] = hot[0] / 255; ray3.C[o + 1] = hot[1] / 255; ray3.C[o + 2] = hot[2] / 255;
       }
       ray3.flush();
     }
 
     // 空気の層：館内の空気温度を立体の格子に入れ、視線に沿って重ねて描く（WebGL2 が使える端末のみ）
-    var VX = 46, VY = 38, VZ = 25, volOK = renderer.capabilities.isWebGL2 && !!THREE.DataTexture3D, volTex = [], volData = [], volRange = [{ lo: 0, hi: 1 }, { lo: 0, hi: 1 }], volMesh = null, volDirty = true, volT = 0;
+    var VX = 46, VY = 38, VZ = 25, volOK = renderer.capabilities.isWebGL2 && !!THREE.DataTexture3D, volTex = [], volData = [], volRange = [{ lo: 0, hi: 1 }, { lo: 0, hi: 1 }], volMesh = null, volDirty = true, volT = 0, clockT = 0;
     var lutData = new Uint8Array(512 * 4), lutTex = new THREE.DataTexture(lutData, 512, 1, THREE.RGBAFormat);
     lutTex.minFilter = lutTex.magFilter = THREE.LinearFilter;
     if (volOK) {
@@ -2578,12 +2690,12 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
         volTex.push(t3d);
       }
       var volMat = new THREE.ShaderMaterial({
-        uniforms: { map: { value: volTex[0] }, lut: { value: lutTex }, bmin: { value: new THREE.Vector3(A.x0, 0, A.y0) }, bmax: { value: new THREE.Vector3(A.x1, H, A.y1) }, uRef: { value: 0.5 }, uSpan: { value: 0.3 }, uDens: { value: 0.032 } },
+        uniforms: { map: { value: volTex[0] }, lut: { value: lutTex }, bmin: { value: new THREE.Vector3(A.x0, 0, A.y0) }, bmax: { value: new THREE.Vector3(A.x1, H, A.y1) }, uRef: { value: 0.5 }, uSpan: { value: 0.3 }, uDens: { value: 0.032 }, uTime: { value: 0 } },
         transparent: true, depthWrite: false, depthTest: false, side: THREE.BackSide,
         vertexShader: 'varying vec3 vW;\nvoid main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
         fragmentShader: [
           'precision highp float; precision highp sampler3D;',
-          'uniform sampler3D map; uniform sampler2D lut; uniform vec3 bmin; uniform vec3 bmax; uniform float uRef; uniform float uSpan; uniform float uDens;',
+          'uniform sampler3D map; uniform sampler2D lut; uniform vec3 bmin; uniform vec3 bmax; uniform float uRef; uniform float uSpan; uniform float uDens; uniform float uTime;',
           'varying vec3 vW;',
           'float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
           'void main(){',
@@ -2593,7 +2705,9 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
           '  if (tf <= tn) discard;',
           '  float dt = (tf - tn) / 44.0; float t = tn + dt * hash(gl_FragCoord.xy); vec4 acc = vec4(0.0);',
           '  for (int i = 0; i < 44; i++) {',
-          '    vec3 u = (ro + rd * t - bmin) / (bmax - bmin);',
+          '    vec3 w = ro + rd * t;',
+          '    w += 0.45 * vec3(sin(0.55 * w.z + 0.8 * w.y + 0.5 * uTime), 0.5 * sin(0.6 * w.x + 0.4 * uTime + 1.7), sin(0.5 * w.x - 0.7 * w.y - 0.45 * uTime));', // かげろうのようなゆらぎ
+          '    vec3 u = clamp((w - bmin) / (bmax - bmin), 0.0, 1.0);',
           '    float v = texture(map, vec3(u.x, u.z, u.y)).r;',
           '    float a = smoothstep(0.28, 1.15, abs(v - uRef) / uSpan) * uDens * dt;',
           '    vec3 c = texture2D(lut, vec2(clamp(0.5 + (v - uRef) / uSpan * 0.3, 0.02, 0.98), 0.5)).rgb;',
@@ -2650,7 +2764,7 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
     function movePanel(i, np) {
       var old = panels[i];
       M.movePanelWeights(F, old, np); if (F11 !== F) M.movePanelWeights(F11, old, np);
-      panels[i] = np; place(panelGroup.children[i], np);
+      panels[i] = np; place(panelGroup.children[i], np); buildPanelProx();
     }
     canvas.addEventListener('pointerdown', function (e) {
       down = { x: e.clientX, y: e.clientY }; fly = null;
@@ -2742,7 +2856,7 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
         mullObj.N.visible = cam.position.z > 0; mullObj.S.visible = cam.position.z < D; mullObj.E.visible = cam.position.x < W; mullObj.W.visible = cam.position.x > 0;
         people.visible = S.people; sec.visible = S.section;
         var day = M.clamp(sunI / 700, 0, 1); hemi.intensity = 0.78 + 0.2 * day; sun.intensity = 0.12 + 0.3 * day; winMat.emissive.setRGB(0.05 + 0.2 * day, 0.07 + 0.22 * day, 0.09 + 0.24 * day);
-        var useVol = volOK && S.volume; volT += dt;
+        var useVol = volOK && S.volume; volT += dt; clockT += Math.min(dt, 0.05);
         if (useVol && volDirty && volT > 0.14) { views.forEach(function (v, i) { updateVolume(i, v.mode, v.st, heat); }); volDirty = false; volT = 0; }
         var rs = rects(), tl = S.layer !== 'wind' && S.layer !== 'wbgt', wb = hex(C['--surface-2']), eco = null;
         views.forEach(function (v) { if (winds[v.mode]) winds[v.mode].update(dt, v.st, heat); if (v.mode === 'eco') eco = v; });
@@ -2759,7 +2873,8 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
           tint(wallMats.E, wb, st.Twall, tl); tint(wallMats.W, wb, st.Twall, tl); tint(roofMat, wb, st.Tri, tl);
           tint(winMat, [156, 196, 230], st.Twin, tl);
           panelGroup.visible = m === 'eco';
-          winds.ac.obj.visible = m === 'ac' && winds.ac.on; winds.eco.obj.visible = m === 'eco' && winds.eco.on; rays.visible = m === 'eco' && raysOn;
+          for (var wk in winds) winds[wk].obj.visible = wk === m && winds[wk].on;
+          rays.visible = m === 'eco' && raysOn; ribRes.value.set(q.w * renderer.getPixelRatio(), q.h * renderer.getPixelRatio());
           if (m === 'eco') { var pc = tl ? colorAt(LUT.temp, st.Tp, range.lo, range.hi) : hex(C['--m-eco']); panelMat.color.setRGB(pc[0] / 255, pc[1] / 255, pc[2] / 255); panelMat.emissive.setRGB(pc[0] / 600, pc[1] / 600, pc[2] / 600); }
           if (S.section) {
             for (var j = 0; j < NZ; j++) for (var k = 0; k < G.NY; k++) {
@@ -2773,7 +2888,7 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
           ptScale.value = q.h * renderer.getPixelRatio() / (2 * Math.tan(cam.fov * Math.PI / 360));
           if (volMesh) {
             volMesh.visible = useVol;
-            if (useVol) { var vr = volRange[i], vu = volMesh.material.uniforms; vu.map.value = volTex[i]; vu.uRef.value = (st.Ta - vr.lo) / (vr.hi - vr.lo); vu.uSpan.value = 5.5 / (vr.hi - vr.lo); }
+            if (useVol) { var vr = volRange[i], vu = volMesh.material.uniforms; vu.map.value = volTex[i]; vu.uRef.value = (st.Ta - vr.lo) / (vr.hi - vr.lo); vu.uSpan.value = 5.5 / (vr.hi - vr.lo); vu.uTime.value = clockT; }
           }
           var plut = lutFor(S.layer), sh = shownField[i];
           if (S.people) persons.forEach(function (pp) { if (S.field) { var pc2 = colorAt(plut, sh[pp.k], range.lo, range.hi); pp.mat.color.setRGB(pc2[0] / 255, pc2[1] / 255, pc2[2] / 255); } else pp.mat.color.setHex(0x39424d); });
