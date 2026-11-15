@@ -79,13 +79,15 @@ button, select, input { font: inherit; color: inherit; }
 .clock { top: 10px; left: 12px; background: color-mix(in srgb, var(--surface) 82%, transparent); border-radius: 5px; padding: 6px 10px; }
 .clock .d { font-family: var(--num); font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: .01em; }
 .clock .w { color: var(--ink-2); font-size: 12px; margin-top: 4px; }
-.modeTag { top: 10px; right: 12px; display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-weight: 700; }
+.divider { background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.modeTag { transform: translateX(-100%); white-space: nowrap; display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-weight: 700; }
 .modeTag i { width: 10px; height: 10px; border-radius: 50%; }
 .legend { left: 12px; bottom: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 6px 9px 5px; width: min(300px, calc(100% - 24px)); }
 .legend .t { font-size: 11px; color: var(--ink-2); display: flex; justify-content: space-between; gap: 8px; }
 .legend canvas { display: block; width: 100%; height: 10px; border-radius: 2px; margin: 4px 0 2px; }
 .legend .ticks { display: flex; justify-content: space-between; font-family: var(--num); font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.cams { right: 12px; bottom: 10px; pointer-events: auto; display: flex; gap: 4px; }
+.cams { right: 12px; bottom: 10px; pointer-events: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: calc(100% - 24px); }
+.cams button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 700; }
 .cams button { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 4px 9px; cursor: pointer; font-size: 12px; }
 .probe { background: var(--surface); border: 1px solid var(--ink-3); border-radius: 5px; padding: 5px 8px; font-size: 11px; transform: translate(-50%, calc(-100% - 10px)); white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
 .probe b { font-family: var(--num); font-size: 15px; }
@@ -155,7 +157,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
   <header class="top">
     <h1>体育館デジタルツイン <span class="sub">ecowinハイブリッド 設置効果の推計</span></h1>
     <span class="badge">推計値（実測ではありません）</span>
-    <span class="badge">気象はダミー（平年値からの合成）</span>
+    <span class="badge" id="wxBadge"></span>
     <span class="grow"></span>
     <button class="link" id="openNotes" type="button">前提と出典</button>
   </header>
@@ -216,6 +218,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
         <div class="field"><label for="panels">台数（SCREEN 両面）</label><output id="panelsOut" for="panels"></output><input type="range" id="panels" min="0" max="72" step="2"></div>
         <div class="field"><label for="layout">置き方</label><select id="layout">
           <option value="rows">コート脇に自立で3列</option><option value="wall">南北の壁沿い</option><option value="perimeter">南・北・西の壁沿い</option></select></div>
+        <div class="note">3Dの中でパネルをドラッグすると移動、ダブルクリックで向きが90°変わります。動かすと体感温度と年間の推計に反映されます。</div>
         <div class="pair">
           <div class="field"><label for="price">電力単価 円/kWh</label><input type="number" id="price" min="5" max="60" step="1"></div>
           <div class="field"><label for="basic">基本料金 円/kW月</label><input type="number" id="basic" min="0" max="3000" step="50"></div>
@@ -227,11 +230,13 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <div class="view" id="view">
         <canvas class="gl" id="gl" aria-label="体育館の3D表示"></canvas>
         <div class="hud clock"><div class="d" id="clockD"></div><div class="w" id="clockW"></div></div>
-        <div class="hud hint">ドラッグで回転・ホイールで拡大・床をクリックでその地点の値</div>
-        <div class="hud modeTag"><i id="modeDot"></i><span id="modeName"></span></div>
+        <div class="hud hint" id="hint">ドラッグで回転・ホイールで拡大・床をクリックでその地点の値</div>
+        <div class="hud divider" id="divider" hidden></div>
+        <div class="hud modeTag" id="tag0"></div>
+        <div class="hud modeTag" id="tag1" hidden></div>
         <div class="hud legend"><div class="t"><span id="legT"></span><span id="legH"></span></div><canvas id="legC" width="300" height="10"></canvas><div class="ticks" id="legK"></div></div>
         <div class="hud cams" id="cams">
-          <button type="button" data-v="iso">斜め</button><button type="button" data-v="top">真上</button><button type="button" data-v="eye">目線</button><button type="button" data-v="side">断面</button>
+          <button type="button" id="split" aria-pressed="false">左右で比較</button><button type="button" data-v="iso">斜め</button><button type="button" data-v="top">真上</button><button type="button" data-v="eye">目線</button><button type="button" data-v="side">断面</button>
         </div>
         <div class="hud probe" id="probe" hidden></div>
       </div>
@@ -263,7 +268,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
         <table class="cmp" id="cmp"></table>
       </section>
       <section class="card stack">
-        <h2>年間の推計（2025年の合成気象）</h2>
+        <h2 id="annT">年間の推計</h2>
         <div class="hero">
           <div class="big num" id="rate"></div>
           <div class="cap" id="rateCap"></div>
@@ -289,8 +294,9 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <ul><li>床面積 1,890㎡（45m × 42m）、平均天井高 10m。面積は「熱負荷計算書（標準）」の記入例に合わせています。</li>
       <li>窓は南北の壁の高窓と地窓で合計 200㎡。屋根・壁・窓の性能は断熱性能の3段階で切り替えます【推計】。</li></ul>
     <h3>気象</h3>
-    <ul><li>各地域の平年値（気温・湿度）をもとに、天気の移り変わりと日ごとのばらつきを乱数で合成した1時間ごとのデータです【ダミー】。2025年の夏の高温傾向を模した上乗せを加えています。</li>
-      <li>気象庁の観測データ（アメダス）のCSVに差し替えると、実際の1年間で計算できます。</li></ul>
+    <ul><li>東京都練馬区は、2025年の1時間ごとの観測値です。気温・湿度・風速は気象庁「過去の気象データ」のアメダス練馬の値、天気の区分は同じ観測の降水量と日照時間から決めています。</li>
+      <li>アメダス練馬は日射量を観測していないため、日射量は Open-Meteo Historical Weather API（ERA5 再解析）の練馬付近の値を使っています。</li>
+      <li>そのほかの地域は、平年値から合成した1時間値です【ダミー】。</li></ul>
     <h3>熱の計算</h3>
     <ul><li>室内の空気と、床・壁の構造体の2つの温度を、屋根・壁・窓・すきま風・日射・人・照明・空調の熱の出入りから5分刻みで1年分計算します。</li>
       <li>空調能力は熱負荷計算書の単位負荷（冷房 300W/㎡、暖房 185W/㎡）と地域係数から決め、ecowinハイブリッドは補正係数 0.7 を掛けています。</li>
@@ -311,6 +317,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <h3>出典</h3>
     <ul><li>エコファクトリー ecowinHYBRID 製品情報（削減率 最大34%、組み合わせる空調能力の目安）</li>
       <li>ワイズプランニング「エコウィンHYBRIDの冷暖効果実証データ」（パネル表面温度 45〜50℃）</li>
+      <li>気象庁「過去の気象データ」（アメダス練馬 2025年の1時間値）を加工して使用／Open-Meteo Historical Weather API（CC BY 4.0）</li>
       <li>熱負荷計算書（標準）・ランニングコスト試算表（単位負荷、地域係数、補正係数 0.7）</li>
       <li>ANSI/ASHRAE Standard 55（評価高さ、作用温度）／日本スポーツ協会 熱中症予防運動指針（WBGT の区分）</li></ul>
   </div>
@@ -318,6 +325,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="data/nerima2025.js"></script>
 <script src="js/model.js"></script>
 <script src="js/app.js"></script>
 <!--PAGE-END-->

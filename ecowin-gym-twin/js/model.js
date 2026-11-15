@@ -167,6 +167,18 @@
     return { city: c, T: T, I: I, RH: RH, WS: WS, sky: sky, tmax: tmax, tmin: tmin };
   }
 
+  // 観測値（data/*.js）を計算用の形にする
+  function weatherFromData(o) {
+    var T = Float32Array.from(o.T), tmax = new Float32Array(365), tmin = new Float32Array(365);
+    for (var d = 0; d < 365; d++) {
+      var a = -99, b = 99;
+      for (var h = 0; h < 24; h++) { var v = T[d * 24 + h]; if (v > a) a = v; if (v < b) b = v; }
+      tmax[d] = a; tmin[d] = b;
+    }
+    return { city: { name: o.name, short: o.short || o.name, lat: o.lat, coefCool: o.coefCool, coefHeat: o.coefHeat }, observed: true,
+      T: T, I: Float32Array.from(o.I), RH: Float32Array.from(o.RH), WS: Float32Array.from(o.WS), sky: Uint8Array.from(o.sky), tmax: tmax, tmin: tmin };
+  }
+
   // ---------------------------------------------------------------- パネル配置
   function distribute(n, shares) { // 合計が n になるよう各列へ配分
     var tot = shares.reduce(function (s, v) { return s + v; }, 0), out = [], used = 0;
@@ -195,18 +207,33 @@
     h = Math.max(Math.abs(h), 0.05);
     return Math.abs(fT(u2, v2, h) - fT(u1, v2, h) - fT(u2, v1, h) + fT(u1, v1, h));
   }
+  function panelOmega(P, x, y, z) {
+    var hw = PANEL.w / 2, z1 = PANEL.z0 - z, z2 = PANEL.z0 + PANEL.h - z;
+    return P.axis === 'y' ? rectOmega(P.y - y, P.x - hw - x, P.x + hw - x, z1, z2) : rectOmega(P.x - x, P.y - hw - y, P.y + hw - y, z1, z2);
+  }
+  function normalizeWeights(F) {
+    var n = GEOM.NX * GEOM.NY, R = F.raw, m = { floor: 0, roof: 0, wall: 0, win: 0, panel: 0 };
+    for (var k = 0; k < n; k++) {
+      var pn = Math.max(0, R.panel[k]), s = R.floor[k] + R.roof[k] + R.wall[k] + R.win[k] + pn;
+      F.floor[k] = R.floor[k] / s; F.roof[k] = R.roof[k] / s; F.wall[k] = R.wall[k] / s; F.win[k] = R.win[k] / s; F.panel[k] = pn / s;
+      m.floor += F.floor[k]; m.roof += F.roof[k]; m.wall += F.wall[k]; m.win += F.win[k]; m.panel += F.panel[k];
+    }
+    for (var key in m) m[key] /= n;
+    F.mean = m;
+    return F;
+  }
   // 評価高さ z の格子点から各面が見える割合（合計1）。MRT = Σ 割合 × 表面温度
   function computeViewWeights(z, panels) {
     var W = GEOM.W, D = GEOM.D, H = GEOM.H, NX = GEOM.NX, NY = GEOM.NY, n = NX * NY;
-    var F = { floor: new Float32Array(n), roof: new Float32Array(n), wall: new Float32Array(n), win: new Float32Array(n), panel: new Float32Array(n) };
-    var hw = PANEL.w / 2, pz1 = PANEL.z0 - z, pz2 = PANEL.z0 + PANEL.h - z;
-    var mean = { floor: 0, roof: 0, wall: 0, win: 0, panel: 0 };
+    function set() { return { floor: new Float32Array(n), roof: new Float32Array(n), wall: new Float32Array(n), win: new Float32Array(n), panel: new Float32Array(n) }; }
+    var F = set(); F.raw = set(); F.z = z;
+    var R = F.raw;
     for (var j = 0; j < NY; j++) {
       var y = (j + 0.5) * GEOM.cell;
       for (var i = 0; i < NX; i++) {
         var x = (i + 0.5) * GEOM.cell, k = j * NX + i;
-        var fl = rectOmega(z, -x, W - x, -y, D - y);
-        var rf = rectOmega(H - z, -x, W - x, -y, D - y);
+        R.floor[k] = rectOmega(z, -x, W - x, -y, D - y);
+        R.roof[k] = rectOmega(H - z, -x, W - x, -y, D - y);
         var wl = rectOmega(y, -x, W - x, -z, H - z) + rectOmega(D - y, -x, W - x, -z, H - z) +
           rectOmega(x, -y, D - y, -z, H - z) + rectOmega(W - x, -y, D - y, -z, H - z);
         var wn = 0;
@@ -214,21 +241,22 @@
           var g = WINDOWS[q];
           wn += rectOmega(g.wall === 'N' ? y : D - y, g.x1 - x, g.x2 - x, g.z1 - z, g.z2 - z);
         }
-        wl -= wn;
+        R.wall[k] = wl - wn; R.win[k] = wn;
         var pn = 0;
-        for (var p = 0; p < panels.length; p++) {
-          var P = panels[p];
-          if (P.axis === 'y') pn += rectOmega(P.y - y, P.x - hw - x, P.x + hw - x, pz1, pz2);
-          else pn += rectOmega(P.x - x, P.y - hw - y, P.y + hw - y, pz1, pz2);
-        }
-        var s = fl + rf + wl + wn + pn;
-        F.floor[k] = fl / s; F.roof[k] = rf / s; F.wall[k] = wl / s; F.win[k] = wn / s; F.panel[k] = pn / s;
-        mean.floor += fl / s; mean.roof += rf / s; mean.wall += wl / s; mean.win += wn / s; mean.panel += pn / s;
+        for (var p = 0; p < panels.length; p++) pn += panelOmega(panels[p], x, y, z);
+        R.panel[k] = pn;
       }
     }
-    for (var key in mean) mean[key] /= n;
-    F.mean = mean;
-    return F;
+    return normalizeWeights(F);
+  }
+  // パネル1台を動かしたときの更新（そのパネルの分だけ差し替える）
+  function movePanelWeights(F, oldP, newP) {
+    var NX = GEOM.NX, NY = GEOM.NY, R = F.raw.panel;
+    for (var j = 0; j < NY; j++) for (var i = 0; i < NX; i++) {
+      var x = (i + 0.5) * GEOM.cell, y = (j + 0.5) * GEOM.cell;
+      R[j * NX + i] += panelOmega(newP, x, y, F.z) - panelOmega(oldP, x, y, F.z);
+    }
+    return normalizeWeights(F);
   }
 
   // ---------------------------------------------------------------- 気流（自由噴流の近似）
@@ -266,8 +294,8 @@
   var MODES = ['none', 'ac', 'eco'];
   var FIELDS = ['Ta', 'Tm', 'Tri', 'Twall', 'Twin', 'Tp', 'G', 'lf', 'fan', 'RH', 'P', 'MRT', 'OT', 'WBGT', 'v'];
 
-  function capacities(p) {
-    var c = CITIES[p.city];
+  function capacities(wx) {
+    var c = wx.city;
     var cool = K.loadCool * GEOM.Af * c.coefCool, heat = K.loadHeat * GEOM.Af * c.coefHeat;
     return { ac: { cool: cool, heat: heat }, eco: { cool: cool * K.ecoCap, heat: heat * K.ecoCap } };
   }
@@ -275,7 +303,7 @@
   function copCool(To) { return clamp(3.4 - 0.07 * (To - 35), 2.6, 5.6); }
 
   function simulate(p, wx, Fm, jetMean) {
-    var ins = INSUL[p.insul], cap = capacities(p), Af = GEOM.Af, H = GEOM.H, zr = GEOM.zRef;
+    var ins = INSUL[p.insul], cap = capacities(wx), Af = GEOM.Af, H = GEOM.H, zr = GEOM.zRef;
     var Ca = 1.2 * 1005 * GEOM.V * K.CaFactor, Cm = K.Cm, hA = K.hAm * (Af + GEOM.Awall);
     var Ap = p.panels * PANEL.faceArea * 2;
     var Tg = 0; for (var i = 0; i < 8760; i++) Tg += wx.T[i]; Tg /= 8760;
@@ -431,7 +459,7 @@
   var api = {
     GEOM: GEOM, WINDOWS: WINDOWS, AC_UNITS: AC_UNITS, PANEL: PANEL, INSUL: INSUL, K: K, CITIES: CITIES, MODES: MODES, FIELDS: FIELDS,
     MSTART: MSTART, MDAYS: MDAYS, monthOfDay: monthOfDay, clamp: clamp, lerp: lerp,
-    generateWeather: generateWeather, buildPanels: buildPanels, computeViewWeights: computeViewWeights,
+    generateWeather: generateWeather, weatherFromData: weatherFromData, buildPanels: buildPanels, computeViewWeights: computeViewWeights, movePanelWeights: movePanelWeights,
     computeJetPattern: computeJetPattern, jetNorm: jetNorm, jetAxisZ: jetAxisZ, simulate: simulate,
     computeField: computeField, airAt: airAt, wbgt: wbgt, opTemp: opTemp, rhFromW: rhFromW, humRatio: humRatio, capacities: capacities
   };

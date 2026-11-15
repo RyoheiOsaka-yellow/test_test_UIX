@@ -28,6 +28,15 @@ assert(okH / n > 0.8 && okC / n > 0.8, '設定温度の維持 ' + okH + ' ' + ok
 let ga = 0, ge = 0; for (let d = 0; d < 31; d++) { ga += r.ac.G[d * 24 + 10]; ge += r.eco.G[d * 24 + 10]; } assert(ga > ge * 1.5);
 // 高断熱では上限34%が働く
 const r2 = M.simulate(Object.assign({}, p, { insul: 'high' }), wx, F.mean, jm); assert(r2.summary.rate <= 0.34 + 1e-9);
+// パネル1台の移動：差分更新と作り直しが一致する
+const moved = panels.map(q => Object.assign({}, q)); const np = { axis: 'x', x: 12.3, y: 17.7 };
+M.movePanelWeights(F, moved[5], np); moved[5] = np; const Fb = M.computeViewWeights(1.1, moved);
+for (let k = 0; k < Fb.panel.length; k += 53) assert(Math.abs(F.panel[k] - Fb.panel[k]) < 1e-4, '差分更新 ' + k);
+// 観測データの形式
+const fs = require('fs'), path = require('path'); global.window = {}; eval(fs.readFileSync(path.join(__dirname, '../data/nerima2025.js'), 'utf8'));
+const ob = M.weatherFromData(global.window.WX_OBS); assert(ob.T.length === 8760 && ob.I.length === 8760 && ob.sky.length === 365 && ob.observed);
+const ro = M.simulate(p, ob, Fb.mean, jm); assert(ro.summary.rate > 0.05 && ro.summary.rate <= 0.34 + 1e-9);
+console.log('練馬2025  削減率 ' + (ro.summary.rate * 100).toFixed(1) + '%  WBGT28以上（空調なし） ' + ro.summary.modes.none.wbgt28 + ' 時間  最高 ' + Math.max.apply(null, ob.tmax).toFixed(1) + '℃');
 const out = new Float32Array(M.GEOM.NX * M.GEOM.NY), st = {}; M.FIELDS.forEach(f => st[f] = r.ac[f][20 * 24 + 10]);
 const windMean = M.computeField('wind', 'ac', st, true, 1.1, F, M.computeJetPattern(1.1, true), out); assert(windMean > 0.1 && windMean < 2);
 console.log('ok  削減率 ' + (S.rate * 100).toFixed(1) + '%  エアコンのみ ' + Math.round(S.modes.ac.kwh) + ' kWh  ecowin ' + Math.round(S.modes.eco.kwh) + ' kWh');
