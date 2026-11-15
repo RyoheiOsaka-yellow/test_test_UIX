@@ -19,7 +19,7 @@
     city: 'obs', insul: 'low', occupants: 80, sensible: 150, setHeat: 18, setCool: 27, opStart: 8, opEnd: 21,
     panels: 72, preheat: 1, field: true, layout: 'rows', price: 22, basic: 1100,
     mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 0.05,
-    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true, left: 'ac', charts: true, rateMode: 'model', rateCustom: 30, capex: 1500, maint: 0
+    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true, left: 'ac', charts: false, rateMode: 'model', rateCustom: 30, capex: 1500, maint: 0
   };
   var wxCache = {}, wx, panels = [], F, F11, jet = {}, sim, dirty = true, chartsDirty = true;
   var target = [new Float32Array(N), new Float32Array(N)], shown = [new Float32Array(N), new Float32Array(N)], scratch = new Float32Array(N), first = true;
@@ -939,6 +939,7 @@
     var d = Math.floor(S.t / 24), m = M.monthOfDay(d);
     $('hourR').value = (S.t - d * 24).toFixed(2);
     $('dateIn').value = '2025-' + pad2(m + 1) + '-' + pad2(d - M.MSTART[m] + 1);
+    $('dateLbl').textContent = fmtDate(d);
   }
 
   function initUI() {
@@ -974,7 +975,7 @@
       [].forEach.call($('overlays').querySelectorAll('.chip'), function (b) { b.setAttribute('aria-pressed', String(!!S[b.dataset.k])); });
       $('chartsToggle').setAttribute('aria-pressed', String(S.charts)); $('charts').hidden = !S.charts;
       steppers.forEach(function (el) { el.refresh(); });
-      outs(); applySplit(); setPlayIcon(); syncSliders();
+      outs(); applySplit(); setPlayIcon(); syncSliders(); speedLabel();
     }
     // 1つだけ選ぶボタンの共通処理
     function seg(id, key, conv, after) {
@@ -990,7 +991,8 @@
     seg('splitSeg', 'split', function (v) { return v === '1'; }, function () { S.probe = null; first = true; applySplit(); redraw(); });
     seg('layerSeg', 'layer', null, redraw);
     seg('zSeg', 'z', parseFloat, function () { recomputeGeometry(); dirty = true; });
-    seg('speedSeg', 'speed', parseFloat, function () {});
+    function speedLabel() { var b = $('speedSeg').querySelector('[aria-pressed=true]'); $('speedLbl').textContent = (b ? b.textContent : '') + '／秒'; }
+    seg('speedSeg', 'speed', parseFloat, function () { speedLabel(); closePops(null); });
     seg('insul', 'insul', null, recomputeSim);
     seg('actSeg', 'sensible', parseFloat, recomputeSim);
     seg('preheatSeg', 'preheat', parseFloat, recomputeSim);
@@ -1021,8 +1023,21 @@
 
     // 時間の操作
     $('play').addEventListener('click', function () { S.playing = !S.playing; setPlayIcon(); });
-    $('stepBack').addEventListener('click', function () { setTime(Math.ceil(S.t - 1 - 1e-6)); syncSliders(); });
-    $('stepFwd').addEventListener('click', function () { setTime(Math.floor(S.t + 1 + 1e-6)); syncSliders(); });
+    // ボタンの下（上）に開く小さなパネル。外側を押すか Esc で閉じる
+    var popBtns = [].slice.call(document.querySelectorAll('[data-pop]'));
+    function closePops(except) { popBtns.forEach(function (b) { if (b !== except) { $(b.dataset.pop).hidden = true; b.setAttribute('aria-expanded', 'false'); } }); }
+    popBtns.forEach(function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); var p = $(b.dataset.pop), open = p.hidden; closePops(b); p.hidden = !open; b.setAttribute('aria-expanded', String(open)); });
+      $(b.dataset.pop).addEventListener('click', function (e) { e.stopPropagation(); });
+    });
+    document.addEventListener('click', function () { closePops(null); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePops(null); });
+    $('gl').addEventListener('pointerdown', function () { closePops(null); });
+    // 3Dだけを大きく表示する
+    $('focusBtn').addEventListener('click', function () {
+      var on = document.querySelector('.app').classList.toggle('focus');
+      $('focusBtn').setAttribute('aria-pressed', String(on)); $('focusBtn').lastElementChild.textContent = on ? '元に戻す' : '大きく表示'; redraw();
+    });
     $('prevDay').addEventListener('click', function () { setTime(S.t - 24); syncSliders(); });
     $('nextDay').addEventListener('click', function () { setTime(S.t + 24); syncSliders(); });
     $('dateIn').addEventListener('change', function () {
@@ -1048,7 +1063,7 @@
     }
     function setSide(open) {
       $('main').classList.toggle('wide', !open); $('sideToggle').setAttribute('aria-expanded', String(open));
-      $('sideToggle').lastElementChild.textContent = open ? 'パネルを閉じる' : 'パネルを開く'; redraw();
+      redraw();
     }
     $('tabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) showTab(b.dataset.v); });
     $('sideToggle').addEventListener('click', function () { setSide($('main').classList.contains('wide')); });

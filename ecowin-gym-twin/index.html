@@ -39,9 +39,10 @@ button { cursor: pointer; }
 .num { font-family: var(--num); font-variant-numeric: tabular-nums; }
 .ic { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-.app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 10px; padding-block: 10px;
+.app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; padding-block: 8px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.top .btn { min-height: 32px; padding: 0 10px; }
 .top h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: .02em; min-width: 0; }
 .top .sub { display: inline-block; }
 .top .sub { color: var(--ink-2); font-size: 12px; font-weight: 500; margin-left: 6px; }
@@ -97,7 +98,10 @@ table.cmp.sv tr.tot th { padding-left: 6px; }
 .chip[aria-pressed="true"] .ck svg { opacity: 1; }
 .chip:disabled { opacity: .45; cursor: default; }
 
-.main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 12px; min-height: 0; }
+.main { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 10px; min-height: 0; }
+.app.focus { grid-template-rows: minmax(0, 1fr); padding-block: 6px; }
+.app.focus .top, .app.focus .side { display: none; }
+.app.focus .main { grid-template-columns: minmax(0, 1fr); }
 .main.wide { grid-template-columns: minmax(0, 1fr); }
 .main.wide .side { display: none; }
 .side { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
@@ -146,8 +150,19 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; height:
 .scene[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); }
 
 /* 表示の切り替え（3Dの上） */
-.center { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; min-height: 0; min-width: 0; }
-.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.center { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; min-height: 0; min-width: 0; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.tools .grow { flex: 1 1 0; }
+.ic.sm { width: 14px; height: 14px; }
+.popwrap { position: relative; display: inline-flex; }
+.pop { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; display: grid; gap: 8px; min-width: 250px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.22); }
+.popwrap.up .pop { top: auto; bottom: calc(100% + 6px); }
+.popwrap.right .pop { left: auto; right: 0; }
+.pop .gl { color: var(--ink-2); font-size: 11.5px; font-weight: 700; }
+.pop .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pop .seg { flex-wrap: nowrap; }
+.pop input[type=date] { min-height: var(--tap); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 0 8px; font-family: var(--num); font-size: 14px; }
+.btn[aria-expanded="true"], .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .grp { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
 .grp > .gl { color: var(--ink-2); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 .fixed { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 10px; border-radius: 6px; border: 1px dashed var(--line); color: var(--ink-2); font-weight: 700; white-space: nowrap; }
@@ -166,10 +181,13 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; height:
 .modeTag .kv { display: flex; gap: 10px; justify-content: flex-end; margin-top: 3px; color: var(--ink-2); font-size: 11px; white-space: nowrap; }
 .modeTag .kv b { font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink); font-weight: 600; }
 .divider { background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
-.legend { left: 12px; bottom: 10px; background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px 6px; width: min(330px, calc(100% - 24px)); }
+.legend { left: 12px; bottom: 10px; background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--line); border-radius: var(--r); padding: 7px 10px 5px; width: min(290px, calc(100% - 24px)); }
 .legend .t { font-weight: 700; font-size: 12.5px; display: flex; justify-content: space-between; gap: 8px; }
 .legend .t span:last-child { font-weight: 400; color: var(--ink-3); font-size: 11.5px; }
-.legend .dsc { color: var(--ink-2); font-size: 11.5px; line-height: 1.45; margin: 2px 0 5px; }
+.legend { pointer-events: auto; }
+.legend .dsc { display: none; color: var(--ink-2); font-size: 11.5px; line-height: 1.45; margin: 2px 0 5px; }
+.legend:hover .dsc { display: block; }
+.legend .t { margin-bottom: 4px; }
 .legend canvas { display: block; width: 100%; height: 12px; border-radius: 3px; }
 .legend .ticks, .legend .words { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-2); }
 .legend .ticks { font-family: var(--num); font-variant-numeric: tabular-nums; margin-top: 2px; }
@@ -188,15 +206,18 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; height:
 .glfail { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--ink-2); }
 
 /* 時間の操作 */
-.dock { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
-.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.dock { display: flex; flex-direction: column; gap: 8px; padding: 7px 12px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+#dateLbl { font-size: 15px; font-weight: 600; min-width: 5.2em; text-align: center; }
+#speedLbl { font-size: 15px; font-weight: 600; }
 .playgrp { display: inline-flex; align-items: center; gap: 6px; }
-.playbtn { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.playbtn { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
 .playbtn .ic { width: 22px; height: 22px; fill: currentColor; stroke: none; }
 .playbtn:active { transform: scale(.96); }
 .dategrp { display: inline-flex; align-items: center; gap: 4px; }
 .dategrp input[type=date] { min-height: var(--tap); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 0 8px; font-family: var(--num); font-size: 14px; }
-.scrub { flex: 1 1 240px; min-width: 200px; }
+.scrub { flex: 1 1 240px; min-width: 180px; }
+.scrub .ends { margin-top: -3px; }
 .scrub .ends { padding: 0 2px; }
 .charts { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 6px 14px; }
 .chart { min-width: 0; }
@@ -252,6 +273,9 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
   .clock .d { font-size: 20px; }
   .cams { bottom: auto; top: 66px; }
   .modeTag .kv { display: none; }
+  /* 狭い画面では、小さなパネルを画面の下に出す */
+  .pop, .popwrap.up .pop, .popwrap.right .pop { position: fixed; left: 16px; right: 16px; top: auto; bottom: 16px; min-width: 0; }
+  .pop .seg { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; transition: none !important; } }
 </style>
@@ -292,6 +316,8 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
   <symbol id="i-yen" viewBox="0 0 24 24"><path d="M6 4l6 8 6-8M12 12v8M7 13h10M7 16.5h10"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></symbol>
   <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 013 0v5M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6a1.5 1.5 0 013 0v8a6 6 0 01-6 6h-1a5 5 0 01-4.3-2.4L4 13.5a1.5 1.5 0 012.6-1.4L8 14"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
   <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-3"/></symbol>
 </svg>
 
@@ -422,33 +448,36 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
     <div class="center">
       <div class="tools">
-        <button class="btn" id="sideToggle" type="button" aria-expanded="true" title="左のパネルを閉じて、3Dを大きく表示します"><svg class="ic"><use href="#i-side"/></svg><span>パネルを閉じる</span></button>
-        <div class="grp"><span class="gl">画面</span>
-          <div class="seg" id="splitSeg" role="group" aria-label="画面の分け方"><button type="button" data-v="0"><svg class="ic"><use href="#i-one"/></svg>1画面</button><button type="button" data-v="1"><svg class="ic"><use href="#i-two"/></svg>左右で比較</button></div>
+        <button class="btn icon" id="sideToggle" type="button" aria-expanded="true" title="左のパネルを閉じる・開く" aria-label="左のパネルを閉じる・開く"><svg class="ic"><use href="#i-side"/></svg></button>
+        <div class="seg" id="splitSeg" role="group" aria-label="画面の分け方"><button type="button" data-v="0">1画面</button><button type="button" data-v="1"><svg class="ic"><use href="#i-two"/></svg>比較</button></div>
+        <div class="grp" id="modeGrp">
+          <div class="seg" id="modeSeg" role="group" aria-label="空調方式"><button type="button" data-v="none"><i class="dot" style="background:var(--m-none)"></i>空調なし</button><button type="button" data-v="ac"><i class="dot" style="background:var(--m-ac)"></i>エアコンのみ</button><button type="button" data-v="eco"><i class="dot" style="background:var(--m-eco)"></i>ecowin</button></div>
         </div>
-        <div class="grp" id="modeGrp"><span class="gl">方式</span>
-          <div class="seg" id="modeSeg" role="group" aria-label="空調方式"><button type="button" data-v="none"><i class="dot" style="background:var(--m-none)"></i>空調なし</button><button type="button" data-v="ac"><i class="dot" style="background:var(--m-ac)"></i>エアコンのみ</button><button type="button" data-v="eco"><i class="dot" style="background:var(--m-eco)"></i>ecowinハイブリッド</button></div>
-        </div>
-        <div class="grp" id="leftGrp" hidden><span class="gl">左</span>
+        <div class="grp" id="leftGrp" hidden>
           <div class="seg" id="leftSeg" role="group" aria-label="左に表示する方式"><button type="button" data-v="none"><i class="dot" style="background:var(--m-none)"></i>空調なし</button><button type="button" data-v="ac"><i class="dot" style="background:var(--m-ac)"></i>エアコンのみ</button></div>
-          <span class="gl">右</span><span class="fixed"><i></i>ecowinハイブリッド</span>
+          <span class="gl">と</span><span class="fixed"><i></i>ecowin</span>
         </div>
-        <div class="grp"><span class="gl">色で見るもの</span>
-          <div class="seg" id="layerSeg" role="group" aria-label="床の色で見る値">
-            <button type="button" data-v="ot"><svg class="ic"><use href="#i-person"/></svg>体感温度</button><button type="button" data-v="ta"><svg class="ic"><use href="#i-thermo"/></svg>空気温度</button><button type="button" data-v="mrt"><svg class="ic"><use href="#i-rad"/></svg>放射温度</button><button type="button" data-v="wind"><svg class="ic"><use href="#i-wind"/></svg>風速</button><button type="button" data-v="wbgt"><svg class="ic"><use href="#i-alert"/></svg>暑さ指数</button>
+        <div class="seg" id="layerSeg" role="group" aria-label="床の色で見る値">
+          <button type="button" data-v="ot">体感温度</button><button type="button" data-v="ta">空気温度</button><button type="button" data-v="mrt">放射温度</button><button type="button" data-v="wind">風速</button><button type="button" data-v="wbgt">暑さ指数</button>
+        </div>
+        <div class="popwrap">
+          <button class="btn" type="button" data-pop="viewPop" aria-expanded="false"><svg class="ic"><use href="#i-layers"/></svg>表示<svg class="ic sm"><use href="#i-down"/></svg></button>
+          <div class="pop" id="viewPop" hidden>
+            <div class="gl">重ねて表示するもの</div>
+            <div class="chips" id="overlays">
+              <button class="chip" type="button" data-k="wind"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>風の流れ</button>
+              <button class="chip" type="button" data-k="rays"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>パネルの輻射</button>
+              <button class="chip" type="button" data-k="volume"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>空気の層</button>
+              <button class="chip" type="button" data-k="section"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>断面</button>
+              <button class="chip" type="button" data-k="people"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>人</button>
+              <button class="chip" type="button" data-k="field"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>床の色</button>
+            </div>
+            <div class="gl">色を見る高さ</div>
+            <div class="seg full" id="zSeg" role="group" aria-label="評価する高さ"><button type="button" data-v="0.1">足元</button><button type="button" data-v="1.1">腰</button><button type="button" data-v="1.7">頭</button></div>
           </div>
         </div>
-        <div class="grp"><span class="gl">高さ</span>
-          <div class="seg" id="zSeg" role="group" aria-label="評価する高さ"><button type="button" data-v="0.1">足元</button><button type="button" data-v="1.1">腰</button><button type="button" data-v="1.7">頭</button></div>
-        </div>
-        <div class="grp" id="overlays"><span class="gl">重ねて表示</span>
-          <button class="chip" type="button" data-k="wind"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>風</button>
-          <button class="chip" type="button" data-k="rays"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>輻射</button>
-          <button class="chip" type="button" data-k="volume"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>空気の層</button>
-          <button class="chip" type="button" data-k="section"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>断面</button>
-          <button class="chip" type="button" data-k="people"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>人</button>
-          <button class="chip" type="button" data-k="field"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>床の色</button>
-        </div>
+        <span class="grow"></span>
+        <button class="btn" id="focusBtn" type="button" aria-pressed="false" title="3Dだけを画面いっぱいに表示します"><svg class="ic"><use href="#i-expand"/></svg><span>大きく表示</span></button>
       </div>
 
       <div class="view" id="view">
@@ -467,26 +496,29 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
       <section class="card dock">
         <div class="transport">
-          <div class="playgrp">
-            <button class="btn icon" id="stepBack" type="button" title="1時間戻す" aria-label="1時間戻す"><svg class="ic"><use href="#i-back"/></svg></button>
-            <button class="playbtn" id="play" type="button" title="再生・停止（スペースキー）" aria-label="再生"><svg class="ic"><use id="playIc" href="#i-play"/></svg></button>
-            <button class="btn icon" id="stepFwd" type="button" title="1時間進める" aria-label="1時間進める"><svg class="ic"><use href="#i-fwd"/></svg></button>
-          </div>
-          <div class="grp"><span class="gl">速さ</span>
-            <div class="seg" id="speedSeg" role="group" aria-label="再生の速さ（1秒で進む時間）"><button type="button" data-v="0.05">3分</button><button type="button" data-v="0.0833333">5分</button><button type="button" data-v="0.1666667">10分</button><button type="button" data-v="0.5">30分</button><button type="button" data-v="1">1時間</button><button type="button" data-v="6">6時間</button></div>
-            <span class="note">／秒</span>
-          </div>
-          <div class="grp"><span class="gl">日付</span>
-            <div class="dategrp">
-              <button class="btn icon" id="prevDay" type="button" title="前の日" aria-label="前の日"><svg class="ic"><use href="#i-left"/></svg></button>
-              <input type="date" id="dateIn" min="2025-01-01" max="2025-12-31" aria-label="日付">
-              <button class="btn icon" id="nextDay" type="button" title="次の日" aria-label="次の日"><svg class="ic"><use href="#i-right"/></svg></button>
+          <button class="playbtn" id="play" type="button" title="再生・停止（スペースキー）" aria-label="再生"><svg class="ic"><use id="playIc" href="#i-play"/></svg></button>
+          <div class="dategrp">
+            <button class="btn icon" id="prevDay" type="button" title="前の日" aria-label="前の日"><svg class="ic"><use href="#i-left"/></svg></button>
+            <div class="popwrap up">
+              <button class="btn" type="button" data-pop="datePop" aria-expanded="false" title="日付を選ぶ"><span class="num" id="dateLbl"></span><svg class="ic sm"><use href="#i-down"/></svg></button>
+              <div class="pop" id="datePop" hidden>
+                <div class="gl">日付を選ぶ</div>
+                <input type="date" id="dateIn" min="2025-01-01" max="2025-12-31" aria-label="日付">
+                <button class="btn" id="jumpHot" type="button"><svg class="ic"><use href="#i-sun"/></svg>最も暑い日</button>
+                <button class="btn" id="jumpCold" type="button"><svg class="ic"><use href="#i-snow"/></svg>最も寒い日</button>
+              </div>
             </div>
-            <button class="btn" id="jumpHot" type="button"><svg class="ic"><use href="#i-sun"/></svg>最も暑い日</button>
-            <button class="btn" id="jumpCold" type="button"><svg class="ic"><use href="#i-snow"/></svg>最も寒い日</button>
+            <button class="btn icon" id="nextDay" type="button" title="次の日" aria-label="次の日"><svg class="ic"><use href="#i-right"/></svg></button>
           </div>
           <div class="scrub"><input type="range" id="hourR" min="0" max="23.99" step="0.01" aria-label="時刻"><div class="ends"><span>0時</span><span>6時</span><span>12時</span><span>18時</span><span>24時</span></div></div>
-          <button class="chip" id="chartsToggle" type="button"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>グラフ</button>
+          <div class="popwrap up right">
+            <button class="btn" type="button" data-pop="speedPop" aria-expanded="false" title="再生の速さ（1秒で進む時間）">速さ <b class="num" id="speedLbl"></b><svg class="ic sm"><use href="#i-down"/></svg></button>
+            <div class="pop" id="speedPop" hidden>
+              <div class="gl">1秒で進む時間</div>
+              <div class="seg" id="speedSeg" role="group" aria-label="再生の速さ"><button type="button" data-v="0.05">3分</button><button type="button" data-v="0.0833333">5分</button><button type="button" data-v="0.1666667">10分</button><button type="button" data-v="0.5">30分</button><button type="button" data-v="1">1時間</button><button type="button" data-v="6">6時間</button></div>
+            </div>
+          </div>
+          <button class="chip" id="chartsToggle" type="button" title="年間マップと1日の推移を表示します"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>グラフ</button>
         </div>
         <div class="charts" id="charts">
           <div class="chart">
@@ -511,9 +543,10 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
   <div class="body">
     <p>まだ ecowinハイブリッドを設置していない体育館に、設置した場合の温度・風・電気代を推計して見せる画面です。迷ったら、左の「見どころ」を上から順に押してください。</p>
     <div class="how">
-      <svg class="ic"><use href="#i-two"/></svg><div><b>比べる</b><span>「左右で比較」を選ぶと、左に今の方式、右に ecowinハイブリッドが同じ視点・同じ時刻で並びます。</span></div>
+      <svg class="ic"><use href="#i-two"/></svg><div><b>比べる</b><span>「比較」を選ぶと、左に今の方式、右に ecowinハイブリッドが同じ視点・同じ時刻で並びます。</span></div>
       <svg class="ic"><use href="#i-person"/></svg><div><b>色で見るものを選ぶ</b><span>床の色は、体感温度・空気温度・放射温度・風速・暑さ指数から選べます。色の意味は3Dの左下に出ます。</span></div>
-      <svg class="ic"><use href="#i-play"/></svg><div><b>時間を動かす</b><span>丸い再生ボタンで時間が進みます。速さは1秒あたり3分〜6時間。年間マップをなぞると、好きな日時へ移れます。</span></div>
+      <svg class="ic"><use href="#i-play"/></svg><div><b>時間を動かす</b><span>丸い再生ボタンで時間が進みます。日付と速さは、下の帯のボタンから選べます。「グラフ」を入れると年間マップが出て、なぞると好きな日時へ移れます。</span></div>
+      <svg class="ic"><use href="#i-expand"/></svg><div><b>3Dを大きく見る</b><span>「大きく表示」で、3Dだけが画面いっぱいになります。風や断面などの重ね表示は「表示」から選べます。</span></div>
       <svg class="ic"><use href="#i-cube"/></svg><div><b>3Dを動かす</b><span>ドラッグで回転、ホイール（スマホは2本指）で拡大。床をクリックすると、その場所の値が出ます。</span></div>
       <svg class="ic"><use href="#i-hand"/></svg><div><b>パネルを置き換える</b><span>3Dの中のパネルをドラッグすると移動、ダブルクリックで向きが変わり、結果に反映されます。</span></div>
       <svg class="ic"><use href="#i-image"/></svg><div><b>資料に使う</b><span>「画像にする」で、いまの表示に日時・条件・凡例を添えた1枚の画像を作れます。</span></div>
