@@ -1806,7 +1806,7 @@ async function init() {
   initConstructionUI();
   rebuildTower();
   setProgress(0.95, '人流モデルを計算中…'); await nextFrame();
-  people = initPeople({ scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, calib: window.__PEOPLE_CALIB || null, getMonth: () => realState.month, onClock: h => setClock(h, { fromPlay: true }),
+  people = initPeople({ scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, calib: window.__PEOPLE_CALIB || null, signals: window.__SIGNALS || null, getMonth: () => realState.month, onClock: h => setClock(h, { fromPlay: true }),
     extraDest: () => { if (!construction || graph.towerLobby == null) return []; const p = construction.params; const upper = p.floors - p.podFloors - 3, nOff = Math.round(upper * p.officeRatio / 100), tA = (2 * p.towerHalf) ** 2 * 0.9, pA = 4 * p.podHalf * (p.podHalfB ?? p.podHalf * 0.81); return [{ n: TOWER_NAME, x: p.x, y: p.y, node: graph.towerLobby, off: nOff * tA / 22 + pA * p.podFloors / 150, vis: pA * p.podFloors / 12 + (upper - nOff) * tA / 60, food: pA * p.podFloors / 4000 + 6 }]; } });
   people.set({ hour: realState.hour }); people.rebuild(); onTheme(t => people.setTheme(t));
   indoor = initIndoor({ scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel: () => sel, getGap: () => selUniforms.uGap.value, footprintPts, terrainSampler, levelY, renderer, cores: window.__CORES || [] });

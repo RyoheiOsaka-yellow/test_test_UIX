@@ -37,12 +37,14 @@ export const CATALOG = [
   { s: 'use', n: '地理院タイル（標高 DEM5A・全国最新写真）', by: '国土地理院', g: '5m 標高・航空写真', u: '地形、リアル表示の地表' },
   { s: 'use', n: '各施設の公式フロアガイド（MARK IS、ランドマークプラザ、クイーンズスクエア、東急スクエア）', by: '各施設', g: '階・区画・店舗・昇降設備の記号', u: '建物内のテナント配置、区画形状。MARK IS はエレベーター・エスカレーターの位置も画像から検出' },
   { s: 'use', n: 'OpenStreetMap の駐車場・バス停', by: 'OpenStreetMap contributors', g: '点（駐車場 397・バス停 101）', u: '鉄道以外で来る人の発着点。駐車場は面積から収容台数も見積もる' },
+  { s: 'use', n: 'OpenStreetMap の信号機・横断歩道のタグ', by: 'OpenStreetMap contributors', g: '点（信号機 269・横断歩道 783）', u: '横断歩道ごとの信号の有無。周期と青時間は交差する道路の種別からの仮定' },
+  { s: 'use', n: '全国道路・街路交通情勢調査 一般交通量調査（令和 3 年度）時間帯別交通量', by: '国土交通省 道路局', g: '調査区間・1 時間ごと・上下別・車種別', u: '車で来る人の時間帯分布（範囲内 3 地点の小型車）' },
   { s: 'use', n: '国土数値情報 バスルート (N07) 2011年度', by: '国土交通省', g: '系統別の線（平日・土曜・日祝の運行本数）', u: 'バスで来る人の量（範囲内 176 系統・平日 4,658 便）' },
   { s: 'use', n: '主要施設の駐車場の収容台数', by: '各施設の公式サイト・駐車場案内サイト', g: '施設ごと（16 施設・計 9,759 台。うち 9 施設 7,794 台は公式情報で確認）', u: '車で来る人の量。台数が分からない施設は、延床からの見積もりに実数との比（0.51）を掛けて補正' },
   { s: 'use', n: 'みなとみらい公共駐車場の利用実績', by: '横浜市（市会資料）', g: '年間の駐車台数（2012年度 369,328 台 / 収容 1,154 台）', u: '駐車場の回転率（0.88 回/日）' },
   { s: 'ref', n: 'みなとみらい 21 地区の来街者数', by: '横浜市 都市整備局（記者発表）', g: '地区全体の年間値（2024年 約 8,260 万人、2025年から人流データで約 1 億 180 万人）', u: '手段別の内訳は公表されていないため、総量の目安としてのみ参照' },
   { s: 'use', n: 'PLATEAU 都市計画決定情報（用途地域・指定容積率）', by: '国土交通省 都市局', g: '面（MVT）→ 10 m 格子', u: '用途地域と指定容積率のヒートマップ' },
-  { s: 'can', n: '横浜市営バス GTFS-JP（現行ダイヤ）', by: '横浜市交通局 / 公共交通オープンデータセンター', g: '便ごとの停留所と時刻', u: '利用者登録で発行されるアクセストークンが必要。取り込みの仕組み（tools/fetch_gtfs_bus.py）は用意済みで、取得すれば 2011 年度の本数を現行の便数と時間帯別の分布に置き換えられる。京急・相鉄・神奈中の GTFS は同センターに掲載が無い' },
+  { s: 'can', n: '横浜市営バス GTFS-JP（現行ダイヤ）', by: '横浜市交通局 / 公共交通オープンデータセンター', g: '便ごとの停留所と時刻', u: '利用者登録で発行されるアクセストークンが必要なため未取得。いまは代わりにダミーの時刻表（1 日の便数は N07 と同じ、時間帯の山だけ仮定）を使っている。取得後に tools/fetch_gtfs_bus.py を実行し直せば置き換わる。京急・相鉄・神奈中の GTFS は同センターに掲載が無い' },
   { s: 'can', n: 'PLATEAU 津波・高潮・洪水 浸水想定区域モデル（面）', by: '国土交通省 都市局', g: '面（3D Tiles）', u: '未使用。建物属性の浸水深で代用している' },
   { s: 'use', n: '経済センサス 500m メッシュ 産業小分類（e-Stat 統計GIS 表 T001164）', by: '総務省・経済産業省', g: '500m メッシュ・産業小分類の一部', u: '宿泊・集客施設・百貨店の従業者数、病院・診療所の数。飲食店（食堂・専門料理店など）はこの表に含まれない' },
   { s: 'can', n: '経済センサス 500m メッシュ 従業者規模別（表 T001165）', by: '総務省・経済産業省', g: '500m メッシュ', u: '未使用' },
@@ -273,21 +275,22 @@ export function initAnalysis(ctx) {
   }
   // ---- 信号待ち (交差点ごとの推計) ----
   // 横断歩道 = 横断歩道のリンクが節点でつながったまとまり。その通行量 q (人/秒) から、到着が一様だとして
-  //   平均の待ち人数 = q × R² / (2C)、赤の終わりの最大 = q × R   (C = 周期 90 秒、R = 赤の長さ 52 秒)
-  // を出し、約 40 m の升目で交差点にまとめる。歩行者を動かして数える「信号待ちの柱」と同じ仮定の、ばらつきの無い値
-  const WAIT_CELL = 40, RED = SIG_CYCLE - SIG_GREEN; let crosswalks = null, waitCache = null;
+  //   平均の待ち人数 = q × R² / (2C)、赤の終わりの最大 = q × R   (C = 周期、R = 赤の長さ = C − 青)
+  // を出し、約 40 m の升目で交差点にまとめる。周期と青は横断歩道ごと (data/signals.json)。信号の無い横断歩道は待ちなし。
+  // 歩行者を動かして数える「信号待ちの柱」と同じ仮定の、ばらつきの無い値
+  const WAIT_CELL = 40; let crosswalks = null, waitCache = null;
   function buildCrosswalks() {
     const par = new Map(), find = v => { let r = v; while (par.get(r) !== r) r = par.get(r); par.set(v, r); return r; };
     const ids = []; graph.links.forEach((l, i) => { if (!l.cross) return; ids.push(i); for (const v of [l.a, l.b]) if (!par.has(v)) par.set(v, v); par.set(find(l.a), find(l.b)); });
     const by = new Map(); for (const i of ids) { const r = find(graph.links[i].a); let c = by.get(r); if (!c) by.set(r, c = { links: [], x: 0, y: 0 }); const l = graph.links[i]; c.links.push(i); c.x += (l.ax + l.bx) / 2; c.y += (l.ay + l.by) / 2; }
-    crosswalks = [...by.values()].map(c => ({ links: c.links, x: c.x / c.links.length, y: c.y / c.links.length, key: Math.round(c.x / c.links.length / WAIT_CELL) * 8192 + Math.round(c.y / c.links.length / WAIT_CELL) }));
+    crosswalks = [...by.values()].map(c => ({ links: c.links, sig: people.signalOf(c.links[0]), x: c.x / c.links.length, y: c.y / c.links.length, key: Math.round(c.x / c.links.length / WAIT_CELL) * 8192 + Math.round(c.y / c.links.length / WAIT_CELL) }));
   }
   const nameNear = (x, y, lim = 120) => { let nm = '', bd = lim; for (const dd of people.model.dests) { if (!dd.n || dd.n === '公園・緑地' || dd.extra) continue; const q = Math.hypot(dd.x - x, dd.y - y); if (q < bd) { bd = q; nm = dd.n; } } return nm; };
   // その時刻の交差点ごとの値 (平均の待ち人数の多い順)
   function waitStats(hour = people.state.hour, d = day()) {
     if (!crosswalks) buildCrosswalks(); const vol = new Float32Array(graph.links.length); people.model.volumes(hour, d, vol); const cells = new Map();
-    for (const c of crosswalks) { let v = 0; for (const i of c.links) if (vol[i] > v) v = vol[i]; if (v < 1) continue; let e = cells.get(c.key); if (!e) cells.set(c.key, e = { key: c.key, x: 0, y: 0, n: 0, flow: 0 }); e.x += c.x; e.y += c.y; e.n++; e.flow += v; }
-    return [...cells.values()].map(e => { const q = e.flow / 3600; return { key: e.key, x: e.x / e.n, y: e.y / e.n, n: e.n, flow: e.flow, avg: q * RED * RED / (2 * SIG_CYCLE), peak: q * RED }; }).sort((a, b) => b.avg - a.avg);
+    for (const c of crosswalks) { if (!c.sig) continue; let v = 0; for (const i of c.links) if (vol[i] > v) v = vol[i]; if (v < 1) continue; const q = v / 3600, R = c.sig.C - c.sig.G; let e = cells.get(c.key); if (!e) cells.set(c.key, e = { key: c.key, x: 0, y: 0, n: 0, flow: 0, avg: 0, peak: 0, C: 0, G: 0, top: 0 }); e.x += c.x; e.y += c.y; e.n++; e.flow += v; e.avg += q * R * R / (2 * c.sig.C); e.peak += q * R; if (v > e.top) { e.top = v; e.C = c.sig.C; e.G = c.sig.G; } }
+    return [...cells.values()].map(e => ({ key: e.key, x: e.x / e.n, y: e.y / e.n, n: e.n, flow: e.flow, avg: e.avg, peak: e.peak, C: e.C, G: e.G })).sort((a, b) => b.avg - a.avg);   // C・G は通行量がいちばん多い横断歩道の周期と青
   }
   // 1 日の推移 (30 分ごと): 全体の平均待ち人数と、交差点ごとの値。条件が変わるまで使い回す
   function waitSeries() {
@@ -303,14 +306,14 @@ export function initAnalysis(ctx) {
     let svg = [6, 12, 18].map(h => `<line x1="${X(h)}" y1="0" x2="${X(h)}" y2="${H}" stroke="rgba(120,180,255,0.15)"/><text x="${X(h)}" y="${H + 10}" font-size="8" fill="#7d93b5" text-anchor="middle">${h}時</text>`).join('') + line(ser.total, mx, '#4da3ff', 1.6) + (own ? line(own, my, '#ffb347', 1.6) : '') + `<line x1="${X(people.state.hour)}" y1="0" x2="${X(people.state.hour)}" y2="${H}" stroke="#00e5ff" stroke-dasharray="3 3"/>`;
     const selRow = selKey != null ? st.find(q => q.key === selKey) : null;
     return `<div class="sec-title" style="margin-top:6px">信号待ちの多い交差点（${hourTxt()}・推計）</div>
-      <table class="p-table an-click"><tr><th>交差点</th><th>平均</th><th>最大</th><th>横断 人/時</th></tr>${top.map((q, k) => { const nm = nameNear(q.x, q.y); return `<tr data-wk="${q.key}" data-wx="${q.x}" data-wy="${q.y}" class="${q.key === selKey ? 'sel' : ''}"><td>${k + 1}. ${nm ? nm + ' 付近' : `(${Math.round(q.x)}, ${Math.round(q.y)})`}</td><td>${q.avg.toFixed(1)}</td><td>${fmtN(q.peak)}</td><td>${fmtN(q.flow)}</td></tr>`; }).join('')}</table>
+      <table class="p-table an-click"><tr><th>交差点</th><th>平均</th><th>最大</th><th>横断 人/時</th><th>青/周期</th></tr>${top.map((q, k) => { const nm = nameNear(q.x, q.y); return `<tr data-wk="${q.key}" data-wx="${q.x}" data-wy="${q.y}" class="${q.key === selKey ? 'sel' : ''}"><td>${k + 1}. ${nm ? nm + ' 付近' : `(${Math.round(q.x)}, ${Math.round(q.y)})`}</td><td>${q.avg.toFixed(1)}</td><td>${fmtN(q.peak)}</td><td>${fmtN(q.flow)}</td><td>${q.G}/${q.C}</td></tr>`; }).join('')}</table>
       <svg viewBox="0 0 ${W} ${H + 12}" width="100%" style="display:block;margin-top:4px">${svg}</svg>
       <div class="legend" style="margin-top:0"><span><i style="background:#4da3ff"></i>全体の平均待ち人数（最大 ${fmtN(mx)} 人）</span>${own ? `<span><i style="background:#ffb347"></i>選んだ交差点（最大 ${my.toFixed(1)} 人${selRow ? '・いま ' + selRow.avg.toFixed(1) + ' 人' : ''}）</span>` : ''}</div>
-      <div class="note" style="margin-top:0">いま全体で平均 約 ${fmtN(tot)} 人が信号を待っています（${st.length} 交差点）。「平均」は 1 周期をならした待ち人数、「最大」は赤の終わりの人数です。周期 ${SIG_CYCLE} 秒・青 ${SIG_GREEN} 秒をすべての横断歩道に仮定し、到着は一様としています。行をクリックすると、その交差点へ移動して 1 日の推移を重ねます。</div>`;
+      <div class="note" style="margin-top:0">いま全体で平均 約 ${fmtN(tot)} 人が信号を待っています（${st.length} 交差点）。「平均」は 1 周期をならした待ち人数、「最大」は赤の終わりの人数です。${people.signalStats ? `信号の有無は OpenStreetMap の記載から決め（横断歩道 ${people.signalStats.crosswalks} か所のうち信号あり ${people.signalStats.signalized}・なし ${people.signalStats.unsignalized}）、信号の無い横断歩道は待ちなしとしています。周期は交差する道路の種別による仮定（幹線 130 秒〜細街路 70 秒）で、「青/周期」は通行量がいちばん多い横断歩道の値です。` : `周期 ${SIG_CYCLE} 秒・青 ${SIG_GREEN} 秒をすべての横断歩道に仮定しています。`}到着は一様としています。行をクリックすると、その交差点へ移動して 1 日の推移を重ねます。</div>`;
   }
   function exportWaits() {
-    const st = waitStats(), ser = waitSeries(), rows = [['rank', 'near', 'lon', 'lat', 'crosswalks', 'crossing_per_h', 'avg_waiting', 'peak_queue', 'hour', 'day', ...Array.from({ length: 24 }, (_, h) => `avg_${String(h).padStart(2, '0')}h`)]];
-    st.forEach((q, k) => { const [lo, la] = lonlat(q.x, q.y), a = ser.per.get(q.key); rows.push([k + 1, nameNear(q.x, q.y), lo.toFixed(6), la.toFixed(6), q.n, Math.round(q.flow), q.avg.toFixed(2), q.peak.toFixed(1), hourTxt(), people.state.day, ...Array.from({ length: 24 }, (_, h) => a ? ((a[h * 2] + a[h * 2 + 1]) / 2).toFixed(2) : 0)]); });
+    const st = waitStats(), ser = waitSeries(), rows = [['rank', 'near', 'lon', 'lat', 'crosswalks', 'crossing_per_h', 'avg_waiting', 'peak_queue', 'cycle_s', 'green_s', 'hour', 'day', ...Array.from({ length: 24 }, (_, h) => `avg_${String(h).padStart(2, '0')}h`)]];
+    st.forEach((q, k) => { const [lo, la] = lonlat(q.x, q.y), a = ser.per.get(q.key); rows.push([k + 1, nameNear(q.x, q.y), lo.toFixed(6), la.toFixed(6), q.n, Math.round(q.flow), q.avg.toFixed(2), q.peak.toFixed(1), q.C, q.G, hourTxt(), people.state.day, ...Array.from({ length: 24 }, (_, h) => a ? ((a[h * 2] + a[h * 2 + 1]) / 2).toFixed(2) : 0)]); });
     download(`minatomirai_signal_wait_${hourTxt().replace(':', '')}.csv`, csv(rows), 'text/csv');
   }
   // 来訪者の発地構成 (人流オープンデータ 市区町村単位発地別)。区単位の値で、対象範囲より広い

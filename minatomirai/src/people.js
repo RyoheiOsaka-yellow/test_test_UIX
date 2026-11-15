@@ -21,14 +21,15 @@ export const LOS = [{ k: 'A', max: 23, c: '#5b8fd9' }, { k: 'B', max: 33, c: '#1
 const LOSC = LOS.map(l => lin(l.c));
 const losIndex = f => { for (let i = 0; i < LOS.length; i++) if (f < LOS[i].max) return i; return LOS.length - 1; };
 const speedFactor = f => f <= 23 ? 1 : Math.max(0.35, 1 - 0.65 * (f - 23) / (82 - 23));   // LOS A までは自由歩行、F で 35%
-export const SIG_CYCLE = 90, SIG_GREEN = 38;   // 歩行者信号 (秒): 1 サイクル 90 秒のうち青 38 秒 (仮定)
+export const SIG_CYCLE = 90, SIG_GREEN = 38;   // 歩行者信号 (秒) の既定: 1 サイクル 90 秒のうち青 38 秒。data/signals.json があれば横断歩道ごとの値を使う
 const UP = lin('#ff3b30'), DOWN = lin('#2b6cff');
 
 export function initPeople(ctx) {
-  const { scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, extraDest = () => [], onClock, calib = null, getMonth = () => 1 } = ctx;
+  const { scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, extraDest = () => [], onClock, calib = null, signals = null, getMonth = () => 1 } = ctx;
+  const sigMap = signals?.links ? new Map(signals.links.map(e => [`${e[0]},${e[1]},${e[2]},${e[3]}`, e])) : null;   // 横断歩道のリンク (両端の座標) → [.., 周期, 青, 位相]
   const S = { on: true, hour: 15, day: 'weekday', accel: 8, agents: true, vol: true, per: 1, real: false, dark: false, playing: false, rain: false, event: null, ribbon: 'volume', signals: true, meshes: false, nonRail: true, look: 'dots', waits: false };
   let model = null, base = null, L = 0, simT = 0;
-  let gA, gB, dirX, dirY, hLen, visL, vol, baseVol, acc, sf, crossL, sigOff;
+  let gA, gB, dirX, dirY, hLen, visL, vol, baseVol, acc, sf, crossL, sigOff, sigC, sigG;
   // ---- 歩行者 ----
   const path = new Array(MAX), step = new Int32Array(MAX), sArr = new Float32Array(MAX), spd = new Float32Array(MAX), lat = new Float32Array(MAX), grp = new Uint8Array(MAX);
   let count = 0, waiting = 0;
@@ -101,12 +102,13 @@ export function initPeople(ctx) {
   }
   function rebuild() {
     base = build(false); model = base; L = graph.links.length;
-    gA = new Float32Array(L); gB = new Float32Array(L); dirX = new Float32Array(L); dirY = new Float32Array(L); hLen = new Float32Array(L); visL = new Uint8Array(L); vol = new Float32Array(L); baseVol = new Float32Array(L); sf = new Float32Array(L).fill(1); crossL = new Uint8Array(L); sigOff = new Float32Array(L);
+    gA = new Float32Array(L); gB = new Float32Array(L); dirX = new Float32Array(L); dirY = new Float32Array(L); hLen = new Float32Array(L); visL = new Uint8Array(L); vol = new Float32Array(L); baseVol = new Float32Array(L); sf = new Float32Array(L).fill(1); crossL = new Uint8Array(L); sigOff = new Float32Array(L); sigC = new Float32Array(L); sigG = new Float32Array(L);
     for (let i = 0; i < L; i++) {
       const l = graph.links[i]; const dx = l.bx - l.ax, dy = l.by - l.ay, h = Math.hypot(dx, dy); hLen[i] = h; if (h > 0.5) { dirX[i] = dx / h; dirY[i] = dy / h; }
       if (l.cross) {   // 交差点ごとに位相をずらし、直交する横断歩道は逆位相にする
-        crossL[i] = 1; const th = ((Math.atan2(dy, dx) % Math.PI) + Math.PI) % Math.PI, grpPhase = th > Math.PI / 4 && th < Math.PI * 3 / 4 ? 0 : SIG_CYCLE / 2;
-        const hx = Math.floor((l.ax + l.bx) / 2 / 70), hy = Math.floor((l.ay + l.by) / 2 / 70); sigOff[i] = grpPhase + (((hx * 73856093) ^ (hy * 19349663)) >>> 0) % SIG_CYCLE;
+        crossL[i] = 1;
+        if (sigMap) { const e = sigMap.get(`${Math.round(l.ax * 10)},${Math.round(l.ay * 10)},${Math.round(l.bx * 10)},${Math.round(l.by * 10)}`); if (e) { sigC[i] = e[4]; sigG[i] = e[5]; sigOff[i] = e[6]; } }   // 記載の無い横断歩道は信号なし (周期 0 = 待たない)
+        else { const th = ((Math.atan2(dy, dx) % Math.PI) + Math.PI) % Math.PI, grpPhase = th > Math.PI / 4 && th < Math.PI * 3 / 4 ? 0 : SIG_CYCLE / 2, hx = Math.floor((l.ax + l.bx) / 2 / 70), hy = Math.floor((l.ay + l.by) / 2 / 70); sigC[i] = SIG_CYCLE; sigG[i] = SIG_GREEN; sigOff[i] = grpPhase + (((hx * 73856093) ^ (hy * 19349663)) >>> 0) % SIG_CYCLE; }
       }
     }
     if (ribbon) { scene.remove(ribbon); ribbon.geometry.dispose(); }
@@ -120,8 +122,8 @@ export function initPeople(ctx) {
   }
   const day = () => dayContext(S.day, getMonth(), calib);
   // 鉄道以外の手段の内訳の説明 (tools/mode_split.py の見積もり。無ければ仮の割合)
-  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人（${M.bus.source}）。駐車台数のうち ${fmt(M.parking.known)} 台は ${M.parking.knownCount} 施設の公表値（うち ${M.parking.officialCount ?? 0} 施設は公式情報で確認）` : `手段の内訳 ${sh} は仮定`; };
-  const green = li => !S.signals || ((simT + sigOff[li]) % SIG_CYCLE) < SIG_GREEN;
+  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人（${M.bus.source}）。駐車台数のうち ${fmt(M.parking.known)} 台は ${M.parking.knownCount} 施設の公表値（うち ${M.parking.officialCount ?? 0} 施設は公式情報で確認）。時間帯の分布は、車が道路の時間帯別交通量（${M.car ? '一般交通量調査 令和 3 年度・範囲内 3 地点' : '未設定'}）、バスが${M.bus.hourly ? (M.bus.dummy ? '<b style="color:#ffb347">ダミーの時刻表</b>（実データ未取得）' : '現行ダイヤ（GTFS）') : '目的別の分布のまま'}` : `手段の内訳 ${sh} は仮定`; };
+  const green = li => !S.signals || sigC[li] === 0 || ((simT + sigOff[li]) % sigC[li]) < sigG[li];
   function updateVolumes() {
     const d = day(); model.volumes(S.hour, d, vol); if (scenarioOn()) base.volumes(S.hour, d, baseVol); else baseVol.set(vol);
     stat.maxVol = stat.baseMaxVol = stat.maxF = stat.efLen = stat.baseEfLen = 0; const lift = S.real ? 0.42 : 0.5, mode = S.ribbon;
@@ -255,5 +257,5 @@ export function initPeople(ctx) {
   }
   // 建物ごとの出入り (駅との間の歩行者のみ) と滞在人数
   function buildingFlows(b) { if (!model) return null; const d = model.dests.find(x => (b === -2 ? x.extra : x.b === b)); if (!d) return null; const dd = day(); const f = model.destFlows(d.idx, S.hour, dd); let peak = 0, ph = 0; for (let h = 5; h < 24; h += 0.5) { const g = model.destFlows(d.idx, h, dd); if (g.arrive + g.leave > peak) { peak = g.arrive + g.leave; ph = h; } } return { ...f, peak, peakHour: ph, use: d.u, dest: d, presence: Math.max(0, model.presence(S.hour, dd)[d.idx]) }; }
-  return { rebuild, update, refreshHeights, setTheme, setHour, set, monthChanged, state: S, buildingFlows, day, graphNode: i => graph.nodes[i], carStop: li => S.on && S.signals && ((simT + sigOff[li]) % SIG_CYCLE) < SIG_GREEN + 3, timeScale: () => !S.on ? 1 : S.playing ? Math.max(S.accel, 40) : S.accel, dayOf: key => dayContext(key, getMonth(), calib), stat, get model() { return model; }, get base() { return base; }, get count() { return count; }, get waiting() { return waiting; }, get maxVol() { return stat.maxVol; }, get simT() { return simT; } };
+  return { rebuild, update, refreshHeights, setTheme, setHour, set, monthChanged, state: S, buildingFlows, day, graphNode: i => graph.nodes[i], carStop: li => S.on && S.signals && sigC[li] > 0 && ((simT + sigOff[li]) % sigC[li]) < sigG[li] + 3, signalOf: li => sigC && sigC[li] > 0 ? { C: sigC[li], G: sigG[li] } : null, signalStats: signals?.stats ?? null, timeScale: () => !S.on ? 1 : S.playing ? Math.max(S.accel, 40) : S.accel, dayOf: key => dayContext(key, getMonth(), calib), stat, get model() { return model; }, get base() { return base; }, get count() { return count; }, get waiting() { return waiting; }, get maxVol() { return stat.maxVol; }, get simT() { return simT; } };
 }

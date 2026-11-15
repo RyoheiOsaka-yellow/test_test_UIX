@@ -23,13 +23,14 @@ let peopleCalib = null; try { peopleCalib = JSON.parse(readFileSync(join(root, '
 try { if (peopleCalib) peopleCalib.mode = JSON.parse(readFileSync(join(root, 'data/mode_split.json'), 'utf8')); } catch (e) { }   // 鉄道以外の手段の内訳 (tools/mode_split.py)
 let stats = null; try { stats = JSON.parse(readFileSync(join(root, 'data/stats_mesh.json'), 'utf8')); } catch (e) { }
 let cores = []; try { cores = JSON.parse(readFileSync(join(root, 'data/cores.json'), 'utf8')); } catch (e) { }
+let signals = null; try { signals = JSON.parse(readFileSync(join(root, 'data/signals.json'), 'utf8')); } catch (e) { }   // 横断歩道ごとの信号 (tools/signals.py)
 let ground = ''; try { ground = 'data:image/jpeg;base64,' + readFileSync(join(root, 'data/ground.jpg')).toString('base64'); } catch (e) { }
 let underlays = [];
 try {
   underlays = JSON.parse(readFileSync(join(root, 'data/underlays.json'), 'utf8')).map(u => ({ ...u, data: 'data:image/jpeg;base64,' + readFileSync(join(root, 'data/underlays', u.file)).toString('base64') }));
 } catch (e) { }
 const html = readFileSync(join(root, 'src/index.html'), 'utf8')
-  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};window.__UNDERLAYS=${JSON.stringify(underlays)};window.__ZONES=${JSON.stringify(zones)};window.__GROUND=${JSON.stringify(ground)};window.__PEOPLE_CALIB=${JSON.stringify(peopleCalib)};window.__STATS=${JSON.stringify(stats)};window.__CORES=${JSON.stringify(cores)};`)
+  .replace('/*__PACK__*/', () => `window.__PACK_B64=${JSON.stringify(pack)};window.__FLOORGUIDE=${JSON.stringify(guide)};window.__UNDERLAYS=${JSON.stringify(underlays)};window.__ZONES=${JSON.stringify(zones)};window.__GROUND=${JSON.stringify(ground)};window.__PEOPLE_CALIB=${JSON.stringify(peopleCalib)};window.__STATS=${JSON.stringify(stats)};window.__CORES=${JSON.stringify(cores)};window.__SIGNALS=${JSON.stringify(signals)};`)
   .replace('/*__APP__*/', () => js);
 mkdirSync(join(root, 'dist'), { recursive: true });
 writeFileSync(join(root, 'dist/index.html'), html);

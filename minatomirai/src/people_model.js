@@ -169,8 +169,9 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
     // 平日と休日の 1 日の量 (往復の延べ人数)。休日は総量 (× hT) から車とバスを引いた残りを徒歩などに回す
     const wk = M ? { car: Math.min(extra * 0.8, 2 * M.carPersons.weekday), bus: Math.min(extra * 0.8, 2 * M.busPersons.weekday) } : { car: extra * 0.5, bus: extra * 0.15 }; wk.walk = Math.max(0, extra - wk.car - wk.bus);
     const hol = M ? { car: Math.min(extra * hT * 0.8, 2 * M.carPersons.holiday), bus: Math.min(extra * hT * 0.8, 2 * M.busPersons.holiday) } : { car: wk.car * hT, bus: wk.bus * hT }; hol.walk = Math.max(0, extra * hT - hol.car - hol.bus);
-    const hw = M?.bus?.hourly?.length === 24 ? (() => { const m = M.bus.hourly.reduce((a, b) => a + b, 0) / 24; return m > 0 ? M.bus.hourly.map(v => v / m) : null; })() : null;
-    for (const md of [{ id: 'car', n: '駐車場（車）', src: snapAll([...(header.parking || []), ...(M?.parking?.points || [])]) }, { id: 'bus', n: 'バス停', src: snapAll(header.busStops), hourW: hw }, { id: 'walk', n: '徒歩・自転車・その他', src: gate }]) {
+    // 時間帯別の重み (平均 1): バスは時刻表の時間帯別の便数、車は道路の時間帯別交通量
+    const hourW = a => a?.length === 24 ? (() => { const m = a.reduce((x, y) => x + y, 0) / 24; return m > 0 ? a.map(v => v / m) : null; })() : null, hw = hourW(M?.bus?.hourly), cw = hourW(M?.car?.hourly);
+    for (const md of [{ id: 'car', n: '駐車場（車）', src: snapAll([...(header.parking || []), ...(M?.parking?.points || [])]), hourW: cw }, { id: 'bus', n: 'バス停', src: snapAll(header.busStops), hourW: hw }, { id: 'walk', n: '徒歩・自転車・その他', src: gate }]) {
       if (!md.src.length || wk[md.id] <= 0) continue; let sx = 0, sy = 0; for (const i of md.src) { sx += nodes[i].x; sy += nodes[i].y; }
       stations.push({ id: md.id, n: md.n, hourW: md.hourW ?? null, daily: wk[md.id], dayMul: { weekday: 1, holiday: hol[md.id] / (wk[md.id] * hT) }, share: wk[md.id] / extra, src: md.src, x: sx / md.src.length, y: sy / md.src.length, out: tree(md.src, fadj), in: tree(md.src, radj), nonRail: true, assumed: true, est: !!M, srcNote: M ? '公開データからの見積もり' : '仮定' });
     }

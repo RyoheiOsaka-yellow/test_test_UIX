@@ -66,7 +66,8 @@ def main():
             total[k]["trips"] += out[k]["trips"]; total[k]["hourly"] = [a + b for a, b in zip(total[k]["hourly"], out[k]["hourly"])]
         print(info, {k: out[k]["trips"] for k in out})
     ops = sorted({v for f in feeds for n, v in N07_NAME.items() if n in f["agency"]})
-    json.dump({"feeds": feeds, "n07Operators": ops, **total}, open(os.path.join(DATA, "bus_gtfs.json"), "w"), ensure_ascii=False, indent=1)
+    dummy = any("ダミー" in f["agency"] for f in feeds)   # tools/make_dummy_gtfs.py が作った仮の時刻表
+    json.dump({"feeds": feeds, "dummy": dummy, "n07Operators": ops, **total}, open(os.path.join(DATA, "bus_gtfs.json"), "w"), ensure_ascii=False, indent=1)
     print("bus_gtfs.json", {k: total[k]["trips"] for k in total}, "N07 で置き換える事業者:", ops)
 
 if __name__ == "__main__":

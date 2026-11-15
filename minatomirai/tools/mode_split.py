@@ -59,20 +59,25 @@ def parking():
             "otherRaw": round(other), "other": round(other * ratio), "inBuilding": round(known + other * ratio), "bigBuildings": nb, "facilities": table,
             "points": [[c[0], c[1], fac[k]["capacity"]] for k, (fl, c) in sorted(pts.items())]}
 
-def buses():
+def n07_lines():
+    """範囲内を通る系統: {(種別, 事業者, 系統名): [平日, 土曜, 日祝 の運行本数]}、本数不明の系統、系統ごとの経路の点"""
     s = open(N07, encoding="utf-8", errors="replace").read(); curves = {}
     for m in re.finditer(r'<gml:Curve gml:id="(cv\d+)">(.*?)</gml:Curve>', s, re.S):
         v = list(map(float, re.search(r"<gml:posList>(.*?)</gml:posList>", m.group(2), re.S).group(1).split()))
         if any(35.44 < v[i] < 35.475 and 139.61 < v[i + 1] < 139.655 for i in range(0, len(v), 2)): curves[m.group(1)] = [B.to_local(v[i + 1], v[i]) for i in range(0, len(v), 2)]
-    lines = collections.defaultdict(lambda: [0.0, 0.0, 0.0]); unknown = set()
+    lines = collections.defaultdict(lambda: [0.0, 0.0, 0.0]); unknown = set(); path = collections.defaultdict(list)
     for m in re.finditer(r'<ksj:BusRoute gml:id="br\d+">(.*?)</ksj:BusRoute>', s, re.S):
         b = m.group(1); cv = re.search(r'href="#(cv\d+)"', b).group(1)
         if cv not in curves or not any(B.inbox(*p) for p in curves[cv]): continue
         g = lambda k: re.search(rf"<ksj:{k}>(.*?)</ksj:{k}>", b, re.S).group(1)
         key = (g("bsc"), g("boc"), g("bln")); f = [float(g(k) or 0) for k in ("rpd", "rps", "rph")]
         if f[0] > 990: unknown.add(key); continue   # 999.9 = 本数不明
-        v = lines[key]
+        v = lines[key]; path[key] += [q for q in curves[cv] if B.inbox(*q)]
         for i in range(3): v[i] = max(v[i], f[i])
+    return lines, unknown, path
+
+def buses():
+    lines, unknown, _ = n07_lines()
     # GTFS (tools/fetch_gtfs_bus.py の結果) があれば、その事業者の系統は N07 (2011 年度) ではなく現行ダイヤの便数を使う
     gt = None
     try: gt = json.load(open(os.path.join(DATA, "bus_gtfs.json")))
@@ -86,16 +91,42 @@ def buses():
     if gt: tot = [tot[0] + gt["weekday"]["trips"], tot[1] + gt["saturday"]["trips"], tot[2] + gt["holiday"]["trips"]]
     top = sorted(((v[0], k[1], k[2]) for k, v in lines.items()), reverse=True)[:8]
     out = {"lines": len(lines), "unknown": len(unknown), "weekday": tot[0], "saturday": tot[1], "holiday": tot[2], "top": [[k, l, n] for n, k, l in top], "source": "国土数値情報 N07 (2011 年度)"}
-    if gt: out.update({"source": "GTFS (" + "・".join(f["agency"] for f in gt["feeds"]) + ") + 国土数値情報 N07 (2011 年度)", "gtfs": {"feeds": gt["feeds"], "replacedLines": replaced, "weekday": gt["weekday"]["trips"], "holiday": gt["holiday"]["trips"]}, "hourly": gt["weekday"]["hourly"], "hourlyHoliday": gt["holiday"]["hourly"]})
+    if gt: out.update({"source": ("ダミーの時刻表 (" if gt.get("dummy") else "GTFS (") + "・".join(f["agency"] for f in gt["feeds"]) + ") + 国土数値情報 N07 (2011 年度)", "dummy": bool(gt.get("dummy")),
+                       "gtfs": {"feeds": gt["feeds"], "replacedLines": replaced, "weekday": gt["weekday"]["trips"], "holiday": gt["holiday"]["trips"]}, "hourly": gt["weekday"]["hourly"], "hourlyHoliday": gt["holiday"]["hourly"]})
     return out
 
+CENSUS = os.path.join(os.environ.get("MM_WORK", "/tmp/mm"), "census/zkntrf14.csv")   # 一般交通量調査 (令和 3 年度) 時間帯別交通量表 神奈川県
+CENSUS_PTS = {"80040": "栄本町線（みなとみらい大通り）西区みなとみらい 2-2", "80180": "高島関内線 西区花咲町 4", "13080": "一般国道 16 号 西区高島 2 丁目"}
+
+def car_hourly():
+    """車の時間帯分布: 範囲内 3 地点の小型車の時間帯別交通量 (上下計)。7〜18 時台は 3 地点の合計、
+    夜間は 24 時間観測の国道 16 号の形を、昼間の合計の比で引き伸ばして補う。通過する車も含むので、来訪の時間帯の目安として使う"""
+    import csv, io
+    try: rows = list(csv.reader(io.open(CENSUS, encoding="cp932", errors="replace")))
+    except OSError: return None
+    day = [0.0] * 24; full = None; used = []
+    for r in rows[1:]:
+        if r[0] != "14100" or r[1] not in CENSUS_PTS or r[10] != "1": continue
+        v = [float(x) if x.strip() else None for x in r[11:35]]   # 7 時台 … 23 時台, 0 時台 … 6 時台
+        byh = {(7 + i) % 24: v[i] for i in range(24)}
+        for h in range(7, 19): day[h] += byh[h] or 0
+        if all(x is not None for x in v): full = [a + b for a, b in zip(full, [byh[h] for h in range(24)])] if full else [byh[h] for h in range(24)]
+        if CENSUS_PTS[r[1]] not in used: used.append(CENSUS_PTS[r[1]])
+    if not full or not sum(day): return None
+    k = sum(day[7:19]) / sum(full[7:19]); hourly = [round(day[h]) if 7 <= h < 19 else round(full[h] * k) for h in range(24)]
+    return {"hourly": hourly, "points": used, "nightFrom": "一般国道 16 号 西区高島 2 丁目（24 時間観測）", "source": "全国道路・街路交通情勢調査 一般交通量調査（令和 3 年度）時間帯別交通量 小型車 上下計"}
+
 def main():
-    P = parking(); Bs = buses(); cap = P["tagged"] + P["surface"] + P["multi"] + P["inBuilding"]
+    P = parking(); Bs = buses(); Ch = car_hourly()
+    if Ch is None:   # 調査票が手元に無いときは、前回の結果を引き継ぐ
+        try: Ch = json.load(open(os.path.join(DATA, "mode_split.json"))).get("car")
+        except OSError: Ch = None
+    cap = P["tagged"] + P["surface"] + P["multi"] + P["inBuilding"]
     car = {d: round(cap * TURNOVER * OCC[d]) for d in OCC}                       # 1 日に車で来る人数 (片道)
     bus = {"weekday": Bs["weekday"] * ALIGHT_PER_TRIP, "holiday": Bs["holiday"] * ALIGHT_PER_TRIP}
     out = {"parking": {**P, "capacity": cap, "turnover": round(TURNOVER, 3), "occupancy": OCC}, "bus": {**Bs, "alightPerTrip": ALIGHT_PER_TRIP},
-           "carPersons": car, "busPersons": bus,
-           "sources": ["OpenStreetMap の駐車場 (amenity=parking)", "主要施設の駐車場の収容台数 (各施設の公式サイト・駐車場案内サイト, data/parking_facilities.json)", "みなとみらい公共駐車場の利用実績 (横浜市会資料, 2012 年度 369,328 台) と収容台数 1,154 台", "国土数値情報 バスルート N07 (2011 年度, 系統別の運行本数)", "横浜市 記者発表 みなとみらい 21 地区の来街者数 (手段別の内訳は非公表)"],
+           "carPersons": car, "busPersons": bus, "car": Ch,
+           "sources": ["OpenStreetMap の駐車場 (amenity=parking)", "主要施設の駐車場の収容台数 (各施設の公式サイト・駐車場案内サイト, data/parking_facilities.json)", "みなとみらい公共駐車場の利用実績 (横浜市会資料, 2012 年度 369,328 台) と収容台数 1,154 台", "国土数値情報 バスルート N07 (2011 年度, 系統別の運行本数)", "全国道路・街路交通情勢調査 一般交通量調査 (令和 3 年度) 時間帯別交通量", "横浜市 記者発表 みなとみらい 21 地区の来街者数 (手段別の内訳は非公表)"],
            "assumed": [f"駐車 1 台あたり {SPACE_M2:.0f} m²", f"立体駐車場は {MULTI_LEVELS} 階", f"台数が分からない延床 {BIG_FLOOR:,} m² 以上の施設は、延床 {FLOOR_PER_SPACE:.0f} m² に 1 台 × 補正比 {P['ratio']}", f"1 台あたり 平日 {OCC['weekday']} 人・休日 {OCC['holiday']} 人", f"バス 1 便あたり範囲内で {ALIGHT_PER_TRIP} 人が降りる"]}
     json.dump(out, open(os.path.join(DATA, "mode_split.json"), "w"), ensure_ascii=False, indent=1)
     print(json.dumps(out, ensure_ascii=False, indent=1))
