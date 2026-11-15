@@ -3,7 +3,7 @@ import { toast, download, csv, fmt } from './common.js';
 import { downloadPdf, loadXLSX } from './pdfgen.js';
 import * as WF from '../core/workflow.js';
 import { summarize, memberWeight } from '../bim/weight.js';
-import { parseSpec, sectionProps } from '../geo/profiles.js';
+import { parseSpec, sectionProps, cutsLabel } from '../geo/profiles.js';
 import { buildSchedules } from './schedules.js';
 import { GALV } from '../data/sections.js';
 const r2 = v => Math.round((v || 0) * 100) / 100, r3 = v => Math.round((v || 0) * 1000) / 1000;
@@ -12,7 +12,7 @@ const r2 = v => Math.round((v || 0) * 100) / 100, r3 = v => Math.round((v || 0) 
 export function weightRows(app) {
   const rows = []; for (const inst of app.model.instances) { const t = app.model.getType(inst.typeId); const fam = app.model.familyOf(inst); const p = app.model.resolved(inst); const parts = app.instanceParts ? app.instanceParts(inst) : fam.parts(p, { inst, model: app.model });
     for (const pt of parts) { if (pt.ref) continue; const q = pt.qty || 1;
-      if (['member', 'plate', 'pipe'].includes(pt.kind)) { const w = memberWeight(pt); if (!w) continue; const sp = sectionProps(w.profile); rows.push({ mark: inst.mark, type: t.name, part: pt.name, kind: '鋼材', spec: w.profile.label, material: pt.material || 'SS400', finish: pt.finish, unitMass: r3(sp.w), length: Math.round(w.length), qty: q, gross: r3(w.gross), holes: w.holeCount + w.slotCount, holeDeduct: r3(w.holeDeduct), areaM2: r3(w.areaM2), gpm2: GALV[pt.finish] ?? (pt.finish?.startsWith('HDZ') ? 550 : 0), zinc: r3(w.zinc), each: r3(w.total), total: r3(w.total * q), source: w.source }); }
+      if (['member', 'plate', 'pipe'].includes(pt.kind)) { const w = memberWeight(pt); if (!w) continue; const sp = sectionProps(w.profile); rows.push({ mark: inst.mark, type: t.name, part: pt.name + (pt.cuts ? `（${cutsLabel(pt.cuts)}）` : ''), kind: '鋼材', spec: w.profile.label, material: pt.material || 'SS400', finish: pt.finish, unitMass: r3(sp.w), length: Math.round(w.length), qty: q, gross: r3(w.gross), holes: w.holeCount + w.slotCount, holeDeduct: r3(w.holeDeduct), areaM2: r3(w.areaM2), gpm2: GALV[pt.finish] ?? (pt.finish?.startsWith('HDZ') ? 550 : 0), zinc: r3(w.zinc), each: r3(w.total), total: r3(w.total * q), source: w.source }); }
       else if (pt.kind === 'weld') { const s = summarize([pt]); rows.push({ mark: inst.mark, type: t.name, part: (pt.group || '溶接') + ' ' + (pt.weldType === 'butt' ? '突合せ' : '隅肉'), kind: '溶接', spec: `▷${pt.size}`, material: '溶着金属', finish: '', unitMass: r3(s.welds / Math.max(1, pt.length) * 1000), length: Math.round(pt.length), qty: q, gross: r3(s.welds), holes: 0, holeDeduct: 0, areaM2: 0, gpm2: 0, zinc: 0, each: r3(s.welds), total: r3(s.welds * q), source: 's²/2×L×1.1×ρ' }); }
       else if (['bolt', 'ubolt', 'anchor', 'rod', 'nut', 'washer', 'custom'].includes(pt.kind)) { const s = summarize([{ ...pt, qty: 1 }]); const e = s.total; rows.push({ mark: inst.mark, type: t.name, part: pt.name, kind: pt.kind === 'custom' ? '加工品' : 'ボルト類', spec: pt.M || pt.spec || '', material: pt.finish === 'SUS304' ? 'SUS304' : 'SS400', finish: pt.finish || 'EZ', unitMass: r3(e), length: pt.L || '', qty: q, gross: r3(e), holes: 0, holeDeduct: 0, areaM2: r3(pt.areaM2 || 0), gpm2: 0, zinc: 0, each: r3(e), total: r3(e * q), source: 'JIS B 1180 寸法から算出' }); } } }
   return rows;

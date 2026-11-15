@@ -50,7 +50,7 @@ function patternize(obj, pattern) {
 export function buildPart(pt, lod = 300) {
   let obj = null;
   try {
-    if (pt.kind === 'member' || pt.kind === 'plate' || pt.kind === 'pipe') { const mat = pt.finish === 'PIPE' ? finishMaterial('PIPE') : finishMaterial(pt.material === 'SUS304' && !pt.finish?.startsWith('SUS') ? 'SUS304' : (pt.finish || 'HDZ')); obj = buildMember({ spec: pt.spec, length: pt.length, holes: pt.holes || [], lod, material: mat }); patternize(obj, pt.pattern); }
+    if (pt.kind === 'member' || pt.kind === 'plate' || pt.kind === 'pipe') { const mat = pt.finish === 'PIPE' ? finishMaterial('PIPE') : finishMaterial(pt.material === 'SUS304' && !pt.finish?.startsWith('SUS') ? 'SUS304' : (pt.finish || 'HDZ')); obj = buildMember({ spec: pt.spec, length: pt.length, holes: pt.holes || [], cuts: pt.cuts || null, lod, material: mat }); patternize(obj, pt.pattern); }
     else if (pt.kind === 'bolt') obj = hexBolt({ M: pt.M, L: pt.L, lod });
     else if (pt.kind === 'ubolt') obj = uBolt({ od: pt.od, nominal: pt.nominal, M: pt.M, plateT: pt.plateT, lod });
     else if (pt.kind === 'anchor') obj = anchorBolt({ M: pt.M, plateT: pt.plateT, lod });

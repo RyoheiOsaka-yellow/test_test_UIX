@@ -203,13 +203,15 @@ GitHub Actions（`.github/workflows/anglex-thumbs.yml`）が、カタログ・�
 
 | 用途 | 形式 | 中身 |
 |---|---|---|
-| BIM・CAD 連携 | **IFC4（.ifc）** | IfcProject → Site → Building → Storey（レベル）→ IfcElementAssembly（部材）→ IfcMember / IfcPlate / IfcPipeSegment / IfcMechanicalFastener / IfcFastener（溶接）。**形鋼・板・管は断面の押し出し**（IfcLShapeProfileDef・IfcUShapeProfileDef・IfcRectangleProfileDef・IfcCircleHollowProfileDef など + IfcExtrudedAreaSolid）、**穴は開口**（IfcOpeningElement + IfcRelVoidsElement）、材質は IfcMaterialProfileSet（断面名つき）。ボルト・溶接・その他は三角形面。属性は `Pset_ANGLEX_Assembly` / `Pset_ANGLEX_Part` に加えて、**標準の `Pset_MemberCommon` / `Pset_PlateCommon`（Reference = 断面の呼び名）と数量セット `Qto_MemberBaseQuantities` / `Qto_PlateBaseQuantities`（長さ・断面積・表面積・体積・質量）**。「見た目どおり（すべて面）」も選べます |
+| BIM・CAD 連携 | **IFC4 / IFC2x3（.ifc）** | IfcProject → Site → Building → Storey（レベル）→ IfcElementAssembly（部材）→ IfcMember / IfcPlate / IfcPipeSegment / IfcMechanicalFastener / IfcFastener（溶接）。**形鋼・板・管は断面の押し出し**（IfcLShapeProfileDef・IfcUShapeProfileDef・IfcRectangleProfileDef・IfcCircleHollowProfileDef など + IfcExtrudedAreaSolid）、**穴は開口**（IfcOpeningElement + IfcRelVoidsElement）、材質は IfcMaterialProfileSet（断面名つき）。ボルト・溶接・その他は三角形面。属性は `Pset_ANGLEX_Assembly` / `Pset_ANGLEX_Part` に加えて、**標準の `Pset_MemberCommon` / `Pset_PlateCommon`（Reference = 断面の呼び名）と数量セット `Qto_MemberBaseQuantities` / `Qto_PlateBaseQuantities`（長さ・断面積・表面積・体積・質量）**。「見た目どおり（すべて面）」も選べます |
 | BIM・CAD 連携 | **DXF 3D（3DFACE）** / DXF 加工図 / **加工図 SVG** / IFC-JSON（属性のみ） | 立体の DXF は部材ごとにレイヤ。IFC-JSON は形状なしで BIM ソフトでは開けません |
 | 3D 表示・製作 | glTF・GLB / **OBJ / STL / PLY / USDZ（単体）** / SimReady パッケージ / **PNG 画像（4K）** | OBJ・STL・PLY・DXF 3D・IFC は Z 上・mm |
 | 加工データ | **DSTV NC（.nc1 の ZIP）** / **穴座標 CSV** / **部品 JSON** | NC は形鋼・板ごとに 1 ファイル（ST ヘッダー 24 行、AK 外形輪郭、BO 穴・長穴）。照合テストピースと照合シート（PDF）を同梱 |
 | 帳票・保存 | 重量計算書 PDF・Excel・CSV / ANGLEX プロジェクト | 見積書・加工指示書・分解図は見積の画面と部材のメニューから |
 
 - **3D 形式の詳細度**: ダイアログで「軽量（ねじ山・ビードの波紋を省く）／表示のまま／概略（溶接なし）」を選べます。一時的に粗い LOD で作り直して書き出し、終わると表示を元に戻します（`withLod`）。リボンの「IFC4」ボタンは軽量で書き出します
+- **IFC2x3 での書出し**: 「すべての形式…」の「IFC の版」で IFC4 / IFC2x3 を選べます（古い版や設備 CAD 向け）。IFC2x3 では、三角形面は面の集まり（IfcFaceBasedSurfaceModel）、配管は IfcFlowSegment、材質は IfcMaterial、断面定義は IFC2x3 の属性数で書きます。押し出し・開口・属性・数量は同じです。ファイルは約 5 倍になります（デモで 5 MB）。検証: IfcOpenShell でスキーマ違反 0 件、全 107 要素の形状を生成、IFC4 との外形差は最大 0.5 mm・体積差は最大 1.6%。ANGLEX で読み戻して部材へ変換すると、断面・長さ・穴・斜め切りがすべて元と一致（`ux23`）
+- **端部の斜め切り**: 単材の「端部の斜め切り（DSL）」に `start:y45; end:x-30` のように書きます（始端 / 終端、x = 幅方向・y = 高さ方向に端面が傾く、数字は直角切りからの角度、長さ L は最も長い辺）。3D の形状、重量（断面積 × 図心での深さぶんを控除）、IFC（押し出しを半空間で切る IfcBooleanClippingResult）、DSTV NC（AK 外形輪郭が四角形になる）、加工図 DXF・SVG、重量計算書に反映します。確認リストは、斜め切りで落とす範囲に穴がかかると「穴が部材の外」を出します。検証: IfcOpenShell が作った形状との体積差 1.6% 以内、`dstv` crate で読んだ輪郭 150 点がすべて一致、NC を読み戻すと角度が戻る（面・原点の基準を入れ替えた設定でも）
 - **IFC4 の検証（独立した実装で確認）**: `dev/verify-external.mjs` が、書き出した IFC を IfcOpenShell（Bonsai / FreeCAD と同じ IFC エンジン）で読み直します。スキーマ検証（属性の数・型・WHERE ルール）は違反 0 件、形状は全 105 要素を生成（開口のブーリアン演算を含む）。「面の集まり版」と「断面押し出し版」を要素ごとに比べ、外形の差は最大 0.5 mm、体積の差は最大 1.6%（面版は穴が多角形のため）。標準の数量セットも IfcOpenShell の形状と突き合わせます（NetVolume と形状の体積の差、密度）。ANGLEX 自身の IFC 読込（web-ifc）での読み戻しは `ux20`、**読み戻して部材へ変換する往復は `ux22`**（押し出し版・面版とも、形鋼・板 14 点の断面と長さ、穴 30 個がすべて元のモデルと一致。鋼材の正味質量は 26.64 kg に対して 26.51 kg）
 - **他のソフトが書いた IFC の読込**: ANGLEX とは別の実装（IfcOpenShell）で、鉄骨 CAD の書き出しに近い IFC2x3 と IFC4 を作って確認しています（`dev/external/make_ifc_steel.py` → `dev/samples/ifc/`。IfcBeam・IfcColumn・IfcMember・IfcPlate、規格の断面定義 I・L・U・角形鋼管・鋼管・長方形、開口つき）。7 要素すべての断面・長さ・穴 9 個が正解と一致し、置いた部材は元の立体と 0.5 mm 以内で重なります（`ux22`）
 - **IFC の断面定義との照合**: 要素に断面定義（IfcIShapeProfileDef など）があれば、その数値を読み、形から読んだ断面と突き合わせます。外形寸法が合えば板厚は断面定義の値を採用します。表示用の形状は、丸みを面取りで代用していたり、ソフトによって狂っていることがあるためです。実際に、IFC 読込ライブラリ（web-ifc 0.0.66）が角形鋼管（IfcRectangleHollowProfileDef）の肉厚を半分に描くことを見つけ、この照合で正しい 3.2 mm に直しています（IfcOpenShell では 3.2 mm）
@@ -219,6 +221,7 @@ GitHub Actions（`.github/workflows/anglex-thumbs.yml`）が、カタログ・�
   - **立体の分け方**: 「ちょうど 2 枚の三角形が共有する辺」でつながる面どうしを 1 つの立体とします。頂点の共有だけでつなぐと、溶接された枠のように角や面で接している部材が 1 つにくっつくためです（自分の IFC の読み戻しで見つけて直しました）。IFC は要素ごとに読みます
   - **穴の読み方**: 板厚の中央で立体を切り、外形の内側にある閉じた輪を穴とします。穴の面取りや三角形の分割のしかたに左右されず、径は呼び径になります。丸穴には円を当てはめ、中心からいちばん遠い点までを半径とします（円を粗い多角形にした形状でも、φ18 が φ17.5 にならない）。溝形鋼・H 形鋼・角パイプは上下・左右の両方の面を読みます
   - **断面の取り方**: 長さ方向 7 か所で切り、材料の量が最も多くの断面で同じになる断面を使います（穴のある断面を避ける）。測る線は真ん中からわずかにずらします（面を 2 枚に割った対角線が真ん中を通り、交点を数えそこなうことがあるため）
+  - **斜め切りの読み取り**: 端にある「軸に対して傾いた平らな面」が断面全体を 1 枚で切っていれば、その傾きを角度として読み、斜め切りつきの部材に変換します（状態は「推論」のまま）。切欠きや 2 面以上の切り方は「要判断」です。鋼管は、円を多角形にした形状でも、切断面と本来の半径から最も長い辺を計算で出します
   - **変換後の自己点検**: 元の立体と外形を比べ（1 mm 超で「要判断」）、各穴の中心が元の立体で空洞であること、**両端が直角切りであること（端面の面積が断面積に足りなければ斜め切り・切欠き）**、**体積が 8% 以内で合うこと**を確かめます。合わない部材は理由つきで「要判断」になります
   - 検証: 別の CAD カーネル（CadQuery / OpenCASCADE）で作った STEP 9 立体（`dev/samples/steel/`、`make_steel_step.py`。H 形鋼・リップ溝形鋼・45° 斜め切りの山形鋼を含む）で、断面・長さ・穴 16 個がすべて正解と一致、直角切りの 8 部材は外形差 0.3 mm 以内、斜め切りの 1 部材だけが「要判断」になります（`ux21`）
 - **DSTV NC の検証と、機械ごとの基準**: 書き出した全ファイルを、公開されている別実装のパーサー（Rust の `dstv` crate、`dev/external/dstvcheck`）で読み直し、ヘッダー・外形輪郭・穴・長穴がすべて一致することを確認しています（標準設定と、面入替・終端原点・y 反転の設定の両方）。長穴は規格どおり始点（最初の円の中心）で書きます。機械によって違いうる基準は書出し時に選べます（山形鋼の面 v / u の入替、原点を終端に、y を反対側の縁から）。実機での確認は、ZIP に入る**照合テストピース**（穴を非対称に置いた L-50×50×6 L=300）を 1 本加工し、**照合シート（PDF）**の図と見比べる手順にしています。部材の外にはみ出す穴は NC に出さず、件数を警告します
@@ -228,7 +231,7 @@ GitHub Actions（`.github/workflows/anglex-thumbs.yml`）が、カタログ・�
 - **LGPL のライブラリを同梱しない版**: `python3 tools/build_single.py index.html css/app.css <出力先> --offline --without-occt`（約 48 MB）。この版は STEP・IGES・BREP を読めませんが、「ヘルプ → ライセンス」で利用者が自分のファイルを指定すれば読めます。差し替え前は読めず、差し替え後に読めることを同じスクリプトで確認しています
 - 未決事項と確認先の一覧: `docs/OPEN_ITEMS.md`
 - 外部ツールでの検証の準備: `python -m venv <venv> && <venv>/bin/pip install ifcopenshell pytest cadquery`、`(cd dev/external/dstvcheck && cargo build --release)`。実行: `ANGLEX_PY=<venv>/bin/python node dev/verify-external.mjs`
-- テスト: `dev/flows/ux20.js`（各形式のサンプルを作って読込 → 全形式を書出し → IFC・OBJ・STL・PLY・GLB の往復、DSTV NC の往復、ZIP、ダイアログ）、`ux21.js`（STEP・STL の立体から部材へ）、`ux22.js`（穴が部材の外の確認項目、IFC の数量セット、IFC の往復と変換、他実装の IFC）。STEP・IGES・BREP のサンプルは `dev/samples/cad/`
+- テスト: `dev/flows/ux23.js`（斜め切りの形状・重量・NC・IFC、IFC2x3 の書出しと読み戻し、ダイアログからの書出し）、`dev/flows/ux20.js`（各形式のサンプルを作って読込 → 全形式を書出し → IFC・OBJ・STL・PLY・GLB の往復、DSTV NC の往復、ZIP、ダイアログ）、`ux21.js`（STEP・STL の立体から部材へ）、`ux22.js`（穴が部材の外の確認項目、IFC の数量セット、IFC の往復と変換、他実装の IFC）。STEP・IGES・BREP のサンプルは `dev/samples/cad/`
 
 ## 3D の基本操作（回す・掴んで中央へ）
 - **左ドラッグ＝空間をぐるぐる回す**（既定）。右ドラッグで画面全体を掴んで動かす。
@@ -325,7 +328,7 @@ node server/server.js --port 8080            # → http://localhost:8080/  デ�
 | LOD | 200 / 300 / 400 切替（根元R・ねじ山・ビード波紋） |
 | 表示スタイル | リアル / 陰影+エッジ / 隠線 / ワイヤ / 半透明、断面ボックス、分解 |
 | 干渉チェック | 板単位 AABB、接合済み接触は除外 |
-| IFC | 読込（web-ifc）、書出し（IFC4 の .ifc: 実形状 + 属性。IFC 風 JSON も残しています） |
+| IFC | 読込（web-ifc）、書出し（IFC4 / IFC2x3 の .ifc: 実形状 + 属性。IFC 風 JSON も残しています） |
 
 ## 3状態モデル（リスク行列 Case B）
 読込・推論した部材は **確定／推論／要判断** を保持します。境界は `js/bim/risk.js` のリスク行列で決まります:

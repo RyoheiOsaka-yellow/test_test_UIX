@@ -34,7 +34,7 @@
 
 <!-- 表紙 -->
 <div class="pcover page"><div class="veil"></div>
-<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 4 版　2026 年 11 月 15 日</span></div>
+<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 5 版　2026 年 11 月 15 日</span></div>
 <div class="in"><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE ・ 図面に、語らせる</div>
 <div class="doc">ANGLEX 導入 PoC 計画書<br>および 開発済み機能一覧</div>
 <div class="lead">配管支持金具の積算を、図面の読込から 3D での確認、重量・見積まで。まずは「初期段階」に絞って、貴社の実図面と実務で効果を確かめます。</div>
@@ -107,7 +107,7 @@
 <tr><td>V8</td><td class="cat">効果</td><td>所要時間</td><td>図面受領から見積書 PDF までを計測</td><td>現行比 50% 以上の短縮（目標）</td></tr>
 <tr><td>V9</td><td class="cat">操作性</td><td>担当者による操作</td><td>1 時間の説明後、担当者が単独で 1 案件を完了</td><td>完了できる。アンケート 5 段階で平均 3.5 以上</td></tr>
 <tr><td>V10</td><td class="cat">環境</td><td>動作環境・情報管理</td><td>貴社 PC でオフライン版を起動し、通信を確認</td><td>起動・OCR・PDF 出力が動く。外部への通信がない</td></tr>
-<tr><td>V11</td><td class="cat">連携<br><span class="muted small">任意</span></td><td>IFC の受け渡し</td><td>書き出した IFC4 を、貴社の BIM ソフトまたは IFC ビューアで開く</td><td>部材の数・位置・断面名・穴・属性（仕様・材質・質量）が読める</td></tr>
+<tr><td>V11</td><td class="cat">連携<br><span class="muted small">任意</span></td><td>IFC の受け渡し</td><td>書き出した IFC（IFC4 または IFC2x3）を、貴社の BIM ソフトまたは IFC ビューアで開く</td><td>部材の数・位置・断面名・穴・属性（仕様・材質・質量）が読める</td></tr>
 <tr><td>V12</td><td class="cat">連携<br><span class="muted small">任意</span></td><td>NC データ（DSTV）</td><td>同梱の照合テストピースを 1 本加工し、照合シートの図と見比べる</td><td>穴の面・位置・径が図と一致する（違う場合は書出し設定を切り替えて再確認）</td></tr>
 </table>
 <div class="callout small"><b>基準案の根拠（弊社社内検証・合成図面）</b>　デモ図面を画像化した検証で、きれいな画像は直線・矩形・穴を 100%、スキャン相当（200 dpi・ノイズあり）は直線・矩形 100%・穴 70〜90%、劣化した 150 dpi では 88% / 83% / 60% を拾いました。仕様注記の OCR はきれいな画像で 5 件中 5 件を読み取りました。実図面では様式や画質で結果が変わるため、PoC で貴社図面の実力値を測ります。</div>
@@ -148,7 +148,7 @@
 <tr><td>PC 1〜2 台</td><td>Windows 10 / 11（64 bit）または macOS 12 以降。メモリは 16 GB 以上を推奨（最小 8 GB）。Chrome または Edge の最新版。詳細は別紙「ハードウェア構成 回答書」をご参照ください。</td></tr>
 <tr><td>担当者 2〜3 名</td><td>積算を担当されている方。操作説明会（1 時間）と、検証 2 回目の操作（各 2〜3 時間程度）にご協力ください。</td></tr>
 </table>
-<h3>開始前に教えていただきたいこと</h3>
+<h3>開始前に教えていただきたいこと（別紙「PoC 事前確認票」にご記入ください）</h3>
 <table>
 <tr><th style="width:40mm">項目</th><th>内容</th><th style="width:38mm">理由</th></tr>
 <tr><td>図面の形式の内訳</td><td>DXF・PDF・スキャン画像・DWG・JWW のおおよその割合</td><td>DWG・JWW は DXF への変換が必要なため</td></tr>
@@ -212,13 +212,13 @@
 <table class="ov">
 <tr><th style="width:8mm">#</th><th>分類</th><th>主な内容</th><th>機能数</th><th>PoC で検証</th></tr>
 <tr><td>2</td><td>図面の読込・部材認識</td><td style="text-align:left">DXF・PDF・スキャン画像（TIFF 含む）、部材リスト、OCR、図面上の修正</td><td>15</td><td>9</td></tr>
-<tr><td>3</td><td>3D モデリング・部材配置</td><td style="text-align:left">ファミリ 34 種、カタログ 151 製品、配管へ取付、接合</td><td>9</td><td>4</td></tr>
+<tr><td>3</td><td>3D モデリング・部材配置</td><td style="text-align:left">ファミリ 34 種、カタログ 151 製品、配管へ取付、接合、斜め切り</td><td>10</td><td>4</td></tr>
 <tr><td>4</td><td>3D 表示・操作</td><td style="text-align:left">回す・中央へ・寄る、見どころ表示、分解、表示スタイル</td><td>8</td><td>2</td></tr>
 <tr><td>5</td><td>確認・品質管理</td><td style="text-align:left">確認の旗、ウィザード、見どころ送り、断面ゲージ、溶接記号</td><td>8</td><td>5</td></tr>
 <tr><td>6</td><td>重量・積算・帳票</td><td style="text-align:left">JIS 質量、集計表、重量計算書、見積書、加工指示書</td><td>8</td><td>5</td></tr>
 <tr><td>7</td><td>業務フロー・多社連携</td><td style="text-align:left">受け渡し・権限、Rev・監査ログ、ダッシュボード、期限通知</td><td>8</td><td>0</td></tr>
 <tr><td>8</td><td>シミュレータ</td><td style="text-align:left">ライブゲージ、X 線、限界探索、動画</td><td>1</td><td>0</td></tr>
-<tr><td>9</td><td>書出し・外部連携</td><td style="text-align:left">IFC4・DXF・glTF・OBJ・STL・USD、DSTV NC ほか（全 19 種類）</td><td>5</td><td>0</td></tr>
+<tr><td>9</td><td>書出し・外部連携</td><td style="text-align:left">IFC（IFC4 / IFC2x3）・DXF・glTF・OBJ・STL・USD、DSTV NC ほか（全 19 種類）</td><td>5</td><td>0</td></tr>
 <tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、操作ガイド、ライセンス表示</td><td>6</td><td>3</td></tr>
 </table>
 <figure><img src="img/b01_hero_full.png"><figcaption>ANGLEX の作業画面（v1）。左: プロジェクトブラウザ、中央: 3D、右: プロパティ。選んだ部材の質量・原価がその場で出ます</figcaption></figure>
@@ -240,7 +240,7 @@
 <tr><td>部材リスト（CSV・Excel）の読込</td><td>既存の拾い出し表から仕様・長さ・数量の列を見つけ、そのまま 3D・重量・見積へ</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>SVG・ZIP の読込</td><td>SVG 図面の読込。ZIP にまとめた図面を一度に読込（30 件まで）</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>BIM・CAD・3D 形式の読込</td><td>IFC（IFC2x3・IFC4）、STEP・IGES・BREP、glTF・OBJ・STL・FBX・PLY・3MF・Collada・3DS を参照モデルとして読込。DSTV NC は形鋼 1 本として配置</td><td><span class="m demo">参考デモ</span></td></tr>
-<tr><td>立体から部材への自動変換</td><td>STEP・IFC などの鋼材の立体から、断面（H 形鋼・リップ溝形鋼を含む 9 種類）・長さ・穴を読み取って部材に置き換え。元の立体と外形・穴位置・端部・体積を照合し、斜め切りなどは「要判断」に。IFC は断面定義の数値とも照合</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>立体から部材への自動変換</td><td>STEP・IFC などの鋼材の立体から、断面（H 形鋼・リップ溝形鋼を含む 9 種類）・長さ・穴・端部の斜め切りの角度を読み取って部材に置き換え。元の立体と外形・穴位置・端部・体積を照合し、切欠きなどは「要判断」に。IFC は断面定義の数値とも照合</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>DWG・JWW の読込</td><td>サーバー版の変換機能で DXF に変換して読込</td><td><span class="m next">次段階</span></td></tr>
 <tr><td>認識の学習</td><td>図面上の修正を記録し、同じ様式の次回の図面で自動的に効かせる。図面様式×営業所の目標管理</td><td><span class="m next">次段階</span></td></tr>
 </table>
@@ -260,6 +260,7 @@
 <tr><td>等ピッチ配置・複数選択</td><td>配管に沿った等間隔配置、まとめて整列・複製・削除</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>ボルト接合の提案</td><td>重なった板の穴が一致すると、ボルト接合を提案</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>取付プレビュー</td><td>確定前に半透明の完成形と変更内容を表示</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>端部の斜め切り</td><td>単材の始端・終端に角度を指定。3D・重量・IFC・NC データ・加工図に反映</td><td><span class="m demo">参考デモ</span></td></tr>
 </table>
 </div>
 
@@ -338,10 +339,10 @@
 <div class="cathead"><span class="n">9</span><h3>書出し・外部連携</h3><span class="cnt">他のソフトへ、同じモデルを渡す（全 19 種類）</span></div>
 <table class="ft">
 <tr><th>機能</th><th>できること</th><th>区分</th></tr>
-<tr><td>BIM 形式の書出し（IFC4）</td><td>形鋼・板・管は断面の押し出し、穴は開口として出力（鋼材として扱える形）。仕様・材質・質量・穴の属性と、標準の数量セット（長さ・体積・質量）つき。独立した IFC エンジン（IfcOpenShell）で検証済み。商用 BIM ソフトでの読込は PoC で確認</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>BIM 形式の書出し（IFC4 / IFC2x3）</td><td>形鋼・板・管は断面の押し出し、穴は開口、斜め切りは切断面として出力（鋼材として扱える形）。版は相手のソフトに合わせて選択。仕様・材質・質量・穴の属性と、標準の数量セット（長さ・体積・質量）つき。独立した IFC エンジン（IfcOpenShell）で検証済み。商用 BIM ソフトでの読込は PoC で確認</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>CAD 形式の書出し</td><td>DXF 3D（立体）、DXF 加工図・加工図 SVG（板の展開図）</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>3D 形式の書出し</td><td>glTF / GLB、OBJ、STL、PLY、USD / USDZ（質量・衝突形状付きの SimReady パッケージ）、PNG 画像（4K）</td><td><span class="m demo">参考デモ</span></td></tr>
-<tr><td>加工データの書出し</td><td>DSTV NC（形鋼・板ごとの .nc1。照合テストピースと照合シート付き、機械の基準に合わせる設定あり）、穴座標 CSV、部品 JSON</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>加工データの書出し</td><td>DSTV NC（形鋼・板ごとの .nc1。穴・長穴と、斜め切りを含む外形輪郭。照合テストピースと照合シート付き、機械の基準に合わせる設定あり）、穴座標 CSV、部品 JSON</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>プロジェクトの保存</td><td>プロジェクト JSON で保存・読込。作業の受け渡しに利用</td><td><span class="m demo">参考デモ</span></td></tr>
 </table>
 </div>

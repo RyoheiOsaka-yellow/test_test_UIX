@@ -1,7 +1,7 @@
 // ファミリ定義（Revit の「ファミリ → タイプ → インスタンス」）。各ファミリは params（型/インスタンス パラメータ）と
 // parts(p) を持ち、parts は幾何（部材・板・ボルト・Uボルト・アンカー・溶接）と数量の単一ソース（single source of truth）。
 // 3D・重量・見積・集計表はすべてこの parts から導かれる。
-import { parseSpec, sectionOutline, sectionBox } from '../geo/profiles.js';
+import { parseSpec, sectionOutline, sectionBox, parseCuts } from '../geo/profiles.js';
 import { PIPES, UBOLTS, BOLTS, pipeOD } from '../data/sections.js';
 import { boltDims } from '../geo/fasteners.js';
 
@@ -93,8 +93,8 @@ reg({
   id: 'member', name: '単材（形鋼・平鋼・鋼管）', category: '部材', ifc: 'IfcMember', markPrefix: 'M', icon: 'L',
   params: [spec('spec', '鋼材仕様', 'L-50x50x6', { help: 'L-50x50x6 / [-75x40x5x7 / FB-6x50 / PL-6x100x200 / SGP-50A / □-50x50x2.3 / LC-40x40x1.6 / H-100x100x6x8' }),
     num('L', '長さ', 1000, { scope: 'instance' }), { key: 'holes', label: '穴（DSL）', type: 'text', default: '', scope: 'instance', group: '加工', help: 'A:z50 s25 d12 slot25z; B:z150 s25 d12 x3@100' },
-    sel('axis', '配置軸', [['x', '水平 X'], ['y', '垂直 Y'], ['z', '水平 Z']], 'x', { scope: 'instance' }), { key: 'welds', label: '端部溶接（DSL）', type: 'text', default: '', scope: 'instance', group: '加工', help: 'start:6 site; end:6 （始端/終端 全周隅肉、site=現場）' }, P.material, P.finish],
-  parts(p) { const zDir = p.axis === 'y' ? DIR.Y : p.axis === 'z' ? DIR.Z : DIR.X; const xDir = p.axis === 'y' ? DIR.X : p.axis === 'z' ? DIR.X : DIR.NZ; const m = { kind: 'member', name: p.spec, spec: p.spec, length: p.L, holes: parseHoles(p.holes), finish: p.finish, material: p.material, pl: place([0, 0, 0], zDir, xDir) }; return [m, ...endWelds(m, p.welds)]; },
+    sel('axis', '配置軸', [['x', '水平 X'], ['y', '垂直 Y'], ['z', '水平 Z']], 'x', { scope: 'instance' }), { key: 'welds', label: '端部溶接（DSL）', type: 'text', default: '', scope: 'instance', group: '加工', help: 'start:6 site; end:6 （始端/終端 全周隅肉、site=現場）' }, { key: 'cuts', label: '端部の斜め切り（DSL）', type: 'text', default: '', scope: 'instance', group: '加工', help: 'start:y45; end:x-30 （始端/終端。x=幅方向 / y=高さ方向に端面が傾く。数字は直角切りからの角度。長さ L は最も長い辺）' }, P.material, P.finish],
+  parts(p) { const zDir = p.axis === 'y' ? DIR.Y : p.axis === 'z' ? DIR.Z : DIR.X; const xDir = p.axis === 'y' ? DIR.X : p.axis === 'z' ? DIR.X : DIR.NZ; const m = { kind: 'member', name: p.spec, spec: p.spec, length: p.L, holes: parseHoles(p.holes), cuts: parseCuts(p.cuts), finish: p.finish, material: p.material, pl: place([0, 0, 0], zDir, xDir) }; return [m, ...endWelds(m, p.welds)]; },
 });
 // ---- 2. 板（穴パターン付き） ----
 reg({

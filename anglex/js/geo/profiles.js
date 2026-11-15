@@ -174,6 +174,22 @@ function pipeMesh(p, L, material, lod) {
   geo.computeVertexNormals(); const m = new THREE.Mesh(geo, material); m.castShadow = m.receiveShadow = true; m.userData.plate = 'pipe'; return m;
 }
 
+// ---- 端部の斜め切り ----
+// DSL: 'start:y45; end:x-30'。start = 始端（z = 0 側）、end = 終端（z = L 側）。x / y = 断面のどちら向きに端面が傾くか、数字 = 直角切りからの角度（度）。
+// 正の角度は「+x（+y）側が長い」。部材の長さ L は最も長い辺の長さ（外形の最大長）のまま。両方向を書くと複合（'end:x30 y10'）
+export function parseCuts(str) { if (!str) return null; if (typeof str === 'object') return (str.s || str.e) ? str : null; const out = {}; for (const seg of String(str).split(/[;\n]+/)) { const m = seg.trim().match(/^(start|end|s|e|始端|終端)\s*[:：]\s*(.*)$/i); if (!m) continue; const key = /^(start|s|始端)$/i.test(m[1]) ? 's' : 'e'; const c = { kx: 0, ky: 0 }; let any = false; for (const mm of m[2].matchAll(/([xy])\s*(-?\d+(?:\.\d+)?)/gi)) { const deg = +mm[2]; if (!(Math.abs(deg) > 0.01) || Math.abs(deg) > 80) continue; c['k' + mm[1].toLowerCase()] = Math.tan(deg * Math.PI / 180); any = true; } if (any) out[key] = c; } return out.s || out.e ? out : null; }
+const cutDeg = k => { const d = Math.atan(k) * 180 / Math.PI; const h = Math.round(d * 2) / 2; return Math.abs(d - h) < 0.12 ? h : Math.round(d * 10) / 10; };
+export function cutsDSL(cuts) { const c = parseCuts(cuts); if (!c) return ''; const one = (k, v) => v ? `${k}:${[['x', v.kx], ['y', v.ky]].filter(([, q]) => Math.abs(q) > 1e-4).map(([a, q]) => a + cutDeg(q)).join(' ')}` : null; return [one('start', c.s), one('end', c.e)].filter(Boolean).join('; '); }
+export function cutsLabel(cuts) { const c = parseCuts(cuts); if (!c) return ''; const one = (k, v) => v ? `${k} ${[['幅方向', v.kx], ['高さ方向', v.ky]].filter(([, q]) => Math.abs(q) > 1e-4).map(([a, q]) => `${Math.abs(cutDeg(q))}°（${a}）`).join('・')} 斜め切り` : null; return [one('始端', c.s), one('終端', c.e)].filter(Boolean).join('、'); }
+// 断面の点 (x, y) での「切り落とす深さ」。始端は z < 深さ、終端は z > L − 深さ を落とす。最も長い辺で 0
+export function cutDepth(p, cuts) { const c = parseCuts(cuts); const bx = sectionBox(p); const mk = q => { if (!q) return null; const M = Math.max(q.kx * bx.x0 + q.ky * bx.y0, q.kx * bx.x1 + q.ky * bx.y0, q.kx * bx.x0 + q.ky * bx.y1, q.kx * bx.x1 + q.ky * bx.y1); const f = (x, y) => Math.max(0, M - (q.kx * x + q.ky * y)); f.M = M; f.kx = q.kx; f.ky = q.ky; return f; }; return { s: mk(c?.s), e: mk(c?.e) }; }
+// 穴面の座標 s（面の幅方向）→ 断面の点 (x, y)。面の外側の表面上
+export function faceXY(p, face, s) { switch (p.kind) { case 'L': return face === 'B' ? [0, s] : [s, 0]; case 'C': return face === 'web' ? [0, s] : face === 'ft' ? [s, p.H] : [s, 0]; case 'LC': return face === 'web' ? [0, s] : face === 'ft' ? [s, p.H] : [s, 0]; case 'H': return face === 'web' ? [0, s] : face === 'ft' ? [s, p.H] : [s, 0]; case 'SQ': return face === 'left' ? [0, s] : face === 'right' ? [p.A, s] : face === 'top' ? [s, p.B] : [s, 0]; default: return [s, 0]; } }
+// 断面の図心（板の集まりから）。斜め切りで減る体積 = 断面積 × 図心での深さ
+export function sectionCentroid(p) { if (p.kind === 'PIPE' || p.kind === 'RB') return [0, 0]; const plates = decompose(p, 100); let a = 0, cx = 0, cy = 0; const v = new THREE.Vector3(); for (const pl of plates) { v.set(pl.w / 2, pl.h / 2, pl.t / 2).applyMatrix4(pl.M); const ar = pl.w * pl.h * pl.t / 100; a += ar; cx += ar * v.x; cy += ar * v.y; } return a > 0 ? [cx / a, cy / a] : [0, 0]; }
+// 形状に斜め切りを入れる: 端面（と端から 0.6 mm 以内の面取り）の頂点を、切断面まで長さ方向にずらす。角柱の側面は長さ方向の直線でできているので、これで正確な斜め切りになる
+function applyCuts(g, p, L, cuts) { const d = cutDepth(p, cuts); if (!d.s && !d.e) return; g.traverse(o => { if (!o.isMesh) return; const a = o.geometry.attributes.position; for (let i = 0; i < a.count; i++) { const x = a.getX(i), y = a.getY(i), z = a.getZ(i); if (d.e && z > L - 0.6) a.setZ(i, z - d.e(x, y)); else if (d.s && z < 0.6) a.setZ(i, z + d.s(x, y)); } a.needsUpdate = true; o.geometry.computeVertexNormals(); o.geometry.computeBoundingBox(); o.geometry.computeBoundingSphere(); }); g.userData.cuts = parseCuts(cuts); }
+
 // ---- 公開 API: 部材ソリッド ----
 // opts: { spec, length, holes:[], finish, lod (200|300|400), material }
 export function buildMember(opts) {
@@ -184,7 +200,7 @@ export function buildMember(opts) {
   if (p.kind === 'PIPE' || p.kind === 'RB') {
     if (p.kind === 'RB') { const geo = new THREE.CylinderGeometry(p.d / 2, p.d / 2, L, lod >= 400 ? 32 : 16); geo.rotateX(Math.PI / 2); geo.translate(0, 0, L / 2); const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; g.add(m); }
     else g.add(pipeMesh(p, L, mat, lod));
-    g.userData.plates = []; return g;
+    g.userData.plates = []; if (opts.cuts) applyCuts(g, p, L, opts.cuts); return g;
   }
   const plates = decompose(p, L); assignHoles(plates, opts.holes || []);
   for (const pl of plates) g.add(plateMesh(pl, mat, lod));
@@ -193,7 +209,7 @@ export function buildMember(opts) {
     if (p.kind === 'L' && sp.r1) g.add(filletStrip(sp.r1, L, mat, new THREE.Vector3(p.t, p.t, 0), 1));
     if (p.kind === 'C' && sp.r1) { g.add(filletStrip(sp.r1, L, mat, new THREE.Vector3(p.t1, p.t2, 0), 1)); g.add(filletStrip(sp.r1, L, mat, new THREE.Vector3(p.t1, p.H - p.t2, 0), 3)); }
   }
-  g.userData.plates = plates;
+  g.userData.plates = plates; if (opts.cuts) applyCuts(g, p, L, opts.cuts);
   return g;
 }
 

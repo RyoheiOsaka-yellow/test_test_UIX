@@ -23,18 +23,24 @@ fn main() {
             Ok(mut d) => {
                 let mut holes = Vec::new();
                 let mut borders = 0;
+                let mut contours = Vec::new();
                 for el in &d.elements {
                     match el {
                         DstvElementType::Hole(h) => holes.push(format!("{{\"face\":\"{}\",\"x\":{},\"y\":{},\"d\":{}}}", face(&h.fl_code), h.x_coord, h.y_coord, h.diameter)),
                         DstvElementType::Slot(s) => holes.push(format!("{{\"face\":\"{}\",\"x\":{},\"y\":{},\"d\":{},\"slot\":{},\"angle\":{}}}", face(&s.fl_code), s.x_coord, s.y_coord, s.diameter, s.slot_length, s.angle)),
-                        DstvElementType::OuterBorder(_) => borders += 1,
+                        DstvElementType::OuterBorder(b) => {
+                            borders += 1;
+                            let f = b.contour.first().map(|q| face(&q.fl_code)).unwrap_or("?");
+                            let pts: Vec<String> = b.contour.iter().map(|q| format!("[{},{}]", q.x_coord, q.y_coord)).collect();
+                            contours.push(format!("{{\"face\":\"{}\",\"pts\":[{}]}}", f, pts.join(",")));
+                        }
                         _ => {}
                     }
                 }
                 let h = &d.header;
                 let head = format!("\"piece\":\"{}\",\"quality\":\"{}\",\"qty\":{},\"profile\":\"{}\",\"code\":\"{:?}\",\"length\":{},\"height\":{},\"width\":{},\"tf\":{},\"tw\":{},\"kgm\":{}", h.piece_identification, h.steel_quality, h.quantity_of_pieces, h.profile, h.code_profile, h.length, h.profile_height, h.flange_width, h.flange_thickness, h.web_thickness, h.weight_by_meter);
                 let svg = d.to_svg();
-                println!("{{\"file\":\"{}\",{},\"borders\":{},\"holes\":[{}],\"svg_len\":{}}}", name, head, borders, holes.join(","), svg.len());
+                println!("{{\"file\":\"{}\",{},\"borders\":{},\"contours\":[{}],\"holes\":[{}],\"svg_len\":{}}}", name, head, borders, contours.join(","), holes.join(","), svg.len());
             }
         }
     }
