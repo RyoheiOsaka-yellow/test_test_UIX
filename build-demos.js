@@ -168,10 +168,13 @@ function prepare(id) {
        ・スクリプトが例外で止まった（WebGL の拡張なし等）→ "ydemo-fail"。親は iframe を外してポスターのままにする
        ・描画はしているがコマ間隔が長すぎる（約 8fps 未満が続く）→ "ydemo-slow"。同じくポスターに戻す
      どちらも「真っ白な板がポスターに重なる」「カクカク動く」を防ぐため */
-  s += '\n<script>(function(){var last=0,run=0,n=0,slow=0,done=false,win=[];'
+  // 遅さは「画面に見えている間に、遅いコマが 40 回続いた」ときだけ数える。画面外の iframe はブラウザが
+  // 描画を間引く（1秒に1コマなど）ので、それを遅い端末と取り違えると、見る前にポスターへ戻してしまう
+  s += '\n<script>(function(){var last=0,run=0,n=0,slow=0,done=false,win=[],vis=true;'
+     + 'try{new IntersectionObserver(function(es){vis=es[es.length-1].isIntersecting;if(!vis)slow=0}).observe(document.documentElement)}catch(e){}'
      + 'function t(ts){if(done||window.__YFAIL)return;n++;'
      + 'var dt=last?ts-last:9999;last=ts;win.push(dt<120?1:0);if(win.length>10)win.shift();run=0;for(var wi=0;wi<win.length;wi++)run+=win[wi];'
-     + 'if(dt>=160&&dt<5000&&n>3)slow++;'
+     + 'if(dt<120)slow=0;else if(vis&&dt>=160&&dt<5000&&n>3)slow++;'
      + 'if(slow>=40){done=true;try{parent.postMessage("ydemo-slow","*")}catch(e){}return}'
      + 'if(((run>=7&&n>=10)||n>=120)&&window.__YREADY!==false&&!window.__YGLWAIT){done=true;try{parent.postMessage("ydemo-ready","*")}catch(e){}'
      + 'if(window!==window.parent&&!/[?&]hold=1/.test(location.search))setTimeout(function(){if(window.__ygo)window.__ygo()},20000);return}'
@@ -370,9 +373,12 @@ if (used.length) {
     '.panel--light .panel__idx{color:rgba(10,12,16,.55);}',
     '.panel--light .btn{border-color:#0b0d10;color:#0b0d10;}',
     '.panel--light .btn:hover,.panel--light .btn:focus-visible{background:#0b0d10;color:#fff;}',
+    '/* 準備中の iframe は opacity:0 にしない。完全に透明な iframe は「描かれていない」と見なされ、',
+    '   ブラウザ（Chrome）が 10 コマほどで描画を 1 秒に 1 コマまで落とす。インクのように見せる前に',
+    '   育てるデモは、そのままだといつまでも現れない。1% は下のポスターと見分けがつかない */',
     '.panel__embed iframe{',
     '  position:absolute;inset:0;width:100%;height:100%;border:0;display:block;',
-    '  pointer-events:none;opacity:0;transition:opacity .9s ease;',
+    '  pointer-events:none;opacity:.01;transition:opacity .9s ease;',
     '}',
     '.panel__embed iframe.is-on{opacity:1;}',
     '/* reveal:fade はポスターを見せたまま、準備できた実描画を1秒かけて重ねる */',
@@ -514,7 +520,7 @@ if (used.length) {
   '      // 静止画がそのまま動き出したように見える（重ね終わってから動かすと「止まってから動く」感じが残る）',
   '      setTimeout(function () {',
   '        try { f.contentWindow.postMessage(\'ydemo-go\', \'*\'); } catch (e) {}',
-  '        syncRun(slot);',                                // 画面外で用意したものは、見えるまで止めておく
+  '        syncAll();',                                // 画面外で用意したものは、見えるまで止めておく
   '        pump();',                                       // 次の1枚の用意へ
   '      }, 60);',
   '      if (old) setTimeout(function () {',
@@ -579,13 +585,24 @@ if (used.length) {
   '  }',
   '',
   '  /* 見えていないデモは止め、見えたら再開する（表示済みのものだけ。用意中は描かせて「描けた」合図を待つ） */',
+  // 動かすのは一番大きく映っている1枚だけ。少しでも映っていれば動かす、にすると、スクロールの途中で
+  // 前のデモが描画を続け、入ってくるデモが準備（描き始め）を終えられない
+  '  function topSlot() {',
+  '    var b = null;',
+  '    for (var t0 = 0; t0 < slots.length; t0++)',
+  '      if (slots[t0].vis && slots[t0].ratio > 0 && (!b || slots[t0].ratio > b.ratio)) b = slots[t0];',
+  '    return b;',
+  '  }',
   '  function syncRun(slot) {',
+  '    var run = slot === topSlot();',
   '    var fr = slot.el.querySelectorAll(\'iframe\');',
   '    for (var si = 0; si < fr.length; si++) {',
-  '      if (!fr[si].__shown) continue;',
-  '      try { fr[si].contentWindow.postMessage(slot.vis ? \'ydemo-resume\' : \'ydemo-pause\', \'*\'); } catch (e) {}',
+  '      if (!fr[si].__shown || fr[si].__run === run) continue;',
+  '      fr[si].__run = run;',
+  '      try { fr[si].contentWindow.postMessage(run ? \'ydemo-resume\' : \'ydemo-pause\', \'*\'); } catch (e) {}',
   '    }',
   '  }',
+  '  function syncAll() { for (var sa = 0; sa < slots.length; sa++) syncRun(slots[sa]); }',
   '',
   '  /* 先回りの用意は1枚ずつ。見えているデモが描き始めるまでは始めない。',
   '     同時に何枚も立ち上げると CPU/GPU を取り合い、目の前の1枚が動き出すのが遅れる */',
@@ -627,7 +644,7 @@ if (used.length) {
   '        else if (slots[s0].near) warm(slots[s0]);',
   '        else stop(slots[s0]);',
   '      }',
-  '      pump();',
+  '      syncAll(); pump();',
   '      return;',
   '    }',
   '    var best = null;',
@@ -636,7 +653,7 @@ if (used.length) {
   '    for (var m = 0; m < slots.length; m++) if (slots[m] !== best) stop(slots[m]);',
   '    if (best) start(best);',
   '    for (var w0 = 0; w0 < slots.length; w0++) if (slots[w0].near && slots[w0].keep) warm(slots[w0]);',
-  '    pump();',
+  '    syncAll(); pump();',
   '  }',
   '',
   '  // 最初から画面に入っているスロットは IntersectionObserver を待たずに開始する',
@@ -667,8 +684,7 @@ if (used.length) {
   '      for (var q = 0; q < slots.length; q++)',
   '        if (slots[q].el === es[n].target) {',
   '          slots[q].ratio = es[n].isIntersecting ? es[n].intersectionRatio : 0;',
-  '          slots[q].vis = es[n].isIntersecting;',
-  '          syncRun(slots[q]);',
+  '          slots[q].vis = es[n].isIntersecting && es[n].intersectionRatio > 0;',   // 端が触れているだけは「見えている」に数えない
   '        }',
   '    arbitrate();',
   '  }, { threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });',
