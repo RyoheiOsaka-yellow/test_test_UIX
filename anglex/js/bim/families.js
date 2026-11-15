@@ -1,7 +1,7 @@
 // ファミリ定義（Revit の「ファミリ → タイプ → インスタンス」）。各ファミリは params（型/インスタンス パラメータ）と
 // parts(p) を持ち、parts は幾何（部材・板・ボルト・Uボルト・アンカー・溶接）と数量の単一ソース（single source of truth）。
 // 3D・重量・見積・集計表はすべてこの parts から導かれる。
-import { parseSpec, sectionOutline, sectionBox, parseCuts } from '../geo/profiles.js';
+import { parseSpec, sectionOutline, sectionBox, parseCuts, cutDepth } from '../geo/profiles.js';
 import { PIPES, UBOLTS, BOLTS, pipeOD } from '../data/sections.js';
 import { boltDims } from '../geo/fasteners.js';
 
@@ -52,11 +52,16 @@ export function parseHoles(str) {
 // 端部溶接 DSL: "start:6 site; end:6" → [{end,size,site}]
 export function parseWelds(str) { const out = []; for (const seg of String(str || '').split(/[;\n]+/)) { const s = seg.trim(); if (!s) continue; const m = s.match(/^(start|end|始端|終端|両端|both)\s*[:：]?\s*(\d+(?:\.\d+)?)?\s*(site|現場)?/i); if (!m) continue; const size = m[2] ? +m[2] : 6; const site = !!m[3]; const e = m[1].toLowerCase(); if (e === 'both' || e === '両端') { out.push({ end: 'start', size, site }); out.push({ end: 'end', size, site }); } else out.push({ end: e === '始端' ? 'start' : e === '終端' ? 'end' : e, size, site }); } return out; }
 export function endWelds(part, dsl) { const out = []; for (const w of parseWelds(dsl)) out.push(...outlineWeld(part, w.end, w.size, { site: w.site, group: `${part.name} ${w.end === 'end' ? '終端' : '始端'}全周` })); return out; }
+// 斜材の両端を、相手の面（ワールド座標の点と法線）にぴったり沿う斜め切りにする。断面の原点を通る辺が両方の面に届くように、原点と長さも直す
+export function flushEnds(part, start, end) { const p = parseSpec(part.spec); if (!p) return part; const [ex, ey, ez] = part.pl.basis; const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const slope = (pln, isStart) => { if (!pln) return null; const nx = dot(pln.n, ex), ny = dot(pln.n, ey), nz = dot(pln.n, ez); if (Math.abs(nz) < 0.17) return null; /* 面が部材の軸にほぼ平行 → 切れない */ const sg = isStart ? 1 : -1; const kx = sg * nx / nz, ky = sg * ny / nz; return { kx: Math.abs(kx) < 1e-4 ? 0 : kx, ky: Math.abs(ky) < 1e-4 ? 0 : ky, t: dot([pln.p[0] - part.pl.pos[0], pln.p[1] - part.pl.pos[1], pln.p[2] - part.pl.pos[2]], pln.n) / nz /* 原点を通る辺が面に当たる位置（軸方向） */ }; };
+  const s = slope(start, true), e = slope(end, false); if (!s && !e) return part; const cuts = {}; if (s && (s.kx || s.ky)) cuts.s = { kx: s.kx, ky: s.ky }; if (e && (e.kx || e.ky)) cuts.e = { kx: e.kx, ky: e.ky }; const cd = cutDepth(p, cuts); const ds = cd.s ? cd.s(0, 0) : 0, de = cd.e ? cd.e(0, 0) : 0; const z0 = (s ? s.t : 0) - ds; const z1 = (e ? e.t : part.length) + de;
+  part.pl = { pos: [part.pl.pos[0] + ez[0] * z0, part.pl.pos[1] + ez[1] * z0, part.pl.pos[2] + ez[2] * z0], basis: part.pl.basis }; part.length = Math.round((z1 - z0) * 10) / 10; if (cuts.s || cuts.e) part.cuts = cuts; return part; }
 export function outlineWeld(part, end, size, opts = {}) {
-  const p = parseSpec(part.spec); if (!p) return []; const pts = sectionOutline(p); const L = part.length; const zE = end === 'end' ? L : 0; const axis = xdir(part.pl, DIR.Z); const n2 = end === 'end' ? neg(axis) : axis;
+  const p = parseSpec(part.spec); if (!p) return []; const pts = sectionOutline(p); const L = part.length; const zE = end === 'end' ? L : 0; const cd = part.cuts ? cutDepth(p, part.cuts) : null; const zAt = q => end === 'end' ? L - (cd?.e ? cd.e(q[0], q[1]) : 0) : (cd?.s ? cd.s(q[0], q[1]) : 0); /* 斜め切りの端では、溶接線も切断面に沿う */ const axis = xdir(part.pl, DIR.Z); const n2 = end === 'end' ? neg(axis) : axis;
   const welds = []; const n = pts.length;
   for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; const dx = b[0] - a[0], dy = b[1] - a[1]; const len = Math.hypot(dx, dy); if (len < 0.5) continue; if (opts.skipShort && len < opts.skipShort) continue; const ne = norm([dy, -dx, 0]); // CCW 外形の外向き法線
-    welds.push({ kind: 'weld', weldType: 'fillet', size, length: len, from: xform(part.pl, [a[0], a[1], zE]), to: xform(part.pl, [b[0], b[1], zE]), n1: xdir(part.pl, ne), n2, group: opts.group || part.name + ' 端部全周', allAround: true, site: !!opts.site, symbol: `${opts.site ? '▶' : ''}○▷${size}` }); }
+    welds.push({ kind: 'weld', weldType: 'fillet', size, length: len, from: xform(part.pl, [a[0], a[1], zAt(a)]), to: xform(part.pl, [b[0], b[1], zAt(b)]), n1: xdir(part.pl, ne), n2, group: opts.group || part.name + ' 端部全周', allAround: true, site: !!opts.site, symbol: `${opts.site ? '▶' : ''}○▷${size}` }); }
   return welds;
 }
 // 直線隅肉: from/to（ワールド）, 面1法線 n1, 面2法線 n2, sides=2 なら反対側（n1 反転・板厚 offset）も
@@ -164,7 +169,7 @@ reg({
   parts(p) {
     const parts = []; const s = parseSpec(p.spec), sb = sectionBox(s); const w = sb.w, h = sb.h;
     // 壁面 = z=0 平面（ブラケットは +Z 側へ張り出す）。縦材: 長さ Y、背面が壁に接する
-    const vert = { kind: 'member', name: '縦材', spec: p.spec, length: p.H, finish: p.finish, material: p.material, holes: [], pl: s.kind === 'C' ? place([-s.H / 2, 0, 0], DIR.Y, DIR.Z) : place([-w / 2, 0, 0], DIR.Y, DIR.X), group: '本体' };
+    const vert = { kind: 'member', name: '縦材', spec: p.spec, length: p.H, finish: p.finish, material: p.material, holes: [], pl: s.kind === 'C' ? place([-s.H / 2, 0, 0], DIR.Y, DIR.Z) : place([w / 2, 0, 0], DIR.Y, DIR.NX) /* 断面の高さ方向（局所 +y）を手前（+Z）へ: Y × (−X) = +Z。以前は X 向きで −Z（壁の中）に出ていた */, group: '本体' };
     // 壁穴（縦材の壁側の板）: L なら脚A（厚みY→ ワールド Z 方向…）
     const wallFace = s.kind === 'C' ? 'web' : s.kind === 'L' ? 'A' : 'face'; const pitch = (p.H - 80) / Math.max(1, p.wallHoles - 1);
     for (let i = 0; i < p.wallHoles; i++) vert.holes.push({ face: wallFace, z: 40 + i * pitch, s: (s.kind === 'C' ? s.H : s.kind === 'L' ? s.A : s.w) / 2, d: p.wallHoleD, slot: p.wallSlot > p.wallHoleD ? { len: p.wallSlot, dir: 'z' } : null, kind: 'anchor' });
@@ -178,7 +183,7 @@ reg({
     // 縦材–腕 溶接（腕の根元端面全周を縦材前面へ）
     parts.push(...outlineWeld(arm, 'start', p.weldSize, { group: '腕根元溶接' }));
     // 斜材
-    if (p.gusset) { const gs = parseSpec(p.gussetSpec); const a = [0, 60, h], b = [0, p.H - (s.kind === 'L' ? s.B : h) - 10, p.A - 40]; const d = add(b, neg(a)); const len = Math.hypot(...d); const gPl = place([a[0] - (gs.w || 50) / 2, a[1], a[2]], d, DIR.X); parts.push({ kind: 'member', name: '斜材', spec: p.gussetSpec, length: len, finish: p.finish, material: p.material, holes: [], pl: gPl, group: '本体' }); const gpart = parts[parts.length - 1]; parts.push(...outlineWeld(gpart, 'start', p.weldSize, { group: '斜材溶接', skipShort: 7 }), ...outlineWeld(gpart, 'end', p.weldSize, { group: '斜材溶接', skipShort: 7 })); }
+    if (p.gusset) { const gs = parseSpec(p.gussetSpec); const a = [0, 60, h], b = [0, p.H - (s.kind === 'L' ? s.B : h) - 10, p.A - 40]; const d = add(b, neg(a)); const len = Math.hypot(...d); const gPl = place([a[0] - (gs.w || 50) / 2, a[1], a[2]], d, DIR.X); parts.push({ kind: 'member', name: '斜材', spec: p.gussetSpec, length: len, finish: p.finish, material: p.material, holes: [], pl: gPl, group: '本体' }); const gpart = parts[parts.length - 1]; flushEnds(gpart, { p: [0, 0, h], n: DIR.Z }, { p: [0, p.H - (s.kind === 'L' ? s.B : h), 0], n: DIR.Y }); /* 始端は縦材の前面、終端は腕の下面に沿って斜め切り */ parts.push(...outlineWeld(gpart, 'start', p.weldSize, { group: '斜材溶接', skipShort: 7 }), ...outlineWeld(gpart, 'end', p.weldSize, { group: '斜材溶接', skipShort: 7 })); }
     // 配管 + Uボルト（腕上面）
     const topFace = s.kind === 'C' ? 'web' : s.kind === 'L' ? 'A' : 'face';
     pipeSet(parts, p.pipes, p.A - h, { origin: [0, p.H, h], topY: p.H, plateT: s.kind === 'C' ? s.t1 : s.t, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.Z, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) arm.holes.push({ face: topFace, z: it.x + sgn * R, s: (s.kind === 'C' ? s.H : s.kind === 'L' ? s.A : s.w) / 2, d: hole, kind: 'ubolt' }); } });
@@ -192,12 +197,12 @@ reg({
   params: [spec('spec', '鋼材仕様', 'L-50x50x4'), num('A', '腕長さ A', 400, { scope: 'instance' }), num('H', '縦材高さ H', 350, { scope: 'instance' }), int('wallHoles', '壁穴数', 2, { group: '加工' }), num('wallHoleD', '壁穴径', 12, { group: '加工' }), int('armHoles', '腕 取付穴数', 3, { group: '加工' }), num('armHoleD', '腕穴径', 11, { group: '加工' }), P.pipes, P.insul, P.pipeKind, P.ubolt, P.weldSize, P.material, P.finish],
   parts(p) {
     const parts = []; const s = parseSpec(p.spec); const A = s.A || 50, t = s.t || 4;
-    const vert = { kind: 'member', name: '縦材', spec: p.spec, length: p.H, finish: p.finish, material: p.material, holes: [], pl: place([-A / 2, 0, 0], DIR.Y, DIR.X), group: '本体' };
+    const vert = { kind: 'member', name: '縦材', spec: p.spec, length: p.H, finish: p.finish, material: p.material, holes: [], pl: place([A / 2, 0, 0], DIR.Y, DIR.NX) /* 壁面（z = 0）から手前（+Z）へ。以前は壁の中（−Z）に出ていた */, group: '本体' };
     const pitch = (p.H - 60) / Math.max(1, p.wallHoles - 1); for (let i = 0; i < p.wallHoles; i++) vert.holes.push({ face: 'A', z: 30 + i * pitch, s: A / 2, d: p.wallHoleD, kind: 'anchor' });
     const arm = { kind: 'member', name: '腕材', spec: p.spec, length: p.A - A, finish: p.finish, material: p.material, holes: [], pl: place([A / 2, p.H, A], DIR.Z, DIR.NX), group: '本体' };
     const ap = (p.A - A - 60) / Math.max(1, p.armHoles - 1); for (let i = 0; i < p.armHoles; i++) arm.holes.push({ face: 'A', z: 30 + i * ap, s: A / 2, d: p.armHoleD });
     parts.push(vert, arm, ...outlineWeld(arm, 'start', p.weldSize, { group: '腕溶接' }));
-    const a = [0, 40, A], b = [0, p.H - A - 20, p.A - 30]; const d = add(b, neg(a)); const brace = { kind: 'member', name: '斜材', spec: p.spec, length: Math.hypot(...d), finish: p.finish, material: p.material, holes: [], pl: place([-A / 2, a[1], a[2]], d, DIR.X), group: '本体' };
+    const a = [0, 40, A], b = [0, p.H - A - 20, p.A - 30]; const d = add(b, neg(a)); const brace = { kind: 'member', name: '斜材', spec: p.spec, length: Math.hypot(...d), finish: p.finish, material: p.material, holes: [], pl: place([-A / 2, a[1], a[2]], d, DIR.X), group: '本体' }; flushEnds(brace, { p: [0, 0, A], n: DIR.Z }, { p: [0, p.H - A, 0], n: DIR.Y }); /* 始端は縦材の前面、終端は腕の下面に沿って斜め切り */
     parts.push(brace, ...outlineWeld(brace, 'start', p.weldSize, { group: '斜材溶接', skipShort: 5 }), ...outlineWeld(brace, 'end', p.weldSize, { group: '斜材溶接', skipShort: 5 }));
     pipeSet(parts, p.pipes, p.A - A, { origin: [0, p.H, A], topY: p.H, plateT: t, pipeKind: p.pipeKind, insul: p.insul || 0, ubolt: p.ubolt, pipeLen: 500, lenDir: DIR.Z, holeFn: (it, R, hole) => { for (const sgn of [-1, 1]) arm.holes.push({ face: 'A', z: it.x + sgn * R, s: A / 2, d: hole, kind: 'ubolt' }); } });
     return parts;

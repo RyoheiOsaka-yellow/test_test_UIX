@@ -3,7 +3,8 @@ import { h, modal, toast, promptDialog, fmt, confirmDialog, table } from './comm
 import { suggestBoltJoints } from '../bim/joints.js';
 import { holePos } from '../bim/review.js';
 import { buildChecklist, openCount, detectMisalignment, REVIEW_KINDS } from '../bim/review.js';
-import { parseSpec, holeFaces, FACE_LABEL } from '../geo/profiles.js';
+import { parseSpec, holeFaces, FACE_LABEL, parseCuts, cutsDSL, cutsLabel } from '../geo/profiles.js';
+import { setPartCuts } from '../bim/review.js';
 
 export function setReview(app, inst, itemId, status, note, extra = null) { const r = { ...(inst.review || {}) }; r[itemId] = { status, note: note ?? r[itemId]?.note ?? '', at: new Date().toISOString(), by: app.user().name, ...(extra || {}) }; app.model.updateInstance(inst.id, { review: r }); app.drawLevels(); app.updateStatus(); }
 export function renderReviewSection(app, inst, parts) {
@@ -56,4 +57,19 @@ export function openBoltSuggest(app) {
     cands.length ? table(['', '部材 A', '部材 B', '穴の一致', 'ボルト', '接触面'], cands.map((c, i) => [h('input', { type: 'checkbox', checked: true, onChange: e => e.target.checked ? sel.add(i) : sel.delete(i) }), `${c.a.mark} ${c.a.name || ''}`, `${c.b.mark} ${c.b.name || ''}`, c.oneSided ? h('span', {}, `${c.pairs.length} 個（φ${c.d}）`, h('div', { class: 'warn small' }, `片側のみ → ${c.drillMark} に穴あけ`)) : `${c.pairs.length} 組（φ${c.d}）`, `${c.M} × ${c.pairs.length}`, `${c.contact.axis} 面 ${Math.round(c.contact.w)}×${Math.round(c.contact.h)} mm`])) : h('div', { class: 'pp-empty' }, '穴が重なる接触面はありません（部材を接触させ、両方に穴があると提案されます）'));
   const m = modal({ title: `ボルト接合の提案（${cands.length}）`, wide: true, body, footer: [h('button', { class: 'btn', onClick: () => m.close() }, '閉じる'), cands.length ? h('button', { class: 'btn primary', onClick: () => { let n = 0; for (const i of sel) { const c = cands[i]; app.model.addJoint({ type: 'bolt', a: c.a.id, b: c.b.id, M: c.M, count: c.pairs.length, points: c.points, drill: c.drill || null, sides: 1, allAround: true, site: false, status: 'inferred', label: `${c.a.mark}–${c.b.mark} ${c.M} ボルト（穴位置から提案${c.oneSided ? '・' + c.drillMark + ' に穴あけ' : ''}）` }); n++; } app.rebuildAll(); app.refreshBrowser(); app.flowRefresh?.(); m.close(); toast(`ボルト接合を ${n} 件追加しました（状態: 推論。確認で確定）`, 'ok'); } }, `選択した ${sel.size} 件を適用`) : null] });
   return m;
+}
+
+// 斜め切りの指示: 対象の部品（形鋼・平鋼・鋼管）の始端・終端に、傾く向きと角度を指定する。単材は cuts、ファミリの中の部材は extraCuts に書く
+export async function cutInstructionDialog(app, inst, { partIndex = null } = {}) {
+  const parts = app.instanceParts(inst); const idx = parts.map((p, i) => ({ p, i })).filter(({ p }) => p.kind === 'member' && !p.ref && parseSpec(p.spec)); if (!idx.length) { toast('斜め切りにできる部材（形鋼・平鋼・鋼管）がありません', 'warn'); return null; }
+  const pi = partIndex != null && idx.some(x => x.i === partIndex) ? partIndex : idx[0].i; const cur = parseCuts(parts[pi].cuts) || {}; const deg = k => Math.round(Math.atan(k || 0) * 1800 / Math.PI) / 10; const dirOf = c => !c ? 'none' : Math.abs(c.ky) >= Math.abs(c.kx) ? 'y' : 'x'; const angOf = c => !c ? 45 : deg(dirOf(c) === 'y' ? c.ky : c.kx);
+  const DIRS = [['none', '直角切り（斜め切りなし）'], ['y', '高さ方向に傾ける'], ['x', '幅方向に傾ける']];
+  const r = await promptDialog(`端部の斜め切り — ${inst.mark}`, [
+    { key: 'part', label: '対象の部品', type: 'select', value: String(pi), options: idx.map(({ p, i }) => [String(i), `${p.name || p.spec}（${p.spec}・L=${Math.round(p.length)}）`]) },
+    { key: 'sDir', label: '始端', type: 'select', value: dirOf(cur.s), options: DIRS }, { key: 'sDeg', label: '始端の角度（直角切りから。−で反対向き）', type: 'number', value: angOf(cur.s) },
+    { key: 'eDir', label: '終端', type: 'select', value: dirOf(cur.e), options: DIRS }, { key: 'eDeg', label: '終端の角度（直角切りから。−で反対向き）', type: 'number', value: angOf(cur.e) }]);
+  if (!r) return null; const tgt = +r.part; const one = (name, dir, a) => { const v = +a; if (dir === 'none') return `${name}:x0`; if (!isFinite(v) || Math.abs(v) < 0.05 || Math.abs(v) > 80) return null; return `${name}:${dir}${v}`; };
+  const s = one('start', r.sDir, r.sDeg), e = one('end', r.eDir, r.eDeg); if (s == null || e == null) { toast('角度は 0.1〜80° で指定してください', 'warn'); return null; }
+  const fam = app.model.familyOf(inst); /* 単材は「直角切り」を書かずに消す。ファミリの部材は、ファミリが付けた斜め切りを打ち消せるよう x0 も書く */ const dsl = fam.id === 'member' ? [s, e].filter(x => !/:x0$/.test(x)).join('; ') : (parts[tgt].cuts || !/:x0$/.test(s) || !/:x0$/.test(e) ? [s, e].join('; ') : '');
+  setPartCuts(app, inst, tgt, dsl); app.refreshBrowser?.(); app.refreshProps?.(); const now = app.instanceParts(inst)[tgt]; toast(now.cuts ? `${inst.mark} ${now.name || now.spec}: ${cutsLabel(now.cuts)}（重量・NC・IFC・加工図に反映）` : `${inst.mark} ${now.name || now.spec}: 直角切りに戻しました`, 'ok', 5000); return { partIndex: tgt, cuts: cutsDSL(now.cuts) };
 }

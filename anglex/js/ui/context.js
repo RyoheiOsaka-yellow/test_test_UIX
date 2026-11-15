@@ -2,7 +2,7 @@
 // （同じ部材を隣に追加 / 穴 / 溶接 / ファミリ固有の追加（方杖・アンカー・配管…） / 関連寸法の微調整 / 軸ロック移動 / 単独表示 / ズレ補正）
 import { $, h, toast, promptDialog, confirmDialog } from './common.js';
 import * as THREE from 'three';
-import { weldInstructionDialog, holeInstructionDialog, openAlign } from './review.js';
+import { weldInstructionDialog, cutInstructionDialog, holeInstructionDialog, openAlign } from './review.js';
 import { detectMisalignment } from '../bim/review.js';
 import { cadRole } from '../viewer/scene.js';
 import { openExplode } from './explode.js';
@@ -23,6 +23,7 @@ export function showContextBar(app, { inst, partIndex = null, part = null, x = 0
   row1.append(h('button', { class: 'btn sm primary', disabled: !editable, title: '同じタイプの部材を隣（X 方向）に追加', onClick: () => app.addAdjacent(inst.id) }, '＋ 同じ部材を隣に'));
   row1.append(h('button', { class: 'btn sm', disabled: !editable, title: 'この部品に穴を追加（面・径・ピッチ・端あき）', onClick: () => holeInstructionDialog(app, inst, { id: 'hole:manual', partIndex: partIndex ?? parts.findIndex(q => ['member', 'plate'].includes(q.kind) && !q.ref), hole: pt?.holes?.[0] || null }) }, '＋ 穴'));
   row1.append(h('button', { class: 'btn sm', disabled: !editable, title: '端部溶接／脚長・工場/現場を指示', onClick: () => weldInstructionDialog(app, inst, { id: 'weld:manual' }) }, '＋ 溶接'));
+  if (parts.some(q => q.kind === 'member' && !q.ref)) row1.append(h('button', { class: 'btn sm', 'data-act': 'cut', disabled: !editable, title: '端部を斜め切りにする（始端・終端、向きと角度）', onClick: () => cutInstructionDialog(app, inst, { partIndex }) }, '斜め切り'));
   const adds = familyAdds(app, inst, fam, p); if (adds.length && editable) { const pop = h('div', { class: 'ctx-pop' }, ...adds.map(a => h('button', { class: 'btn sm', onClick: () => { a.run(); hideContextBar(app); } }, a.label))); row1.append(h('div', { class: 'ctx-menu' }, h('button', { class: 'btn sm', onClick: e => { e.stopPropagation(); pop.classList.toggle('open'); } }, '＋ 足す ▾'), pop)); }
   bar.append(row1);
   // 2) 関連寸法（±5mm ステッパー）

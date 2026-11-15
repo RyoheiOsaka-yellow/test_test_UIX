@@ -10,7 +10,7 @@ flow() { # 名前 フロー [ページ]
   local ok bad err; ok=$(grep -c '"ok":true' "$log"); bad=$(grep -c '"ok":false' "$log"); err=$(grep -c -E '\[pageerror\]|triggerUncaughtException|FAILED' "$log")
   if [ "$bad" -gt 0 ] || [ "$err" -gt 0 ] || ! grep -q '^saved ' "$log"; then fail=1; row "$1" NG "一致 $ok / 不一致 $bad / エラー $err → $log"; else row "$1" OK "一致 $ok 項目"; fi; }
 echo "== 画面テスト"
-flow formats ux20.js; flow solids ux21.js; flow ifc-roundtrip ux22.js; flow cuts-ifc2x3 ux23.js; flow modules modcheck.js; flow v2 v2check.js /v2.html
+flow formats ux20.js; flow solids ux21.js; flow ifc-roundtrip ux22.js; flow cuts-ifc2x3 ux23.js; flow cuts-family ux24.js; flow modules modcheck.js; flow v2 v2check.js /v2.html
 echo "== 外部ツールでの検証（IfcOpenShell・dstv）"
 if [ -n "$ANGLEX_PY" ]; then log="$OUT/external.log"; timeout 900 node dev/verify-external.mjs > "$log" 2>&1
   ve=$(grep -o '"validation_errors":[0-9]*' "$log" | grep -c -v ':0$'); mm=$(grep -o '"mismatches":[0-9]*' "$log" | grep -c -v ':0$'); gf=$(grep -o '"geometry_failed":[0-9]*' "$log" | grep -c -v ':0$')
