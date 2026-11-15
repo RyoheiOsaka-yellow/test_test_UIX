@@ -260,17 +260,6 @@ button { font: inherit; color: inherit; }
 }
 @keyframes scrollHint { 0% { top: -40%; } 60%, 100% { top: 110%; } }
 
-/* ---------- Marquee ---------- */
-.marquee { overflow: hidden; border-block: 1px solid var(--line); background: var(--white); padding: 20px 0; }
-.marquee__track { display: flex; white-space: nowrap; width: max-content; animation: marquee 30s linear infinite; }
-.marquee__track span {
-  font-family: var(--font-en); font-weight: 700; font-size: clamp(18px, 2.4vw, 26px);
-  letter-spacing: .18em; color: transparent;
-  -webkit-text-stroke: 1px #c3d0dc;
-  padding-right: 18px;
-}
-@keyframes marquee { to { transform: translateX(-33.333%); } }
-
 /* ---------- About ---------- */
 .about { background: var(--bg); position: relative; }
 .about__grid {
