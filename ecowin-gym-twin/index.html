@@ -8,288 +8,450 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
-/* レイアウト：計器盤。中央に3Dの体育館、左に条件、右に読み値、下に時間軸（年間マップと1日の推移）。 */
+/* レイアウト：左に「見どころ・条件・結果」のパネル、中央に大きな3D比較、その上に表示の切り替え、下に時間の操作。 */
 :root {
-  --bg: #e9edf1; --surface: #f8fafb; --surface-2: #eef2f5; --ink: #16202a; --ink-2: #4c5966; --ink-3: #7b8794;
-  --line: #d3dae1; --accent: #1c5cab; --accent-ink: #ffffff;
+  --bg: #e9edf1; --surface: #fbfcfd; --surface-2: #eef2f5; --ink: #16202a; --ink-2: #4c5966; --ink-3: #7b8794;
+  --line: #cfd7df; --accent: #1c5cab; --accent-ink: #ffffff; --accent-soft: #dfeaf8;
   --m-none: #7d8792; --m-ac: #eb6834; --m-eco: #2a78d6;
   --div-mid: #f0efec; --scene: #dfe5ea; --wood: #d9c6a3;
-  --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --critical: #d03b3b;
   --font: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
   --num: "Barlow", "Zen Kaku Gothic New", system-ui, sans-serif;
+  --r: 8px; --tap: 36px;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0e141a; --surface: #161e26; --surface-2: #1d2731; --ink: #e8eef3; --ink-2: #aab6c2; --ink-3: #7c8996;
-  --line: #2a3541; --accent: #6da7ec; --accent-ink: #0e141a;
+  --bg: #0e141a; --surface: #161e26; --surface-2: #1f2a35; --ink: #e8eef3; --ink-2: #aab6c2; --ink-3: #7c8996;
+  --line: #2e3a47; --accent: #6da7ec; --accent-ink: #0e141a; --accent-soft: #1d3554;
   --m-none: #8c96a1; --m-ac: #d95926; --m-eco: #3987e5;
   --div-mid: #383835; --scene: #0a0f14; --wood: #5b5142; color-scheme: dark } }
 :root[data-theme="dark"] {
-  --bg: #0e141a; --surface: #161e26; --surface-2: #1d2731; --ink: #e8eef3; --ink-2: #aab6c2; --ink-3: #7c8996;
-  --line: #2a3541; --accent: #6da7ec; --accent-ink: #0e141a;
+  --bg: #0e141a; --surface: #161e26; --surface-2: #1f2a35; --ink: #e8eef3; --ink-2: #aab6c2; --ink-3: #7c8996;
+  --line: #2e3a47; --accent: #6da7ec; --accent-ink: #0e141a; --accent-soft: #1d3554;
   --m-none: #8c96a1; --m-ac: #d95926; --m-eco: #3987e5;
   --div-mid: #383835; --scene: #0a0f14; --wood: #5b5142; color-scheme: dark }
 
 html, body { height: 100%; }
-body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 13px; line-height: 1.5; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 13px; line-height: 1.5; margin: 0; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .num { font-family: var(--num); font-variant-numeric: tabular-nums; }
+.ic { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 10px; padding-block: 10px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
-.top h1 { font-size: 16px; font-weight: 700; margin: 0; letter-spacing: .02em; text-wrap: balance; }
-.top .sub { color: var(--ink-2); font-size: 12px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.top h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: .02em; min-width: 0; }
+.top .sub { display: inline-block; }
+.top .sub { color: var(--ink-2); font-size: 12px; font-weight: 500; margin-left: 6px; }
 .top .grow { flex: 1 1 auto; }
 .badge { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
-.link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.note { color: var(--ink-3); font-size: 11.5px; }
 
-.main { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 10px; min-height: 0; }
+/* ボタン：押せるものは枠と面を持ち、高さをそろえる */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--tap); padding: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); font-weight: 500; white-space: nowrap; text-decoration: none; }
+.btn:hover { border-color: var(--ink-3); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.quiet { border-color: transparent; background: none; color: var(--accent); }
+.btn.icon { padding: 0; width: var(--tap); }
+.btn:disabled { opacity: .45; cursor: default; }
+
+/* 1つだけ選ぶ：つながったボタン。選択中は塗りつぶす */
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 2px; gap: 2px; max-width: 100%; }
+.seg button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 30px; padding: 0 9px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); white-space: nowrap; font-weight: 500; }
+.seg button:hover { background: var(--surface); color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+.seg.full { display: flex; } .seg.full button { flex: 1 1 0; min-width: 0; padding: 0 4px; }
+.seg i.dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.seg button[aria-pressed="true"] i.dot { box-shadow: 0 0 0 2px var(--accent-ink); }
+
+/* 入・切：丸いチップ。入のときはチェック印と色が付く */
+.chip { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-3); font-weight: 500; white-space: nowrap; }
+.chip .ck { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--ink-3); display: grid; place-items: center; flex: 0 0 auto; }
+.chip .ck svg { width: 10px; height: 10px; stroke-width: 3; opacity: 0; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+.chip[aria-pressed="true"] .ck { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip[aria-pressed="true"] .ck svg { opacity: 1; }
+.chip:disabled { opacity: .45; cursor: default; }
+
+.main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 12px; min-height: 0; }
 .main.wide { grid-template-columns: minmax(0, 1fr); }
 .main.wide .side { display: none; }
 .side { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
-.pane { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
-#tabs { flex: 0 0 auto; }
-#tabs button { padding: 7px 4px; }
-.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.tools .seg { display: inline-grid; }
-.tools .seg button { padding: 5px 10px; white-space: nowrap; }
-.tools .seg.modes button { flex-direction: row; gap: 6px; padding: 5px 10px; }
-.tools .seg.modes i { width: 10px; height: 10px; border-radius: 50%; }
-.col { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
-.side { overflow-y: auto; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
-.card h2 { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--ink-2); margin: 0 0 8px; }
-.stack { display: flex; flex-direction: column; gap: 9px; }
+.col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pane { overflow-y: auto; min-height: 0; flex: 1 1 auto; padding-right: 2px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.card h2 { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; margin: 0 0 10px; }
+.card h2 .ic { color: var(--accent); }
+.card h2 small { font-weight: 400; color: var(--ink-3); font-size: 11.5px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.fl { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 5px; color: var(--ink-2); font-size: 12px; font-weight: 500; }
+.fl output { font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; color: var(--ink); }
+.field select { width: 100%; min-height: var(--tap); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 0 8px; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; height: 22px; }
+.ends { display: flex; justify-content: space-between; color: var(--ink-3); font-size: 11px; font-family: var(--num); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; background: var(--surface-2); }
-.seg button { border: 0; background: none; padding: 6px 4px; cursor: pointer; color: var(--ink-2); font-size: 12px; line-height: 1.25; border-left: 1px solid var(--line); min-width: 0; }
-.seg button:first-child { border-left: 0; }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 700; }
-.seg.modes button { padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.seg.modes i { width: 22px; height: 4px; border-radius: 2px; display: block; }
-.seg.wrap { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); }
-.seg.wrap button:nth-child(n+4) { border-top: 1px solid var(--line); }
-.seg.wrap button:nth-child(4) { border-left: 0; }
+/* 増減ボタン付きの数値 */
+.stepper { display: grid; grid-template-columns: var(--tap) 1fr var(--tap); align-items: center; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); overflow: hidden; }
+.stepper button { height: var(--tap); border: 0; background: var(--surface); font-size: 18px; line-height: 1; color: var(--accent); font-weight: 700; }
+.stepper button:first-child { border-right: 1px solid var(--line); } .stepper button:last-child { border-left: 1px solid var(--line); }
+.stepper button:disabled { color: var(--ink-3); opacity: .5; cursor: default; }
+.stepper output { text-align: center; font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; }
 
-.field { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
-.field label, .lbl { color: var(--ink-2); font-size: 12px; }
-.field output { font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 600; }
-.field input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
-.field select, .field input[type=number] { grid-column: 1 / -1; width: 100%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 5px 6px; }
-.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.checks { display: flex; flex-wrap: wrap; gap: 4px 12px; }
-.checks label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
-.checks input { accent-color: var(--accent); margin: 0; }
+/* 説明つきの選択肢（1つだけ選ぶ） */
+.opts { display: grid; gap: 6px; }
+.opts.three { grid-template-columns: repeat(3, 1fr); }
+.opt { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; text-align: left; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.opt .rd { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--ink-3); grid-row: span 2; }
+.opt b { font-weight: 700; } .opt small { color: var(--ink-3); font-size: 11px; grid-column: 2; }
+.opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.opt[aria-pressed="true"] .rd { border: 5px solid var(--accent); }
+.opt.pic { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 8px 4px; gap: 4px; }
+.opt.pic svg { width: 54px; height: 40px; } .opt.pic .w { stroke: var(--ink-3); fill: none; stroke-width: 1.5; } .opt.pic .p { stroke: var(--m-eco); stroke-width: 3; stroke-linecap: round; }
+.opt.pic span { font-size: 11.5px; font-weight: 500; line-height: 1.3; }
+.hintbox { display: flex; gap: 8px; align-items: flex-start; background: var(--surface-2); border-radius: var(--r); padding: 8px 10px; color: var(--ink-2); font-size: 12px; }
+.hintbox .ic { color: var(--accent); margin-top: 1px; }
 
+/* 見どころ */
+.scenes { display: grid; gap: 6px; }
+.scene { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; text-align: left; min-height: 40px; padding: 4px 10px 4px 8px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.scene:hover { border-color: var(--accent); background: var(--accent-soft); }
+.scene .n { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-family: var(--num); font-weight: 600; }
+.scene b { font-weight: 700; display: block; line-height: 1.3; } .scene small { color: var(--ink-3); font-size: 11px; display: block; line-height: 1.3; }
+.scene .ic { color: var(--ink-3); }
+.scene[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); }
+
+/* 表示の切り替え（3Dの上） */
 .center { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; min-height: 0; min-width: 0; }
-.view { position: relative; background: var(--scene); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; min-height: 260px; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.grp { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
+.grp > .gl { color: var(--ink-2); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.fixed { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 10px; border-radius: 6px; border: 1px dashed var(--line); color: var(--ink-2); font-weight: 700; white-space: nowrap; }
+.fixed i { width: 10px; height: 10px; border-radius: 50%; background: var(--m-eco); }
+.arrow { color: var(--ink-3); }
+
+.view { position: relative; background: var(--scene); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-height: 280px; }
 .view canvas.gl { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .hud { position: absolute; pointer-events: none; }
-.clock { top: 10px; left: 12px; background: color-mix(in srgb, var(--surface) 82%, transparent); border-radius: 5px; padding: 6px 10px; }
-.clock .d { font-family: var(--num); font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: .01em; }
+.clock { top: 10px; left: 12px; background: color-mix(in srgb, var(--surface) 88%, transparent); border-radius: var(--r); padding: 6px 10px; }
+.clock .d { font-family: var(--num); font-size: 26px; font-weight: 600; line-height: 1; }
 .clock .w { color: var(--ink-2); font-size: 12px; margin-top: 4px; }
+.modeTag { transform: translateX(-100%); background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px; text-align: right; }
+.modeTag .nm { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.modeTag .nm i { width: 11px; height: 11px; border-radius: 50%; }
+.modeTag .kv { display: flex; gap: 10px; justify-content: flex-end; margin-top: 3px; color: var(--ink-2); font-size: 11px; white-space: nowrap; }
+.modeTag .kv b { font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink); font-weight: 600; }
 .divider { background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
-.modeTag { transform: translateX(-100%); white-space: nowrap; display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-weight: 700; }
-.modeTag i { width: 10px; height: 10px; border-radius: 50%; }
-.legend { left: 12px; bottom: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 6px 9px 5px; width: min(300px, calc(100% - 24px)); }
-.legend .t { font-size: 11px; color: var(--ink-2); display: flex; justify-content: space-between; gap: 8px; }
-.legend canvas { display: block; width: 100%; height: 10px; border-radius: 2px; margin: 4px 0 2px; }
-.legend .ticks { display: flex; justify-content: space-between; font-family: var(--num); font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.cams { right: 12px; bottom: 10px; pointer-events: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: calc(100% - 24px); }
-.cams button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 700; }
-.cams button { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 4px 9px; cursor: pointer; font-size: 12px; }
-.probe { background: var(--surface); border: 1px solid var(--ink-3); border-radius: 5px; padding: 5px 8px; font-size: 11px; transform: translate(-50%, calc(-100% - 10px)); white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.legend { left: 12px; bottom: 10px; background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px 6px; width: min(330px, calc(100% - 24px)); }
+.legend .t { font-weight: 700; font-size: 12.5px; display: flex; justify-content: space-between; gap: 8px; }
+.legend .t span:last-child { font-weight: 400; color: var(--ink-3); font-size: 11.5px; }
+.legend .dsc { color: var(--ink-2); font-size: 11.5px; line-height: 1.45; margin: 2px 0 5px; }
+.legend canvas { display: block; width: 100%; height: 12px; border-radius: 3px; }
+.legend .ticks, .legend .words { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-2); }
+.legend .ticks { font-family: var(--num); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.legend .words { font-weight: 700; margin-bottom: 2px; }
+.cams { right: 12px; bottom: 10px; pointer-events: auto; display: flex; align-items: center; gap: 6px; background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--line); border-radius: var(--r); padding: 3px 3px 3px 9px; }
+.cams .gl { color: var(--ink-2); font-size: 11.5px; font-weight: 700; }
+.cams .seg { border: 0; background: none; padding: 0; }
+.probe { background: var(--surface); border: 1px solid var(--ink-3); border-radius: var(--r); padding: 6px 9px; font-size: 11.5px; transform: translate(-50%, calc(-100% - 10px)); white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,.2); }
 .probe b { font-family: var(--num); font-size: 15px; }
-.probe table { border-collapse: collapse; } .probe td { padding: 0 0 0 8px; } .probe td:first-child { padding-left: 0; color: var(--ink-2); }
-.probe td:last-child { text-align: right; font-family: var(--num); font-variant-numeric: tabular-nums; }
-.hint { left: 50%; top: 10px; transform: translateX(-50%); color: var(--ink-3); font-size: 11px; white-space: nowrap; }
+.probe table { border-collapse: collapse; } .probe td { padding: 0 0 0 10px; text-align: right; font-family: var(--num); font-variant-numeric: tabular-nums; } .probe td:first-child { padding-left: 0; color: var(--ink-2); text-align: left; font-family: var(--font); }
+.tips { left: 12px; top: 78px; pointer-events: auto; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: start; background: var(--ink); color: var(--surface); border-radius: var(--r); padding: 8px 8px 8px 12px; font-size: 12px; }
+.tips .rows { display: grid; gap: 4px; }
+.tips span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.tips kbd { font: inherit; font-weight: 700; background: color-mix(in srgb, var(--surface) 22%, transparent); border-radius: 4px; padding: 0 5px; }
+.tips button { width: 26px; height: 26px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--surface) 22%, transparent); color: inherit; display: grid; place-items: center; }
 .glfail { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--ink-2); }
 
-.dock { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 6px 14px; }
-.dock .bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-.btn { background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
-.btn.play { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; min-width: 76px; }
-.dock .bar select { background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px; }
-.dock .bar input[type=range] { flex: 1 1 160px; min-width: 120px; accent-color: var(--accent); }
+/* 時間の操作 */
+.dock { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.playgrp { display: inline-flex; align-items: center; gap: 6px; }
+.playbtn { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.playbtn .ic { width: 22px; height: 22px; fill: currentColor; stroke: none; }
+.playbtn:active { transform: scale(.96); }
+.dategrp { display: inline-flex; align-items: center; gap: 4px; }
+.dategrp input[type=date] { min-height: var(--tap); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 0 8px; font-family: var(--num); font-size: 14px; }
+.scrub { flex: 1 1 240px; min-width: 200px; }
+.scrub .ends { padding: 0 2px; }
+.charts { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 6px 14px; }
 .chart { min-width: 0; }
-.chart .ct { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 11px; color: var(--ink-2); margin-bottom: 3px; }
+.chart .ct { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 11.5px; color: var(--ink-2); margin-bottom: 3px; }
 .chart .ct b { color: var(--ink); font-weight: 700; }
-.chart canvas { display: block; width: 100%; height: 84px; cursor: crosshair; touch-action: none; }
+.chart canvas { display: block; width: 100%; height: 84px; cursor: crosshair; touch-action: none; border-radius: 4px; }
+.chart.mon canvas { height: 130px; cursor: default; }
 .keys { display: inline-flex; flex-wrap: wrap; gap: 2px 10px; }
 .keys span { display: inline-flex; align-items: center; gap: 4px; }
 .keys i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
 .keys i.dash { background: repeating-linear-gradient(90deg, var(--ink-3) 0 3px, transparent 3px 5px); }
 
 table.cmp { width: 100%; border-collapse: collapse; font-size: 12px; }
-table.cmp th, table.cmp td { padding: 4px 4px; text-align: right; border-bottom: 1px solid var(--line); }
+table.cmp th, table.cmp td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--line); }
 table.cmp th:first-child, table.cmp td:first-child { text-align: left; color: var(--ink-2); font-weight: 400; padding-left: 0; }
 table.cmp thead th { font-size: 11px; font-weight: 700; color: var(--ink-2); vertical-align: bottom; }
 table.cmp thead th i { display: block; height: 3px; border-radius: 2px; margin-top: 3px; }
 table.cmp td { font-family: var(--num); font-variant-numeric: tabular-nums; font-weight: 600; }
 table.cmp .cur { background: var(--surface-2); }
 table.cmp tr:last-child td, table.cmp tr:last-child th { border-bottom: 0; }
-.pill { display: inline-block; border-radius: 3px; padding: 0 5px; font-family: var(--font); font-size: 10.5px; font-weight: 700; color: #16202a; }
+.pill { display: inline-block; border-radius: 4px; padding: 0 5px; font-family: var(--font); font-size: 10.5px; font-weight: 700; color: #16202a; }
 .now { display: flex; flex-wrap: wrap; gap: 2px 14px; color: var(--ink-2); font-size: 12px; margin-bottom: 6px; }
-.now b { color: var(--ink); font-family: var(--num); font-size: 14px; }
+.now b { color: var(--ink); font-family: var(--num); font-size: 15px; }
 .hero { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: end; }
-.hero .big { font-family: var(--num); font-size: 38px; font-weight: 600; line-height: .95; }
-.hero .big small { font-size: 16px; }
+.hero .big { font-family: var(--num); font-size: 44px; font-weight: 600; line-height: .95; color: var(--accent); }
+.hero .big small { font-size: 18px; }
 .hero .cap { color: var(--ink-2); font-size: 11.5px; }
-.note { color: var(--ink-3); font-size: 11px; }
-.chart.mon canvas { height: 130px; cursor: default; }
-.card.dock { padding: 8px 12px; }
 
-.tip { position: fixed; z-index: 30; pointer-events: none; background: var(--ink); color: var(--surface); border-radius: 4px; padding: 5px 8px; font-size: 11.5px; line-height: 1.45; max-width: 240px; }
+.tip { position: fixed; z-index: 30; pointer-events: none; background: var(--ink); color: var(--surface); border-radius: 6px; padding: 6px 9px; font-size: 11.5px; line-height: 1.45; max-width: 240px; }
 .tip b { font-family: var(--num); }
+dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 0; width: min(760px, calc(100vw - 32px)); max-height: 86vh; }
 #shotDlg { width: min(1100px, calc(100vw - 32px)); }
-dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 0; width: min(760px, calc(100vw - 32px)); max-height: 86vh; }
 dialog::backdrop { background: rgba(8, 12, 16, .55); }
-dialog header { position: sticky; top: 0; background: var(--surface); display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+dialog header { position: sticky; top: 0; background: var(--surface); display: flex; justify-content: space-between; align-items: center; padding: 10px 18px; border-bottom: 1px solid var(--line); }
 dialog header h2 { margin: 0; font-size: 15px; }
 dialog .body { padding: 6px 18px 18px; max-width: 70ch; }
 dialog h3 { font-size: 13px; margin: 16px 0 4px; }
 dialog p, dialog li { color: var(--ink-2); margin: 4px 0; }
 dialog ul { padding-left: 18px; margin: 4px 0; }
+.how { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: start; margin-top: 10px; }
+.how .ic { width: 22px; height: 22px; color: var(--accent); margin-top: 1px; }
+.how b { display: block; color: var(--ink); } .how span { color: var(--ink-2); }
 
 @media (max-width: 980px) {
   html, body { height: auto; }
   .app { height: auto; }
   .main { grid-template-columns: minmax(0, 1fr); }
   .center { order: -1; }
-  .view { height: 64vh; min-height: 320px; }
+  .view { height: 62vh; min-height: 320px; }
   .pane { overflow: visible; }
+  .charts { grid-template-columns: minmax(0, 1fr); }
+  .tips { display: none; }
+  .clock .d { font-size: 20px; }
+  .cams { bottom: auto; top: 66px; }
+  .modeTag .kv { display: none; }
 }
-@media (max-width: 720px) { .dock { grid-template-columns: minmax(0, 1fr); } .hint { display: none; } .clock .d { font-size: 20px; } .cams { bottom: auto; top: 46px; } }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; transition: none !important; } }
 </style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M11 6l-6 6 6 6M19 6l-6 6 6 6"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M13 6l6 6-6 6M5 6l6 6-6 6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="6" r="3"/><path d="M6 21v-5a6 6 0 0112 0v5"/></symbol>
+  <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 014 0v9a4 4 0 11-4 0z"/><path d="M12 11v6"/></symbol>
+  <symbol id="i-rad" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 9h11a3 3 0 10-3-3M3 14h15a3 3 0 11-3 3M3 19h6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v5M12 17.6v.2"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 4l9 5-9 5-9-5zM3 14l9 5 9-5"/></symbol>
+  <symbol id="i-cut" viewBox="0 0 24 24"><path d="M4 6h16v12H4zM12 3v18"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></symbol>
+  <symbol id="i-one" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1.5"/></symbol>
+  <symbol id="i-two" viewBox="0 0 24 24"><rect x="3" y="5" width="8" height="14" rx="1.5"/><rect x="13" y="5" width="8" height="14" rx="1.5"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12L4 7.5M12 12v9"/></symbol>
+  <symbol id="i-top" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1"/><path d="M12 3v6M9 6.5l3 3 3-3"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-side" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M9 5v14"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M4 17l5-4 4 3 3-2.5 4 3.5"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 012 2v14H7a2 2 0 01-2-2zM5 18a2 2 0 012-2h12"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-1 .7-1.5 1.2-1.5 2.3M12 17v.2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3L7 7M17 17l1.7 1.7M18.7 5.3L17 7M7 17l-1.7 1.7"/></symbol>
+  <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9"/></symbol>
+  <symbol id="i-build" viewBox="0 0 24 24"><path d="M3 20V9l9-5 9 5v11zM3 20h18M9 20v-6h6v6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="16" rx="1"/><path d="M5 21h14M10 6v10M14 6v10"/></symbol>
+  <symbol id="i-yen" viewBox="0 0 24 24"><path d="M6 4l6 8 6-8M12 12v8M7 13h10M7 16.5h10"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V6a1.5 1.5 0 013 0v5M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6a1.5 1.5 0 013 0v8a6 6 0 01-6 6h-1a5 5 0 01-4.3-2.4L4 13.5a1.5 1.5 0 012.6-1.4L8 14"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-3"/></symbol>
+</svg>
 
 <div class="app">
   <header class="top">
-    <h1>体育館デジタルツイン <span class="sub">ecowinハイブリッド 設置効果の推計</span></h1>
+    <h1>体育館デジタルツイン<span class="sub">ecowinハイブリッド 設置効果の推計</span></h1>
     <span class="badge">推計値（実測ではありません）</span>
     <span class="badge" id="wxBadge"></span>
     <span class="grow"></span>
-    <button class="btn" id="sideToggle" type="button" aria-expanded="true">パネルを隠す</button>
     <span class="note" id="saveMsg" role="status"></span>
-    <button class="btn" id="saveScene" type="button">配置を保存</button>
-    <button class="btn" id="loadScene" type="button">読込</button>
-    <button class="btn" id="shot" type="button">画像にする</button>
-    <button class="link" id="openNotes" type="button">前提と出典</button>
+    <button class="btn" id="openHelp" type="button"><svg class="ic"><use href="#i-help"/></svg>使い方</button>
+    <button class="btn" id="shot" type="button" title="いまの3D表示を、資料に貼れる画像にします"><svg class="ic"><use href="#i-image"/></svg>画像にする</button>
+    <button class="btn" id="saveScene" type="button" title="条件とパネルの位置を、このブラウザに保存します"><svg class="ic"><use href="#i-save"/></svg>保存</button>
+    <button class="btn" id="loadScene" type="button" title="保存した条件とパネルの位置に戻します"><svg class="ic"><use href="#i-open"/></svg>読込</button>
+    <button class="btn quiet" id="openNotes" type="button"><svg class="ic"><use href="#i-book"/></svg>前提と出典</button>
   </header>
 
   <div class="main" id="main">
     <aside class="side" id="side">
-      <div class="seg" id="tabs" role="group" aria-label="パネルの切り替え">
-        <button type="button" data-v="cond">条件</button><button type="button" data-v="now">いまの値</button><button type="button" data-v="year">年間の推計</button>
+      <div class="seg full" id="tabs" role="group" aria-label="パネルの切り替え">
+        <button type="button" data-v="cond">見どころ・条件</button>
+        <button type="button" data-v="now">いまの値</button>
+        <button type="button" data-v="year">年間の効果</button>
       </div>
+
       <div class="pane col" data-pane="cond">
-<section class="card stack">
-        <h2>建物と使い方</h2>
-        <div class="field"><label for="city">地域</label><select id="city"></select></div>
-        <div class="field"><label for="insul">断熱性能</label><select id="insul"></select></div>
-        <div class="field"><label for="occ">利用人数</label><output id="occOut" for="occ"></output><input type="range" id="occ" min="0" max="600" step="10"></div>
-        <div class="field"><label for="act">活動</label><select id="act"><option value="150">運動（授業・部活）</option><option value="75">観覧・式典・避難所</option></select></div>
-        <div class="pair">
-          <div class="field"><label for="setHeat">暖房設定 ℃</label><input type="number" id="setHeat" min="12" max="24" step="1"></div>
-          <div class="field"><label for="setCool">冷房設定 ℃</label><input type="number" id="setCool" min="22" max="30" step="1"></div>
-        </div>
-        <div class="pair">
-          <div class="field"><label for="opStart">空調開始 時</label><input type="number" id="opStart" min="5" max="12" step="1"></div>
-          <div class="field"><label for="opEnd">空調終了 時</label><input type="number" id="opEnd" min="14" max="23" step="1"></div>
-        </div>
-      </section>
-<section class="card stack">
-        <h2>ecowinパネル</h2>
-        <div class="field"><label for="panels">台数（SCREEN 両面）</label><output id="panelsOut" for="panels"></output><input type="range" id="panels" min="0" max="120" step="2"></div>
-        <div class="field"><label for="layout">置き方</label><select id="layout">
-          <option value="rows">コート脇に自立で3列</option><option value="wall">南北の壁沿い</option><option value="perimeter">南・北・西の壁沿い</option></select></div>
-        <div class="field"><label for="preheat">予熱運転（ecowinを早めに開始）</label><select id="preheat"><option value="0">なし</option><option value="1">1時間前から</option><option value="2">2時間前から</option></select></div>
-        <div class="note">3Dの中でパネルをドラッグすると移動、ダブルクリックで向きが90°変わります。動かすと体感温度と年間の推計に反映されます。</div>
-        <div class="pair">
-          <div class="field"><label for="price">電力単価 円/kWh</label><input type="number" id="price" min="5" max="60" step="1"></div>
-          <div class="field"><label for="basic">基本料金 円/kW月</label><input type="number" id="basic" min="0" max="3000" step="50"></div>
-        </div>
-      </section>
+        <section class="card">
+          <h2><svg class="ic"><use href="#i-star"/></svg>見どころ <small>押すとその場面に切り替わります</small></h2>
+          <div class="scenes" id="scenes">
+            <button class="scene" type="button" data-v="s1"><span class="n">1</span><span><b>真夏の午後、空調がないと</b><small>暑さ指数で危険な場所を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+            <button class="scene" type="button" data-v="s2"><span class="n">2</span><span><b>夏：2つの方式を並べる</b><small>体感温度を左右で比べる</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+            <button class="scene" type="button" data-v="s3"><span class="n">3</span><span><b>真冬の朝：暖気はどこへ</b><small>断面で天井付近の溜まり方を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+            <button class="scene" type="button" data-v="s4"><span class="n">4</span><span><b>風の強さを比べる</b><small>真上から、人の高さの風を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+            <button class="scene" type="button" data-v="s5"><span class="n">5</span><span><b>1年間の電気代</b><small>消費電力量と料金の差を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+          </div>
+        </section>
+
+        <section class="card stack">
+          <h2><svg class="ic"><use href="#i-build"/></svg>建物</h2>
+          <div class="field"><div class="fl"><label for="city">地域（気象データ）</label></div><select id="city"></select></div>
+          <div><div class="fl"><span>断熱性能</span></div><div class="opts" id="insul" role="group" aria-label="断熱性能"></div></div>
+        </section>
+
+        <section class="card stack">
+          <h2><svg class="ic"><use href="#i-clock"/></svg>使い方</h2>
+          <div><div class="fl"><label for="occ">利用人数</label><output id="occOut" for="occ"></output></div><input type="range" id="occ" min="0" max="600" step="10"><div class="ends"><span>0人</span><span>600人</span></div></div>
+          <div><div class="fl"><span>活動</span></div><div class="seg full" id="actSeg" role="group" aria-label="活動"><button type="button" data-v="150">運動（授業・部活）</button><button type="button" data-v="75">観覧・式典</button></div></div>
+          <div class="pair">
+            <div><div class="fl"><span>空調を始める時刻</span></div><div class="stepper" data-key="opStart" data-min="5" data-max="12" data-step="1" data-unit="時"></div></div>
+            <div><div class="fl"><span>空調を止める時刻</span></div><div class="stepper" data-key="opEnd" data-min="14" data-max="23" data-step="1" data-unit="時"></div></div>
+          </div>
+          <div class="pair">
+            <div><div class="fl"><span>冬の設定温度</span></div><div class="stepper" data-key="setHeat" data-min="12" data-max="24" data-step="1" data-unit="℃"></div></div>
+            <div><div class="fl"><span>夏の設定温度</span></div><div class="stepper" data-key="setCool" data-min="22" data-max="30" data-step="1" data-unit="℃"></div></div>
+          </div>
+        </section>
+
+        <section class="card stack">
+          <h2><svg class="ic"><use href="#i-panel"/></svg>ecowinパネル</h2>
+          <div><div class="fl"><label for="panels">台数</label><output id="panelsOut" for="panels"></output></div><input type="range" id="panels" min="0" max="120" step="2"><div class="ends"><span>0台</span><span>120台</span></div></div>
+          <div><div class="fl"><span>置き方</span><span class="note" id="customNote" hidden>ドラッグで変更済み</span></div>
+            <div class="opts three" id="layoutSeg" role="group" aria-label="パネルの置き方">
+              <button class="opt pic" type="button" data-v="rows"><svg viewBox="0 0 54 40"><rect class="w" x="3" y="3" width="48" height="34" rx="2"/><path class="p" d="M10 9h34M10 20h34M10 31h34"/></svg><span>コート脇に3列</span></button>
+              <button class="opt pic" type="button" data-v="wall"><svg viewBox="0 0 54 40"><rect class="w" x="3" y="3" width="48" height="34" rx="2"/><path class="p" d="M10 8h34M10 32h34"/></svg><span>長い辺の壁際</span></button>
+              <button class="opt pic" type="button" data-v="perimeter"><svg viewBox="0 0 54 40"><rect class="w" x="3" y="3" width="48" height="34" rx="2"/><path class="p" d="M12 8h32M12 32h32M8 10v20"/></svg><span>壁際の3辺</span></button>
+            </div>
+          </div>
+          <div class="hintbox"><svg class="ic"><use href="#i-hand"/></svg><span>3Dの中のパネルは、<b>ドラッグで移動</b>、<b>ダブルクリックで向きを90°回転</b>できます。動かすと結果に反映されます。</span></div>
+          <div><div class="fl"><span>予熱運転（ecowinを早めに始める）</span></div><div class="seg full" id="preheatSeg" role="group" aria-label="予熱運転"><button type="button" data-v="0">なし</button><button type="button" data-v="1">1時間前から</button><button type="button" data-v="2">2時間前から</button></div></div>
+        </section>
+
+        <section class="card stack">
+          <h2><svg class="ic"><use href="#i-yen"/></svg>電気料金</h2>
+          <div class="pair">
+            <div><div class="fl"><span>電力量の単価</span></div><div class="stepper" data-key="price" data-min="5" data-max="60" data-step="1" data-unit="円/kWh"></div></div>
+            <div><div class="fl"><span>基本料金</span></div><div class="stepper" data-key="basic" data-min="0" data-max="3000" data-step="50" data-unit="円/kW月"></div></div>
+          </div>
+        </section>
       </div>
+
       <div class="pane col" data-pane="now" hidden>
-<section class="card">
-        <h2>いまの時刻の読み値</h2>
-        <div class="now" id="now"></div>
-        <table class="cmp" id="cmp"></table>
-      </section>
+        <section class="card">
+          <h2><svg class="ic"><use href="#i-thermo"/></svg>いまの時刻の値 <small>館内の平均</small></h2>
+          <div class="now" id="now"></div>
+          <table class="cmp" id="cmp"></table>
+        </section>
+        <div class="hintbox"><svg class="ic"><use href="#i-hand"/></svg><span>3Dの床をクリックすると、その場所の値が吹き出しで出ます。</span></div>
       </div>
+
       <div class="pane col" data-pane="year" hidden>
-<section class="card stack">
-        <h2 id="annT">年間の推計</h2>
-        <div class="hero">
-          <div class="big num" id="rate"></div>
-          <div class="cap" id="rateCap"></div>
-        </div>
-        <table class="cmp" id="ann"></table>
-        <div class="chart mon">
-          <div class="ct"><span><b>月ごとの消費電力量</b>（MWh）</span><span class="keys"><span><i style="background:var(--m-ac)"></i>エアコンのみ</span><span><i style="background:var(--m-eco)"></i>ecowin</span></span></div>
-          <canvas id="mon"></canvas>
-        </div>
-        <div class="note" id="annNote"></div>
-      </section>
+        <section class="card stack">
+          <h2><svg class="ic"><use href="#i-yen"/></svg><span id="annT">年間の推計</span></h2>
+          <div class="hero"><div class="big num" id="rate"></div><div class="cap" id="rateCap"></div></div>
+          <table class="cmp" id="ann"></table>
+          <div class="chart mon">
+            <div class="ct"><span><b>月ごとの消費電力量</b>（MWh）</span><span class="keys"><span><i style="background:var(--m-ac)"></i>エアコンのみ</span><span><i style="background:var(--m-eco)"></i>ecowin</span></span></div>
+            <canvas id="mon"></canvas>
+          </div>
+          <div class="note" id="annNote"></div>
+        </section>
       </div>
     </aside>
 
     <div class="center">
       <div class="tools">
-        <div class="seg modes" id="modeSeg" role="group" aria-label="空調方式">
-          <button type="button" data-v="none"><i style="background:var(--m-none)"></i>空調なし</button>
-          <button type="button" data-v="ac"><i style="background:var(--m-ac)"></i>エアコンのみ</button>
-          <button type="button" data-v="eco"><i style="background:var(--m-eco)"></i>ecowin</button>
+        <button class="btn" id="sideToggle" type="button" aria-expanded="true" title="左のパネルを閉じて、3Dを大きく表示します"><svg class="ic"><use href="#i-side"/></svg><span>パネルを閉じる</span></button>
+        <div class="grp"><span class="gl">画面</span>
+          <div class="seg" id="splitSeg" role="group" aria-label="画面の分け方"><button type="button" data-v="0"><svg class="ic"><use href="#i-one"/></svg>1画面</button><button type="button" data-v="1"><svg class="ic"><use href="#i-two"/></svg>左右で比較</button></div>
         </div>
-        <div class="seg" id="layerSeg" role="group" aria-label="床の色で見る値">
-          <button type="button" data-v="ot">体感温度</button><button type="button" data-v="ta">空気温度</button><button type="button" data-v="mrt">放射温度</button><button type="button" data-v="wind">風速</button><button type="button" data-v="wbgt">暑さ指数</button>
+        <div class="grp" id="modeGrp"><span class="gl">方式</span>
+          <div class="seg" id="modeSeg" role="group" aria-label="空調方式"><button type="button" data-v="none"><i class="dot" style="background:var(--m-none)"></i>空調なし</button><button type="button" data-v="ac"><i class="dot" style="background:var(--m-ac)"></i>エアコンのみ</button><button type="button" data-v="eco"><i class="dot" style="background:var(--m-eco)"></i>ecowinハイブリッド</button></div>
         </div>
-        <div class="seg" id="zSeg" role="group" aria-label="評価高さ">
-          <button type="button" data-v="0.1">足元</button><button type="button" data-v="1.1">腰</button><button type="button" data-v="1.7">頭</button>
+        <div class="grp" id="leftGrp" hidden><span class="gl">左</span>
+          <div class="seg" id="leftSeg" role="group" aria-label="左に表示する方式"><button type="button" data-v="none"><i class="dot" style="background:var(--m-none)"></i>空調なし</button><button type="button" data-v="ac"><i class="dot" style="background:var(--m-ac)"></i>エアコンのみ</button></div>
+          <span class="gl">右</span><span class="fixed"><i></i>ecowinハイブリッド</span>
         </div>
-        <div class="checks">
-          <label><input type="checkbox" id="ckWind" checked>気流</label>
-          <label><input type="checkbox" id="ckRays" checked>輻射</label>
-          <label><input type="checkbox" id="ckVolume" checked>空気の層</label>
-          <label><input type="checkbox" id="ckSection">断面</label>
-          <label><input type="checkbox" id="ckPeople" checked>人</label>
-          <label><input type="checkbox" id="ckField" checked>床の色</label>
+        <div class="grp"><span class="gl">色で見るもの</span>
+          <div class="seg" id="layerSeg" role="group" aria-label="床の色で見る値">
+            <button type="button" data-v="ot"><svg class="ic"><use href="#i-person"/></svg>体感温度</button><button type="button" data-v="ta"><svg class="ic"><use href="#i-thermo"/></svg>空気温度</button><button type="button" data-v="mrt"><svg class="ic"><use href="#i-rad"/></svg>放射温度</button><button type="button" data-v="wind"><svg class="ic"><use href="#i-wind"/></svg>風速</button><button type="button" data-v="wbgt"><svg class="ic"><use href="#i-alert"/></svg>暑さ指数</button>
+          </div>
+        </div>
+        <div class="grp"><span class="gl">高さ</span>
+          <div class="seg" id="zSeg" role="group" aria-label="評価する高さ"><button type="button" data-v="0.1">足元</button><button type="button" data-v="1.1">腰</button><button type="button" data-v="1.7">頭</button></div>
+        </div>
+        <div class="grp" id="overlays"><span class="gl">重ねて表示</span>
+          <button class="chip" type="button" data-k="wind"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>風</button>
+          <button class="chip" type="button" data-k="rays"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>輻射</button>
+          <button class="chip" type="button" data-k="volume"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>空気の層</button>
+          <button class="chip" type="button" data-k="section"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>断面</button>
+          <button class="chip" type="button" data-k="people"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>人</button>
+          <button class="chip" type="button" data-k="field"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>床の色</button>
         </div>
       </div>
+
       <div class="view" id="view">
         <canvas class="gl" id="gl" aria-label="体育館の3D表示"></canvas>
         <div class="hud clock"><div class="d" id="clockD"></div><div class="w" id="clockW"></div></div>
-        <div class="hud hint" id="hint">ドラッグで回転・ホイールで拡大・床をクリックでその地点の値</div>
+        <div class="hud tips" id="tips"><div class="rows"><span><kbd>ドラッグ</kbd>回す</span><span><kbd>ホイール</kbd>拡大する</span><span><kbd>床をクリック</kbd>その場所の値</span><span><kbd>パネルをドラッグ</kbd>置き場所を変える</span></div><button type="button" id="tipsClose" aria-label="操作の説明を閉じる"><svg class="ic"><use href="#i-x"/></svg></button></div>
         <div class="hud divider" id="divider" hidden></div>
         <div class="hud modeTag" id="tag0"></div>
         <div class="hud modeTag" id="tag1" hidden></div>
-        <div class="hud legend"><div class="t"><span id="legT"></span><span id="legH"></span></div><canvas id="legC" width="300" height="10"></canvas><div class="ticks" id="legK"></div></div>
-        <div class="hud cams" id="cams">
-          <button type="button" id="split" aria-pressed="false">左右で比較</button><button type="button" data-v="iso">斜め</button><button type="button" data-v="top">真上</button><button type="button" data-v="eye">目線</button><button type="button" data-v="side">断面</button>
+        <div class="hud legend"><div class="t"><span id="legT"></span><span id="legH"></span></div><div class="dsc" id="legD"></div><div class="words" id="legW"></div><canvas id="legC" width="300" height="12"></canvas><div class="ticks" id="legK"></div></div>
+        <div class="hud cams"><span class="gl">視点</span>
+          <div class="seg" id="cams" role="group" aria-label="視点"><button type="button" data-v="iso"><svg class="ic"><use href="#i-cube"/></svg>斜め</button><button type="button" data-v="top"><svg class="ic"><use href="#i-top"/></svg>真上</button><button type="button" data-v="eye"><svg class="ic"><use href="#i-eye"/></svg>客席から</button></div>
         </div>
         <div class="hud probe" id="probe" hidden></div>
       </div>
 
       <section class="card dock">
-        <div class="bar">
-          <button class="btn play" id="play" type="button">▶ 再生</button>
-          <select id="speed" aria-label="再生速度"><option value="0.05" selected>1秒＝3分</option><option value="0.0833333">1秒＝5分</option><option value="0.1666667">1秒＝10分</option><option value="0.5">1秒＝30分</option><option value="1">1秒＝1時間</option><option value="6">1秒＝6時間（早送り）</option></select>
-          <input type="range" id="hourR" min="0" max="23.99" step="0.01" aria-label="時刻">
-          <button class="btn" id="jumpHot" type="button">最も暑い日</button>
-          <button class="btn" id="jumpCold" type="button">最も寒い日</button>
+        <div class="transport">
+          <div class="playgrp">
+            <button class="btn icon" id="stepBack" type="button" title="1時間戻す" aria-label="1時間戻す"><svg class="ic"><use href="#i-back"/></svg></button>
+            <button class="playbtn" id="play" type="button" title="再生・停止（スペースキー）" aria-label="再生"><svg class="ic"><use id="playIc" href="#i-play"/></svg></button>
+            <button class="btn icon" id="stepFwd" type="button" title="1時間進める" aria-label="1時間進める"><svg class="ic"><use href="#i-fwd"/></svg></button>
+          </div>
+          <div class="grp"><span class="gl">速さ</span>
+            <div class="seg" id="speedSeg" role="group" aria-label="再生の速さ（1秒で進む時間）"><button type="button" data-v="0.05">3分</button><button type="button" data-v="0.0833333">5分</button><button type="button" data-v="0.1666667">10分</button><button type="button" data-v="0.5">30分</button><button type="button" data-v="1">1時間</button><button type="button" data-v="6">6時間</button></div>
+            <span class="note">／秒</span>
+          </div>
+          <div class="grp"><span class="gl">日付</span>
+            <div class="dategrp">
+              <button class="btn icon" id="prevDay" type="button" title="前の日" aria-label="前の日"><svg class="ic"><use href="#i-left"/></svg></button>
+              <input type="date" id="dateIn" min="2025-01-01" max="2025-12-31" aria-label="日付">
+              <button class="btn icon" id="nextDay" type="button" title="次の日" aria-label="次の日"><svg class="ic"><use href="#i-right"/></svg></button>
+            </div>
+            <button class="btn" id="jumpHot" type="button"><svg class="ic"><use href="#i-sun"/></svg>最も暑い日</button>
+            <button class="btn" id="jumpCold" type="button"><svg class="ic"><use href="#i-snow"/></svg>最も寒い日</button>
+          </div>
+          <div class="scrub"><input type="range" id="hourR" min="0" max="23.99" step="0.01" aria-label="時刻"><div class="ends"><span>0時</span><span>6時</span><span>12時</span><span>18時</span><span>24時</span></div></div>
+          <button class="chip" id="chartsToggle" type="button"><span class="ck"><svg class="ic"><use href="#i-check"/></svg></span>グラフ</button>
         </div>
-        <div class="chart">
-          <div class="ct"><span><b id="calT"></b>　横：1月→12月　縦：0時→24時</span><span id="calK"></span></div>
-          <canvas id="cal"></canvas>
-        </div>
-        <div class="chart">
-          <div class="ct"><span><b id="dayT"></b></span>
-            <span class="keys"><span><i class="dash"></i>外気温</span><span><i style="background:var(--m-none)"></i>空調なし</span><span><i style="background:var(--m-ac)"></i>エアコン</span><span><i style="background:var(--m-eco)"></i>ecowin</span></span></div>
-          <canvas id="day"></canvas>
+        <div class="charts" id="charts">
+          <div class="chart">
+            <div class="ct"><span><b id="calT"></b>　なぞると日時が変わります</span><span id="calK"></span></div>
+            <canvas id="cal"></canvas>
+          </div>
+          <div class="chart">
+            <div class="ct"><span><b id="dayT"></b></span>
+              <span class="keys"><span><i class="dash"></i>外気温</span><span><i style="background:var(--m-none)"></i>空調なし</span><span><i style="background:var(--m-ac)"></i>エアコン</span><span><i style="background:var(--m-eco)"></i>ecowin</span></span></div>
+            <canvas id="day"></canvas>
+          </div>
         </div>
       </section>
     </div>
@@ -297,6 +459,21 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 </div>
 
 <div class="tip" id="tip" hidden></div>
+
+<dialog id="helpDlg">
+  <header><h2>使い方</h2><button class="btn" id="closeHelp" type="button">閉じる</button></header>
+  <div class="body">
+    <p>まだ ecowinハイブリッドを設置していない体育館に、設置した場合の温度・風・電気代を推計して見せる画面です。迷ったら、左の「見どころ」を上から順に押してください。</p>
+    <div class="how">
+      <svg class="ic"><use href="#i-two"/></svg><div><b>比べる</b><span>「左右で比較」を選ぶと、左に今の方式、右に ecowinハイブリッドが同じ視点・同じ時刻で並びます。</span></div>
+      <svg class="ic"><use href="#i-person"/></svg><div><b>色で見るものを選ぶ</b><span>床の色は、体感温度・空気温度・放射温度・風速・暑さ指数から選べます。色の意味は3Dの左下に出ます。</span></div>
+      <svg class="ic"><use href="#i-play"/></svg><div><b>時間を動かす</b><span>丸い再生ボタンで時間が進みます。速さは1秒あたり3分〜6時間。年間マップをなぞると、好きな日時へ移れます。</span></div>
+      <svg class="ic"><use href="#i-cube"/></svg><div><b>3Dを動かす</b><span>ドラッグで回転、ホイール（スマホは2本指）で拡大。床をクリックすると、その場所の値が出ます。</span></div>
+      <svg class="ic"><use href="#i-hand"/></svg><div><b>パネルを置き換える</b><span>3Dの中のパネルをドラッグすると移動、ダブルクリックで向きが変わり、結果に反映されます。</span></div>
+      <svg class="ic"><use href="#i-image"/></svg><div><b>資料に使う</b><span>「画像にする」で、いまの表示に日時・条件・凡例を添えた1枚の画像を作れます。</span></div>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="shotDlg">
   <header><h2>いまの表示の画像</h2><button class="btn" id="closeShot" type="button">閉じる</button></header>

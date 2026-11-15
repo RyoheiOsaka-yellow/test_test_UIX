@@ -19,7 +19,7 @@
     city: 'obs', insul: 'low', occupants: 80, sensible: 150, setHeat: 18, setCool: 27, opStart: 8, opEnd: 21,
     panels: 72, preheat: 1, field: true, layout: 'rows', price: 22, basic: 1100,
     mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 0.05,
-    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true
+    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true, left: 'ac', charts: true
   };
   var wxCache = {}, wx, panels = [], F, F11, jet = {}, sim, dirty = true, chartsDirty = true;
   var target = [new Float32Array(N), new Float32Array(N)], shown = [new Float32Array(N), new Float32Array(N)], scratch = new Float32Array(N), first = true;
@@ -136,7 +136,8 @@
 
   // ------------------------------------------------------------ 3D
   var scene3 = null;
-  function shownModes() { return S.split ? [S.mode === 'eco' ? 'ac' : S.mode, 'eco'] : [S.mode]; }
+  function shownModes() { return S.split ? [S.left, 'eco'] : [S.mode]; }
+  function fm() { return S.split ? 'eco' : S.mode; } // 年間マップや表で強調する方式
   function initScene() {
     var THREE = window.THREE, canvas = $('gl'), view = $('view');
     var renderer;
@@ -604,7 +605,7 @@
           tint(winMat, [156, 196, 230], st.Twin, tl);
           panelGroup.visible = m === 'eco';
           winds.ac.obj.visible = m === 'ac' && winds.ac.on; winds.eco.obj.visible = m === 'eco' && winds.eco.on; rays.visible = m === 'eco' && raysOn;
-          if (m === 'eco') { var pc = colorAt(LUT.temp, st.Tp, range.lo, range.hi); panelMat.color.setRGB(pc[0] / 255, pc[1] / 255, pc[2] / 255); panelMat.emissive.setRGB(pc[0] / 600, pc[1] / 600, pc[2] / 600); }
+          if (m === 'eco') { var pc = tl ? colorAt(LUT.temp, st.Tp, range.lo, range.hi) : hex(C['--m-eco']); panelMat.color.setRGB(pc[0] / 255, pc[1] / 255, pc[2] / 255); panelMat.emissive.setRGB(pc[0] / 600, pc[1] / 600, pc[2] / 600); }
           if (S.section) {
             for (var j = 0; j < NZ; j++) for (var k = 0; k < G.NY; k++) {
               var a = M.airAt(SX, M.gy(k), (NZ - 1 - j + 0.5) * (H / NZ), m, st, heat);
@@ -641,7 +642,7 @@
       var t = $('tag' + i);
       if (i >= rs.length) { t.hidden = true; return; }
       t.hidden = false; t.style.left = (rs[i].x + rs[i].w - 12) + 'px'; t.style.top = (rs[i].y + 10) + 'px';
-      t.innerHTML = '<i style="background:var(--m-' + ms[i] + ')"></i><span>' + MODE_NAME[ms[i]] + '</span>';
+      t.innerHTML = '<div class="nm"><i style="background:var(--m-' + ms[i] + ')"></i>' + MODE_NAME[ms[i]] + '</div><div class="kv" id="kv' + i + '"></div>';
     });
     div.hidden = rs.length < 2;
     if (rs.length > 1) {
@@ -649,13 +650,12 @@
       div.style.left = side ? rs[1].x + 'px' : '0'; div.style.top = side ? '0' : rs[1].y + 'px';
       div.style.width = side ? '2px' : '100%'; div.style.height = side ? '100%' : '2px';
     }
-    $('hint').hidden = rs.length > 1;
+    dirty = true;
   }
   function panelsEdited(final) {
     if (S.layout !== 'custom') {
-      S.layout = 'custom'; var sel = $('layout');
-      if (!sel.querySelector('[value=custom]')) { var o = document.createElement('option'); o.value = 'custom'; o.textContent = '自由配置（ドラッグで変更）'; sel.appendChild(o); }
-      sel.value = 'custom';
+      S.layout = 'custom';
+      press('layoutSeg', 'custom'); $('customNote').hidden = false;
     }
     dirty = true;
     if (final) recomputeSim();
@@ -684,7 +684,7 @@
   // 年間マップ（365日×24時間）
   var calImg = null, calGeom = null;
   function buildCal() {
-    var key = metricKey(), o = sim[S.mode][key], cv = document.createElement('canvas'); cv.width = 365; cv.height = 24;
+    var key = metricKey(), o = sim[fm()][key], cv = document.createElement('canvas'); cv.width = 365; cv.height = 24;
     var c = cv.getContext('2d'), img = c.createImageData(365, 24), lut = S.layer === 'wbgt' ? LUT.wbgt : LUT.temp;
     for (var d = 0; d < 365; d++) {
       var set = K.heatMonths[M.monthOfDay(d)] ? S.setHeat : S.setCool;
@@ -694,11 +694,12 @@
       }
     }
     c.putImageData(img, 0, 0); calImg = cv;
-    $('calT').textContent = '年間マップ：' + MODE_NAME[S.mode] + 'の' + (S.layer === 'wbgt' ? '暑さ指数' : '体感温度');
+    $('calT').textContent = '年間マップ：' + MODE_NAME[fm()] + 'の' + (S.layer === 'wbgt' ? '暑さ指数' : '体感温度');
     $('calK').textContent = S.layer === 'wbgt' ? '青：ほぼ安全 → 赤：危険' : '青：設定より寒い　灰：設定どおり　赤：設定より暑い';
   }
   function drawCal() {
-    var f = fit($('cal')), c = f.c, L = 26, T = 2, B = 14, w = f.w - L - 4, h = f.h - T - B;
+    var f = fit($('cal')), c = f.c; if (f.w < 40) return;
+    var L = 26, T = 2, B = 14, w = f.w - L - 4, h = f.h - T - B;
     calGeom = { L: L, T: T, w: w, h: h };
     c.imageSmoothingEnabled = false; c.drawImage(calImg, L, T, w, h);
     c.fillStyle = C['--ink-2']; c.textAlign = 'right'; c.textBaseline = 'middle';
@@ -725,7 +726,8 @@
   // 1日の推移
   var dayGeom = null;
   function drawDay() {
-    var f = fit($('day')), c = f.c, L = 30, R = 8, T = 6, B = 16, w = f.w - L - R, h = f.h - T - B;
+    var f = fit($('day')), c = f.c; if (f.w < 40) return;
+    var L = 30, R = 8, T = 6, B = 16, w = f.w - L - R, h = f.h - T - B;
     var d = Math.floor(S.t / 24), key = metricKey(), lo = 1e9, hi = -1e9, k, hh;
     for (hh = 0; hh < 24; hh++) {
       k = d * 24 + hh; lo = Math.min(lo, wx.T[k]); hi = Math.max(hi, wx.T[k]);
@@ -746,12 +748,12 @@
       c.stroke(); c.setLineDash([]);
     }
     line(wx.T, C['--ink-3'], 1.5, [3, 3]);
-    M.MODES.forEach(function (m) { if (m !== S.mode) line(sim[m][key], C['--m-' + m], 2); });
-    line(sim[S.mode][key], C['--m-' + S.mode], 3);
+    M.MODES.forEach(function (m) { if (m !== fm()) line(sim[m][key], C['--m-' + m], 2); });
+    line(sim[fm()][key], C['--m-' + fm()], 3);
     var hr = S.t - d * 24, px = X(hr);
     c.strokeStyle = C['--ink']; c.lineWidth = 1; c.beginPath(); c.moveTo(px + 0.5, T); c.lineTo(px + 0.5, T + h); c.stroke();
-    var cur = stateAt(S.mode, S.t)[key];
-    c.fillStyle = C['--m-' + S.mode]; c.strokeStyle = C['--surface']; c.lineWidth = 2; c.beginPath(); c.arc(px, Y(cur), 4.5, 0, 6.2832); c.fill(); c.stroke();
+    var cur = stateAt(fm(), S.t)[key];
+    c.fillStyle = C['--m-' + fm()]; c.strokeStyle = C['--surface']; c.lineWidth = 2; c.beginPath(); c.arc(px, Y(cur), 4.5, 0, 6.2832); c.fill(); c.stroke();
     $('dayT').textContent = fmtDate(d) + 'の' + (S.layer === 'wbgt' ? '暑さ指数' : '体感温度') + '（館内の平均）';
   }
 
@@ -778,31 +780,37 @@
     }
   }
 
-  // ------------------------------------------------------------ 右側の読み値
+  // ------------------------------------------------------------ 読み値の表示
   function f1(v) { return v.toFixed(1); }
   function yen(v) { return Math.round(v / 10000).toLocaleString('ja-JP') + '万円'; }
+  function shortName(m) { return m === 'eco' ? 'ecowin' : m === 'ac' ? 'エアコン' : MODE_NAME[m]; }
+  function maxWind(s, m, heat) { return 0.1 + K.u0[m] * s.fan * jet.max[heat ? 'heat' : 'cool']; }
   function renderNow(sts, w) {
-    var d = Math.floor(S.t / 24), heat = isHeat(Math.floor(S.t));
+    var d = Math.floor(S.t / 24), heat = isHeat(Math.floor(S.t)), cur = fm();
     $('clockD').textContent = fmtDate(d) + ' ' + fmtHour(S.t - d * 24);
-    $('clockW').textContent = (wx.city.short || wx.city.name) + '　' + SKY[w.sky] + '　外気 ' + f1(w.T) + '℃　' + (heat ? '暖房期' : '冷房期');
+    $('clockW').textContent = (wx.city.short || wx.city.name) + '　' + SKY[w.sky] + '　外気 ' + f1(w.T) + '℃　' + (heat ? '暖房の季節' : '冷房の季節');
     $('now').innerHTML = '<span>外気温 <b>' + f1(w.T) + '</b>℃</span><span>湿度 <b>' + Math.round(w.RH) + '</b>%</span><span>日射 <b>' + Math.round(w.I) + '</b>W/㎡</span>';
     var rows = [
+      ['体感温度', function (s) { return f1(s.OT) + '℃'; }],
       ['空気温度（腰の高さ）', function (s) { return f1(s.Ta) + '℃'; }],
-      ['体感温度（平均）', function (s) { return f1(s.OT) + '℃'; }],
       ['天井付近の空気', function (s) { return f1(s.Ta + s.G * (G.H - 0.5 - G.zRef)) + '℃'; }],
       ['屋根の内側の表面', function (s) { return f1(s.Tri) + '℃'; }],
-      ['暑さ指数 WBGT', function (s) { var b = wbgtBand(s.WBGT); return f1(s.WBGT) + ' <span class="pill" style="background:' + b.c + '">' + b.name + '</span>'; }],
-      ['最大風速（評価面）', function (s, m) { return (0.1 + K.u0[m] * s.fan * jet.max[heat ? 'heat' : 'cool']).toFixed(1) + 'm/s'; }],
+      ['暑さ指数', function (s) { var b = wbgtBand(s.WBGT); return f1(s.WBGT) + ' <span class="pill" style="background:' + b.c + '">' + b.name + '</span>'; }],
+      ['いちばん強い風', function (s, m) { return maxWind(s, m, heat).toFixed(1) + 'm/s'; }],
       ['消費電力', function (s) { return Math.round(s.P) + 'kW'; }]
     ];
-    var h = '<thead><tr><th></th>' + M.MODES.map(function (m) { return '<th' + (m === S.mode ? ' class="cur"' : '') + '>' + (m === 'eco' ? 'ecowin' : m === 'ac' ? 'エアコン' : MODE_NAME[m]) + '<i style="background:var(--m-' + m + ')"></i></th>'; }).join('') + '</tr></thead><tbody>';
-    rows.forEach(function (r) { h += '<tr><th>' + r[0] + '</th>' + M.MODES.map(function (m) { return '<td' + (m === S.mode ? ' class="cur"' : '') + '>' + r[1](sts[m], m) + '</td>'; }).join('') + '</tr>'; });
+    var h = '<thead><tr><th></th>' + M.MODES.map(function (m) { return '<th' + (m === cur ? ' class="cur"' : '') + '>' + shortName(m) + '<i style="background:var(--m-' + m + ')"></i></th>'; }).join('') + '</tr></thead><tbody>';
+    rows.forEach(function (r) { h += '<tr><th>' + r[0] + '</th>' + M.MODES.map(function (m) { return '<td' + (m === cur ? ' class="cur"' : '') + '>' + r[1](sts[m], m) + '</td>'; }).join('') + '</tr>'; });
     $('cmp').innerHTML = h + '</tbody>';
+    shownModes().forEach(function (m, i) { // 3Dの上の札に、要点の3つの数字を出す
+      var e = $('kv' + i); if (!e) return; var s = sts[m];
+      e.innerHTML = '<span>体感 <b>' + f1(s.OT) + '</b>℃</span><span>風 <b>' + maxWind(s, m, heat).toFixed(1) + '</b>m/s</span><span>電力 <b>' + Math.round(s.P) + '</b>kW</span>';
+    });
   }
   function renderAnnual() {
     var s = sim.summary, a = s.modes.ac, e = s.modes.eco, n = s.modes.none;
     $('rate').innerHTML = '−' + (s.rate * 100).toFixed(0) + '<small>%</small>';
-    $('rateCap').innerHTML = '年間の消費電力量（エアコンのみとの比較）' + (s.capped ? '<br>計算値は ' + (s.rawRate * 100).toFixed(0) + '%。メーカー公表の最大値 34% を上限にしています。' : '<br>メーカー公表の最大値は 34% です。');
+    $('rateCap').innerHTML = '1年間の消費電力量（エアコンのみと比べて）' + (s.capped ? '<br>計算値は ' + (s.rawRate * 100).toFixed(0) + '%。メーカー公表の最大値 34% を上限にしています。' : '<br>メーカー公表の最大値は 34% です。');
     function row(l, x, y, z) { return '<tr><th>' + l + '</th><td>' + x + '</td><td>' + y + '</td><td>' + z + '</td></tr>'; }
     $('ann').innerHTML = '<thead><tr><th></th><th>エアコン<i style="background:var(--m-ac)"></i></th><th>ecowin<i style="background:var(--m-eco)"></i></th><th>差</th></tr></thead><tbody>' +
       row('消費電力量', (a.kwh / 1000).toFixed(1) + 'MWh', (e.kwh / 1000).toFixed(1) + 'MWh', '−' + ((a.kwh - e.kwh) / 1000).toFixed(1)) +
@@ -811,87 +819,133 @@
       row('基本料金', yen(a.basicCost), yen(e.basicCost), '−' + yen(a.basicCost - e.basicCost)) +
       row('電気代の合計', yen(a.cost), yen(e.cost), '−' + yen(a.cost - e.cost)) +
       row('CO2排出量', (a.co2 / 1000).toFixed(1) + 't', (e.co2 / 1000).toFixed(1) + 't', '−' + ((a.co2 - e.co2) / 1000).toFixed(1)) + '</tbody>';
-    $('annNote').innerHTML = '空調なしの場合、利用時間のうち暑さ指数が「厳重警戒」以上（28℃以上）になるのは年間 <b class="num">' + n.wbgt28 + '</b> 時間、「危険」（31℃以上）は <b class="num">' + n.wbgt31 + '</b> 時間、体感温度が12℃未満は <b class="num">' + n.cold + '</b> 時間です。空調ありでは「厳重警戒」以上が エアコンのみ ' + a.wbgt28 + ' 時間、ecowin ' + e.wbgt28 + ' 時間になります。';
+    $('annNote').innerHTML = '空調なしの場合、利用時間のうち暑さ指数が「厳重警戒」以上（28以上）になるのは年間 <b class="num">' + n.wbgt28 + '</b> 時間、「危険」（31以上）は <b class="num">' + n.wbgt31 + '</b> 時間、体感温度が12℃未満は <b class="num">' + n.cold + '</b> 時間です。空調ありでは「厳重警戒」以上が エアコンのみ ' + a.wbgt28 + ' 時間、ecowin ' + e.wbgt28 + ' 時間になります。';
   }
+  var LAYER_TEXT = {
+    ot: ['人が感じる温度です。空気の温度と、床・壁・天井・パネルから受ける熱を合わせています。', ['寒い', '設定どおり', '暑い']],
+    ta: ['空気そのものの温度です。', ['寒い', '設定どおり', '暑い']],
+    mrt: ['まわりの床・壁・天井・パネルの表面から受ける熱を、温度で表した値です。', ['冷たい面が多い', '設定どおり', '熱い面が多い']],
+    wind: ['選んだ高さでの風の強さです。風が弱いほど、羽根やボールが流されにくくなります。', ['ほぼ無風', '', '強い']],
+    wbgt: ['熱中症の危険度を表す指数です。28以上は「厳重警戒」、31以上は「危険」とされます。', ['ほぼ安全', '警戒', '危険']]
+  };
   function renderLegend() {
-    var L = LAYER[S.layer], cv = $('legC'), c = cv.getContext('2d'), lut = lutFor(S.layer);
-    for (var x = 0; x < 300; x++) { var i = Math.round(x / 299 * 511) * 3; c.fillStyle = 'rgb(' + lut[i] + ',' + lut[i + 1] + ',' + lut[i + 2] + ')'; c.fillRect(x, 0, 1, 10); }
-    $('legT').textContent = L.name + '（' + L.unit + '）　高さ ' + S.z + 'm';
+    var L = LAYER[S.layer], cv = $('legC'), c = cv.getContext('2d'), lut = lutFor(S.layer), tx = LAYER_TEXT[S.layer];
+    for (var x = 0; x < 300; x++) { var i = Math.round(x / 299 * 511) * 3; c.fillStyle = 'rgb(' + lut[i] + ',' + lut[i + 1] + ',' + lut[i + 2] + ')'; c.fillRect(x, 0, 1, 12); }
+    $('legT').textContent = L.name + '（' + L.unit + '）';
+    $('legH').textContent = { 0.1: '足元（0.1m）', 1.1: '腰（1.1m）', 1.7: '頭（1.7m）' }[S.z] + 'の高さ';
+    $('legD').textContent = tx[0];
+    $('legW').innerHTML = tx[1].map(function (t) { return '<span>' + t + '</span>'; }).join('');
     var dg = S.layer === 'wind' ? 1 : 0, ticks = [];
     for (var k = 0; k <= 4; k++) ticks.push((range.lo + (range.hi - range.lo) * k / 4).toFixed(dg));
     $('legK').innerHTML = ticks.map(function (t) { return '<span>' + t + '</span>'; }).join('');
-    $('legH').textContent = S.layer === 'wind' ? '線は0.25m/sごと' : S.layer === 'wbgt' ? '28以上は厳重警戒' : '中央の灰色＝設定 ' + range.c.toFixed(0) + '℃';
   }
   function renderProbe(sts, heat) {
     if (!S.probe) return;
     var i = M.clamp(Math.floor((S.probe.x - G.ax0) / G.cell), 0, G.NX - 1), j = M.clamp(Math.floor((S.probe.y - G.ay0) / G.cell), 0, G.NY - 1), k = j * G.NX + i;
-    var ms = shownModes(), rows = [['体感', 'ot', 1, '℃'], ['空気', 'ta', 1, '℃'], ['放射', 'mrt', 1, '℃'], ['風速', 'wind', 2, 'm/s'], ['WBGT', 'wbgt', 1, '']];
+    var ms = shownModes(), rows = [['体感温度', 'ot', 1, '℃'], ['空気温度', 'ta', 1, '℃'], ['放射温度', 'mrt', 1, '℃'], ['風速', 'wind', 2, 'm/s'], ['暑さ指数', 'wbgt', 1, '']];
     var vals = ms.map(function (m) { var v = {}; rows.forEach(function (r) { M.computeField(r[1], m, sts[m], heat, S.z, F, heat ? jet.heat : jet.cool, scratch); v[r[1]] = scratch[k]; }); return v; });
-    var h = '<table>' + (ms.length > 1 ? '<tr><td></td>' + ms.map(function (m) { return '<td>' + (m === 'eco' ? 'ecowin' : m === 'ac' ? 'エアコン' : MODE_NAME[m]) + '</td>'; }).join('') + '</tr>' : '');
+    var h = '<table>' + (ms.length > 1 ? '<tr><td>この場所</td>' + ms.map(function (m) { return '<td>' + shortName(m) + '</td>'; }).join('') + '</tr>' : '');
     rows.forEach(function (r, ri) { h += '<tr><td>' + r[0] + '</td>' + vals.map(function (v) { var t = v[r[1]].toFixed(r[2]) + r[3]; return '<td>' + (ri === 0 ? '<b>' + t + '</b>' : t) + '</td>'; }).join('') + '</tr>'; });
     $('probe').innerHTML = h + '</table>';
   }
   function renderSource() {
     var ob = !!wx.observed;
     $('wxBadge').textContent = ob ? '気象：練馬アメダス 2025年の観測値' : '気象：平年値からの合成（ダミー）';
-    $('annT').textContent = ob ? '年間の推計（練馬・2025年の観測気象）' : '年間の推計（' + wx.city.name + '・合成気象）';
+    $('annT').textContent = ob ? '年間の推計（練馬・2025年の気象）' : '年間の推計（' + wx.city.name + '・合成気象）';
   }
 
   // ------------------------------------------------------------ 操作
-  function press(seg, v) { [].forEach.call($(seg).children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === String(v))); }); }
-  function bindSeg(seg, key, conv, after) {
-    $(seg).addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; S[key] = conv ? conv(b.dataset.v) : b.dataset.v; press(seg, b.dataset.v); after(); });
-    press(seg, S[key]);
-  }
+  function press(seg, v) { [].forEach.call($(seg).querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === String(v))); }); }
   var debounce = null;
   function later(fn) { clearTimeout(debounce); debounce = setTimeout(fn, 120); }
   function setTime(t) { S.t = ((t % 8760) + 8760) % 8760; dirty = true; }
-  function syncSliders() { $('hourR').value = (S.t - Math.floor(S.t / 24) * 24).toFixed(2); }
-  function refreshMode() { if (scene3) scene3.resize(); }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function syncSliders() {
+    var d = Math.floor(S.t / 24), m = M.monthOfDay(d);
+    $('hourR').value = (S.t - d * 24).toFixed(2);
+    $('dateIn').value = '2025-' + pad2(m + 1) + '-' + pad2(d - M.MSTART[m] + 1);
+  }
 
   function initUI() {
     if (window.WX_OBS) { var oo = document.createElement('option'); oo.value = 'obs'; oo.textContent = '東京都練馬区（2025年の観測値）'; $('city').appendChild(oo); } else S.city = 3;
     M.CITIES.forEach(function (c, i) { var o = document.createElement('option'); o.value = i; o.textContent = c.name + '（合成気象）'; $('city').appendChild(o); });
-    Object.keys(M.INSUL).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = M.INSUL[k].label; $('insul').appendChild(o); });
+    [['low', '低', '既存の体育館・断熱なし'], ['mid', '中', '一部を断熱改修'], ['high', '高', '新築・断熱改修済み']].forEach(function (o) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'opt'; b.dataset.v = o[0];
+      b.innerHTML = '<span class="rd"></span><b>' + o[1] + '</b><small>' + o[2] + '</small>'; $('insul').appendChild(b);
+    });
+    // 増減ボタン付きの数値
+    var steppers = [].slice.call(document.querySelectorAll('.stepper'));
+    steppers.forEach(function (el) {
+      var key = el.dataset.key, lo = +el.dataset.min, hi = +el.dataset.max, st = +el.dataset.step;
+      el.innerHTML = '<button type="button" data-d="-1" aria-label="下げる">−</button><output></output><button type="button" data-d="1" aria-label="上げる">＋</button>';
+      el.refresh = function () { el.children[1].textContent = S[key] + el.dataset.unit; el.children[0].disabled = S[key] <= lo; el.children[2].disabled = S[key] >= hi; };
+      el.addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        S[key] = M.clamp(S[key] + st * +b.dataset.d, lo, hi); el.refresh(); later(function () { recomputeSim(); jumpsReady = false; });
+      });
+    });
     function outs() { $('occOut').textContent = S.occupants + '人'; $('panelsOut').textContent = S.panels + '台'; }
-    function syncInputs() { // 状態を入力欄へ反映する
-      $('city').value = S.city; $('insul').value = S.insul; $('occ').value = S.occupants; $('act').value = S.sensible;
-      $('setHeat').value = S.setHeat; $('setCool').value = S.setCool; $('opStart').value = S.opStart; $('opEnd').value = S.opEnd;
-      $('panels').value = S.panels; $('price').value = S.price; $('basic').value = S.basic; $('preheat').value = S.preheat;
-      if (S.layout === 'custom' && !$('layout').querySelector('[value=custom]')) { var o = document.createElement('option'); o.value = 'custom'; o.textContent = '自由配置（ドラッグで変更）'; $('layout').appendChild(o); }
-      $('layout').value = S.layout;
-      $('ckWind').checked = S.wind; $('ckRays').checked = S.rays; $('ckSection').checked = S.section; $('ckPeople').checked = S.people; $('ckField').checked = S.field; $('ckVolume').checked = S.volume; $('speed').value = String(S.speed);
-      press('modeSeg', S.mode); press('layerSeg', S.layer); press('zSeg', S.z); outs();
+    function applySplit() {
+      press('splitSeg', S.split ? 1 : 0); $('modeGrp').hidden = S.split; $('leftGrp').hidden = !S.split;
+      if (scene3) scene3.resize();
     }
-    syncInputs();
-    bindSeg('modeSeg', 'mode', null, function () { refreshMode(); dirty = true; chartsDirty = true; });
-    bindSeg('layerSeg', 'layer', null, function () { dirty = true; chartsDirty = true; });
-    bindSeg('zSeg', 'z', parseFloat, function () { recomputeGeometry(); dirty = true; });
-    refreshMode();
-    function num(id, key, lo, hi, geo) {
-      $(id).addEventListener('input', function () {
-        var v = parseFloat($(id).value); if (isNaN(v)) return; S[key] = M.clamp(v, lo, hi); outs();
-        later(function () { if (geo) recomputeAll(); else recomputeSim(); jumpsReady = false; });
+    function setPlayIcon() { $('playIc').setAttribute('href', S.playing ? '#i-pause' : '#i-play'); $('play').setAttribute('aria-label', S.playing ? '停止' : '再生'); }
+    function syncInputs() { // 状態を画面の部品へ反映する
+      $('city').value = S.city; $('occ').value = S.occupants; $('panels').value = S.panels;
+      press('insul', S.insul); press('actSeg', S.sensible); press('preheatSeg', S.preheat);
+      press('layoutSeg', S.layout); $('customNote').hidden = S.layout !== 'custom';
+      press('modeSeg', S.mode); press('leftSeg', S.left); press('layerSeg', S.layer); press('zSeg', S.z); press('speedSeg', S.speed);
+      [].forEach.call($('overlays').querySelectorAll('.chip'), function (b) { b.setAttribute('aria-pressed', String(!!S[b.dataset.k])); });
+      $('chartsToggle').setAttribute('aria-pressed', String(S.charts)); $('charts').hidden = !S.charts;
+      steppers.forEach(function (el) { el.refresh(); });
+      outs(); applySplit(); setPlayIcon(); syncSliders();
+    }
+    // 1つだけ選ぶボタンの共通処理
+    function seg(id, key, conv, after) {
+      $(id).addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        S[key] = conv ? conv(b.dataset.v) : b.dataset.v; press(id, b.dataset.v); clearScene(); after();
       });
     }
-    num('occ', 'occupants', 0, 600); num('setHeat', 'setHeat', 12, 24); num('setCool', 'setCool', 22, 30);
-    num('opStart', 'opStart', 5, 12); num('opEnd', 'opEnd', 14, 23);
-    $('panels').addEventListener('input', function () { S.panels = parseInt($('panels').value, 10); outs(); if (S.layout === 'custom') { S.layout = 'rows'; $('layout').value = 'rows'; } later(recomputeAll); });
-    num('price', 'price', 5, 60); num('basic', 'basic', 0, 3000); num('act', 'sensible', 50, 300);
+    function clearScene() { [].forEach.call($('scenes').children, function (b) { b.removeAttribute('aria-current'); }); }
+    function redraw() { dirty = true; chartsDirty = true; }
+    seg('modeSeg', 'mode', null, function () { if (scene3) scene3.resize(); redraw(); });
+    seg('leftSeg', 'left', null, function () { if (scene3) scene3.resize(); redraw(); });
+    seg('splitSeg', 'split', function (v) { return v === '1'; }, function () { S.probe = null; first = true; applySplit(); redraw(); });
+    seg('layerSeg', 'layer', null, redraw);
+    seg('zSeg', 'z', parseFloat, function () { recomputeGeometry(); dirty = true; });
+    seg('speedSeg', 'speed', parseFloat, function () {});
+    seg('insul', 'insul', null, recomputeSim);
+    seg('actSeg', 'sensible', parseFloat, recomputeSim);
+    seg('preheatSeg', 'preheat', parseFloat, recomputeSim);
+    seg('layoutSeg', 'layout', null, function () { $('customNote').hidden = true; recomputeAll(); });
+    $('occ').addEventListener('input', function () { S.occupants = +$('occ').value; outs(); later(recomputeSim); });
+    $('panels').addEventListener('input', function () { S.panels = +$('panels').value; outs(); if (S.layout === 'custom') { S.layout = 'rows'; press('layoutSeg', 'rows'); $('customNote').hidden = true; } later(recomputeAll); });
     $('city').addEventListener('change', function () { var v = $('city').value; S.city = v === 'obs' ? 'obs' : parseInt(v, 10); recomputeSim(); jumpsReady = false; });
-    $('insul').addEventListener('change', function () { S.insul = $('insul').value; recomputeSim(); });
-    $('preheat').addEventListener('change', function () { S.preheat = parseInt($('preheat').value, 10); recomputeSim(); });
-    $('layout').addEventListener('change', function () { S.layout = $('layout').value; if (S.layout !== 'custom') recomputeAll(); });
-    [['ckWind', 'wind'], ['ckRays', 'rays'], ['ckSection', 'section'], ['ckPeople', 'people'], ['ckField', 'field'], ['ckVolume', 'volume']].forEach(function (p) {
-      $(p[0]).addEventListener('change', function () { S[p[1]] = $(p[0]).checked; if (p[1] === 'section' && scene3) { scene3.resize(); scene3.setCam(S.section ? 'side' : 'iso'); } dirty = true; });
+    // 入・切のチップ
+    $('overlays').addEventListener('click', function (e) {
+      var b = e.target.closest('.chip'); if (!b || b.disabled) return; var k = b.dataset.k;
+      S[k] = !S[k]; b.setAttribute('aria-pressed', String(S[k])); clearScene();
+      if (k === 'section' && scene3) { scene3.resize(); scene3.setCam(S.section ? 'side' : 'iso'); press('cams', S.section ? '' : 'iso'); }
+      dirty = true;
     });
-    $('cams').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b && b.dataset.v && scene3) scene3.setCam(b.dataset.v); });
-    function setSplit(v) { S.split = v; $('split').setAttribute('aria-pressed', String(v)); S.probe = null; first = true; dirty = true; if (scene3) scene3.resize(); }
-    $('split').addEventListener('click', function () { setSplit(!S.split); });
-    setSplit(window.innerWidth >= 900);
-    $('play').addEventListener('click', function () { S.playing = !S.playing; $('play').textContent = S.playing ? '❚❚ 停止' : '▶ 再生'; });
-    $('speed').addEventListener('change', function () { S.speed = parseFloat($('speed').value); });
-    $('hourR').addEventListener('input', function () { setTime(Math.floor(S.t / 24) * 24 + parseFloat($('hourR').value)); });
+    $('chartsToggle').addEventListener('click', function () { S.charts = !S.charts; $('chartsToggle').setAttribute('aria-pressed', String(S.charts)); $('charts').hidden = !S.charts; redraw(); });
+    $('cams').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b && scene3) { scene3.setCam(b.dataset.v); press('cams', b.dataset.v); } });
+    $('gl').addEventListener('pointerdown', function () { press('cams', ''); });
+    press('cams', 'iso');
+
+    // 時間の操作
+    $('play').addEventListener('click', function () { S.playing = !S.playing; setPlayIcon(); });
+    $('stepBack').addEventListener('click', function () { setTime(Math.ceil(S.t - 1 - 1e-6)); syncSliders(); });
+    $('stepFwd').addEventListener('click', function () { setTime(Math.floor(S.t + 1 + 1e-6)); syncSliders(); });
+    $('prevDay').addEventListener('click', function () { setTime(S.t - 24); syncSliders(); });
+    $('nextDay').addEventListener('click', function () { setTime(S.t + 24); syncSliders(); });
+    $('dateIn').addEventListener('change', function () {
+      var p = $('dateIn').value.split('-'); if (p.length !== 3) return;
+      var m = M.clamp(parseInt(p[1], 10) - 1, 0, 11), dd = M.clamp(parseInt(p[2], 10), 1, M.MDAYS[m]);
+      setTime((M.MSTART[m] + dd - 1) * 24 + (S.t - Math.floor(S.t / 24) * 24)); syncSliders();
+    });
+    $('hourR').addEventListener('input', function () { setTime(Math.floor(S.t / 24) * 24 + parseFloat($('hourR').value)); syncSliders(); });
     var jumpsReady = false, hotD = 0, coldD = 0;
     function jumps() {
       if (jumpsReady) return; var mx = -99, mn = 99;
@@ -900,7 +954,40 @@
     }
     $('jumpHot').addEventListener('click', function () { jumps(); setTime(hotD * 24 + 14); syncSliders(); });
     $('jumpCold').addEventListener('click', function () { jumps(); setTime(coldD * 24 + 9); syncSliders(); });
-    jumps(); setTime(hotD * 24 + 14); syncSliders();
+
+    // 左のパネル
+    function showTab(v) {
+      press('tabs', v);
+      [].forEach.call(document.querySelectorAll('.pane'), function (p) { p.hidden = p.dataset.pane !== v; });
+      redraw();
+    }
+    function setSide(open) {
+      $('main').classList.toggle('wide', !open); $('sideToggle').setAttribute('aria-expanded', String(open));
+      $('sideToggle').lastElementChild.textContent = open ? 'パネルを閉じる' : 'パネルを開く'; redraw();
+    }
+    $('tabs').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) showTab(b.dataset.v); });
+    $('sideToggle').addEventListener('click', function () { setSide($('main').classList.contains('wide')); });
+    showTab('cond');
+
+    // 見どころ：押すと、その場面の日時・方式・表示に切り替える
+    var SCENES = {
+      s1: { split: false, mode: 'none', layer: 'wbgt', section: false, time: 'hot', cam: 'iso' },
+      s2: { split: true, left: 'ac', layer: 'ot', section: false, time: 'hot', cam: 'iso' },
+      s3: { split: true, left: 'ac', layer: 'ta', section: true, volume: true, time: 'cold', cam: 'side' },
+      s4: { split: true, left: 'ac', layer: 'wind', section: false, wind: true, time: 'cold', cam: 'top' },
+      s5: { tab: 'year' }
+    };
+    $('scenes').addEventListener('click', function (e) {
+      var b = e.target.closest('.scene'); if (!b) return; var sc = SCENES[b.dataset.v];
+      clearScene(); b.setAttribute('aria-current', 'true');
+      if (sc.tab) { showTab(sc.tab); return; }
+      jumps();
+      ['split', 'mode', 'left', 'layer', 'section', 'volume', 'wind'].forEach(function (k) { if (sc[k] !== undefined) S[k] = sc[k]; });
+      if (scene3 && !scene3.volOK) S.volume = false;
+      S.field = true; S.probe = null; setTime(sc.time === 'hot' ? hotD * 24 + 14 : coldD * 24 + 9);
+      syncInputs(); first = true; redraw();
+      if (scene3) { scene3.resize(); scene3.setCam(sc.cam); press('cams', sc.cam === 'side' ? '' : sc.cam); }
+    });
 
     // 年間マップ：なぞって日時を選ぶ
     var cal = $('cal'), calDown = false;
@@ -909,7 +996,7 @@
     cal.addEventListener('pointermove', function (e) {
       var p = calPick(e), k = p.d * 24 + Math.floor(p.h), key = metricKey();
       if (calDown) calSet(e);
-      showTip(e, fmtDate(p.d) + ' ' + Math.floor(p.h) + '時　' + SKY[wx.sky[p.d]] + '<br>外気 <b>' + f1(wx.T[k]) + '</b>℃　' + (key === 'WBGT' ? '暑さ指数' : '体感') + ' <b>' + f1(sim[S.mode][key][k]) + '</b>℃');
+      showTip(e, fmtDate(p.d) + ' ' + Math.floor(p.h) + '時　' + SKY[wx.sky[p.d]] + '<br>外気 <b>' + f1(wx.T[k]) + '</b>℃　' + (key === 'WBGT' ? '暑さ指数' : '体感') + ' <b>' + f1(sim[fm()][key][k]) + '</b>' + (key === 'WBGT' ? '' : '℃'));
     });
     cal.addEventListener('pointerup', function () { calDown = false; });
     cal.addEventListener('pointerleave', hideTip);
@@ -920,33 +1007,35 @@
     day.addEventListener('pointermove', function (e) {
       var h = dayHour(e), k = dayGeom.d * 24 + Math.floor(h), key = metricKey();
       if (dayDown) { setTime(dayGeom.d * 24 + h); syncSliders(); }
-      showTip(e, Math.floor(h) + '時　外気 <b>' + f1(wx.T[k]) + '</b>℃<br>' + M.MODES.map(function (m) { return MODE_NAME[m] + ' <b>' + f1(sim[m][key][k]) + '</b>℃'; }).join('<br>'));
+      showTip(e, Math.floor(h) + '時　外気 <b>' + f1(wx.T[k]) + '</b>℃<br>' + M.MODES.map(function (m) { return MODE_NAME[m] + ' <b>' + f1(sim[m][key][k]) + '</b>'; }).join('<br>'));
     });
     day.addEventListener('pointerup', function () { dayDown = false; });
     day.addEventListener('pointerleave', hideTip);
     var mon = $('mon');
     mon.addEventListener('pointermove', function (e) {
+      if (!monGeom) return;
       var b = mon.getBoundingClientRect(), m = M.clamp(Math.floor((e.clientX - b.left - monGeom.L) / monGeom.bw), 0, 11), a = sim.summary.modes.ac.monthly[m], ec = sim.summary.modes.eco.monthly[m];
       showTip(e, (m + 1) + '月<br>エアコンのみ <b>' + (a / 1000).toFixed(1) + '</b>MWh<br>ecowin <b>' + (ec / 1000).toFixed(1) + '</b>MWh' + (a > 0 ? '（−' + Math.round((1 - ec / a) * 100) + '%）' : ''));
     });
     mon.addEventListener('pointerleave', hideTip);
 
     // 配置と条件の保存・読込（このブラウザの中に保存する）
-    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split', 'volume', 'speed'];
+    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'left', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split', 'volume', 'speed', 'charts'];
     function say(t) { var e = $('saveMsg'); e.textContent = t; clearTimeout(say.t); say.t = setTimeout(function () { e.textContent = ''; }, 4000); }
     $('saveScene').addEventListener('click', function () {
-      var o = { v: 3 }; KEYS.forEach(function (k) { o[k] = S[k]; });
+      var o = { v: 4 }; KEYS.forEach(function (k) { o[k] = S[k]; });
       o.panelList = panels;
       try { localStorage.setItem('ecowin-gym-scene', JSON.stringify(o)); say('保存しました'); } catch (e) { say('このブラウザでは保存できません'); }
     });
     $('loadScene').addEventListener('click', function () {
       var o = null; try { o = JSON.parse(localStorage.getItem('ecowin-gym-scene')); } catch (e) { o = null; }
-      if (!o || o.v !== 3) { say('保存した配置がありません'); return; }
+      if (!o || o.v !== 4) { say('保存したものがありません'); return; }
       KEYS.forEach(function (k) { if (o[k] !== undefined) S[k] = o[k]; });
       if (S.city === 'obs' && !window.WX_OBS) S.city = 3;
+      if (scene3 && !scene3.volOK) S.volume = false;
       if (S.layout === 'custom' && Array.isArray(o.panelList)) panels = o.panelList.map(function (q) { return { axis: q.axis === 'x' ? 'x' : 'y', x: +q.x, y: +q.y }; });
-      S.probe = null; syncInputs(); $('split').setAttribute('aria-pressed', String(S.split)); $('play').textContent = '▶ 再生'; S.playing = false;
-      recomputeAll(); jumpsReady = false; first = true; syncSliders(); if (scene3) scene3.resize(); say('読み込みました');
+      S.probe = null; S.playing = false; clearScene();
+      recomputeAll(); jumpsReady = false; first = true; syncInputs(); if (scene3) scene3.resize(); say('読み込みました');
     });
     // いまの表示を1枚の画像にする
     $('shot').addEventListener('click', function () {
@@ -979,17 +1068,17 @@
     });
     $('closeShot').addEventListener('click', function () { var d = $('shotDlg'); if (d.close) d.close(); else d.removeAttribute('open'); });
 
-    // 左のパネルの切り替えと開閉
-    $('tabs').addEventListener('click', function (e) {
-      var b = e.target.closest('button'); if (!b) return; press('tabs', b.dataset.v);
-      [].forEach.call(document.querySelectorAll('.pane'), function (p) { p.hidden = p.dataset.pane !== b.dataset.v; });
-      chartsDirty = true; dirty = true;
-    });
-    press('tabs', 'cond');
-    $('sideToggle').addEventListener('click', function () {
-      var w = $('main').classList.toggle('wide'); $('sideToggle').textContent = w ? 'パネルを表示' : 'パネルを隠す'; $('sideToggle').setAttribute('aria-expanded', String(!w)); chartsDirty = true; dirty = true;
-    });
-    if (scene3 && !scene3.volOK) { $('ckVolume').checked = false; $('ckVolume').disabled = true; S.volume = false; }
+    function dlg(id, openBtn, closeBtn) {
+      $(openBtn).addEventListener('click', function () { var d = $(id); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); });
+      $(closeBtn).addEventListener('click', function () { var d = $(id); if (d.close) d.close(); else d.removeAttribute('open'); });
+    }
+    dlg('helpDlg', 'openHelp', 'closeHelp');
+    // 操作の説明の帯は、閉じたら次回から出さない
+    try { if (localStorage.getItem('ecowin-gym-tips') === '1') $('tips').hidden = true; } catch (e) { /* 保存できない環境では毎回表示する */ }
+    $('tipsClose').addEventListener('click', function () { $('tips').hidden = true; try { localStorage.setItem('ecowin-gym-tips', '1'); } catch (e) { /* 同上 */ } });
+    if (scene3 && !scene3.volOK) { S.volume = false; var vb = $('overlays').querySelector('[data-k=volume]'); vb.disabled = true; vb.title = 'この端末では表示できません'; }
+    S.split = window.innerWidth >= 900;
+    jumps(); setTime(hotD * 24 + 14); syncInputs();
 
     $('openNotes').addEventListener('click', function () { var d = $('notes'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); });
     $('closeNotes').addEventListener('click', function () { var d = $('notes'); if (d.close) d.close(); else d.removeAttribute('open'); });
