@@ -47,7 +47,7 @@ export const CATALOG = [
 ];
 
 export function initAnalysis(ctx) {
-  const { scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats, calib, getCamera, getSel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel, guideFor, poiOf, onTheme, setNavEnabled = () => {}, setClock = () => {} } = ctx;
+  const { scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats, calib, getCamera, getSel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel, guideFor, poiOf, onTheme, setNavEnabled = () => {}, setClock = () => {}, guides = () => [] } = ctx;
   const S = { layer: 'none', opacity: 0.8, bmetric: 'none', tab: 'heat', floorHeat: false, dark: false, open: true, diff: 'none', split: false, layer2: 'emp', splitX: 0.5, scUnit: 'mesh', scX: 'emp', scY: 'stay', range: null, tsTarget: 'all', tsPoint: null, tsOther: true };
   const $ = id => document.getElementById(id);
   // ---- ヒートマップの面 (地形に沿わせる) ----
@@ -194,21 +194,38 @@ export function initAnalysis(ctx) {
     const hx = c => '#' + new THREE.Color(c[0], c[1], c[2]).getHexString();
     applyIndoorHeat({ floor: fl => { const p = byFl.get(fl); return p > 0 ? rampAt(stops, Math.sqrt(p / fmax)) : null; }, zone: z => zmap.has(z) ? hx(rampAt(stops, Math.sqrt(zmap.get(z) / zmax))) : null });
   }
+  // フロアガイドのある建物どうしの比較 (店舗数、階数、用途構成、階ごとの店舗数、推計の滞在人数)
+  function guideCompare(curBid) {
+    const CATS = ['飲食', '物販', 'サービス', 'オフィス', '医療', '公共', '宿泊', 'その他'];
+    const find = name => { let i = buildingMeta.findIndex(m => m && m.n === name); if (i < 0) i = buildingMeta.findIndex(m => m && m.n && m.n.includes(name)); if (i < 0) i = buildingMeta.findIndex(m => m && m.n && m.n.length >= 5 && name.includes(m.n)); return i; };
+    const rows = guides().filter(([name]) => !name.includes('架空')).map(([name, g]) => { const bi = find(name); const cats = {}; let n = 0; const per = []; for (const [fl, zs] of g) { per.push([fl, zs.length]); for (const z of zs) { const k = CATS.includes(z.category) ? z.category : 'その他'; cats[k] = (cats[k] || 0) + 1; n++; } } per.sort((a, b) => a[0] - b[0]); const bf = bi >= 0 ? people.buildingFlows(buildingMeta[bi].runtime ? -2 : bi) : null; return { name, bi, cats, n, per, bf }; }).filter(r => r.n > 0 && r.bi >= 0 && !buildingMeta[r.bi].runtime).sort((a, b) => b.n - a.n);
+    if (rows.length < 2) return ''; const pm = Math.max(1, ...rows.flatMap(r => r.per.map(q => q[1])));
+    return `<div class="sec-title" style="margin-top:8px">フロアガイドのある建物の比較</div>${rows.map(r => `<div class="an-cmp${r.bi === curBid ? ' cur' : ''}" data-b="${r.bi}"><div class="an-cmp-h"><b>${r.name}</b><span>${r.n} 店・${r.per.length} 階${r.bf ? `・滞在 ${fmtN(r.bf.presence)} 人` : ''}</span></div><div class="an-bar" style="height:7px;display:flex">${CATS.filter(k => r.cats[k]).map(k => `<i style="flex:${r.cats[k]};background:${catColor(k)};border-radius:0" title="${k} ${r.cats[k]} 店（${Math.round(r.cats[k] / r.n * 100)}%）"></i>`).join('')}</div><div class="an-strip">${r.per.map(([fl, c]) => `<i style="background:rgba(253,141,60,${(0.15 + 0.85 * c / pm).toFixed(2)})" title="${floorLabel(fl)}: ${c} 店">${floorLabel(fl)}</i>`).join('')}</div></div>`).join('')}<div class="note" style="margin-top:2px">帯 = 用途別の店舗数の割合、下段 = 階ごとの店舗数（濃いほど多い）。行をクリックでその建物を選択。</div>`;
+  }
+  const bindCompare = el => el.querySelectorAll('.an-cmp').forEach(d => d.addEventListener('click', () => { const b = Number(d.dataset.b), m = buildingMeta[b]; selectBuilding(b); const x = m.c[0] / 10, z = -m.c[1] / 10, h = m.h ?? 40; flyTo(new THREE.Vector3(x - 180 - h * 0.5, 120 + h * 0.8, z + 200 + h * 0.5), new THREE.Vector3(x, h * 0.35, z)); }));
   function renderBuilding() {
     const el = $('an-bldg'); if (!el) return; const fs = floorStats();
-    if (!fs) { el.innerHTML = '<div class="note">建物をクリックして選択すると、階ごと・区画ごとの推計人数と、その建物について使えるデータが出ます。</div>'; return; }
+    if (!fs) { el.innerHTML = '<div class="note">建物をクリックして選択すると、階ごと・区画ごとの推計人数と、その建物について使えるデータが出ます。</div>' + guideCompare(-1); bindCompare(el); return; }
     const { m, bf, pres, rows, zones, sel } = fs, guide = guideFor(m.n), nGuide = guide ? [...guide.values()].reduce((s, z) => s + z.length, 0) : 0, nPoi = poiOf(sel.bid).length, nZone = sel.zones.filter(z => !z.isCor).length, rk = m.rk;
     const mx = Math.max(1e-6, ...rows.map(r => r.people)), big = rows.length > 24, show = big ? rows.filter((_, i) => i % Math.ceil(rows.length / 24) === 0) : rows;
+    const gf = indoor.gridFloors, gridN = gf.length, gridOpen = gf.filter(g => g.open).length;
+    // 階別の用途構成 (区画数の積み上げ)
+    const CATS = ['飲食', '物販', 'サービス', 'オフィス', '医療', '公共', '宿泊', 'その他'], zrows = rows.filter(r => r.zones.length), zmax = Math.max(1, ...zrows.map(r => r.zones.length));
+    const comp = zrows.length ? `<div class="sec-title" style="margin-top:6px">階別の用途構成（区画数）</div><div class="an-floors">${zrows.map(r => { const c = {}; for (const z of r.zones) { const k = CATS.includes(z.zone?.category) ? z.zone.category : 'その他'; c[k] = (c[k] || 0) + 1; } return `<div class="an-frow"><span class="an-fl">${floorLabel(r.fl)}</span><span class="an-bar" style="height:8px;display:flex;background:none"><span style="display:flex;width:${r.zones.length / zmax * 100}%">${CATS.filter(k => c[k]).map(k => `<i style="flex:${c[k]};background:${catColor(k)};border-radius:0" title="${k} ${c[k]}"></i>`).join('')}</span></span><span class="an-fv">${r.zones.length}</span><span class="an-fz"></span></div>`; }).join('')}</div><div class="legend">${CATS.filter(k => zrows.some(r => r.zones.some(z => (CATS.includes(z.zone?.category) ? z.zone.category : 'その他') === k))).map(k => `<span><i style="background:${catColor(k)}"></i>${k}</span>`).join('')}</div>` : '';
     const bars = show.map(r => { const cats = {}; for (const z of r.zones) cats[z.zone?.category ?? 'その他'] = (cats[z.zone?.category ?? 'その他'] || 0) + 1; const top = Object.entries(cats).sort((a, b) => b[1] - a[1])[0]; return `<div class="an-frow"><span class="an-fl">${floorLabel(r.fl)}</span><span class="an-bar"><i style="width:${Math.max(1, r.people / mx * 100)}%;background:${top ? catColor(top[0]) : '#7f93b8'}"></i></span><span class="an-fv">${fmtN(r.people)}</span><span class="an-fz">${r.zones.length ? r.zones.length + ' 区画' : ''}</span></div>`; }).join('');
     el.innerHTML = `<div class="an-title">${m.n ?? '（名称なし）'}</div>
       <div class="an-kv"><span>高さ</span><b>${Math.round(m.h ?? (m.z[1] - m.z[0]))} m</b><span>推定階数</span><b>${sel.floors} 階</b><span>用途（推定）</span><b>${USE[bf?.use]?.[0] ?? '—'}</b><span>滞在（推計）</span><b>${fmtN(pres)} 人</b></div>
       <div class="an-kv"><span>津波</span><b>${rk?.[0] ? rk[0] + ' m' : '想定なし'}</b><span>高潮</span><b>${rk?.[1] ? rk[1] + ' m' : '想定なし'}</b><span>洪水</span><b>${rk?.[2] ? rk[2] + ' m' : '想定なし'}</b><span></span><b></b></div>
       <label class="row"><input type="checkbox" id="an-floorheat" ${S.floorHeat ? 'checked' : ''}/><span class="chip" style="background:linear-gradient(90deg,#ffeda0,#fd8d3c,#b10026)"></span>フロアと区画を推計人数で色分け</label>
+      ${gridN ? `<label class="row"><input type="checkbox" id="an-flow" ${indoor.state.flow ? 'checked' : ''}/><span class="chip" style="background:linear-gradient(90deg,#fed976,#e31a1c)"></span>通路の動線密度（${gridN} 階）</label>${indoor.state.flow ? `<div class="note" style="margin-top:0">最も通る場所で 約 ${fmtN(indoor.flowMax)} 人/時（1.5 m 格子）。区画の外側を通路とみなし、昇降コアと入口から各区画の前までの経路を重ねたもの。${gridOpen ? `うち ${gridOpen} 階は通路の形が取れておらず、階全体を歩ける前提。` : ''}</div>` : ''}` : ''}
       <div class="sec-title" style="margin-top:4px">階ごとの推計滞在人数（${hourTxt()}）${big ? '・抜粋' : ''}</div><div class="an-floors">${bars}</div>
       ${zones.length ? `<div class="sec-title" style="margin-top:6px">区画の上位（推計滞在人数）</div><table class="p-table">${zones.slice(0, 8).map(z => `<tr><td>${floorLabel(z.z.fl)} ${z.z.zone?.name || z.z.zone?.zone || ''}</td><td>${z.z.zone?.category ?? ''}</td><td>${fmtN(z.people)}</td></tr>`).join('')}</table>` : ''}
+      ${comp}${guideCompare(sel.bid)}
       <div class="sec-title" style="margin-top:6px">この建物の内部について使えるデータ</div>
       <div class="note" style="margin-top:0">公式フロアガイド ${nGuide ? nGuide + ' 件' : 'なし'} ／ 区画形状 ${nZone ? nZone + ' 区画' : 'なし'} ／ OSM の店舗 ${nPoi} 件 ／ 入口 ${indoor.model.ents.length} か所（歩行者ネットワーク）<br>国交省の屋内地図オープンデータと PLATEAU LOD4 は、この建物については公開されていません。階ごとの人数は、滞在人数を階と区画の用途で按分した推計です。</div>`;
     $('an-floorheat').addEventListener('change', e => { S.floorHeat = e.target.checked; applyFloorHeat(); });
+    if ($('an-flow')) $('an-flow').addEventListener('change', e => { indoor.set({ flow: e.target.checked }); renderBuilding(); });
+    bindCompare(el);
   }
   // ---- 集計 ----
   function renderRank() {

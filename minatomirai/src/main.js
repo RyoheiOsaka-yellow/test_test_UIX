@@ -1123,7 +1123,7 @@ function selectBuilding(bid) {
         let zx = 0, zy = 0; for (const q of poly) { zx += q[0]; zy += q[1]; } zx /= poly.length; zy /= poly.length;
         const label = isCor || !zone.name ? null : makeTextSprite(zone.name, col, { scale: 0.12, themeColor: tt => tt.labelGlow === false ? col : '#ffe9b0' }); if (label) label.userData.fadeFrom = 1000;
         mesh.renderOrder = 5; mesh.userData.zoneInfo = { fl, zone, building: m.n }; selGroup.add(mesh, edge); if (label) selGroup.add(label);
-        sel.zones.push({ fl, mesh, edge, label, zx, zy, zone, isCor });
+        sel.zones.push({ fl, mesh, edge, label, zx, zy, zone, isCor, poly });
       }
     }
   }
@@ -1787,7 +1787,7 @@ async function init() {
   people.set({ hour: realState.hour }); people.rebuild(); onTheme(t => people.setTheme(t));
   indoor = initIndoor({ scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel: () => sel, getGap: () => selUniforms.uGap.value, footprintPts, terrainSampler, levelY, renderer });
   initPeopleUI();
-  analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T, setNavEnabled: v => { activeControls.enabled = v; }, setClock: h => setClock(h) });
+  analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T, setNavEnabled: v => { activeControls.enabled = v; }, setClock: h => setClock(h), guides: () => [...floorGuide] });
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
   roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState });
   initRealUI();

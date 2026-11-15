@@ -118,6 +118,12 @@ await shot('44_people_real', `a.applyTheme('real'); a.setClock(8.5); a.camera.po
   await shot('65_bldg_presence_night', `a.applyTheme('night'); a.setClock(13); a.analysis().set({ layer: 'stay', bmetric: 'presence' }); ${OBL}`);
   await shot('67_indoor_heat', `const an = a.analysis(), p = a.people(); a.applyTheme('paper'); p.set({ vol: true, agents: true }); an.set({ layer: 'none', bmetric: 'none' }); const i = a.selectByName('MARK IS'); a.setGap(9); an.set({ tab: 'bldg', floorHeat: true }); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 200, 150, cz + 170); a.controls.target.set(cx, 30, cz);`);
   await page.evaluate(() => { const a = window.__app; a.select(-1); a.analysis().set({ floorHeat: false, tab: 'heat' }); }); }
+{ const TOP = `a.camera.position.set(100, 2500, 700); a.controls.target.set(100, 0, 20);`;
+  await shot('70_split', `const an = a.analysis(), p = a.people(); a.applyTheme('paper'); a.setClock(13); p.set({ vol: false, agents: false }); an.set({ layer: 'stay', bmetric: 'none', diff: 'none', split: true, layer2: 'emp', splitX: 0.5 }); ${TOP}`);
+  await shot('74_diff_holiday', `a.analysis().set({ split: false, layer: 'stay', diff: 'holiday' }); ${TOP}`);
+  await shot('75_zoning', `a.analysis().set({ layer: 'zoning', diff: 'none' }); ${TOP}`);
+  await shot('80_indoor_flow', `const an = a.analysis(), p = a.people(); p.set({ vol: true, agents: true }); an.set({ layer: 'none' }); const i = a.selectByName('MARK IS'); a.setGap(11); a.indoor().set({ flow: true }); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 150, 190, cz + 150); a.controls.target.set(cx, 40, cz);`);
+  await page.evaluate(() => { const a = window.__app; a.indoor().set({ flow: false }); a.select(-1); }); }
 await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });
 await shot('08_blueprint', ``);
 await page.screenshot({ path: `${out}/09_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));
