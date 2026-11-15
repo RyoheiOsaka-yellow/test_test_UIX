@@ -4,24 +4,27 @@
   'use strict';
 
   // ---------------------------------------------------------------- 建物
-  // 面積 1,890㎡ は「熱負荷計算書（標準）」の記入例に合わせている。
-  var GEOM = { W: 45, D: 42, H: 10, zRef: 1.1, NX: 90, NY: 84, cell: 0.5 };
+  // 写真をもとにした想定寸法：アリーナ 46m×38m を四周の観覧席（奥行5m）が囲む。屋内全体は 56m×48m、天井高 12.5m。
+  // 熱の計算は屋内全体を1つの箱として扱い、分布はアリーナの床の範囲（ax0〜ax1, ay0〜ay1）で評価する。
+  var GEOM = { W: 56, D: 48, H: 12.5, zRef: 1.1, cell: 0.5, ax0: 5, ay0: 5, ax1: 51, ay1: 43, galleryZ: 3.2 };
+  GEOM.NX = Math.round((GEOM.ax1 - GEOM.ax0) / GEOM.cell);
+  GEOM.NY = Math.round((GEOM.ay1 - GEOM.ay0) / GEOM.cell);
   GEOM.Af = GEOM.W * GEOM.D;
   GEOM.V = GEOM.Af * GEOM.H;
-  // 窓：南北の壁に高窓（40m×1.6m）と地窓（36m×1.0m）
-  var WINDOWS = [
-    { wall: 'N', x1: 2.5, x2: 42.5, z1: 6.2, z2: 7.8 },
-    { wall: 'N', x1: 4.5, x2: 40.5, z1: 0.3, z2: 1.3 },
-    { wall: 'S', x1: 2.5, x2: 42.5, z1: 6.2, z2: 7.8 },
-    { wall: 'S', x1: 4.5, x2: 40.5, z1: 0.3, z2: 1.3 }
-  ];
-  GEOM.Ag = WINDOWS.reduce(function (s, w) { return s + (w.x2 - w.x1) * (w.z2 - w.z1); }, 0);
+  // 窓：南面は観覧席の上に縦長の窓が8か所、北面と東面は小窓が4か所ずつ。a は壁に沿った位置
+  var WINDOWS = [];
+  for (var wi = 0; wi < 8; wi++) WINDOWS.push({ wall: 'S', a1: 6.4 + wi * 5.6, a2: 10.2 + wi * 5.6, z1: 4.8, z2: 9.0 });
+  [9, 19.5, 33.3, 43.8].forEach(function (a) { WINDOWS.push({ wall: 'N', a1: a, a2: a + 3.2, z1: 5.0, z2: 7.4 }); });
+  [9, 17.6, 27.2, 35.8].forEach(function (a) { WINDOWS.push({ wall: 'E', a1: a, a2: a + 3.2, z1: 5.0, z2: 7.4 }); });
+  GEOM.Ag = WINDOWS.reduce(function (s, w) { return s + (w.a2 - w.a1) * (w.z2 - w.z1); }, 0);
   GEOM.Awall = 2 * (GEOM.W + GEOM.D) * GEOM.H - GEOM.Ag;
 
-  // 空調機：南北の壁に4台ずつ、互い違いに配置。吹出し高さ 2.8m
+  // 空調の吹出し：観覧席の上を通る南北2本のダクトに、ノズルが6個ずつ。高さ 8.2m からアリーナ中央へ吹き下ろす
   var AC_UNITS = [];
-  [6, 16, 26, 36].forEach(function (x) { AC_UNITS.push({ x: x, y: 0.5, dir: 1, z0: 2.8 }); });
-  [11, 21, 31, 41].forEach(function (x) { AC_UNITS.push({ x: x, y: GEOM.D - 0.5, dir: -1, z0: 2.8 }); });
+  for (var ui = 0; ui < 6; ui++) {
+    AC_UNITS.push({ x: 8.5 + ui * 7.5, y: 6.5, dir: 1, z0: 8.2 });
+    AC_UNITS.push({ x: 10 + ui * 7.5, y: GEOM.D - 6.5, dir: -1, z0: 8.2 });
+  }
 
   var PANEL = { w: 0.86, h: 2.35, z0: 0.1, faceArea: 0.86 * 2.35 };
 
@@ -36,7 +39,7 @@
     hi: 8,              // 室内側の表面熱伝達率
     hAm: 3,             // 空気と構造体の対流熱伝達率
     CaFactor: 3,        // 空気の熱容量に対する、備品等を含めた倍率
-    Cm: 500e6,          // 床・壁の有効熱容量 [J/K]
+    Cm: 700e6,          // 床・壁の有効熱容量 [J/K]
     light: 8,           // 照明 [W/㎡]
     ventPer: 20,        // 1人あたり換気量 [m3/h]
     loadCool: 300,      // 冷房の単位負荷 [W/㎡]（熱負荷計算書）
@@ -49,9 +52,9 @@
     relaxMax: 1,        // 輻射による空気設定の緩和幅の上限
     gStrat: { none: 0, ac: 0.03, eco: 0.01 },   // 暖房時の上下温度勾配の係数
     gRoof: 0.04,        // 屋根面の加熱による成層の係数
-    u0: { none: 0, ac: 4.0, eco: 1.2 },         // 吹出し風速 [m/s]
+    u0: { none: 0, ac: 5.0, eco: 1.5 },         // 吹出し風速 [m/s]
     dTs: { ac: { heat: 16, cool: -11 }, eco: { heat: 9, cool: -6 } }, // 吹出し温度差
-    fanKW: { none: 0, ac: 12, eco: 4 },
+    fanKW: { none: 0, ac: 18, eco: 6 },
     latent: 1.25,       // 冷房時の潜熱分の割増
     capRate: 0.34,      // メーカー公表の最大削減率
     co2: 0.423,         // kg-CO2/kWh
@@ -186,10 +189,10 @@
     return out;
   }
   function buildPanels(layout, count) {
-    var W = GEOM.W, D = GEOM.D, rows, list = [];
-    if (layout === 'rows') rows = [{ axis: 'y', c: 3.0, a: 5, b: 35 }, { axis: 'y', c: 21.0, a: 5, b: 35 }, { axis: 'y', c: 39.0, a: 5, b: 35 }];
-    else if (layout === 'perimeter') rows = [{ axis: 'y', c: 0.9, a: 3, b: 37 }, { axis: 'y', c: D - 0.9, a: 3, b: 37 }, { axis: 'x', c: 0.9, a: 4, b: 38 }];
-    else rows = [{ axis: 'y', c: 0.9, a: 3, b: 37 }, { axis: 'y', c: D - 0.9, a: 3, b: 37 }];
+    var g = GEOM, rows, list = [], xa = g.ax0 + 3, xb = g.ax1 - 3;
+    if (layout === 'rows') rows = [{ axis: 'y', c: g.ay0 + 1.2, a: xa, b: xb }, { axis: 'y', c: (g.ay0 + g.ay1) / 2, a: xa, b: xb }, { axis: 'y', c: g.ay1 - 1.2, a: xa, b: xb }];
+    else if (layout === 'perimeter') rows = [{ axis: 'y', c: g.ay0 + 1.0, a: xa, b: xb }, { axis: 'y', c: g.ay1 - 1.0, a: xa, b: xb }, { axis: 'x', c: g.ax0 + 1.0, a: g.ay0 + 3, b: g.ay1 - 3 }];
+    else rows = [{ axis: 'y', c: g.ay0 + 1.0, a: xa, b: xb }, { axis: 'y', c: g.ay1 - 1.0, a: xa, b: xb }];
     var ns = distribute(count, rows.map(function (r) { return r.b - r.a; }));
     rows.forEach(function (r, i) {
       var n = ns[i];
@@ -207,6 +210,14 @@
     h = Math.max(Math.abs(h), 0.05);
     return Math.abs(fT(u2, v2, h) - fT(u1, v2, h) - fT(u2, v1, h) + fT(u1, v1, h));
   }
+  function winOmega(g, x, y, z) {
+    if (g.wall === 'N') return rectOmega(y, g.a1 - x, g.a2 - x, g.z1 - z, g.z2 - z);
+    if (g.wall === 'S') return rectOmega(GEOM.D - y, g.a1 - x, g.a2 - x, g.z1 - z, g.z2 - z);
+    if (g.wall === 'W') return rectOmega(x, g.a1 - y, g.a2 - y, g.z1 - z, g.z2 - z);
+    return rectOmega(GEOM.W - x, g.a1 - y, g.a2 - y, g.z1 - z, g.z2 - z);
+  }
+  function gx(i) { return GEOM.ax0 + (i + 0.5) * GEOM.cell; }
+  function gy(j) { return GEOM.ay0 + (j + 0.5) * GEOM.cell; }
   function panelOmega(P, x, y, z) {
     var hw = PANEL.w / 2, z1 = PANEL.z0 - z, z2 = PANEL.z0 + PANEL.h - z;
     return P.axis === 'y' ? rectOmega(P.y - y, P.x - hw - x, P.x + hw - x, z1, z2) : rectOmega(P.x - x, P.y - hw - y, P.y + hw - y, z1, z2);
@@ -229,18 +240,15 @@
     var F = set(); F.raw = set(); F.z = z;
     var R = F.raw;
     for (var j = 0; j < NY; j++) {
-      var y = (j + 0.5) * GEOM.cell;
+      var y = gy(j);
       for (var i = 0; i < NX; i++) {
-        var x = (i + 0.5) * GEOM.cell, k = j * NX + i;
+        var x = gx(i), k = j * NX + i;
         R.floor[k] = rectOmega(z, -x, W - x, -y, D - y);
         R.roof[k] = rectOmega(H - z, -x, W - x, -y, D - y);
         var wl = rectOmega(y, -x, W - x, -z, H - z) + rectOmega(D - y, -x, W - x, -z, H - z) +
           rectOmega(x, -y, D - y, -z, H - z) + rectOmega(W - x, -y, D - y, -z, H - z);
         var wn = 0;
-        for (var q = 0; q < WINDOWS.length; q++) {
-          var g = WINDOWS[q];
-          wn += rectOmega(g.wall === 'N' ? y : D - y, g.x1 - x, g.x2 - x, g.z1 - z, g.z2 - z);
-        }
+        for (var q = 0; q < WINDOWS.length; q++) wn += winOmega(WINDOWS[q], x, y, z);
         R.wall[k] = wl - wn; R.win[k] = wn;
         var pn = 0;
         for (var p = 0; p < panels.length; p++) pn += panelOmega(panels[p], x, y, z);
@@ -253,16 +261,17 @@
   function movePanelWeights(F, oldP, newP) {
     var NX = GEOM.NX, NY = GEOM.NY, R = F.raw.panel;
     for (var j = 0; j < NY; j++) for (var i = 0; i < NX; i++) {
-      var x = (i + 0.5) * GEOM.cell, y = (j + 0.5) * GEOM.cell;
+      var x = gx(i), y = gy(j);
       R[j * NX + i] += panelOmega(newP, x, y, F.z) - panelOmega(oldP, x, y, F.z);
     }
     return normalizeWeights(F);
   }
 
   // ---------------------------------------------------------------- 気流（自由噴流の近似）
+  // 噴流の軸の高さ。暖房の温風は中央付近で人の高さに届いたあと浮き上がり、冷房の冷風は床に沿って流れる
   function jetAxisZ(s, heat, z0) {
-    var z = heat ? z0 - 0.30 * s + 0.011 * s * s : z0 - 0.12 * s - 0.004 * s * s;
-    return clamp(z, heat ? 0.5 : 0.6, GEOM.H - 0.6);
+    var z = heat ? z0 - 0.75 * s + 0.022 * s * s : z0 - 0.5 * s - 0.002 * s * s;
+    return clamp(z, heat ? 0.5 : 0.6, GEOM.H - 0.8);
   }
   // 吹出し風速に対する相対風速（0〜1程度）
   function jetNorm(x, y, z, heat) {
@@ -280,7 +289,7 @@
   function computeJetPattern(z, heat) {
     var NX = GEOM.NX, NY = GEOM.NY, out = new Float32Array(NX * NY), m = 0;
     for (var j = 0; j < NY; j++) for (var i = 0; i < NX; i++) {
-      var v = jetNorm((i + 0.5) * GEOM.cell, (j + 0.5) * GEOM.cell, z, heat); out[j * NX + i] = v; m += v;
+      var v = jetNorm(gx(i), gy(j), z, heat); out[j * NX + i] = v; m += v;
     }
     out.mean = m / (NX * NY);
     return out;
@@ -318,7 +327,7 @@
       for (var k = -72; k < 8760; k++) {
         var kk = (k + 8760) % 8760, d = Math.floor(kk / 24), h = kk % 24, m = monthOfDay(d);
         var To = wx.T[kk], I = wx.I[kk], heat = K.heatMonths[m] === 1;
-        var on = hvac && h >= p.opStart && h < p.opEnd, occ = (h >= p.opStart && h < p.opEnd) ? p.occupants : 0;
+        var on = hvac && h >= p.opStart - (eco ? (p.preheat || 0) : 0) && h < p.opEnd, occ = (h >= p.opStart && h < p.opEnd) ? p.occupants : 0;
         var Tsol = To + 0.7 * I / 23, Twsol = To + 0.15 * I / 23;
         var qInt = occ * p.sensible + (occ > 0 ? K.light * Af : 0), qSol = ins.shgc * GEOM.Ag * 0.35 * I;
         var C = heat ? cap[eco ? 'eco' : 'ac'].heat : cap[eco ? 'eco' : 'ac'].cool;
@@ -422,9 +431,9 @@
     var Tns = 0.7 * st.Twall + 0.3 * st.Twin;
     var w = humRatio(st.Ta, st.RH), sum = 0;
     for (var j = 0; j < NY; j++) {
-      var y = (j + 0.5) * GEOM.cell;
+      var y = gy(j);
       for (var i = 0; i < NX; i++) {
-        var k = j * NX + i, x = (i + 0.5) * GEOM.cell, val;
+        var k = j * NX + i, x = gx(i), val;
         var v = 0.1 + u0 * jet[k];
         if (layer === 'wind') val = v;
         else {
@@ -460,7 +469,7 @@
     GEOM: GEOM, WINDOWS: WINDOWS, AC_UNITS: AC_UNITS, PANEL: PANEL, INSUL: INSUL, K: K, CITIES: CITIES, MODES: MODES, FIELDS: FIELDS,
     MSTART: MSTART, MDAYS: MDAYS, monthOfDay: monthOfDay, clamp: clamp, lerp: lerp,
     generateWeather: generateWeather, weatherFromData: weatherFromData, buildPanels: buildPanels, computeViewWeights: computeViewWeights, movePanelWeights: movePanelWeights,
-    computeJetPattern: computeJetPattern, jetNorm: jetNorm, jetAxisZ: jetAxisZ, simulate: simulate,
+    gx: gx, gy: gy, computeJetPattern: computeJetPattern, jetNorm: jetNorm, jetAxisZ: jetAxisZ, simulate: simulate,
     computeField: computeField, airAt: airAt, wbgt: wbgt, opTemp: opTemp, rhFromW: rhFromW, humRatio: humRatio, capacities: capacities
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.GymModel = api;

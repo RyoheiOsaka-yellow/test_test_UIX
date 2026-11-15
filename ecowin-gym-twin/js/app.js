@@ -17,7 +17,7 @@
 
   var S = {
     city: 'obs', insul: 'low', occupants: 80, sensible: 150, setHeat: 18, setCool: 27, opStart: 8, opEnd: 21,
-    panels: 48, layout: 'rows', price: 22, basic: 1100,
+    panels: 72, preheat: 1, field: true, layout: 'rows', price: 22, basic: 1100,
     mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 4,
     wind: true, rays: true, section: false, people: true, probe: null, split: true
   };
@@ -58,7 +58,7 @@
     var k = S.city === 'obs' && !window.WX_OBS ? 3 : S.city;
     return wxCache[k] || (wxCache[k] = k === 'obs' ? M.weatherFromData(window.WX_OBS) : M.generateWeather(k));
   }
-  function params() { return { insul: S.insul, occupants: S.occupants, sensible: S.sensible, setHeat: S.setHeat, setCool: S.setCool, opStart: S.opStart, opEnd: S.opEnd, panels: panels.length, price: S.price, basic: S.basic }; }
+  function params() { return { insul: S.insul, occupants: S.occupants, sensible: S.sensible, setHeat: S.setHeat, setCool: S.setCool, opStart: S.opStart, opEnd: S.opEnd, panels: panels.length, preheat: S.preheat, price: S.price, basic: S.basic }; }
   function recomputeGeometry() {
     if (S.layout !== 'custom') panels = M.buildPanels(S.layout, S.panels);
     F11 = M.computeViewWeights(1.1, panels);
@@ -139,7 +139,7 @@
   function initScene() {
     var THREE = window.THREE, canvas = $('gl'), view = $('view');
     var renderer;
-    try { renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); }
+    try { renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, preserveDrawingBuffer: true }); }
     catch (e) { var f = document.createElement('div'); f.className = 'glfail'; f.textContent = 'この端末では3D表示を使えません。下の年間マップとグラフ、右の読み値はそのまま使えます。'; view.appendChild(f); return null; }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     var scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(38, 1, 0.3, 400);
@@ -152,7 +152,7 @@
     // 表示領域（左右2分割のときは2つ。幅が狭いときは上下に分ける）
     function rects() {
       if (!S.split) return [{ x: 0, y: 0, w: vw, h: vh }];
-      if (vw >= 640) { var hw = Math.floor(vw / 2); return [{ x: 0, y: 0, w: hw, h: vh }, { x: vw - hw, y: 0, w: hw, h: vh }]; }
+      if (vw >= 640 && !S.section) { var hw = Math.floor(vw / 2); return [{ x: 0, y: 0, w: hw, h: vh }, { x: vw - hw, y: 0, w: hw, h: vh }]; }
       var hh = Math.floor(vh / 2); return [{ x: 0, y: 0, w: vw, h: hh }, { x: 0, y: vh - hh, w: vw, h: hh }];
     }
 
@@ -163,22 +163,82 @@
       g.setIndex([0, 1, 2, 0, 2, 3]); g.computeVertexNormals();
       return new THREE.Mesh(g, mat);
     }
-    // 床（木の色）とコートの線
-    var floorMat = new THREE.MeshLambertMaterial({ color: 0xd9c6a3 });
-    var floor = quad([[0, 0, D], [W, 0, D], [W, 0, 0], [0, 0, 0]], floorMat); scene.add(floor);
-    var ground = quad([[-60, -0.05, D + 60], [W + 60, -0.05, D + 60], [W + 60, -0.05, -60], [-60, -0.05, -60]], new THREE.MeshBasicMaterial({ color: 0x888888 })); scene.add(ground);
-    var lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
+    // ---- 体育館の内部（写真をもとにした想定）----
+    var A = { x0: G.ax0, y0: G.ay0, x1: G.ax1, y1: G.ay1 }, GZ = G.galleryZ, TIER = 5, STEP = 0.4;
+    function tex(w, h, draw, rx, ry) {
+      var c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+      var t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rx) t.repeat.set(rx, ry);
+      t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t;
+    }
+    var rnd = (function (a) { return function () { a = (a * 16807) % 2147483647; return a / 2147483647; }; })(11);
+    // フローリング（寄木のパネル張り）
+    var woodTex = tex(1024, 1024, function (c, w, h) {
+      c.fillStyle = '#d7a04a'; c.fillRect(0, 0, w, h);
+      for (var by = 0; by < 8; by++) for (var bx = 0; bx < 8; bx++) {
+        var vert = (bx + by) % 2 === 0;
+        for (var k = 0; k < 8; k++) {
+          var l = 52 + rnd() * 16, hu = 34 + rnd() * 6;
+          c.fillStyle = 'hsl(' + hu + ',' + (58 + rnd() * 10) + '%,' + l + '%)';
+          if (vert) c.fillRect(bx * 128 + k * 16, by * 128, 15.4, 127.4); else c.fillRect(bx * 128, by * 128 + k * 16, 127.4, 15.4);
+        }
+      }
+    }, (A.x1 - A.x0) / 6, (A.y1 - A.y0) / 6);
+    var floorMat = new THREE.MeshPhongMaterial({ map: woodTex, shininess: 70, specular: 0x4a3a22 });
+    var floor = quad([[A.x0, 0, A.y1], [A.x1, 0, A.y1], [A.x1, 0, A.y0], [A.x0, 0, A.y0]], floorMat); scene.add(floor);
+    var ground = quad([[-80, -0.05, D + 80], [W + 80, -0.05, D + 80], [W + 80, -0.05, -80], [-80, -0.05, -80]], new THREE.MeshBasicMaterial({ color: 0x888888 })); scene.add(ground);
+    var lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
     var lp = [];
     function seg(x1, y1, x2, y2) { lp.push(x1, 0.03, y1, x2, 0.03, y2); }
     function rect(x1, y1, x2, y2) { seg(x1, y1, x2, y1); seg(x2, y1, x2, y2); seg(x2, y2, x1, y2); seg(x1, y2, x1, y1); }
     function circle(x, y, r) { for (var a = 0; a < 32; a++) { var t1 = a / 32 * 6.2832, t2 = (a + 1) / 32 * 6.2832; seg(x + r * Math.cos(t1), y + r * Math.sin(t1), x + r * Math.cos(t2), y + r * Math.sin(t2)); } }
-    [11.5, 30.5].forEach(function (yc) { // バスケットボールコート 28m×15m を2面
-      rect(6, yc - 7.5, 34, yc + 7.5); seg(20, yc - 7.5, 20, yc + 7.5); circle(20, yc, 1.8);
-      rect(6, yc - 2.45, 11.8, yc + 2.45); rect(28.2, yc - 2.45, 34, yc + 2.45);
+    [14.5, 33.5].forEach(function (yc) { // バスケットボールコート 28m×15m を2面
+      rect(14, yc - 7.5, 42, yc + 7.5); seg(28, yc - 7.5, 28, yc + 7.5); circle(28, yc, 1.8);
+      rect(14, yc - 2.45, 19.8, yc + 2.45); rect(36.2, yc - 2.45, 42, yc + 2.45);
     });
     var courtLines = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)), lineMat); scene.add(courtLines);
 
-    // 壁・屋根は内側の面だけ描く（外から見ると手前の壁が消え、中が見える）
+    // アリーナを囲む1階の壁（濃い灰色のルーバーと扉）と、観覧席の腰壁
+    var louverTex = tex(512, 256, function (c, w, h) {
+      c.fillStyle = '#4b4f55'; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#3a3d42'; for (var y = 6; y < h; y += 14) c.fillRect(0, y, w, 3);
+      c.fillStyle = '#7c8088'; c.fillRect(196, 60, 120, 196); c.fillStyle = '#5c6068'; c.fillRect(254, 60, 4, 196); c.strokeStyle = '#2f3237'; c.lineWidth = 4; c.strokeRect(196, 60, 120, 196);
+      c.fillStyle = '#35c26b'; c.fillRect(236, 40, 40, 14);
+    });
+    var louverMat = new THREE.MeshLambertMaterial({ map: louverTex }), bandMat = new THREE.MeshLambertMaterial({ color: 0xdcdedd });
+    var stepMat = new THREE.MeshLambertMaterial({ color: 0x9a9c9e, side: THREE.DoubleSide }), railMat = new THREE.LineBasicMaterial({ color: 0x9aa0a6 });
+    var gal = { N: new THREE.Group(), S: new THREE.Group(), E: new THREE.Group(), W: new THREE.Group() };
+    // 辺ごとの座標変換：a＝壁に沿った位置、d＝アリーナの縁から外向きの距離
+    var SIDE = {
+      N: { a0: 0, a1: W, w0: A.x0, w1: A.x1, P: function (a, d, z) { return [a, z, A.y0 - d]; }, flip: false },
+      S: { a0: 0, a1: W, w0: A.x0, w1: A.x1, P: function (a, d, z) { return [a, z, A.y1 + d]; }, flip: true },
+      W: { a0: A.y0, a1: A.y1, w0: A.y0, w1: A.y1, P: function (a, d, z) { return [A.x0 - d, z, a]; }, flip: true },
+      E: { a0: A.y0, a1: A.y1, w0: A.y0, w1: A.y1, P: function (a, d, z) { return [A.x1 + d, z, a]; }, flip: false }
+    };
+    var railPts = [], seatGeo = new THREE.BoxGeometry(0.44, 0.46, 0.44), seatMat = new THREE.MeshLambertMaterial({ color: 0xd4d7da }), mtx = new THREE.Matrix4();
+    Object.keys(SIDE).forEach(function (key) {
+      var s = SIDE[key], g = gal[key], L = s.w1 - s.w0, seatPos = [];
+      function face(a0, a1, d0, z0, d1, z1, mat, uv) { // アリーナ側（内向き）が表になる向きで張る
+        var p = [s.P(a0, d0, z0), s.P(a1, d0, z0), s.P(a1, d1, z1), s.P(a0, d1, z1)];
+        if (s.flip) { p = [p[1], p[0], p[3], p[2]]; if (uv) uv = [uv[2], uv[3], uv[0], uv[1], uv[6], uv[7], uv[4], uv[5]]; }
+        g.add(quad(p, mat, uv));
+      }
+      face(s.w0, s.w1, 0, 0, 0, GZ, louverMat, [0, 0, L / 9, 0, L / 9, 1, 0, 1]);
+      face(s.w0, s.w1, 0, GZ, 0, GZ + 0.9, bandMat);
+      railPts.push.apply(railPts, s.P(s.w0, 0, GZ + 1.25).concat(s.P(s.w1, 0, GZ + 1.25)));
+      for (var a = s.w0; a <= s.w1 + 0.01; a += L / Math.round(L / 2)) railPts.push.apply(railPts, s.P(a, 0, GZ + 0.9).concat(s.P(a, 0, GZ + 1.25)));
+      for (var k = 0; k < TIER; k++) { // 段床と蹴上げ
+        var z = GZ + 0.1 + k * STEP;
+        g.add(quad([s.P(s.a0, k, z), s.P(s.a1, k, z), s.P(s.a1, k + 1, z), s.P(s.a0, k + 1, z)], stepMat));
+        if (k) face(s.a0, s.a1, k, z - STEP, k, z, bandMat);
+        if (k < TIER - 1) for (var q = s.a0 + 0.8; q < s.a1 - 0.6; q += 0.56) { if (Math.floor((q - s.a0) / 0.56) % 17 < 2) continue; seatPos.push(s.P(q, k + 0.55, z + 0.24)); }
+      }
+      var seats = new THREE.InstancedMesh(seatGeo, seatMat, seatPos.length);
+      seatPos.forEach(function (sp, i) { mtx.makeTranslation(sp[0], sp[1], sp[2]); seats.setMatrixAt(i, mtx); });
+      g.add(seats); scene.add(g);
+    });
+    scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(railPts, 3)), railMat));
+
+    // 外壁・屋根は内側の面だけ描く（外から見ると手前の壁が消え、中が見える）
     function inner() { return new THREE.MeshLambertMaterial({ color: 0xcccccc, side: THREE.BackSide }); }
     var wallMats = { N: inner(), S: inner(), E: inner(), W: inner() }, roofMat = inner();
     scene.add(quad([[W, 0, 0], [0, 0, 0], [0, H, 0], [W, H, 0]], wallMats.N));
@@ -186,36 +246,62 @@
     scene.add(quad([[W, 0, D], [W, 0, 0], [W, H, 0], [W, H, D]], wallMats.E));
     scene.add(quad([[0, 0, 0], [0, 0, D], [0, H, D], [0, H, 0]], wallMats.W));
     scene.add(quad([[0, H, 0], [0, H, D], [W, H, D], [W, H, 0]], roofMat));
-    var winMat = new THREE.MeshLambertMaterial({ color: 0x9cc4e6, side: THREE.BackSide });
+    var winMat = new THREE.MeshLambertMaterial({ color: 0xb9d6ee, side: THREE.BackSide, emissive: 0x25313a }), mullPts = { N: [], S: [], E: [], W: [] }, mullObj = {};
     M.WINDOWS.forEach(function (w) {
-      var z = w.wall === 'N' ? 0.03 : D - 0.03;
-      scene.add(w.wall === 'N' ? quad([[w.x2, w.z1, z], [w.x1, w.z1, z], [w.x1, w.z2, z], [w.x2, w.z2, z]], winMat)
-        : quad([[w.x1, w.z1, z], [w.x2, w.z1, z], [w.x2, w.z2, z], [w.x1, w.z2, z]], winMat));
+      var e = 0.04, P = w.wall === 'N' ? function (a, z) { return [a, z, e]; } : w.wall === 'S' ? function (a, z) { return [a, z, D - e]; } : w.wall === 'W' ? function (a, z) { return [e, z, a]; } : function (a, z) { return [W - e, z, a]; };
+      var rev = w.wall === 'N' || w.wall === 'E';
+      scene.add(quad(rev ? [P(w.a2, w.z1), P(w.a1, w.z1), P(w.a1, w.z2), P(w.a2, w.z2)] : [P(w.a1, w.z1), P(w.a2, w.z1), P(w.a2, w.z2), P(w.a1, w.z2)], winMat));
+      var mull = mullPts[w.wall];
+      for (var i = 0; i <= 3; i++) { var a = w.a1 + (w.a2 - w.a1) * i / 3; mull.push.apply(mull, P(a, w.z1).concat(P(a, w.z2))); }
+      var nz = Math.round((w.z2 - w.z1) / 1.05);
+      for (var j = 0; j <= nz; j++) { var z = w.z1 + (w.z2 - w.z1) * j / nz; mull.push.apply(mull, P(w.a1, z).concat(P(w.a2, z))); }
     });
+    var mullMat = new THREE.LineBasicMaterial({ color: 0x2b2f33 });
+    Object.keys(mullPts).forEach(function (k) { mullObj[k] = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(mullPts[k], 3)), mullMat); scene.add(mullObj[k]); });
     var fp = [];
     function e3(a, b) { fp.push(a[0], a[1], a[2], b[0], b[1], b[2]); }
     [[0, 0], [W, 0], [W, D], [0, D]].forEach(function (p, i, arr) { var n = arr[(i + 1) % 4]; e3([p[0], 0, p[1]], [n[0], 0, n[1]]); e3([p[0], H, p[1]], [n[0], H, n[1]]); e3([p[0], 0, p[1]], [p[0], H, p[1]]); });
-    for (var bx = 5; bx < W; bx += 5) e3([bx, H - 0.05, 0], [bx, H - 0.05, D]);
     var frameMat = new THREE.LineBasicMaterial({ color: 0x777777, transparent: true, opacity: 0.55 });
     scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(fp, 3)), frameMat));
-    var stageMat = new THREE.MeshLambertMaterial({ color: 0x8a7a66 });
-    var stage = new THREE.Mesh(new THREE.BoxGeometry(5, 1, 26), stageMat); stage.position.set(W - 2.5, 0.5, cz); scene.add(stage);
+
+    // 天井の立体トラスと照明（視点が屋根より上にあるときは隠して、中を見やすくする）
+    var roofGroup = new THREE.Group(), tp = [], MOD = 4, ZT = H - 0.25, ZB = H - 2.0, nxT = W / MOD, nyT = D / MOD, ix, iy;
+    function t3(x1, y1, z1, x2, y2, z2) { tp.push(x1, z1, y1, x2, z2, y2); }
+    for (iy = 0; iy <= nyT; iy++) for (ix = 0; ix <= nxT; ix++) {
+      if (ix < nxT) t3(ix * MOD, iy * MOD, ZT, (ix + 1) * MOD, iy * MOD, ZT);
+      if (iy < nyT) t3(ix * MOD, iy * MOD, ZT, ix * MOD, (iy + 1) * MOD, ZT);
+    }
+    for (iy = 0; iy < nyT; iy++) for (ix = 0; ix < nxT; ix++) {
+      var bx = (ix + 0.5) * MOD, by = (iy + 0.5) * MOD;
+      if (ix < nxT - 1) t3(bx, by, ZB, bx + MOD, by, ZB);
+      if (iy < nyT - 1) t3(bx, by, ZB, bx, by + MOD, ZB);
+      [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(function (o) { t3(bx, by, ZB, (ix + o[0]) * MOD, (iy + o[1]) * MOD, ZT); });
+    }
+    roofGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(tp, 3)), new THREE.LineBasicMaterial({ color: 0xc9b062, transparent: true, opacity: 0.9 })));
+    var lampGeo = new THREE.BoxGeometry(0.9, 0.14, 0.9), lampMat = new THREE.MeshBasicMaterial({ color: 0xfffbea });
+    for (iy = 0; iy < 5; iy++) for (ix = 0; ix < 6; ix++) { var lm = new THREE.Mesh(lampGeo, lampMat); lm.position.set(10 + ix * 7.2, ZB - 0.15, 8 + iy * 8); roofGroup.add(lm); }
+    scene.add(roofGroup);
+
+    // 既存の空調ダクトとノズル
+    var ductMat = new THREE.MeshLambertMaterial({ color: 0xd9d0a9 }), nozMat = new THREE.MeshLambertMaterial({ color: 0xe9e9e6 });
+    [6.5, D - 6.5].forEach(function (y) {
+      var d = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, A.x1 - A.x0 + 2, 20), ductMat); d.rotation.z = Math.PI / 2; d.position.set(W / 2, 8.75, y + (y < D / 2 ? -0.5 : 0.5)); scene.add(d);
+    });
+    M.AC_UNITS.forEach(function (u) {
+      var n = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.8, 14), nozMat); n.position.set(u.x, u.z0 + 0.15, u.y); n.rotation.x = -u.dir * 0.95; scene.add(n);
+    });
 
     // 評価面（体感温度などの分布）。左右比較のために2枚ぶん持つ
     var painters = [makeFieldPainter(G.NX, G.NY, 4), makeFieldPainter(G.NX, G.NY, 4)];
     var heatTex = painters.map(function (p) { var t = new THREE.CanvasTexture(p.canvas); t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; return t; });
     var heatMat = new THREE.MeshBasicMaterial({ map: heatTex[0], transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
-    var heatPlane = quad([[0, 0, D], [W, 0, D], [W, 0, 0], [0, 0, 0]], heatMat); heatPlane.renderOrder = 2; scene.add(heatPlane);
+    var heatPlane = quad([[A.x0, 0, A.y1], [A.x1, 0, A.y1], [A.x1, 0, A.y0], [A.x0, 0, A.y0]], heatMat); heatPlane.renderOrder = 2; scene.add(heatPlane);
     // 断面（南北方向・空調機の正面を通る面）
-    var SX = 16, NZ = 20, secPainter = makeFieldPainter(G.NY, NZ, 4), secTex = new THREE.CanvasTexture(secPainter.canvas), secVals = new Float32Array(G.NY * NZ);
+    var SX = 16, NZ = 25, secPainter = makeFieldPainter(G.NY, NZ, 4), secTex = new THREE.CanvasTexture(secPainter.canvas), secVals = new Float32Array(G.NY * NZ);
     secTex.minFilter = THREE.LinearFilter; secTex.generateMipmaps = false;
-    var sec = quad([[SX, 0, 0], [SX, 0, D], [SX, H, D], [SX, H, 0]], new THREE.MeshBasicMaterial({ map: secTex, transparent: true, opacity: 0.93, side: THREE.DoubleSide, depthWrite: false }));
+    var sec = quad([[SX, 0, A.y0], [SX, 0, A.y1], [SX, H, A.y1], [SX, H, A.y0]], new THREE.MeshBasicMaterial({ map: secTex, transparent: true, opacity: 0.93, side: THREE.DoubleSide, depthWrite: false }));
     sec.renderOrder = 3; sec.visible = false; scene.add(sec);
 
-    // 空調機
-    var acGroup = new THREE.Group(), acMat = new THREE.MeshLambertMaterial({ color: 0xf2f2f2 });
-    M.AC_UNITS.forEach(function (u) { var b = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.1, 0.6), acMat); b.position.set(u.x, 1.55, u.y + (u.dir > 0 ? -0.15 : 0.15)); acGroup.add(b); });
-    scene.add(acGroup);
     // パネル（ドラッグで移動、ダブルクリックで向きを変える）
     var panelGroup = new THREE.Group(), panelMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x000000 });
     var panelGeo = new THREE.BoxGeometry(M.PANEL.w, M.PANEL.h, 0.09), grabGeo = new THREE.BoxGeometry(M.PANEL.w + 0.3, M.PANEL.h + 0.2, 0.7);
@@ -234,7 +320,7 @@
     var people = new THREE.Group(), bodyMat = new THREE.MeshLambertMaterial({ color: 0x39424d }), r = mul(7);
     function mul(a) { return function () { a = (a * 16807) % 2147483647; return a / 2147483647; }; }
     for (var pi = 0; pi < 34; pi++) {
-      var px = pi < 26 ? 7 + r() * 26 : 2 + r() * 2, py = pi < 26 ? (pi % 2 ? 5 + r() * 13 : 24 + r() * 13) : 6 + r() * 30;
+      var px = pi < 26 ? 15 + r() * 26 : 7 + r() * 2.5, py = pi < 26 ? (pi % 2 ? 8 + r() * 13 : 27 + r() * 13) : 9 + r() * 30;
       var body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.35, 8), bodyMat); body.position.set(px, 0.68, py);
       var head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), bodyMat); head.position.set(px, 1.52, py);
       people.add(body); people.add(head);
@@ -258,11 +344,11 @@
           for (var i = 0; i < NP; i++) {
             var p = ps[i], o = i * 6, e = Math.exp(-(p.lx * p.lx + p.lz * p.lz)), vl = u0 * Math.min(1, 3.5 / p.s) * e;
             p.s += Math.max(vl, 0.05) * dt; p.life -= dt;
-            if (p.life < 0 || p.s > D - 1.2 || vl < 0.07) { p.s = 0.3 + Math.random() * 1.2; p.lx = gs(); p.lz = gs(); p.life = 6 + Math.random() * 10; vl = u0 * e; }
+            if (p.life < 0 || p.s > D - 14 || vl < 0.07) { p.s = 0.3 + Math.random() * 1.2; p.lx = gs(); p.lz = gs(); p.life = 6 + Math.random() * 10; vl = u0 * e; }
             var un = M.AC_UNITS[p.u], tail = M.clamp(vl * 0.45, 0.12, 1.5);
             for (var q = 0; q < 2; q++) {
               var s = Math.max(0.2, p.s - q * tail), b = 0.35 + 0.11 * s;
-              pos[o + q * 3] = M.clamp(un.x + p.lx * b * 0.8, 0.2, W - 0.2);
+              pos[o + q * 3] = M.clamp(un.x + p.lx * b * 0.8, A.x0 + 0.2, A.x1 - 0.2);
               pos[o + q * 3 + 1] = M.clamp(M.jetAxisZ(s, heat, un.z0) + p.lz * b * 0.8, 0.12, H - 0.15);
               pos[o + q * 3 + 2] = un.y + un.dir * s;
             }
@@ -299,7 +385,7 @@
         if (q.r > RMAX) q.r = 0.05; else if (q.r < 0.05) q.r = RMAX;
         var P = panels[q.p], nx = q.r * q.side, lat = q.a * M.PANEL.w + q.dl * q.r, hz = M.PANEL.z0 + q.h * M.PANEL.h + q.dv * q.r;
         var x = P.axis === 'y' ? P.x + lat : P.x + nx, y = P.axis === 'y' ? P.y + nx : P.y + lat;
-        if (x < 0.1 || x > W - 0.1 || y < 0.1 || y > D - 0.1 || hz < 0.05 || hz > H - 0.1) { rPos[o + 1] = -5; continue; }
+        if (x < A.x0 + 0.1 || x > A.x1 - 0.1 || y < A.y0 + 0.1 || y > A.y1 - 0.1 || hz < 0.05 || hz > H - 0.1) { rPos[o + 1] = -5; continue; }
         rPos[o] = x; rPos[o + 1] = hz; rPos[o + 2] = y;
         var f = Math.pow(q.r / RMAX, 0.8);
         for (var k = 0; k < 3; k++) rCol[o + k] = (hot[k] + (bg[k] - hot[k]) * f) / 255;
@@ -347,7 +433,7 @@
     canvas.addEventListener('pointermove', function (e) {
       if (!drag) { canvas.style.cursor = e.buttons ? '' : (pickPanel(e) >= 0 ? 'move' : ''); return; }
       if (aim(e) < 0 || !ray.ray.intersectPlane(plane, hitV)) return;
-      var p = panels[drag.i], x = M.clamp(Math.round((hitV.x + drag.ox) * 10) / 10, 0.6, W - 0.6), y = M.clamp(Math.round((hitV.z + drag.oy) * 10) / 10, 0.6, D - 0.6);
+      var p = panels[drag.i], x = M.clamp(Math.round((hitV.x + drag.ox) * 10) / 10, A.x0 + 0.6, A.x1 - 0.6), y = M.clamp(Math.round((hitV.z + drag.oy) * 10) / 10, A.y0 + 0.6, A.y1 - 0.6);
       if (x === p.x && y === p.y) return;
       movePanel(drag.i, { axis: p.axis, x: x, y: y }); drag.moved = true; panelsEdited(false);
     });
@@ -358,7 +444,7 @@
       if (!down || Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 5) return;
       if (pickPanel(e) >= 0) return;
       var vi = aim(e); plane.constant = 0;
-      var ok = vi >= 0 && ray.ray.intersectPlane(plane, hitV) && hitV.x > 0.3 && hitV.x < W - 0.3 && hitV.z > 0.3 && hitV.z < D - 0.3;
+      var ok = vi >= 0 && ray.ray.intersectPlane(plane, hitV) && hitV.x > A.x0 + 0.3 && hitV.x < A.x1 - 0.3 && hitV.z > A.y0 + 0.3 && hitV.z < A.y1 - 0.3;
       S.probe = ok ? { x: hitV.x, y: hitV.z, view: vi } : null;
       dirty = true;
     });
@@ -369,11 +455,15 @@
 
     // カメラ
     var CAMS = {
-      iso: { p: [-16, 30, D + 30], t: [cx + 1, 1.5, cz - 1] }, top: { p: [cx, 78, cz + 0.02], t: [cx, 0, cz] },
-      eye: { p: [3.5, 1.6, D - 3], t: [cx + 6, 2.2, cz - 4] }, side: { p: [-44, 7, cz], t: [SX, 4.6, cz] }
+      iso: { p: [-9, 37, D + 23], t: [cx, 1.0, cz - 1] }, top: { p: [cx, 96, cz + 0.02], t: [cx, 0, cz] },
+      eye: { p: [1.6, 6.8, cz - 7], t: [cx + 12, 2.2, cz - 2] }, side: { p: [-50, 8, cz], t: [SX, 5.6, cz] }
     }, fly = null;
     function setCam(name, instant) {
       var c = CAMS[name];
+      if (name === 'side') { // 断面の全幅が収まる距離まで下がる
+        var th = Math.tan(cam.fov * Math.PI / 360), dist = Math.max(15 / (2 * th), (A.y1 - A.y0 + 6) / (2 * th * cam.aspect));
+        c = { p: [SX - dist, 6.4, cz], t: [SX, 6.0, cz] };
+      }
       if (instant) { cam.position.set(c.p[0], c.p[1], c.p[2]); ctl.target.set(c.t[0], c.t[1], c.t[2]); ctl.update(); return; }
       fly = { p0: cam.position.clone(), t0: ctl.target.clone(), p1: new THREE.Vector3(c.p[0], c.p[1], c.p[2]), t1: new THREE.Vector3(c.t[0], c.t[1], c.t[2]), a: 0 };
     }
@@ -394,10 +484,10 @@
       mat.color.setRGB((base[0] + (c[0] - base[0]) * f) / 255, (base[1] + (c[1] - base[1]) * f) / 255, (base[2] + (c[2] - base[2]) * f) / 255);
     }
     return {
-      rebuildPanels: rebuildPanels, setCam: setCam, resize: resize,
+      rebuildPanels: rebuildPanels, setCam: setCam, resize: resize, canvas: canvas, rects: rects,
       applyTheme: function () {
         renderer.setClearColor(new THREE.Color(C['--scene']), 1);
-        ground.material.color.set(C['--scene']); floorMat.color.set(C['--wood']);
+        ground.material.color.set(C['--scene']);
         lineMat.color.set(C['--surface']); frameMat.color.set(C['--ink-3']);
         pole.material.color.set(C['--ink']);
       },
@@ -412,7 +502,9 @@
           cam.position.lerpVectors(fly.p0, fly.p1, e); ctl.target.lerpVectors(fly.t0, fly.t1, e); if (fly.a >= 1) fly = null;
         }
         ctl.update();
-        heatPlane.position.y = S.z + 0.01; courtLines.position.y = S.z + 0.02;
+        heatPlane.visible = S.field; heatPlane.position.y = S.z + 0.01; courtLines.position.y = S.field ? S.z + 0.02 : 0;
+        roofGroup.visible = cam.position.y < H - 0.6; gal.W.visible = !S.section;
+        mullObj.N.visible = cam.position.z > 0; mullObj.S.visible = cam.position.z < D; mullObj.E.visible = cam.position.x < W; mullObj.W.visible = cam.position.x > 0;
         people.visible = S.people; sec.visible = S.section;
         var rs = rects(), tl = S.layer !== 'wind' && S.layer !== 'wbgt', wb = hex(C['--surface-2']), eco = null;
         views.forEach(function (v) { if (winds[v.mode]) winds[v.mode].update(dt, v.st, heat); if (v.mode === 'eco') eco = v; });
@@ -428,12 +520,12 @@
           tint(wallMats.N, wb, 0.8 * st.Twall + 0.2 * st.Twin, tl); tint(wallMats.S, wb, 0.8 * st.Twall + 0.2 * st.Twin, tl);
           tint(wallMats.E, wb, st.Twall, tl); tint(wallMats.W, wb, st.Twall, tl); tint(roofMat, wb, st.Tri, tl);
           tint(winMat, [156, 196, 230], st.Twin, tl);
-          panelGroup.visible = m === 'eco'; acGroup.visible = m !== 'none';
+          panelGroup.visible = m === 'eco';
           winds.ac.obj.visible = m === 'ac' && winds.ac.on; winds.eco.obj.visible = m === 'eco' && winds.eco.on; rays.visible = m === 'eco' && raysOn;
           if (m === 'eco') { var pc = colorAt(LUT.temp, st.Tp, range.lo, range.hi); panelMat.color.setRGB(pc[0] / 255, pc[1] / 255, pc[2] / 255); panelMat.emissive.setRGB(pc[0] / 600, pc[1] / 600, pc[2] / 600); }
           if (S.section) {
             for (var j = 0; j < NZ; j++) for (var k = 0; k < G.NY; k++) {
-              var a = M.airAt(SX, (k + 0.5) * G.cell, (NZ - 1 - j + 0.5) * (H / NZ), m, st, heat);
+              var a = M.airAt(SX, M.gy(k), (NZ - 1 - j + 0.5) * (H / NZ), m, st, heat);
               secVals[j * G.NY + k] = S.layer === 'wind' ? a.v : a.T;
             }
             var wl = S.layer === 'wind', lo = wl ? 0 : S.layer === 'wbgt' ? st.Ta - 8 : range.lo, hi = wl ? 2.5 : S.layer === 'wbgt' ? st.Ta + 8 : range.hi;
@@ -642,7 +734,7 @@
   }
   function renderProbe(sts, heat) {
     if (!S.probe) return;
-    var i = M.clamp(Math.floor(S.probe.x / G.cell), 0, G.NX - 1), j = M.clamp(Math.floor(S.probe.y / G.cell), 0, G.NY - 1), k = j * G.NX + i;
+    var i = M.clamp(Math.floor((S.probe.x - G.ax0) / G.cell), 0, G.NX - 1), j = M.clamp(Math.floor((S.probe.y - G.ay0) / G.cell), 0, G.NY - 1), k = j * G.NX + i;
     var ms = shownModes(), rows = [['体感', 'ot', 1, '℃'], ['空気', 'ta', 1, '℃'], ['放射', 'mrt', 1, '℃'], ['風速', 'wind', 2, 'm/s'], ['WBGT', 'wbgt', 1, '']];
     var vals = ms.map(function (m) { var v = {}; rows.forEach(function (r) { M.computeField(r[1], m, sts[m], heat, S.z, F, heat ? jet.heat : jet.cool, scratch); v[r[1]] = scratch[k]; }); return v; });
     var h = '<table>' + (ms.length > 1 ? '<tr><td></td>' + ms.map(function (m) { return '<td>' + (m === 'eco' ? 'ecowin' : m === 'ac' ? 'エアコン' : MODE_NAME[m]) + '</td>'; }).join('') + '</tr>' : '');
@@ -671,11 +763,17 @@
     if (window.WX_OBS) { var oo = document.createElement('option'); oo.value = 'obs'; oo.textContent = '東京都練馬区（2025年の観測値）'; $('city').appendChild(oo); } else S.city = 3;
     M.CITIES.forEach(function (c, i) { var o = document.createElement('option'); o.value = i; o.textContent = c.name + '（合成気象）'; $('city').appendChild(o); });
     Object.keys(M.INSUL).forEach(function (k) { var o = document.createElement('option'); o.value = k; o.textContent = M.INSUL[k].label; $('insul').appendChild(o); });
-    $('city').value = S.city; $('insul').value = S.insul; $('occ').value = S.occupants; $('act').value = S.sensible;
-    $('setHeat').value = S.setHeat; $('setCool').value = S.setCool; $('opStart').value = S.opStart; $('opEnd').value = S.opEnd;
-    $('panels').value = S.panels; $('layout').value = S.layout; $('price').value = S.price; $('basic').value = S.basic;
     function outs() { $('occOut').textContent = S.occupants + '人'; $('panelsOut').textContent = S.panels + '台'; }
-    outs();
+    function syncInputs() { // 状態を入力欄へ反映する
+      $('city').value = S.city; $('insul').value = S.insul; $('occ').value = S.occupants; $('act').value = S.sensible;
+      $('setHeat').value = S.setHeat; $('setCool').value = S.setCool; $('opStart').value = S.opStart; $('opEnd').value = S.opEnd;
+      $('panels').value = S.panels; $('price').value = S.price; $('basic').value = S.basic; $('preheat').value = S.preheat;
+      if (S.layout === 'custom' && !$('layout').querySelector('[value=custom]')) { var o = document.createElement('option'); o.value = 'custom'; o.textContent = '自由配置（ドラッグで変更）'; $('layout').appendChild(o); }
+      $('layout').value = S.layout;
+      $('ckWind').checked = S.wind; $('ckRays').checked = S.rays; $('ckSection').checked = S.section; $('ckPeople').checked = S.people; $('ckField').checked = S.field;
+      press('modeSeg', S.mode); press('layerSeg', S.layer); press('zSeg', S.z); outs();
+    }
+    syncInputs();
     bindSeg('modeSeg', 'mode', null, function () { refreshMode(); dirty = true; chartsDirty = true; });
     bindSeg('layerSeg', 'layer', null, function () { dirty = true; chartsDirty = true; });
     bindSeg('zSeg', 'z', parseFloat, function () { recomputeGeometry(); dirty = true; });
@@ -692,9 +790,10 @@
     num('price', 'price', 5, 60); num('basic', 'basic', 0, 3000); num('act', 'sensible', 50, 300);
     $('city').addEventListener('change', function () { var v = $('city').value; S.city = v === 'obs' ? 'obs' : parseInt(v, 10); recomputeSim(); jumpsReady = false; });
     $('insul').addEventListener('change', function () { S.insul = $('insul').value; recomputeSim(); });
+    $('preheat').addEventListener('change', function () { S.preheat = parseInt($('preheat').value, 10); recomputeSim(); });
     $('layout').addEventListener('change', function () { S.layout = $('layout').value; if (S.layout !== 'custom') recomputeAll(); });
-    [['ckWind', 'wind'], ['ckRays', 'rays'], ['ckSection', 'section'], ['ckPeople', 'people']].forEach(function (p) {
-      $(p[0]).addEventListener('change', function () { S[p[1]] = $(p[0]).checked; if (p[1] === 'section' && S.section && scene3) scene3.setCam('side'); dirty = true; });
+    [['ckWind', 'wind'], ['ckRays', 'rays'], ['ckSection', 'section'], ['ckPeople', 'people'], ['ckField', 'field']].forEach(function (p) {
+      $(p[0]).addEventListener('change', function () { S[p[1]] = $(p[0]).checked; if (p[1] === 'section' && scene3) { scene3.resize(); scene3.setCam(S.section ? 'side' : 'iso'); } dirty = true; });
     });
     $('cams').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b && b.dataset.v && scene3) scene3.setCam(b.dataset.v); });
     function setSplit(v) { S.split = v; $('split').setAttribute('aria-pressed', String(v)); S.probe = null; first = true; dirty = true; if (scene3) scene3.resize(); }
@@ -741,6 +840,54 @@
       showTip(e, (m + 1) + '月<br>エアコンのみ <b>' + (a / 1000).toFixed(1) + '</b>MWh<br>ecowin <b>' + (ec / 1000).toFixed(1) + '</b>MWh' + (a > 0 ? '（−' + Math.round((1 - ec / a) * 100) + '%）' : ''));
     });
     mon.addEventListener('pointerleave', hideTip);
+
+    // 配置と条件の保存・読込（このブラウザの中に保存する）
+    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split'];
+    function say(t) { var e = $('saveMsg'); e.textContent = t; clearTimeout(say.t); say.t = setTimeout(function () { e.textContent = ''; }, 4000); }
+    $('saveScene').addEventListener('click', function () {
+      var o = { v: 3 }; KEYS.forEach(function (k) { o[k] = S[k]; });
+      o.panelList = panels;
+      try { localStorage.setItem('ecowin-gym-scene', JSON.stringify(o)); say('保存しました'); } catch (e) { say('このブラウザでは保存できません'); }
+    });
+    $('loadScene').addEventListener('click', function () {
+      var o = null; try { o = JSON.parse(localStorage.getItem('ecowin-gym-scene')); } catch (e) { o = null; }
+      if (!o || o.v !== 3) { say('保存した配置がありません'); return; }
+      KEYS.forEach(function (k) { if (o[k] !== undefined) S[k] = o[k]; });
+      if (S.city === 'obs' && !window.WX_OBS) S.city = 3;
+      if (S.layout === 'custom' && Array.isArray(o.panelList)) panels = o.panelList.map(function (q) { return { axis: q.axis === 'x' ? 'x' : 'y', x: +q.x, y: +q.y }; });
+      S.probe = null; syncInputs(); $('split').setAttribute('aria-pressed', String(S.split)); $('play').textContent = '▶ 再生'; S.playing = false;
+      recomputeAll(); jumpsReady = false; first = true; syncSliders(); if (scene3) scene3.resize(); say('読み込みました');
+    });
+    // いまの表示を1枚の画像にする
+    $('shot').addEventListener('click', function () {
+      if (!scene3) { say('3D表示が使えないため画像にできません'); return; }
+      var gl = scene3.canvas, sc = gl.width / gl.clientWidth, head = Math.round(64 * sc), foot = Math.round(58 * sc), pad = Math.round(16 * sc);
+      var cv = document.createElement('canvas'); cv.width = gl.width; cv.height = gl.height + head + foot;
+      var c = cv.getContext('2d'), d = Math.floor(S.t / 24), w = wxAt(S.t), ms = shownModes(), rs = scene3.rects(), ff = '"Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic UI", sans-serif';
+      c.fillStyle = C['--surface']; c.fillRect(0, 0, cv.width, cv.height); c.drawImage(gl, 0, head);
+      c.fillStyle = C['--ink']; c.textBaseline = 'middle'; c.font = '700 ' + Math.round(18 * sc) + 'px ' + ff;
+      c.fillText('体育館デジタルツイン　ecowinハイブリッド 設置効果の推計', pad, head * 0.34);
+      c.font = Math.round(13 * sc) + 'px ' + ff; c.fillStyle = C['--ink-2'];
+      c.fillText(wx.city.name + '　' + fmtDate(d) + ' ' + fmtHour(S.t - d * 24) + '　' + SKY[w.sky] + '　外気 ' + f1(w.T) + '℃　断熱：' + M.INSUL[S.insul].label + '　' + S.occupants + '人　パネル ' + panels.length + '台', pad, head * 0.74);
+      ms.forEach(function (m, i) { // 方式名の札
+        var q = rs[i], t = MODE_NAME[m]; c.font = '700 ' + Math.round(14 * sc) + 'px ' + ff;
+        var tw = c.measureText(t).width + 34 * sc, x = (q.x + q.w) * sc - tw - 12 * sc, y = head + (q.y + 10) * sc, hh = 26 * sc;
+        c.fillStyle = C['--surface']; c.fillRect(x, y, tw, hh); c.fillStyle = C['--m-' + m]; c.beginPath(); c.arc(x + 13 * sc, y + hh / 2, 5 * sc, 0, 6.2832); c.fill();
+        c.fillStyle = C['--ink']; c.fillText(t, x + 24 * sc, y + hh / 2);
+      });
+      if (rs.length > 1) { c.fillStyle = C['--surface']; if (rs[1].x > 0) c.fillRect(rs[1].x * sc - sc, head, 2 * sc, gl.height); else c.fillRect(0, head + rs[1].y * sc - sc, cv.width, 2 * sc); }
+      var y0 = head + gl.height, lw = Math.min(cv.width - pad * 2, 420 * sc), lut = lutFor(S.layer), L = LAYER[S.layer];
+      c.font = Math.round(12 * sc) + 'px ' + ff; c.fillStyle = C['--ink-2'];
+      c.fillText(L.name + '（' + L.unit + '）　高さ ' + S.z + 'm', pad, y0 + foot * 0.2);
+      for (var x2 = 0; x2 < lw; x2++) { var li = Math.round(x2 / (lw - 1) * 511) * 3; c.fillStyle = 'rgb(' + lut[li] + ',' + lut[li + 1] + ',' + lut[li + 2] + ')'; c.fillRect(pad + x2, y0 + foot * 0.38, 1.5, 10 * sc); }
+      c.fillStyle = C['--ink-2'];
+      for (var k2 = 0; k2 <= 4; k2++) { c.textAlign = k2 === 0 ? 'left' : k2 === 4 ? 'right' : 'center'; c.fillText((range.lo + (range.hi - range.lo) * k2 / 4).toFixed(S.layer === 'wind' ? 1 : 0), pad + lw * k2 / 4, y0 + foot * 0.8); }
+      c.textAlign = 'right'; c.fillText('簡易モデルによる推計値（実測ではありません）', cv.width - pad, y0 + foot * 0.5);
+      var url = cv.toDataURL('image/png'), dl = $('shotDl');
+      $('shotImg').src = url; dl.href = url; dl.download = 'ecowin-gym-' + fmtDate(d) + '.png';
+      var dg = $('shotDlg'); if (dg.showModal) dg.showModal(); else dg.setAttribute('open', '');
+    });
+    $('closeShot').addEventListener('click', function () { var d = $('shotDlg'); if (d.close) d.close(); else d.removeAttribute('open'); });
 
     $('openNotes').addEventListener('click', function () { var d = $('notes'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); });
     $('closeNotes').addEventListener('click', function () { var d = $('notes'); if (d.close) d.close(); else d.removeAttribute('open'); });

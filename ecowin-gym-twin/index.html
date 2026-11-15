@@ -131,6 +131,7 @@ table.cmp tr:last-child td, table.cmp tr:last-child th { border-bottom: 0; }
 
 .tip { position: fixed; z-index: 30; pointer-events: none; background: var(--ink); color: var(--surface); border-radius: 4px; padding: 5px 8px; font-size: 11.5px; line-height: 1.45; max-width: 240px; }
 .tip b { font-family: var(--num); }
+#shotDlg { width: min(1100px, calc(100vw - 32px)); }
 dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 0; width: min(760px, calc(100vw - 32px)); max-height: 86vh; }
 dialog::backdrop { background: rgba(8, 12, 16, .55); }
 dialog header { position: sticky; top: 0; background: var(--surface); display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); }
@@ -159,6 +160,10 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <span class="badge">推計値（実測ではありません）</span>
     <span class="badge" id="wxBadge"></span>
     <span class="grow"></span>
+    <span class="note" id="saveMsg" role="status"></span>
+    <button class="btn" id="saveScene" type="button">配置を保存</button>
+    <button class="btn" id="loadScene" type="button">読込</button>
+    <button class="btn" id="shot" type="button">画像にする</button>
     <button class="link" id="openNotes" type="button">前提と出典</button>
   </header>
 
@@ -194,6 +199,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
           <label><input type="checkbox" id="ckRays" checked>輻射</label>
           <label><input type="checkbox" id="ckSection">断面（空気温度）</label>
           <label><input type="checkbox" id="ckPeople" checked>人</label>
+          <label><input type="checkbox" id="ckField" checked>床の色分布</label>
         </div>
       </section>
 
@@ -215,9 +221,10 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
       <section class="card stack">
         <h2>ecowinパネル</h2>
-        <div class="field"><label for="panels">台数（SCREEN 両面）</label><output id="panelsOut" for="panels"></output><input type="range" id="panels" min="0" max="72" step="2"></div>
+        <div class="field"><label for="panels">台数（SCREEN 両面）</label><output id="panelsOut" for="panels"></output><input type="range" id="panels" min="0" max="120" step="2"></div>
         <div class="field"><label for="layout">置き方</label><select id="layout">
           <option value="rows">コート脇に自立で3列</option><option value="wall">南北の壁沿い</option><option value="perimeter">南・北・西の壁沿い</option></select></div>
+        <div class="field"><label for="preheat">予熱運転（ecowinを早めに開始）</label><select id="preheat"><option value="0">なし</option><option value="1">1時間前から</option><option value="2">2時間前から</option></select></div>
         <div class="note">3Dの中でパネルをドラッグすると移動、ダブルクリックで向きが90°変わります。動かすと体感温度と年間の推計に反映されます。</div>
         <div class="pair">
           <div class="field"><label for="price">電力単価 円/kWh</label><input type="number" id="price" min="5" max="60" step="1"></div>
@@ -286,13 +293,23 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
 <div class="tip" id="tip" hidden></div>
 
+<dialog id="shotDlg">
+  <header><h2>いまの表示の画像</h2><button class="btn" id="closeShot" type="button">閉じる</button></header>
+  <div class="body" style="max-width:none">
+    <p>提案資料に貼れる画像です。保存ボタンが効かない場合は、画像を右クリック（スマホは長押し）して保存してください。</p>
+    <img id="shotImg" alt="体育館デジタルツインの現在の表示" style="width:100%;border:1px solid var(--line);border-radius:4px">
+    <p><a class="btn" id="shotDl" style="display:inline-block;text-decoration:none;margin-top:8px">画像を保存</a></p>
+  </div>
+</dialog>
+
 <dialog id="notes">
   <header><h2>前提と出典</h2><button class="btn" id="closeNotes" type="button">閉じる</button></header>
   <div class="body">
     <p>この画面は、まだ ecowinハイブリッドを設置していない体育館に設置した場合の温度・風・電力の変化を、簡易モデルで推計して見せるものです。数値は実測値ではなく、建物の実寸・断熱・既存設備が分かれば置き換えられます。</p>
     <h3>建物</h3>
-    <ul><li>床面積 1,890㎡（45m × 42m）、平均天井高 10m。面積は「熱負荷計算書（標準）」の記入例に合わせています。</li>
-      <li>窓は南北の壁の高窓と地窓で合計 200㎡。屋根・壁・窓の性能は断熱性能の3段階で切り替えます【推計】。</li></ul>
+    <ul><li>いただいた写真をもとにした想定寸法です。アリーナ 46m × 38m を四周の観覧席（奥行 5m）が囲み、屋内全体は 56m × 48m（2,688㎡）、天井高 12.5m としています【仮定】。図面があれば置き換えられます。</li>
+      <li>窓は南面の縦長窓8か所と、北面・東面の小窓で合計約 190㎡。屋根・壁・窓の性能は断熱性能の3段階で切り替えます【推計】。</li>
+      <li>空調は、観覧席の上を通る南北2本のダクトのノズル（高さ 8.2m）からアリーナへ吹き下ろす方式としています。</li></ul>
     <h3>気象</h3>
     <ul><li>東京都練馬区は、2025年の1時間ごとの観測値です。気温・湿度・風速は気象庁「過去の気象データ」のアメダス練馬の値、天気の区分は同じ観測の降水量と日照時間から決めています。</li>
       <li>アメダス練馬は日射量を観測していないため、日射量は Open-Meteo Historical Weather API（ERA5 再解析）の練馬付近の値を使っています。</li>
@@ -306,14 +323,15 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <ul><li>放射温度は、評価点から床・屋根・壁・窓・パネルが見える大きさ（立体角）で各面の温度を平均したものです。パネルは向いている面の正面ほど大きく見えるため、正面で効果が強く出ます。</li>
       <li>体感温度（作用温度）は空気温度と放射温度の平均で、風が強い場所ほど空気温度の重みを大きくします（ASHRAE 55）。</li>
       <li>暑さ指数（WBGT）は 0.7×湿球温度＋0.3×黒球温度（屋内の式）。区分は日本スポーツ協会の熱中症予防運動指針によります。</li>
-      <li>風は吹出し口からの噴流として近似しています。吹出し風速はエアコンのみ 4.0m/s、ecowinハイブリッド 1.2m/s【推計】。</li></ul>
+      <li>風は吹出し口からの噴流として近似しています。吹出し風速はエアコンのみ 5.0m/s、ecowinハイブリッド 1.5m/s【推計】。暖房の温風は中央付近で人の高さに届いたあと浮き上がります。</li></ul>
     <h3>電力・料金</h3>
     <ul><li>消費電力は空調の出力を外気温に応じた効率（COP）で割り、送風機の電力を加えたものです。</li>
       <li>削減率がメーカー公表の最大値 34% を超える条件では、34% を上限として表示します。</li>
       <li>契約電力は計算上の最大需要電力とし、基本料金は入力した単価で計算します。CO2 は 0.423kg-CO2/kWh で換算します。</li></ul>
     <h3>扱っていないこと</h3>
     <ul><li>気流の詳細な数値解析（CFD）は行っていません。風と温度の分布は傾向を示す近似です。</li>
-      <li>屋根は平らな面として扱い、ステージ・観覧席・器具庫の形は計算に含めていません。</li></ul>
+      <li>熱の計算では屋内全体を1つの箱として扱い、観覧席の段やトラスの形は放射の計算に含めていません。</li>
+      <li>予熱運転は、ecowinハイブリッドだけ空調の開始を早める設定です（能力が70%のため、立ち上がりに時間がかかります）。</li></ul>
     <h3>出典</h3>
     <ul><li>エコファクトリー ecowinHYBRID 製品情報（削減率 最大34%、組み合わせる空調能力の目安）</li>
       <li>ワイズプランニング「エコウィンHYBRIDの冷暖効果実証データ」（パネル表面温度 45〜50℃）</li>
@@ -323,8 +341,8 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
   </div>
 </dialog>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
 <script src="data/nerima2025.js"></script>
 <script src="js/model.js"></script>
 <script src="js/app.js"></script>
