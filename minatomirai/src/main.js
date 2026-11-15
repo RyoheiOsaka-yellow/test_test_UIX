@@ -1710,6 +1710,7 @@ document.getElementById('chk-barrier').addEventListener('change', refreshRoute);
 let downPos = null;
 canvas.addEventListener('pointerdown', e => { downPos = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener('pointerup', e => {
+  if (analysis && analysis.capturing()) return;   // 分析パネルの範囲選択・地点選択の最中
   if (!routeMode && downPos && Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) <= 6 && e.button === 0) {
     raycaster.setFromCamera(pointer, activeCamera);
     const zm = pickZone();
@@ -1786,7 +1787,7 @@ async function init() {
   people.set({ hour: realState.hour }); people.rebuild(); onTheme(t => people.setTheme(t));
   indoor = initIndoor({ scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel: () => sel, getGap: () => selUniforms.uGap.value, footprintPts, terrainSampler, levelY, renderer });
   initPeopleUI();
-  analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T });
+  analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T, setNavEnabled: v => { activeControls.enabled = v; }, setClock: h => setClock(h) });
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
   roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState });
   initRealUI();

@@ -46,35 +46,41 @@ export const CATALOG = [
 ];
 
 export function initAnalysis(ctx) {
-  const { scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats, calib, getCamera, getSel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel, guideFor, poiOf, onTheme } = ctx;
-  const S = { layer: 'none', opacity: 0.8, bmetric: 'none', tab: 'heat', floorHeat: false, dark: false, open: true };
+  const { scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats, calib, getCamera, getSel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel, guideFor, poiOf, onTheme, setNavEnabled = () => {}, setClock = () => {} } = ctx;
+  const S = { layer: 'none', opacity: 0.8, bmetric: 'none', tab: 'heat', floorHeat: false, dark: false, open: true, diff: 'none', split: false, layer2: 'emp', splitX: 0.5, scUnit: 'mesh', scX: 'emp', scY: 'stay', range: null, tsTarget: 'all', tsPoint: null, tsOther: true };
   const $ = id => document.getElementById(id);
   // ---- ヒートマップの面 (地形に沿わせる) ----
   const data = new Uint8Array(NX * NY * 4), tex = new THREE.DataTexture(data, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType); tex.colorSpace = THREE.SRGBColorSpace; tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
   const pg = new THREE.PlaneGeometry(BOX[2] - BOX[0], BOX[3] - BOX[1], 70, 64); pg.rotateX(-Math.PI / 2); pg.translate((BOX[0] + BOX[2]) / 2, 0, -(BOX[1] + BOX[3]) / 2);
   { const p = pg.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, Math.max(0, terrainSampler(p.getX(i), -p.getZ(i))) + 0.9); }
   const heat = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: S.opacity, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); heat.renderOrder = 3; heat.visible = false; heat.name = 'analysis-heat'; scene.add(heat);
+  // 画面分割で比較するための 2 枚目。画面の x 座標で左右に切り分ける (左 = 1 枚目, 右 = 2 枚目)
+  const data2 = new Uint8Array(NX * NY * 4), tex2 = new THREE.DataTexture(data2, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType); tex2.colorSpace = THREE.SRGBColorSpace; tex2.magFilter = tex2.minFilter = THREE.LinearFilter; tex2.needsUpdate = true;
+  const heat2 = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ map: tex2, transparent: true, opacity: S.opacity, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); heat2.renderOrder = 3; heat2.visible = false; heat2.name = 'analysis-heat2'; scene.add(heat2);
+  const splitU = { value: -1 };
+  const patchSplit = (mat, side) => { mat.onBeforeCompile = sh => { sh.uniforms.uSplitX = splitU; sh.uniforms.uSide = { value: side }; sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'uniform float uSplitX; uniform float uSide;\nvoid main() {\n  if (uSplitX >= 0.0 && (gl_FragCoord.x - uSplitX) * uSide < 0.0) discard;'); }; mat.customProgramCacheKey = () => 'anheat' + side; };
+  patchSplit(heat.material, -1); patchSplit(heat2.material, 1); let cur2 = null;
   let cur = null;   // { v: Float32Array, max, unit, ramp, nearest, label }
   const cellOf = (x, y) => { const ix = Math.floor((x - BOX[0]) / CELL), iy = Math.floor((y - BOX[1]) / CELL); return ix < 0 || iy < 0 || ix >= NX || iy >= NY ? -1 : iy * NX + ix; };
   const blur = (v, passes) => { const t = new Float32Array(v.length); for (let p = 0; p < passes; p++) { for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) { const i = y * NX + x; t[i] = (v[i] * 2 + (x > 0 ? v[i - 1] : v[i]) + (x < NX - 1 ? v[i + 1] : v[i])) / 4; } for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) { const i = y * NX + x; v[i] = (t[i] * 2 + (y > 0 ? t[i - NX] : t[i]) + (y < NY - 1 ? t[i + NX] : t[i])) / 4; } } return v; };
   const fillRect = (v, r, val) => { const x0 = Math.max(0, Math.round((r[0] - BOX[0]) / CELL)), x1 = Math.min(NX, Math.round((r[2] - BOX[0]) / CELL)), y0 = Math.max(0, Math.round((r[1] - BOX[1]) / CELL)), y1 = Math.min(NY, Math.round((r[3] - BOX[1]) / CELL)); for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) v[y * NX + x] = val; };
   const ha = r => (r[2] - r[0]) * (r[3] - r[1]) / 10000;
   const pctl = (v, q) => { const a = []; for (let i = 0; i < v.length; i += 3) if (v[i] > 0) a.push(v[i]); if (!a.length) return 1; a.sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * q))]; };
-  const day = () => people.day(), hourTxt = () => { const h = people.state.hour, hh = Math.floor(h), mm = Math.round((h - hh) * 60); return `${hh}:${String(mm).padStart(2, '0')}`; };
+  const day = () => people.day(), Q = (o = {}) => ({ hour: people.state.hour, day: people.day(), dayKey: people.state.day, model: people.model, ...o }), hourTxt = () => { const h = people.state.hour, hh = Math.floor(h), mm = Math.round((h - hh) * 60); return `${hh}:${String(mm).padStart(2, '0')}`; };
   let accessCache = null;
   const nodeMinutes = () => { if (accessCache && accessCache.m === people.model) return accessCache.v; const N = graph.nodes.length, v = new Float32Array(N).fill(Infinity); for (const st of people.model.stations) for (let i = 0; i < N; i++) if (st.out.dist[i] < v[i]) v[i] = st.out.dist[i]; for (let i = 0; i < N; i++) v[i] = v[i] / WALK_SPEED / 60; accessCache = { m: people.model, v }; return v; };
 
   const LAYERS = {
     none: { n: 'なし' },
-    ped: { n: '歩行者密度（モデル・現在時刻）', unit: '人/ha', time: true, note: '人流モデルの通行量から、その時刻に各地点を歩いている人数を面にしたもの', make: () => {
-      const v = new Float32Array(NX * NY), vol = new Float32Array(graph.links.length); people.model.volumes(people.state.hour, day(), vol);
+    ped: { n: '歩行者密度（モデル・現在時刻）', unit: '人/ha', time: true, note: '人流モデルの通行量から、その時刻に各地点を歩いている人数を面にしたもの', make: (q = Q()) => {
+      const v = new Float32Array(NX * NY), vol = new Float32Array(graph.links.length); q.model.volumes(q.hour, q.day, vol);
       for (let i = 0; i < vol.length; i++) { if (vol[i] < 1) continue; const l = graph.links[i], h = Math.hypot(l.bx - l.ax, l.by - l.ay); if (h < 0.5) continue; const n = vol[i] * h / (WALK_SPEED * 3600), k = Math.max(1, Math.ceil(h / 5)); for (let j = 0; j < k; j++) { const t = (j + 0.5) / k, c = cellOf(l.ax + (l.bx - l.ax) * t, l.ay + (l.by - l.ay) * t); if (c >= 0) v[c] += n / k * 100; } }
       return { v: blur(v, 2) }; } },
-    stay: { n: '滞在人口（モデル・現在時刻）', unit: '人/ha', time: true, note: '駅から来て建物に滞在している推計人数（駅へ帰った人を引いた累積）。車・バスで来た人は含まない', make: () => {
-      const v = new Float32Array(NX * NY), pr = people.model.presence(people.state.hour, day());
-      people.model.dests.forEach((d, i) => { if (pr[i] <= 0.5 || d.b < 0) return; const bb = buildingMeta[d.b]?.bb; if (!bb) return; const x0 = Math.max(0, Math.floor((bb[0] / 10 - BOX[0]) / CELL)), x1 = Math.min(NX - 1, Math.floor((bb[2] / 10 - BOX[0]) / CELL)), y0 = Math.max(0, Math.floor((bb[1] / 10 - BOX[1]) / CELL)), y1 = Math.min(NY - 1, Math.floor((bb[3] / 10 - BOX[1]) / CELL)); const n = (x1 - x0 + 1) * (y1 - y0 + 1); if (n <= 0) return; const add = pr[i] / n * 100; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) v[y * NX + x] += add; });
+    stay: { n: '滞在人口（モデル・現在時刻）', unit: '人/ha', time: true, note: '駅から来て建物に滞在している推計人数（駅へ帰った人を引いた累積）。車・バスで来た人は含まない', make: (q = Q()) => {
+      const v = new Float32Array(NX * NY), pr = q.model.presence(q.hour, q.day);
+      q.model.dests.forEach((d, i) => { if (pr[i] <= 0.5 || d.b < 0) return; const bb = buildingMeta[d.b]?.bb; if (!bb) return; const x0 = Math.max(0, Math.floor((bb[0] / 10 - BOX[0]) / CELL)), x1 = Math.min(NX - 1, Math.floor((bb[2] / 10 - BOX[0]) / CELL)), y0 = Math.max(0, Math.floor((bb[1] / 10 - BOX[1]) / CELL)), y1 = Math.min(NY - 1, Math.floor((bb[3] / 10 - BOX[1]) / CELL)); const n = (x1 - x0 + 1) * (y1 - y0 + 1); if (n <= 0) return; const add = pr[i] / n * 100; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) v[y * NX + x] += add; });
       return { v: blur(v, 1) }; } },
-    obs: { n: '実測 滞在人口（人流オープンデータ 1km・昼）', unit: '人/ha', nearest: true, dayDep: true, note: '国交省 人流オープンデータ 2019 年。平日/休日の切替に連動（11〜14 時台の平均）', make: () => { const v = new Float32Array(NX * NY); for (const q of calib?.meshes ?? []) fillRect(v, q.rect, (people.state.day === 'holiday' ? q.holDay : q.wkDay) / ha(q.rect)); return { v }; } },
+    obs: { n: '実測 滞在人口（人流オープンデータ 1km・昼）', unit: '人/ha', nearest: true, dayDep: true, note: '国交省 人流オープンデータ 2019 年。平日/休日の切替に連動（11〜14 時台の平均）', make: (q = Q()) => { const v = new Float32Array(NX * NY); for (const m of calib?.meshes ?? []) fillRect(v, m.rect, (q.dayKey === 'holiday' ? m.holDay : m.wkDay) / ha(m.rect)); return { v }; } },
     obsNight: { n: '実測 滞在人口（人流オープンデータ 1km・深夜）', unit: '人/ha', nearest: true, note: '同 1〜4 時台の平均（平日）', make: () => { const v = new Float32Array(NX * NY); for (const q of calib?.meshes ?? []) fillRect(v, q.rect, q.wkNight / ha(q.rect)); return { v }; } },
     census: { n: '夜間人口（国勢調査 2020・250m）', unit: '人/ha', nearest: true, note: '国勢調査 2020 年 250m メッシュの人口総数', make: () => { const v = new Float32Array(NX * NY); for (const c of stats?.census?.cells ?? []) fillRect(v, c.rect, c.pop / ha(c.rect)); return { v }; } },
     aged: { n: '65 歳以上人口（国勢調査 2020・250m）', unit: '人/ha', nearest: true, note: '国勢調査 2020 年 250m メッシュ', make: () => { const v = new Float32Array(NX * NY); for (const c of stats?.census?.cells ?? []) fillRect(v, c.rect, c.p65 / ha(c.rect)); return { v }; } },
@@ -86,12 +92,40 @@ export function initAnalysis(ctx) {
       const v = new Float32Array(NX * NY).fill(-1), mins = nodeMinutes(); graph.nodes.forEach((n, i) => { if (!isFinite(mins[i]) || n.lv < 0) return; const r = 3; const cx = Math.floor((n.x - BOX[0]) / CELL), cy = Math.floor((n.y - BOX[1]) / CELL); for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) { if (x < 0 || y < 0 || x >= NX || y >= NY) continue; const m = mins[i] + Math.hypot(x - cx, y - cy) * CELL / WALK_SPEED / 60, k = y * NX + x; if (v[k] < 0 || m < v[k]) v[k] = m; } });
       return { v }; } },
   };
+  const DIV = ['#2166ac', '#67a9cf', '#d1e5f0', '#f7f7f7', '#fddbc7', '#ef8a62', '#b2182b'].map(hexRGB);
+  const DIFFS = {
+    none: { n: 'なし' },
+    holiday: { n: '休日 − 平日', ok: L => L.time || L.dayDep, pair: () => [Q({ dayKey: 'holiday', day: people.dayOf('holiday') }), Q({ dayKey: 'weekday', day: people.dayOf('weekday') })] },
+    scenario: { n: 'シナリオ − 通常', ok: L => L.time, pair: () => [Q(), Q({ model: people.base })] },
+    prev: { n: '現在 − 1 時間前', ok: L => L.time, pair: () => [Q(), Q({ hour: (people.state.hour + 23) % 24 })] },
+  };
+  function fillTexture(d, t, v, max, stops, L) {
+    for (let i = 0; i < v.length; i++) { const x = v[i], o = i * 4; if (L.zeroOk ? x < 0 : x <= max * 0.01) { d[o + 3] = 0; continue; } const tt = Math.min(1, x / max), c = rampAt(stops, L.zeroOk ? tt : Math.sqrt(tt)); d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = L.zeroOk ? 215 : Math.round(90 + 150 * Math.min(1, tt * 3)); }
+    t.magFilter = L.nearest ? THREE.NearestFilter : THREE.LinearFilter; t.needsUpdate = true;
+  }
   function paint() {
-    const L = LAYERS[S.layer]; if (!L.make || !people.model) { heat.visible = false; cur = null; renderLegend(); return; }
-    const r = L.make(), v = r.v, max = L.fixedMax ?? Math.max(1e-6, pctl(v, 0.985)), stops = RAMPS[L.ramp ?? (S.dark ? 'dark' : 'light')].map(hexRGB);
-    for (let i = 0; i < v.length; i++) { const x = v[i], o = i * 4; if (L.zeroOk ? x < 0 : x <= max * 0.01) { data[o + 3] = 0; continue; } const t = Math.min(1, x / max), c = rampAt(stops, L.zeroOk ? t : Math.sqrt(t)); data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = L.zeroOk ? 215 : Math.round(90 + 150 * Math.min(1, t * 3)); }
-    tex.magFilter = L.nearest ? THREE.NearestFilter : THREE.LinearFilter; tex.needsUpdate = true; heat.material.opacity = S.opacity; heat.visible = true;
-    cur = { v, max, unit: L.unit, stops, L }; renderLegend();
+    const L = LAYERS[S.layer]; if (!L.make || !people.model) { heat.visible = false; cur = null; renderLegend(); paint2(); return; }
+    const D = DIFFS[S.diff];
+    if (D.pair && D.ok(L)) {   // 差分: 2 条件の値の差を、青 (減) − 白 − 赤 (増) で塗る
+      const [qa, qb] = D.pair(), va = L.make(qa).v, vb = L.make(qb).v, v = new Float32Array(va.length); let abs = new Float32Array(va.length); for (let i = 0; i < v.length; i++) { v[i] = va[i] - vb[i]; abs[i] = Math.abs(v[i]); }
+      const max = Math.max(1e-6, pctl(abs, 0.985));
+      for (let i = 0; i < v.length; i++) { const o = i * 4, t = Math.max(-1, Math.min(1, v[i] / max)); if (Math.abs(t) < 0.03) { data[o + 3] = 0; continue; } const c = rampAt(DIV, 0.5 + 0.5 * Math.sign(t) * Math.sqrt(Math.abs(t))); data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = Math.round(110 + 135 * Math.min(1, Math.abs(t) * 2.5)); }
+      tex.magFilter = L.nearest ? THREE.NearestFilter : THREE.LinearFilter; tex.needsUpdate = true; heat.material.opacity = S.opacity; heat.visible = true;
+      cur = { v, max, unit: L.unit, stops: DIV, L, diff: D }; renderLegend(); paint2(); return;
+    }
+    const v = L.make().v, max = L.fixedMax ?? Math.max(1e-6, pctl(v, 0.985)), stops = RAMPS[L.ramp ?? (S.dark ? 'dark' : 'light')].map(hexRGB);
+    fillTexture(data, tex, v, max, stops, L); heat.material.opacity = S.opacity; heat.visible = true;
+    cur = { v, max, unit: L.unit, stops, L }; renderLegend(); paint2();
+  }
+  function paint2() {   // 画面分割の右側
+    const L = LAYERS[S.layer2], on = S.split && L?.make && people.model && cur;
+    if (!on) { heat2.visible = false; cur2 = null; splitU.value = -1; if ($('an-divider')) $('an-divider').style.display = 'none'; return; }
+    const v = L.make().v, max = L.fixedMax ?? Math.max(1e-6, pctl(v, 0.985)), stops = RAMPS[L.ramp ?? (S.dark ? 'dark' : 'light')].map(hexRGB);
+    fillTexture(data2, tex2, v, max, stops, L); heat2.material.opacity = S.opacity; heat2.visible = true; cur2 = { v, max, unit: L.unit, stops, L }; placeDivider();
+  }
+  function placeDivider() {
+    const el = $('an-divider'); if (!el) return; const r = renderer.domElement.getBoundingClientRect(); splitU.value = S.splitX * renderer.domElement.width;
+    el.style.display = 'block'; el.style.left = (r.left + S.splitX * r.width) + 'px'; el.querySelector('.an-dl').textContent = '◀ ' + LAYERS[S.layer].n; el.querySelector('.an-dr').textContent = LAYERS[S.layer2].n + ' ▶';
   }
   // ---- 建物の色分け ----
   let peakCache = null;
@@ -123,7 +157,7 @@ export function initAnalysis(ctx) {
   const ticks = (max, unit, sqrt) => [0, 0.25, 0.5, 0.75, 1].map(t => `<span>${fmt((sqrt ? t * t : t) * max)}</span>`).join('') + `<span class="an-unit">${unit}</span>`;
   function renderLegend() {
     if (!$('an-legend')) return;
-    $('an-legend').innerHTML = cur ? `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks">${ticks(cur.max, cur.unit, !cur.L.zeroOk)}</div><div class="note">${cur.L.note ?? ''}${cur.L.time ? `（${hourTxt()} 時点）` : ''}</div>` : '';
+    $('an-legend').innerHTML = !cur ? '' : cur.diff ? `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks"><span>−${fmt(cur.max)}</span><span>減</span><span>0</span><span>増</span><span>+${fmt(cur.max)}</span><span class="an-unit">${cur.unit}</span></div><div class="note">差分: ${cur.diff.n}（${hourTxt()} 時点）</div>` : `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks">${ticks(cur.max, cur.unit, !cur.L.zeroOk)}</div><div class="note">${cur.L.note ?? ''}${cur.L.time ? `（${hourTxt()} 時点）` : ''}${S.diff !== 'none' ? '<br>この指標は選んだ差分に対応していません。' : ''}</div>`;
     const b = $('an-blegend'); if (!b) return;
     if (!bcur) b.innerHTML = '';
     else if (bcur.M.cat) b.innerHTML = '<div class="legend">' + Object.values(USE).map(([n, c]) => `<span><i style="background:${c}"></i>${n}</span>`).join('') + '</div><div class="note">横浜市の PLATEAU には用途属性が無いため、OSM の建物タグ・店舗数・名称・高さからの推定です。</div>';
@@ -198,12 +232,105 @@ export function initAnalysis(ctx) {
     for (const c of stats?.econ?.cells ?? []) rows.push(['economic_census_500m', c.id, ...c.rect, c.emp, c.est, c.empRetail, c.empFood, 'employees/establishments/employees_retail/employees_food_lodging']);
     download('minatomirai_mesh_stats.csv', csv(rows), 'text/csv');
   }
+  // ---- 比較: 散布図 ----
+  const BLK = 25, BX = Math.floor(NX / BLK), BY = Math.floor(NY / BLK);   // 250 m のブロック
+  const staticRaster = new Map();
+  const rasterOf = key => { const L = LAYERS[key]; if (!L?.make) return null; if (L.time || L.dayDep) return L.make().v; if (!staticRaster.has(key) || staticRaster.get(key).m !== people.model) staticRaster.set(key, { m: people.model, v: L.make().v }); return staticRaster.get(key).v; };
+  const blocks = v => { const out = []; for (let by = 0; by < BY; by++) for (let bx = 0; bx < BX; bx++) { let s = 0, n = 0; for (let y = by * BLK; y < (by + 1) * BLK; y++) for (let x = bx * BLK; x < (bx + 1) * BLK; x++) { const q = v[y * NX + x]; if (q >= 0) { s += q; n++; } } out.push(n ? s / n : 0); } return out; };
+  let scPts = [];
+  function scatterData() {
+    if (S.scUnit === 'mesh') {
+      const vx = rasterOf(S.scX), vy = rasterOf(S.scY); if (!vx || !vy) return { pts: [], ux: '', uy: '' }; const ax = blocks(vx), ay = blocks(vy), pts = [];
+      for (let i = 0; i < ax.length; i++) if (ax[i] > 0 || ay[i] > 0) pts.push({ x: ax[i], y: ay[i], px: BOX[0] + ((i % BX) + 0.5) * BLK * CELL, py: BOX[1] + (Math.floor(i / BX) + 0.5) * BLK * CELL, n: `メッシュ (${i % BX + 1}, ${Math.floor(i / BX) + 1})` });
+      return { pts, ux: LAYERS[S.scX].unit, uy: LAYERS[S.scY].unit, nx: LAYERS[S.scX].n, ny: LAYERS[S.scY].n };
+    }
+    const fx = BM[S.scX]?.val?.(), fy = BM[S.scY]?.val?.(); if (!fx || !fy) return { pts: [], ux: '', uy: '' }; let pts = [];
+    for (const d of people.model.dests) { if (d.b < 0) continue; const x = fx(d.b), y = fy(d.b); if (x > 0 && y > 0) pts.push({ x, y, px: d.x, py: d.y, n: d.n ?? '（名称なし）', b: d.b }); }
+    if (pts.length > 1400) { pts.sort((p, q) => q.x * q.y - p.x * p.y); pts = pts.slice(0, 1400); }
+    return { pts, ux: BM[S.scX].unit, uy: BM[S.scY].unit, nx: BM[S.scX].n, ny: BM[S.scY].n };
+  }
+  function renderScatter() {
+    const el = $('an-scatter'); if (!el || !people.model) return; const { pts, ux, uy, nx, ny } = scatterData(); scPts = pts;
+    if (pts.length < 3) { el.innerHTML = '<div class="note">点が足りません。別の指標を選んでください。</div>'; return; }
+    const W = 312, H = 196, L = 34, B = 22, T = 6, R = 6, mx = Math.max(...pts.map(p => p.x)), my = Math.max(...pts.map(p => p.y)), X = v => L + Math.sqrt(v / mx) * (W - L - R), Y = v => H - B - Math.sqrt(v / my) * (H - B - T);
+    const n = pts.length, sx = pts.reduce((s, p) => s + p.x, 0) / n, sy = pts.reduce((s, p) => s + p.y, 0) / n; let cxy = 0, cxx = 0, cyy = 0; for (const p of pts) { cxy += (p.x - sx) * (p.y - sy); cxx += (p.x - sx) ** 2; cyy += (p.y - sy) ** 2; } const r = cxx > 0 && cyy > 0 ? cxy / Math.sqrt(cxx * cyy) : 0;
+    let g = ''; for (const t of [0.25, 0.5, 0.75, 1]) { const vx = t * t * mx, vy = t * t * my; g += `<line x1="${X(vx)}" y1="${T}" x2="${X(vx)}" y2="${H - B}" stroke="rgba(120,180,255,.12)"/><text x="${X(vx)}" y="${H - B + 9}" font-size="7" fill="#7d93b5" text-anchor="middle">${fmt(vx)}</text><line x1="${L}" y1="${Y(vy)}" x2="${W - R}" y2="${Y(vy)}" stroke="rgba(120,180,255,.12)"/><text x="${L - 3}" y="${Y(vy) + 2}" font-size="7" fill="#7d93b5" text-anchor="end">${fmt(vy)}</text>`; }
+    const dots = pts.map((p, i) => `<circle data-i="${i}" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="${S.scUnit === 'mesh' ? 3.2 : 2}" fill="#ffb347" fill-opacity="0.75" stroke="#08101e" stroke-width="0.4"><title>${p.n}\n${fmt(p.x)} ${ux} / ${fmt(p.y)} ${uy}</title></circle>`).join('');
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;cursor:pointer"><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - B - T}" fill="rgba(60,90,140,.12)"/>${g}${dots}<text x="${(L + W - R) / 2}" y="${H - 2}" font-size="8" fill="#9fb3d1" text-anchor="middle">${nx}（${ux}）</text><text x="8" y="${(T + H - B) / 2}" font-size="8" fill="#9fb3d1" text-anchor="middle" transform="rotate(-90 8 ${(T + H - B) / 2})">${ny}（${uy}）</text></svg>
+      <div class="note" style="margin-top:0">${S.scUnit === 'mesh' ? '250m メッシュ' : '建物'} ${n} 点 ／ 相関係数 r = <b style="color:#ffd94d">${r.toFixed(2)}</b>（軸は平方根目盛）。点をクリックでその場所へ移動。</div>`;
+    el.querySelectorAll('circle').forEach(c => c.addEventListener('click', () => { const p = scPts[Number(c.dataset.i)]; if (p.b != null) selectBuilding(p.b); flyTo(new THREE.Vector3(p.px - 160, 260, -p.py + 220), new THREE.Vector3(p.px, 0, -p.py)); }));
+  }
+  // ---- 比較: 範囲を囲んで集計 / 地点を選ぶ ----
+  const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -3), hit = new THREE.Vector3(), ndc = new THREE.Vector2();
+  const groundPoint = e => { const r = renderer.domElement.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, getCamera()); return ray.ray.intersectPlane(plane, hit) ? { x: hit.x, y: -hit.z } : null; };
+  const rangeGeo = new THREE.BufferGeometry(); rangeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
+  const rangeLine = new THREE.LineLoop(rangeGeo, new THREE.LineBasicMaterial({ color: '#0077ff', depthTest: false, transparent: true })); rangeLine.renderOrder = 40; rangeLine.visible = false; rangeLine.frustumCulled = false; scene.add(rangeLine);
+  const rangeFill = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: '#00a2ff', transparent: true, opacity: 0.2, depthTest: false, side: THREE.DoubleSide })); rangeFill.rotation.x = -Math.PI / 2; rangeFill.renderOrder = 39; rangeFill.visible = false; scene.add(rangeFill);
+  const pointMark = new THREE.Mesh(new THREE.RingGeometry(5, 8, 32), new THREE.MeshBasicMaterial({ color: '#ff3df2', transparent: true, opacity: 0.95, depthTest: false, side: THREE.DoubleSide })); pointMark.rotation.x = -Math.PI / 2; pointMark.renderOrder = 41; pointMark.visible = false; scene.add(pointMark);
+  const drawRange = (a, b) => { const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y), p = rangeGeo.attributes.position; p.setXYZ(0, x0, 4, -y0); p.setXYZ(1, x1, 4, -y0); p.setXYZ(2, x1, 4, -y1); p.setXYZ(3, x0, 4, -y1); p.needsUpdate = true; rangeLine.visible = true; rangeFill.position.set((x0 + x1) / 2, 3.5, -(y0 + y1) / 2); rangeFill.scale.set(Math.max(1, x1 - x0), Math.max(1, y1 - y0), 1); rangeFill.visible = true; return [x0, y0, x1, y1]; };
+  let capMode = null, justCaptured = false, dragStart = null;
+  const setCap = m => { capMode = m; setNavEnabled(!m); renderer.domElement.style.cursor = m ? 'crosshair' : ''; if ($('an-range')) $('an-range').classList.toggle('active', m === 'range'); if ($('an-pick')) $('an-pick').classList.toggle('active', m === 'point'); };
+  const el0 = renderer.domElement;
+  el0.addEventListener('pointerdown', e => { if (capMode === 'range' && e.button === 0) dragStart = groundPoint(e); });
+  el0.addEventListener('pointerup', e => {
+    if (!capMode) return; justCaptured = true; setTimeout(() => { justCaptured = false; }, 0); const g = groundPoint(e);
+    if (capMode === 'range') { if (dragStart && g) { const r = drawRange(dragStart, g); if ((r[2] - r[0]) * (r[3] - r[1]) > 400) { S.range = r; renderRange(); if (S.tsTarget === 'range') renderTS(); } } dragStart = null; setCap(null); }
+    else if (capMode === 'point' && g) { let best = -1, bd = 60; graph.links.forEach((l, i) => { const h = Math.hypot(l.bx - l.ax, l.by - l.ay); if (h < 1) return; const t = Math.max(0, Math.min(1, ((g.x - l.ax) * (l.bx - l.ax) + (g.y - l.ay) * (l.by - l.ay)) / (h * h))), d = Math.hypot(l.ax + (l.bx - l.ax) * t - g.x, l.ay + (l.by - l.ay) * t - g.y) + Math.abs(graph.nodes[l.a].lv) * 15; if (d < bd) { bd = d; best = i; } }); if (best >= 0) { const l = graph.links[best]; S.tsPoint = { li: best, x: (l.ax + l.bx) / 2, y: (l.ay + l.by) / 2 }; pointMark.position.set(S.tsPoint.x, terrainSampler(S.tsPoint.x, S.tsPoint.y) + 2.5, -S.tsPoint.y); pointMark.visible = true; S.tsTarget = 'point'; if ($('an-ts-target')) $('an-ts-target').value = 'point'; renderTS(); } setCap(null); }
+  });
+  const inRange = (x, y) => S.range && x >= S.range[0] && x <= S.range[2] && y >= S.range[1] && y <= S.range[3];
+  const integrate = v => { if (!v || !S.range) return 0; const x0 = Math.max(0, Math.floor((S.range[0] - BOX[0]) / CELL)), x1 = Math.min(NX, Math.ceil((S.range[2] - BOX[0]) / CELL)), y0 = Math.max(0, Math.floor((S.range[1] - BOX[1]) / CELL)), y1 = Math.min(NY, Math.ceil((S.range[3] - BOX[1]) / CELL)); let s = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const q = v[y * NX + x]; if (q > 0) s += q; } return s * 0.01; };
+  function renderRange() {
+    const el = $('an-range-out'); if (!el) return; if (!S.range || !people.model) { el.innerHTML = '<div class="note" style="margin-top:0">「範囲を選ぶ」を押してから、地図上をドラッグして四角形で囲みます。</div>'; return; }
+    const r = S.range, area = (r[2] - r[0]) * (r[3] - r[1]) / 10000; let nb = 0, nrisk = 0, np = 0; for (const d of people.model.dests) if (d.b >= 0 && inRange(d.x, d.y)) { nb++; if ((buildingMeta[d.b].rk?.[0] ?? 0) >= 0.5) nrisk++; } for (const q of header.poi || []) if (inRange(q.x / 10, q.y / 10)) np++;
+    const prAll = people.model.presence(people.state.hour, day()); let stayIn = 0; people.model.dests.forEach((d, i) => { if (d.b >= 0 && inRange(d.x, d.y) && prAll[i] > 0) stayIn += prAll[i]; });   // 建物の重心が範囲内のものを数える (推移グラフと同じ基準)
+    const row = (n, v, u, src) => `<tr><td>${n}</td><td>${v} ${u}</td><td style="color:#6f84a6">${src}</td></tr>`, hol = people.state.day === 'holiday';
+    el.innerHTML = `<table class="p-table">${row('面積', area.toFixed(1), 'ha', `${Math.round(r[2] - r[0])} × ${Math.round(r[3] - r[1])} m`)}${row('歩行中', fmtN(integrate(rasterOf('ped'))), '人', 'モデル ' + hourTxt())}${row('建物に滞在', fmtN(stayIn), '人', 'モデル ' + hourTxt())}${row(`実測 昼間人口（${hol ? '休日' : '平日'}）`, fmtN(integrate(rasterOf('obs'))), '人', '人流データ 1km 按分')}${row('夜間人口', fmtN(integrate(rasterOf('census'))), '人', '国勢調査 250m 按分')}${row('従業者数', fmtN(integrate(rasterOf('emp'))), '人', '経済センサス 500m 按分')}${row('建物', fmtN(nb), '棟', `うち津波 0.5m 以上 ${fmtN(nrisk)} 棟`)}${row('店舗・施設', fmtN(np), '件', 'OSM')}</table><div class="note" style="margin-top:0">メッシュ統計は、範囲と重なる面積で按分した値です。</div>`;
+  }
+  // ---- 推移 (24 時間の時系列) ----
+  const HOURS = Array.from({ length: 49 }, (_, i) => i * 0.5);
+  const cumCache = new Map();   // モデル・曜日ごと: 各クラスの時刻別の発生量と累積
+  function classSeries(model, dayKey) {
+    const k = dayKey + '|' + people.state.rain + '|' + people.state.event; let e = cumCache.get(model); if (e && e.k === k) return e.v; const dd = people.dayOf(dayKey);
+    const v = model.classes.map(c => { const rate = HOURS.map(h => c.rate(Math.min(h, 23.99), dd)), cum = new Float32Array(HOURS.length); let s = 0; for (let i = 0; i < HOURS.length; i++) { if (HOURS[i] > 4) s += (rate[i] + rate[i - 1]) / 2 * 0.5; cum[i] = s; } return { rate, cum }; });
+    cumCache.set(model, { k, v }); return v;
+  }
+  function seriesOf(model, dayKey) {   // 現在の対象について [{n, v[49]}] を返す
+    const cs = classSeries(model, dayKey), dd = people.dayOf(dayKey), T = S.tsTarget, sel = getSel(), zero = () => new Float32Array(HOURS.length);
+    if (T === 'bldg' && sel && sel.bid >= 0) {
+      const d = model.dests.find(x => buildingMeta[sel.bid]?.runtime ? x.extra : x.b === sel.bid); if (!d) return null; const pres = zero(), arr = zero(), lev = zero();
+      model.classes.forEach((c, ci) => { const sh = c.share?.[d.idx]; if (!sh) return; for (let i = 0; i < HOURS.length; i++) { if (c.dir === 'out') { arr[i] += cs[ci].rate[i] * sh; pres[i] += cs[ci].cum[i] * sh; } else { lev[i] += cs[ci].rate[i] * sh; pres[i] -= cs[ci].cum[i] * sh; } } });
+      return { title: buildingMeta[sel.bid].n ?? '（名称なし）', unit: '人・人/時', lines: [{ n: '滞在（人）', v: pres.map(x => Math.max(0, x)) }, { n: '来る（人/時）', v: arr }, { n: '出る（人/時）', v: lev }] };
+    }
+    if (T === 'point' && S.tsPoint) { const li = S.tsPoint.li, v = zero(); model.classes.forEach((c, ci) => { const u = c.U[li]; if (u > 0) for (let i = 0; i < HOURS.length; i++) v[i] += cs[ci].rate[i] * u; }); const l = graph.links[li]; return { title: `地点 (${Math.round(S.tsPoint.x)}, ${Math.round(S.tsPoint.y)})・幅員 ${l.w} m${l.cross ? '・横断歩道' : ''}${l.cov ? '・屋根あり' : ''}`, unit: '人/時', lines: [{ n: '通行量（人/時）', v }], width: l.w }; }
+    if (T === 'range' && S.range) {
+      const walk = zero(), stay = zero(); const lw = new Float32Array(graph.links.length); graph.links.forEach((l, i) => { if (inRange((l.ax + l.bx) / 2, (l.ay + l.by) / 2)) lw[i] = Math.hypot(l.bx - l.ax, l.by - l.ay) / (WALK_SPEED * 3600); });
+      const inb = model.dests.map(d => d.b >= 0 && inRange(d.x, d.y));
+      model.classes.forEach((c, ci) => { let k = 0; for (let i = 0; i < lw.length; i++) if (lw[i] > 0 && c.U[i] > 0) k += lw[i] * c.U[i]; let sh = 0; if (c.share) for (let i = 0; i < inb.length; i++) if (inb[i]) sh += c.share[i]; const sg = c.dir === 'out' ? 1 : -1; for (let i = 0; i < HOURS.length; i++) { walk[i] += cs[ci].rate[i] * k; if (sh) stay[i] += sg * cs[ci].cum[i] * sh; } });
+      return { title: `選んだ範囲（${((S.range[2] - S.range[0]) * (S.range[3] - S.range[1]) / 10000).toFixed(1)} ha）`, unit: '人', lines: [{ n: '建物に滞在（人）', v: stay.map(x => Math.max(0, x)) }, { n: '歩行中（人）', v: walk }] };
+    }
+    const v = zero(); model.classes.forEach((c, ci) => { for (let i = 0; i < HOURS.length; i++) v[i] += cs[ci].rate[i] * c.meanDist / WALK_SPEED / 3600; }); return { title: '対象範囲の全体', unit: '人', lines: [{ n: '歩行中（人）', v }] };
+  }
+  function renderTS() {
+    const el = $('an-ts'); if (!el || !people.model) return; const ps = people.state, main = seriesOf(people.model, ps.day);
+    if (!main) { el.innerHTML = `<div class="note">${S.tsTarget === 'bldg' ? '建物をクリックして選択してください。' : S.tsTarget === 'point' ? '「地点を選ぶ」を押してから、地図上の歩行者経路の近くをクリックしてください。' : '「比較」タブで範囲を選んでください。'}</div>`; return; }
+    const other = S.tsOther ? seriesOf(people.model, ps.day === 'weekday' ? 'holiday' : 'weekday') : null, base = people.base !== people.model ? seriesOf(people.base, ps.day) : null;
+    const COL = ['#ffd94d', '#4da3ff', '#ff6f91'], W = 312, H = 150, L = 34, B = 16, T = 6, R = 6; let mx = 1; for (const s of [main, other, base]) if (s) for (const l of s.lines) for (const x of l.v) if (x > mx) mx = x;
+    const X = h => L + h / 24 * (W - L - R), Y = v => H - B - v / mx * (H - B - T), path = v => 'M' + Array.from(v, (x, i) => `${X(HOURS[i]).toFixed(1)},${Y(x).toFixed(1)}`).join('L');
+    let g = ''; for (const t of [0.25, 0.5, 0.75, 1]) g += `<line x1="${L}" y1="${Y(t * mx)}" x2="${W - R}" y2="${Y(t * mx)}" stroke="rgba(120,180,255,.12)"/><text x="${L - 3}" y="${Y(t * mx) + 2}" font-size="7" fill="#7d93b5" text-anchor="end">${fmt(t * mx)}</text>`; for (const h of [0, 6, 12, 18, 24]) g += `<text x="${X(h)}" y="${H - 4}" font-size="7" fill="#7d93b5" text-anchor="middle">${h}時</text>`;
+    let p = ''; if (base) base.lines.forEach((l, i) => { p += `<path d="${path(l.v)}" fill="none" stroke="#9aa3b5" stroke-width="1" stroke-dasharray="1 2"/>`; }); if (other) other.lines.forEach((l, i) => { p += `<path d="${path(l.v)}" fill="none" stroke="${COL[i % 3]}" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>`; }); main.lines.forEach((l, i) => { p += `<path d="${path(l.v)}" fill="none" stroke="${COL[i % 3]}" stroke-width="1.6"/>`; });
+    const idx = Math.round(ps.hour * 2), peakI = main.lines[0].v.reduce((b, x, i, a) => x > a[b] ? i : b, 0), dn = ps.day === 'weekday' ? '平日' : '休日', on = ps.day === 'weekday' ? '休日' : '平日';
+    let extra = ''; if (main.width) { const f = main.lines[0].v[peakI] / (60 * main.width), lo = LOS.find(q => f < q.max) ?? LOS[LOS.length - 1]; extra = ` ／ ピーク時の混雑度 <b style="color:${lo.c}">${lo.k}</b>（${f.toFixed(0)} 人/m/分）`; }
+    el.innerHTML = `<div class="an-title">${main.title}</div><svg id="an-ts-svg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block;cursor:pointer"><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - B - T}" fill="rgba(60,90,140,.12)"/>${g}${p}<line x1="${X(ps.hour)}" y1="${T}" x2="${X(ps.hour)}" y2="${H - B}" stroke="#fff" stroke-width="1"/></svg>
+      <div class="legend">${main.lines.map((l, i) => `<span><i style="background:${COL[i % 3]}"></i>${l.n} いま ${fmtN(l.v[idx] ?? 0)}</span>`).join('')}</div>
+      <div class="note" style="margin-top:2px">実線 = ${dn}${other ? `、破線 = ${on}` : ''}${base ? '、点線 = 通常時（シナリオなし）' : ''}。ピークは ${Math.floor(HOURS[peakI])}:${HOURS[peakI] % 1 ? '30' : '00'} 頃 ${fmtN(main.lines[0].v[peakI])}${extra}。グラフをクリックするとその時刻に移動します。</div>`;
+    $('an-ts-svg').addEventListener('click', e => { const r = $('an-ts-svg').getBoundingClientRect(), h = ((e.clientX - r.left) / r.width * W - L) / (W - L - R) * 24; setClock(Math.max(0, Math.min(23.75, Math.round(h * 4) / 4))); });
+  }
   // ---- パネル ----
   function buildPanel() {
     const el = $('analysis'); if (!el) return;
-    const opt = (o, sel) => Object.entries(o).map(([k, v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${v.n}</option>`).join('');
+    const opt = (o, sel, f = () => true) => Object.entries(o).filter(([k, v]) => f(k, v)).map(([k, v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${v.n}</option>`).join('');
     const badge = { use: ['使用中', '#2fb27a'], can: ['取得可・未使用', '#ffb648'], none: ['対象エリアに無い', '#8a93a6'] };
-    el.innerHTML = `<div class="an-head"><b>分析</b><div class="an-tabs"><button data-tab="heat" class="active">ヒート</button><button data-tab="bldg">建物内</button><button data-tab="rank">集計</button><button data-tab="data">データ</button></div><button id="an-toggle" title="たたむ">−</button></div>
+    el.innerHTML = `<div class="an-head"><b>分析</b><div class="an-tabs"><button data-tab="heat" class="active">ヒート</button><button data-tab="cmp">比較</button><button data-tab="ts">推移</button><button data-tab="bldg">建物内</button><button data-tab="rank">集計</button><button data-tab="data">データ</button></div><button id="an-toggle" title="たたむ">−</button></div>
       <div class="an-body">
         <div data-pane="heat">
           <div class="sec-title">地表のヒートマップ</div><select id="an-layer" class="p-select" style="width:100%">${opt(LAYERS, S.layer)}</select>
@@ -212,6 +339,25 @@ export function initAnalysis(ctx) {
           <div class="sec-title" style="margin-top:8px">建物の色分け</div><select id="an-bmetric" class="p-select" style="width:100%">${opt(BM, S.bmetric)}</select>
           <div id="an-blegend"></div>
         </div>
+        <div data-pane="cmp" style="display:none">
+          <div class="sec-title">画面を左右に分けて 2 つの指標を比べる</div>
+          <label class="row"><input type="checkbox" id="an-split" /><span class="chip chip-outline"></span>画面分割（左 =「ヒート」で選んだ指標）</label>
+          <div class="cal-row"><span>右側</span><select id="an-layer2" class="p-select">${opt(LAYERS, S.layer2, (k, v) => v.make)}</select></div>
+          <div class="sec-title" style="margin-top:6px">差分ヒートマップ（「ヒート」の指標に適用）</div><select id="an-diff" class="p-select" style="width:100%">${opt(DIFFS, S.diff)}</select>
+          <div class="sec-title" style="margin-top:8px">散布図（指標どうしの関係）</div>
+          <div class="seg-row" id="an-scunit"><button data-u="mesh" class="active">250m メッシュ</button><button data-u="bldg">建物</button></div>
+          <div class="cal-row"><span>横軸</span><select id="an-scx" class="p-select"></select></div><div class="cal-row"><span>縦軸</span><select id="an-scy" class="p-select"></select></div>
+          <div id="an-scatter"></div>
+          <div class="sec-title" style="margin-top:8px">範囲を囲んで集計</div>
+          <div class="btn-row" style="margin:2px 0 4px"><button id="an-range">範囲を選ぶ（地図をドラッグ）</button><button id="an-range-clear" style="flex:0 0 60px">解除</button></div>
+          <div id="an-range-out"></div>
+        </div>
+        <div data-pane="ts" style="display:none">
+          <div class="cal-row"><span>対象</span><select id="an-ts-target" class="p-select"><option value="all">対象範囲の全体</option><option value="bldg">選択中の建物</option><option value="point">地点（区間の通行量）</option><option value="range">選んだ範囲</option></select></div>
+          <div class="btn-row" style="margin:2px 0 4px"><button id="an-pick">地点を選ぶ（地図をクリック）</button></div>
+          <label class="row"><input type="checkbox" id="an-ts-other" checked /><span class="chip chip-outline"></span>平日と休日を重ねる</label>
+          <div id="an-ts"></div>
+        </div>
         <div data-pane="bldg" style="display:none"><div id="an-bldg"></div></div>
         <div data-pane="rank" style="display:none"><div id="an-rank"></div></div>
         <div data-pane="data" style="display:none"><div class="note" style="margin-top:0">公開されているデータを調べ、使えるものを取り込みました。</div>${CATALOG.map(c => `<div class="an-ds"><span class="an-badge" style="background:${badge[c.s][1]}">${badge[c.s][0]}</span><b>${c.n}</b><div>${c.by} ／ ${c.g}</div><div class="an-use">${c.u}</div></div>`).join('')}</div>
@@ -219,29 +365,50 @@ export function initAnalysis(ctx) {
     el.querySelectorAll('.an-tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
     $('an-toggle').addEventListener('click', () => { S.open = !S.open; el.classList.toggle('closed', !S.open); $('an-toggle').textContent = S.open ? '−' : '＋'; });
     $('an-layer').addEventListener('change', e => { S.layer = e.target.value; paint(); });
-    $('an-opacity').addEventListener('input', e => { S.opacity = Number(e.target.value); heat.material.opacity = S.opacity; });
+    $('an-opacity').addEventListener('input', e => { S.opacity = Number(e.target.value); heat.material.opacity = heat2.material.opacity = S.opacity; });
     $('an-bmetric').addEventListener('change', e => { S.bmetric = e.target.value; paintBuildings(); });
-    renderLegend(); renderBuilding();
+    $('an-split').addEventListener('change', e => { S.split = e.target.checked; if (S.split && S.layer === 'none') { S.layer = 'stay'; $('an-layer').value = 'stay'; } paint(); });
+    $('an-layer2').addEventListener('change', e => { S.layer2 = e.target.value; paint2(); });
+    $('an-diff').addEventListener('change', e => { S.diff = e.target.value; if (S.diff !== 'none' && S.layer === 'none') { S.layer = 'ped'; $('an-layer').value = 'ped'; } paint(); });
+    const fillSc = () => { const src = S.scUnit === 'mesh' ? LAYERS : BM, ok = S.scUnit === 'mesh' ? (k, v) => v.make : (k, v) => v.val && !v.cat; if (!src[S.scX] || !ok(S.scX, src[S.scX])) S.scX = S.scUnit === 'mesh' ? 'emp' : 'height'; if (!src[S.scY] || !ok(S.scY, src[S.scY])) S.scY = S.scUnit === 'mesh' ? 'stay' : 'presence'; $('an-scx').innerHTML = opt(src, S.scX, ok); $('an-scy').innerHTML = opt(src, S.scY, ok); };
+    fillSc();
+    el.querySelectorAll('#an-scunit button').forEach(b => b.addEventListener('click', () => { S.scUnit = b.dataset.u; el.querySelectorAll('#an-scunit button').forEach(x => x.classList.toggle('active', x === b)); fillSc(); renderScatter(); }));
+    $('an-scx').addEventListener('change', e => { S.scX = e.target.value; renderScatter(); }); $('an-scy').addEventListener('change', e => { S.scY = e.target.value; renderScatter(); });
+    $('an-range').addEventListener('click', () => setCap(capMode === 'range' ? null : 'range'));
+    $('an-range-clear').addEventListener('click', () => { S.range = null; rangeLine.visible = rangeFill.visible = false; setCap(null); renderRange(); });
+    $('an-ts-target').addEventListener('change', e => { S.tsTarget = e.target.value; renderTS(); });
+    $('an-pick').addEventListener('click', () => setCap(capMode === 'point' ? null : 'point'));
+    $('an-ts-other').addEventListener('change', e => { S.tsOther = e.target.checked; renderTS(); });
+    // 画面分割の境界線 (ドラッグで移動)
+    const dv = document.createElement('div'); dv.id = 'an-divider'; dv.innerHTML = '<span class="an-dl"></span><span class="an-dr"></span>'; document.body.appendChild(dv);
+    dv.addEventListener('pointerdown', e => { e.preventDefault(); dv.setPointerCapture(e.pointerId); const mv = ev => { const r = renderer.domElement.getBoundingClientRect(); S.splitX = Math.max(0.05, Math.min(0.95, (ev.clientX - r.left) / r.width)); placeDivider(); }; const up = () => { dv.removeEventListener('pointermove', mv); dv.removeEventListener('pointerup', up); }; dv.addEventListener('pointermove', mv); dv.addEventListener('pointerup', up); });
+    addEventListener('resize', () => { if (cur2) placeDivider(); });
+    renderLegend(); renderBuilding(); renderRange();
   }
-  function setTab(tab) { S.tab = tab; const el = $('analysis'); el.querySelectorAll('.an-tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); el.querySelectorAll('[data-pane]').forEach(p => { p.style.display = p.dataset.pane === tab ? '' : 'none'; }); if (tab === 'rank') renderRank(); if (tab === 'bldg') renderBuilding(); }
+  function setTab(tab) { S.tab = tab; const el = $('analysis'); el.querySelectorAll('.an-tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); el.querySelectorAll('[data-pane]').forEach(p => { p.style.display = p.dataset.pane === tab ? '' : 'none'; }); if (tab === 'rank') renderRank(); if (tab === 'bldg') renderBuilding(); if (tab === 'cmp') { renderScatter(); renderRange(); } if (tab === 'ts') renderTS(); }
   // カーソル位置の値
-  const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -3), hit = new THREE.Vector3(), ndc = new THREE.Vector2(); let lastMove = 0;
-  renderer.domElement.addEventListener('pointermove', e => {
-    if (!cur || performance.now() - lastMove < 80) return; lastMove = performance.now(); const r = renderer.domElement.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, getCamera());
-    const el = $('an-hover'); if (!el) return; if (!ray.ray.intersectPlane(plane, hit)) { el.textContent = ''; return; } const c = cellOf(hit.x, -hit.z); const v = c >= 0 ? cur.v[c] : -1;
-    el.innerHTML = c < 0 || (cur.L.zeroOk ? v < 0 : v <= 0) ? 'カーソル位置: 値なし' : `カーソル位置: <b>${fmt(v)}</b> ${cur.unit}`;
+  let lastMove = 0;
+  el0.addEventListener('pointermove', e => {
+    if (dragStart && capMode === 'range') { const g = groundPoint(e); if (g) drawRange(dragStart, g); return; }
+    if (!cur || performance.now() - lastMove < 80) return; lastMove = performance.now(); const el = $('an-hover'); if (!el) return; const g = groundPoint(e); if (!g) { el.textContent = ''; return; }
+    const c = cellOf(g.x, g.y), val = (q, right) => { const v = c >= 0 ? q.v[c] : NaN; return !(c >= 0) || (q.diff ? false : q.L.zeroOk ? v < 0 : v <= 0) ? '値なし' : `<b>${q.diff && v > 0 ? '+' : ''}${fmt(Math.abs(v) < 1e-9 ? 0 : v)}</b> ${q.unit}`; };
+    el.innerHTML = cur2 ? `カーソル位置: 左 ${val(cur)} ／ 右 ${val(cur2)}` : `カーソル位置: ${val(cur)}`;
   });
   // 時刻・曜日・シナリオが変わったら、時刻に依存する表示を更新する
   let sig = '', tAcc = 0;
   function update(dt) {
     tAcc += dt; if (tAcc < 0.6 || !people.model) return; tAcc = 0; const ps = people.state, s = `${Math.round(ps.hour * 4)}|${ps.day}|${ps.rain}|${ps.event}|${people.model.dests.length}`; if (s === sig) return; const dayCh = sig.split('|')[1] !== ps.day || sig.split('|').slice(2).join() !== s.split('|').slice(2).join(); sig = s;
-    const L = LAYERS[S.layer]; if (L.make && (L.time || (L.dayDep && dayCh))) paint();
+    const L = LAYERS[S.layer]; if (L.make && (L.time || (L.dayDep && dayCh))) paint(); else { const L2 = LAYERS[S.layer2]; if (S.split && L2?.make && (L2.time || (L2.dayDep && dayCh))) paint2(); }
     const M = BM[S.bmetric]; if (M.val && (M.time || (M.dayDep && dayCh))) paintBuildings();
-    if (S.tab === 'rank') renderRank(); if (S.tab === 'bldg') { renderBuilding(); if (S.floorHeat) applyFloorHeat(); }
+    if (S.tab === 'rank') renderRank(); if (S.tab === 'bldg') { renderBuilding(); if (S.floorHeat) applyFloorHeat(); } if (S.tab === 'cmp') { renderScatter(); renderRange(); } if (S.tab === 'ts') renderTS();
   }
-  function onSelect(bid) { if (bid >= 0 && S.floorHeat) setTimeout(applyFloorHeat, 0); if (S.tab === 'bldg' || bid >= 0) setTimeout(renderBuilding, 0); }
+  function onSelect(bid) { if (bid >= 0 && S.floorHeat) setTimeout(applyFloorHeat, 0); if (S.tab === 'bldg' || bid >= 0) setTimeout(renderBuilding, 0); if (S.tab === 'ts' && S.tsTarget === 'bldg') setTimeout(renderTS, 0); }
   onTheme(t => { S.dark = new THREE.Color(t.bg).getHSL({}).l < 0.3 && !t.real; if (cur) paint(); if (bcur) paintBuildings(); });
   buildPanel();
-  const set = o => { Object.assign(S, o); if ('layer' in o) { if ($('an-layer')) $('an-layer').value = S.layer; paint(); } if ('bmetric' in o) { if ($('an-bmetric')) $('an-bmetric').value = S.bmetric; paintBuildings(); } if ('tab' in o) setTab(S.tab); if ('floorHeat' in o) { applyFloorHeat(); renderBuilding(); } };
-  return { update, onSelect, set, state: S, LAYERS, BM, floorStats, exportBuildings, exportLinks, exportMesh, get current() { return cur; } };
+  const set = o => {
+    Object.assign(S, o); if ('layer' in o || 'diff' in o) { if ($('an-layer')) $('an-layer').value = S.layer; if ($('an-diff')) $('an-diff').value = S.diff; paint(); } if ('split' in o || 'layer2' in o || 'splitX' in o) { if ($('an-split')) $('an-split').checked = S.split; if ($('an-layer2')) $('an-layer2').value = S.layer2; paint(); }
+    if ('bmetric' in o) { if ($('an-bmetric')) $('an-bmetric').value = S.bmetric; paintBuildings(); } if ('range' in o) { if (S.range) drawRange({ x: S.range[0], y: S.range[1] }, { x: S.range[2], y: S.range[3] }); else rangeLine.visible = rangeFill.visible = false; renderRange(); }
+    if ('tsTarget' in o) { if ($('an-ts-target')) $('an-ts-target').value = S.tsTarget; } if ('tab' in o) setTab(S.tab); else if (S.tab === 'ts') renderTS(); else if (S.tab === 'cmp') renderScatter(); if ('floorHeat' in o) { applyFloorHeat(); renderBuilding(); }
+  };
+  return { update, onSelect, set, state: S, LAYERS, BM, floorStats, exportBuildings, exportLinks, exportMesh, capturing: () => capMode !== null || justCaptured, seriesOf, scatterData, get current() { return cur; }, get current2() { return cur2; } };
 }

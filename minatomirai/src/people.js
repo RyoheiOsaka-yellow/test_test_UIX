@@ -223,5 +223,5 @@ export function initPeople(ctx) {
   }
   // 建物ごとの出入り (駅との間の歩行者のみ) と滞在人数
   function buildingFlows(b) { if (!model) return null; const d = model.dests.find(x => (b === -2 ? x.extra : x.b === b)); if (!d) return null; const dd = day(); const f = model.destFlows(d.idx, S.hour, dd); let peak = 0, ph = 0; for (let h = 5; h < 24; h += 0.5) { const g = model.destFlows(d.idx, h, dd); if (g.arrive + g.leave > peak) { peak = g.arrive + g.leave; ph = h; } } return { ...f, peak, peakHour: ph, use: d.u, dest: d, presence: Math.max(0, model.presence(S.hour, dd)[d.idx]) }; }
-  return { rebuild, update, refreshHeights, setTheme, setHour, set, monthChanged, state: S, buildingFlows, day, stat, get model() { return model; }, get base() { return base; }, get count() { return count; }, get waiting() { return waiting; }, get maxVol() { return stat.maxVol; }, get simT() { return simT; } };
+  return { rebuild, update, refreshHeights, setTheme, setHour, set, monthChanged, state: S, buildingFlows, day, dayOf: key => dayContext(key, getMonth(), calib), stat, get model() { return model; }, get base() { return base; }, get count() { return count; }, get waiting() { return waiting; }, get maxVol() { return stat.maxVol; }, get simT() { return simT; } };
 }
