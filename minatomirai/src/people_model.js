@@ -169,9 +169,10 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
     // 平日と休日の 1 日の量 (往復の延べ人数)。休日は総量 (× hT) から車とバスを引いた残りを徒歩などに回す
     const wk = M ? { car: Math.min(extra * 0.8, 2 * M.carPersons.weekday), bus: Math.min(extra * 0.8, 2 * M.busPersons.weekday) } : { car: extra * 0.5, bus: extra * 0.15 }; wk.walk = Math.max(0, extra - wk.car - wk.bus);
     const hol = M ? { car: Math.min(extra * hT * 0.8, 2 * M.carPersons.holiday), bus: Math.min(extra * hT * 0.8, 2 * M.busPersons.holiday) } : { car: wk.car * hT, bus: wk.bus * hT }; hol.walk = Math.max(0, extra * hT - hol.car - hol.bus);
-    for (const md of [{ id: 'car', n: '駐車場（車）', src: snapAll(header.parking) }, { id: 'bus', n: 'バス停', src: snapAll(header.busStops) }, { id: 'walk', n: '徒歩・自転車・その他', src: gate }]) {
+    const hw = M?.bus?.hourly?.length === 24 ? (() => { const m = M.bus.hourly.reduce((a, b) => a + b, 0) / 24; return m > 0 ? M.bus.hourly.map(v => v / m) : null; })() : null;
+    for (const md of [{ id: 'car', n: '駐車場（車）', src: snapAll([...(header.parking || []), ...(M?.parking?.points || [])]) }, { id: 'bus', n: 'バス停', src: snapAll(header.busStops), hourW: hw }, { id: 'walk', n: '徒歩・自転車・その他', src: gate }]) {
       if (!md.src.length || wk[md.id] <= 0) continue; let sx = 0, sy = 0; for (const i of md.src) { sx += nodes[i].x; sy += nodes[i].y; }
-      stations.push({ id: md.id, n: md.n, daily: wk[md.id], dayMul: { weekday: 1, holiday: hol[md.id] / (wk[md.id] * hT) }, share: wk[md.id] / extra, src: md.src, x: sx / md.src.length, y: sy / md.src.length, out: tree(md.src, fadj), in: tree(md.src, radj), nonRail: true, assumed: true, est: !!M, srcNote: M ? '公開データからの見積もり' : '仮定' });
+      stations.push({ id: md.id, n: md.n, hourW: md.hourW ?? null, daily: wk[md.id], dayMul: { weekday: 1, holiday: hol[md.id] / (wk[md.id] * hT) }, share: wk[md.id] / extra, src: md.src, x: sx / md.src.length, y: sy / md.src.length, out: tree(md.src, fadj), in: tree(md.src, radj), nonRail: true, assumed: true, est: !!M, srcNote: M ? '公開データからの見積もり' : '仮定' });
     }
   }
   // ---- 目的地 (建物・公園・追加の建物) ----
@@ -231,10 +232,13 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
       const { U, md } = accumulate(T, nodeP);
       // 人の向き: 通勤・来街は out=到着 / in=帰り。住民は in=出発 (朝) / out=帰宅 (夕)
       const profKey = purpose === 'resident' ? (dir === 'in' ? 'residentOut' : 'residentIn') : purpose + (dir === 'out' ? 'In' : 'Out');
+      // 時間帯別の便数が分かる手段 (バスの GTFS) は、目的別の時間帯分布に便数の重みを掛ける (1 日の合計は変えない)
+      let hourK = null;
+      if (S.hourW) { const P = PROFILE[profKey]; let z0 = 0, z = 0; for (let h = 0.25; h < 24; h += 0.5) { const q = prof(P, h); z0 += q; z += q * S.hourW[Math.floor(h)]; } if (z > 0) hourK = h => S.hourW[Math.floor(((h % 24) + 24) % 24)] * z0 / z; }
       const cache = new Map();
       classes.push({
         key: `${S.id}:${purpose}:${dir}`, station: si, purpose, dir, group: purpose === 'commute' ? 0 : purpose === 'visit' ? 1 : 2, U, meanDist: md, share,
-        rate: (h, day) => S.daily / 2 * (S.dayMul?.[day.key] ?? 1) * day.total * day[purpose] * (purpose === 'visit' ? mVisit : 1) * prof(PROFILE[profKey], h),
+        rate: (h, day) => S.daily / 2 * (S.dayMul?.[day.key] ?? 1) * day.total * day[purpose] * (purpose === 'visit' ? mVisit : 1) * prof(PROFILE[profKey], h) * (hourK ? hourK(h) : 1),
         sample: rnd => {
           const r = rnd() * sum; let lo = 0, hi = cdf.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < r) lo = mid + 1; else hi = mid; }
           const nd = nds[lo]; let p = cache.get(nd); if (!p) cache.set(nd, p = dir === 'out' ? pathOut(T, nd) : pathIn(T, nd)); return p;

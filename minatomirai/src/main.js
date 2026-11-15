@@ -1692,10 +1692,10 @@ const decodeState = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/
 function getViewState() {
   const r1 = v => Math.round(v * 10) / 10, ps = people.state;
   return { v: 1, th: styleName, h: realState.hour, mo: realState.month, cam: [...camera.position.toArray().map(r1), ...controls.target.toArray().map(r1)], sel: sel.bid >= 0 ? (buildingMeta[sel.bid].n ?? sel.bid) : null, gap: r1(selUniforms.uGap.value),
-    pp: { on: ps.on, day: ps.day, rain: ps.rain, event: ps.event, ribbon: ps.ribbon, signals: ps.signals, agents: ps.agents, vol: ps.vol, look: ps.look, nonRail: ps.nonRail, accel: ps.accel, meshes: ps.meshes }, an: analysis.exportState(), ind: { flow: indoor.state.flow, on: indoor.state.on } };
+    pp: { on: ps.on, day: ps.day, rain: ps.rain, event: ps.event, ribbon: ps.ribbon, signals: ps.signals, agents: ps.agents, vol: ps.vol, look: ps.look, nonRail: ps.nonRail, accel: ps.accel, meshes: ps.meshes, waits: ps.waits }, an: analysis.exportState(), ind: { flow: indoor.state.flow, on: indoor.state.on } };
 }
 function syncPeopleUI() {
-  const $ = id => document.getElementById(id), ps = people.state; $('p-rain').checked = ps.rain; $('p-event').value = ps.event ?? ''; $('p-signal').checked = ps.signals; $('p-agents').checked = ps.agents; $('p-vol').checked = ps.vol; $('p-mesh').checked = ps.meshes; $('p-nonrail').checked = ps.nonRail; $('p-accel').value = ps.accel; $('p-accel-v').textContent = `×${ps.accel}`; $('p-indoor').checked = indoor.state.on;
+  const $ = id => document.getElementById(id), ps = people.state; $('p-rain').checked = ps.rain; $('p-event').value = ps.event ?? ''; $('p-signal').checked = ps.signals; $('p-waits').checked = ps.waits; $('p-agents').checked = ps.agents; $('p-vol').checked = ps.vol; $('p-mesh').checked = ps.meshes; $('p-nonrail').checked = ps.nonRail; $('p-accel').value = ps.accel; $('p-accel-v').textContent = `×${ps.accel}`; $('p-indoor').checked = indoor.state.on;
   document.querySelectorAll('#p-ribbon button').forEach(b => b.classList.toggle('active', b.dataset.r === ps.ribbon)); document.querySelectorAll('#p-day button').forEach(b => b.classList.toggle('active', b.dataset.day === ps.day)); document.querySelectorAll('#p-look button').forEach(b => b.classList.toggle('active', b.dataset.l === ps.look)); document.querySelectorAll('#flow-presets button').forEach(b => b.classList.toggle('active', b.dataset.h === 'off' && !ps.on));
 }
 function applyViewState(st) {
@@ -1722,7 +1722,7 @@ function initPeopleUI() {
   $('p-event').addEventListener('change', e => { people.set({ event: e.target.value || null }); if (indoor && sel.bid >= 0) indoor.setBuilding(sel.bid); });
   $('p-rain').addEventListener('change', e => { people.set({ rain: e.target.checked }); if (indoor && sel.bid >= 0) indoor.setBuilding(sel.bid); });
   document.querySelectorAll('#p-ribbon button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#p-ribbon button').forEach(x => x.classList.toggle('active', x === b)); people.set({ ribbon: b.dataset.r }); }));
-  $('p-signal').addEventListener('change', e => people.set({ signals: e.target.checked })); $('p-mesh').addEventListener('change', e => people.set({ meshes: e.target.checked }));
+  $('p-signal').addEventListener('change', e => people.set({ signals: e.target.checked })); $('p-waits').addEventListener('change', e => people.set({ waits: e.target.checked })); $('p-mesh').addEventListener('change', e => people.set({ meshes: e.target.checked }));
   $('p-indoor').addEventListener('change', e => indoor.set({ on: e.target.checked }));
   $('p-nonrail').addEventListener('change', e => { people.set({ nonRail: e.target.checked }); if (indoor && sel.bid >= 0) indoor.setBuilding(sel.bid); });
   document.querySelectorAll('#p-look button').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('#p-look button').forEach(x => x.classList.toggle('active', x === b)); people.set({ look: b.dataset.l }); }));
@@ -1815,7 +1815,8 @@ async function init() {
   analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T, setNavEnabled: v => { activeControls.enabled = v; }, setClock: h => setClock(h), guides: () => [...floorGuide], flows, share: { get: getViewState, apply: applyViewState, hash: () => '#s=' + encodeState(getViewState()), link: () => location.href.split('#')[0] + '#s=' + encodeState(getViewState()) }, snapshot: () => { composer.render(); try { return canvas.toDataURL('image/jpeg', 0.86); } catch (e) { return null; } }, realMonth: () => realState.month });
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
   roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState, graph, carStop: li => people ? people.carStop(li) : false, timeScale: () => people ? people.timeScale() : 1 });
-  tour = initTour({ getViewState, applyViewState, flyTo: (p, t, instant) => { introStart = null; if (instant) { fly = null; camera.position.copy(p); controls.target.copy(t); controls.update(); } else { flyTo(p, t); fly.ms = 2200; } }, people, buildingMeta, terrainSampler });
+  tour = initTour({ getViewState, applyViewState, flyTo: (p, t, instant) => { introStart = null; if (instant) { fly = null; camera.position.copy(p); controls.target.copy(t); controls.update(); } else { flyTo(p, t); fly.ms = 2200; } }, people, buildingMeta, terrainSampler, onChange: n => { document.getElementById('btn-tour').textContent = `▶ ガイドツアー（${n} 場面）`; } });
+  document.getElementById('btn-tour').textContent = `▶ ガイドツアー（${tour.count} 場面）`;
   document.getElementById('btn-tour').addEventListener('click', () => tour.active ? tour.stop() : tour.start());
   initRealUI();
   applyTheme(styleName);

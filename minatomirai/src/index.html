@@ -103,6 +103,12 @@ canvas { display: block; }
 .tour-btns button:hover:not(:disabled) { background: rgba(80, 130, 200, 0.45); color: #fff; }
 .tour-btns button:disabled { opacity: 0.35; cursor: default; }
 .tour-btns button.active { background: rgba(0, 183, 217, 0.35); border-color: #00e5ff; color: #fff; }
+.tour-mini { font-size: 11px !important; color: #9fb3d1 !important; border: 1px solid rgba(120, 180, 255, 0.3) !important; border-radius: 5px; padding: 2px 8px; }
+.tour-mini.active { background: rgba(0, 183, 217, 0.35); border-color: #00e5ff !important; color: #fff !important; }
+.tour-in { width: 100%; box-sizing: border-box; margin: 6px 0 0; padding: 5px 8px; font: inherit; font-size: 12.5px; line-height: 1.6; color: #e8f0fb; background: rgba(20, 30, 52, 0.9); border: 1px solid rgba(120, 180, 255, 0.35); border-radius: 6px; resize: vertical; }
+.tour-small { margin-top: 6px; }
+.tour-small button { font-size: 11px; padding: 4px 0; }
+.tour-dots i.own { box-shadow: 0 0 0 1.5px #ffb347; }
 .tour-bar { height: 2px; margin-top: 8px; background: rgba(120, 180, 255, 0.15); border-radius: 1px; overflow: hidden; }
 .tour-bar i { display: block; height: 100%; width: 0; background: #00e5ff; }
 body.touring #credit { display: none; }
@@ -254,6 +260,7 @@ body.touring #credit { display: none; }
         <label class="row"><input type="checkbox" id="p-vol" checked /><span class="chip" style="background:linear-gradient(90deg,#2b6cff,#ffd84a,#ff2a30)"></span>帯を表示</label>
         <div class="seg-row" id="p-ribbon" style="margin:2px 0 4px"><button data-r="volume" class="active">通行量</button><button data-r="los">混雑度</button><button data-r="diff">通常との差</button></div>
         <label class="row"><input type="checkbox" id="p-signal" checked /><span class="chip chip-outline"></span>信号待ち・混雑による減速</label>
+        <label class="row"><input type="checkbox" id="p-waits" /><span class="chip" style="background:#ffb347"></span>信号待ちの人数を柱で表示</label>
         <label class="row"><input type="checkbox" id="p-indoor" checked /><span class="chip chip-outline"></span>建物内の人の動き（建物を選択時）</label>
         <div class="sec-title" style="margin-top:6px">シナリオ（通常時と比較）</div>
         <div class="cal-row"><span>イベント</span><select id="p-event" class="p-select"><option value="">なし</option><option value="karena">K アリーナ 公演 2 万人</option><option value="pia">ぴあアリーナ 公演 1 万人</option><option value="pacifico">パシフィコ 展示会 3 万人</option></select></div>

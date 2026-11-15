@@ -17,7 +17,7 @@ const ramp = (t, out, o) => { const x = Math.max(0, Math.min(0.9999, t)) * (RAMP
 export const VOL_MAX = 10000, VOL_MIN = 30;
 const volT = v => Math.log(v / VOL_MIN) / Math.log(VOL_MAX / VOL_MIN);
 // 歩行者サービス水準 (Fruin, 歩行路): 流動係数 = 通行量 / 有効幅員 [人/m/分]
-export const LOS = [{ k: 'A', max: 23, c: '#a9bdd6' }, { k: 'B', max: 33, c: '#1acbd9' }, { k: 'C', max: 49, c: '#7ed957' }, { k: 'D', max: 66, c: '#ffd84a' }, { k: 'E', max: 82, c: '#ff7326' }, { k: 'F', max: Infinity, c: '#ff2a30' }];
+export const LOS = [{ k: 'A', max: 23, c: '#5b8fd9' }, { k: 'B', max: 33, c: '#16c2c9' }, { k: 'C', max: 49, c: '#7ed957' }, { k: 'D', max: 66, c: '#ffd84a' }, { k: 'E', max: 82, c: '#ff7326' }, { k: 'F', max: Infinity, c: '#ff2a30' }];
 const LOSC = LOS.map(l => lin(l.c));
 const losIndex = f => { for (let i = 0; i < LOS.length; i++) if (f < LOS[i].max) return i; return LOS.length - 1; };
 const speedFactor = f => f <= 23 ? 1 : Math.max(0.35, 1 - 0.65 * (f - 23) / (82 - 23));   // LOS A までは自由歩行、F で 35%
@@ -26,7 +26,7 @@ const UP = lin('#ff3b30'), DOWN = lin('#2b6cff');
 
 export function initPeople(ctx) {
   const { scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, extraDest = () => [], onClock, calib = null, getMonth = () => 1 } = ctx;
-  const S = { on: true, hour: 15, day: 'weekday', accel: 8, agents: true, vol: true, per: 1, real: false, dark: false, playing: false, rain: false, event: null, ribbon: 'volume', signals: true, meshes: false, nonRail: true, look: 'dots' };
+  const S = { on: true, hour: 15, day: 'weekday', accel: 8, agents: true, vol: true, per: 1, real: false, dark: false, playing: false, rain: false, event: null, ribbon: 'volume', signals: true, meshes: false, nonRail: true, look: 'dots', waits: false };
   let model = null, base = null, L = 0, simT = 0;
   let gA, gB, dirX, dirY, hLen, visL, vol, baseVol, acc, sf, crossL, sigOff;
   // ---- 歩行者 ----
@@ -48,6 +48,24 @@ export function initPeople(ctx) {
   tgeo.attributes.instanceStart.data.setUsage(THREE.DynamicDrawUsage); tgeo.attributes.instanceColorStart.data.setUsage(THREE.DynamicDrawUsage);
   const tposA = tgeo.attributes.instanceStart.data, tcolA = tgeo.attributes.instanceColorStart.data;
   const trails = new LineSegments2(tgeo, new LineMaterial({ vertexColors: true, linewidth: 2.4, transparent: true, opacity: 0.95, depthWrite: false })); trails.frustumCulled = false; trails.renderOrder = 6; trails.visible = false; trails.name = 'people-trails'; scene.add(trails);
+  // 信号待ちの柱: 待っている人を約 28 m の升目でまとめ、人数を柱の高さと色で示す (人数は時間方向にならす)。上位には人数のラベルを付ける
+  const WCELL = 28, WMAX = 500, waitMap = new Map(); let waitFrame = 0;
+  const wgeo = new THREE.CylinderGeometry(1, 1, 1, 16); wgeo.translate(0, 0.5, 0);
+  const waitBars = new THREE.InstancedMesh(wgeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.88, fog: false }), WMAX); waitBars.instanceMatrix.setUsage(THREE.DynamicDrawUsage); waitBars.count = 0; waitBars.frustumCulled = false; waitBars.renderOrder = 7; waitBars.visible = false; waitBars.name = 'people-wait-bars'; scene.add(waitBars);
+  const waitLabels = Array.from({ length: 6 }, () => { const c = document.createElement('canvas'); c.width = 128; c.height = 44; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, sizeAttenuation: false, fog: false })); sp.scale.set(128 / 44 * 0.024, 0.024, 1); sp.renderOrder = 47; sp.visible = false; sp.userData.c = c; scene.add(sp); return sp; });
+  const W_LO = new THREE.Color('#ffd84a'), W_HI = new THREE.Color('#ff2a30'), wM4 = new THREE.Matrix4(), wCol = new THREE.Color();
+  function drawWaits(sim) {
+    const k = Math.min(1, sim / 20), list = [];
+    for (const [key, e] of waitMap) { e.v = e.fresh ? e.n : e.v + (e.n - e.v) * k; e.fresh = false; if (e.v < 0.02 && e.n === 0) { waitMap.delete(key); continue; } const persons = e.v * S.per; if (persons >= 1) list.push([persons, e]); }
+    list.sort((a, b) => b[0] - a[0]); let n = 0;
+    for (const [persons, e] of list) { if (n >= WMAX) break; const h = Math.min(110, 3 + persons * 1.1); wM4.makeScale(2.6, h, 2.6); wM4.setPosition(e.x, e.g + 0.6, -e.y); waitBars.setMatrixAt(n, wM4); waitBars.setColorAt(n, wCol.copy(W_LO).lerp(W_HI, Math.min(1, persons / 40))); e.h = h; n++; }
+    waitBars.count = n; waitBars.instanceMatrix.needsUpdate = true; if (waitBars.instanceColor) waitBars.instanceColor.needsUpdate = true;
+    if (waitFrame++ % 12 === 0) waitLabels.forEach((sp, i) => {   // ラベルは 12 フレームに 1 回だけ描き直す
+      const q = list[i]; if (!q || q[0] < 5) { sp.visible = false; return; } const c = sp.userData.c, g = c.getContext('2d'); g.clearRect(0, 0, 128, 44);
+      g.fillStyle = 'rgba(8,12,24,0.86)'; g.beginPath(); g.roundRect(1, 1, 126, 42, 9); g.fill(); g.strokeStyle = '#ffb347'; g.lineWidth = 2.5; g.stroke(); g.font = 'bold 25px sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`待ち ${Math.round(q[0])} 人`, 64, 23);
+      sp.material.map.needsUpdate = true; sp.position.set(q[1].x, q[1].g + q[1].h + 6, -q[1].y); sp.visible = waitBars.visible;
+    });
+  }
   const body = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.24, 0.95, 2, 6), new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }), MAX);
   body.instanceMatrix.setUsage(THREE.DynamicDrawUsage); body.frustumCulled = false; body.count = 0; body.visible = false; body.name = 'people-body'; scene.add(body);
   { const m = body.instanceMatrix.array; for (let i = 0; i < MAX; i++) { m[i * 16] = m[i * 16 + 5] = m[i * 16 + 10] = m[i * 16 + 15] = 1; } body.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 3), 3); body.instanceColor.setUsage(THREE.DynamicDrawUsage); }
@@ -102,7 +120,7 @@ export function initPeople(ctx) {
   }
   const day = () => dayContext(S.day, getMonth(), calib);
   // 鉄道以外の手段の内訳の説明 (tools/mode_split.py の見積もり。無ければ仮の割合)
-  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人` : `手段の内訳 ${sh} は仮定`; };
+  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人（${M.bus.source}）。駐車台数のうち ${fmt(M.parking.known)} 台は ${M.parking.knownCount} 施設の公表値` : `手段の内訳 ${sh} は仮定`; };
   const green = li => !S.signals || ((simT + sigOff[li]) % SIG_CYCLE) < SIG_GREEN;
   function updateVolumes() {
     const d = day(); model.volumes(S.hour, d, vol); if (scenarioOn()) base.volumes(S.hour, d, baseVol); else baseVol.set(vol);
@@ -113,7 +131,7 @@ export function initPeople(ctx) {
       if (horiz) { if (v > stat.maxVol) stat.maxVol = v; if (bv > stat.baseMaxVol) stat.baseMaxVol = bv; if (f > stat.maxF) { stat.maxF = f; stat.maxFAt = [(l.ax + l.bx) / 2, (l.ay + l.by) / 2]; } if (f >= 66) stat.efLen += hLen[i]; if (bv / (60 * l.w) >= 66) stat.baseEfLen += hLen[i]; }
       const val = mode === 'diff' ? Math.abs(v - bv) : v;
       if (val < VOL_MIN || !horiz) { for (let k = 0; k < 12; k++) rpos[o + k] = 0; continue; }
-      const hw = (mode === 'los' ? Math.max(1.2, l.w) : (mode === 'diff' ? 1.6 : 1.0) + 0.09 * Math.sqrt(val)) / 2, nx = -dirY[i] * hw, ny = dirX[i] * hw, ya = gA[i] + lift, yb = gB[i] + lift;
+      const hw = (mode === 'los' ? Math.max(2.6, l.w * 1.25) : (mode === 'diff' ? 1.6 : 1.0) + 0.09 * Math.sqrt(val)) / 2, nx = -dirY[i] * hw, ny = dirX[i] * hw, ya = gA[i] + lift, yb = gB[i] + lift;
       rpos[o] = l.ax + nx; rpos[o + 1] = ya; rpos[o + 2] = -(l.ay + ny); rpos[o + 3] = l.ax - nx; rpos[o + 4] = ya; rpos[o + 5] = -(l.ay - ny);
       rpos[o + 6] = l.bx - nx; rpos[o + 7] = yb; rpos[o + 8] = -(l.by - ny); rpos[o + 9] = l.bx + nx; rpos[o + 10] = yb; rpos[o + 11] = -(l.by + ny);
       if (mode === 'los') { const c = LOSC[losIndex(f)]; for (let k = 0; k < 4; k++) rcol.set(c, o + k * 3); }
@@ -133,7 +151,7 @@ export function initPeople(ctx) {
   function kill(i) { const j = --count; if (i !== j) { path[i] = path[j]; step[i] = step[j]; sArr[i] = sArr[j]; spd[i] = spd[j]; lat[i] = lat[j]; grp[i] = grp[j]; setColor(i); } path[j] = null; }
   const total = w => { let s = 0; for (const x of w) s += x; return s; };
   function reset() {   // その時刻に歩いているはずの人数を、経路の途中にばらまいて初期化する
-    count = 0; if (!model || !S.on) { geo.setDrawRange(0, 0); body.count = 0; return; }
+    count = 0; waitMap.clear(); if (!model || !S.on) { geo.setDrawRange(0, 0); body.count = 0; return; }
     const d = day(); const exp = model.classes.map(c => c.rate(S.hour, d) * c.meanDist / WALK_SPEED / 3600);
     let peak = 0; for (let h = 0; h < 24; h += 0.25) peak = Math.max(peak, total(model.walking(h, d)));
     S.per = peak <= 11000 ? 1 : peak <= 22000 ? 2 : peak <= 55000 ? 5 : 10;
@@ -152,12 +170,12 @@ export function initPeople(ctx) {
       while (acc[ci] >= 1 && n < 80) { acc[ci] -= 1; n++; spawn(ci, false); }
       if (acc[ci] > 80) acc[ci] = 0;
     }
-    const links = graph.links, real = S.real, yOff = real ? 0.87 : 1.2, m = body.instanceMatrix.array, trailOn = S.look === 'trails' && S.agents; let wait = 0;
+    const links = graph.links, real = S.real, yOff = real ? 0.87 : 1.2, m = body.instanceMatrix.array, trailOn = S.look === 'trails' && S.agents, waitOn = S.waits && S.signals; let wait = 0; if (waitOn) for (const e of waitMap.values()) e.n = 0;
     for (let i = 0; i < count; i++) {
       const p = path[i]; let k = step[i], code = p[k], li = code >> 1, l = links[li], s = sArr[i];
       // 信号待ち: 横断歩道の入口 (経路上で直前が横断歩道でないリンク) で赤なら止まる
       const hold = crossL[li] && s < 0.05 && (k === 0 || !crossL[p[k - 1] >> 1]) && !green(li);
-      if (hold) wait++;
+      if (hold) { wait++; if (waitOn) { const mx = (l.ax + l.bx) / 2, my = (l.ay + l.by) / 2, key = Math.round(mx / WCELL) * 8192 + Math.round(my / WCELL); let e = waitMap.get(key); if (!e) waitMap.set(key, e = { x: mx, y: my, g: gA[li], n: 0, v: 0, fresh: true }); e.n++; } }
       else {
         s += spd[i] * sim * (l.vt ? 0.6 : 1) * sf[li]; let dead = false;
         while (s >= l.length) {
@@ -174,7 +192,7 @@ export function initPeople(ctx) {
       if (trailOn) { const tl = hold ? 0.6 : (16 + spd[i] * 14) * sf[li] * (l.vt ? 0.3 : 1), o6 = i * 6, c = gcol[grp[i]], dim = S.dark ? 0.1 : 0.7; tpos[o6] = x; tpos[o6 + 1] = y; tpos[o6 + 2] = -yN; tpos[o6 + 3] = x - dirX[li] * sg * tl; tpos[o6 + 4] = y; tpos[o6 + 5] = -(yN - dirY[li] * sg * tl); tcol[o6] = c.r; tcol[o6 + 1] = c.g; tcol[o6 + 2] = c.b; tcol[o6 + 3] = c.r * dim + (S.dark ? 0 : 1 - dim); tcol[o6 + 4] = c.g * dim + (S.dark ? 0 : 1 - dim); tcol[o6 + 5] = c.b * dim + (S.dark ? 0 : 1 - dim); }
       if (real) { m[i * 16 + 12] = x; m[i * 16 + 13] = y; m[i * 16 + 14] = -yN; }
     }
-    waiting = wait;
+    waiting = wait; if (waitOn) drawWaits(sim);
     geo.setDrawRange(0, count); geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
     if (trailOn) { tgeo.instanceCount = count; tposA.array.set(tpos.subarray(0, count * 6)); tcolA.array.set(tcol.subarray(0, count * 6)); tposA.needsUpdate = true; tcolA.needsUpdate = true; }
     if (real) { body.count = count; body.instanceMatrix.needsUpdate = true; body.instanceColor.needsUpdate = true; }
@@ -182,9 +200,9 @@ export function initPeople(ctx) {
     statT += dt; if (statT > 0.5) { statT = 0; updateStats(false); }
   }
   function applyVisibility() {
-    points.visible = S.on && S.agents; body.visible = S.on && S.agents && S.real; trails.visible = S.on && S.agents && S.look === 'trails'; trails.material.blending = S.dark ? THREE.AdditiveBlending : THREE.NormalBlending; pmat.uniforms.uOpacity.value = S.look === 'trails' ? 0.9 : 0.95; if (ribbon) ribbon.visible = S.on && S.vol; meshGroup.visible = S.meshes;
+    points.visible = S.on && S.agents; body.visible = S.on && S.agents && S.real; trails.visible = S.on && S.agents && S.look === 'trails'; trails.material.blending = S.dark ? THREE.AdditiveBlending : THREE.NormalBlending; pmat.uniforms.uOpacity.value = S.look === 'trails' ? 0.9 : 0.95; if (ribbon) ribbon.visible = S.on && S.vol; meshGroup.visible = S.meshes; waitBars.visible = S.on && S.signals && S.waits; if (!waitBars.visible) { waitLabels.forEach(sp => { sp.visible = false; }); waitMap.clear(); waitBars.count = 0; }
     pmat.blending = S.dark ? THREE.AdditiveBlending : THREE.NormalBlending; pmat.uniforms.uGain.value = S.dark ? 1.0 : S.real ? 0.9 : 0.7; pmat.uniforms.uMax.value = S.real ? 3.2 : 7; pmat.uniforms.uMin.value = S.dark ? 2.2 : S.real ? 2.0 : 2.8; pmat.uniforms.uSize.value = S.real ? 1.2 : 2.2; pmat.needsUpdate = true;
-    rmat.opacity = S.ribbon === 'los' ? 0.6 : S.dark ? 0.75 : S.ribbon === 'diff' ? 0.85 : 0.7;
+    rmat.opacity = S.ribbon === 'los' ? 0.86 : S.dark ? 0.75 : S.ribbon === 'diff' ? 0.85 : 0.7;
   }
   function setTheme(t) { S.real = !!t.real; S.dark = new THREE.Color(t.bg).getHSL({}).l < 0.3 && !t.real; volDirty = true; applyVisibility(); }
   function setHour(h, soft) { const jump = Math.abs(h - S.hour) > 0.3; S.hour = h; if (!soft && jump) reset(); if (model && S.vol) updateVolumes(); updateStats(true); }
