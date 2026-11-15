@@ -46,7 +46,20 @@ def load(path):
         import ifcopenshell.util.element as U
         ps = U.get_psets(e); mat = U.get_material(e)
         sample = {'name': e.Name, 'psets': {k: {kk: vv for kk, vv in list(v.items())[:8]} for k, v in ps.items()}, 'material': mat.is_a() if mat else None, 'material_name': getattr(mat, 'Name', None) if mat else None}
-    return {'file': path.split('/')[-1], 'schema': f.schema, 'entities': sum(counts.values()), 'counts': {k: counts[k] for k in sorted(counts) if k in ('IfcProject', 'IfcBuildingStorey', 'IfcElementAssembly', 'IfcMember', 'IfcPlate', 'IfcPipeSegment', 'IfcMechanicalFastener', 'IfcFastener', 'IfcBuildingElementProxy', 'IfcOpeningElement', 'IfcRelVoidsElement', 'IfcExtrudedAreaSolid', 'IfcTriangulatedFaceSet', 'IfcLShapeProfileDef', 'IfcUShapeProfileDef', 'IfcRectangleProfileDef', 'IfcCircleHollowProfileDef', 'IfcMaterialProfileSet', 'IfcPropertySet')}, 'validation_errors': len(errs), 'validation_samples': errs[:8], 'geometry_ok': len(elems), 'geometry_failed': len(failed) + len(missing), 'products': len(products), 'psets': psets, 'sample': sample}, elems
+    # 標準の数量セット（Qto_*BaseQuantities）を、IfcOpenShell が作った形状と突き合わせる: NetVolume ⇔ 形状の体積、Length ⇔ 外形の最大寸法
+    import ifcopenshell.util.element as U2
+    qrows = []
+    for e in products:
+        q = {k: v for k, v in U2.get_psets(e, qtos_only=True).items() if k.startswith('Qto_')}
+        if not q or e.GlobalId not in elems: continue
+        name, vals = next(iter(q.items())); g = elems[e.GlobalId]; dims = sorted(g['max'][i] - g['min'][i] for i in range(3))
+        row = {'name': e.Name, 'qto': name, 'keys': sorted(k for k in vals if k != 'id')}
+        if vals.get('NetVolume'): row['dvol_pct'] = round(abs(vals['NetVolume'] * 1e9 - g['vol']) / max(g['vol'], 1e-9) * 100, 2)
+        if vals.get('Length'): row['length'] = vals['Length']
+        if vals.get('NetWeight') and vals.get('NetVolume'): row['density'] = round(vals['NetWeight'] / vals['NetVolume'])
+        qrows.append(row)
+    qto = {'elements': len(qrows), 'names': sorted(set(r['qto'] for r in qrows)), 'max_dvol_pct': max([r.get('dvol_pct', 0) for r in qrows] or [0]), 'density_kg_m3': sorted(set(r['density'] for r in qrows if 'density' in r)), 'worst': sorted(qrows, key=lambda r: -r.get('dvol_pct', 0))[:3]}
+    return {'file': path.split('/')[-1], 'qto': qto, 'schema': f.schema, 'entities': sum(counts.values()), 'counts': {k: counts[k] for k in sorted(counts) if k in ('IfcProject', 'IfcBuildingStorey', 'IfcElementAssembly', 'IfcMember', 'IfcPlate', 'IfcPipeSegment', 'IfcMechanicalFastener', 'IfcFastener', 'IfcBuildingElementProxy', 'IfcOpeningElement', 'IfcRelVoidsElement', 'IfcExtrudedAreaSolid', 'IfcTriangulatedFaceSet', 'IfcLShapeProfileDef', 'IfcUShapeProfileDef', 'IfcRectangleProfileDef', 'IfcCircleHollowProfileDef', 'IfcMaterialProfileSet', 'IfcPropertySet')}, 'validation_errors': len(errs), 'validation_samples': errs[:8], 'geometry_ok': len(elems), 'geometry_failed': len(failed) + len(missing), 'products': len(products), 'psets': psets, 'sample': sample}, elems
 
 def main():
     a, ea = load(sys.argv[1]); out = {'a': a}

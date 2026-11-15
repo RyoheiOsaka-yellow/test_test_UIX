@@ -1,0 +1,9 @@
+// 画面写真: 他の実装が書いた IFC2x3 を「ファイル読込」と同じ経路で読み、立体から部材への変換ダイアログ → 変換後の 3D と確認理由
+const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
+await page.evaluate(async () => { document.querySelectorAll('.modal-back').forEach(m => m.remove()); app.setView('3d'); for (const i of [...app.model.instances]) app.removeInstance(i.id); const imp = await import('./js/ui/importer.js'); const buf = await (await fetch('/dev/samples/ifc/steel_external_ifc2x3.ifc')).arrayBuffer(); await imp.importFile(app, new File([buf], 'steel_external_ifc2x3.ifc')); });
+await page.waitForSelector('.modal-back .modal', { timeout: 60000 }); await page.waitForTimeout(800);
+const d = await page.evaluate(() => { const m = document.querySelector('.modal-back .modal'); return { title: m.querySelector('.modal-title')?.textContent, rows: m.querySelectorAll('tbody tr, table tr').length, buttons: [...m.querySelectorAll('.modal-foot button')].map(b => b.textContent), text: m.querySelector('.modal-body p')?.textContent.slice(0, 120) }; });
+log('IFC_DIALOG', d); await page.screenshot({ path: (process.env.SHOT_DIR || '/tmp') + '/ifc_members_dialog.png' });
+await page.evaluate(() => [...document.querySelectorAll('.modal-foot button')].find(b => /変換して配置/.test(b.textContent)).click()); await page.waitForTimeout(1500);
+const a = await page.evaluate(() => ({ insts: app.model.instances.map(i => `${i.mark} ${app.model.getType(i.typeId)?.name} ${i.status}`), reasons: app.model.instances[0]?.reviewReasons, hidden: (() => { let v = 0, h = 0; app.viewer.scene.traverse(o => { if (o.isMesh && /^\d+$/.test(o.name)) (o.visible ? v++ : h++); }); return { visible: v, hidden: h }; })() }));
+log('IFC_PLACED', a); await page.evaluate(() => { app.viewer.fit(app.viewer.modelRoot, 1.25, { animate: false }); app.select?.(app.model.instances[0].id); }); await page.waitForTimeout(1200);

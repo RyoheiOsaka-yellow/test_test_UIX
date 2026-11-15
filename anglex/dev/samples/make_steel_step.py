@@ -50,12 +50,34 @@ items.append(('□-50x50x2.3', 400, [], s, (-400, -300, 0), (1, 1, 0), 60))
 t = cq.Workplane('XY').circle(60.5 / 2).circle(60.5 / 2 - 3.2).extrude(350)
 items.append(('STK-60.5x3.2', 350, [], t, (200, 400, 300), (1, 0, 1), 45))
 
+# 7) H 形鋼 H-100x100x6x8 L=500（根元の丸み r=8）: ウェブに φ18 × 2、下フランジに φ14 × 2
+def hbeam(H, B, t1, t2, L, r=8):
+    a, b = (B - t1) / 2, (B + t1) / 2
+    pts = [(0, 0), (B, 0), (B, t2), (b, t2), (b, H - t2), (B, H - t2), (B, H), (0, H), (0, H - t2), (a, H - t2), (a, t2), (0, t2)]
+    w = cq.Workplane('XY').polyline(pts).close().extrude(L)
+    for (x, y) in [(a, t2), (b, t2), (a, H - t2), (b, H - t2)]:
+        w = w.edges(cq.selectors.BoxSelector((x - 0.1, y - 0.1, -1), (x + 0.1, y + 0.1, L + 1))).fillet(r)
+    return w
+hb = hbeam(100, 100, 6, 8, 500); hb = hole_x(hb, 50, 100, 18, 120); hb = hole_x(hb, 50, 380, 18, 120); hb = hole_y(hb, 22, 60, 14, 9); hb = hole_y(hb, 78, 60, 14, 9)
+items.append(('H-100x100x6x8', 500, [('web', 100, 50, 18, None), ('web', 380, 50, 18, None), ('fb', 60, -28, 14, None), ('fb', 60, 28, 14, None)], hb, (900, 300, 100), (0, 1, 1), 40))
+# 8) リップ溝形鋼 LC-100x50x20x2.3 L=450: ウェブに φ12 × 1、長穴 11×30 × 1
+def lipc(H, A, C, t, L):
+    pts = [(0, 0), (A, 0), (A, C), (A - t, C), (A - t, t), (t, t), (t, H - t), (A - t, H - t), (A - t, H - C), (A, H - C), (A, H), (0, H)]
+    return cq.Workplane('XY').polyline(pts).close().extrude(L)
+lc = lipc(100, 50, 20, 2.3, 450); lc = hole_x(lc, 50, 80, 12, 10)
+lc = lc.cut(cq.Workplane('YZ').center(50, 300).slot2D(30, 11, 90).extrude(10).translate((-1, 0, 0)))
+items.append(('LC-100x50x20x2.3', 450, [('web', 80, 50, 12, None), ('web', 300, 50, 11, 30)], lc, (-600, 200, 400), (1, 0, 1), 70))
+# 9) 端部を 45° に斜め切りした山形鋼 L-50x50x6（外形の最大長 400）: 断面は読めるが「直角切りではない」と分かること
+mi = angle(50, 50, 6, 400)
+mi = mi.cut(cq.Workplane('YZ').polyline([(-1, 349), (51, 401), (51, 460), (-1, 460)]).close().extrude(70).translate((-5, 0, 0)))   # z > 350 + y を落とす
+items.append(('L-50x50x6', 400, [], mi, (300, -500, 200), (0, 1, 0), 15))
+
 asm = cq.Assembly()
 expected = []
 for i, (spec, L, holes, w, pos, axis, deg) in enumerate(items):
     w2 = w.rotate((0, 0, 0), axis, deg).translate(pos)
     asm.add(w2, name=f'part{i + 1}')
-    expected.append({'spec': spec, 'length': L, 'holes': [{'face': f, 'z': z, 's': s_, 'd': d, 'slot': sl} for (f, z, s_, d, sl) in holes]})
+    expected.append({'spec': spec, 'length': L, 'miter': i == 8, 'holes': [{'face': f, 'z': z, 's': s_, 'd': d, 'slot': sl} for (f, z, s_, d, sl) in holes]})
 asm.save(f'{out}/steel_set.step')
 cq.exporters.export(items[0][3].rotate((0, 0, 0), (0, 1, 0), 30).translate((100, 50, 20)), f'{out}/angle_only.step')
 cq.exporters.export(items[0][3].rotate((0, 0, 0), (0, 1, 0), 30).translate((100, 50, 20)), f'{out}/angle_only.stl', tolerance=0.02, angularTolerance=0.1)

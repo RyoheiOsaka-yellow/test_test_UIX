@@ -2,6 +2,7 @@
  {
   "spec": "L-50x50x6",
   "length": 600,
+  "miter": false,
   "holes": [
    {
     "face": "A",
@@ -36,6 +37,7 @@
  {
   "spec": "[-75x40x5x7",
   "length": 500,
+  "miter": false,
   "holes": [
    {
     "face": "web",
@@ -56,11 +58,13 @@
  {
   "spec": "FB-6x50",
   "length": 300,
+  "miter": false,
   "holes": []
  },
  {
   "spec": "PL-9x150x150",
   "length": 150,
+  "miter": false,
   "holes": [
    {
     "face": "face",
@@ -95,11 +99,75 @@
  {
   "spec": "□-50x50x2.3",
   "length": 400,
+  "miter": false,
   "holes": []
  },
  {
   "spec": "STK-60.5x3.2",
   "length": 350,
+  "miter": false,
+  "holes": []
+ },
+ {
+  "spec": "H-100x100x6x8",
+  "length": 500,
+  "miter": false,
+  "holes": [
+   {
+    "face": "web",
+    "z": 100,
+    "s": 50,
+    "d": 18,
+    "slot": null
+   },
+   {
+    "face": "web",
+    "z": 380,
+    "s": 50,
+    "d": 18,
+    "slot": null
+   },
+   {
+    "face": "fb",
+    "z": 60,
+    "s": -28,
+    "d": 14,
+    "slot": null
+   },
+   {
+    "face": "fb",
+    "z": 60,
+    "s": 28,
+    "d": 14,
+    "slot": null
+   }
+  ]
+ },
+ {
+  "spec": "LC-100x50x20x2.3",
+  "length": 450,
+  "miter": false,
+  "holes": [
+   {
+    "face": "web",
+    "z": 80,
+    "s": 50,
+    "d": 12,
+    "slot": null
+   },
+   {
+    "face": "web",
+    "z": 300,
+    "s": 50,
+    "d": 11,
+    "slot": 30
+   }
+  ]
+ },
+ {
+  "spec": "L-50x50x6",
+  "length": 400,
+  "miter": true,
   "holes": []
  }
 ]
