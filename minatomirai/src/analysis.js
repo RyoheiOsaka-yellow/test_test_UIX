@@ -33,11 +33,12 @@ export const CATALOG = [
   { s: 'use', n: 'OpenStreetMap', by: 'OpenStreetMap contributors', g: '歩行者経路（階層付き）・店舗・建物用途タグ', u: '歩行者ネットワーク、店舗密度、用途の推定' },
   { s: 'use', n: '地理院タイル（標高 DEM5A・全国最新写真）', by: '国土地理院', g: '5m 標高・航空写真', u: '地形、リアル表示の地表' },
   { s: 'use', n: '各施設の公式フロアガイド（MARK IS、ランドマークプラザ、クイーンズスクエア、東急スクエア）', by: '各施設', g: '階・区画・店舗', u: '建物内のテナント配置、区画形状' },
-  { s: 'can', n: 'PLATEAU 都市計画決定情報（用途地域・区域区分）', by: '国土交通省 都市局', g: '面（MVT）', u: '未使用。用途地域の重ね合わせに使える' },
+  { s: 'use', n: 'PLATEAU 都市計画決定情報（用途地域・指定容積率）', by: '国土交通省 都市局', g: '面（MVT）→ 10 m 格子', u: '用途地域と指定容積率のヒートマップ' },
   { s: 'can', n: 'PLATEAU 津波・高潮・洪水 浸水想定区域モデル（面）', by: '国土交通省 都市局', g: '面（3D Tiles）', u: '未使用。建物属性の浸水深で代用している' },
-  { s: 'can', n: '経済センサス 500m メッシュ 産業小分類・従業者規模別（表 T001164・T001165）', by: '総務省・経済産業省', g: '500m メッシュ', u: '未使用。小売・飲食の内訳に使える' },
+  { s: 'use', n: '経済センサス 500m メッシュ 産業小分類（e-Stat 統計GIS 表 T001164）', by: '総務省・経済産業省', g: '500m メッシュ・産業小分類の一部', u: '宿泊・集客施設・百貨店の従業者数、病院・診療所の数。飲食店（食堂・専門料理店など）はこの表に含まれない' },
+  { s: 'can', n: '経済センサス 500m メッシュ 従業者規模別（表 T001165）', by: '総務省・経済産業省', g: '500m メッシュ', u: '未使用' },
   { s: 'can', n: '国勢調査 2020 250m メッシュ 就業状態等（表 T001145）', by: '総務省統計局', g: '250m メッシュ', u: '未使用' },
-  { s: 'can', n: '全国の人流オープンデータ（市区町村単位発地別）', by: '国土交通省', g: '市区町村・発地 4 区分', u: '未使用。来訪者の発地構成に使える' },
+  { s: 'use', n: '全国の人流オープンデータ（市区町村単位発地別）2019 年', by: '国土交通省', g: '市区町村・発地 4 区分', u: '西区・中区に滞在している人の発地構成（集計タブ）。メッシュ単位の発地は公開されていない' },
   { s: 'none', n: '屋内地図オープンデータ', by: '国土交通省 政策統括官', g: '施設内の通路・店舗区画', u: '横浜市内は新横浜駅と横浜国際総合競技場のみ。みなとみらい・横浜駅は未整備' },
   { s: 'none', n: '歩行空間ネットワークデータ', by: '国土交通省 政策統括官', g: '歩道の幅員・段差・勾配', u: '神奈川県は新横浜地区と鎌倉地区のみ' },
   { s: 'none', n: 'PLATEAU 建築物の用途・階数・延床面積', by: '国土交通省 都市局', g: '建物ごと', u: '横浜市のデータには収録されていない（CityGML を確認）。用途は OSM タグ等から推定' },
@@ -67,6 +68,12 @@ export function initAnalysis(ctx) {
   const ha = r => (r[2] - r[0]) * (r[3] - r[1]) / 10000;
   const pctl = (v, q) => { const a = []; for (let i = 0; i < v.length; i += 3) if (v[i] > 0) a.push(v[i]); if (!a.length) return 1; a.sort((x, y) => x - y); return a[Math.min(a.length - 1, Math.floor(a.length * q))]; };
   const day = () => people.day(), Q = (o = {}) => ({ hour: people.state.hour, day: people.day(), dayKey: people.state.day, model: people.model, ...o }), hourTxt = () => { const h = people.state.hour, hh = Math.floor(h), mm = Math.round((h - hh) * 60); return `${hh}:${String(mm).padStart(2, '0')}`; };
+  // 用途地域 (10 m 格子のコード) と指定容積率
+  const b64u8 = b => { const t = atob(b), a = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) a[i] = t.charCodeAt(i); return a; };
+  const ZN = stats?.zoning?.zones ?? [], zoneGrid = new Float32Array(NX * NY), farGrid = new Float32Array(NX * NY);
+  if (stats?.zoning && stats.zoning.nx === NX && stats.zoning.ny === NY) { const g = b64u8(stats.zoning.grid), f = b64u8(stats.zoning.far); for (let i = 0; i < g.length; i++) { zoneGrid[i] = g[i]; farGrid[i] = f[i] * 10; } }
+  const ZCOL = { '第1種低層住居専用地域': '#00a651', '第2種低層住居専用地域': '#7dc242', '第1種中高層住居専用地域': '#a8d08d', '第2種中高層住居専用地域': '#d4e6a5', '第1種住居地域': '#fff200', '第2種住居地域': '#ffd966', '準住居地域': '#f7b26a', '田園住居地域': '#c6e0b4', '近隣商業地域': '#f4a6c0', '商業地域': '#ed1c24', '準工業地域': '#b39ddb', '工業地域': '#8fd3f4', '工業専用地域': '#5b9bd5' };
+  const econLayer = f => { const v = new Float32Array(NX * NY); for (const c of stats?.econ?.cells ?? []) fillRect(v, c.rect, f(c) / ha(c.rect)); return { v }; };
   let accessCache = null;
   const nodeMinutes = () => { if (accessCache && accessCache.m === people.model) return accessCache.v; const N = graph.nodes.length, v = new Float32Array(N).fill(Infinity); for (const st of people.model.stations) for (let i = 0; i < N; i++) if (st.out.dist[i] < v[i]) v[i] = st.out.dist[i]; for (let i = 0; i < N; i++) v[i] = v[i] / WALK_SPEED / 60; accessCache = { m: people.model, v }; return v; };
 
@@ -91,6 +98,12 @@ export function initAnalysis(ctx) {
     access: { n: '最寄り駅までの徒歩時間（歩行者ネットワーク）', unit: '分', ramp: 'access', fixedMax: 15, zeroOk: true, note: '各駅のホームからの最短経路（階段・エレベーターの所要を加味）。歩行者経路の近くだけ値がある', make: () => {
       const v = new Float32Array(NX * NY).fill(-1), mins = nodeMinutes(); graph.nodes.forEach((n, i) => { if (!isFinite(mins[i]) || n.lv < 0) return; const r = 3; const cx = Math.floor((n.x - BOX[0]) / CELL), cy = Math.floor((n.y - BOX[1]) / CELL); for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) { if (x < 0 || y < 0 || x >= NX || y >= NY) continue; const m = mins[i] + Math.hypot(x - cx, y - cy) * CELL / WALK_SPEED / 60, k = y * NX + x; if (v[k] < 0 || m < v[k]) v[k] = m; } });
       return { v }; } },
+    zoning: { n: '用途地域（PLATEAU 都市計画決定情報）', cat: true, nearest: true, note: 'PLATEAU 横浜市 2024 の用途地域。海や市街化調整区域には指定が無い', make: () => ({ v: zoneGrid }) },
+    far: { n: '指定容積率（PLATEAU 都市計画決定情報）', unit: '%', nearest: true, fixedMax: 800, note: '用途地域ごとに指定された容積率の上限', make: () => ({ v: farGrid }) },
+    empHotel: { n: '宿泊業の従業者数（経済センサス 小分類・500m）', unit: '人/ha', nearest: true, note: '旅館・ホテルの従業者数', make: () => econLayer(c => c.empHotel ?? 0) },
+    empAttr: { n: '集客施設の従業者数（経済センサス 小分類・500m）', unit: '人/ha', nearest: true, note: '映画館、興行場・興行団、博物館・美術館、動物園・水族館の従業者数の合計', make: () => econLayer(c => c.empAttr ?? 0) },
+    empDept: { n: '百貨店・総合スーパーの従業者数（経済センサス 小分類・500m）', unit: '人/ha', nearest: true, note: '百貨店・総合スーパーの従業者数', make: () => econLayer(c => c.empDept ?? 0) },
+    estMed: { n: '病院・診療所の数（経済センサス 小分類・500m）', unit: '件/ha', nearest: true, note: '病院、一般診療所、歯科診療所の事業所数の合計', make: () => econLayer(c => c.estMed ?? 0) },
   };
   const DIV = ['#2166ac', '#67a9cf', '#d1e5f0', '#f7f7f7', '#fddbc7', '#ef8a62', '#b2182b'].map(hexRGB);
   const DIFFS = {
@@ -105,6 +118,10 @@ export function initAnalysis(ctx) {
   }
   function paint() {
     const L = LAYERS[S.layer]; if (!L.make || !people.model) { heat.visible = false; cur = null; renderLegend(); paint2(); return; }
+    if (L.cat) {   // 区分 (用途地域): コードごとの色で塗る
+      const v = L.make().v, cols = ZN.map(n => hexRGB(ZCOL[n] ?? '#999999')); for (let i = 0; i < v.length; i++) { const o = i * 4, c = v[i]; if (!c) { data[o + 3] = 0; continue; } const k = cols[c - 1]; data[o] = k[0]; data[o + 1] = k[1]; data[o + 2] = k[2]; data[o + 3] = 200; }
+      tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true; heat.material.opacity = S.opacity; heat.visible = true; cur = { v, max: 1, unit: '', stops: [], L, cat: true }; renderLegend(); paint2(); return;
+    }
     const D = DIFFS[S.diff];
     if (D.pair && D.ok(L)) {   // 差分: 2 条件の値の差を、青 (減) − 白 − 赤 (増) で塗る
       const [qa, qb] = D.pair(), va = L.make(qa).v, vb = L.make(qb).v, v = new Float32Array(va.length); let abs = new Float32Array(va.length); for (let i = 0; i < v.length; i++) { v[i] = va[i] - vb[i]; abs[i] = Math.abs(v[i]); }
@@ -157,7 +174,7 @@ export function initAnalysis(ctx) {
   const ticks = (max, unit, sqrt) => [0, 0.25, 0.5, 0.75, 1].map(t => `<span>${fmt((sqrt ? t * t : t) * max)}</span>`).join('') + `<span class="an-unit">${unit}</span>`;
   function renderLegend() {
     if (!$('an-legend')) return;
-    $('an-legend').innerHTML = !cur ? '' : cur.diff ? `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks"><span>−${fmt(cur.max)}</span><span>減</span><span>0</span><span>増</span><span>+${fmt(cur.max)}</span><span class="an-unit">${cur.unit}</span></div><div class="note">差分: ${cur.diff.n}（${hourTxt()} 時点）</div>` : `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks">${ticks(cur.max, cur.unit, !cur.L.zeroOk)}</div><div class="note">${cur.L.note ?? ''}${cur.L.time ? `（${hourTxt()} 時点）` : ''}${S.diff !== 'none' ? '<br>この指標は選んだ差分に対応していません。' : ''}</div>`;
+    $('an-legend').innerHTML = !cur ? '' : cur.cat ? `<div class="legend" style="margin-top:4px">${[...new Set(cur.v)].filter(c => c).sort((a, b) => a - b).map(c => `<span><i style="background:${ZCOL[ZN[c - 1]]}"></i>${ZN[c - 1]}</span>`).join('')}</div><div class="note">${cur.L.note}</div>` : cur.diff ? `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks"><span>−${fmt(cur.max)}</span><span>減</span><span>0</span><span>増</span><span>+${fmt(cur.max)}</span><span class="an-unit">${cur.unit}</span></div><div class="note">差分: ${cur.diff.n}（${hourTxt()} 時点）</div>` : `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks">${ticks(cur.max, cur.unit, !cur.L.zeroOk)}</div><div class="note">${cur.L.note ?? ''}${cur.L.time ? `（${hourTxt()} 時点）` : ''}${S.diff !== 'none' ? '<br>この指標は選んだ差分に対応していません。' : ''}</div>`;
     const b = $('an-blegend'); if (!b) return;
     if (!bcur) b.innerHTML = '';
     else if (bcur.M.cat) b.innerHTML = '<div class="legend">' + Object.values(USE).map(([n, c]) => `<span><i style="background:${c}"></i>${n}</span>`).join('') + '</div><div class="note">横浜市の PLATEAU には用途属性が無いため、OSM の建物タグ・店舗数・名称・高さからの推定です。</div>';
@@ -206,11 +223,18 @@ export function initAnalysis(ctx) {
     el.innerHTML = `<div class="an-kpis">${kpi('歩行中', fmtN(walking), '人', 'モデル ' + hourTxt())}${kpi('建物に滞在', fmtN(stay), '人', 'モデル（駅来訪）')}${kpi(`実測 昼間人口（${hol ? '休日' : '平日'}）`, fmtN(obs), '人', '人流オープンデータ')}${kpi('夜間人口', fmtN(pop), '人', '国勢調査 2020')}${kpi('従業者数', fmtN(emp), '人', '経済センサス')}${kpi('津波 0.5m 以上の建物', fmtN(rb), '棟', `滞在 ${fmtN(rp)} 人（モデル）`)}</div>
       <div class="sec-title" style="margin-top:6px">滞在人数の多い建物（${hourTxt()}・モデル）</div><table class="p-table an-click">${top.map((o, k) => `<tr data-b="${o.dd.b}"><td>${k + 1}. ${o.dd.n ?? '（名称なし）'}</td><td>${USE[o.dd.u]?.[0] ?? ''}</td><td>${fmtN(o.p)}</td></tr>`).join('')}</table>
       <div class="sec-title" style="margin-top:6px">通行量の多い区間（人/時・混雑度）</div><table class="p-table an-click">${picks.map((p, k) => `<tr data-x="${p.x}" data-y="${p.y}"><td>${k + 1}. ${p.nm ? p.nm + ' 付近' : `(${Math.round(p.x)}, ${Math.round(p.y)})`}${p.lv ? `（${p.lv > 0 ? 'デッキ' : '地下'}）` : ''}</td><td style="color:${p.los.c}">${p.los.k}</td><td>${fmtN(p.v)}</td></tr>`).join('')}</table>
+      ${originHTML()}
       <div class="btn-row" style="margin-top:6px"><button id="an-x-b">建物指標 CSV</button><button id="an-x-l">区間 GeoJSON</button><button id="an-x-m">メッシュ CSV</button></div>
       <div class="note" style="margin-top:0">行をクリックするとその場所へ移動します。集計の範囲は対象範囲（約 2.8 × 2.55 km）にかかるメッシュの合計で、範囲外を含みます。</div>`;
     el.querySelectorAll('tr[data-b]').forEach(tr => tr.addEventListener('click', () => { const b = Number(tr.dataset.b), m = buildingMeta[b]; selectBuilding(b); const x = m.c[0] / 10, z = -m.c[1] / 10, h = (m.h ?? 40); flyTo(new THREE.Vector3(x - 180 - h * 0.5, 120 + h * 0.8, z + 200 + h * 0.5), new THREE.Vector3(x, h * 0.35, z)); }));
     el.querySelectorAll('tr[data-x]').forEach(tr => tr.addEventListener('click', () => { const x = Number(tr.dataset.x), z = -Number(tr.dataset.y); flyTo(new THREE.Vector3(x - 90, 130, z + 110), new THREE.Vector3(x, 0, z)); }));
     $('an-x-b').addEventListener('click', exportBuildings); $('an-x-l').addEventListener('click', exportLinks); $('an-x-m').addEventListener('click', exportMesh);
+  }
+  // 来訪者の発地構成 (人流オープンデータ 市区町村単位発地別)。区単位の値で、対象範囲より広い
+  function originHTML() {
+    const o = stats?.origin; if (!o) return ''; const col = ['#6fdc7a', '#4da3ff', '#ffb347', '#e040fb'];
+    const bar = (lab, a) => { const t = a.reduce((x, y) => x + y, 0) || 1; return `<div class="an-frow"><span class="an-fl" style="width:44px">${lab}</span><span class="an-bar" style="height:9px;display:flex">${a.map((v, i) => `<i style="width:${v / t * 100}%;background:${col[i]};border-radius:0" title="${o.areas[i]} ${fmtN(v)} 人（${Math.round(v / t * 100)}%）"></i>`).join('')}</span><span class="an-fv" style="width:52px">${fmtN(t)}</span></div>`; };
+    return `<div class="sec-title" style="margin-top:6px">滞在している人の発地（区単位・2019 年）</div>${o.cities.map(c => `<div style="font-size:10px;color:#c6d4e8;margin-top:2px">${c.n}</div>${bar('平日昼', c.wkDay)}${bar('休日昼', c.holDay)}${bar('深夜', c.wkNight)}`).join('')}<div class="legend" style="margin-top:2px">${o.areas.map((a, i) => `<span><i style="background:${col[i]}"></i>${a}</span>`).join('')}</div><div class="note" style="margin-top:0">平日昼の県外からの割合: 西区 ${Math.round((o.cities[0].wkDay[2] + o.cities[0].wkDay[3]) / o.cities[0].wkDay.reduce((x, y) => x + y, 0) * 100)}%、中区 ${Math.round((o.cities[1].wkDay[2] + o.cities[1].wkDay[3]) / o.cities[1].wkDay.reduce((x, y) => x + y, 0) * 100)}%。</div>`;
   }
   const download = (name, text, type) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
   const lonlat = (x, y) => [header.origin.lon + x / (111320 * Math.cos(header.origin.lat * Math.PI / 180)), header.origin.lat + y / 110940];   // 近似 (対象範囲内で誤差 数 m)
@@ -342,7 +366,7 @@ export function initAnalysis(ctx) {
         <div data-pane="cmp" style="display:none">
           <div class="sec-title">画面を左右に分けて 2 つの指標を比べる</div>
           <label class="row"><input type="checkbox" id="an-split" /><span class="chip chip-outline"></span>画面分割（左 =「ヒート」で選んだ指標）</label>
-          <div class="cal-row"><span>右側</span><select id="an-layer2" class="p-select">${opt(LAYERS, S.layer2, (k, v) => v.make)}</select></div>
+          <div class="cal-row"><span>右側</span><select id="an-layer2" class="p-select">${opt(LAYERS, S.layer2, (k, v) => v.make && !v.cat)}</select></div>
           <div class="sec-title" style="margin-top:6px">差分ヒートマップ（「ヒート」の指標に適用）</div><select id="an-diff" class="p-select" style="width:100%">${opt(DIFFS, S.diff)}</select>
           <div class="sec-title" style="margin-top:8px">散布図（指標どうしの関係）</div>
           <div class="seg-row" id="an-scunit"><button data-u="mesh" class="active">250m メッシュ</button><button data-u="bldg">建物</button></div>
@@ -370,7 +394,7 @@ export function initAnalysis(ctx) {
     $('an-split').addEventListener('change', e => { S.split = e.target.checked; if (S.split && S.layer === 'none') { S.layer = 'stay'; $('an-layer').value = 'stay'; } paint(); });
     $('an-layer2').addEventListener('change', e => { S.layer2 = e.target.value; paint2(); });
     $('an-diff').addEventListener('change', e => { S.diff = e.target.value; if (S.diff !== 'none' && S.layer === 'none') { S.layer = 'ped'; $('an-layer').value = 'ped'; } paint(); });
-    const fillSc = () => { const src = S.scUnit === 'mesh' ? LAYERS : BM, ok = S.scUnit === 'mesh' ? (k, v) => v.make : (k, v) => v.val && !v.cat; if (!src[S.scX] || !ok(S.scX, src[S.scX])) S.scX = S.scUnit === 'mesh' ? 'emp' : 'height'; if (!src[S.scY] || !ok(S.scY, src[S.scY])) S.scY = S.scUnit === 'mesh' ? 'stay' : 'presence'; $('an-scx').innerHTML = opt(src, S.scX, ok); $('an-scy').innerHTML = opt(src, S.scY, ok); };
+    const fillSc = () => { const src = S.scUnit === 'mesh' ? LAYERS : BM, ok = S.scUnit === 'mesh' ? (k, v) => v.make && !v.cat : (k, v) => v.val && !v.cat; if (!src[S.scX] || !ok(S.scX, src[S.scX])) S.scX = S.scUnit === 'mesh' ? 'emp' : 'height'; if (!src[S.scY] || !ok(S.scY, src[S.scY])) S.scY = S.scUnit === 'mesh' ? 'stay' : 'presence'; $('an-scx').innerHTML = opt(src, S.scX, ok); $('an-scy').innerHTML = opt(src, S.scY, ok); };
     fillSc();
     el.querySelectorAll('#an-scunit button').forEach(b => b.addEventListener('click', () => { S.scUnit = b.dataset.u; el.querySelectorAll('#an-scunit button').forEach(x => x.classList.toggle('active', x === b)); fillSc(); renderScatter(); }));
     $('an-scx').addEventListener('change', e => { S.scX = e.target.value; renderScatter(); }); $('an-scy').addEventListener('change', e => { S.scY = e.target.value; renderScatter(); });
@@ -391,7 +415,7 @@ export function initAnalysis(ctx) {
   el0.addEventListener('pointermove', e => {
     if (dragStart && capMode === 'range') { const g = groundPoint(e); if (g) drawRange(dragStart, g); return; }
     if (!cur || performance.now() - lastMove < 80) return; lastMove = performance.now(); const el = $('an-hover'); if (!el) return; const g = groundPoint(e); if (!g) { el.textContent = ''; return; }
-    const c = cellOf(g.x, g.y), val = (q, right) => { const v = c >= 0 ? q.v[c] : NaN; return !(c >= 0) || (q.diff ? false : q.L.zeroOk ? v < 0 : v <= 0) ? '値なし' : `<b>${q.diff && v > 0 ? '+' : ''}${fmt(Math.abs(v) < 1e-9 ? 0 : v)}</b> ${q.unit}`; };
+    const c = cellOf(g.x, g.y), val = (q, right) => { if (q.cat) return c >= 0 && q.v[c] ? `<b>${ZN[q.v[c] - 1]}</b>` : '指定なし'; const v = c >= 0 ? q.v[c] : NaN; return !(c >= 0) || (q.diff ? false : q.L.zeroOk ? v < 0 : v <= 0) ? '値なし' : `<b>${q.diff && v > 0 ? '+' : ''}${fmt(Math.abs(v) < 1e-9 ? 0 : v)}</b> ${q.unit}`; };
     el.innerHTML = cur2 ? `カーソル位置: 左 ${val(cur)} ／ 右 ${val(cur2)}` : `カーソル位置: ${val(cur)}`;
   });
   // 時刻・曜日・シナリオが変わったら、時刻に依存する表示を更新する
