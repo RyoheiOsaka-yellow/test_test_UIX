@@ -2,7 +2,8 @@
 """
 横断歩道ごとの信号の有無と、周期・青時間を OSM から決めて data/signals.json に書く (src/people.js と src/analysis.js が読む)。
   信号の有無: 横断歩道の上にある OSM の横断歩道ノードのタグ (crossing=traffic_signals / uncontrolled など) を優先し、
-              タグで決まらないものは、近く (25 m 以内) に信号機 (highway=traffic_signals) があれば信号あり。無ければ待ちなし
+              タグで決まらないものは、近く (25 m 以内) に信号機 (highway=traffic_signals) があれば信号あり。
+              信号なしの横断歩道は、渡る道路の格と横断の長さを書き出す (車の切れ目を待つ)
   周期      : 交差点でいちばん格の高い道路の種別で決める (幹線 130 秒、補助幹線 110 秒、その他の幹線 90 秒、細街路 70 秒)
   青時間    : 格の高い道路を渡る横断歩道は周期の 35% − 5 秒、格の低い道路を渡る横断歩道は 55% − 5 秒 (車の青の配分の逆)。
               同格どうしの交差点は 45% − 5 秒ずつで、横断歩道の向きで位相を分ける
@@ -38,7 +39,7 @@ def main():
     roads = []; rrank = []
     for w, (nd, t) in ways.items():
         r = RANK.get((t.get("highway") or "").replace("_link", ""))
-        if not r or t.get("tunnel") == "yes": continue
+        if not r or t.get("tunnel") == "yes" or t.get("bridge") in ("yes", "viaduct") or t.get("highway", "").startswith("motorway"): continue   # 地下・高架・自動車専用道は横断の対象にしない
         pts = B.way_coords(nodes, ways, w, cache)
         if len(pts) >= 2: roads.append(LineString(pts)); rrank.append(r)
     rtree = STRtree(roads)
@@ -65,7 +66,7 @@ def main():
                 for a in ks:
                     for b in cell.get((cx + dx, cy + dy), []):
                         if a < b and math.hypot(sig_pts[a][0] - sig_pts[b][0], sig_pts[a][1] - sig_pts[b][1]) <= CLUSTER: sp[sfind(a)] = sfind(b)
-    walks = []; stat = collections.Counter()
+    walks = []; stat = collections.Counter(); out = []; unsig = collections.Counter()
     for root, ids in comps.items():
         segs = [LineString([(links[i][4] / 10, links[i][5] / 10), (links[i][6] / 10, links[i][7] / 10)]) for i in ids]
         cx = sum(s.centroid.x for s in segs) / len(segs); cy = sum(s.centroid.y for s in segs) / len(segs); cpt = Point(cx, cy)
@@ -74,15 +75,21 @@ def main():
         tagged = [f for (x, y, f) in cross_nodes if f is not None and min(s.distance(Point(x, y)) for s in segs) < 4]
         near = [k for k, (x, y) in enumerate(sig_pts) if math.hypot(x - cx, y - cy) <= NEAR_SIGNAL]
         if tagged: signal = any(tagged); stat["タグで判定"] += 1
-        else: signal = bool(near); stat["信号機との距離で判定"] += 1
-        if not signal: stat["信号なし"] += 1; continue
+        else:
+            signal = bool(near); stat["信号機との距離で判定"] += 1
+            if not signal and crossed >= 4: signal = True; stat["幹線を渡るので信号ありとみなす"] += 1   # 幹線を信号なしで渡る横断歩道は考えにくいので、記載漏れとみる
+        if not signal:
+            # 信号なし: 渡る道路の格と横断の長さを残す (車の切れ目を待つ時間の計算に使う)。周期 0 が信号なしの印
+            stat["信号なし"] += 1; length = sum(sg.length for sg in segs); unsig[crossed or 1] += 1
+            for i in ids: out.append([links[i][4], links[i][5], links[i][6], links[i][7], 0, 0, 0, crossed or 1, round(length, 1)])
+            continue
         if not near: near = sorted(range(len(sig_pts)), key=lambda k: math.hypot(sig_pts[k][0] - cx, sig_pts[k][1] - cy))[:1]
         dx = segs[0].coords[-1][0] - segs[0].coords[0][0]; dy = segs[0].coords[-1][1] - segs[0].coords[0][1]
         walks.append({"ids": ids, "x": cx, "y": cy, "crossed": crossed or 2, "inter": sfind(near[0]), "th": math.atan2(dy, dx) % math.pi})
         stat["信号あり"] += 1
     by_inter = collections.defaultdict(list)
     for w in walks: by_inter[w["inter"]].append(w)
-    out = []; cyc = collections.Counter()
+    cyc = collections.Counter()
     for inter, ws in by_inter.items():
         pts = [sig_pts[k] for k in range(len(sig_pts)) if sfind(k) == inter]
         major = max([w["crossed"] for w in ws] + [rank_near(Point(p), 30) for p in pts]); minor = min(w["crossed"] for w in ws)
@@ -97,11 +104,11 @@ def main():
             off = (C - start - phase) % C
             for i in w["ids"]: out.append([links[i][4], links[i][5], links[i][6], links[i][7], C, G, off])
     res = {"source": "OpenStreetMap (highway=traffic_signals, highway=crossing の crossing / crossing:signals, 道路の種別)",
-           "assumed": ["周期: 幹線 (primary 以上) 130 秒、secondary 110 秒、tertiary 90 秒、それ以外 70 秒", "青時間: 格の高い道路を渡る横断歩道は周期の 35% − 5 秒、格の低い道路を渡る横断歩道は 55% − 5 秒、同格の交差点は 45% − 5 秒", "単独の信号つき横断歩道は周期の 30%", "信号の記載が無い横断歩道は待ちなし"],
-           "stats": {"crosswalks": len(comps), "signalized": stat["信号あり"], "unsignalized": stat["信号なし"], "byTag": stat["タグで判定"], "byDistance": stat["信号機との距離で判定"], "signalPoints": len(sig_pts), "intersections": len(by_inter), "byCycle": {str(k): v for k, v in sorted(cyc.items())}, "links": len(out)},
+           "assumed": ["周期: 幹線 (primary 以上) 130 秒、secondary 110 秒、tertiary 90 秒、それ以外 70 秒", "青時間: 格の高い道路を渡る横断歩道は周期の 35% − 5 秒、格の低い道路を渡る横断歩道は 55% − 5 秒、同格の交差点は 45% − 5 秒", "単独の信号つき横断歩道は周期の 30%", "信号の無い横断歩道は、渡る道路の格から車の通行量を仮定し、車の切れ目を待つ時間を計算する (src/people.js)"],
+           "stats": {"crosswalks": len(comps), "signalized": stat["信号あり"], "unsignalized": stat["信号なし"], "byTag": stat["タグで判定"], "byDistance": stat["信号機との距離で判定"], "assumedOnArterial": stat["幹線を渡るので信号ありとみなす"], "signalPoints": len(sig_pts), "intersections": len(by_inter), "byCycle": {str(k): v for k, v in sorted(cyc.items())}, "unsignalizedByRank": {str(k): v for k, v in sorted(unsig.items())}, "links": sum(1 for r in out if r[4] > 0), "unsignalizedLinks": sum(1 for r in out if r[4] == 0)},
            "links": out}
     json.dump(res, open(os.path.join(DATA, "signals.json"), "w"), ensure_ascii=False, separators=(",", ":"))
-    print(json.dumps(res["stats"], ensure_ascii=False)); gs = collections.Counter((r[4], r[5]) for r in out); print(sorted(gs.items()))
+    print(json.dumps(res["stats"], ensure_ascii=False)); gs = collections.Counter((r[4], r[5]) for r in out if r[4]); print(sorted(gs.items()))
 
 if __name__ == "__main__":
     main()

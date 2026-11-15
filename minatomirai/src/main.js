@@ -1692,7 +1692,7 @@ const decodeState = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/
 function getViewState() {
   const r1 = v => Math.round(v * 10) / 10, ps = people.state;
   return { v: 1, th: styleName, h: realState.hour, mo: realState.month, cam: [...camera.position.toArray().map(r1), ...controls.target.toArray().map(r1)], sel: sel.bid >= 0 ? (buildingMeta[sel.bid].n ?? sel.bid) : null, gap: r1(selUniforms.uGap.value),
-    pp: { on: ps.on, day: ps.day, rain: ps.rain, event: ps.event, ribbon: ps.ribbon, signals: ps.signals, agents: ps.agents, vol: ps.vol, look: ps.look, nonRail: ps.nonRail, accel: ps.accel, meshes: ps.meshes, waits: ps.waits }, an: analysis.exportState(), ind: { flow: indoor.state.flow, on: indoor.state.on } };
+    pp: { on: ps.on, day: ps.day, rain: ps.rain, event: ps.event, ribbon: ps.ribbon, signals: ps.signals, agents: ps.agents, vol: ps.vol, look: ps.look, nonRail: ps.nonRail, accel: ps.accel, meshes: ps.meshes, waits: ps.waits, sigAdj: ps.sigAdj }, an: analysis.exportState(), ind: { flow: indoor.state.flow, on: indoor.state.on } };
 }
 function syncPeopleUI() {
   const $ = id => document.getElementById(id), ps = people.state; $('p-rain').checked = ps.rain; $('p-event').value = ps.event ?? ''; $('p-signal').checked = ps.signals; $('p-waits').checked = ps.waits; $('p-agents').checked = ps.agents; $('p-vol').checked = ps.vol; $('p-mesh').checked = ps.meshes; $('p-nonrail').checked = ps.nonRail; $('p-accel').value = ps.accel; $('p-accel-v').textContent = `×${ps.accel}`; $('p-indoor').checked = indoor.state.on;

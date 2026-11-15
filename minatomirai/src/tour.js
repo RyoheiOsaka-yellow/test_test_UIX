@@ -22,7 +22,7 @@ export function initTour(ctx) {
   };
   const railOut = h => { const d = people.day(); return people.model.stationFlows(h, d).filter(s => !s.nonRail).reduce((a, s) => a + s.toCity, 0); };
   const railIn = h => { const d = people.day(); return people.model.stationFlows(h, d).filter(s => !s.nonRail).reduce((a, s) => a + s.toStation, 0); };
-  const PP = { on: true, day: 'weekday', rain: false, event: null, ribbon: 'volume', signals: true, agents: true, vol: true, look: 'dots', nonRail: true, accel: 8, meshes: false, playing: false, waits: false };
+  const PP = { on: true, day: 'weekday', rain: false, event: null, ribbon: 'volume', signals: true, agents: true, vol: true, look: 'dots', nonRail: true, accel: 8, meshes: false, playing: false, waits: false, sigAdj: 0 };
   const AN = { layer: 'none', bmetric: 'none', tab: 'heat', floorHeat: false, diff: 'none', split: false, style: 'flat', flows: false, multi: false, range: null };
   const markis = bld('MARK IS'), lmp = bld('ランドマークプラザ'), karena = bld(EVENTS.karena.match);
 

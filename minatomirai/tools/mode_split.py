@@ -114,7 +114,17 @@ def car_hourly():
         if CENSUS_PTS[r[1]] not in used: used.append(CENSUS_PTS[r[1]])
     if not full or not sum(day): return None
     k = sum(day[7:19]) / sum(full[7:19]); hourly = [round(day[h]) if 7 <= h < 19 else round(full[h] * k) for h in range(24)]
-    return {"hourly": hourly, "points": used, "nightFrom": "一般国道 16 号 西区高島 2 丁目（24 時間観測）", "source": "全国道路・街路交通情勢調査 一般交通量調査（令和 3 年度）時間帯別交通量 小型車 上下計"}
+    # 方向別: 地区の北の入口にあたる 栄本町線 神奈川区金港町 1 (80030)。下り (起点の栄町 → 終点の本町) が地区へ入る向き、上り が出る向き
+    arr = dep = None
+    for r in rows[1:]:
+        if r[0] == "14100" and r[1] == "80030" and r[10] == "1":
+            v = [float(x) if x.strip() else 0.0 for x in r[11:23]]   # 7〜18 時台
+            if r[9] == "2": arr = v
+            elif r[9] == "1": dep = v
+    def full24(v):   # 夜間は国道 16 号の形で補う
+        kk = sum(v) / sum(full[7:19]); return [round(v[h - 7]) if 7 <= h < 19 else round(full[h] * kk) for h in range(24)]
+    extra = {"arrive": full24(arr), "depart": full24(dep), "gate": "栄本町線 神奈川区金港町 1（地区の北の入口。下り = 入る向き、上り = 出る向き）"} if arr and dep else {}
+    return {"hourly": hourly, **extra, "points": used, "nightFrom": "一般国道 16 号 西区高島 2 丁目（24 時間観測）", "source": "全国道路・街路交通情勢調査 一般交通量調査（令和 3 年度）時間帯別交通量 小型車 上下計"}
 
 def main():
     P = parking(); Bs = buses(); Ch = car_hourly()

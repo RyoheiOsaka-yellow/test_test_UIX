@@ -27,10 +27,11 @@ const UP = lin('#ff3b30'), DOWN = lin('#2b6cff');
 export function initPeople(ctx) {
   const { scene, graph, header, buildingMeta, terrainSampler, levelY, linkVisible, renderer, extraDest = () => [], onClock, calib = null, signals = null, getMonth = () => 1 } = ctx;
   const sigMap = signals?.links ? new Map(signals.links.map(e => [`${e[0]},${e[1]},${e[2]},${e[3]}`, e])) : null;   // 横断歩道のリンク (両端の座標) → [.., 周期, 青, 位相]
-  const S = { on: true, hour: 15, day: 'weekday', accel: 8, agents: true, vol: true, per: 1, real: false, dark: false, playing: false, rain: false, event: null, ribbon: 'volume', signals: true, meshes: false, nonRail: true, look: 'dots', waits: false };
+  const S = { on: true, hour: 15, day: 'weekday', accel: 8, agents: true, vol: true, per: 1, real: false, dark: false, playing: false, rain: false, event: null, ribbon: 'volume', signals: true, meshes: false, nonRail: true, look: 'dots', waits: false, sigAdj: 0 };
   let model = null, base = null, L = 0, simT = 0;
-  let gA, gB, dirX, dirY, hLen, visL, vol, baseVol, acc, sf, crossL, sigOff, sigC, sigG;
+  let gA, gB, dirX, dirY, hLen, visL, vol, baseVol, acc, sf, crossL, sigOff, sigC, sigG, sigC0, sigG0, uRank, uTau;
   // ---- 歩行者 ----
+  const wLink = new Int32Array(MAX).fill(-1), wT = new Float32Array(MAX);   // 信号なし横断歩道での待ち: いま待っているリンクと残り秒
   const path = new Array(MAX), step = new Int32Array(MAX), sArr = new Float32Array(MAX), spd = new Float32Array(MAX), lat = new Float32Array(MAX), grp = new Uint8Array(MAX);
   let count = 0, waiting = 0;
   const pos = new Float32Array(MAX * 3), col = new Float32Array(MAX * 3);
@@ -102,15 +103,16 @@ export function initPeople(ctx) {
   }
   function rebuild() {
     base = build(false); model = base; L = graph.links.length;
-    gA = new Float32Array(L); gB = new Float32Array(L); dirX = new Float32Array(L); dirY = new Float32Array(L); hLen = new Float32Array(L); visL = new Uint8Array(L); vol = new Float32Array(L); baseVol = new Float32Array(L); sf = new Float32Array(L).fill(1); crossL = new Uint8Array(L); sigOff = new Float32Array(L); sigC = new Float32Array(L); sigG = new Float32Array(L);
+    gA = new Float32Array(L); gB = new Float32Array(L); dirX = new Float32Array(L); dirY = new Float32Array(L); hLen = new Float32Array(L); visL = new Uint8Array(L); vol = new Float32Array(L); baseVol = new Float32Array(L); sf = new Float32Array(L).fill(1); crossL = new Uint8Array(L); sigOff = new Float32Array(L); sigC = new Float32Array(L); sigG = new Float32Array(L); sigC0 = new Float32Array(L); sigG0 = new Float32Array(L); uRank = new Uint8Array(L); uTau = new Float32Array(L);
     for (let i = 0; i < L; i++) {
       const l = graph.links[i]; const dx = l.bx - l.ax, dy = l.by - l.ay, h = Math.hypot(dx, dy); hLen[i] = h; if (h > 0.5) { dirX[i] = dx / h; dirY[i] = dy / h; }
       if (l.cross) {   // 交差点ごとに位相をずらし、直交する横断歩道は逆位相にする
         crossL[i] = 1;
-        if (sigMap) { const e = sigMap.get(`${Math.round(l.ax * 10)},${Math.round(l.ay * 10)},${Math.round(l.bx * 10)},${Math.round(l.by * 10)}`); if (e) { sigC[i] = e[4]; sigG[i] = e[5]; sigOff[i] = e[6]; } }   // 記載の無い横断歩道は信号なし (周期 0 = 待たない)
-        else { const th = ((Math.atan2(dy, dx) % Math.PI) + Math.PI) % Math.PI, grpPhase = th > Math.PI / 4 && th < Math.PI * 3 / 4 ? 0 : SIG_CYCLE / 2, hx = Math.floor((l.ax + l.bx) / 2 / 70), hy = Math.floor((l.ay + l.by) / 2 / 70); sigC[i] = SIG_CYCLE; sigG[i] = SIG_GREEN; sigOff[i] = grpPhase + (((hx * 73856093) ^ (hy * 19349663)) >>> 0) % SIG_CYCLE; }
+        if (sigMap) { const e = sigMap.get(`${Math.round(l.ax * 10)},${Math.round(l.ay * 10)},${Math.round(l.bx * 10)},${Math.round(l.by * 10)}`); if (e) { sigC0[i] = e[4]; sigG0[i] = e[5]; sigOff[i] = e[6]; if (!e[4]) { uRank[i] = Math.min(3, e[7] || 1); uTau[i] = Math.min(12, Math.max(4, (e[8] || 6) / WALK_SPEED + 2)); } } }   // 周期 0 = 信号なし: 車の切れ目を待つ (渡る道路の格と、渡りきるのに要る切れ目の長さ)
+        else { const th = ((Math.atan2(dy, dx) % Math.PI) + Math.PI) % Math.PI, grpPhase = th > Math.PI / 4 && th < Math.PI * 3 / 4 ? 0 : SIG_CYCLE / 2, hx = Math.floor((l.ax + l.bx) / 2 / 70), hy = Math.floor((l.ay + l.by) / 2 / 70); sigC0[i] = SIG_CYCLE; sigG0[i] = SIG_GREEN; sigOff[i] = grpPhase + (((hx * 73856093) ^ (hy * 19349663)) >>> 0) % SIG_CYCLE; }
       }
     }
+    applySigAdj();
     if (ribbon) { scene.remove(ribbon); ribbon.geometry.dispose(); }
     rpos = new Float32Array(L * 12); rcol = new Float32Array(L * 12); const idx = new Uint32Array(L * 6);
     for (let i = 0; i < L; i++) { const b = i * 4, o = i * 6; idx[o] = b; idx[o + 1] = b + 1; idx[o + 2] = b + 2; idx[o + 3] = b; idx[o + 4] = b + 2; idx[o + 5] = b + 3; }
@@ -122,7 +124,16 @@ export function initPeople(ctx) {
   }
   const day = () => dayContext(S.day, getMonth(), calib);
   // 鉄道以外の手段の内訳の説明 (tools/mode_split.py の見積もり。無ければ仮の割合)
-  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人（${M.bus.source}）。駐車台数のうち ${fmt(M.parking.known)} 台は ${M.parking.knownCount} 施設の公表値（うち ${M.parking.officialCount ?? 0} 施設は公式情報で確認）。時間帯の分布は、車が道路の時間帯別交通量（${M.car ? '一般交通量調査 令和 3 年度・範囲内 3 地点' : '未設定'}）、バスが${M.bus.hourly ? (M.bus.dummy ? '<b style="color:#ffb347">ダミーの時刻表</b>（実データ未取得）' : '現行ダイヤ（GTFS）') : '目的別の分布のまま'}` : `手段の内訳 ${sh} は仮定`; };
+  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人（${M.bus.source}）。駐車台数のうち ${fmt(M.parking.known)} 台は ${M.parking.knownCount} 施設の公表値（うち ${M.parking.officialCount ?? 0} 施設は公式情報で確認）。時間帯の分布は、車が道路の時間帯別交通量（${M.car ? '一般交通量調査 令和 3 年度' + (M.car.arrive ? '。到着と出発は地区の北の入口の方向別' : '・範囲内 3 地点') : '未設定'}）、バスが${M.bus.hourly ? (M.bus.dummy ? '<b style="color:#ffb347">ダミーの時刻表</b>（実データ未取得）' : '現行ダイヤ（GTFS）') : '目的別の分布のまま'}` : `手段の内訳 ${sh} は仮定`; };
+  // 信号の仮定の幅: 周期を sigAdj 秒だけ伸縮する (青の割合は保つ)
+  function applySigAdj() { if (!sigC0) return; for (let i = 0; i < L; i++) { if (sigC0[i] > 0) { const C = Math.max(40, sigC0[i] + S.sigAdj); sigC[i] = C; sigG[i] = sigG0[i] * C / sigC0[i]; } else { sigC[i] = 0; sigG[i] = 0; } } }
+  // 信号の無い横断歩道: 車の通行量 (台/秒, 渡る道路の格ごとの仮定 × 車の時間帯分布) から、車の切れ目を待つ時間を出す
+  //   渡りきるのに要る切れ目 τ、車の到着を不規則 (ポアソン) とすると、待たずに渡れる確率 = e^(−λτ)、平均の待ち = (e^(λτ) − 1 − λτ) / λ (上限 30 秒)
+  const VEH_PER_H = [0, 40, 150, 500], carHourly = calib?.mode?.car?.hourly, carMax = carHourly ? Math.max(...carHourly) : 0;
+  const carW = h => carHourly ? carHourly[Math.floor(((h % 24) + 24) % 24)] / carMax : (h >= 7 && h < 21 ? 1 : 0.3);
+  const crossLam = (li, h) => VEH_PER_H[uRank[li]] * carW(h) / 3600;
+  const crossDelay = (li, h = S.hour) => { if (!uRank[li]) return 0; const lam = crossLam(li, h), x = lam * uTau[li]; return lam > 0 ? Math.min(30, (Math.exp(x) - 1 - x) / lam) : 0; };
+  const drawGapWait = li => { const lam = crossLam(li, S.hour), x = lam * uTau[li]; if (lam <= 0 || Math.random() < Math.exp(-x)) return 0; const mean = Math.min(30, (Math.exp(x) - 1 - x) / lam) / (1 - Math.exp(-x)); return Math.min(60, -Math.log(1 - Math.random()) * mean); };
   const green = li => !S.signals || sigC[li] === 0 || ((simT + sigOff[li]) % sigC[li]) < sigG[li];
   function updateVolumes() {
     const d = day(); model.volumes(S.hour, d, vol); if (scenarioOn()) base.volumes(S.hour, d, baseVol); else baseVol.set(vol);
@@ -146,11 +157,11 @@ export function initPeople(ctx) {
   function setColor(i) { const c = gcol[grp[i]]; col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; body.instanceColor.array.set([c.r, c.g, c.b], i * 3); }
   function spawn(ci, progress) {
     if (count >= MAX) return; const c = model.classes[ci]; const p = c.sample(Math.random); if (!p || !p.length) return;
-    const i = count++; path[i] = p; grp[i] = c.group; spd[i] = WALK_SPEED * (0.8 + Math.random() * 0.5); lat[i] = 0.3 + Math.random() * 2.6;
+    const i = count++; wLink[i] = -1; wT[i] = 0; path[i] = p; grp[i] = c.group; spd[i] = WALK_SPEED * (0.8 + Math.random() * 0.5); lat[i] = 0.3 + Math.random() * 2.6;
     if (progress) { step[i] = Math.floor(Math.random() * p.length); sArr[i] = Math.random() * graph.links[p[step[i]] >> 1].length; } else { step[i] = 0; sArr[i] = 0; }
     setColor(i);
   }
-  function kill(i) { const j = --count; if (i !== j) { path[i] = path[j]; step[i] = step[j]; sArr[i] = sArr[j]; spd[i] = spd[j]; lat[i] = lat[j]; grp[i] = grp[j]; setColor(i); } path[j] = null; }
+  function kill(i) { const j = --count; if (i !== j) { path[i] = path[j]; step[i] = step[j]; sArr[i] = sArr[j]; spd[i] = spd[j]; lat[i] = lat[j]; grp[i] = grp[j]; wLink[i] = wLink[j]; wT[i] = wT[j]; setColor(i); } path[j] = null; }
   const total = w => { let s = 0; for (const x of w) s += x; return s; };
   function reset() {   // その時刻に歩いているはずの人数を、経路の途中にばらまいて初期化する
     count = 0; waitMap.clear(); if (!model || !S.on) { geo.setDrawRange(0, 0); body.count = 0; return; }
@@ -176,13 +187,17 @@ export function initPeople(ctx) {
     for (let i = 0; i < count; i++) {
       const p = path[i]; let k = step[i], code = p[k], li = code >> 1, l = links[li], s = sArr[i];
       // 信号待ち: 横断歩道の入口 (経路上で直前が横断歩道でないリンク) で赤なら止まる
-      const hold = crossL[li] && s < 0.05 && (k === 0 || !crossL[p[k - 1] >> 1]) && !green(li);
+      let hold = false;
+      if (crossL[li] && s < 0.05 && (k === 0 || !crossL[p[k - 1] >> 1])) {
+        if (sigC[li] > 0) hold = !green(li);
+        else if (uRank[li] && S.signals) { if (wLink[i] !== li) { wLink[i] = li; wT[i] = drawGapWait(li); } if (wT[i] > 0) { wT[i] -= sim; hold = true; } }   // 信号なし: 車の切れ目を待つ
+      }
       if (hold) { wait++; if (waitOn) { const mx = (l.ax + l.bx) / 2, my = (l.ay + l.by) / 2, key = Math.round(mx / WCELL) * 8192 + Math.round(my / WCELL); let e = waitMap.get(key); if (!e) waitMap.set(key, e = { x: mx, y: my, g: gA[li], n: 0, v: 0, fresh: true }); e.n++; } }
       else {
         s += spd[i] * sim * (l.vt ? 0.6 : 1) * sf[li]; let dead = false;
         while (s >= l.length) {
           s -= l.length; k++; if (k >= p.length) { dead = true; break; } const prev = li; code = p[k]; li = code >> 1; l = links[li];
-          if (crossL[li] && !crossL[prev] && !green(li)) { s = 0; break; }
+          if (crossL[li] && !crossL[prev] && (sigC[li] > 0 ? !green(li) : uRank[li] > 0 && S.signals && wLink[i] !== li)) { s = 0; break; }
         }
         if (dead) { kill(i); i--; continue; }
         step[i] = k; sArr[i] = s;
@@ -214,6 +229,7 @@ export function initPeople(ctx) {
     else if (S.rain !== before.rain || S.event !== before.event) rebuildScenario();
     else if (S.day !== before.day) { profileCache = null; baseProfileCache = null; reset(); updateVolumes(); buildMeshOverlay(); }
     else if (S.on !== before.on) reset();
+    if (S.sigAdj !== before.sigAdj) applySigAdj();
     if (S.ribbon !== before.ribbon) updateVolumes();
     applyVisibility(); updateStats(true);
   }
@@ -257,5 +273,5 @@ export function initPeople(ctx) {
   }
   // 建物ごとの出入り (駅との間の歩行者のみ) と滞在人数
   function buildingFlows(b) { if (!model) return null; const d = model.dests.find(x => (b === -2 ? x.extra : x.b === b)); if (!d) return null; const dd = day(); const f = model.destFlows(d.idx, S.hour, dd); let peak = 0, ph = 0; for (let h = 5; h < 24; h += 0.5) { const g = model.destFlows(d.idx, h, dd); if (g.arrive + g.leave > peak) { peak = g.arrive + g.leave; ph = h; } } return { ...f, peak, peakHour: ph, use: d.u, dest: d, presence: Math.max(0, model.presence(S.hour, dd)[d.idx]) }; }
-  return { rebuild, update, refreshHeights, setTheme, setHour, set, monthChanged, state: S, buildingFlows, day, graphNode: i => graph.nodes[i], carStop: li => S.on && S.signals && sigC[li] > 0 && ((simT + sigOff[li]) % sigC[li]) < sigG[li] + 3, signalOf: li => sigC && sigC[li] > 0 ? { C: sigC[li], G: sigG[li] } : null, signalStats: signals?.stats ?? null, timeScale: () => !S.on ? 1 : S.playing ? Math.max(S.accel, 40) : S.accel, dayOf: key => dayContext(key, getMonth(), calib), stat, get model() { return model; }, get base() { return base; }, get count() { return count; }, get waiting() { return waiting; }, get maxVol() { return stat.maxVol; }, get simT() { return simT; } };
+  return { rebuild, update, refreshHeights, setTheme, setHour, set, monthChanged, state: S, buildingFlows, day, graphNode: i => graph.nodes[i], carStop: li => S.on && S.signals && sigC[li] > 0 && ((simT + sigOff[li]) % sigC[li]) < sigG[li] + 3, signalOf: li => sigC && sigC[li] > 0 ? { C: sigC[li], G: sigG[li] } : null, crossDelay, hasGapModel: !!sigMap, signalStats: signals?.stats ?? null, timeScale: () => !S.on ? 1 : S.playing ? Math.max(S.accel, 40) : S.accel, dayOf: key => dayContext(key, getMonth(), calib), stat, get model() { return model; }, get base() { return base; }, get count() { return count; }, get waiting() { return waiting; }, get maxVol() { return stat.maxVol; }, get simT() { return simT; } };
 }

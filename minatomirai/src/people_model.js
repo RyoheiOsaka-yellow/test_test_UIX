@@ -170,7 +170,7 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
     const wk = M ? { car: Math.min(extra * 0.8, 2 * M.carPersons.weekday), bus: Math.min(extra * 0.8, 2 * M.busPersons.weekday) } : { car: extra * 0.5, bus: extra * 0.15 }; wk.walk = Math.max(0, extra - wk.car - wk.bus);
     const hol = M ? { car: Math.min(extra * hT * 0.8, 2 * M.carPersons.holiday), bus: Math.min(extra * hT * 0.8, 2 * M.busPersons.holiday) } : { car: wk.car * hT, bus: wk.bus * hT }; hol.walk = Math.max(0, extra * hT - hol.car - hol.bus);
     // 時間帯別の重み (平均 1): バスは時刻表の時間帯別の便数、車は道路の時間帯別交通量
-    const hourW = a => a?.length === 24 ? (() => { const m = a.reduce((x, y) => x + y, 0) / 24; return m > 0 ? a.map(v => v / m) : null; })() : null, hw = hourW(M?.bus?.hourly), cw = hourW(M?.car?.hourly);
+    const hourW = a => a?.length === 24 ? (() => { const m = a.reduce((x, y) => x + y, 0) / 24; return m > 0 ? a.map(v => v / m) : null; })() : null, hw = hourW(M?.bus?.hourly), cw = M?.car?.arrive ? { arr: hourW(M.car.arrive), dep: hourW(M.car.depart) } : hourW(M?.car?.hourly);   // 車は方向別 (地区へ入る向き = 到着、出る向き = 出発) があればそれを使う
     for (const md of [{ id: 'car', n: '駐車場（車）', src: snapAll([...(header.parking || []), ...(M?.parking?.points || [])]), hourW: cw }, { id: 'bus', n: 'バス停', src: snapAll(header.busStops), hourW: hw }, { id: 'walk', n: '徒歩・自転車・その他', src: gate }]) {
       if (!md.src.length || wk[md.id] <= 0) continue; let sx = 0, sy = 0; for (const i of md.src) { sx += nodes[i].x; sy += nodes[i].y; }
       stations.push({ id: md.id, n: md.n, hourW: md.hourW ?? null, daily: wk[md.id], dayMul: { weekday: 1, holiday: hol[md.id] / (wk[md.id] * hT) }, share: wk[md.id] / extra, src: md.src, x: sx / md.src.length, y: sy / md.src.length, out: tree(md.src, fadj), in: tree(md.src, radj), nonRail: true, assumed: true, est: !!M, srcNote: M ? '公開データからの見積もり' : '仮定' });
@@ -235,7 +235,8 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
       const profKey = purpose === 'resident' ? (dir === 'in' ? 'residentOut' : 'residentIn') : purpose + (dir === 'out' ? 'In' : 'Out');
       // 時間帯別の便数が分かる手段 (バスの GTFS) は、目的別の時間帯分布に便数の重みを掛ける (1 日の合計は変えない)
       let hourK = null;
-      if (S.hourW) { const P = PROFILE[profKey]; let z0 = 0, z = 0; for (let h = 0.25; h < 24; h += 0.5) { const q = prof(P, h); z0 += q; z += q * S.hourW[Math.floor(h)]; } if (z > 0) hourK = h => S.hourW[Math.floor(((h % 24) + 24) % 24)] * z0 / z; }
+      const W = S.hourW && !Array.isArray(S.hourW) ? (dir === 'out' ? S.hourW.arr : S.hourW.dep) : S.hourW;   // out = 発着点から街へ (到着)、in = 街から発着点へ (出発)
+      if (W) { const P = PROFILE[profKey]; let z0 = 0, z = 0; for (let h = 0.25; h < 24; h += 0.5) { const q = prof(P, h); z0 += q; z += q * W[Math.floor(h)]; } if (z > 0) hourK = h => W[Math.floor(((h % 24) + 24) % 24)] * z0 / z; }
       const cache = new Map();
       classes.push({
         key: `${S.id}:${purpose}:${dir}`, station: si, purpose, dir, group: purpose === 'commute' ? 0 : purpose === 'visit' ? 1 : 2, U, meanDist: md, share,

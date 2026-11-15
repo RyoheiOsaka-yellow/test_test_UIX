@@ -37,8 +37,8 @@ export const CATALOG = [
   { s: 'use', n: '地理院タイル（標高 DEM5A・全国最新写真）', by: '国土地理院', g: '5m 標高・航空写真', u: '地形、リアル表示の地表' },
   { s: 'use', n: '各施設の公式フロアガイド（MARK IS、ランドマークプラザ、クイーンズスクエア、東急スクエア）', by: '各施設', g: '階・区画・店舗・昇降設備の記号', u: '建物内のテナント配置、区画形状。MARK IS はエレベーター・エスカレーターの位置も画像から検出' },
   { s: 'use', n: 'OpenStreetMap の駐車場・バス停', by: 'OpenStreetMap contributors', g: '点（駐車場 397・バス停 101）', u: '鉄道以外で来る人の発着点。駐車場は面積から収容台数も見積もる' },
-  { s: 'use', n: 'OpenStreetMap の信号機・横断歩道のタグ', by: 'OpenStreetMap contributors', g: '点（信号機 269・横断歩道 783）', u: '横断歩道ごとの信号の有無。周期と青時間は交差する道路の種別からの仮定' },
-  { s: 'use', n: '全国道路・街路交通情勢調査 一般交通量調査（令和 3 年度）時間帯別交通量', by: '国土交通省 道路局', g: '調査区間・1 時間ごと・上下別・車種別', u: '車で来る人の時間帯分布（範囲内 3 地点の小型車）' },
+  { s: 'use', n: 'OpenStreetMap の信号機・横断歩道のタグ', by: 'OpenStreetMap contributors', g: '点（信号機 269・横断歩道 783）', u: '横断歩道ごとの信号の有無。周期と青時間は交差する道路の種別からの仮定で、実際の値は公開資料に見つからなかったため、仮定の幅（周期 ±20 秒など）による結果の動きを併記' },
+  { s: 'use', n: '全国道路・街路交通情勢調査 一般交通量調査（令和 3 年度）時間帯別交通量', by: '国土交通省 道路局', g: '調査区間・1 時間ごと・上下別・車種別', u: '車で来る人の時間帯分布。到着と出発は、地区の北の入口（栄本町線 金港町）の方向別交通量で分ける。信号の無い横断歩道で車の切れ目を待つ時間の時間帯変化にも使う' },
   { s: 'use', n: '国土数値情報 バスルート (N07) 2011年度', by: '国土交通省', g: '系統別の線（平日・土曜・日祝の運行本数）', u: 'バスで来る人の量（範囲内 176 系統・平日 4,658 便）' },
   { s: 'use', n: '主要施設の駐車場の収容台数', by: '各施設の公式サイト・駐車場案内サイト', g: '施設ごと（16 施設・計 9,759 台。うち 9 施設 7,794 台は公式情報で確認）', u: '車で来る人の量。台数が分からない施設は、延床からの見積もりに実数との比（0.51）を掛けて補正' },
   { s: 'use', n: 'みなとみらい公共駐車場の利用実績', by: '横浜市（市会資料）', g: '年間の駐車台数（2012年度 369,328 台 / 収容 1,154 台）', u: '駐車場の回転率（0.88 回/日）' },
@@ -266,6 +266,7 @@ export function initAnalysis(ctx) {
     el.querySelectorAll('tr[data-x]').forEach(tr => tr.addEventListener('click', () => { const x = Number(tr.dataset.x), z = -Number(tr.dataset.y); flyTo(new THREE.Vector3(x - 90, 130, z + 110), new THREE.Vector3(x, 0, z)); }));
     $('an-x-b').addEventListener('click', exportBuildings); $('an-x-l').addEventListener('click', exportLinks); $('an-x-m').addEventListener('click', exportMesh);
     $('an-x-w').addEventListener('click', exportWaits);
+    el.querySelectorAll('#an-sigadj button').forEach(b => b.addEventListener('click', () => { people.set({ sigAdj: Number(b.dataset.a) }); waitCache = null; renderRank(); }));
     el.querySelectorAll('tr[data-wk]').forEach(tr => tr.addEventListener('click', () => { const x = Number(tr.dataset.wx), z = -Number(tr.dataset.wy); S.waitSel = Number(tr.dataset.wk); people.set({ waits: true }); const cb = document.getElementById('p-waits'); if (cb) cb.checked = true; flyTo(new THREE.Vector3(x - 110, 170, z + 140), new THREE.Vector3(x, 0, z)); renderRank(); }));
     const msg = t => { $('an-s-msg').textContent = t; };
     $('an-s-link').addEventListener('click', () => { if (!share) return; const u = share.link(); (navigator.clipboard?.writeText(u) ?? Promise.reject()).then(() => msg('リンクをコピーしました。開くと同じ表示になります。'), () => msg(u)); });
@@ -283,18 +284,24 @@ export function initAnalysis(ctx) {
     const par = new Map(), find = v => { let r = v; while (par.get(r) !== r) r = par.get(r); par.set(v, r); return r; };
     const ids = []; graph.links.forEach((l, i) => { if (!l.cross) return; ids.push(i); for (const v of [l.a, l.b]) if (!par.has(v)) par.set(v, v); par.set(find(l.a), find(l.b)); });
     const by = new Map(); for (const i of ids) { const r = find(graph.links[i].a); let c = by.get(r); if (!c) by.set(r, c = { links: [], x: 0, y: 0 }); const l = graph.links[i]; c.links.push(i); c.x += (l.ax + l.bx) / 2; c.y += (l.ay + l.by) / 2; }
-    crosswalks = [...by.values()].map(c => ({ links: c.links, sig: people.signalOf(c.links[0]), x: c.x / c.links.length, y: c.y / c.links.length, key: Math.round(c.x / c.links.length / WAIT_CELL) * 8192 + Math.round(c.y / c.links.length / WAIT_CELL) }));
+    crosswalks = [...by.values()].map(c => ({ links: c.links, x: c.x / c.links.length, y: c.y / c.links.length, key: Math.round(c.x / c.links.length / WAIT_CELL) * 8192 + Math.round(c.y / c.links.length / WAIT_CELL) }));
   }
   const nameNear = (x, y, lim = 120) => { let nm = '', bd = lim; for (const dd of people.model.dests) { if (!dd.n || dd.n === '公園・緑地' || dd.extra) continue; const q = Math.hypot(dd.x - x, dd.y - y); if (q < bd) { bd = q; nm = dd.n; } } return nm; };
   // その時刻の交差点ごとの値 (平均の待ち人数の多い順)
-  function waitStats(hour = people.state.hour, d = day()) {
+  // opt: 仮定を動かす。dC = 周期の増減 (秒, 青の割合は保つ)、dShare = 青の割合の増減 (周期に対する割合)
+  function waitStats(hour = people.state.hour, d = day(), opt = null) {
     if (!crosswalks) buildCrosswalks(); const vol = new Float32Array(graph.links.length); people.model.volumes(hour, d, vol); const cells = new Map();
-    for (const c of crosswalks) { if (!c.sig) continue; let v = 0; for (const i of c.links) if (vol[i] > v) v = vol[i]; if (v < 1) continue; const q = v / 3600, R = c.sig.C - c.sig.G; let e = cells.get(c.key); if (!e) cells.set(c.key, e = { key: c.key, x: 0, y: 0, n: 0, flow: 0, avg: 0, peak: 0, C: 0, G: 0, top: 0 }); e.x += c.x; e.y += c.y; e.n++; e.flow += v; e.avg += q * R * R / (2 * c.sig.C); e.peak += q * R; if (v > e.top) { e.top = v; e.C = c.sig.C; e.G = c.sig.G; } }
-    return [...cells.values()].map(e => ({ key: e.key, x: e.x / e.n, y: e.y / e.n, n: e.n, flow: e.flow, avg: e.avg, peak: e.peak, C: e.C, G: e.G })).sort((a, b) => b.avg - a.avg);   // C・G は通行量がいちばん多い横断歩道の周期と青
+    for (const c of crosswalks) {
+      const sg = people.signalOf(c.links[0]), dly = sg ? 0 : people.crossDelay(c.links[0], hour); if (!sg && dly <= 0) continue; let v = 0; for (const i of c.links) if (vol[i] > v) v = vol[i]; if (v < 1) continue; const q = v / 3600;
+      let e = cells.get(c.key); if (!e) cells.set(c.key, e = { key: c.key, x: 0, y: 0, n: 0, flow: 0, avg: 0, peak: 0, C: 0, G: 0, top: 0, gap: 0 }); e.x += c.x; e.y += c.y; e.n++; e.flow += v;
+      if (sg) { let C = sg.C, G = sg.G; if (opt) { const C2 = Math.max(40, C + (opt.dC || 0)); G = Math.min(C2 - 10, Math.max(8, (G / C + (opt.dShare || 0)) * C2)); C = C2; } const R = C - G; e.avg += q * R * R / (2 * C); e.peak += q * R; if (v > e.top) { e.top = v; e.C = Math.round(C); e.G = Math.round(G); } }
+      else { e.avg += q * dly; e.peak += q * dly; e.gap += q * dly; if (v > e.top && !e.C) e.top = v; }   // 信号なし: 車の切れ目を待つ人数 (周期が無いので平均と最大は同じ)
+    }
+    return [...cells.values()].map(e => ({ key: e.key, x: e.x / e.n, y: e.y / e.n, n: e.n, flow: e.flow, avg: e.avg, peak: e.peak, C: e.C, G: e.G, gap: e.gap })).sort((a, b) => b.avg - a.avg);   // C・G は通行量がいちばん多い横断歩道の周期と青
   }
   // 1 日の推移 (30 分ごと): 全体の平均待ち人数と、交差点ごとの値。条件が変わるまで使い回す
   function waitSeries() {
-    const ps = people.state, sig = [ps.day, ps.rain, ps.event, ps.nonRail, realMonth?.()].join('|'), model = people.model; if (waitCache?.sig === sig && waitCache.model === model) return waitCache;
+    const ps = people.state, sig = [ps.day, ps.rain, ps.event, ps.nonRail, ps.sigAdj, realMonth?.()].join('|'), model = people.model; if (waitCache?.sig === sig && waitCache.model === model) return waitCache;
     const d = day(), hs = [], total = [], per = new Map();
     for (let h = 0.25; h < 24; h += 0.5) { const st = waitStats(h, d); hs.push(h); total.push(st.reduce((a, q) => a + q.avg, 0)); for (const q of st) { let arr = per.get(q.key); if (!arr) per.set(q.key, arr = new Float32Array(48)); arr[hs.length - 1] = q.avg; } }
     return (waitCache = { sig, model, hs, total, per });
@@ -305,15 +312,21 @@ export function initAnalysis(ctx) {
     const W = 300, H = 64, mx = Math.max(1, ...ser.total), my = own ? Math.max(0.5, ...own) : 1, X = h => h / 24 * W, line = (arr, m, col, wd) => `<polyline fill="none" stroke="${col}" stroke-width="${wd}" points="${ser.hs.map((h, i) => `${X(h).toFixed(1)},${(H - arr[i] / m * (H - 6)).toFixed(1)}`).join(' ')}"/>`;
     let svg = [6, 12, 18].map(h => `<line x1="${X(h)}" y1="0" x2="${X(h)}" y2="${H}" stroke="rgba(120,180,255,0.15)"/><text x="${X(h)}" y="${H + 10}" font-size="8" fill="#7d93b5" text-anchor="middle">${h}時</text>`).join('') + line(ser.total, mx, '#4da3ff', 1.6) + (own ? line(own, my, '#ffb347', 1.6) : '') + `<line x1="${X(people.state.hour)}" y1="0" x2="${X(people.state.hour)}" y2="${H}" stroke="#00e5ff" stroke-dasharray="3 3"/>`;
     const selRow = selKey != null ? st.find(q => q.key === selKey) : null;
+    // 仮定の幅: 周期 ±20 秒、青の割合 ±5 ポイントで全体の平均待ち人数がどう動くか
+    const sum = o => waitStats(people.state.hour, day(), o).reduce((x, q) => x + q.avg, 0), sens = [['周期 −20 秒', sum({ dC: -20 })], ['周期 +20 秒', sum({ dC: 20 })], ['青の割合 +5 ポイント', sum({ dShare: 0.05 })], ['青の割合 −5 ポイント', sum({ dShare: -0.05 })]], lo = Math.min(tot, ...sens.map(q => q[1])), hi = Math.max(tot, ...sens.map(q => q[1])), gapTot = st.reduce((x, q) => x + (q.gap || 0), 0), adj = people.state.sigAdj;
     return `<div class="sec-title" style="margin-top:6px">信号待ちの多い交差点（${hourTxt()}・推計）</div>
-      <table class="p-table an-click"><tr><th>交差点</th><th>平均</th><th>最大</th><th>横断 人/時</th><th>青/周期</th></tr>${top.map((q, k) => { const nm = nameNear(q.x, q.y); return `<tr data-wk="${q.key}" data-wx="${q.x}" data-wy="${q.y}" class="${q.key === selKey ? 'sel' : ''}"><td>${k + 1}. ${nm ? nm + ' 付近' : `(${Math.round(q.x)}, ${Math.round(q.y)})`}</td><td>${q.avg.toFixed(1)}</td><td>${fmtN(q.peak)}</td><td>${fmtN(q.flow)}</td><td>${q.G}/${q.C}</td></tr>`; }).join('')}</table>
+      <table class="p-table an-click"><tr><th>交差点</th><th>平均</th><th>最大</th><th>横断 人/時</th><th>青/周期</th></tr>${top.map((q, k) => { const nm = nameNear(q.x, q.y); return `<tr data-wk="${q.key}" data-wx="${q.x}" data-wy="${q.y}" class="${q.key === selKey ? 'sel' : ''}"><td>${k + 1}. ${nm ? nm + ' 付近' : `(${Math.round(q.x)}, ${Math.round(q.y)})`}</td><td>${q.avg.toFixed(1)}</td><td>${fmtN(q.peak)}</td><td>${fmtN(q.flow)}</td><td>${q.C ? q.G + '/' + q.C : '信号なし'}</td></tr>`; }).join('')}</table>
       <svg viewBox="0 0 ${W} ${H + 12}" width="100%" style="display:block;margin-top:4px">${svg}</svg>
       <div class="legend" style="margin-top:0"><span><i style="background:#4da3ff"></i>全体の平均待ち人数（最大 ${fmtN(mx)} 人）</span>${own ? `<span><i style="background:#ffb347"></i>選んだ交差点（最大 ${my.toFixed(1)} 人${selRow ? '・いま ' + selRow.avg.toFixed(1) + ' 人' : ''}）</span>` : ''}</div>
-      <div class="note" style="margin-top:0">いま全体で平均 約 ${fmtN(tot)} 人が信号を待っています（${st.length} 交差点）。「平均」は 1 周期をならした待ち人数、「最大」は赤の終わりの人数です。${people.signalStats ? `信号の有無は OpenStreetMap の記載から決め（横断歩道 ${people.signalStats.crosswalks} か所のうち信号あり ${people.signalStats.signalized}・なし ${people.signalStats.unsignalized}）、信号の無い横断歩道は待ちなしとしています。周期は交差する道路の種別による仮定（幹線 130 秒〜細街路 70 秒）で、「青/周期」は通行量がいちばん多い横断歩道の値です。` : `周期 ${SIG_CYCLE} 秒・青 ${SIG_GREEN} 秒をすべての横断歩道に仮定しています。`}到着は一様としています。行をクリックすると、その交差点へ移動して 1 日の推移を重ねます。</div>`;
+      <div class="sec-title" style="margin-top:6px">信号の仮定の幅（実際の周期は公開資料に無いため）</div>
+      <div class="seg-row" id="an-sigadj"><button data-a="-20" class="${adj === -20 ? 'active' : ''}">周期 −20 秒</button><button data-a="0" class="${!adj ? 'active' : ''}">標準</button><button data-a="20" class="${adj === 20 ? 'active' : ''}">周期 +20 秒</button></div>
+      <table class="p-table"><tr><th style="text-align:left">仮定</th><th>全体の平均待ち人数</th><th>標準との差</th></tr><tr><td>${adj ? `いまの設定（周期 ${adj > 0 ? '+' : '−'}${Math.abs(adj)} 秒）` : '標準'}</td><td>${fmtN(tot)}</td><td>—</td></tr>${sens.map(q => `<tr><td>${adj ? 'さらに ' : ''}${q[0]}</td><td>${fmtN(q[1])}</td><td>${q[1] >= tot ? '+' : '−'}${Math.abs(Math.round((q[1] / Math.max(1, tot) - 1) * 100))}%</td></tr>`).join('')}</table>
+      <div class="note" style="margin-top:0">この幅の中では 約 ${fmtN(lo)}〜${fmtN(hi)} 人。上のボタンは、歩行者と車の信号待ちの動きにも反映します。</div>
+      <div class="note" style="margin-top:0">いま全体で平均 約 ${fmtN(tot)} 人が信号を待っています（${st.length} 交差点）。「平均」は 1 周期をならした待ち人数、「最大」は赤の終わりの人数です。${people.signalStats ? `信号の有無は OpenStreetMap の記載から決め（横断歩道 ${people.signalStats.crosswalks} か所のうち信号あり ${people.signalStats.signalized}・なし ${people.signalStats.unsignalized}）、信号の無い横断歩道では、渡る道路の格から仮定した車の通行量（細街路 150 台/時、補助的な道路 500 台/時 に車の時間帯分布を掛けた値）から、車の切れ目を待つ時間を計算しています（いま 約 ${gapTot.toFixed(1)} 人）。周期は交差する道路の種別による仮定（幹線 130 秒〜細街路 70 秒）で、「青/周期」は通行量がいちばん多い横断歩道の値です。` : `周期 ${SIG_CYCLE} 秒・青 ${SIG_GREEN} 秒をすべての横断歩道に仮定しています。`}到着は一様としています。行をクリックすると、その交差点へ移動して 1 日の推移を重ねます。</div>`;
   }
   function exportWaits() {
-    const st = waitStats(), ser = waitSeries(), rows = [['rank', 'near', 'lon', 'lat', 'crosswalks', 'crossing_per_h', 'avg_waiting', 'peak_queue', 'cycle_s', 'green_s', 'hour', 'day', ...Array.from({ length: 24 }, (_, h) => `avg_${String(h).padStart(2, '0')}h`)]];
-    st.forEach((q, k) => { const [lo, la] = lonlat(q.x, q.y), a = ser.per.get(q.key); rows.push([k + 1, nameNear(q.x, q.y), lo.toFixed(6), la.toFixed(6), q.n, Math.round(q.flow), q.avg.toFixed(2), q.peak.toFixed(1), q.C, q.G, hourTxt(), people.state.day, ...Array.from({ length: 24 }, (_, h) => a ? ((a[h * 2] + a[h * 2 + 1]) / 2).toFixed(2) : 0)]); });
+    const st = waitStats(), ser = waitSeries(), rows = [['rank', 'near', 'lon', 'lat', 'crosswalks', 'crossing_per_h', 'avg_waiting', 'peak_queue', 'cycle_s', 'green_s', 'gap_waiting_unsignalized', 'hour', 'day', ...Array.from({ length: 24 }, (_, h) => `avg_${String(h).padStart(2, '0')}h`)]];
+    st.forEach((q, k) => { const [lo, la] = lonlat(q.x, q.y), a = ser.per.get(q.key); rows.push([k + 1, nameNear(q.x, q.y), lo.toFixed(6), la.toFixed(6), q.n, Math.round(q.flow), q.avg.toFixed(2), q.peak.toFixed(1), q.C || '', q.G || '', (q.gap || 0).toFixed(2), hourTxt(), people.state.day, ...Array.from({ length: 24 }, (_, h) => a ? ((a[h * 2] + a[h * 2 + 1]) / 2).toFixed(2) : 0)]); });
     download(`minatomirai_signal_wait_${hourTxt().replace(':', '')}.csv`, csv(rows), 'text/csv');
   }
   // 来訪者の発地構成 (人流オープンデータ 市区町村単位発地別)。区単位の値で、対象範囲より広い
