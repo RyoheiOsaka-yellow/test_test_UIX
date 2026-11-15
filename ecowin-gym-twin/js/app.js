@@ -18,11 +18,12 @@
   var S = {
     city: 'obs', insul: 'low', occupants: 80, sensible: 150, setHeat: 18, setCool: 27, opStart: 8, opEnd: 21,
     panels: 72, preheat: 1, field: true, layout: 'rows', price: 22, basic: 1100,
-    mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 4,
-    wind: true, rays: true, section: false, people: true, probe: null, split: true
+    mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 0.05,
+    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true
   };
   var wxCache = {}, wx, panels = [], F, F11, jet = {}, sim, dirty = true, chartsDirty = true;
   var target = [new Float32Array(N), new Float32Array(N)], shown = [new Float32Array(N), new Float32Array(N)], scratch = new Float32Array(N), first = true;
+  var shownField = shown, sunI = 0;
   var range = { lo: 10, hi: 26, c: 18, step: 1 }, rangeT = { lo: 10, hi: 26, c: 18, step: 1 };
 
   // ------------------------------------------------------------ 色
@@ -146,7 +147,7 @@
     var ctl = new THREE.OrbitControls(cam, canvas);
     ctl.enableDamping = true; ctl.dampingFactor = 0.08; ctl.maxPolarAngle = Math.PI * 0.495; ctl.minDistance = 4; ctl.maxDistance = 160;
     var W = G.W, D = G.D, H = G.H, cx = W / 2, cz = D / 2, vw = 1, vh = 1;
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.95));
+    var hemi = new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.95); scene.add(hemi);
     var sun = new THREE.DirectionalLight(0xffffff, 0.35); sun.position.set(-30, 60, 40); scene.add(sun);
 
     // 表示領域（左右2分割のときは2つ。幅が狭いときは上下に分ける）
@@ -316,31 +317,50 @@
       });
       initRays();
     }
-    // 人
-    var people = new THREE.Group(), bodyMat = new THREE.MeshLambertMaterial({ color: 0x39424d }), r = mul(7);
+    // 人（色は立っている場所の値で塗る。サーモグラフィのように見せる）
+    var people = new THREE.Group(), persons = [], r = mul(7);
     function mul(a) { return function () { a = (a * 16807) % 2147483647; return a / 2147483647; }; }
-    for (var pi = 0; pi < 34; pi++) {
-      var px = pi < 26 ? 15 + r() * 26 : 7 + r() * 2.5, py = pi < 26 ? (pi % 2 ? 8 + r() * 13 : 27 + r() * 13) : 9 + r() * 30;
-      var body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.35, 8), bodyMat); body.position.set(px, 0.68, py);
-      var head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), bodyMat); head.position.set(px, 1.52, py);
-      people.add(body); people.add(head);
+    var legGeo = new THREE.CylinderGeometry(0.13, 0.1, 0.82, 8), bodyGeo = new THREE.CylinderGeometry(0.22, 0.15, 0.62, 10), headGeo = new THREE.SphereGeometry(0.13, 12, 10);
+    for (var pi = 0; pi < 40; pi++) {
+      var px = pi < 30 ? 15 + r() * 26 : 7 + r() * 2.5, py = pi < 30 ? (pi % 2 ? 8 + r() * 13 : 27 + r() * 13) : 9 + r() * 30;
+      var pm = new THREE.MeshLambertMaterial({ color: 0x39424d }), fig = new THREE.Group();
+      var leg = new THREE.Mesh(legGeo, pm); leg.position.y = 0.41; var body = new THREE.Mesh(bodyGeo, pm); body.position.y = 1.13; var head = new THREE.Mesh(headGeo, pm); head.position.y = 1.6;
+      fig.add(leg); fig.add(body); fig.add(head); fig.position.set(px, 0, py); people.add(fig);
+      persons.push({ mat: pm, k: Math.floor((py - A.y0) / G.cell) * G.NX + Math.floor((px - A.x0) / G.cell) });
     }
     scene.add(people);
 
-    // 気流の粒子（短い線）。方式ごとに1組
+    // やわらかい光の粒（粒ごとに大きさと濃さを持つ）。気流の煙と輻射の粒に使う
+    var ptScale = { value: 400 };
+    function softPoints(n, order) {
+      var geo = new THREE.BufferGeometry(), a = { pos: new Float32Array(n * 3), col: new Float32Array(n * 3), size: new Float32Array(n), alpha: new Float32Array(n) };
+      geo.setAttribute('position', new THREE.BufferAttribute(a.pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(a.col, 3));
+      geo.setAttribute('aSize', new THREE.BufferAttribute(a.size, 1)); geo.setAttribute('aAlpha', new THREE.BufferAttribute(a.alpha, 1));
+      var mat = new THREE.ShaderMaterial({
+        uniforms: { uScale: ptScale }, transparent: true, depthWrite: false,
+        vertexShader: 'attribute float aSize; attribute float aAlpha; attribute vec3 color; uniform float uScale; varying vec3 vC; varying float vA;\nvoid main(){ vC = color; vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = min(aSize * uScale / max(-mv.z, 0.5), 420.0); gl_Position = projectionMatrix * mv; }',
+        fragmentShader: 'varying vec3 vC; varying float vA;\nvoid main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.05, d); gl_FragColor = vec4(vC, a * a * vA); }'
+      });
+      var obj = new THREE.Points(geo, mat); obj.frustumCulled = false; obj.renderOrder = order;
+      a.obj = obj; a.flush = function () { for (var k in geo.attributes) geo.attributes[k].needsUpdate = true; };
+      return a;
+    }
+
+    // 気流：流れの向きを示す短い線と、吹出しの空気のかたまりを示す煙。方式ごとに1組
     function gs() { return (Math.random() + Math.random() + Math.random() - 1.5) * 0.9; }
     function makeWind(mode) {
-      var NP = mode === 'eco' ? 700 : 1500, pos = new Float32Array(NP * 6), col = new Float32Array(NP * 6), ps = [];
+      var NP = mode === 'eco' ? 520 : 1300, pos = new Float32Array(NP * 6), col = new Float32Array(NP * 6), ps = [], puff = softPoints(NP, 4);
       for (var i = 0; i < NP; i++) ps.push({ u: i % M.AC_UNITS.length, s: Math.random() * 30, lx: gs(), lz: gs(), life: Math.random() * 10 });
       var geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-      var obj = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }));
-      obj.frustumCulled = false; obj.renderOrder = 4; obj.visible = false; scene.add(obj);
+      var lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8 }));
+      lines.frustumCulled = false; lines.renderOrder = 5;
+      var obj = new THREE.Group(); obj.add(puff.obj); obj.add(lines); obj.visible = false; scene.add(obj);
       return {
         obj: obj, on: false,
         update: function (dt, st, heat) {
           var u0 = K.u0[mode] * st.fan; this.on = S.wind && u0 > 0.05; if (!this.on) return;
-          var hot = hex(heat ? '#eb6834' : '#3987e5'), neu = hex(C['--ink-3']);
+          var load = 0.35 + 0.65 * Math.abs(st.lf), hot = hex(heat ? '#f0642c' : '#2f8fea'), neu = hex(C['--ink-3']);
           for (var i = 0; i < NP; i++) {
             var p = ps[i], o = i * 6, e = Math.exp(-(p.lx * p.lx + p.lz * p.lz)), vl = u0 * Math.min(1, 3.5 / p.s) * e;
             p.s += Math.max(vl, 0.05) * dt; p.life -= dt;
@@ -352,45 +372,101 @@
               pos[o + q * 3 + 1] = M.clamp(M.jetAxisZ(s, heat, un.z0) + p.lz * b * 0.8, 0.12, H - 0.15);
               pos[o + q * 3 + 2] = un.y + un.dir * s;
             }
-            var f = M.clamp(p.s / 26, 0, 1);
-            for (var k = 0; k < 3; k++) { var c = (hot[k] + (neu[k] - hot[k]) * f) / 255; col[o + k] = c; col[o + 3 + k] = c; }
+            var f = M.clamp(p.s / 24, 0, 1), j = i * 3;
+            for (var k = 0; k < 3; k++) { var c = (hot[k] + (neu[k] - hot[k]) * f) / 255; col[o + k] = c; col[o + 3 + k] = c; puff.col[j + k] = (hot[k] + (neu[k] - hot[k]) * f * 0.6) / 255; }
+            puff.pos[j] = pos[o]; puff.pos[j + 1] = pos[o + 1]; puff.pos[j + 2] = pos[o + 2];
+            puff.size[i] = 0.9 + 0.2 * p.s; // 噴流は進むほど広がる
+            puff.alpha[i] = i % 2 ? 0 : 0.2 * load * (1 - f) * Math.min(1, p.s / 1.5);
           }
-          geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
+          geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; puff.flush();
         }
       };
     }
     var winds = { ac: makeWind('ac'), eco: makeWind('eco') };
 
-    // 輻射の粒子（暖房：パネルから外へ／冷房：パネルへ向かって）
-    var NR = 1400, rPos = new Float32Array(NR * 3), rCol = new Float32Array(NR * 3), rp = [], raysOn = false;
-    var rGeo = new THREE.BufferGeometry();
-    rGeo.setAttribute('position', new THREE.BufferAttribute(rPos, 3)); rGeo.setAttribute('color', new THREE.BufferAttribute(rCol, 3));
-    var dot = document.createElement('canvas'); dot.width = dot.height = 32; var dc = dot.getContext('2d');
-    var gr = dc.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-    dc.fillStyle = gr; dc.fillRect(0, 0, 32, 32);
-    var rays = new THREE.Points(rGeo, new THREE.PointsMaterial({ size: 0.34, map: new THREE.CanvasTexture(dot), vertexColors: true, transparent: true, depthWrite: false, opacity: 0.9 }));
-    rays.frustumCulled = false; rays.renderOrder = 5; rays.visible = false; scene.add(rays);
-    var RMAX = 5.5;
+    // 輻射の粒（暖房：パネルから外へ／冷房：パネルへ向かって）
+    var NR = 1800, ray3 = softPoints(NR, 6), rays = ray3.obj, rp = [], raysOn = false, RMAX = 6;
+    rays.visible = false; scene.add(rays);
     function initRays() {
       rp = [];
       for (var i = 0; i < NR; i++) rp.push({ p: panels.length ? i % panels.length : 0, side: i % 2 ? 1 : -1, a: Math.random() - 0.5, h: Math.random(), dl: gs() * 0.7, dv: gs() * 0.45, r: Math.random() * RMAX });
     }
     function updateRays(dt, st, heat) {
       var d = Math.abs(st.Tp - st.Ta); raysOn = S.rays && panels.length > 0 && d > 2; if (!raysOn) return;
-      var hot = hex(heat ? '#ff8a3d' : '#59b6ff'), bg = hex(C['--scene']), sp = (heat ? 1 : -1) * 2.0 * dt, act = M.clamp(d / 25, 0.15, 1) * NR;
+      var hot = hex(heat ? '#ff8a3d' : '#59b6ff'), sp = (heat ? 1 : -1) * 2.0 * dt, act = M.clamp(d / 25, 0.15, 1) * NR;
       for (var i = 0; i < NR; i++) {
         var q = rp[i], o = i * 3;
-        if (i > act) { rPos[o + 1] = -5; continue; }
+        if (i > act) { ray3.alpha[i] = 0; continue; }
         q.r += sp;
         if (q.r > RMAX) q.r = 0.05; else if (q.r < 0.05) q.r = RMAX;
         var P = panels[q.p], nx = q.r * q.side, lat = q.a * M.PANEL.w + q.dl * q.r, hz = M.PANEL.z0 + q.h * M.PANEL.h + q.dv * q.r;
         var x = P.axis === 'y' ? P.x + lat : P.x + nx, y = P.axis === 'y' ? P.y + nx : P.y + lat;
-        if (x < A.x0 + 0.1 || x > A.x1 - 0.1 || y < A.y0 + 0.1 || y > A.y1 - 0.1 || hz < 0.05 || hz > H - 0.1) { rPos[o + 1] = -5; continue; }
-        rPos[o] = x; rPos[o + 1] = hz; rPos[o + 2] = y;
-        var f = Math.pow(q.r / RMAX, 0.8);
-        for (var k = 0; k < 3; k++) rCol[o + k] = (hot[k] + (bg[k] - hot[k]) * f) / 255;
+        if (x < A.x0 + 0.1 || x > A.x1 - 0.1 || y < A.y0 + 0.1 || y > A.y1 - 0.1 || hz < 0.05 || hz > H - 0.1) { ray3.alpha[i] = 0; continue; }
+        ray3.pos[o] = x; ray3.pos[o + 1] = hz; ray3.pos[o + 2] = y;
+        var f = q.r / RMAX;
+        ray3.size[i] = 0.22 + 0.5 * f; ray3.alpha[i] = 0.85 * Math.pow(1 - f, 1.3);
+        for (var k = 0; k < 3; k++) ray3.col[o + k] = hot[k] / 255;
       }
-      rGeo.attributes.position.needsUpdate = true; rGeo.attributes.color.needsUpdate = true;
+      ray3.flush();
+    }
+
+    // 空気の層：館内の空気温度を立体の格子に入れ、視線に沿って重ねて描く（WebGL2 が使える端末のみ）
+    var VX = 46, VY = 38, VZ = 25, volOK = renderer.capabilities.isWebGL2 && !!THREE.DataTexture3D, volTex = [], volData = [], volRange = [{ lo: 0, hi: 1 }, { lo: 0, hi: 1 }], volMesh = null, volDirty = true, volT = 0;
+    var lutData = new Uint8Array(512 * 4), lutTex = new THREE.DataTexture(lutData, 512, 1, THREE.RGBAFormat);
+    lutTex.minFilter = lutTex.magFilter = THREE.LinearFilter;
+    if (volOK) {
+      for (var vi = 0; vi < 2; vi++) {
+        volData.push(new Uint8Array(VX * VY * VZ));
+        var t3d = new THREE.DataTexture3D(volData[vi], VX, VY, VZ);
+        t3d.format = THREE.RedFormat; t3d.type = THREE.UnsignedByteType; t3d.minFilter = t3d.magFilter = THREE.LinearFilter; t3d.unpackAlignment = 1; t3d.needsUpdate = true;
+        volTex.push(t3d);
+      }
+      var volMat = new THREE.ShaderMaterial({
+        uniforms: { map: { value: volTex[0] }, lut: { value: lutTex }, bmin: { value: new THREE.Vector3(A.x0, 0, A.y0) }, bmax: { value: new THREE.Vector3(A.x1, H, A.y1) }, uRef: { value: 0.5 }, uSpan: { value: 0.3 }, uDens: { value: 0.032 } },
+        transparent: true, depthWrite: false, depthTest: false, side: THREE.BackSide,
+        vertexShader: 'varying vec3 vW;\nvoid main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+        fragmentShader: [
+          'precision highp float; precision highp sampler3D;',
+          'uniform sampler3D map; uniform sampler2D lut; uniform vec3 bmin; uniform vec3 bmax; uniform float uRef; uniform float uSpan; uniform float uDens;',
+          'varying vec3 vW;',
+          'float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
+          'void main(){',
+          '  vec3 ro = cameraPosition; vec3 rd = normalize(vW - ro); vec3 inv = 1.0 / (rd + vec3(1e-6));',
+          '  vec3 t0 = (bmin - ro) * inv; vec3 t1 = (bmax - ro) * inv; vec3 tn3 = min(t0, t1); vec3 tf3 = max(t0, t1);',
+          '  float tn = max(max(tn3.x, tn3.y), max(tn3.z, 0.0)); float tf = min(tf3.x, min(tf3.y, tf3.z));',
+          '  if (tf <= tn) discard;',
+          '  float dt = (tf - tn) / 44.0; float t = tn + dt * hash(gl_FragCoord.xy); vec4 acc = vec4(0.0);',
+          '  for (int i = 0; i < 44; i++) {',
+          '    vec3 u = (ro + rd * t - bmin) / (bmax - bmin);',
+          '    float v = texture(map, vec3(u.x, u.z, u.y)).r;',
+          '    float a = smoothstep(0.28, 1.15, abs(v - uRef) / uSpan) * uDens * dt;',
+          '    vec3 c = texture2D(lut, vec2(clamp(0.5 + (v - uRef) / uSpan * 0.3, 0.02, 0.98), 0.5)).rgb;',
+          '    acc.rgb += (1.0 - acc.a) * a * c; acc.a += (1.0 - acc.a) * a;',
+          '    if (acc.a > 0.62) break; t += dt;',
+          '  }',
+          '  gl_FragColor = vec4(acc.rgb / max(acc.a, 1e-4), min(acc.a, 0.6));',
+          '}'].join('\n')
+      });
+      volMesh = new THREE.Mesh(new THREE.BoxGeometry(A.x1 - A.x0, H, A.y1 - A.y0), volMat);
+      volMesh.position.set((A.x0 + A.x1) / 2, H / 2, (A.y0 + A.y1) / 2); volMesh.renderOrder = 7; volMesh.frustumCulled = false; volMesh.visible = false; scene.add(volMesh);
+    }
+    // 噴流の形は変わらないので、立体格子の相対風速は暖房・冷房ごとに1回だけ求めておく
+    var volJet = {};
+    function volPattern(heat) {
+      var key = heat ? 'h' : 'c'; if (volJet[key]) return volJet[key];
+      var out = new Float32Array(VX * VY * VZ), i = 0, cxv = (A.x1 - A.x0) / VX, cyv = (A.y1 - A.y0) / VY, czv = H / VZ;
+      for (var z = 0; z < VZ; z++) for (var y = 0; y < VY; y++) for (var x = 0; x < VX; x++, i++) out[i] = M.jetNorm(A.x0 + (x + 0.5) * cxv, A.y0 + (y + 0.5) * cyv, (z + 0.5) * czv, heat);
+      return (volJet[key] = out);
+    }
+    function updateVolume(slot, mode, st, heat) {
+      var d = volData[slot], lo = range.lo, hi = range.hi, jn = volPattern(heat), i = 0, czv = H / VZ, n2 = VX * VY;
+      if (S.layer === 'wind' || S.layer === 'wbgt') { lo = st.Ta - 8; hi = st.Ta + 8; }
+      var sc = 255 / (hi - lo), dT = mode === 'none' ? 0 : K.dTs[mode][heat ? 'heat' : 'cool'] * (0.3 + 0.7 * Math.abs(st.lf)) * st.fan * 0.6;
+      for (var z = 0; z < VZ; z++) {
+        var base = (st.Ta + st.G * ((z + 0.5) * czv - G.zRef) - lo) * sc, k = dT * sc;
+        for (var q = 0; q < n2; q++, i++) { var v = base + k * jn[i]; d[i] = v < 0 ? 0 : v > 255 ? 255 : v; }
+      }
+      volRange[slot] = { lo: lo, hi: hi }; volTex[slot].needsUpdate = true;
     }
 
     // 地点の読み取りと、パネルのドラッグ
@@ -484,12 +560,15 @@
       mat.color.setRGB((base[0] + (c[0] - base[0]) * f) / 255, (base[1] + (c[1] - base[1]) * f) / 255, (base[2] + (c[2] - base[2]) * f) / 255);
     }
     return {
-      rebuildPanels: rebuildPanels, setCam: setCam, resize: resize, canvas: canvas, rects: rects,
+      rebuildPanels: rebuildPanels, setCam: setCam, resize: resize, canvas: canvas, rects: rects, volOK: volOK,
+      markVolume: function () { volDirty = true; },
       applyTheme: function () {
         renderer.setClearColor(new THREE.Color(C['--scene']), 1);
         ground.material.color.set(C['--scene']);
         lineMat.color.set(C['--surface']); frameMat.color.set(C['--ink-3']);
         pole.material.color.set(C['--ink']);
+        for (var i = 0; i < 512; i++) { lutData[i * 4] = LUT.temp[i * 3]; lutData[i * 4 + 1] = LUT.temp[i * 3 + 1]; lutData[i * 4 + 2] = LUT.temp[i * 3 + 2]; lutData[i * 4 + 3] = 255; }
+        lutTex.needsUpdate = true;
       },
       paintHeat: function (slot, vals) {
         painters[slot].paint(vals, lutFor(S.layer), range.lo, range.hi, range.step, hex(C['--ink']));
@@ -506,6 +585,9 @@
         roofGroup.visible = cam.position.y < H - 0.6; gal.W.visible = !S.section;
         mullObj.N.visible = cam.position.z > 0; mullObj.S.visible = cam.position.z < D; mullObj.E.visible = cam.position.x < W; mullObj.W.visible = cam.position.x > 0;
         people.visible = S.people; sec.visible = S.section;
+        var day = M.clamp(sunI / 700, 0, 1); hemi.intensity = 0.78 + 0.2 * day; sun.intensity = 0.12 + 0.3 * day; winMat.emissive.setRGB(0.05 + 0.2 * day, 0.07 + 0.22 * day, 0.09 + 0.24 * day);
+        var useVol = volOK && S.volume; volT += dt;
+        if (useVol && volDirty && volT > 0.14) { views.forEach(function (v, i) { updateVolume(i, v.mode, v.st, heat); }); volDirty = false; volT = 0; }
         var rs = rects(), tl = S.layer !== 'wind' && S.layer !== 'wbgt', wb = hex(C['--surface-2']), eco = null;
         views.forEach(function (v) { if (winds[v.mode]) winds[v.mode].update(dt, v.st, heat); if (v.mode === 'eco') eco = v; });
         if (eco) updateRays(dt, eco.st, heat);
@@ -532,6 +614,13 @@
             secPainter.paint(secVals, wl ? LUT.wind : LUT.temp, lo, hi, wl ? 0.25 : range.step, hex(C['--ink']));
             secTex.needsUpdate = true;
           }
+          ptScale.value = q.h * renderer.getPixelRatio() / (2 * Math.tan(cam.fov * Math.PI / 360));
+          if (volMesh) {
+            volMesh.visible = useVol;
+            if (useVol) { var vr = volRange[i], vu = volMesh.material.uniforms; vu.map.value = volTex[i]; vu.uRef.value = (st.Ta - vr.lo) / (vr.hi - vr.lo); vu.uSpan.value = 5.5 / (vr.hi - vr.lo); }
+          }
+          var plut = lutFor(S.layer), sh = shownField[i];
+          if (S.people) persons.forEach(function (pp) { if (S.field) { var pc2 = colorAt(plut, sh[pp.k], range.lo, range.hi); pp.mat.color.setRGB(pc2[0] / 255, pc2[1] / 255, pc2[2] / 255); } else pp.mat.color.setHex(0x39424d); });
           renderer.setViewport(q.x, vh - q.y - q.h, q.w, q.h); renderer.setScissor(q.x, vh - q.y - q.h, q.w, q.h);
           renderer.render(scene, cam);
         });
@@ -642,7 +731,7 @@
       k = d * 24 + hh; lo = Math.min(lo, wx.T[k]); hi = Math.max(hi, wx.T[k]);
       M.MODES.forEach(function (m) { lo = Math.min(lo, sim[m][key][k]); hi = Math.max(hi, sim[m][key][k]); });
     }
-    lo = Math.floor(lo - 1); hi = Math.ceil(hi + 1); var stp = hi - lo > 16 ? 5 : 2;
+    lo = Math.floor(lo - 1); hi = Math.ceil(hi + 1); var stp = hi - lo > 24 ? 10 : hi - lo > 9 ? 5 : 2;
     function X(x) { return L + w * x / 24; } function Y(v) { return T + h * (1 - (v - lo) / (hi - lo)); }
     dayGeom = { L: L, w: w, d: d };
     c.fillStyle = C['--surface-2']; c.fillRect(X(S.opStart), T, X(S.opEnd) - X(S.opStart), h);
@@ -669,7 +758,8 @@
   // 月ごとの電力量
   var monGeom = null;
   function drawMon() {
-    var f = fit($('mon')), c = f.c, L = 26, T = 6, B = 15, w = f.w - L - 2, h = f.h - T - B, a = sim.summary.modes.ac.monthly, e = sim.summary.modes.eco.monthly;
+    var f = fit($('mon')), c = f.c; if (f.w < 40) return;
+    var L = 26, T = 6, B = 15, w = f.w - L - 2, h = f.h - T - B, a = sim.summary.modes.ac.monthly, e = sim.summary.modes.eco.monthly;
     var mx = 1; for (var m = 0; m < 12; m++) mx = Math.max(mx, a[m] / 1000);
     var stp = mx > 30 ? 10 : mx > 12 ? 5 : mx > 4 ? 2 : 1; mx = Math.ceil(mx / stp) * stp;
     c.strokeStyle = C['--line']; c.fillStyle = C['--ink-2']; c.textAlign = 'right'; c.textBaseline = 'middle'; c.lineWidth = 1;
@@ -770,7 +860,7 @@
       $('panels').value = S.panels; $('price').value = S.price; $('basic').value = S.basic; $('preheat').value = S.preheat;
       if (S.layout === 'custom' && !$('layout').querySelector('[value=custom]')) { var o = document.createElement('option'); o.value = 'custom'; o.textContent = '自由配置（ドラッグで変更）'; $('layout').appendChild(o); }
       $('layout').value = S.layout;
-      $('ckWind').checked = S.wind; $('ckRays').checked = S.rays; $('ckSection').checked = S.section; $('ckPeople').checked = S.people; $('ckField').checked = S.field;
+      $('ckWind').checked = S.wind; $('ckRays').checked = S.rays; $('ckSection').checked = S.section; $('ckPeople').checked = S.people; $('ckField').checked = S.field; $('ckVolume').checked = S.volume; $('speed').value = String(S.speed);
       press('modeSeg', S.mode); press('layerSeg', S.layer); press('zSeg', S.z); outs();
     }
     syncInputs();
@@ -792,7 +882,7 @@
     $('insul').addEventListener('change', function () { S.insul = $('insul').value; recomputeSim(); });
     $('preheat').addEventListener('change', function () { S.preheat = parseInt($('preheat').value, 10); recomputeSim(); });
     $('layout').addEventListener('change', function () { S.layout = $('layout').value; if (S.layout !== 'custom') recomputeAll(); });
-    [['ckWind', 'wind'], ['ckRays', 'rays'], ['ckSection', 'section'], ['ckPeople', 'people'], ['ckField', 'field']].forEach(function (p) {
+    [['ckWind', 'wind'], ['ckRays', 'rays'], ['ckSection', 'section'], ['ckPeople', 'people'], ['ckField', 'field'], ['ckVolume', 'volume']].forEach(function (p) {
       $(p[0]).addEventListener('change', function () { S[p[1]] = $(p[0]).checked; if (p[1] === 'section' && scene3) { scene3.resize(); scene3.setCam(S.section ? 'side' : 'iso'); } dirty = true; });
     });
     $('cams').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b && b.dataset.v && scene3) scene3.setCam(b.dataset.v); });
@@ -842,7 +932,7 @@
     mon.addEventListener('pointerleave', hideTip);
 
     // 配置と条件の保存・読込（このブラウザの中に保存する）
-    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split'];
+    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split', 'volume', 'speed'];
     function say(t) { var e = $('saveMsg'); e.textContent = t; clearTimeout(say.t); say.t = setTimeout(function () { e.textContent = ''; }, 4000); }
     $('saveScene').addEventListener('click', function () {
       var o = { v: 3 }; KEYS.forEach(function (k) { o[k] = S[k]; });
@@ -889,6 +979,18 @@
     });
     $('closeShot').addEventListener('click', function () { var d = $('shotDlg'); if (d.close) d.close(); else d.removeAttribute('open'); });
 
+    // 左のパネルの切り替えと開閉
+    $('tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return; press('tabs', b.dataset.v);
+      [].forEach.call(document.querySelectorAll('.pane'), function (p) { p.hidden = p.dataset.pane !== b.dataset.v; });
+      chartsDirty = true; dirty = true;
+    });
+    press('tabs', 'cond');
+    $('sideToggle').addEventListener('click', function () {
+      var w = $('main').classList.toggle('wide'); $('sideToggle').textContent = w ? 'パネルを表示' : 'パネルを隠す'; $('sideToggle').setAttribute('aria-expanded', String(!w)); chartsDirty = true; dirty = true;
+    });
+    if (scene3 && !scene3.volOK) { $('ckVolume').checked = false; $('ckVolume').disabled = true; S.volume = false; }
+
     $('openNotes').addEventListener('click', function () { var d = $('notes'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); });
     $('closeNotes').addEventListener('click', function () { var d = $('notes'); if (d.close) d.close(); else d.removeAttribute('open'); });
     window.addEventListener('keydown', function (e) {
@@ -908,14 +1010,14 @@
   var last = 0, legendKey = '', lastDay = -1, settle = 0;
   function tick(now) {
     requestAnimationFrame(tick);
-    var dt = Math.min(0.1, (now - last) / 1000 || 0.016); last = now;
+    var dt = Math.min(0.25, (now - last) / 1000 || 0.016); last = now;
     if (S.playing) { setTime(S.t + dt * S.speed); syncSliders(); }
     var heat = isHeat(Math.floor(S.t)), ms = shownModes(), sts = {};
     M.MODES.forEach(function (m) { sts[m] = stateAt(m, S.t); });
     if (dirty) {
       updateRangeTarget();
       ms.forEach(function (m, i) { M.computeField(S.layer, m, sts[m], heat, S.z, F, heat ? jet.heat : jet.cool, target[i]); });
-      renderNow(sts, wxAt(S.t)); renderProbe(sts, heat);
+      var wn = wxAt(S.t); sunI = wn.I; renderNow(sts, wn); renderProbe(sts, heat); if (scene3) scene3.markVolume();
       var d = Math.floor(S.t / 24);
       if (chartsDirty || d !== lastDay) { if (chartsDirty) { buildCal(); drawMon(); } lastDay = d; chartsDirty = false; }
       drawCal(); drawDay();

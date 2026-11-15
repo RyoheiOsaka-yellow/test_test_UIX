@@ -32,6 +32,7 @@
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 13px; line-height: 1.5; }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 button, select, input { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .num { font-family: var(--num); font-variant-numeric: tabular-nums; }
@@ -45,7 +46,18 @@ button, select, input { font: inherit; color: inherit; }
 .badge { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 .link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; }
 
-.main { display: grid; grid-template-columns: 264px minmax(0, 1fr) 336px; gap: 10px; min-height: 0; }
+.main { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 10px; min-height: 0; }
+.main.wide { grid-template-columns: minmax(0, 1fr); }
+.main.wide .side { display: none; }
+.side { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
+.pane { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+#tabs { flex: 0 0 auto; }
+#tabs button { padding: 7px 4px; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.tools .seg { display: inline-grid; }
+.tools .seg button { padding: 5px 10px; white-space: nowrap; }
+.tools .seg.modes button { flex-direction: row; gap: 6px; padding: 5px 10px; }
+.tools .seg.modes i { width: 10px; height: 10px; border-radius: 50%; }
 .col { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
 .side { overflow-y: auto; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
@@ -72,7 +84,7 @@ button, select, input { font: inherit; color: inherit; }
 .checks label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .checks input { accent-color: var(--accent); margin: 0; }
 
-.center { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; min-height: 0; min-width: 0; }
+.center { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; min-height: 0; min-width: 0; }
 .view { position: relative; background: var(--scene); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; min-height: 260px; }
 .view canvas.gl { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .hud { position: absolute; pointer-events: none; }
@@ -96,7 +108,7 @@ button, select, input { font: inherit; color: inherit; }
 .hint { left: 50%; top: 10px; transform: translateX(-50%); color: var(--ink-3); font-size: 11px; white-space: nowrap; }
 .glfail { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--ink-2); }
 
-.dock { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px 14px; }
+.dock { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 6px 14px; }
 .dock .bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .btn { background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
 .btn.play { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; min-width: 76px; }
@@ -105,7 +117,7 @@ button, select, input { font: inherit; color: inherit; }
 .chart { min-width: 0; }
 .chart .ct { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 11px; color: var(--ink-2); margin-bottom: 3px; }
 .chart .ct b { color: var(--ink); font-weight: 700; }
-.chart canvas { display: block; width: 100%; height: 118px; cursor: crosshair; touch-action: none; }
+.chart canvas { display: block; width: 100%; height: 84px; cursor: crosshair; touch-action: none; }
 .keys { display: inline-flex; flex-wrap: wrap; gap: 2px 10px; }
 .keys span { display: inline-flex; align-items: center; gap: 4px; }
 .keys i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
@@ -127,7 +139,8 @@ table.cmp tr:last-child td, table.cmp tr:last-child th { border-bottom: 0; }
 .hero .big small { font-size: 16px; }
 .hero .cap { color: var(--ink-2); font-size: 11.5px; }
 .note { color: var(--ink-3); font-size: 11px; }
-.chart.mon canvas { height: 104px; cursor: default; }
+.chart.mon canvas { height: 130px; cursor: default; }
+.card.dock { padding: 8px 12px; }
 
 .tip { position: fixed; z-index: 30; pointer-events: none; background: var(--ink); color: var(--surface); border-radius: 4px; padding: 5px 8px; font-size: 11.5px; line-height: 1.45; max-width: 240px; }
 .tip b { font-family: var(--num); }
@@ -141,14 +154,13 @@ dialog h3 { font-size: 13px; margin: 16px 0 4px; }
 dialog p, dialog li { color: var(--ink-2); margin: 4px 0; }
 dialog ul { padding-left: 18px; margin: 4px 0; }
 
-@media (max-width: 1180px) {
+@media (max-width: 980px) {
   html, body { height: auto; }
   .app { height: auto; }
   .main { grid-template-columns: minmax(0, 1fr); }
   .center { order: -1; }
-  .view { height: 62vh; min-height: 320px; }
-  .side { overflow: visible; }
-  .left { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); align-items: start; }
+  .view { height: 64vh; min-height: 320px; }
+  .pane { overflow: visible; }
 }
 @media (max-width: 720px) { .dock { grid-template-columns: minmax(0, 1fr); } .hint { display: none; } .clock .d { font-size: 20px; } .cams { bottom: auto; top: 46px; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
@@ -160,6 +172,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <span class="badge">推計値（実測ではありません）</span>
     <span class="badge" id="wxBadge"></span>
     <span class="grow"></span>
+    <button class="btn" id="sideToggle" type="button" aria-expanded="true">パネルを隠す</button>
     <span class="note" id="saveMsg" role="status"></span>
     <button class="btn" id="saveScene" type="button">配置を保存</button>
     <button class="btn" id="loadScene" type="button">読込</button>
@@ -167,43 +180,13 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <button class="link" id="openNotes" type="button">前提と出典</button>
   </header>
 
-  <div class="main">
-    <aside class="col side left">
-      <section class="card stack">
-        <h2>方式を比べる</h2>
-        <div class="seg modes" id="modeSeg" role="group" aria-label="空調方式">
-          <button type="button" data-v="none"><i style="background:var(--m-none)"></i>空調なし</button>
-          <button type="button" data-v="ac"><i style="background:var(--m-ac)"></i>エアコン<br>のみ</button>
-          <button type="button" data-v="eco"><i style="background:var(--m-eco)"></i>ecowin<br>ハイブリッド</button>
-        </div>
-        <div>
-          <div class="lbl" style="margin-bottom:4px">床の色で見るもの</div>
-          <div class="seg wrap" id="layerSeg" role="group" aria-label="表示する値">
-            <button type="button" data-v="ot">体感温度</button>
-            <button type="button" data-v="ta">空気温度</button>
-            <button type="button" data-v="mrt">放射温度</button>
-            <button type="button" data-v="wind">風速</button>
-            <button type="button" data-v="wbgt">暑さ指数</button>
-          </div>
-        </div>
-        <div>
-          <div class="lbl" style="margin-bottom:4px">評価する高さ</div>
-          <div class="seg" id="zSeg" role="group" aria-label="評価高さ">
-            <button type="button" data-v="0.1">足元 0.1m</button>
-            <button type="button" data-v="1.1">腰 1.1m</button>
-            <button type="button" data-v="1.7">頭 1.7m</button>
-          </div>
-        </div>
-        <div class="checks">
-          <label><input type="checkbox" id="ckWind" checked>気流</label>
-          <label><input type="checkbox" id="ckRays" checked>輻射</label>
-          <label><input type="checkbox" id="ckSection">断面（空気温度）</label>
-          <label><input type="checkbox" id="ckPeople" checked>人</label>
-          <label><input type="checkbox" id="ckField" checked>床の色分布</label>
-        </div>
-      </section>
-
-      <section class="card stack">
+  <div class="main" id="main">
+    <aside class="side" id="side">
+      <div class="seg" id="tabs" role="group" aria-label="パネルの切り替え">
+        <button type="button" data-v="cond">条件</button><button type="button" data-v="now">いまの値</button><button type="button" data-v="year">年間の推計</button>
+      </div>
+      <div class="pane col" data-pane="cond">
+<section class="card stack">
         <h2>建物と使い方</h2>
         <div class="field"><label for="city">地域</label><select id="city"></select></div>
         <div class="field"><label for="insul">断熱性能</label><select id="insul"></select></div>
@@ -218,8 +201,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
           <div class="field"><label for="opEnd">空調終了 時</label><input type="number" id="opEnd" min="14" max="23" step="1"></div>
         </div>
       </section>
-
-      <section class="card stack">
+<section class="card stack">
         <h2>ecowinパネル</h2>
         <div class="field"><label for="panels">台数（SCREEN 両面）</label><output id="panelsOut" for="panels"></output><input type="range" id="panels" min="0" max="120" step="2"></div>
         <div class="field"><label for="layout">置き方</label><select id="layout">
@@ -231,9 +213,53 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
           <div class="field"><label for="basic">基本料金 円/kW月</label><input type="number" id="basic" min="0" max="3000" step="50"></div>
         </div>
       </section>
+      </div>
+      <div class="pane col" data-pane="now" hidden>
+<section class="card">
+        <h2>いまの時刻の読み値</h2>
+        <div class="now" id="now"></div>
+        <table class="cmp" id="cmp"></table>
+      </section>
+      </div>
+      <div class="pane col" data-pane="year" hidden>
+<section class="card stack">
+        <h2 id="annT">年間の推計</h2>
+        <div class="hero">
+          <div class="big num" id="rate"></div>
+          <div class="cap" id="rateCap"></div>
+        </div>
+        <table class="cmp" id="ann"></table>
+        <div class="chart mon">
+          <div class="ct"><span><b>月ごとの消費電力量</b>（MWh）</span><span class="keys"><span><i style="background:var(--m-ac)"></i>エアコンのみ</span><span><i style="background:var(--m-eco)"></i>ecowin</span></span></div>
+          <canvas id="mon"></canvas>
+        </div>
+        <div class="note" id="annNote"></div>
+      </section>
+      </div>
     </aside>
 
     <div class="center">
+      <div class="tools">
+        <div class="seg modes" id="modeSeg" role="group" aria-label="空調方式">
+          <button type="button" data-v="none"><i style="background:var(--m-none)"></i>空調なし</button>
+          <button type="button" data-v="ac"><i style="background:var(--m-ac)"></i>エアコンのみ</button>
+          <button type="button" data-v="eco"><i style="background:var(--m-eco)"></i>ecowin</button>
+        </div>
+        <div class="seg" id="layerSeg" role="group" aria-label="床の色で見る値">
+          <button type="button" data-v="ot">体感温度</button><button type="button" data-v="ta">空気温度</button><button type="button" data-v="mrt">放射温度</button><button type="button" data-v="wind">風速</button><button type="button" data-v="wbgt">暑さ指数</button>
+        </div>
+        <div class="seg" id="zSeg" role="group" aria-label="評価高さ">
+          <button type="button" data-v="0.1">足元</button><button type="button" data-v="1.1">腰</button><button type="button" data-v="1.7">頭</button>
+        </div>
+        <div class="checks">
+          <label><input type="checkbox" id="ckWind" checked>気流</label>
+          <label><input type="checkbox" id="ckRays" checked>輻射</label>
+          <label><input type="checkbox" id="ckVolume" checked>空気の層</label>
+          <label><input type="checkbox" id="ckSection">断面</label>
+          <label><input type="checkbox" id="ckPeople" checked>人</label>
+          <label><input type="checkbox" id="ckField" checked>床の色</label>
+        </div>
+      </div>
       <div class="view" id="view">
         <canvas class="gl" id="gl" aria-label="体育館の3D表示"></canvas>
         <div class="hud clock"><div class="d" id="clockD"></div><div class="w" id="clockW"></div></div>
@@ -251,7 +277,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <section class="card dock">
         <div class="bar">
           <button class="btn play" id="play" type="button">▶ 再生</button>
-          <select id="speed" aria-label="再生速度"><option value="1">1秒＝1時間</option><option value="4" selected>1秒＝4時間</option><option value="24">1秒＝1日</option></select>
+          <select id="speed" aria-label="再生速度"><option value="0.05" selected>1秒＝3分</option><option value="0.0833333">1秒＝5分</option><option value="0.1666667">1秒＝10分</option><option value="0.5">1秒＝30分</option><option value="1">1秒＝1時間</option><option value="6">1秒＝6時間（早送り）</option></select>
           <input type="range" id="hourR" min="0" max="23.99" step="0.01" aria-label="時刻">
           <button class="btn" id="jumpHot" type="button">最も暑い日</button>
           <button class="btn" id="jumpCold" type="button">最も寒い日</button>
@@ -267,27 +293,6 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
         </div>
       </section>
     </div>
-
-    <aside class="col side right">
-      <section class="card">
-        <h2>いまの時刻の読み値</h2>
-        <div class="now" id="now"></div>
-        <table class="cmp" id="cmp"></table>
-      </section>
-      <section class="card stack">
-        <h2 id="annT">年間の推計</h2>
-        <div class="hero">
-          <div class="big num" id="rate"></div>
-          <div class="cap" id="rateCap"></div>
-        </div>
-        <table class="cmp" id="ann"></table>
-        <div class="chart mon">
-          <div class="ct"><span><b>月ごとの消費電力量</b>（MWh）</span><span class="keys"><span><i style="background:var(--m-ac)"></i>エアコンのみ</span><span><i style="background:var(--m-eco)"></i>ecowin</span></span></div>
-          <canvas id="mon"></canvas>
-        </div>
-        <div class="note" id="annNote"></div>
-      </section>
-    </aside>
   </div>
 </div>
 
@@ -321,6 +326,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <li>パネル表面は暖房 45℃（代理店の測定資料の下限）、冷房 15℃【仮定】。パネルの輻射で体感温度が変わる分だけ、空気の設定温度を最大 1℃ 緩めます。</li></ul>
     <h3>体感温度・暑さ指数・風</h3>
     <ul><li>放射温度は、評価点から床・屋根・壁・窓・パネルが見える大きさ（立体角）で各面の温度を平均したものです。パネルは向いている面の正面ほど大きく見えるため、正面で効果が強く出ます。</li>
+      <li>「空気の層」は、館内の空気温度を立体の格子（1m × 1m × 0.5m）に入れ、腰の高さの空気温度から離れた部分ほど濃く重ねて描いたものです。色は腰の高さの空気との差で、暖かい空気が赤、冷たい空気が青です。天井付近に溜まる暖気や、吹出しの温風・冷風の広がりが見えます。人の色は、立っている場所の床の色と同じ値です。</li>
       <li>体感温度（作用温度）は空気温度と放射温度の平均で、風が強い場所ほど空気温度の重みを大きくします（ASHRAE 55）。</li>
       <li>暑さ指数（WBGT）は 0.7×湿球温度＋0.3×黒球温度（屋内の式）。区分は日本スポーツ協会の熱中症予防運動指針によります。</li>
       <li>風は吹出し口からの噴流として近似しています。吹出し風速はエアコンのみ 5.0m/s、ecowinハイブリッド 1.5m/s【推計】。暖房の温風は中央付近で人の高さに届いたあと浮き上がります。</li></ul>
@@ -1904,11 +1910,12 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
   var S = {
     city: 'obs', insul: 'low', occupants: 80, sensible: 150, setHeat: 18, setCool: 27, opStart: 8, opEnd: 21,
     panels: 72, preheat: 1, field: true, layout: 'rows', price: 22, basic: 1100,
-    mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 4,
-    wind: true, rays: true, section: false, people: true, probe: null, split: true
+    mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 0.05,
+    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true
   };
   var wxCache = {}, wx, panels = [], F, F11, jet = {}, sim, dirty = true, chartsDirty = true;
   var target = [new Float32Array(N), new Float32Array(N)], shown = [new Float32Array(N), new Float32Array(N)], scratch = new Float32Array(N), first = true;
+  var shownField = shown, sunI = 0;
   var range = { lo: 10, hi: 26, c: 18, step: 1 }, rangeT = { lo: 10, hi: 26, c: 18, step: 1 };
 
   // ------------------------------------------------------------ 色
@@ -2032,7 +2039,7 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
     var ctl = new THREE.OrbitControls(cam, canvas);
     ctl.enableDamping = true; ctl.dampingFactor = 0.08; ctl.maxPolarAngle = Math.PI * 0.495; ctl.minDistance = 4; ctl.maxDistance = 160;
     var W = G.W, D = G.D, H = G.H, cx = W / 2, cz = D / 2, vw = 1, vh = 1;
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.95));
+    var hemi = new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.95); scene.add(hemi);
     var sun = new THREE.DirectionalLight(0xffffff, 0.35); sun.position.set(-30, 60, 40); scene.add(sun);
 
     // 表示領域（左右2分割のときは2つ。幅が狭いときは上下に分ける）
@@ -2202,31 +2209,50 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
       });
       initRays();
     }
-    // 人
-    var people = new THREE.Group(), bodyMat = new THREE.MeshLambertMaterial({ color: 0x39424d }), r = mul(7);
+    // 人（色は立っている場所の値で塗る。サーモグラフィのように見せる）
+    var people = new THREE.Group(), persons = [], r = mul(7);
     function mul(a) { return function () { a = (a * 16807) % 2147483647; return a / 2147483647; }; }
-    for (var pi = 0; pi < 34; pi++) {
-      var px = pi < 26 ? 15 + r() * 26 : 7 + r() * 2.5, py = pi < 26 ? (pi % 2 ? 8 + r() * 13 : 27 + r() * 13) : 9 + r() * 30;
-      var body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.35, 8), bodyMat); body.position.set(px, 0.68, py);
-      var head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), bodyMat); head.position.set(px, 1.52, py);
-      people.add(body); people.add(head);
+    var legGeo = new THREE.CylinderGeometry(0.13, 0.1, 0.82, 8), bodyGeo = new THREE.CylinderGeometry(0.22, 0.15, 0.62, 10), headGeo = new THREE.SphereGeometry(0.13, 12, 10);
+    for (var pi = 0; pi < 40; pi++) {
+      var px = pi < 30 ? 15 + r() * 26 : 7 + r() * 2.5, py = pi < 30 ? (pi % 2 ? 8 + r() * 13 : 27 + r() * 13) : 9 + r() * 30;
+      var pm = new THREE.MeshLambertMaterial({ color: 0x39424d }), fig = new THREE.Group();
+      var leg = new THREE.Mesh(legGeo, pm); leg.position.y = 0.41; var body = new THREE.Mesh(bodyGeo, pm); body.position.y = 1.13; var head = new THREE.Mesh(headGeo, pm); head.position.y = 1.6;
+      fig.add(leg); fig.add(body); fig.add(head); fig.position.set(px, 0, py); people.add(fig);
+      persons.push({ mat: pm, k: Math.floor((py - A.y0) / G.cell) * G.NX + Math.floor((px - A.x0) / G.cell) });
     }
     scene.add(people);
 
-    // 気流の粒子（短い線）。方式ごとに1組
+    // やわらかい光の粒（粒ごとに大きさと濃さを持つ）。気流の煙と輻射の粒に使う
+    var ptScale = { value: 400 };
+    function softPoints(n, order) {
+      var geo = new THREE.BufferGeometry(), a = { pos: new Float32Array(n * 3), col: new Float32Array(n * 3), size: new Float32Array(n), alpha: new Float32Array(n) };
+      geo.setAttribute('position', new THREE.BufferAttribute(a.pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(a.col, 3));
+      geo.setAttribute('aSize', new THREE.BufferAttribute(a.size, 1)); geo.setAttribute('aAlpha', new THREE.BufferAttribute(a.alpha, 1));
+      var mat = new THREE.ShaderMaterial({
+        uniforms: { uScale: ptScale }, transparent: true, depthWrite: false,
+        vertexShader: 'attribute float aSize; attribute float aAlpha; attribute vec3 color; uniform float uScale; varying vec3 vC; varying float vA;\nvoid main(){ vC = color; vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = min(aSize * uScale / max(-mv.z, 0.5), 420.0); gl_Position = projectionMatrix * mv; }',
+        fragmentShader: 'varying vec3 vC; varying float vA;\nvoid main(){ float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.05, d); gl_FragColor = vec4(vC, a * a * vA); }'
+      });
+      var obj = new THREE.Points(geo, mat); obj.frustumCulled = false; obj.renderOrder = order;
+      a.obj = obj; a.flush = function () { for (var k in geo.attributes) geo.attributes[k].needsUpdate = true; };
+      return a;
+    }
+
+    // 気流：流れの向きを示す短い線と、吹出しの空気のかたまりを示す煙。方式ごとに1組
     function gs() { return (Math.random() + Math.random() + Math.random() - 1.5) * 0.9; }
     function makeWind(mode) {
-      var NP = mode === 'eco' ? 700 : 1500, pos = new Float32Array(NP * 6), col = new Float32Array(NP * 6), ps = [];
+      var NP = mode === 'eco' ? 520 : 1300, pos = new Float32Array(NP * 6), col = new Float32Array(NP * 6), ps = [], puff = softPoints(NP, 4);
       for (var i = 0; i < NP; i++) ps.push({ u: i % M.AC_UNITS.length, s: Math.random() * 30, lx: gs(), lz: gs(), life: Math.random() * 10 });
       var geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-      var obj = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }));
-      obj.frustumCulled = false; obj.renderOrder = 4; obj.visible = false; scene.add(obj);
+      var lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.8 }));
+      lines.frustumCulled = false; lines.renderOrder = 5;
+      var obj = new THREE.Group(); obj.add(puff.obj); obj.add(lines); obj.visible = false; scene.add(obj);
       return {
         obj: obj, on: false,
         update: function (dt, st, heat) {
           var u0 = K.u0[mode] * st.fan; this.on = S.wind && u0 > 0.05; if (!this.on) return;
-          var hot = hex(heat ? '#eb6834' : '#3987e5'), neu = hex(C['--ink-3']);
+          var load = 0.35 + 0.65 * Math.abs(st.lf), hot = hex(heat ? '#f0642c' : '#2f8fea'), neu = hex(C['--ink-3']);
           for (var i = 0; i < NP; i++) {
             var p = ps[i], o = i * 6, e = Math.exp(-(p.lx * p.lx + p.lz * p.lz)), vl = u0 * Math.min(1, 3.5 / p.s) * e;
             p.s += Math.max(vl, 0.05) * dt; p.life -= dt;
@@ -2238,45 +2264,101 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
               pos[o + q * 3 + 1] = M.clamp(M.jetAxisZ(s, heat, un.z0) + p.lz * b * 0.8, 0.12, H - 0.15);
               pos[o + q * 3 + 2] = un.y + un.dir * s;
             }
-            var f = M.clamp(p.s / 26, 0, 1);
-            for (var k = 0; k < 3; k++) { var c = (hot[k] + (neu[k] - hot[k]) * f) / 255; col[o + k] = c; col[o + 3 + k] = c; }
+            var f = M.clamp(p.s / 24, 0, 1), j = i * 3;
+            for (var k = 0; k < 3; k++) { var c = (hot[k] + (neu[k] - hot[k]) * f) / 255; col[o + k] = c; col[o + 3 + k] = c; puff.col[j + k] = (hot[k] + (neu[k] - hot[k]) * f * 0.6) / 255; }
+            puff.pos[j] = pos[o]; puff.pos[j + 1] = pos[o + 1]; puff.pos[j + 2] = pos[o + 2];
+            puff.size[i] = 0.9 + 0.2 * p.s; // 噴流は進むほど広がる
+            puff.alpha[i] = i % 2 ? 0 : 0.2 * load * (1 - f) * Math.min(1, p.s / 1.5);
           }
-          geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
+          geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; puff.flush();
         }
       };
     }
     var winds = { ac: makeWind('ac'), eco: makeWind('eco') };
 
-    // 輻射の粒子（暖房：パネルから外へ／冷房：パネルへ向かって）
-    var NR = 1400, rPos = new Float32Array(NR * 3), rCol = new Float32Array(NR * 3), rp = [], raysOn = false;
-    var rGeo = new THREE.BufferGeometry();
-    rGeo.setAttribute('position', new THREE.BufferAttribute(rPos, 3)); rGeo.setAttribute('color', new THREE.BufferAttribute(rCol, 3));
-    var dot = document.createElement('canvas'); dot.width = dot.height = 32; var dc = dot.getContext('2d');
-    var gr = dc.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-    dc.fillStyle = gr; dc.fillRect(0, 0, 32, 32);
-    var rays = new THREE.Points(rGeo, new THREE.PointsMaterial({ size: 0.34, map: new THREE.CanvasTexture(dot), vertexColors: true, transparent: true, depthWrite: false, opacity: 0.9 }));
-    rays.frustumCulled = false; rays.renderOrder = 5; rays.visible = false; scene.add(rays);
-    var RMAX = 5.5;
+    // 輻射の粒（暖房：パネルから外へ／冷房：パネルへ向かって）
+    var NR = 1800, ray3 = softPoints(NR, 6), rays = ray3.obj, rp = [], raysOn = false, RMAX = 6;
+    rays.visible = false; scene.add(rays);
     function initRays() {
       rp = [];
       for (var i = 0; i < NR; i++) rp.push({ p: panels.length ? i % panels.length : 0, side: i % 2 ? 1 : -1, a: Math.random() - 0.5, h: Math.random(), dl: gs() * 0.7, dv: gs() * 0.45, r: Math.random() * RMAX });
     }
     function updateRays(dt, st, heat) {
       var d = Math.abs(st.Tp - st.Ta); raysOn = S.rays && panels.length > 0 && d > 2; if (!raysOn) return;
-      var hot = hex(heat ? '#ff8a3d' : '#59b6ff'), bg = hex(C['--scene']), sp = (heat ? 1 : -1) * 2.0 * dt, act = M.clamp(d / 25, 0.15, 1) * NR;
+      var hot = hex(heat ? '#ff8a3d' : '#59b6ff'), sp = (heat ? 1 : -1) * 2.0 * dt, act = M.clamp(d / 25, 0.15, 1) * NR;
       for (var i = 0; i < NR; i++) {
         var q = rp[i], o = i * 3;
-        if (i > act) { rPos[o + 1] = -5; continue; }
+        if (i > act) { ray3.alpha[i] = 0; continue; }
         q.r += sp;
         if (q.r > RMAX) q.r = 0.05; else if (q.r < 0.05) q.r = RMAX;
         var P = panels[q.p], nx = q.r * q.side, lat = q.a * M.PANEL.w + q.dl * q.r, hz = M.PANEL.z0 + q.h * M.PANEL.h + q.dv * q.r;
         var x = P.axis === 'y' ? P.x + lat : P.x + nx, y = P.axis === 'y' ? P.y + nx : P.y + lat;
-        if (x < A.x0 + 0.1 || x > A.x1 - 0.1 || y < A.y0 + 0.1 || y > A.y1 - 0.1 || hz < 0.05 || hz > H - 0.1) { rPos[o + 1] = -5; continue; }
-        rPos[o] = x; rPos[o + 1] = hz; rPos[o + 2] = y;
-        var f = Math.pow(q.r / RMAX, 0.8);
-        for (var k = 0; k < 3; k++) rCol[o + k] = (hot[k] + (bg[k] - hot[k]) * f) / 255;
+        if (x < A.x0 + 0.1 || x > A.x1 - 0.1 || y < A.y0 + 0.1 || y > A.y1 - 0.1 || hz < 0.05 || hz > H - 0.1) { ray3.alpha[i] = 0; continue; }
+        ray3.pos[o] = x; ray3.pos[o + 1] = hz; ray3.pos[o + 2] = y;
+        var f = q.r / RMAX;
+        ray3.size[i] = 0.22 + 0.5 * f; ray3.alpha[i] = 0.85 * Math.pow(1 - f, 1.3);
+        for (var k = 0; k < 3; k++) ray3.col[o + k] = hot[k] / 255;
       }
-      rGeo.attributes.position.needsUpdate = true; rGeo.attributes.color.needsUpdate = true;
+      ray3.flush();
+    }
+
+    // 空気の層：館内の空気温度を立体の格子に入れ、視線に沿って重ねて描く（WebGL2 が使える端末のみ）
+    var VX = 46, VY = 38, VZ = 25, volOK = renderer.capabilities.isWebGL2 && !!THREE.DataTexture3D, volTex = [], volData = [], volRange = [{ lo: 0, hi: 1 }, { lo: 0, hi: 1 }], volMesh = null, volDirty = true, volT = 0;
+    var lutData = new Uint8Array(512 * 4), lutTex = new THREE.DataTexture(lutData, 512, 1, THREE.RGBAFormat);
+    lutTex.minFilter = lutTex.magFilter = THREE.LinearFilter;
+    if (volOK) {
+      for (var vi = 0; vi < 2; vi++) {
+        volData.push(new Uint8Array(VX * VY * VZ));
+        var t3d = new THREE.DataTexture3D(volData[vi], VX, VY, VZ);
+        t3d.format = THREE.RedFormat; t3d.type = THREE.UnsignedByteType; t3d.minFilter = t3d.magFilter = THREE.LinearFilter; t3d.unpackAlignment = 1; t3d.needsUpdate = true;
+        volTex.push(t3d);
+      }
+      var volMat = new THREE.ShaderMaterial({
+        uniforms: { map: { value: volTex[0] }, lut: { value: lutTex }, bmin: { value: new THREE.Vector3(A.x0, 0, A.y0) }, bmax: { value: new THREE.Vector3(A.x1, H, A.y1) }, uRef: { value: 0.5 }, uSpan: { value: 0.3 }, uDens: { value: 0.032 } },
+        transparent: true, depthWrite: false, depthTest: false, side: THREE.BackSide,
+        vertexShader: 'varying vec3 vW;\nvoid main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+        fragmentShader: [
+          'precision highp float; precision highp sampler3D;',
+          'uniform sampler3D map; uniform sampler2D lut; uniform vec3 bmin; uniform vec3 bmax; uniform float uRef; uniform float uSpan; uniform float uDens;',
+          'varying vec3 vW;',
+          'float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
+          'void main(){',
+          '  vec3 ro = cameraPosition; vec3 rd = normalize(vW - ro); vec3 inv = 1.0 / (rd + vec3(1e-6));',
+          '  vec3 t0 = (bmin - ro) * inv; vec3 t1 = (bmax - ro) * inv; vec3 tn3 = min(t0, t1); vec3 tf3 = max(t0, t1);',
+          '  float tn = max(max(tn3.x, tn3.y), max(tn3.z, 0.0)); float tf = min(tf3.x, min(tf3.y, tf3.z));',
+          '  if (tf <= tn) discard;',
+          '  float dt = (tf - tn) / 44.0; float t = tn + dt * hash(gl_FragCoord.xy); vec4 acc = vec4(0.0);',
+          '  for (int i = 0; i < 44; i++) {',
+          '    vec3 u = (ro + rd * t - bmin) / (bmax - bmin);',
+          '    float v = texture(map, vec3(u.x, u.z, u.y)).r;',
+          '    float a = smoothstep(0.28, 1.15, abs(v - uRef) / uSpan) * uDens * dt;',
+          '    vec3 c = texture2D(lut, vec2(clamp(0.5 + (v - uRef) / uSpan * 0.3, 0.02, 0.98), 0.5)).rgb;',
+          '    acc.rgb += (1.0 - acc.a) * a * c; acc.a += (1.0 - acc.a) * a;',
+          '    if (acc.a > 0.62) break; t += dt;',
+          '  }',
+          '  gl_FragColor = vec4(acc.rgb / max(acc.a, 1e-4), min(acc.a, 0.6));',
+          '}'].join('\n')
+      });
+      volMesh = new THREE.Mesh(new THREE.BoxGeometry(A.x1 - A.x0, H, A.y1 - A.y0), volMat);
+      volMesh.position.set((A.x0 + A.x1) / 2, H / 2, (A.y0 + A.y1) / 2); volMesh.renderOrder = 7; volMesh.frustumCulled = false; volMesh.visible = false; scene.add(volMesh);
+    }
+    // 噴流の形は変わらないので、立体格子の相対風速は暖房・冷房ごとに1回だけ求めておく
+    var volJet = {};
+    function volPattern(heat) {
+      var key = heat ? 'h' : 'c'; if (volJet[key]) return volJet[key];
+      var out = new Float32Array(VX * VY * VZ), i = 0, cxv = (A.x1 - A.x0) / VX, cyv = (A.y1 - A.y0) / VY, czv = H / VZ;
+      for (var z = 0; z < VZ; z++) for (var y = 0; y < VY; y++) for (var x = 0; x < VX; x++, i++) out[i] = M.jetNorm(A.x0 + (x + 0.5) * cxv, A.y0 + (y + 0.5) * cyv, (z + 0.5) * czv, heat);
+      return (volJet[key] = out);
+    }
+    function updateVolume(slot, mode, st, heat) {
+      var d = volData[slot], lo = range.lo, hi = range.hi, jn = volPattern(heat), i = 0, czv = H / VZ, n2 = VX * VY;
+      if (S.layer === 'wind' || S.layer === 'wbgt') { lo = st.Ta - 8; hi = st.Ta + 8; }
+      var sc = 255 / (hi - lo), dT = mode === 'none' ? 0 : K.dTs[mode][heat ? 'heat' : 'cool'] * (0.3 + 0.7 * Math.abs(st.lf)) * st.fan * 0.6;
+      for (var z = 0; z < VZ; z++) {
+        var base = (st.Ta + st.G * ((z + 0.5) * czv - G.zRef) - lo) * sc, k = dT * sc;
+        for (var q = 0; q < n2; q++, i++) { var v = base + k * jn[i]; d[i] = v < 0 ? 0 : v > 255 ? 255 : v; }
+      }
+      volRange[slot] = { lo: lo, hi: hi }; volTex[slot].needsUpdate = true;
     }
 
     // 地点の読み取りと、パネルのドラッグ
@@ -2370,12 +2452,15 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
       mat.color.setRGB((base[0] + (c[0] - base[0]) * f) / 255, (base[1] + (c[1] - base[1]) * f) / 255, (base[2] + (c[2] - base[2]) * f) / 255);
     }
     return {
-      rebuildPanels: rebuildPanels, setCam: setCam, resize: resize, canvas: canvas, rects: rects,
+      rebuildPanels: rebuildPanels, setCam: setCam, resize: resize, canvas: canvas, rects: rects, volOK: volOK,
+      markVolume: function () { volDirty = true; },
       applyTheme: function () {
         renderer.setClearColor(new THREE.Color(C['--scene']), 1);
         ground.material.color.set(C['--scene']);
         lineMat.color.set(C['--surface']); frameMat.color.set(C['--ink-3']);
         pole.material.color.set(C['--ink']);
+        for (var i = 0; i < 512; i++) { lutData[i * 4] = LUT.temp[i * 3]; lutData[i * 4 + 1] = LUT.temp[i * 3 + 1]; lutData[i * 4 + 2] = LUT.temp[i * 3 + 2]; lutData[i * 4 + 3] = 255; }
+        lutTex.needsUpdate = true;
       },
       paintHeat: function (slot, vals) {
         painters[slot].paint(vals, lutFor(S.layer), range.lo, range.hi, range.step, hex(C['--ink']));
@@ -2392,6 +2477,9 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
         roofGroup.visible = cam.position.y < H - 0.6; gal.W.visible = !S.section;
         mullObj.N.visible = cam.position.z > 0; mullObj.S.visible = cam.position.z < D; mullObj.E.visible = cam.position.x < W; mullObj.W.visible = cam.position.x > 0;
         people.visible = S.people; sec.visible = S.section;
+        var day = M.clamp(sunI / 700, 0, 1); hemi.intensity = 0.78 + 0.2 * day; sun.intensity = 0.12 + 0.3 * day; winMat.emissive.setRGB(0.05 + 0.2 * day, 0.07 + 0.22 * day, 0.09 + 0.24 * day);
+        var useVol = volOK && S.volume; volT += dt;
+        if (useVol && volDirty && volT > 0.14) { views.forEach(function (v, i) { updateVolume(i, v.mode, v.st, heat); }); volDirty = false; volT = 0; }
         var rs = rects(), tl = S.layer !== 'wind' && S.layer !== 'wbgt', wb = hex(C['--surface-2']), eco = null;
         views.forEach(function (v) { if (winds[v.mode]) winds[v.mode].update(dt, v.st, heat); if (v.mode === 'eco') eco = v; });
         if (eco) updateRays(dt, eco.st, heat);
@@ -2418,6 +2506,13 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
             secPainter.paint(secVals, wl ? LUT.wind : LUT.temp, lo, hi, wl ? 0.25 : range.step, hex(C['--ink']));
             secTex.needsUpdate = true;
           }
+          ptScale.value = q.h * renderer.getPixelRatio() / (2 * Math.tan(cam.fov * Math.PI / 360));
+          if (volMesh) {
+            volMesh.visible = useVol;
+            if (useVol) { var vr = volRange[i], vu = volMesh.material.uniforms; vu.map.value = volTex[i]; vu.uRef.value = (st.Ta - vr.lo) / (vr.hi - vr.lo); vu.uSpan.value = 5.5 / (vr.hi - vr.lo); }
+          }
+          var plut = lutFor(S.layer), sh = shownField[i];
+          if (S.people) persons.forEach(function (pp) { if (S.field) { var pc2 = colorAt(plut, sh[pp.k], range.lo, range.hi); pp.mat.color.setRGB(pc2[0] / 255, pc2[1] / 255, pc2[2] / 255); } else pp.mat.color.setHex(0x39424d); });
           renderer.setViewport(q.x, vh - q.y - q.h, q.w, q.h); renderer.setScissor(q.x, vh - q.y - q.h, q.w, q.h);
           renderer.render(scene, cam);
         });
@@ -2528,7 +2623,7 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
       k = d * 24 + hh; lo = Math.min(lo, wx.T[k]); hi = Math.max(hi, wx.T[k]);
       M.MODES.forEach(function (m) { lo = Math.min(lo, sim[m][key][k]); hi = Math.max(hi, sim[m][key][k]); });
     }
-    lo = Math.floor(lo - 1); hi = Math.ceil(hi + 1); var stp = hi - lo > 16 ? 5 : 2;
+    lo = Math.floor(lo - 1); hi = Math.ceil(hi + 1); var stp = hi - lo > 24 ? 10 : hi - lo > 9 ? 5 : 2;
     function X(x) { return L + w * x / 24; } function Y(v) { return T + h * (1 - (v - lo) / (hi - lo)); }
     dayGeom = { L: L, w: w, d: d };
     c.fillStyle = C['--surface-2']; c.fillRect(X(S.opStart), T, X(S.opEnd) - X(S.opStart), h);
@@ -2555,7 +2650,8 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
   // 月ごとの電力量
   var monGeom = null;
   function drawMon() {
-    var f = fit($('mon')), c = f.c, L = 26, T = 6, B = 15, w = f.w - L - 2, h = f.h - T - B, a = sim.summary.modes.ac.monthly, e = sim.summary.modes.eco.monthly;
+    var f = fit($('mon')), c = f.c; if (f.w < 40) return;
+    var L = 26, T = 6, B = 15, w = f.w - L - 2, h = f.h - T - B, a = sim.summary.modes.ac.monthly, e = sim.summary.modes.eco.monthly;
     var mx = 1; for (var m = 0; m < 12; m++) mx = Math.max(mx, a[m] / 1000);
     var stp = mx > 30 ? 10 : mx > 12 ? 5 : mx > 4 ? 2 : 1; mx = Math.ceil(mx / stp) * stp;
     c.strokeStyle = C['--line']; c.fillStyle = C['--ink-2']; c.textAlign = 'right'; c.textBaseline = 'middle'; c.lineWidth = 1;
@@ -2656,7 +2752,7 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
       $('panels').value = S.panels; $('price').value = S.price; $('basic').value = S.basic; $('preheat').value = S.preheat;
       if (S.layout === 'custom' && !$('layout').querySelector('[value=custom]')) { var o = document.createElement('option'); o.value = 'custom'; o.textContent = '自由配置（ドラッグで変更）'; $('layout').appendChild(o); }
       $('layout').value = S.layout;
-      $('ckWind').checked = S.wind; $('ckRays').checked = S.rays; $('ckSection').checked = S.section; $('ckPeople').checked = S.people; $('ckField').checked = S.field;
+      $('ckWind').checked = S.wind; $('ckRays').checked = S.rays; $('ckSection').checked = S.section; $('ckPeople').checked = S.people; $('ckField').checked = S.field; $('ckVolume').checked = S.volume; $('speed').value = String(S.speed);
       press('modeSeg', S.mode); press('layerSeg', S.layer); press('zSeg', S.z); outs();
     }
     syncInputs();
@@ -2678,7 +2774,7 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
     $('insul').addEventListener('change', function () { S.insul = $('insul').value; recomputeSim(); });
     $('preheat').addEventListener('change', function () { S.preheat = parseInt($('preheat').value, 10); recomputeSim(); });
     $('layout').addEventListener('change', function () { S.layout = $('layout').value; if (S.layout !== 'custom') recomputeAll(); });
-    [['ckWind', 'wind'], ['ckRays', 'rays'], ['ckSection', 'section'], ['ckPeople', 'people'], ['ckField', 'field']].forEach(function (p) {
+    [['ckWind', 'wind'], ['ckRays', 'rays'], ['ckSection', 'section'], ['ckPeople', 'people'], ['ckField', 'field'], ['ckVolume', 'volume']].forEach(function (p) {
       $(p[0]).addEventListener('change', function () { S[p[1]] = $(p[0]).checked; if (p[1] === 'section' && scene3) { scene3.resize(); scene3.setCam(S.section ? 'side' : 'iso'); } dirty = true; });
     });
     $('cams').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b && b.dataset.v && scene3) scene3.setCam(b.dataset.v); });
@@ -2728,7 +2824,7 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
     mon.addEventListener('pointerleave', hideTip);
 
     // 配置と条件の保存・読込（このブラウザの中に保存する）
-    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split'];
+    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split', 'volume', 'speed'];
     function say(t) { var e = $('saveMsg'); e.textContent = t; clearTimeout(say.t); say.t = setTimeout(function () { e.textContent = ''; }, 4000); }
     $('saveScene').addEventListener('click', function () {
       var o = { v: 3 }; KEYS.forEach(function (k) { o[k] = S[k]; });
@@ -2775,6 +2871,18 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
     });
     $('closeShot').addEventListener('click', function () { var d = $('shotDlg'); if (d.close) d.close(); else d.removeAttribute('open'); });
 
+    // 左のパネルの切り替えと開閉
+    $('tabs').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return; press('tabs', b.dataset.v);
+      [].forEach.call(document.querySelectorAll('.pane'), function (p) { p.hidden = p.dataset.pane !== b.dataset.v; });
+      chartsDirty = true; dirty = true;
+    });
+    press('tabs', 'cond');
+    $('sideToggle').addEventListener('click', function () {
+      var w = $('main').classList.toggle('wide'); $('sideToggle').textContent = w ? 'パネルを表示' : 'パネルを隠す'; $('sideToggle').setAttribute('aria-expanded', String(!w)); chartsDirty = true; dirty = true;
+    });
+    if (scene3 && !scene3.volOK) { $('ckVolume').checked = false; $('ckVolume').disabled = true; S.volume = false; }
+
     $('openNotes').addEventListener('click', function () { var d = $('notes'); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); });
     $('closeNotes').addEventListener('click', function () { var d = $('notes'); if (d.close) d.close(); else d.removeAttribute('open'); });
     window.addEventListener('keydown', function (e) {
@@ -2794,14 +2902,14 @@ window.WX_OBS = {"name":"東京都練馬区（2025年 観測値）","short":"練
   var last = 0, legendKey = '', lastDay = -1, settle = 0;
   function tick(now) {
     requestAnimationFrame(tick);
-    var dt = Math.min(0.1, (now - last) / 1000 || 0.016); last = now;
+    var dt = Math.min(0.25, (now - last) / 1000 || 0.016); last = now;
     if (S.playing) { setTime(S.t + dt * S.speed); syncSliders(); }
     var heat = isHeat(Math.floor(S.t)), ms = shownModes(), sts = {};
     M.MODES.forEach(function (m) { sts[m] = stateAt(m, S.t); });
     if (dirty) {
       updateRangeTarget();
       ms.forEach(function (m, i) { M.computeField(S.layer, m, sts[m], heat, S.z, F, heat ? jet.heat : jet.cool, target[i]); });
-      renderNow(sts, wxAt(S.t)); renderProbe(sts, heat);
+      var wn = wxAt(S.t); sunI = wn.I; renderNow(sts, wn); renderProbe(sts, heat); if (scene3) scene3.markVolume();
       var d = Math.floor(S.t / 24);
       if (chartsDirty || d !== lastDay) { if (chartsDirty) { buildCal(); drawMon(); } lastDay = d; chartsDirty = false; }
       drawCal(); drawDay();

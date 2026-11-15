@@ -32,6 +32,7 @@
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 13px; line-height: 1.5; }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 button, select, input { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .num { font-family: var(--num); font-variant-numeric: tabular-nums; }
@@ -45,7 +46,18 @@ button, select, input { font: inherit; color: inherit; }
 .badge { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 .link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; }
 
-.main { display: grid; grid-template-columns: 264px minmax(0, 1fr) 336px; gap: 10px; min-height: 0; }
+.main { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 10px; min-height: 0; }
+.main.wide { grid-template-columns: minmax(0, 1fr); }
+.main.wide .side { display: none; }
+.side { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
+.pane { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+#tabs { flex: 0 0 auto; }
+#tabs button { padding: 7px 4px; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.tools .seg { display: inline-grid; }
+.tools .seg button { padding: 5px 10px; white-space: nowrap; }
+.tools .seg.modes button { flex-direction: row; gap: 6px; padding: 5px 10px; }
+.tools .seg.modes i { width: 10px; height: 10px; border-radius: 50%; }
 .col { display: flex; flex-direction: column; gap: 10px; min-height: 0; min-width: 0; }
 .side { overflow-y: auto; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
@@ -72,7 +84,7 @@ button, select, input { font: inherit; color: inherit; }
 .checks label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .checks input { accent-color: var(--accent); margin: 0; }
 
-.center { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 10px; min-height: 0; min-width: 0; }
+.center { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; min-height: 0; min-width: 0; }
 .view { position: relative; background: var(--scene); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; min-height: 260px; }
 .view canvas.gl { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .hud { position: absolute; pointer-events: none; }
@@ -96,7 +108,7 @@ button, select, input { font: inherit; color: inherit; }
 .hint { left: 50%; top: 10px; transform: translateX(-50%); color: var(--ink-3); font-size: 11px; white-space: nowrap; }
 .glfail { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--ink-2); }
 
-.dock { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px 14px; }
+.dock { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 6px 14px; }
 .dock .bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .btn { background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
 .btn.play { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; min-width: 76px; }
@@ -105,7 +117,7 @@ button, select, input { font: inherit; color: inherit; }
 .chart { min-width: 0; }
 .chart .ct { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 11px; color: var(--ink-2); margin-bottom: 3px; }
 .chart .ct b { color: var(--ink); font-weight: 700; }
-.chart canvas { display: block; width: 100%; height: 118px; cursor: crosshair; touch-action: none; }
+.chart canvas { display: block; width: 100%; height: 84px; cursor: crosshair; touch-action: none; }
 .keys { display: inline-flex; flex-wrap: wrap; gap: 2px 10px; }
 .keys span { display: inline-flex; align-items: center; gap: 4px; }
 .keys i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
@@ -127,7 +139,8 @@ table.cmp tr:last-child td, table.cmp tr:last-child th { border-bottom: 0; }
 .hero .big small { font-size: 16px; }
 .hero .cap { color: var(--ink-2); font-size: 11.5px; }
 .note { color: var(--ink-3); font-size: 11px; }
-.chart.mon canvas { height: 104px; cursor: default; }
+.chart.mon canvas { height: 130px; cursor: default; }
+.card.dock { padding: 8px 12px; }
 
 .tip { position: fixed; z-index: 30; pointer-events: none; background: var(--ink); color: var(--surface); border-radius: 4px; padding: 5px 8px; font-size: 11.5px; line-height: 1.45; max-width: 240px; }
 .tip b { font-family: var(--num); }
@@ -141,14 +154,13 @@ dialog h3 { font-size: 13px; margin: 16px 0 4px; }
 dialog p, dialog li { color: var(--ink-2); margin: 4px 0; }
 dialog ul { padding-left: 18px; margin: 4px 0; }
 
-@media (max-width: 1180px) {
+@media (max-width: 980px) {
   html, body { height: auto; }
   .app { height: auto; }
   .main { grid-template-columns: minmax(0, 1fr); }
   .center { order: -1; }
-  .view { height: 62vh; min-height: 320px; }
-  .side { overflow: visible; }
-  .left { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); align-items: start; }
+  .view { height: 64vh; min-height: 320px; }
+  .pane { overflow: visible; }
 }
 @media (max-width: 720px) { .dock { grid-template-columns: minmax(0, 1fr); } .hint { display: none; } .clock .d { font-size: 20px; } .cams { bottom: auto; top: 46px; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
@@ -160,6 +172,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <span class="badge">推計値（実測ではありません）</span>
     <span class="badge" id="wxBadge"></span>
     <span class="grow"></span>
+    <button class="btn" id="sideToggle" type="button" aria-expanded="true">パネルを隠す</button>
     <span class="note" id="saveMsg" role="status"></span>
     <button class="btn" id="saveScene" type="button">配置を保存</button>
     <button class="btn" id="loadScene" type="button">読込</button>
@@ -167,43 +180,13 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <button class="link" id="openNotes" type="button">前提と出典</button>
   </header>
 
-  <div class="main">
-    <aside class="col side left">
-      <section class="card stack">
-        <h2>方式を比べる</h2>
-        <div class="seg modes" id="modeSeg" role="group" aria-label="空調方式">
-          <button type="button" data-v="none"><i style="background:var(--m-none)"></i>空調なし</button>
-          <button type="button" data-v="ac"><i style="background:var(--m-ac)"></i>エアコン<br>のみ</button>
-          <button type="button" data-v="eco"><i style="background:var(--m-eco)"></i>ecowin<br>ハイブリッド</button>
-        </div>
-        <div>
-          <div class="lbl" style="margin-bottom:4px">床の色で見るもの</div>
-          <div class="seg wrap" id="layerSeg" role="group" aria-label="表示する値">
-            <button type="button" data-v="ot">体感温度</button>
-            <button type="button" data-v="ta">空気温度</button>
-            <button type="button" data-v="mrt">放射温度</button>
-            <button type="button" data-v="wind">風速</button>
-            <button type="button" data-v="wbgt">暑さ指数</button>
-          </div>
-        </div>
-        <div>
-          <div class="lbl" style="margin-bottom:4px">評価する高さ</div>
-          <div class="seg" id="zSeg" role="group" aria-label="評価高さ">
-            <button type="button" data-v="0.1">足元 0.1m</button>
-            <button type="button" data-v="1.1">腰 1.1m</button>
-            <button type="button" data-v="1.7">頭 1.7m</button>
-          </div>
-        </div>
-        <div class="checks">
-          <label><input type="checkbox" id="ckWind" checked>気流</label>
-          <label><input type="checkbox" id="ckRays" checked>輻射</label>
-          <label><input type="checkbox" id="ckSection">断面（空気温度）</label>
-          <label><input type="checkbox" id="ckPeople" checked>人</label>
-          <label><input type="checkbox" id="ckField" checked>床の色分布</label>
-        </div>
-      </section>
-
-      <section class="card stack">
+  <div class="main" id="main">
+    <aside class="side" id="side">
+      <div class="seg" id="tabs" role="group" aria-label="パネルの切り替え">
+        <button type="button" data-v="cond">条件</button><button type="button" data-v="now">いまの値</button><button type="button" data-v="year">年間の推計</button>
+      </div>
+      <div class="pane col" data-pane="cond">
+<section class="card stack">
         <h2>建物と使い方</h2>
         <div class="field"><label for="city">地域</label><select id="city"></select></div>
         <div class="field"><label for="insul">断熱性能</label><select id="insul"></select></div>
@@ -218,8 +201,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
           <div class="field"><label for="opEnd">空調終了 時</label><input type="number" id="opEnd" min="14" max="23" step="1"></div>
         </div>
       </section>
-
-      <section class="card stack">
+<section class="card stack">
         <h2>ecowinパネル</h2>
         <div class="field"><label for="panels">台数（SCREEN 両面）</label><output id="panelsOut" for="panels"></output><input type="range" id="panels" min="0" max="120" step="2"></div>
         <div class="field"><label for="layout">置き方</label><select id="layout">
@@ -231,9 +213,53 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
           <div class="field"><label for="basic">基本料金 円/kW月</label><input type="number" id="basic" min="0" max="3000" step="50"></div>
         </div>
       </section>
+      </div>
+      <div class="pane col" data-pane="now" hidden>
+<section class="card">
+        <h2>いまの時刻の読み値</h2>
+        <div class="now" id="now"></div>
+        <table class="cmp" id="cmp"></table>
+      </section>
+      </div>
+      <div class="pane col" data-pane="year" hidden>
+<section class="card stack">
+        <h2 id="annT">年間の推計</h2>
+        <div class="hero">
+          <div class="big num" id="rate"></div>
+          <div class="cap" id="rateCap"></div>
+        </div>
+        <table class="cmp" id="ann"></table>
+        <div class="chart mon">
+          <div class="ct"><span><b>月ごとの消費電力量</b>（MWh）</span><span class="keys"><span><i style="background:var(--m-ac)"></i>エアコンのみ</span><span><i style="background:var(--m-eco)"></i>ecowin</span></span></div>
+          <canvas id="mon"></canvas>
+        </div>
+        <div class="note" id="annNote"></div>
+      </section>
+      </div>
     </aside>
 
     <div class="center">
+      <div class="tools">
+        <div class="seg modes" id="modeSeg" role="group" aria-label="空調方式">
+          <button type="button" data-v="none"><i style="background:var(--m-none)"></i>空調なし</button>
+          <button type="button" data-v="ac"><i style="background:var(--m-ac)"></i>エアコンのみ</button>
+          <button type="button" data-v="eco"><i style="background:var(--m-eco)"></i>ecowin</button>
+        </div>
+        <div class="seg" id="layerSeg" role="group" aria-label="床の色で見る値">
+          <button type="button" data-v="ot">体感温度</button><button type="button" data-v="ta">空気温度</button><button type="button" data-v="mrt">放射温度</button><button type="button" data-v="wind">風速</button><button type="button" data-v="wbgt">暑さ指数</button>
+        </div>
+        <div class="seg" id="zSeg" role="group" aria-label="評価高さ">
+          <button type="button" data-v="0.1">足元</button><button type="button" data-v="1.1">腰</button><button type="button" data-v="1.7">頭</button>
+        </div>
+        <div class="checks">
+          <label><input type="checkbox" id="ckWind" checked>気流</label>
+          <label><input type="checkbox" id="ckRays" checked>輻射</label>
+          <label><input type="checkbox" id="ckVolume" checked>空気の層</label>
+          <label><input type="checkbox" id="ckSection">断面</label>
+          <label><input type="checkbox" id="ckPeople" checked>人</label>
+          <label><input type="checkbox" id="ckField" checked>床の色</label>
+        </div>
+      </div>
       <div class="view" id="view">
         <canvas class="gl" id="gl" aria-label="体育館の3D表示"></canvas>
         <div class="hud clock"><div class="d" id="clockD"></div><div class="w" id="clockW"></div></div>
@@ -251,7 +277,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <section class="card dock">
         <div class="bar">
           <button class="btn play" id="play" type="button">▶ 再生</button>
-          <select id="speed" aria-label="再生速度"><option value="1">1秒＝1時間</option><option value="4" selected>1秒＝4時間</option><option value="24">1秒＝1日</option></select>
+          <select id="speed" aria-label="再生速度"><option value="0.05" selected>1秒＝3分</option><option value="0.0833333">1秒＝5分</option><option value="0.1666667">1秒＝10分</option><option value="0.5">1秒＝30分</option><option value="1">1秒＝1時間</option><option value="6">1秒＝6時間（早送り）</option></select>
           <input type="range" id="hourR" min="0" max="23.99" step="0.01" aria-label="時刻">
           <button class="btn" id="jumpHot" type="button">最も暑い日</button>
           <button class="btn" id="jumpCold" type="button">最も寒い日</button>
@@ -267,27 +293,6 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
         </div>
       </section>
     </div>
-
-    <aside class="col side right">
-      <section class="card">
-        <h2>いまの時刻の読み値</h2>
-        <div class="now" id="now"></div>
-        <table class="cmp" id="cmp"></table>
-      </section>
-      <section class="card stack">
-        <h2 id="annT">年間の推計</h2>
-        <div class="hero">
-          <div class="big num" id="rate"></div>
-          <div class="cap" id="rateCap"></div>
-        </div>
-        <table class="cmp" id="ann"></table>
-        <div class="chart mon">
-          <div class="ct"><span><b>月ごとの消費電力量</b>（MWh）</span><span class="keys"><span><i style="background:var(--m-ac)"></i>エアコンのみ</span><span><i style="background:var(--m-eco)"></i>ecowin</span></span></div>
-          <canvas id="mon"></canvas>
-        </div>
-        <div class="note" id="annNote"></div>
-      </section>
-    </aside>
   </div>
 </div>
 
@@ -321,6 +326,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <li>パネル表面は暖房 45℃（代理店の測定資料の下限）、冷房 15℃【仮定】。パネルの輻射で体感温度が変わる分だけ、空気の設定温度を最大 1℃ 緩めます。</li></ul>
     <h3>体感温度・暑さ指数・風</h3>
     <ul><li>放射温度は、評価点から床・屋根・壁・窓・パネルが見える大きさ（立体角）で各面の温度を平均したものです。パネルは向いている面の正面ほど大きく見えるため、正面で効果が強く出ます。</li>
+      <li>「空気の層」は、館内の空気温度を立体の格子（1m × 1m × 0.5m）に入れ、腰の高さの空気温度から離れた部分ほど濃く重ねて描いたものです。色は腰の高さの空気との差で、暖かい空気が赤、冷たい空気が青です。天井付近に溜まる暖気や、吹出しの温風・冷風の広がりが見えます。人の色は、立っている場所の床の色と同じ値です。</li>
       <li>体感温度（作用温度）は空気温度と放射温度の平均で、風が強い場所ほど空気温度の重みを大きくします（ASHRAE 55）。</li>
       <li>暑さ指数（WBGT）は 0.7×湿球温度＋0.3×黒球温度（屋内の式）。区分は日本スポーツ協会の熱中症予防運動指針によります。</li>
       <li>風は吹出し口からの噴流として近似しています。吹出し風速はエアコンのみ 5.0m/s、ecowinハイブリッド 1.5m/s【推計】。暖房の温風は中央付近で人の高さに届いたあと浮き上がります。</li></ul>
