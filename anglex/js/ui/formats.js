@@ -50,6 +50,8 @@ export const EXPORT_FORMATS = [
   { g: '帳票・表', id: 'wpdf', name: '重量計算書 PDF', ext: 'pdf', note: '', run: app => exportWeightPDF(app) },
   { g: '帳票・表', id: 'wxlsx', name: '重量計算書 Excel（数式入り）', ext: 'xlsx', note: '', run: app => exportWeightXLSX(app) },
   { g: '帳票・表', id: 'wcsv', name: '重量計算書 CSV', ext: 'csv', note: '', run: app => exportWeightCSV(app) },
+  { g: '帳票・表', id: 'insp', name: '検査記録シート PDF', ext: 'pdf', note: '工場へ渡す記入用の書式。寸法・穴・溶接・表面処理・ミルシート台帳。設計値を印字し、実測と判定の欄を空けてある', run: app => import('./inspection.js').then(x => x.exportInspectionPDF(app)), isNew: true },
+  { g: '帳票・表', id: 'inspx', name: '検査記録シート Excel', ext: 'xlsx', note: '同じ内容を 5 シートで。実測値を入力して返せる', run: app => import('./inspection.js').then(x => x.exportInspectionXLSX(app)), isNew: true },
   { g: '保存', id: 'project', name: 'ANGLEX プロジェクト', ext: 'json', note: 'モデル・確認状態・視点の全データ（再読込できます）', run: app => exportProject(app) },
 ];
 export const formatCounts = () => ({ importKinds: IMPORT_FORMATS.length, importExts: IMPORT_FORMATS.reduce((n, f) => n + f.ext.length, 0), importDirect: IMPORT_FORMATS.filter(f => f.how !== 'server').reduce((n, f) => n + f.ext.length, 0), exportKinds: EXPORT_FORMATS.length, importNew: IMPORT_FORMATS.filter(f => f.isNew).length, exportNew: EXPORT_FORMATS.filter(f => f.isNew).length });

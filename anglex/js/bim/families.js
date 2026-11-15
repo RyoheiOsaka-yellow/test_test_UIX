@@ -4,6 +4,7 @@
 import { parseSpec, sectionOutline, sectionBox, parseCuts, cutDepth } from '../geo/profiles.js';
 import { PIPES, UBOLTS, BOLTS, pipeOD } from '../data/sections.js';
 import { boltDims } from '../geo/fasteners.js';
+import { parseWire, solveFrame } from './skeleton.js';
 
 // ---------- 配置ユーティリティ ----------
 const v3 = (x = 0, y = 0, z = 0) => [x, y, z];
@@ -415,6 +416,13 @@ reg({ id: 'guard', name: 'パイプガード・車止め・防球ガード', cat
     return parts; } });
 reg({ id: 'generic_fab', name: '汎用加工品（板）', category: '板金', ifc: 'IfcBuildingElementProxy', markPrefix: 'GF', icon: '?', params: [num('t', '板厚', 6), num('W', '幅', 200), num('H', '長さ', 300, { scope: 'instance' }), P.material, P.finish], parts(p) { return [{ kind: 'plate', name: `PL-${p.t}×${p.W}×${p.H}`, spec: `PL-${p.t}x${p.W}x${p.H}`, length: p.H, holes: [], finish: p.finish, material: p.material, pl: place([0, 0, 0], DIR.Z, DIR.X) }]; } });
 reg({ id: 'consumable', name: '消耗品（塗料等・形状なし）', category: '消耗品', ifc: 'IfcBuildingElementProxy', markPrefix: 'CN', icon: '◍', params: [{ key: 'name', label: '品名', type: 'text', default: 'ローバル 1kg', scope: 'type', group: '仕様' }, num('mass', '質量 kg', 1, { unit: 'kg' })], parts(p) { return [{ kind: 'custom', custom: 'can', name: p.name, mass: p.mass, finish: 'PAINT', pl: place([0, 0, 0], DIR.Y, DIR.X), group: '本体' }]; } });
+// ---- 基準線フレーム: 骨格の線に断面を付けて組む架台。線どうしが出会う所の端部（突き合わせ・留め・通し）は自動で決める ----
+reg({
+  id: 'wire_frame', name: '基準線フレーム（線から組む架台）', category: '架台', ifc: 'IfcElementAssembly', markPrefix: 'WF', icon: '⌗',
+  params: [spec('spec', '既定の断面', 'L-50x50x6', { help: '線ごとに断面を書かなかった部材に使う' }), { key: 'lines', label: '基準線（DSL）', type: 'text', default: '0,0,0 > 0,1000,0; 600,0,0 > 600,1000,0; 0,1000,0 > 600,1000,0', scope: 'instance', group: '基準線', help: '1 本ずつ ; で区切る: x,y,z > x,y,z [断面] [名前] [r90]。mm、Y が上。部材のメニュー「基準線を編集」から図つきで直せます' },
+    sel('joint', '角の納め方', [['butt', '突き合わせ（柱を通し、梁を当てる）'], ['miter', '留め（2 本とも斜め切り）']], 'butt'), sel('align', '線に合わせる位置', [['center', '断面の中心'], ['origin', '断面の原点（かど）']], 'center'), P.weldSize, P.material, P.finish],
+  parts(p) { return solveFrame(parseWire(p.lines), { spec: p.spec, align: p.align, joint: p.joint, weldSize: p.weldSize, finish: p.finish, material: p.material }, { place, flushEnds, outlineWeld }).parts; },
+});
 
 export function familyById(id) { return FAMILIES.find(f => f.id === id); }
 export const CATEGORIES = [...new Set(FAMILIES.map(f => f.category))];
