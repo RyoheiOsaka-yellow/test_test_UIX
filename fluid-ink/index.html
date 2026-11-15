@@ -33,6 +33,15 @@
   button { background:#2f2f35; color:var(--text); border:1px solid #44444c; border-radius:4px; font:inherit; padding:4px 8px; cursor:pointer; }
   button:hover { background:#3a3a42; }
   button.on { background:#8a2330; border-color:#c33; color:#fff; }
+  #handles { position:fixed; inset:0; pointer-events:none; z-index:1; }
+  #handles.off { display:none; }
+  .em { position:absolute; left:0; top:0; width:0; height:0; }
+  .em > * { position:absolute; pointer-events:auto; touch-action:none; }
+  .em .arm { left:0; top:-1px; width:46px; height:2px; background:rgba(255,255,255,.55); transform-origin:0 50%; pointer-events:none; }
+  .em .c { left:-9px; top:-9px; width:18px; height:18px; border:1.5px solid #fff; border-radius:50%; background:rgba(0,0,0,.35); cursor:move; box-shadow:0 0 0 1px rgba(0,0,0,.5); }
+  .em .k { left:-6px; top:-6px; width:12px; height:12px; border-radius:50%; background:#fff; cursor:grab; box-shadow:0 0 0 1px rgba(0,0,0,.5); }
+  .row .mini { padding:0 6px; height:16px; margin-right:4px; }
+  .row .fname { color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
   #toggle { position:fixed; top:8px; left:308px; z-index:3; transition:left .2s; opacity:.7; }
   #panel.hidden + #toggle { left:8px; }
   #hint { position:fixed; right:12px; bottom:10px; color:#666; pointer-events:none; text-align:right; }
@@ -41,13 +50,14 @@
 </head>
 <body>
 <canvas id="gl"></canvas>
+<div id="handles"></div>
 <div id="panel">
   <header><span><b>fluidInk</b> · Prototype</span><span id="fps"></span></header>
   <div id="fxname"><span>FluidInk</span></div>
   <div id="rows"></div>
 </div>
 <button id="toggle" title="H">☰</button>
-<div id="hint">ドラッグ: インクを流す ／ Space: ランダム噴出 ／ P: 一時停止 ／ H: パネル表示切替</div>
+<div id="hint">ドラッグ: インクを流す ／ ○: エミッタ移動・●: 向き・ダブルクリックで削除 ／ 画像をドロップ: 障害物 ／<br> Space: ランダム噴出 ／ P: 一時停止 ／ H: パネル表示切替</div>
 <div id="err"></div>
 
 <script>
@@ -62,18 +72,18 @@
 
 // ---------------------------------------------------------------- params
 const P = {
-  simRes: 256, dyeRes: 1024, substeps: 1,
+  simRes: 256, dyeRes: 1024, advection: 'high', substeps: 1,
   densityDissipation: 0.6, velocityDissipation: 0.2,
   pressureFactor: 0.8, pressureIterations: 20,
   curl: 30, curlScale: 1, turbulence: 6,
   splatRadius: 0.25, splatForce: 6000,
-  emitter: true, emitterSpeed: 1, emitterSwirl: 0.5,
+  emitter: false, emitterSpeed: 1, emitterSwirl: 0.4, emitterStrength: 1, showHandles: true,
   splatColor: '#ff3296',
   map: 'dye', exposure: 1,
   shading: true, colorful: true,
   palette: 'rainbow', color1: '#ff3296', color2: '#00e6ff', color3: '#ffd719',
   colorSpeed: 10,
-  text: '',
+  text: '', obstacleScale: 0.6, obstacleInvert: false,
   bloom: true, bloomIntensity: 0.5, bloomThreshold: 0.7,
   sunrays: true, sunraysWeight: 0.4,
   paused: false,
@@ -82,6 +92,7 @@ const P = {
 const UI = [
   { k:'simRes', label:'Sim Resolution', type:'select', opts:[64,128,256,512], reinit:true },
   { k:'dyeRes', label:'Dye Resolution', type:'select', opts:[512,1024,2048], reinit:true },
+  { k:'advection', label:'Advection Quality', type:'select', opts:[['standard','Standard'],['high','High (MacCormack)']] },
   { k:'substeps', label:'Simulation Substeps', min:1, max:4, step:1 },
   { k:'densityDissipation', label:'Density Dissipation', min:0, max:3, step:0.01 },
   { k:'velocityDissipation', label:'Velocity Dissipation', min:0, max:3, step:0.01 },
@@ -93,9 +104,12 @@ const UI = [
   { k:'splatRadius', label:'Splat Radius', min:0.02, max:1.5, step:0.01 },
   { k:'splatForce', label:'Splat Force', min:500, max:20000, step:100 },
   { sep:true },
-  { k:'emitter', label:'Auto Emitter', type:'check' },
-  { k:'emitterSpeed', label:'Emitter Speed', min:0.1, max:4, step:0.05 },
-  { k:'emitterSwirl', label:'Emitter Swirl', min:0, max:2, step:0.05 },
+  { type:'emitters', label:'Point Emitters' },
+  { k:'showHandles', label:'Show Emitter Handles', type:'check', handles:true },
+  { k:'emitterStrength', label:'Emitter Strength', min:0, max:4, step:0.05 },
+  { k:'emitterSwirl', label:'Point Swirl', min:0, max:2, step:0.05 },
+  { k:'emitter', label:'Auto Wander Emitter', type:'check' },
+  { k:'emitterSpeed', label:'Wander Speed', min:0.1, max:4, step:0.05 },
   { k:'splatColor', label:'Splat Color (Colorful off)', type:'color' },
   { sep:true },
   { k:'map', label:'Base Visualization Map', type:'select',
@@ -111,6 +125,9 @@ const UI = [
   { k:'colorSpeed', label:'Color Cycle Speed', min:0, max:60, step:0.5 },
   { sep:true },
   { k:'text', label:'Collide Text', type:'text', placeholder:'例: INK', obstacle:true },
+  { type:'file', label:'Collide Image (PNG/SVG)' },
+  { k:'obstacleScale', label:'Image Scale', min:0.1, max:1, step:0.01, obstacle:true },
+  { k:'obstacleInvert', label:'Invert Mask', type:'check', obstacle:true },
   { sep:true },
   { k:'bloom', label:'Enable Bloom', type:'check' },
   { k:'bloomIntensity', label:'Bloom Intensity', min:0, max:3, step:0.05 },
@@ -160,6 +177,19 @@ void main(){
   o = r * (1. - texture(uObstacle, vUv).r);
 }`,
 
+// MacCormack correction: forward (uHat) and backward (uBack) semi-Lagrangian passes cancel most of the
+// numerical diffusion; the result is clamped to the source neighbourhood to stay stable.
+maccormack: `uniform sampler2D uVelocity, uSource, uHat, uBack, uObstacle; uniform vec2 texelSize, srcTexel; uniform float dt, dissipation;
+void main(){
+  vec2 coord = vUv - dt * texture(uVelocity, vUv).xy * texelSize;
+  vec4 r = texture(uHat, vUv) + 0.5 * (texture(uSource, vUv) - texture(uBack, vUv));
+  vec2 b = (floor(coord / srcTexel - 0.5) + 0.5) * srcTexel;
+  vec4 s0 = texture(uSource, b), s1 = texture(uSource, b + vec2(srcTexel.x, 0.));
+  vec4 s2 = texture(uSource, b + vec2(0., srcTexel.y)), s3 = texture(uSource, b + srcTexel);
+  r = clamp(r, min(min(s0, s1), min(s2, s3)), max(max(s0, s1), max(s2, s3)));
+  o = r / (1. + dissipation * dt) * (1. - texture(uObstacle, vUv).r);
+}`,
+
 curl: `uniform sampler2D uVelocity; uniform vec2 texelSize; uniform float scale;
 void main(){
   vec2 dx = vec2(texelSize.x * scale, 0.), dy = vec2(0., texelSize.y * scale);
@@ -172,8 +202,10 @@ void main(){
 vorticity: `uniform sampler2D uVelocity, uCurl, uDye; uniform vec2 texelSize;
 uniform float curl, dt, scale, turb, time, aspect;
 float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
-float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
-  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
+vec2 grad(vec2 i){ float a = hash(i) * 6.2831853; return vec2(cos(a), sin(a)); }
+float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); vec2 u = f*f*f*(f*(f*6.-15.)+10.);
+  return 2. * mix(mix(dot(grad(i), f), dot(grad(i+vec2(1,0)), f-vec2(1,0)), u.x),
+                  mix(dot(grad(i+vec2(0,1)), f-vec2(0,1)), dot(grad(i+vec2(1,1)), f-vec2(1,1)), u.x), u.y); }
 float psi(vec2 p){ return vnoise(p + vec2(time*0.31, -time*0.17)) + 0.5 * vnoise(p*2.3 - vec2(time*0.23, time*0.41)); }
 void main(){
   vec2 dx = vec2(texelSize.x * scale, 0.), dy = vec2(0., texelSize.y * scale);
@@ -323,7 +355,7 @@ function resizeDouble(old, w, h, internal, format, filter){
 }
 
 // ---------------------------------------------------------------- targets
-let velocity, dye, pressure, divergence, curl, bloomChain = [], rays, obstacleTex;
+let dyeA, dyeB, velocity, dye, pressure, divergence, curl, bloomChain = [], rays, obstacleTex;
 function res(r){
   const a = canvas.width / canvas.height;
   return a >= 1 ? [Math.round(r * a), r] : [r, Math.round(r / a)];
@@ -333,6 +365,8 @@ function initTargets(){
   gl.disable(gl.BLEND);
   velocity = resizeDouble(velocity, sw, sh, gl.RG16F, gl.RG, gl.LINEAR);
   dye = resizeDouble(dye, dw, dh, gl.RGBA16F, gl.RGBA, gl.LINEAR);
+  freeFBO(dyeA); freeFBO(dyeB);
+  dyeA = createFBO(dw, dh, gl.RGBA16F, gl.RGBA, gl.LINEAR); dyeB = createFBO(dw, dh, gl.RGBA16F, gl.RGBA, gl.LINEAR);
   freeFBO(pressure); freeFBO(divergence); freeFBO(curl); bloomChain.forEach(freeFBO); freeFBO(rays);
   pressure = createDouble(sw, sh, gl.R16F, gl.RED, gl.NEAREST);
   divergence = createFBO(sw, sh, gl.R16F, gl.RED, gl.NEAREST);
@@ -347,10 +381,18 @@ function initTargets(){
 
 // text → obstacle mask the fluid collides with
 const textCanvas = document.createElement('canvas');
+let obstacleImg = null;
+function loadObstacleImage(file){
+  if (!file) { obstacleImg = null; updateObstacle(); return; }
+  const img = new Image();
+  img.onload = () => { obstacleImg = img; updateObstacle(); const n = document.getElementById('fname'); if (n) n.textContent = file.name; };
+  img.onerror = () => alert('画像を読み込めませんでした: ' + file.name);
+  img.src = URL.createObjectURL(file);
+}
 function updateObstacle(){
   const [w, h] = res(512);
   textCanvas.width = w; textCanvas.height = h;
-  const c = textCanvas.getContext('2d');
+  const c = textCanvas.getContext('2d', { willReadFrequently: true });
   c.fillStyle = '#000'; c.fillRect(0, 0, w, h);
   const t = P.text.trim();
   if (t) {
@@ -361,6 +403,26 @@ function updateObstacle(){
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff';
     c.fillText(t, w / 2, h / 2);
   }
+  if (obstacleImg) {
+    const iw = obstacleImg.naturalWidth || 512, ih = obstacleImg.naturalHeight || 512;
+    const k = Math.min(w * P.obstacleScale / iw, h * P.obstacleScale / ih);
+    const x0 = Math.floor((w - iw * k) / 2), y0 = Math.floor((h - ih * k) / 2), x1 = Math.ceil(x0 + iw * k), y1 = Math.ceil(y0 + ih * k);
+    const oc = document.createElement('canvas'); oc.width = w; oc.height = h;
+    const o2 = oc.getContext('2d', { willReadFrequently: true }); o2.drawImage(obstacleImg, x0, y0, iw * k, ih * k);
+    const src = o2.getImageData(0, 0, w, h).data, dst = c.getImageData(0, 0, w, h), d = dst.data;
+    // transparent images use alpha as the shape; opaque ones use luminance against their corner colour
+    let hasAlpha = false;
+    for (let y = y0 + 1; y < y1 - 1 && !hasAlpha; y++) for (let x = x0 + 1; x < x1 - 1; x++) if (src[(y * w + x) * 4 + 3] < 250) { hasAlpha = true; break; }
+    const lum = i => (0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2]) / 255;
+    const brightBg = lum(((y0 + 2) * w + x0 + 2) * 4) > 0.5;
+    for (let y = Math.max(0, y0); y < Math.min(h, y1); y++) for (let x = Math.max(0, x0); x < Math.min(w, x1); x++) {
+      const i = (y * w + x) * 4, a = src[i + 3] / 255;
+      const m = 255 * (hasAlpha ? a : a * (brightBg ? 1 - lum(i) : lum(i)));
+      if (m > d[i]) d[i] = d[i + 1] = d[i + 2] = m;
+    }
+    c.putImageData(dst, 0, 0);
+  }
+  if (P.obstacleInvert) { c.globalCompositeOperation = 'difference'; c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'source-over'; }
   if (!obstacleTex) obstacleTex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, obstacleTex);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -448,6 +510,40 @@ function emitterStep(dt){
   emPrev = [x, y];
 }
 
+// point emitters: draggable on-screen handles (ring = position, dot = direction)
+const emitters = [], handlesEl = document.getElementById('handles');
+const clamp01 = v => Math.max(0.01, Math.min(0.99, v));
+function addEmitter(x, y, angle){
+  if (emitters.length >= 6) return;
+  const el = document.createElement('div'); el.className = 'em';
+  el.innerHTML = '<div class="arm"></div><div class="c"></div><div class="k"></div>';
+  const em = { x, y, angle, el, off: emitters.length * 0.21 }; emitters.push(em); handlesEl.appendChild(el);
+  const drag = (t, fn) => t.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation(); t.setPointerCapture(e.pointerId);
+    const end = () => { t.removeEventListener('pointermove', fn); t.removeEventListener('pointerup', end); t.removeEventListener('pointercancel', end); };
+    t.addEventListener('pointermove', fn); t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end);
+  });
+  drag(el.children[1], e => { const [u, v] = uvOf(e); em.x = clamp01(u); em.y = clamp01(v); });
+  drag(el.children[2], e => { const r = canvas.getBoundingClientRect();
+    em.angle = Math.atan2((r.top + (1 - em.y) * r.height) - e.clientY, e.clientX - (r.left + em.x * r.width)); });
+  el.children[1].addEventListener('dblclick', () => { emitters.splice(emitters.indexOf(em), 1); el.remove(); });
+}
+function layoutHandles(){
+  const r = canvas.getBoundingClientRect();
+  for (const em of emitters) {
+    em.el.style.transform = `translate(${r.left + em.x * r.width}px, ${r.top + (1 - em.y) * r.height}px)`;
+    em.el.children[0].style.transform = `rotate(${-em.angle}rad)`;
+    em.el.children[2].style.transform = `translate(${46 * Math.cos(em.angle)}px, ${-46 * Math.sin(em.angle)}px)`;
+  }
+}
+function pointEmit(dt){
+  const k = dt * 60 * P.emitterStrength; if (k <= 0) return;
+  for (const em of emitters) {
+    const a = em.angle + Math.sin(simTime * 3 + em.off * 20) * P.emitterSwirl, f = P.splatForce * 0.004 * k;
+    splat(em.x, em.y, Math.cos(a) * f, Math.sin(a) * f, inkColor(em.off).map(v => v * 0.14 * k));
+  }
+}
+
 // ---------------------------------------------------------------- simulation step
 let simTime = 0;
 function step(dt){
@@ -491,7 +587,18 @@ function step(dt){
   gl.uniform1f(u.dissipation, P.velocityDissipation);
   blit(velocity.write); velocity.swap();
   gl.uniform1i(u.uVelocity, bindTex(0, velocity.read.tex)); gl.uniform1i(u.uSource, bindTex(1, dye.read.tex));
-  gl.uniform1f(u.dissipation, P.densityDissipation);
+  if (P.advection !== 'high') {
+    gl.uniform1f(u.dissipation, P.densityDissipation);
+    blit(dye.write); dye.swap();
+    return;
+  }
+  gl.uniform1f(u.dissipation, 0); blit(dyeA);                                   // forward
+  gl.uniform1f(u.dt, -dt); gl.uniform1i(u.uSource, bindTex(1, dyeA.tex)); blit(dyeB);   // backward
+  u = use('maccormack');
+  gl.uniform2f(u.texelSize, velocity.tx, velocity.ty); gl.uniform2f(u.srcTexel, dye.tx, dye.ty);
+  gl.uniform1f(u.dt, dt); gl.uniform1f(u.dissipation, P.densityDissipation);
+  gl.uniform1i(u.uVelocity, bindTex(0, velocity.read.tex)); gl.uniform1i(u.uSource, bindTex(1, dye.read.tex));
+  gl.uniform1i(u.uHat, bindTex(3, dyeA.tex)); gl.uniform1i(u.uBack, bindTex(4, dyeB.tex)); gl.uniform1i(u.uObstacle, bindTex(2, obstacleTex));
   blit(dye.write); dye.swap();
 }
 
@@ -537,10 +644,11 @@ function frame(now){
   const dt = Math.min((now - last) / 1000, 1 / 30); last = now;
   fpsAcc += dt; fpsN++;
   if (fpsAcc > 0.5) { fpsEl.textContent = Math.round(fpsN / fpsAcc) + ' fps'; fpsAcc = 0; fpsN = 0; }
-  resize();
+  resize(); layoutHandles();
   if (!P.paused) {
     colorPhase += dt * P.colorSpeed * 0.01;
     if (P.emitter) emitterStep(dt); else emPrev = null;
+    pointEmit(dt);
   }
   let i = 0;
   for (const p of pointers.values()) {
@@ -562,8 +670,22 @@ for (const d of UI) {
   if (d.sep) { rows.insertAdjacentHTML('beforeend', '<div class="sep"></div>'); continue; }
   const row = document.createElement('div'); row.className = 'row';
   const label = document.createElement('label'); label.textContent = d.label; label.title = d.label; row.appendChild(label);
-  const changed = () => { if (d.reinit) initTargets(); if (d.obstacle) updateObstacle(); };
-  if (d.type === 'select') {
+  const changed = () => { if (d.reinit) initTargets(); if (d.obstacle) updateObstacle(); if (d.handles) handlesEl.classList.toggle('off', !P.showHandles); };
+  if (d.type === 'emitters') {
+    const b = document.createElement('button'); b.className = 'mini'; b.textContent = '+ Add';
+    b.onclick = () => addEmitter(0.25 + Math.random() * 0.5, 0.25 + Math.random() * 0.5, Math.random() * 6.28);
+    const x = document.createElement('button'); x.className = 'mini'; x.textContent = 'Remove All';
+    x.onclick = () => { emitters.forEach(e => e.el.remove()); emitters.length = 0; };
+    row.append(b, x);
+  } else if (d.type === 'file') {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*,.svg'; inp.id = 'imgFile'; inp.style.display = 'none';
+    inp.onchange = () => inp.files[0] && loadObstacleImage(inp.files[0]);
+    const b = document.createElement('button'); b.className = 'mini'; b.textContent = 'Load…'; b.onclick = () => inp.click();
+    const x = document.createElement('button'); x.className = 'mini'; x.textContent = '✕';
+    const n = document.createElement('span'); n.className = 'fname'; n.id = 'fname';
+    x.onclick = () => { inp.value = ''; n.textContent = ''; loadObstacleImage(null); };
+    row.append(inp, b, x, n);
+  } else if (d.type === 'select') {
     const s = document.createElement('select');
     for (const o of d.opts) { const [v, t] = Array.isArray(o) ? o : [o, o]; s.add(new Option(t, v)); }
     s.value = P[d.k]; s.onchange = () => { P[d.k] = s.value; changed(); }; row.appendChild(s);
@@ -623,10 +745,14 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'h' || e.key === 'H') togglePanel();
 });
 
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) loadObstacleImage(f); });
+
 if (window.innerWidth < 720) panel.classList.add('hidden');
 resize();
-burst(6);
-window.__fluid = { P, burst, splat, clearAll, updateObstacle };
+burst(4);
+addEmitter(0.42, 0.5, 0.35);
+window.__fluid = { P, burst, splat, clearAll, updateObstacle, emitters, addEmitter };
 requestAnimationFrame(frame);
 </script>
 </body>
