@@ -420,8 +420,9 @@ reg({ id: 'consumable', name: '消耗品（塗料等・形状なし）', categor
 reg({
   id: 'wire_frame', name: '基準線フレーム（線から組む架台）', category: '架台', ifc: 'IfcElementAssembly', markPrefix: 'WF', icon: '⌗',
   params: [spec('spec', '既定の断面', 'L-50x50x6', { help: '線ごとに断面を書かなかった部材に使う' }), { key: 'lines', label: '基準線（DSL）', type: 'text', default: '0,0,0 > 0,1000,0; 600,0,0 > 600,1000,0; 0,1000,0 > 600,1000,0', scope: 'instance', group: '基準線', help: '1 本ずつ ; で区切る: x,y,z > x,y,z [断面] [名前] [r90]。mm、Y が上。部材のメニュー「基準線を編集」から図つきで直せます' },
-    sel('joint', '角の納め方', [['butt', '突き合わせ（柱を通し、梁を当てる）'], ['miter', '留め（2 本とも斜め切り）']], 'butt'), sel('align', '線に合わせる位置', [['center', '断面の中心'], ['origin', '断面の原点（かど）']], 'center'), P.weldSize, P.material, P.finish],
-  parts(p) { return solveFrame(parseWire(p.lines), { spec: p.spec, align: p.align, joint: p.joint, weldSize: p.weldSize, finish: p.finish, material: p.material }, { place, flushEnds, outlineWeld }).parts; },
+    sel('joint', '角の納め方', [['butt', '突き合わせ（柱を通し、梁を当てる）'], ['miter', '留め（2 本とも斜め切り）']], 'butt'), sel('align', '線に合わせる位置', [['center', '断面の中心'], ['origin', '断面の原点（かど）']], 'center'), sel('orient', '山形鋼の向き', [['auto', '自動（柱はかどを外へ、梁は上面を平らに）'], ['none', '線の指定どおり']], 'auto'),
+    bool('base', '柱脚のベースプレート', false, { group: 'ベース' }), num('baseW', 'ベース寸法', 150, { group: 'ベース' }), num('baseT', 'ベース板厚', 9, { group: 'ベース' }), num('anchorD', 'アンカー穴径', 14, { group: 'ベース' }), bool('anchorDraw', 'アンカーを描く', true, { group: 'ベース' }), P.weldSize, P.material, P.finish],
+  parts(p) { return solveFrame(parseWire(p.lines), { spec: p.spec, align: p.align, joint: p.joint, orient: p.orient, base: p.base ? { on: true, size: p.baseW, t: p.baseT, holeD: p.anchorD, anchors: p.anchorDraw } : null, weldSize: p.weldSize, finish: p.finish, material: p.material }, { place, flushEnds, outlineWeld }).parts; },
 });
 
 export function familyById(id) { return FAMILIES.find(f => f.id === id); }

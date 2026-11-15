@@ -34,7 +34,7 @@
 
 <!-- 表紙 -->
 <div class="pcover page"><div class="veil"></div>
-<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 6 版　2026 年 11 月 15 日</span></div>
+<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 7 版　2026 年 11 月 15 日</span></div>
 <div class="in"><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE ・ 図面に、語らせる</div>
 <div class="doc">ANGLEX 導入 PoC 計画書<br>および 開発済み機能一覧</div>
 <div class="lead">配管支持金具の積算を、図面の読込から 3D での確認、重量・見積まで。まずは「初期段階」に絞って、貴社の実図面と実務で効果を確かめます。</div>
@@ -219,7 +219,7 @@
 <tr><td>7</td><td>業務フロー・多社連携</td><td style="text-align:left">受け渡し・権限、Rev・監査ログ、ダッシュボード、期限通知</td><td>8</td><td>0</td></tr>
 <tr><td>8</td><td>シミュレータ</td><td style="text-align:left">ライブゲージ、X 線、限界探索、動画</td><td>1</td><td>0</td></tr>
 <tr><td>9</td><td>書出し・外部連携</td><td style="text-align:left">IFC（IFC4 / IFC2x3）・DXF・glTF・OBJ・STL・USD、DSTV NC ほか（全 21 種類）</td><td>5</td><td>0</td></tr>
-<tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、操作ガイド、ライセンス表示</td><td>6</td><td>3</td></tr>
+<tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、操作ガイド、コマンド検索、ライセンス表示</td><td>7</td><td>3</td></tr>
 </table>
 <figure><img src="img/b01_hero_full.png"><figcaption>ANGLEX の作業画面（v1）。左: プロジェクトブラウザ、中央: 3D、右: プロパティ。選んだ部材の質量・原価がその場で出ます</figcaption></figure>
 
@@ -260,7 +260,7 @@
 <tr><td>等ピッチ配置・複数選択</td><td>配管に沿った等間隔配置、まとめて整列・複製・削除</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>ボルト接合の提案</td><td>重なった板の穴が一致すると、ボルト接合を提案</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>取付プレビュー</td><td>確定前に半透明の完成形と変更内容を表示</td><td><span class="m demo">参考デモ</span></td></tr>
-<tr><td>線から組む</td><td>骨格の線（寸法・図面の線・直接入力）に断面を付けて架台を組む。端部の突き合わせ・斜め切り・溶接は自動</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>線から組む</td><td>骨格の線（寸法・図面の線・3D で引く・直接入力）に断面を付けて架台を組む。端部の突き合わせ・斜め切り・溶接、山形鋼の向き、ベースプレートは自動</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>端部の斜め切り</td><td>部材の始端・終端に角度を指定（架台の中の部材も可）。ブラケットの斜材は相手の面に沿って自動で斜め切り。3D・重量・IFC・NC データ・加工図に反映</td><td><span class="m demo">参考デモ</span></td></tr>
 </table>
 </div>
@@ -293,7 +293,7 @@
 <tr><td>溶接記号（JIS Z 3021）</td><td>工場溶接・現場溶接を記号で区別し、3D と帳票に表示</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>ズレ補正</td><td>部材間の隙間、レベルとの段差、穴の端あき不足を検出し、まとめて補正</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>作業保存</td><td>作業の途中をスナップショットで保存し、いつでも戻せる</td><td><span class="m demo">参考デモ</span></td></tr>
-<tr><td>ピンとコメント</td><td>3D と図面の位置にピンを立て、ピンごとにやり取りを残す。解決 / 未解決を管理</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>ピンとコメント</td><td>3D と図面の位置にピンを立て、ピンごとにやり取りを残す。受け渡しの前に未解決を知らせ、見積書・加工指示書にも載る</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>受け渡し・確定前のゲート</td><td>未確認があると止める。理由を付けた上書きは監査ログに記録</td><td><span class="m next">次段階</span></td></tr>
 </table>
 </div>
@@ -309,7 +309,7 @@
 <tr><td>見積の自動生成</td><td>材料・加工・めっき・ボルト類・管理費の明細をモデルから作成</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>見積書</td><td>PDF・Excel・CSV・印刷。日本語フォント埋込済み</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>加工指示書</td><td>穴座標・溶接記号・分解図・確認リストを含む工場向けの PDF</td><td><span class="m demo">参考デモ</span></td></tr>
-<tr><td>検査記録シート</td><td>寸法・穴・溶接・表面処理・ミルシート台帳の記入用書式（PDF・Excel）。設計値を印字</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>検査記録シート</td><td>寸法・穴・溶接・表面処理・ミルシート台帳の記入用書式（PDF・Excel）。記入済みの Excel を読むと合否を集計</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>分解図・組立図</td><td>バルーン番号付き分解図、組立順と現場作業の組立図（PDF）</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>学習単価</td><td>加工工場の回答単価を蓄積し、次の見積に適用</td><td><span class="m next">次段階</span></td></tr>
 </table>
@@ -357,6 +357,7 @@
 <tr><th>機能</th><th>できること</th><th>区分</th></tr>
 <tr><td>v1 / v2 の 2 つの画面</td><td>経験者向けの BIM ワークスペース（v1）と、初めてでも迷わないステップ型（v2）。同じデータのままボタン 1 つで切替</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>オフライン版</td><td>単一の HTML ファイル（約 60 MB）。インストール不要、外部通信なしで OCR・PDF 出力・IFC／STEP 読込まで動作</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>コマンド検索・ツールチップ</td><td>Ctrl + K でやりたいことを名前で探して実行。ボタンに乗せるとすぐ説明が出る。リボンは横に送れる</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>操作ガイド・ショートカット</td><td>初回の操作ガイド、「?」キーでショートカット一覧</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>ライセンス表示</td><td>同梱している第三者ソフトウェア 16 件の一覧と全文を画面で表示。LGPL の STEP 読込ライブラリは差し替え可能（同梱しない版も作成可能）</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>チャットで概算</td><td>製品・サイズ・仕上げ・数量を選ぶだけで概算見積</td><td><span class="m demo">参考デモ</span></td></tr>

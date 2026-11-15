@@ -1,6 +1,7 @@
 // 受け渡し（通知文・期限つき）と 確定前チェック
-import { h, modal, fmt, toast, promptDialog, table } from './common.js';
+import { h, modal, fmt, toast, promptDialog, confirmDialog, table } from './common.js';
 import * as WF from '../core/workflow.js';
+import { pinCounts, togglePins } from './pins.js';
 import { reviewGate } from './estimate.js';
 import { branchName } from '../core/branches.js';
 import { recordFromEstimate, recordMarginsFromEstimate } from '../core/pricing.js';
@@ -27,6 +28,7 @@ export function showMessage(text, title = '通知文（コピーして送付）'
 export async function handoffDialog(app, est, to, rerender, { gate = true, warn = null } = {}) {
   const role = app.role(); const user = app.user();
   if (gate && role === 'A') { const g = await reviewGate(app, '受け渡し'); if (!g.ok) return false; warn = [g.note, warn].filter(Boolean).join(' '); }
+  { const P = { pinCounts, togglePins }; const pc = pinCounts(app); if (gate && pc.open) { const go = await confirmDialog(`未解決のコメントが ${pc.open} 件あります。このまま ${WF.ROLES[to].name} へ受け渡しますか？`, { ok: 'このまま渡す', cancel: 'コメントを見る' }); if (!go) { if (!document.querySelector('.pin-pop')) P.togglePins(app); return false; } warn = [warn, `未解決のコメント ${pc.open} 件あり。`].filter(Boolean).join(' '); } }
   const r = await promptDialog(`${WF.ROLES[to].name} へ受け渡し`, [{ key: 'note', label: 'メッセージ', type: 'textarea', value: '' }, { key: 'due', label: '回答期限', type: 'date', value: plusDays(to === 'C' ? 7 : 3) }]); if (!r) return false;
   try { const res = await app.store.handoffEstimate(est.id, { from: role, to, who: user.name, note: [warn, r.note].filter(Boolean).join(' '), due: r.due || null, review: role === 'A' && app.reviewSummary ? app.reviewSummary() : null }); const link = location.origin + location.pathname + '?handoff=' + res.token; const fresh = (await app.store.listEstimates(est.projectId)).find(e => e.id === est.id) || est; if (role === 'C') { try { const n = await recordFromEstimate(app, fresh); if (n) toast(`工場単価・納期 ${n} 行を単価マスタ（学習）に記録しました`, 'info'); } catch (e) { console.warn('price history', e); } } if (role === 'B') { try { const n = await recordMarginsFromEstimate(app, fresh); if (n) toast(`利益率 ${n} 行を履歴に記録しました（次回「前回の利益率を流用」）`, 'info'); } catch (e) { console.warn('margin history', e); } } const text = handoffMessage(app, fresh, to, link, { note: r.note, due: r.due, role }); try { await navigator.clipboard.writeText(text); } catch { } toast(`${WF.ROLES[to].name} へ受け渡しました（通知文をコピー）`, 'ok', 4000); showMessage(text); rerender?.(); app.flowRefresh?.(); return true; } catch (e) { toast(e.message, 'bad'); return false; }
 }
