@@ -19,6 +19,7 @@ import { initPeople } from './people.js';
 import { initIndoor } from './indoor.js';
 import { initAnalysis } from './analysis.js';
 import { initFlows } from './flows.js';
+import { initTour } from './tour.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
@@ -257,7 +258,7 @@ FLOORS.forEach(f => { const g = new THREE.Group(); g.name = `floor${f.level}`; g
 
 let LEVEL_H = {};
 let expand = 1.0;            // フロア展開倍率
-let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null; let indoor = null; let analysis = null; let flows = null;
+let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null; let indoor = null; let analysis = null; let flows = null; let tour = null;
 const levelY = (lv, k = expand) => (LEVEL_H[lv] ?? lv * 6) * k;
 
 let buildingMesh = null, buildingMeta = null, buildingStarts = null;
@@ -1810,10 +1811,12 @@ async function init() {
   people.set({ hour: realState.hour }); people.rebuild(); onTheme(t => people.setTheme(t));
   indoor = initIndoor({ scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel: () => sel, getGap: () => selUniforms.uGap.value, footprintPts, terrainSampler, levelY, renderer, cores: window.__CORES || [] });
   initPeopleUI();
-  flows = initFlows({ scene, people, buildingMeta, terrainSampler });
+  flows = initFlows({ scene, people, buildingMeta, terrainSampler, getCamera: () => camera, renderer });
   analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T, setNavEnabled: v => { activeControls.enabled = v; }, setClock: h => setClock(h), guides: () => [...floorGuide], flows, share: { get: getViewState, apply: applyViewState, hash: () => '#s=' + encodeState(getViewState()), link: () => location.href.split('#')[0] + '#s=' + encodeState(getViewState()) }, snapshot: () => { composer.render(); try { return canvas.toDataURL('image/jpeg', 0.86); } catch (e) { return null; } }, realMonth: () => realState.month });
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
   roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState, graph, carStop: li => people ? people.carStop(li) : false, timeScale: () => people ? people.timeScale() : 1 });
+  tour = initTour({ getViewState, applyViewState, flyTo: (p, t, instant) => { introStart = null; if (instant) { fly = null; camera.position.copy(p); controls.target.copy(t); controls.update(); } else { flyTo(p, t); fly.ms = 2200; } }, people, buildingMeta, terrainSampler });
+  document.getElementById('btn-tour').addEventListener('click', () => tour.active ? tour.stop() : tour.start());
   initRealUI();
   applyTheme(styleName);
   setProgress(1, '完了');
@@ -1822,7 +1825,7 @@ async function init() {
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
   if (location.hash.startsWith('#s=')) { try { applyViewState(decodeState(location.hash.slice(3))); } catch (e) { console.warn('表示状態を復元できませんでした', e); } }
-  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, indoor: () => indoor, analysis: () => analysis, flows: () => flows, getViewState, applyViewState, encodeState, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { tour: () => tour, applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, indoor: () => indoor, analysis: () => analysis, flows: () => flows, getViewState, applyViewState, encodeState, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
@@ -1852,7 +1855,7 @@ function animate() {
     setDisp(v);
     if (t >= 1) dispAnim = null;
   }
-  stepFlow(dt); stepRouteFlow(dt); updateHover(performance.now());
+  stepFlow(dt); stepRouteFlow(dt); updateHover(performance.now()); if (tour) tour.update();
   updateLabels();
   if (realistic) realistic.update(dt);
   if (roadDetail) roadDetail.update(dt);

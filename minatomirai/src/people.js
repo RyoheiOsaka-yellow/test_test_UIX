@@ -5,6 +5,9 @@
 //  - シナリオ: 雨天、イベント (K アリーナ・ぴあアリーナ・パシフィコ)。時刻・平日/休日・月で発生量が変わる
 //  - 較正: 国交省 人流オープンデータ (1km メッシュの滞在人口) に合わせた係数を使い、実測とモデルをメッシュ単位で見比べられる
 import * as THREE from 'three';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { buildPeopleModel, GROUPS, WALK_SPEED, EVENTS, dayContext } from './people_model.js';
 
 const MAX = 16000;
@@ -40,8 +43,11 @@ export function initPeople(ctx) {
   });
   const points = new THREE.Points(geo, pmat); points.frustumCulled = false; points.renderOrder = 6; points.name = 'people'; scene.add(points);
   // 軌跡: 進行方向の後ろへ伸びる短い線 (速いほど長い。信号待ちの人は点のまま)
-  const tpos = new Float32Array(MAX * 6), tcol = new Float32Array(MAX * 6), tgeo = new THREE.BufferGeometry(); tgeo.setAttribute('position', new THREE.BufferAttribute(tpos, 3).setUsage(THREE.DynamicDrawUsage)); tgeo.setAttribute('color', new THREE.BufferAttribute(tcol, 3).setUsage(THREE.DynamicDrawUsage)); tgeo.setDrawRange(0, 0);
-  const trails = new THREE.LineSegments(tgeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false })); trails.frustumCulled = false; trails.renderOrder = 6; trails.visible = false; trails.name = 'people-trails'; scene.add(trails);
+  // 画面上の太さを指定できる線 (LineSegments2)。位置と色の配列は線分ごとに 6 個で、インスタンス用のバッファをそのまま書き換える
+  const tpos = new Float32Array(MAX * 6), tcol = new Float32Array(MAX * 6), tgeo = new LineSegmentsGeometry(); tgeo.setPositions(tpos); tgeo.setColors(tcol); tgeo.instanceCount = 0;
+  tgeo.attributes.instanceStart.data.setUsage(THREE.DynamicDrawUsage); tgeo.attributes.instanceColorStart.data.setUsage(THREE.DynamicDrawUsage);
+  const tposA = tgeo.attributes.instanceStart.data, tcolA = tgeo.attributes.instanceColorStart.data;
+  const trails = new LineSegments2(tgeo, new LineMaterial({ vertexColors: true, linewidth: 2.4, transparent: true, opacity: 0.95, depthWrite: false })); trails.frustumCulled = false; trails.renderOrder = 6; trails.visible = false; trails.name = 'people-trails'; scene.add(trails);
   const body = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.24, 0.95, 2, 6), new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0 }), MAX);
   body.instanceMatrix.setUsage(THREE.DynamicDrawUsage); body.frustumCulled = false; body.count = 0; body.visible = false; body.name = 'people-body'; scene.add(body);
   { const m = body.instanceMatrix.array; for (let i = 0; i < MAX; i++) { m[i * 16] = m[i * 16 + 5] = m[i * 16 + 10] = m[i * 16 + 15] = 1; } body.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 3), 3); body.instanceColor.setUsage(THREE.DynamicDrawUsage); }
@@ -95,6 +101,8 @@ export function initPeople(ctx) {
     console.log(`people model: ${model.dests.length} dests, ${model.classes.length} classes, ${model.buildMs} ms${calib ? ', calibrated' : ''}`);
   }
   const day = () => dayContext(S.day, getMonth(), calib);
+  // 鉄道以外の手段の内訳の説明 (tools/mode_split.py の見積もり。無ければ仮の割合)
+  const modeNote = () => { const nr = model?.stations.filter(q => q.nonRail) ?? [], M = calib?.mode; if (!nr.length) return ''; const sh = nr.map(q => `${q.n.replace(/（.*）/, '')} ${Math.round(q.share * 100)}%`).join('・'); return M ? `内訳は公開データからの見積もり: ${sh}。車 = 駐車場 約 ${fmt(M.parking.capacity)} 台 × 回転率 ${M.parking.turnover} 回/日 × ${M.parking.occupancy[S.day]} 人、バス = ${S.day === 'holiday' ? '日祝' : '平日'} ${fmt(M.bus[S.day])} 便 × ${M.bus.alightPerTrip} 人` : `手段の内訳 ${sh} は仮定`; };
   const green = li => !S.signals || ((simT + sigOff[li]) % SIG_CYCLE) < SIG_GREEN;
   function updateVolumes() {
     const d = day(); model.volumes(S.hour, d, vol); if (scenarioOn()) base.volumes(S.hour, d, baseVol); else baseVol.set(vol);
@@ -102,7 +110,7 @@ export function initPeople(ctx) {
     for (let i = 0; i < L; i++) {
       const v = vol[i], bv = baseVol[i], o = i * 12, l = graph.links[i], horiz = hLen[i] > 1 && visL[i];
       const f = v / (60 * l.w); sf[i] = speedFactor(f);
-      if (horiz) { if (v > stat.maxVol) stat.maxVol = v; if (bv > stat.baseMaxVol) stat.baseMaxVol = bv; if (f > stat.maxF) stat.maxF = f; if (f >= 66) stat.efLen += hLen[i]; if (bv / (60 * l.w) >= 66) stat.baseEfLen += hLen[i]; }
+      if (horiz) { if (v > stat.maxVol) stat.maxVol = v; if (bv > stat.baseMaxVol) stat.baseMaxVol = bv; if (f > stat.maxF) { stat.maxF = f; stat.maxFAt = [(l.ax + l.bx) / 2, (l.ay + l.by) / 2]; } if (f >= 66) stat.efLen += hLen[i]; if (bv / (60 * l.w) >= 66) stat.baseEfLen += hLen[i]; }
       const val = mode === 'diff' ? Math.abs(v - bv) : v;
       if (val < VOL_MIN || !horiz) { for (let k = 0; k < 12; k++) rpos[o + k] = 0; continue; }
       const hw = (mode === 'los' ? Math.max(1.2, l.w) : (mode === 'diff' ? 1.6 : 1.0) + 0.09 * Math.sqrt(val)) / 2, nx = -dirY[i] * hw, ny = dirX[i] * hw, ya = gA[i] + lift, yb = gB[i] + lift;
@@ -163,12 +171,12 @@ export function initPeople(ctx) {
       const x = l.ax + (l.bx - l.ax) * t - dirY[li] * sg * o, yN = l.ay + (l.by - l.ay) * t + dirX[li] * sg * o;   // 左側通行: 進行方向の左へ寄せる
       const y = visL[li] ? gA[li] + (gB[li] - gA[li]) * t + yOff : -9999;
       pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = -yN;
-      if (trailOn) { const tl = hold ? 0 : (10 + spd[i] * 10) * sf[li] * (l.vt ? 0.3 : 1), o6 = i * 6, c = gcol[grp[i]], dim = S.dark ? 0.08 : 0.55; tpos[o6] = x; tpos[o6 + 1] = y; tpos[o6 + 2] = -yN; tpos[o6 + 3] = x - dirX[li] * sg * tl; tpos[o6 + 4] = y; tpos[o6 + 5] = -(yN - dirY[li] * sg * tl); tcol[o6] = c.r; tcol[o6 + 1] = c.g; tcol[o6 + 2] = c.b; tcol[o6 + 3] = c.r * dim + (S.dark ? 0 : 1 - dim); tcol[o6 + 4] = c.g * dim + (S.dark ? 0 : 1 - dim); tcol[o6 + 5] = c.b * dim + (S.dark ? 0 : 1 - dim); }
+      if (trailOn) { const tl = hold ? 0.6 : (16 + spd[i] * 14) * sf[li] * (l.vt ? 0.3 : 1), o6 = i * 6, c = gcol[grp[i]], dim = S.dark ? 0.1 : 0.7; tpos[o6] = x; tpos[o6 + 1] = y; tpos[o6 + 2] = -yN; tpos[o6 + 3] = x - dirX[li] * sg * tl; tpos[o6 + 4] = y; tpos[o6 + 5] = -(yN - dirY[li] * sg * tl); tcol[o6] = c.r; tcol[o6 + 1] = c.g; tcol[o6 + 2] = c.b; tcol[o6 + 3] = c.r * dim + (S.dark ? 0 : 1 - dim); tcol[o6 + 4] = c.g * dim + (S.dark ? 0 : 1 - dim); tcol[o6 + 5] = c.b * dim + (S.dark ? 0 : 1 - dim); }
       if (real) { m[i * 16 + 12] = x; m[i * 16 + 13] = y; m[i * 16 + 14] = -yN; }
     }
     waiting = wait;
     geo.setDrawRange(0, count); geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
-    if (trailOn) { tgeo.setDrawRange(0, count * 2); tgeo.attributes.position.needsUpdate = true; tgeo.attributes.color.needsUpdate = true; }
+    if (trailOn) { tgeo.instanceCount = count; tposA.array.set(tpos.subarray(0, count * 6)); tcolA.array.set(tcol.subarray(0, count * 6)); tposA.needsUpdate = true; tcolA.needsUpdate = true; }
     if (real) { body.count = count; body.instanceMatrix.needsUpdate = true; body.instanceColor.needsUpdate = true; }
     pmat.uniforms.uScale.value = renderer.domElement.clientHeight / 2;
     statT += dt; if (statT > 0.5) { statT = 0; updateStats(false); }
@@ -212,7 +220,7 @@ export function initPeople(ctx) {
     const cx = (S.hour / 24 * W).toFixed(1); svg += `<line x1="${cx}" y1="0" x2="${cx}" y2="${H}" stroke="#fff" stroke-width="1"/>`;
     for (const h of [6, 12, 18]) svg += `<text x="${h / 24 * W}" y="${H + 9}" font-size="8" fill="#7d93b5" text-anchor="middle">${h}時</text>`;
     el('p-spark').innerHTML = `<svg viewBox="0 0 ${W} ${H + 11}" width="100%" style="display:block">${svg}</svg><div class="note" style="margin-top:0">歩行中の人数の推移（最大 約 ${fmt(mx)} 人）${bp ? '／破線 = 通常時' : ''}</div>`;
-    el('p-stations').innerHTML = '<tr><th>駅（人/時）</th><th>駅→街</th><th>街→駅</th></tr>' + model.stationFlows(S.hour, d).map(s => `<tr><td>${s.n}${s.assumed ? `<sup>${s.nonRail ? '仮' : calib ? '較' : '仮'}</sup>` : ''}</td><td>${fmt(s.toCity)}</td><td>${fmt(s.toStation)}</td></tr>`).join('');
+    el('p-stations').innerHTML = '<tr><th>駅（人/時）</th><th>駅→街</th><th>街→駅</th></tr>' + model.stationFlows(S.hour, d).map(s => `<tr><td>${s.n}${s.assumed ? `<sup>${s.nonRail ? (calib?.mode ? '推' : '仮') : calib ? '較' : '仮'}</sup>` : ''}</td><td>${fmt(s.toCity)}</td><td>${fmt(s.toStation)}</td></tr>`).join('');
     // 帯の凡例
     el('p-rlegend').innerHTML = S.ribbon === 'los' ? '<span>混雑度（人/m/分）:</span>' + LOS.map((l, i) => `<span><i style="background:${l.c}"></i>${l.k} ${i === 0 ? '〜23' : i === LOS.length - 1 ? '82〜' : '〜' + l.max}</span>`).join('') + '<span>帯の幅 = 歩道の有効幅員</span>'
       : S.ribbon === 'diff' ? '<span>通常との差（人/時）:</span><span><i style="background:#ff3b30"></i>増える</span><span><i style="background:#2b6cff"></i>減る</span><span>太いほど差が大きい</span>'
@@ -225,7 +233,7 @@ export function initPeople(ctx) {
       const ei = model.eventInfo; if (ei) scn += `<br>${ei.venue} 来場 ${fmt(ei.people)} 人の利用駅: ${ei.split.map(s => `${s.n} ${Math.round(s.share * 100)}%（${s.m} m）`).join('、')}`; else if (S.event) scn += '<br>会場が見つかりません';
     }
     el('p-scn').innerHTML = scn; el('p-scn').style.display = scn ? '' : 'none';
-    if (el('p-calib')) el('p-calib').innerHTML = calib ? `<b>実測データで較正済み</b>（${calib.source}）<br>建物の集客力をメッシュ別の昼間人口に、休日の総量（×${calib.holidayTotal}）と月別係数（${getMonth()}月 ×${(S.day === 'holiday' ? calib.monthHol : calib.monthWk)[getMonth() - 1]}）を実測比に合わせています。横浜駅東口方面は ${fmt(calib.yokoDaily)} 人/日と推定。<br>鉄道で来た人だけで説明できるのは実測の昼間人口の約 ${Math.round(100 / calib.kappa)}% です。${S.nonRail ? '残りは駐車場・バス停・範囲の外周から歩く人として加えています（手段の内訳 車 50%・バス 15%・徒歩/自転車 35% は仮定）。' : '残り（車・バス・徒歩など）は流していません。'}時間帯分布は較正できていません（データが昼・深夜の 2 区分のため）。` : '';
+    if (el('p-calib')) el('p-calib').innerHTML = calib ? `<b>実測データで較正済み</b>（${calib.source}）<br>建物の集客力をメッシュ別の昼間人口に、休日の総量（×${calib.holidayTotal}）と月別係数（${getMonth()}月 ×${(S.day === 'holiday' ? calib.monthHol : calib.monthWk)[getMonth() - 1]}）を実測比に合わせています。横浜駅東口方面は ${fmt(calib.yokoDaily)} 人/日と推定。<br>鉄道で来た人だけで説明できるのは実測の昼間人口の約 ${Math.round(100 / calib.kappa)}% です。${S.nonRail ? `残りは駐車場・バス停・範囲の外周から歩く人として加えています（${modeNote()}）。` : '残り（車・バス・徒歩など）は流していません。'}時間帯分布は較正できていません（データが昼・深夜の 2 区分のため）。` : '';
   }
   // 建物ごとの出入り (駅との間の歩行者のみ) と滞在人数
   function buildingFlows(b) { if (!model) return null; const d = model.dests.find(x => (b === -2 ? x.extra : x.b === b)); if (!d) return null; const dd = day(); const f = model.destFlows(d.idx, S.hour, dd); let peak = 0, ph = 0; for (let h = 5; h < 24; h += 0.5) { const g = model.destFlows(d.idx, h, dd); if (g.arrive + g.leave > peak) { peak = g.arrive + g.leave; ph = h; } } return { ...f, peak, peakHour: ph, use: d.u, dest: d, presence: Math.max(0, model.presence(S.hour, dd)[d.idx]) }; }

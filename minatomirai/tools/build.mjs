@@ -20,6 +20,7 @@ let guide = ''; try { guide = readFileSync(join(root, 'data/floorguide.csv'), 'u
 // 下敷き画像 (公式フロアマップ) を data URL で埋め込む
 let zones = []; try { zones = JSON.parse(readFileSync(join(root, 'data/zones.json'), 'utf8')); } catch (e) { }
 let peopleCalib = null; try { peopleCalib = JSON.parse(readFileSync(join(root, 'data/people_calib.json'), 'utf8')); } catch (e) { }
+try { if (peopleCalib) peopleCalib.mode = JSON.parse(readFileSync(join(root, 'data/mode_split.json'), 'utf8')); } catch (e) { }   // 鉄道以外の手段の内訳 (tools/mode_split.py)
 let stats = null; try { stats = JSON.parse(readFileSync(join(root, 'data/stats_mesh.json'), 'utf8')); } catch (e) { }
 let cores = []; try { cores = JSON.parse(readFileSync(join(root, 'data/cores.json'), 'utf8')); } catch (e) { }
 let ground = ''; try { ground = 'data:image/jpeg;base64,' + readFileSync(join(root, 'data/ground.jpg')).toString('base64'); } catch (e) { }

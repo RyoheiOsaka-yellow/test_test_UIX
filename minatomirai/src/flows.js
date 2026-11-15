@@ -5,15 +5,16 @@ import * as THREE from 'three';
 export const FLOW_COLORS = ['#4da3ff', '#ffb347', '#6fdc7a', '#ff6f91', '#1acbd9', '#ffd84a', '#ff7326', '#9a7bff', '#b0b7c3', '#e040fb'];
 
 export function initFlows(ctx) {
-  const { scene, people, buildingMeta, terrainSampler } = ctx;
+  const { scene, people, buildingMeta, terrainSampler, getCamera, renderer } = ctx;
   const group = new THREE.Group(); group.name = 'flows'; group.visible = false; scene.add(group);
   let cur = null;   // { bid, data, arcs: [{ curve, n, t0, back }], pts }
   const label = (text, color) => {
     const c = document.createElement('canvas'), g = c.getContext('2d'); g.font = '30px sans-serif'; const w = Math.ceil(g.measureText(text).width) + 28; c.width = w; c.height = 48;
     g.fillStyle = 'rgba(8,12,24,0.85)'; g.beginPath(); g.roundRect(1, 1, w - 2, 46, 10); g.fill(); g.strokeStyle = color; g.lineWidth = 3; g.stroke(); g.font = '30px sans-serif'; g.fillStyle = '#ffffff'; g.textBaseline = 'middle'; g.fillText(text, 14, 25);
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, sizeAttenuation: false })); sp.scale.set(w / 48 * 0.026, 0.026, 1); sp.renderOrder = 45; return sp;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, sizeAttenuation: false, fog: false })); sp.scale.set(w / 48 * 0.026, 0.026, 1); sp.renderOrder = 45; sp.userData.aspect = w / 48; return sp;
   };
-  function clear() { for (const o of [...group.children]) { group.remove(o); o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); } cur = null; group.visible = false; }
+  let labels = [];   // { sp, curve, t0, pri }
+  function clear() { for (const o of [...group.children]) { group.remove(o); o.geometry?.dispose(); o.material?.map?.dispose(); o.material?.dispose(); } cur = null; labels = []; group.visible = false; }
   // その建物の 1 日の来訪 (発着点別) と、次に向かう先
   function compute(bid) {
     const model = people.model; if (!model) return null; const m = buildingMeta[bid]; if (!m) return null; const d = model.dests.find(x => (m.runtime ? x.extra : x.b === bid)); if (!d) return null;
@@ -34,7 +35,7 @@ export function initFlows(ctx) {
       const curve = back ? new THREE.QuadraticBezierCurve3(B, C, A) : new THREE.QuadraticBezierCurve3(A, C, B);
       const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, radius, 7, false), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.72, depthWrite: false, fog: false })); tube.renderOrder = 42; group.add(tube);
       arcs.push({ curve, n, color: new THREE.Color(color) });
-      if (text) { const sp = label(text, color); sp.position.copy(curve.getPoint(back ? 0.72 : 0.28)); group.add(sp); }
+      if (text) { const sp = label(text, color), t0 = back ? 0.72 : 0.28; sp.position.copy(curve.getPoint(t0)); group.add(sp); labels.push({ sp, curve, t0, pri: radius }); }
     };
     for (const s of data.stations) { if (s.arrive < data.total * 0.01 || Math.hypot(s.x - data.x, s.y - data.y) < 40) continue; addArc(s.x, s.y, s.color, Math.min(16, 2.2 + 0.16 * Math.sqrt(s.arrive)), Math.max(3, Math.min(70, Math.round(s.arrive / 250))), false, `${s.n} ${Math.round(s.arrive / data.total * 100)}%`); }
     for (const q of data.next) addArc(q.x, q.y, q.kind === 'stroll' ? '#9a7bff' : '#ff6f91', 2 + 14 * q.p, Math.max(2, Math.round(q.p * 40)), true, `→ ${q.n} ${Math.round(q.p * 100)}%`);
@@ -42,13 +43,29 @@ export function initFlows(ctx) {
     for (const a of arcs) for (let i = 0; i < a.n; i++) { ph[o] = (i + Math.random() * 0.6) / a.n; col.set([Math.min(1, a.color.r * 1.3 + 0.2), Math.min(1, a.color.g * 1.3 + 0.2), Math.min(1, a.color.b * 1.3 + 0.2)], o * 3); o++; }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 5, sizeAttenuation: false, vertexColors: true, depthTest: false, transparent: true, fog: false })); pts.renderOrder = 44; pts.frustumCulled = false; group.add(pts);
-    cur = { bid, data, arcs, pts, ph }; group.visible = true; update(0); return data;
+    labels.sort((a, b) => b.pri - a.pri); cur = { bid, data, arcs, pts, ph }; group.visible = true; update(0); return data;
   }
   const v = new THREE.Vector3();
   function update(dt) {
     if (!cur) return; const p = cur.pts.geometry.attributes.position; let o = 0;
     for (const a of cur.arcs) for (let i = 0; i < a.n; i++) { cur.ph[o] = (cur.ph[o] + dt * 0.16) % 1; a.curve.getPoint(cur.ph[o], v); p.setXYZ(o, v.x, v.y, v.z); o++; }
-    p.needsUpdate = true;
+    p.needsUpdate = true; declutter();
+  }
+  // ラベルの重なり回避: 太い弧から順に置き、画面上で重なるなら弧に沿って位置をずらす。どこにも置けなければ隠す
+  const TRY = [0, 0.12, -0.1, 0.24, -0.18, 0.36, 0.46];
+  function declutter() {
+    const cam = getCamera?.(); if (!cam || !labels.length) return; const el = renderer?.domElement, W = el?.clientWidth || 1280, H = el?.clientHeight || 720;
+    const hpx = 0.026 * H / (2 * Math.tan((cam.fov ?? 40) * Math.PI / 360)) + 4, placed = [];
+    for (const L of labels) {
+      const wpx = hpx * L.sp.userData.aspect + 4; let ok = false;
+      for (const d of TRY) {
+        const t = Math.min(0.94, Math.max(0.06, L.t0 + (L.t0 > 0.5 ? -d : d))); L.curve.getPoint(t, v); const q = v.clone().project(cam); if (q.z > 1) continue;
+        const sx = (q.x * 0.5 + 0.5) * W, sy = (-q.y * 0.5 + 0.5) * H;
+        if (placed.some(r => Math.abs(r[0] - sx) < (r[2] + wpx) / 2 && Math.abs(r[1] - sy) < hpx)) continue;
+        L.sp.position.copy(v); placed.push([sx, sy, wpx]); ok = true; break;
+      }
+      L.sp.visible = ok;
+    }
   }
   return { show, hide: clear, update, compute, get data() { return cur?.data ?? null; }, get bid() { return cur?.bid ?? -1; } };
 }

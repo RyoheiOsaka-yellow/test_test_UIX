@@ -5,6 +5,9 @@
 //  - 集計: KPI、建物・区間のランキング、CSV / GeoJSON 出力
 //  - データ: 使っている公開データと、調べたが対象エリアに無い / 未使用のデータの一覧
 import * as THREE from 'three';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { WALK_SPEED } from './people_model.js';
 import { LOS } from './people.js';
 
@@ -33,7 +36,10 @@ export const CATALOG = [
   { s: 'use', n: 'OpenStreetMap', by: 'OpenStreetMap contributors', g: '歩行者経路（階層付き）・店舗・建物用途タグ', u: '歩行者ネットワーク、店舗密度、用途の推定' },
   { s: 'use', n: '地理院タイル（標高 DEM5A・全国最新写真）', by: '国土地理院', g: '5m 標高・航空写真', u: '地形、リアル表示の地表' },
   { s: 'use', n: '各施設の公式フロアガイド（MARK IS、ランドマークプラザ、クイーンズスクエア、東急スクエア）', by: '各施設', g: '階・区画・店舗・昇降設備の記号', u: '建物内のテナント配置、区画形状。MARK IS はエレベーター・エスカレーターの位置も画像から検出' },
-  { s: 'use', n: 'OpenStreetMap の駐車場・バス停', by: 'OpenStreetMap contributors', g: '点（駐車場 397・バス停 101）', u: '鉄道以外で来る人の発着点（量と手段の内訳は仮定）' },
+  { s: 'use', n: 'OpenStreetMap の駐車場・バス停', by: 'OpenStreetMap contributors', g: '点（駐車場 397・バス停 101）', u: '鉄道以外で来る人の発着点。駐車場は面積から収容台数も見積もる' },
+  { s: 'use', n: '国土数値情報 バスルート (N07) 2011年度', by: '国土交通省', g: '系統別の線（平日・土曜・日祝の運行本数）', u: 'バスで来る人の量（範囲内 176 系統・平日 4,658 便）' },
+  { s: 'use', n: 'みなとみらい公共駐車場の利用実績', by: '横浜市（市会資料）', g: '年間の駐車台数（2012年度 369,328 台 / 収容 1,200 台）', u: '駐車場の回転率（0.84 回/日）' },
+  { s: 'ref', n: 'みなとみらい 21 地区の来街者数', by: '横浜市 都市整備局（記者発表）', g: '地区全体の年間値（2024年 約 8,260 万人、2025年から人流データで約 1 億 180 万人）', u: '手段別の内訳は公表されていないため、総量の目安としてのみ参照' },
   { s: 'use', n: 'PLATEAU 都市計画決定情報（用途地域・指定容積率）', by: '国土交通省 都市局', g: '面（MVT）→ 10 m 格子', u: '用途地域と指定容積率のヒートマップ' },
   { s: 'can', n: 'PLATEAU 津波・高潮・洪水 浸水想定区域モデル（面）', by: '国土交通省 都市局', g: '面（3D Tiles）', u: '未使用。建物属性の浸水深で代用している' },
   { s: 'use', n: '経済センサス 500m メッシュ 産業小分類（e-Stat 統計GIS 表 T001164）', by: '総務省・経済産業省', g: '500m メッシュ・産業小分類の一部', u: '宿泊・集客施設・百貨店の従業者数、病院・診療所の数。飲食店（食堂・専門料理店など）はこの表に含まれない' },
@@ -391,7 +397,16 @@ export function initAnalysis(ctx) {
   const BG = 5, BXN = NX / BG, BYN = NY / BG;   // 柱は 50 m 格子
   const barGeo = new THREE.BoxGeometry(1, 1, 1); barGeo.translate(0, 0.5, 0);
   const bars = new THREE.InstancedMesh(barGeo, new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.9 }), BXN * BYN); bars.instanceMatrix.setUsage(THREE.DynamicDrawUsage); bars.visible = false; bars.frustumCulled = false; bars.name = 'analysis-bars'; bars.renderOrder = 3; scene.add(bars);
-  const contGeo = new THREE.BufferGeometry(), contours = new THREE.LineSegments(contGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthTest: false })); contours.visible = false; contours.frustumCulled = false; contours.renderOrder = 5; contours.name = 'analysis-contours'; scene.add(contours);
+  // 等値線は画面上の太さを指定できる線 (LineSegments2) で描き、値のラベルを線の上に置く
+  const contGeo = new LineSegmentsGeometry(), contours = new LineSegments2(contGeo, new LineMaterial({ vertexColors: true, linewidth: 2.6, transparent: true, depthTest: false })); contours.visible = false; contours.frustumCulled = false; contours.renderOrder = 5; contours.name = 'analysis-contours'; scene.add(contours);
+  const contLabels = new THREE.Group(); contLabels.name = 'analysis-contour-labels'; contLabels.visible = false; scene.add(contLabels);
+  const contLabel = (text, rgb) => {
+    const c = document.createElement('canvas'), g = c.getContext('2d'); g.font = 'bold 26px sans-serif'; const w = Math.ceil(g.measureText(text).width) + 18; c.width = w; c.height = 36;
+    g.fillStyle = S.dark ? 'rgba(8,12,24,0.82)' : 'rgba(255,255,255,0.9)'; g.beginPath(); g.roundRect(0, 0, w, 36, 8); g.fill(); g.font = 'bold 26px sans-serif'; g.textBaseline = 'middle';
+    g.fillStyle = `rgb(${rgb.map(q => Math.round(Math.min(1, Math.pow(q, 1 / 2.2)) * (S.dark ? 255 : 150))).join(',')})`; g.fillText(text, 9, 19);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, sizeAttenuation: false, fog: false })); sp.scale.set(w / 36 * 0.019, 0.019, 1); sp.renderOrder = 46; return sp;
+  };
+  const fmtLv = x => { const a = Math.abs(x); return (x < 0 ? '−' : '') + (a >= 100 ? Math.round(a).toLocaleString('ja-JP') : a >= 10 ? a.toFixed(0) : a >= 1 ? a.toFixed(1) : a.toFixed(2)); };
   const MS = { 1: [3, 0], 2: [0, 1], 3: [3, 1], 4: [1, 2], 5: [3, 2, 0, 1], 6: [0, 2], 7: [3, 2], 8: [2, 3], 9: [0, 2], 10: [0, 3, 1, 2], 11: [1, 2], 12: [1, 3], 13: [0, 1], 14: [3, 0] };
   function contourSegs(v, level, out) {   // マーチングスクエア法
     for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NX - 1; i++) {
@@ -403,7 +418,7 @@ export function initAnalysis(ctx) {
   }
   const lin255 = c => { const k = new THREE.Color().setRGB(c[0] / 255, c[1] / 255, c[2] / 255, THREE.SRGBColorSpace); return [k.r, k.g, k.b]; };
   function restyle() {
-    const ok = cur && !cur.cat && S.style !== 'flat'; bars.visible = !!ok && S.style === 'bars'; contours.visible = !!ok && S.style === 'contour';
+    const ok = cur && !cur.cat && S.style !== 'flat'; bars.visible = !!ok && S.style === 'bars'; contours.visible = contLabels.visible = !!ok && S.style === 'contour';
     if (!ok) { if (cur) heat.material.opacity = S.opacity; return; }
     const v = cur.v, max = cur.max, diff = !!cur.diff, zeroOk = cur.L.zeroOk;
     if (S.style === 'bars') {
@@ -415,11 +430,16 @@ export function initAnalysis(ctx) {
       }
       bars.count = n; bars.instanceMatrix.needsUpdate = true; if (bars.instanceColor) bars.instanceColor.needsUpdate = true;
     } else {
-      heat.material.opacity = S.opacity * 0.45; const pos = [], colr = [], levels = zeroOk ? [3, 5, 8, 10, 15] : diff ? [-0.6, -0.3, -0.1, 0.1, 0.3, 0.6].map(t => t * max) : [0.06, 0.15, 0.3, 0.5, 0.75].map(t => t * max);
+      for (const o of [...contLabels.children]) { contLabels.remove(o); o.material.map.dispose(); o.material.dispose(); }
+      heat.material.opacity = S.opacity * 0.45; const marks = [], pos = [], colr = [], levels = zeroOk ? [3, 5, 8, 10, 15] : diff ? [-0.6, -0.3, -0.1, 0.1, 0.3, 0.6].map(t => t * max) : [0.06, 0.15, 0.3, 0.5, 0.75].map(t => t * max);
       for (const lv of levels) { const segs = []; if (diff && lv < 0) { const neg = new Float32Array(v.length); for (let i = 0; i < v.length; i++) neg[i] = Math.max(0, -v[i]); contourSegs(neg, -lv, segs); } else contourSegs(diff ? v.map(x => Math.max(0, x)) : v, lv, segs);
         const t = Math.min(1, Math.abs(lv) / max), rgb = lin255(diff ? rampAt(DIV, lv > 0 ? 0.62 + 0.38 * t : 0.38 - 0.38 * t) : rampAt(cur.stops, zeroOk ? t : Math.max(0.35, Math.sqrt(t)))), k = S.dark ? 1 : 0.72;
-        for (let i = 0; i < segs.length; i += 2) { pos.push(segs[i], Math.max(0, terrainSampler(segs[i], segs[i + 1])) + 2.2, -segs[i + 1]); colr.push(rgb[0] * k, rgb[1] * k, rgb[2] * k); } }
-      contGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); contGeo.setAttribute('color', new THREE.Float32BufferAttribute(colr, 3)); contGeo.computeBoundingSphere(); cur.levels = levels;
+        for (let i = 0; i < segs.length; i += 2) { pos.push(segs[i], Math.max(0, terrainSampler(segs[i], segs[i + 1])) + 2.2, -segs[i + 1]); colr.push(rgb[0] * k, rgb[1] * k, rgb[2] * k); }
+        // 値のラベル: その等値線の上で、互いに 320 m 以上離れた場所に最大 3 個
+        const at = [], nSeg = segs.length / 4; for (let c = 0; c < 14 && at.length < 3 && nSeg > 6; c++) { const i = Math.floor(nSeg * ((c * 0.381966 + 0.19) % 1)) * 4, x = segs[i], y = segs[i + 1]; if (marks.every(m => Math.hypot(m[0] - x, m[1] - y) > 150) && at.every(m => Math.hypot(m[0] - x, m[1] - y) > 320)) { at.push([x, y]); marks.push([x, y]); } }   // 線の全体から黄金比の間隔で候補を取り、地図全体に散らす
+        for (const [x, y] of at) { const sp = contLabel(fmtLv(lv) + (lv === levels[levels.length - 1] ? ' ' + (cur.L.unit ?? '') : ''), [rgb[0] * k, rgb[1] * k, rgb[2] * k]); sp.position.set(x, Math.max(0, terrainSampler(x, y)) + 4, -y); contLabels.add(sp); } }
+      if (pos.length) { contGeo.setPositions(pos); contGeo.setColors(colr); contGeo.instanceCount = pos.length / 6; contours.visible = true; } else contours.visible = false;
+      cur.levels = levels;
     }
   }
   // ---- 時刻別の一覧 (スモールマルチプル) ----
@@ -488,7 +508,7 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
   function buildPanel() {
     const el = $('analysis'); if (!el) return;
     const opt = (o, sel, f = () => true) => Object.entries(o).filter(([k, v]) => f(k, v)).map(([k, v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${v.n}</option>`).join('');
-    const badge = { use: ['使用中', '#2fb27a'], can: ['取得可・未使用', '#ffb648'], none: ['対象エリアに無い', '#8a93a6'] };
+    const badge = { use: ['使用中', '#2fb27a'], ref: ['参考', '#4da3ff'], can: ['取得可・未使用', '#ffb648'], none: ['対象エリアに無い', '#8a93a6'] };
     el.innerHTML = `<div class="an-head"><b>分析</b><div class="an-tabs"><button data-tab="heat" class="active">ヒート</button><button data-tab="cmp">比較</button><button data-tab="ts">推移</button><button data-tab="bldg">建物内</button><button data-tab="rank">集計</button><button data-tab="data">データ</button></div><button id="an-toggle" title="たたむ">−</button></div>
       <div class="an-body">
         <div data-pane="heat">

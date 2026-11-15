@@ -59,7 +59,7 @@ const tri = (h, [a, p, b]) => h <= a || h >= b ? 0 : (h < p ? (h - a) / (p - a) 
 export const RAIN = { cost: 1.7, visit: 0.8, stroll: 0.4, park: 0.1 };
 // 曜日 + 月 + 較正 を反映した発生条件。calib があれば 休日の総量と月別の係数を人流オープンデータに合わせる
 export function dayContext(dayKey, month, calib) {
-  const d = { ...DAY_TYPES[dayKey] };
+  const d = { ...DAY_TYPES[dayKey], key: dayKey };
   if (calib) { if (dayKey === 'holiday' && calib.holidayTotal) d.total = calib.holidayTotal; const mf = (dayKey === 'holiday' ? calib.monthHol : calib.monthWk)?.[(month ?? 1) - 1]; if (mf) d.total *= mf; }
   return d;
 }
@@ -158,15 +158,20 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
     stations.push({ ...sd, src, x: cx, y: cy, out: tree(src, fadj), in: tree(src, radj) });
   }
 
-  // ---- 鉄道以外で来る人 (仮定): 駐車場・バス停・範囲の外周から歩き始める。最寄りの発着点からの距離で目的地を配分する ----
-  // 総量は「鉄道で来た人だけでは実測の昼間人口の 1/κ しか説明できない」分 (κ − 1 倍)。手段の内訳は仮定
+  // ---- 鉄道以外で来る人: 駐車場・バス停・範囲の外周から歩き始める。最寄りの発着点からの距離で目的地を配分する ----
+  // 総量は「鉄道で来た人だけでは実測の昼間人口の 1/κ しか説明できない」分 (κ − 1 倍)。
+  // 内訳は tools/mode_split.py の見積もり (車 = 駐車場の収容台数 × 回転率 × 乗車人数、バス = 運行本数 × 1 便の降車人数、残りが徒歩・自転車など)。無ければ仮の割合
   if (nonRail) {
     const rail = stations.reduce((a, S) => a + S.daily, 0), extra = rail * Math.max(0, (calib?.kappa ?? 2.2) - 1), box = header.box || [-1300, -1350, 1500, 1200];
     const snapAll = pts => [...new Set((pts || []).map(q => nearestNodes(q[0] / 10, q[1] / 10, 90, 1)[0]).filter(v => v != null))];
     const gate = []; nodes.forEach((n, i) => { if (n.lv === 0 && (n.x < box[0] + 30 || n.x > box[2] - 30 || n.y < box[1] + 30 || n.y > box[3] - 30) && fadj[i].length) gate.push(i); });
-    for (const md of [{ id: 'car', n: '駐車場（車）', share: 0.5, src: snapAll(header.parking) }, { id: 'bus', n: 'バス停', share: 0.15, src: snapAll(header.busStops) }, { id: 'walk', n: '範囲外から徒歩・自転車', share: 0.35, src: gate }]) {
-      if (!md.src.length) continue; let sx = 0, sy = 0; for (const i of md.src) { sx += nodes[i].x; sy += nodes[i].y; }
-      stations.push({ id: md.id, n: md.n, daily: extra * md.share, src: md.src, x: sx / md.src.length, y: sy / md.src.length, out: tree(md.src, fadj), in: tree(md.src, radj), nonRail: true, assumed: true, srcNote: '仮定' });
+    const M = calib?.mode, hT = calib?.holidayTotal ?? DAY_TYPES.holiday.total;
+    // 平日と休日の 1 日の量 (往復の延べ人数)。休日は総量 (× hT) から車とバスを引いた残りを徒歩などに回す
+    const wk = M ? { car: Math.min(extra * 0.8, 2 * M.carPersons.weekday), bus: Math.min(extra * 0.8, 2 * M.busPersons.weekday) } : { car: extra * 0.5, bus: extra * 0.15 }; wk.walk = Math.max(0, extra - wk.car - wk.bus);
+    const hol = M ? { car: Math.min(extra * hT * 0.8, 2 * M.carPersons.holiday), bus: Math.min(extra * hT * 0.8, 2 * M.busPersons.holiday) } : { car: wk.car * hT, bus: wk.bus * hT }; hol.walk = Math.max(0, extra * hT - hol.car - hol.bus);
+    for (const md of [{ id: 'car', n: '駐車場（車）', src: snapAll(header.parking) }, { id: 'bus', n: 'バス停', src: snapAll(header.busStops) }, { id: 'walk', n: '徒歩・自転車・その他', src: gate }]) {
+      if (!md.src.length || wk[md.id] <= 0) continue; let sx = 0, sy = 0; for (const i of md.src) { sx += nodes[i].x; sy += nodes[i].y; }
+      stations.push({ id: md.id, n: md.n, daily: wk[md.id], dayMul: { weekday: 1, holiday: hol[md.id] / (wk[md.id] * hT) }, share: wk[md.id] / extra, src: md.src, x: sx / md.src.length, y: sy / md.src.length, out: tree(md.src, fadj), in: tree(md.src, radj), nonRail: true, assumed: true, est: !!M, srcNote: M ? '公開データからの見積もり' : '仮定' });
     }
   }
   // ---- 目的地 (建物・公園・追加の建物) ----
@@ -229,7 +234,7 @@ export function buildPeopleModel({ graph, header, buildingMeta, extraDest = [], 
       const cache = new Map();
       classes.push({
         key: `${S.id}:${purpose}:${dir}`, station: si, purpose, dir, group: purpose === 'commute' ? 0 : purpose === 'visit' ? 1 : 2, U, meanDist: md, share,
-        rate: (h, day) => S.daily / 2 * day.total * day[purpose] * (purpose === 'visit' ? mVisit : 1) * prof(PROFILE[profKey], h),
+        rate: (h, day) => S.daily / 2 * (S.dayMul?.[day.key] ?? 1) * day.total * day[purpose] * (purpose === 'visit' ? mVisit : 1) * prof(PROFILE[profKey], h),
         sample: rnd => {
           const r = rnd() * sum; let lo = 0, hi = cdf.length - 1; while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < r) lo = mid + 1; else hi = mid; }
           const nd = nds[lo]; let p = cache.get(nd); if (!p) cache.set(nd, p = dir === 'out' ? pathOut(T, nd) : pathIn(T, nd)); return p;
