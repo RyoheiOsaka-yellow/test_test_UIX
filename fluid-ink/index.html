@@ -73,23 +73,30 @@
 // ---------------------------------------------------------------- params
 const P = {
   simRes: 256, dyeRes: 1024, advection: 'high', substeps: 1,
-  densityDissipation: 0.6, velocityDissipation: 0.2,
+  densityDissipation: 0.9, velocityDissipation: 0.15,
   pressureFactor: 0.8, pressureIterations: 20,
-  curl: 30, curlScale: 1, turbulence: 6,
-  splatRadius: 0.25, splatForce: 6000,
-  emitter: false, emitterSpeed: 1, emitterSwirl: 0.4, emitterStrength: 1, showHandles: true,
+  curl: 35, curlScale: 1, turbulence: 10,
+  splatRadius: 0.1, splatForce: 6000,
+  emitter: false, emitterSpeed: 1, emitterSwirl: 0.4, emitterStrength: 0.8, showHandles: true,
   splatColor: '#ff3296',
-  map: 'dye', exposure: 1,
-  shading: true, colorful: true,
+  map: 'dye', exposure: 1.1,
+  shading: true, shadeAmount: 0.5, colorful: true,
   palette: 'rainbow', color1: '#ff3296', color2: '#00e6ff', color3: '#ffd719',
   colorSpeed: 10,
-  text: '', obstacleScale: 0.6, obstacleInvert: false,
-  bloom: true, bloomIntensity: 0.5, bloomThreshold: 0.7,
-  sunrays: true, sunraysWeight: 0.4,
+  text: '', obstacleScale: 0.6, obstacleInvert: false, obstacleOpacity: 1, edgeEmit: 0.6, edgePush: 400, edgeLogoColor: true,
+  bloom: true, bloomIntensity: 0.35, bloomThreshold: 0.7,
+  sunrays: true, sunraysWeight: 0.25,
   paused: false,
 };
 
+const PRESETS = {
+  smoke: { splatRadius: 0.1, densityDissipation: 0.9, velocityDissipation: 0.15, curl: 35, turbulence: 10, shadeAmount: 0.5,
+           bloomIntensity: 0.35, sunraysWeight: 0.25, emitterStrength: 0.8, exposure: 1.1 },
+  paint: { splatRadius: 0.3, densityDissipation: 0.25, velocityDissipation: 0.3, curl: 25, turbulence: 4, shadeAmount: 1,
+           bloomIntensity: 0.5, sunraysWeight: 0.4, emitterStrength: 1.2, exposure: 1 },
+};
 const UI = [
+  { type:'preset', label:'Look Preset' },
   { k:'simRes', label:'Sim Resolution', type:'select', opts:[64,128,256,512], reinit:true },
   { k:'dyeRes', label:'Dye Resolution', type:'select', opts:[512,1024,2048], reinit:true },
   { k:'advection', label:'Advection Quality', type:'select', opts:[['standard','Standard'],['high','High (MacCormack)']] },
@@ -116,6 +123,7 @@ const UI = [
     opts:[['dye','Dye Composite'],['velocity','Velocity'],['pressure','Pressure'],['curl','Curl']] },
   { k:'exposure', label:'Map Gain / Exposure', min:0.1, max:4, step:0.05 },
   { k:'shading', label:'Shading (3D Specular)', type:'check' },
+  { k:'shadeAmount', label:'Shading Amount', min:0, max:1.5, step:0.05 },
   { k:'colorful', label:'Colorful (Cycle)', type:'check' },
   { k:'palette', label:'Color Palette Mode', type:'select',
     opts:[['rainbow','Rainbow (HSV)'],['custom2','Custom 2-Color'],['custom3','Custom 3-Color'],['heat','Heat']] },
@@ -128,6 +136,10 @@ const UI = [
   { type:'file', label:'Collide Image (PNG/SVG)' },
   { k:'obstacleScale', label:'Image Scale', min:0.1, max:1, step:0.01, obstacle:true },
   { k:'obstacleInvert', label:'Invert Mask', type:'check', obstacle:true },
+  { k:'obstacleOpacity', label:'Show Image / Text', min:0, max:1, step:0.05 },
+  { k:'edgeEmit', label:'Edge Ink Emission', min:0, max:3, step:0.05 },
+  { k:'edgePush', label:'Edge Outward Force', min:0, max:2000, step:10 },
+  { k:'edgeLogoColor', label:'Edge Ink = Image Colors', type:'check' },
   { sep:true },
   { k:'bloom', label:'Enable Bloom', type:'check' },
   { k:'bloomIntensity', label:'Bloom Intensity', min:0, max:3, step:0.05 },
@@ -174,7 +186,7 @@ advect: `uniform sampler2D uVelocity, uSource, uObstacle; uniform vec2 texelSize
 void main(){
   vec2 coord = vUv - dt * texture(uVelocity, vUv).xy * texelSize;
   vec4 r = texture(uSource, coord) / (1. + dissipation * dt);
-  o = r * (1. - texture(uObstacle, vUv).r);
+  o = r * (1. - texture(uObstacle, vUv).a);
 }`,
 
 // MacCormack correction: forward (uHat) and backward (uBack) semi-Lagrangian passes cancel most of the
@@ -187,7 +199,25 @@ void main(){
   vec4 s0 = texture(uSource, b), s1 = texture(uSource, b + vec2(srcTexel.x, 0.));
   vec4 s2 = texture(uSource, b + vec2(0., srcTexel.y)), s3 = texture(uSource, b + srcTexel);
   r = clamp(r, min(min(s0, s1), min(s2, s3)), max(max(s0, s1), max(s2, s3)));
-  o = r / (1. + dissipation * dt) * (1. - texture(uObstacle, vUv).r);
+  o = r / (1. + dissipation * dt) * (1. - texture(uObstacle, vUv).a);
+}`,
+
+// ink seeps out of a thin band just outside the obstacle, tinted by the image's own colours
+edgeDye: `uniform sampler2D uTarget, uObstacle; uniform vec2 px; uniform vec3 color; uniform float amount, useLogo;
+void main(){
+  float best = 0.; vec3 col = vec3(0.);
+  for (int i = 0; i < 8; i++) { float a = float(i) * 0.7853982; vec4 s = texture(uObstacle, vUv + vec2(cos(a), sin(a)) * px);
+    if (s.a > best) { best = s.a; col = s.rgb; } }
+  float e = best * (1. - texture(uObstacle, vUv).a);
+  col *= col;                                                     // ≈ sRGB → linear
+  vec3 ink = mix(color, col, useLogo * smoothstep(0.02, 0.12, max(col.r, max(col.g, col.b)) - min(col.r, min(col.g, col.b))));  // grey/black/white shapes use the palette
+  o = texture(uTarget, vUv) + vec4(ink * e * amount, 0.);
+}`,
+edgeVel: `uniform sampler2D uTarget, uObstacle; uniform vec2 px; uniform float amount;
+void main(){
+  vec2 g = vec2(texture(uObstacle, vUv + vec2(px.x, 0.)).a - texture(uObstacle, vUv - vec2(px.x, 0.)).a,
+                texture(uObstacle, vUv + vec2(0., px.y)).a - texture(uObstacle, vUv - vec2(0., px.y)).a);
+  o = vec4(texture(uTarget, vUv).xy - g * amount, 0., 1.);
 }`,
 
 curl: `uniform sampler2D uVelocity; uniform vec2 texelSize; uniform float scale;
@@ -240,22 +270,22 @@ clear: `uniform sampler2D uTex; uniform float value; void main(){ o = value * te
 pressure: `uniform sampler2D uPressure, uDivergence, uObstacle;
 void main(){
   float C = texture(uPressure, vUv).x;
-  float L = texture(uObstacle, vL).r > .5 ? C : texture(uPressure, vL).x;
-  float R = texture(uObstacle, vR).r > .5 ? C : texture(uPressure, vR).x;
-  float T = texture(uObstacle, vT).r > .5 ? C : texture(uPressure, vT).x;
-  float B = texture(uObstacle, vB).r > .5 ? C : texture(uPressure, vB).x;
+  float L = texture(uObstacle, vL).a > .5 ? C : texture(uPressure, vL).x;
+  float R = texture(uObstacle, vR).a > .5 ? C : texture(uPressure, vR).x;
+  float T = texture(uObstacle, vT).a > .5 ? C : texture(uPressure, vT).x;
+  float B = texture(uObstacle, vB).a > .5 ? C : texture(uPressure, vB).x;
   o = vec4((L + R + B + T - texture(uDivergence, vUv).x) * 0.25, 0., 0., 1.);
 }`,
 
 gradient: `uniform sampler2D uPressure, uVelocity, uObstacle;
 void main(){
   float C = texture(uPressure, vUv).x;
-  float L = texture(uObstacle, vL).r > .5 ? C : texture(uPressure, vL).x;
-  float R = texture(uObstacle, vR).r > .5 ? C : texture(uPressure, vR).x;
-  float T = texture(uObstacle, vT).r > .5 ? C : texture(uPressure, vT).x;
-  float B = texture(uObstacle, vB).r > .5 ? C : texture(uPressure, vB).x;
+  float L = texture(uObstacle, vL).a > .5 ? C : texture(uPressure, vL).x;
+  float R = texture(uObstacle, vR).a > .5 ? C : texture(uPressure, vR).x;
+  float T = texture(uObstacle, vT).a > .5 ? C : texture(uPressure, vT).x;
+  float B = texture(uObstacle, vB).a > .5 ? C : texture(uPressure, vB).x;
   vec2 v = texture(uVelocity, vUv).xy - vec2(R - L, T - B);
-  o = vec4(v * (1. - texture(uObstacle, vUv).r), 0., 1.);
+  o = vec4(v * (1. - texture(uObstacle, vUv).a), 0., 1.);
 }`,
 
 bloomPre: `uniform sampler2D uTex; uniform float threshold;
@@ -272,32 +302,37 @@ void main(){ o = 0.25 * (texture(uTex, vL + (vT - vUv)) + texture(uTex, vR + (vT
 rays: `uniform sampler2D uTex; uniform vec2 light;
 float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main(){
-  const int N = 28; vec2 dir = (vUv - light) / float(N) * 0.75;
+  const int N = 40; vec2 dir = (vUv - light) / float(N) * 0.75;
   vec2 c = vUv - dir * hash(gl_FragCoord.xy); float w = 1.; vec3 acc = vec3(0.);
-  for (int i = 0; i < N; i++) { acc += texture(uTex, c).rgb * w; c -= dir; w *= 0.955; }
+  for (int i = 0; i < N; i++) { acc += texture(uTex, c).rgb * w; c -= dir; w *= 0.968; }
   o = vec4(acc / float(N), 1.);
 }`,
 
 display: `uniform sampler2D uDye, uBloom, uRays, uAux, uObstacle; uniform vec2 texelSize;
-uniform float exposure, bloomI, raysW; uniform int mode; uniform bool shading;
+uniform float exposure, bloomI, raysW, shadeAmt, logoOpacity; uniform int mode;
 float lum(vec2 uv){ return 1. - exp(-length(texture(uDye, uv).rgb)); }
 float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main(){
   vec3 c;
   if (mode == 0) {
     c = texture(uDye, vUv).rgb;
-    if (shading) {
-      float dx = lum(vR) - lum(vL), dy = lum(vT) - lum(vB);
-      vec3 n = normalize(vec3(-dx * 3.5, -dy * 3.5, 1.));
+    if (shadeAmt > 0.) {
+      // Sobel over a wide footprint: a smooth liquid surface instead of per-texel emboss
+      vec2 e = texelSize * 2.5;
+      float l00 = lum(vUv + vec2(-e.x, -e.y)), l10 = lum(vUv + vec2(0., -e.y)), l20 = lum(vUv + vec2(e.x, -e.y));
+      float l01 = lum(vUv + vec2(-e.x, 0.)), l21 = lum(vUv + vec2(e.x, 0.));
+      float l02 = lum(vUv + vec2(-e.x, e.y)), l12 = lum(vUv + vec2(0., e.y)), l22 = lum(vUv + vec2(e.x, e.y));
+      float dx = (l20 + 2. * l21 + l22 - l00 - 2. * l01 - l02) * 0.25, dy = (l02 + 2. * l12 + l22 - l00 - 2. * l10 - l20) * 0.25;
+      vec3 n = normalize(vec3(-dx * 5., -dy * 5., 1.));
       vec3 l = normalize(vec3(-0.45, 0.55, 0.7));
-      float diff = 0.72 + 0.28 * clamp(dot(n, l) / l.z, 0., 1.6);
-      float spec = pow(max(dot(n, normalize(l + vec3(0., 0., 1.))), 0.), 48.);
-      float d = lum(vUv);
-      c = c * diff + vec3(spec) * 0.55 * smoothstep(0.05, 0.5, d) * step(1e-4, abs(dx) + abs(dy));
+      float diff = mix(1., 0.7 + 0.3 * clamp(dot(n, l) / l.z, 0., 1.6), min(shadeAmt, 1.));
+      float spec = pow(max(dot(n, normalize(l + vec3(0., 0., 1.))), 0.), 40.);
+      c = c * diff + vec3(spec) * 0.35 * shadeAmt * smoothstep(0.05, 0.5, lum(vUv));
     }
     c += texture(uBloom, vUv).rgb * bloomI + texture(uRays, vUv).rgb * raysW;
     c = 1. - exp(-c * exposure);                       // HDR → display, bright cores roll off to white
-    c += vec3(0.035) * texture(uObstacle, vUv).r;
+    vec4 ob = texture(uObstacle, vUv);
+    c = mix(c + vec3(0.035) * ob.a, ob.rgb, ob.a * logoOpacity);
   } else if (mode == 1) {
     vec2 v = texture(uAux, vUv).xy * 0.004 * exposure; c = vec3(0.5 + v.x, 0.5 + v.y, 0.5 - 0.5 * (v.x + v.y));
   } else {
@@ -355,7 +390,7 @@ function resizeDouble(old, w, h, internal, format, filter){
 }
 
 // ---------------------------------------------------------------- targets
-let dyeA, dyeB, velocity, dye, pressure, divergence, curl, bloomChain = [], rays, obstacleTex;
+let dyeA, dyeB, velocity, dye, pressure, divergence, curl, bloomChain = [], rays, rayA, rayB, rayC, obstacleTex;
 function res(r){
   const a = canvas.width / canvas.height;
   return a >= 1 ? [Math.round(r * a), r] : [r, Math.round(r / a)];
@@ -367,7 +402,7 @@ function initTargets(){
   dye = resizeDouble(dye, dw, dh, gl.RGBA16F, gl.RGBA, gl.LINEAR);
   freeFBO(dyeA); freeFBO(dyeB);
   dyeA = createFBO(dw, dh, gl.RGBA16F, gl.RGBA, gl.LINEAR); dyeB = createFBO(dw, dh, gl.RGBA16F, gl.RGBA, gl.LINEAR);
-  freeFBO(pressure); freeFBO(divergence); freeFBO(curl); bloomChain.forEach(freeFBO); freeFBO(rays);
+  freeFBO(pressure); freeFBO(divergence); freeFBO(curl); bloomChain.forEach(freeFBO); [rays, rayA, rayB, rayC].forEach(freeFBO);
   pressure = createDouble(sw, sh, gl.R16F, gl.RED, gl.NEAREST);
   divergence = createFBO(sw, sh, gl.R16F, gl.RED, gl.NEAREST);
   curl = createFBO(sw, sh, gl.R16F, gl.RED, gl.LINEAR);
@@ -375,7 +410,8 @@ function initTargets(){
   let [bw, bh] = res(256);
   for (let i = 0; i < 6 && bw > 2 && bh > 2; i++, bw >>= 1, bh >>= 1) bloomChain.push(createFBO(bw, bh, gl.RGBA16F, gl.RGBA, gl.LINEAR));
   const [rw, rh] = res(256);
-  rays = createFBO(rw, rh, gl.RGBA16F, gl.RGBA, gl.LINEAR);
+  rays = createFBO(rw, rh, gl.RGBA16F, gl.RGBA, gl.LINEAR); rayB = createFBO(rw, rh, gl.RGBA16F, gl.RGBA, gl.LINEAR);
+  rayC = createFBO(rw, rh, gl.RGBA16F, gl.RGBA, gl.LINEAR); rayA = createFBO(rw * 2, rh * 2, gl.RGBA16F, gl.RGBA, gl.LINEAR);
   updateObstacle();
 }
 
@@ -389,8 +425,9 @@ function loadObstacleImage(file){
   img.onerror = () => alert('画像を読み込めませんでした: ' + file.name);
   img.src = URL.createObjectURL(file);
 }
+let hasObstacle = false, obstacleH = 512;
 function updateObstacle(){
-  const [w, h] = res(512);
+  const [w, h] = res(512); obstacleH = h;
   textCanvas.width = w; textCanvas.height = h;
   const c = textCanvas.getContext('2d', { willReadFrequently: true });
   c.fillStyle = '#000'; c.fillRect(0, 0, w, h);
@@ -403,13 +440,15 @@ function updateObstacle(){
     c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff';
     c.fillText(t, w / 2, h / 2);
   }
+  const out = c.getImageData(0, 0, w, h), d = out.data;
+  for (let i = 0; i < d.length; i += 4) { d[i + 3] = d[i]; d[i] = d[i + 1] = d[i + 2] = 225; }   // text: light grey fill
   if (obstacleImg) {
     const iw = obstacleImg.naturalWidth || 512, ih = obstacleImg.naturalHeight || 512;
     const k = Math.min(w * P.obstacleScale / iw, h * P.obstacleScale / ih);
     const x0 = Math.floor((w - iw * k) / 2), y0 = Math.floor((h - ih * k) / 2), x1 = Math.ceil(x0 + iw * k), y1 = Math.ceil(y0 + ih * k);
     const oc = document.createElement('canvas'); oc.width = w; oc.height = h;
     const o2 = oc.getContext('2d', { willReadFrequently: true }); o2.drawImage(obstacleImg, x0, y0, iw * k, ih * k);
-    const src = o2.getImageData(0, 0, w, h).data, dst = c.getImageData(0, 0, w, h), d = dst.data;
+    const src = o2.getImageData(0, 0, w, h).data;
     // transparent images use alpha as the shape; opaque ones use luminance against their corner colour
     let hasAlpha = false;
     for (let y = y0 + 1; y < y1 - 1 && !hasAlpha; y++) for (let x = x0 + 1; x < x1 - 1; x++) if (src[(y * w + x) * 4 + 3] < 250) { hasAlpha = true; break; }
@@ -418,15 +457,15 @@ function updateObstacle(){
     for (let y = Math.max(0, y0); y < Math.min(h, y1); y++) for (let x = Math.max(0, x0); x < Math.min(w, x1); x++) {
       const i = (y * w + x) * 4, a = src[i + 3] / 255;
       const m = 255 * (hasAlpha ? a : a * (brightBg ? 1 - lum(i) : lum(i)));
-      if (m > d[i]) d[i] = d[i + 1] = d[i + 2] = m;
+      if (m > d[i + 3]) { d[i] = src[i]; d[i + 1] = src[i + 1]; d[i + 2] = src[i + 2]; d[i + 3] = m; }
     }
-    c.putImageData(dst, 0, 0);
   }
-  if (P.obstacleInvert) { c.globalCompositeOperation = 'difference'; c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.globalCompositeOperation = 'source-over'; }
+  if (P.obstacleInvert) for (let i = 3; i < d.length; i += 4) d[i] = 255 - d[i];
+  hasObstacle = !!(t || obstacleImg);
   if (!obstacleTex) obstacleTex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, obstacleTex);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, out);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
   for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -544,6 +583,23 @@ function pointEmit(dt){
   }
 }
 
+// ink (and an outward push) seeping from the outline of the text / image
+function edgeEmit(dt){
+  if (!hasObstacle) return;
+  const px = 4 / obstacleH, a = canvas.width / canvas.height;
+  if (P.edgePush > 0) {
+    const u = use('edgeVel'); gl.uniform2f(u.px, px / a, px); gl.uniform1f(u.amount, P.edgePush * dt);
+    gl.uniform1i(u.uTarget, bindTex(0, velocity.read.tex)); gl.uniform1i(u.uObstacle, bindTex(1, obstacleTex));
+    blit(velocity.write); velocity.swap();
+  }
+  if (P.edgeEmit > 0) {
+    const u = use('edgeDye'), c = inkColor(0.33); gl.uniform2f(u.px, px / a, px);
+    gl.uniform3f(u.color, c[0], c[1], c[2]); gl.uniform1f(u.amount, P.edgeEmit * dt * 6); gl.uniform1f(u.useLogo, P.edgeLogoColor ? 1 : 0);
+    gl.uniform1i(u.uTarget, bindTex(0, dye.read.tex)); gl.uniform1i(u.uObstacle, bindTex(1, obstacleTex));
+    blit(dye.write); dye.swap();
+  }
+}
+
 // ---------------------------------------------------------------- simulation step
 let simTime = 0;
 function step(dt){
@@ -623,7 +679,11 @@ function render(){
   const dyeMode = P.map === 'dye';
   if (dyeMode && P.bloom) renderBloom();
   if (dyeMode && P.sunrays) {
-    const u = use('rays'); gl.uniform1i(u.uTex, bindTex(0, dye.read.tex)); gl.uniform2f(u.light, 0.5, 0.5); blit(rays);
+    let u = use('blur');                                           // downsample first so the rays don't alias
+    gl.uniform2f(u.texelSize, dye.tx, dye.ty); gl.uniform1i(u.uTex, bindTex(0, dye.read.tex)); blit(rayA);
+    gl.uniform2f(u.texelSize, rayA.tx, rayA.ty); gl.uniform1i(u.uTex, bindTex(0, rayA.tex)); blit(rayB);
+    u = use('rays'); gl.uniform1i(u.uTex, bindTex(0, rayB.tex)); gl.uniform2f(u.light, 0.5, 0.5); blit(rayC);
+    u = use('blur'); gl.uniform2f(u.texelSize, rayC.tx, rayC.ty); gl.uniform1i(u.uTex, bindTex(0, rayC.tex)); blit(rays);
   }
   const u = use('display');
   gl.uniform2f(u.texelSize, dye.tx, dye.ty);
@@ -632,7 +692,8 @@ function render(){
   const aux = { velocity: velocity.read.tex, pressure: pressure.read.tex, curl: curl.tex }[P.map];
   gl.uniform1i(u.uAux, bindTex(3, aux || curl.tex));
   gl.uniform1i(u.mode, { dye: 0, velocity: 1, pressure: 2, curl: 3 }[P.map]);
-  gl.uniform1i(u.shading, P.shading ? 1 : 0); gl.uniform1f(u.exposure, P.exposure);
+  gl.uniform1f(u.shadeAmt, P.shading ? P.shadeAmount : 0); gl.uniform1f(u.exposure, P.exposure);
+  gl.uniform1f(u.logoOpacity, P.obstacleInvert ? 0 : P.obstacleOpacity);
   gl.uniform1f(u.bloomI, P.bloom ? P.bloomIntensity : 0); gl.uniform1f(u.raysW, P.sunrays ? P.sunraysWeight : 0);
   blit(null);
 }
@@ -648,7 +709,7 @@ function frame(now){
   if (!P.paused) {
     colorPhase += dt * P.colorSpeed * 0.01;
     if (P.emitter) emitterStep(dt); else emPrev = null;
-    pointEmit(dt);
+    pointEmit(dt); gl.disable(gl.BLEND); edgeEmit(dt);
   }
   let i = 0;
   for (const p of pointers.values()) {
@@ -664,14 +725,19 @@ function frame(now){
 }
 
 // ---------------------------------------------------------------- UI
-const rows = document.getElementById('rows');
+const rows = document.getElementById('rows'), sync = {};
 const fmt = (v, step) => (+v).toFixed(step >= 1 ? 0 : step >= 0.1 ? 1 : 2);
 for (const d of UI) {
   if (d.sep) { rows.insertAdjacentHTML('beforeend', '<div class="sep"></div>'); continue; }
   const row = document.createElement('div'); row.className = 'row';
   const label = document.createElement('label'); label.textContent = d.label; label.title = d.label; row.appendChild(label);
   const changed = () => { if (d.reinit) initTargets(); if (d.obstacle) updateObstacle(); if (d.handles) handlesEl.classList.toggle('off', !P.showHandles); };
-  if (d.type === 'emitters') {
+  if (d.type === 'preset') {
+    const s = document.createElement('select'); s.id = 'preset';
+    s.add(new Option('Smoke (fine wisps)', 'smoke')); s.add(new Option('Paint (thick ink)', 'paint'));
+    s.onchange = () => { Object.assign(P, PRESETS[s.value]); for (const k in PRESETS[s.value]) sync[k] && sync[k](); };
+    row.appendChild(s);
+  } else if (d.type === 'emitters') {
     const b = document.createElement('button'); b.className = 'mini'; b.textContent = '+ Add';
     b.onclick = () => addEmitter(0.25 + Math.random() * 0.5, 0.25 + Math.random() * 0.5, Math.random() * 6.28);
     const x = document.createElement('button'); x.className = 'mini'; x.textContent = 'Remove All';
@@ -703,6 +769,7 @@ for (const d of UI) {
     const v = document.createElement('span'); v.className = 'val'; v.textContent = fmt(P[d.k], d.step);
     const r = document.createElement('input'); r.type = 'range'; r.min = d.min; r.max = d.max; r.step = d.step; r.value = P[d.k];
     r.oninput = () => { P[d.k] = +r.value; v.textContent = fmt(r.value, d.step); }; row.append(v, r);
+    sync[d.k] = () => { r.value = P[d.k]; v.textContent = fmt(P[d.k], d.step); };
   }
   rows.appendChild(row);
 }
