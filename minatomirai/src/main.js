@@ -17,6 +17,7 @@ import { initRealistic, realState } from './realistic.js';
 import { initRoadDetail } from './roads.js';
 import { initPeople } from './people.js';
 import { initIndoor } from './indoor.js';
+import { initAnalysis } from './analysis.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 
@@ -255,7 +256,7 @@ FLOORS.forEach(f => { const g = new THREE.Group(); g.name = `floor${f.level}`; g
 
 let LEVEL_H = {};
 let expand = 1.0;            // フロア展開倍率
-let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null; let indoor = null;
+let terrainSampler = () => 0; let terrainMesh = null; let realistic = null; let roadDetail = null; let people = null; let indoor = null; let analysis = null;
 const levelY = (lv, k = expand) => (LEVEL_H[lv] ?? lv * 6) * k;
 
 let buildingMesh = null, buildingMeta = null, buildingStarts = null;
@@ -373,7 +374,10 @@ const findRange = (starts, faceIndex) => { // starts: 三角形開始インデ�
 
 const bldUniforms = { uHover: { value: -1 }, uWindows: { value: 1 }, uTime: { value: 0 }, uNight: { value: 1 } };
 // 建物ごとの変位 (分解・組立・高さ順浮上)。建物情報 (高さ, 重心x, 重心y) は DataTexture で渡す
-const dispUniforms = { uDMode: { value: 0 }, uDT: { value: 0 }, uDSeed: { value: 1.7 }, uBldTex: { value: null }, uBldW: { value: 1 }, uHide: { value: -1 } };
+const dispUniforms = { uDMode: { value: 0 }, uDT: { value: 0 }, uDSeed: { value: 1.7 }, uBldTex: { value: null }, uBldW: { value: 1 }, uHide: { value: -1 }, uBColTex: { value: null }, uBColOn: { value: 0 } };
+// 分析用: 建物ごとの色 (指標の色分け) を RGBA テクスチャで渡す。a = 混ぜる強さ
+const BCOL_DECL = 'uniform sampler2D uBColTex; uniform float uBColOn, uBldW;';
+const BCOL_FETCH = 'float bci = floor(vBid + 0.5); vec4 bc = texelFetch(uBColTex, ivec2(int(mod(bci, uBldW)), int(bci / uBldW)), 0);';
 const DISP_PARS = `
   uniform float uDMode, uDT, uDSeed, uBldW; uniform sampler2D uBldTex;
   float dhash(float n) { return fract(sin(n * 12.9898 + uDSeed) * 43758.5453); }
@@ -414,7 +418,7 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displa
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvBid = bid; vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform float uHover, uWindows, uTime, uHide, uNight, uReal; varying float vBid; varying vec3 vWPos;
+        uniform float uHover, uWindows, uTime, uHide, uNight, uReal; varying float vBid; varying vec3 vWPos; ${displace ? BCOL_DECL : ''}
         float hash21(vec2 p) { p = fract(p * 0.1031); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }`)
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (abs(vBid - uHide) < 0.5) discard;')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
@@ -443,6 +447,7 @@ function cityMaterial({ windows, color = '#2b3e6c', emissive = '#0c142c', displa
             diffuseColor.rgb += vec3(0.04) * win * vert * (1.0 - uReal);
             if (uReal > 0.5) { diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.30, 0.40, 0.52), win * vert * 0.55); }
           }
+          ${displace ? `if (uBColOn > 0.5 && vBid > -0.5) { ${BCOL_FETCH} diffuseColor.rgb = mix(diffuseColor.rgb, bc.rgb, bc.a); totalEmissiveRadiance = mix(totalEmissiveRadiance, bc.rgb * 0.35, bc.a * (1.0 - uReal)); }` : ''}
           if (abs(vBid - uHover) < 0.5) { totalEmissiveRadiance += vec3(0.35, 0.85, 1.0) * 0.55; diffuseColor.rgb += vec3(0.1, 0.2, 0.3); }
         }`);
   };
@@ -460,7 +465,7 @@ function drawingMaterial({ floors = true, displace = true } = {}) {
       void main(){ vBid = bid; vec4 wp = modelMatrix * vec4(position + disp(bid), 1.0); vWPos = wp.xyz; vec4 mvPosition = viewMatrix * wp; vFogDepth = -mvPosition.z; gl_Position = projectionMatrix * mvPosition;
         #include <clipping_planes_vertex>
       }`,
-    fragmentShader: `uniform vec3 uFace, uLine, uHoverCol, fogColor; uniform float uLineAlpha, uHover, uFloors, uHatch, fogDensity, uHide;
+    fragmentShader: `uniform vec3 uFace, uLine, uHoverCol, fogColor; uniform float uLineAlpha, uHover, uFloors, uHatch, fogDensity, uHide; ${displace ? BCOL_DECL : ''}
       varying float vBid; varying vec3 vWPos; varying float vFogDepth;
       #include <clipping_planes_pars_fragment>
       void main(){
@@ -489,6 +494,7 @@ function drawingMaterial({ floors = true, displace = true } = {}) {
           float hs = abs(fn.y) > 0.5 ? 1.0 : 0.45;
           col = mix(col, uLine, hatch * uHatch * hs);
         }
+        ${displace ? `if (uBColOn > 0.5 && vBid > -0.5) { ${BCOL_FETCH} col = mix(col, bc.rgb * (0.88 + 0.12 * abs(fn.y) + 0.06 * abs(fn.x)), bc.a); }` : ''}
         if (abs(vBid - uHover) < 0.5) col = mix(col, uHoverCol, 0.45);
         float f = 1.0 - exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);
         col = mix(col, fogColor, clamp(f, 0.0, 1.0));
@@ -504,7 +510,21 @@ function addBidAttribute(g, starts) {
   g.setAttribute('bid', new THREE.BufferAttribute(bid, 1));
 }
 let bldFaces = true;   // 面を描く (隠線処理) か、線のみか
-let bldTex = null;
+let bldTex = null, bcolTex = null;
+// 建物の色分け: fn(i, meta) → [r, g, b, a] (線形 0..1) か null。null を渡すと解除
+function setBuildingColors(fn) {
+  if (!bcolTex) return; const d = bcolTex.image.data; dispUniforms.uBColOn.value = fn ? 1 : 0; if (!fn) return;
+  for (let i = 0; i < buildingMeta.length && i * 4 + 3 < d.length; i++) { const c = fn(i, buildingMeta[i]); if (c) { d[i * 4] = c[0] * 255; d[i * 4 + 1] = c[1] * 255; d[i * 4 + 2] = c[2] * 255; d[i * 4 + 3] = c[3] * 255; } else d[i * 4 + 3] = 0; }
+  bcolTex.needsUpdate = true;
+}
+// 選択中の建物のフロア・区画の色分け: { floor: fl => [r,g,b]|null, zone: z => '#hex'|null } か null (解除)
+function applyIndoorHeat(h) {
+  if (!sel.mesh) return; const g = sel.mesh.geometry, fc = g.attributes.fc, fl = g.attributes.fl; if (!sel.fc0) sel.fc0 = fc.array.slice();
+  if (!h) { fc.array.set(sel.fc0); selUniforms.uCat.value = floorCatMode ? 1 : 0; }
+  else { for (let i = 0; i < fl.count; i++) { const c = h.floor(fl.getX(i)); if (c) fc.setXYZ(i, c[0], c[1], c[2]); else fc.setXYZ(i, -1, -1, -1); } selUniforms.uCat.value = 1; }
+  fc.needsUpdate = true;
+  for (const z of sel.zones) { if (z.isCor) continue; if (!z.col0) z.col0 = '#' + z.mesh.material.color.getHexString(); const c = (h && h.zone(z)) || z.col0; z.mesh.material.color.set(c); z.edge.material.color.set(c); }
+}
 const updateBldTex = (i, h, cx, cy) => { if (!bldTex) return; const d = bldTex.image.data; if (i * 4 + 3 >= d.length) return; d[i * 4] = h; d[i * 4 + 1] = cx; d[i * 4 + 2] = cy; d[i * 4 + 3] = 1; bldTex.needsUpdate = true; };
 let lineScale = 1.0;   // 線の太さ倍率 (UI スライダー)
 const styledMeshes = []; // { mesh, drawing, night, thick, thin, kind }
@@ -578,6 +598,7 @@ function buildBuildings(blobs, header) {
   buildingMeta.forEach((m, i) => { data[i * 4] = m.h ?? Math.max(3, m.z[1] - m.z[0]); data[i * 4 + 1] = m.c[0] / 10; data[i * 4 + 2] = m.c[1] / 10; data[i * 4 + 3] = 1; });
   const tex = new THREE.DataTexture(data, texW, texH, THREE.RGBAFormat, THREE.FloatType); tex.minFilter = tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true;
   dispUniforms.uBldTex.value = tex; dispUniforms.uBldW.value = texW; bldTex = tex;
+  bcolTex = new THREE.DataTexture(new Uint8Array(texW * texH * 4), texW, texH, THREE.RGBAFormat, THREE.UnsignedByteType); bcolTex.minFilter = bcolTex.magFilter = THREE.NearestFilter; bcolTex.needsUpdate = true; dispUniforms.uBColTex.value = bcolTex;
   // 座標 -> 建物番号 の逆引き (輪郭線用)
   const p = g.attributes.position, bidAttr = g.attributes.bid; bidLookup = new Map();
   for (let i = 0; i < p.count; i++) bidLookup.set(posKey(p.getX(i), p.getY(i), p.getZ(i)), bidAttr.getX(i));
@@ -1157,8 +1178,10 @@ function selectBuilding(bid) {
   document.getElementById('btn-guide-template').addEventListener('click', () => download(new Blob(['\ufeff' + floorGuideTemplate(m.n ?? '', nFloors)], { type: 'text/csv' }), `floorguide_${(m.n ?? 'building').replace(/[\\/:*?"<>|]/g, '_')}.csv`));
   document.getElementById('btn-guide-load').addEventListener('click', () => guideFileInput.click());
   if (people) { const f = people.buildingFlows(m.runtime ? -2 : bid); if (f && f.peak >= 1) { const ph = Math.floor(f.peakHour), pm = f.peakHour % 1 ? '30' : '00'; const d = document.createElement('div'); d.className = 'info-sub'; d.style.marginTop = '6px'; d.innerHTML = `人の出入り（駅との間・モデル推計）: いま 来る 約 ${Math.round(f.arrive).toLocaleString()} 人/時・出る 約 ${Math.round(f.leave).toLocaleString()} 人/時 ／ ピーク ${ph}:${pm} 頃 約 ${Math.round(f.peak).toLocaleString()} 人/時`; infoBody.appendChild(d); } }
+  sel.fc0 = null;
   if (indoor) { indoor.setBuilding(bid); const d = document.createElement('div'); d.className = 'info-sub'; d.id = 'indoor-info'; d.style.marginTop = '4px'; d.innerHTML = indoor.infoHTML(); infoBody.appendChild(d); }
   infoEl.style.display = 'block';
+  if (analysis) analysis.onSelect(bid);
   document.getElementById('floor-gap').value = selUniforms.uGap.value;
 }
 function updateSelectionLayout() {
@@ -1189,6 +1212,7 @@ function declutterLabels() {
 }
 function clearSelection() {
   if (indoor) indoor.setBuilding(-1);
+  if (analysis) analysis.onSelect(-1);
   if (sel.mesh) { selGroup.remove(sel.mesh); sel.mesh.geometry.dispose(); sel.mesh.material.dispose(); sel.mesh = null; }
   if (sel.lines) { selGroup.remove(sel.lines); sel.lines.geometry.dispose(); sel.lines.material.dispose(); sel.lines = null; }
   for (const sp of sel.markers) { selGroup.remove(sp); sp.material.map.dispose(); sp.material.dispose(); }
@@ -1762,6 +1786,7 @@ async function init() {
   people.set({ hour: realState.hour }); people.rebuild(); onTheme(t => people.setTheme(t));
   indoor = initIndoor({ scene, people, graph, buildingMeta, FLOOR_H, catColor, getSel: () => sel, getGap: () => selUniforms.uGap.value, footprintPts, terrainSampler, levelY, renderer });
   initPeopleUI();
+  analysis = initAnalysis({ scene, header, graph, buildingMeta, people, indoor, terrainSampler, renderer, stats: window.__STATS || null, calib: window.__PEOPLE_CALIB || null, getCamera: () => activeCamera, getSel: () => sel, FLOOR_H, catColor, setBuildingColors, applyIndoorHeat, selectBuilding, flyTo, floorLabel: fl => (fl >= 0 ? `${fl + 1}F` : `B${-fl}`), guideFor, poiOf: bid => poiByBuilding.get(bid) ?? [], onTheme, getTheme: T });
   realistic = initRealistic({ scene, renderer, sun, hemi, groups, header, terrainMesh, terrainSampler, farGround, flatShape: rings => shapeFromRings(rings), bldUniforms, composerPasses: { gtao, smaa }, treesGroup: groups.trees });
   roadDetail = initRoadDetail({ header, blobs, terrainSampler, shapeFromRings, flatGeometry, bridgeMesh, group: groups.roadDetail, bldUniforms, realState });
   initRealUI();
@@ -1771,7 +1796,7 @@ async function init() {
   const anim = loading.animate({ opacity: [1, 0] }, { duration: 500, fill: 'forwards' });
   anim.onfinish = () => loading.remove();
   introStart = performance.now();
-  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, indoor: () => indoor, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
+  window.__app = { applyTheme: n => applyTheme(n), real: realState, roads: () => roadDetail, people: () => people, indoor: () => indoor, analysis: () => analysis, setClock, sun: () => { realistic.updateSun(); bloom.enabled = realState.hour >= 17.5 || realState.hour < 6; }, tower: () => construction, rebuildTower, evaluateTower, select: b => selectBuilding(b), underlay: (on, u) => { underlayOn = on; if (u) Object.assign(UNDERLAYS.find(x => (x.building.includes(u.building) || u.building.includes(x.building)) && x.floor === u.floor) || {}, u); layoutUnderlays(); }, labels: m => { labelMode = m; }, setPartition: m => { partitionMode = m; }, setCat: arr => setCatFilter(new Set(arr)), zoneDetail: i => { const z = sel.zones.filter(z => !z.isCor)[i]; if (z) showZoneDetail(z.mesh.userData.zoneInfo); }, floorCat: v => { floorCatMode = v; selUniforms.uCat.value = v ? 1 : 0; }, loadGuide: t => loadFloorGuide(t), selectByName: n => { let i = buildingMeta.findIndex(m => m.n === n); if (i < 0) i = buildingMeta.findIndex(m => m.n && m.n.includes(n)); if (i >= 0) selectBuilding(i); return i; }, setGap: v => { selUniforms.uGap.value = v; updateSelectionLayout(); }, poi: v => { if (poiPoints) poiPoints.visible = v; }, setPMode: v => { if (pointsObj) pointsObj.material.uniforms.uPMode.value = v; }, setRep: m => { repMode = m; applyRepMode(); }, setDisp: (m, v) => { dmodeName = m; setDisp(v); }, section: h => { secChk.checked = h != null; secInput.value = h ?? 300; applySection(); }, scene, camera, controls, graph, header, buildingMesh, bridgeMesh, groups, renderer, composer, realistic, render: () => { updateLabels(); composer.render(); }, setExpand, dijkstra, floorLabel, paused: false, benchmark: (n = 5) => { const gl = renderer.getContext(); const t = []; for (let i = 0; i < n; i++) { const s = performance.now(); composer.render(); gl.finish(); t.push(Math.round(performance.now() - s)); } return t; } };
 }
 
 let introStart = null; const INTRO_MS = 2600; const introFrom = camera.position.clone();
@@ -1807,6 +1832,7 @@ function animate() {
   if (roadDetail) roadDetail.update(dt);
   if (people) people.update(dt);
   if (indoor) indoor.update(dt);
+  if (analysis) analysis.update(dt);
   composer.render();
 }
 function initRealUI() {

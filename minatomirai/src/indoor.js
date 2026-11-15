@@ -43,7 +43,7 @@ export function initIndoor(ctx) {
     const entSum = ents.reduce((s, e) => s + e.w, 0);
     // 行き先: 区画のある階はテナント、無い階は執務フロア
     const zones = sel.zones.filter(z => !z.isCor), byFloor = new Map(); for (const z of zones) { if (!byFloor.has(z.fl)) byFloor.set(z.fl, []); byFloor.get(z.fl).push(z); }
-    const flo = []; let fsum = 0; for (const [fl, zs] of byFloor) { fsum += 3; flo.push({ fl, zs, cum: fsum }); }
+    const flo = []; let fsum = 0; for (const [fl, zs] of byFloor) { fsum += Math.max(1, zs.reduce((s, z) => s + (CAT_W[z.zone?.category] ?? 0.6), 0) * 0.5); flo.push({ fl, zs, cum: fsum }); }   // 区画のある階は、テナントの数と用途の重みに比例
     const plain = zones.length && (bf?.use === 'ret' || bf?.use === 'att') ? 0 : 1;   // 商業・集客施設で区画が取れているなら、区画の無い階には行かせない
     if (plain) for (let fl = 0; fl < floors; fl++) if (!byFloor.has(fl)) { fsum += 1; flo.push({ fl, zs: null, cum: fsum }); }
     B = { bid, m, cores, ents, entSum, flo, fsum, floors, base, at, am, nm, len, wid, hasZones: zones.length > 0, bf, per: 1 };
@@ -105,5 +105,11 @@ export function initIndoor(ctx) {
     return `館内の人の動き（推計）: 滞在 約 ${fmt(f?.presence ?? 0)} 人 ／ 入館 ${fmt(r[0])}・退館 ${fmt(r[1])}・館内移動 ${fmt(r[2])} 人/時<br>表示 ${fmt(agents.length)} 点（1 点 = ${B.per} 人）／ 入口 ${B.ents.length} か所・昇降コア ${B.cores.length} か所（仮定）<span style="color:#7f93b8"> ●執務階</span><span style="color:#c9d2e3"> ●退館</span> ほかは行き先の用途色`;
   }
   function set(o) { Object.assign(S, o); points.visible = S.on && !!B; if (S.on && B) prefill(); else { agents.length = 0; geo.setDrawRange(0, 0); } }
-  return { setBuilding, update, set, infoHTML, state: S, get count() { return agents.length; }, get model() { return B; } };
+  // 分析用: 階ごと・区画ごとの配分 (行き先に選ばれる割合)。滞在人数や来訪者数に掛けて使う
+  function shares() {
+    if (!B) return null; const floors = new Map(), zones = new Map();
+    let prev = 0; for (const f of B.flo) { const w = (f.cum - prev) / B.fsum; prev = f.cum; floors.set(f.fl, (floors.get(f.fl) ?? 0) + w); if (f.zs) { const tot = f.zs.reduce((s, z) => s + (CAT_W[z.zone?.category] ?? 0.6), 0); for (const z of f.zs) zones.set(z, w * (CAT_W[z.zone?.category] ?? 0.6) / tot); } }
+    return { floors, zones };
+  }
+  return { setBuilding, update, set, infoHTML, shares, state: S, get count() { return agents.length; }, get model() { return B; } };
 }

@@ -111,6 +111,13 @@ await shot('44_people_real', `a.applyTheme('real'); a.setClock(8.5); a.camera.po
   await shot('53_mesh_check', `${ui} rain(false); rib('volume'); mesh(true); a.setClock(13); a.camera.position.set(100, 2300, 900); a.controls.target.set(100, 0, 60); run();`);
   await shot('54_indoor_markis', `${ui} mesh(false); a.setClock(13); const i = a.selectByName('MARK IS'); a.setGap(9); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 200, 150, cz + 170); a.controls.target.set(cx, 30, cz); run();`);
   await page.evaluate(() => window.__app.select(-1)); }
+{ const OBL = `a.camera.position.set(-560, 620, 760); a.controls.target.set(0, 0, 150);`;
+  await shot('60_heat_ped', `const an = a.analysis(), p = a.people(); a.applyTheme('paper'); a.setClock(18.25); p.set({ vol: false, agents: false }); an.set({ layer: 'ped', bmetric: 'none' }); ${OBL}`);
+  await shot('61_heat_emp', `a.analysis().set({ layer: 'emp' }); a.camera.position.set(100, 2500, 700); a.controls.target.set(100, 0, 20);`);
+  await shot('64_bldg_tsunami', `a.analysis().set({ layer: 'none', bmetric: 'tsunami' }); ${OBL}`);
+  await shot('65_bldg_presence_night', `a.applyTheme('night'); a.setClock(13); a.analysis().set({ layer: 'stay', bmetric: 'presence' }); ${OBL}`);
+  await shot('67_indoor_heat', `const an = a.analysis(), p = a.people(); a.applyTheme('paper'); p.set({ vol: true, agents: true }); an.set({ layer: 'none', bmetric: 'none' }); const i = a.selectByName('MARK IS'); a.setGap(9); an.set({ tab: 'bldg', floorHeat: true }); const m = a.header.buildings.meta[i]; const cx = m.c[0] / 10, cz = -m.c[1] / 10; a.camera.position.set(cx - 200, 150, cz + 170); a.controls.target.set(cx, 30, cz);`);
+  await page.evaluate(() => { const a = window.__app; a.select(-1); a.analysis().set({ floorHeat: false, tab: 'heat' }); }); }
 await page.evaluate(() => { window.__app.applyTheme('paper'); document.getElementById('btn-blueprint').click(); });
 await shot('08_blueprint', ``);
 await page.screenshot({ path: `${out}/09_ui.png`, timeout: 120000 }).catch(e => console.log('ui screenshot failed:', e.message));

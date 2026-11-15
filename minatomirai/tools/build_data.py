@@ -161,6 +161,8 @@ def load_meshes(decfn, idxfn, geoid_fn=None):
 MERGE_NAMES = {"クイーンズスクエア横浜", "MARK IS minatomirai", "ランドマークプラザ", "横浜ランドマークタワー", "パシフィコ横浜", "パシフィコ横浜ノース",
                "Yokohama World Porters", "横浜美術館", "横浜市役所", "横浜ハンマーヘッド", "横浜ベイクォーター", "そごう横浜店", "横浜スカイビル", "コレットマーレ", "横浜ワールドポーターズ"}
 
+try: BLDG_RISK = json.load(open(os.path.join(WORK, "out", "bldg_risk.json")))
+except Exception: BLDG_RISK = {}
 def pack_meshes(feats, zoff, order=None, name_fn=None):
     """溶接・量子化し、地物ごとに三角形を並べたメッシュを作る。MERGE_NAMES の同名部位は 1 地物に統合する。"""
     vmap = {}; verts = []; idx = []; starts = []; metas = []
@@ -185,7 +187,7 @@ def pack_meshes(feats, zoff, order=None, name_fn=None):
         f = {"tris": [t for k in grp for t in feats[k]["tris"]],
              "meta": {"gml:name": names[g], "bldg:measuredHeight": max((feats[k]["meta"].get("bldg:measuredHeight") or 0) for k in grp) or None,
                       "brid:function": feats[g]["meta"].get("brid:function"), "brid:class": feats[g]["meta"].get("brid:class")},
-             "parts": len(grp)}
+             "parts": len(grp), "gids": list(grp)}
         starts.append(len(idx) // 3)
         xs = []; ys = []; zmin = 1e9; zmax = -1e9
         for tri in f["tris"]:
@@ -206,6 +208,9 @@ def pack_meshes(feats, zoff, order=None, name_fn=None):
             "c": [dm(cx), dm(cy)], "z": [round(zmin, 1), round(zmax, 1)],
             "bb": [dm(min(xs)), dm(min(ys)), dm(max(xs)), dm(max(ys))],
         })
+        # 災害リスク属性 (PLATEAU CityGML: 津波・高潮・洪水の浸水深 m)。tools/fetch_bldg_risk.py の出力があれば付ける
+        rk = [max((BLDG_RISK.get(k, (0, 0, 0))[i] for k in f.get("gids", [])), default=0) for i in range(3)]
+        if any(rk): metas[-1]["rk"] = rk
     starts.append(len(idx) // 3)
     if merged: print("  merged multi-part buildings:", merged)
     return verts, idx, starts, metas
