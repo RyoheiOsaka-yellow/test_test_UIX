@@ -19,7 +19,7 @@
     city: 'obs', insul: 'low', occupants: 80, sensible: 150, setHeat: 18, setCool: 27, opStart: 8, opEnd: 21,
     panels: 72, preheat: 1, field: true, layout: 'rows', price: 22, basic: 1100,
     mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 0.05,
-    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true, left: 'ac', charts: true
+    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true, left: 'ac', charts: true, rateMode: 'model', rateCustom: 30, capex: 1500, maint: 0
   };
   var wxCache = {}, wx, panels = [], F, F11, jet = {}, sim, dirty = true, chartsDirty = true;
   var target = [new Float32Array(N), new Float32Array(N)], shown = [new Float32Array(N), new Float32Array(N)], scratch = new Float32Array(N), first = true;
@@ -804,7 +804,7 @@
     $('cmp').innerHTML = h + '</tbody>';
     shownModes().forEach(function (m, i) { // 3Dの上の札に、要点の3つの数字を出す
       var e = $('kv' + i); if (!e) return; var s = sts[m];
-      e.innerHTML = '<span>体感 <b>' + f1(s.OT) + '</b>℃</span><span>風 <b>' + maxWind(s, m, heat).toFixed(1) + '</b>m/s</span><span>電力 <b>' + Math.round(s.P) + '</b>kW</span>';
+      e.innerHTML = '<span>体感 <b>' + f1(s.OT) + '</b>℃</span><span>ムラ <b>±' + spread[m].toFixed(1) + '</b>℃</span><span>風 <b>' + maxWind(s, m, heat).toFixed(1) + '</b>m/s</span><span>電力 <b>' + Math.round(s.P) + '</b>kW</span>';
     });
   }
   function renderAnnual() {
@@ -819,6 +819,7 @@
       row('基本料金', yen(a.basicCost), yen(e.basicCost), '−' + yen(a.basicCost - e.basicCost)) +
       row('電気代の合計', yen(a.cost), yen(e.cost), '−' + yen(a.cost - e.cost)) +
       row('CO2排出量', (a.co2 / 1000).toFixed(1) + 't', (e.co2 / 1000).toFixed(1) + 't', '−' + ((a.co2 - e.co2) / 1000).toFixed(1)) + '</tbody>';
+    renderSavings();
     $('annNote').innerHTML = '空調なしの場合、利用時間のうち暑さ指数が「厳重警戒」以上（28以上）になるのは年間 <b class="num">' + n.wbgt28 + '</b> 時間、「危険」（31以上）は <b class="num">' + n.wbgt31 + '</b> 時間、体感温度が12℃未満は <b class="num">' + n.cold + '</b> 時間です。空調ありでは「厳重警戒」以上が エアコンのみ ' + a.wbgt28 + ' 時間、ecowin ' + e.wbgt28 + ' 時間になります。';
   }
   var LAYER_TEXT = {
@@ -852,6 +853,80 @@
     var ob = !!wx.observed;
     $('wxBadge').textContent = ob ? '気象：練馬アメダス 2025年の観測値' : '気象：平年値からの合成（ダミー）';
     $('annT').textContent = ob ? '年間の推計（練馬・2025年の気象）' : '年間の推計（' + wx.city.name + '・合成気象）';
+  }
+
+  // ------------------------------------------------------------ 営業向け：強みの比較と節約額
+  var spread = { none: 0, ac: 0, eco: 0 };
+  function fieldSpread(mode, st, heat) { // 体感温度の場所によるばらつき（標準偏差）
+    var mean = M.computeField('ot', mode, st, heat, S.z, F, heat ? jet.heat : jet.cool, scratch), v = 0;
+    for (var i = 0; i < N; i++) { var d = scratch[i] - mean; v += d * d; }
+    return Math.sqrt(v / N);
+  }
+  function renderScore(sts, heat) {
+    var a = sts.ac, e = sts.eco, top = G.H - 0.5 - G.zRef;
+    var rows = [
+      ['風の強さ', '弱いほど、羽根やボールが流されにくい', maxWind(a, 'ac', heat), maxWind(e, 'eco', heat), 1, 'm/s', true],
+      ['場所による温度のムラ', '小さいほど、どこにいても同じ体感', spread.ac, spread.eco, 1, '℃', true, '±'],
+      ['天井付近にたまる熱', '腰の高さとの空気温度の差。小さいほど無駄が少ない', Math.abs(a.G * top), Math.abs(e.G * top), 1, '℃', true],
+      ['消費電力', 'いまこの瞬間に使っている電力', a.P, e.P, 0, 'kW', true],
+      ['体感温度', '同じ体感になるように運転しています', a.OT, e.OT, 1, '℃', false]
+    ];
+    $('score').innerHTML = rows.map(function (r) {
+      var mx = Math.max(Math.abs(r[2]), Math.abs(r[3]), 1e-6), chip, cls = 'same';
+      if (!r[6]) chip = Math.abs(r[2] - r[3]) < 0.35 ? 'ほぼ同じ' : (r[3] > r[2] ? '+' : '−') + Math.abs(r[3] - r[2]).toFixed(1) + '℃';
+      else if (r[2] < 0.05 && r[3] < 0.05) chip = '差なし';
+      else { var p = (r[3] - r[2]) / Math.max(r[2], 1e-6); if (p < -0.03) { chip = '−' + Math.round(-p * 100) + '%'; cls = 'good'; } else if (p > 0.03) { chip = '+' + Math.round(p * 100) + '%'; cls = 'more'; } else chip = 'ほぼ同じ'; }
+      function bar(v, m) { return '<div class="scb"><span class="scn">' + (m === 'ac' ? 'エアコン' : 'ecowin') + '</span><div class="track"><div class="bar" style="width:' + (r[6] ? Math.max(2, Math.abs(v) / mx * 100) : 100) + '%;background:var(--m-' + m + ')"></div></div><b>' + (r[7] || '') + v.toFixed(r[4]) + r[5] + '</b></div>'; }
+      return '<div class="sc"><div class="sch"><div><b>' + r[0] + '</b><small>' + r[1] + '</small></div><span class="scd ' + cls + '">' + (cls === 'good' ? '<svg class="ic"><use href="#i-check"/></svg>' : '') + chip + '</span></div>' + bar(r[2], 'ac') + bar(r[3], 'eco') + '</div>';
+    }).join('');
+  }
+  var sav = null, savGeom = null;
+  function calcSavings() {
+    var s = sim.summary, a = s.modes.ac, e = s.modes.eco;
+    var r = S.rateMode === 'max' ? K.capRate : S.rateMode === 'custom' ? S.rateCustom / 100 : s.rate;
+    var yE = a.kwh * r * S.price, yB = Math.max(0, a.contract - e.contract) * S.basic * 12, yM = S.maint * 1e4, year = yE + yB + yM;
+    sav = { r: r, kwh: a.kwh * r, yE: yE, yB: yB, yM: yM, year: year, capex: S.capex * 1e4, pay: year > 0 ? S.capex * 1e4 / year : Infinity, co2: a.kwh * r * K.co2 };
+    return sav;
+  }
+  function man(v) { return Math.round(v / 1e4).toLocaleString('ja-JP'); }
+  function renderSavings() {
+    var v = calcSavings(), s = sim.summary;
+    $('svYear').textContent = man(v.year);
+    $('svSub').innerHTML = '月あたり 約<b>' + man(v.year / 12) + '</b>万円　／　15年で 約<b>' + man(v.year * 15) + '</b>万円';
+    $('savePillV').textContent = man(v.year);
+    $('rateOut').textContent = '−' + (v.r * 100).toFixed(0) + '%';
+    $('rateR').hidden = S.rateMode !== 'custom'; $('rateEnds').hidden = S.rateMode !== 'custom';
+    $('rateNote').textContent = S.rateMode === 'model' ? 'この画面の条件（建物・気象・使い方・パネル配置）で計算した値です。' + (s.capped ? 'メーカー公表の最大値 34% を上限にしています。' : '')
+      : S.rateMode === 'max' ? 'メーカーが公表している最大値（高性能エアコン単体との比較）です。条件により効果は変わります。' : '見積や実績に合わせて 1〜34% の範囲で決められます。';
+    function row(l, x, strong) { return '<tr' + (strong ? ' class="tot"' : '') + '><th>' + l + '</th><td>' + x + '</td></tr>'; }
+    $('svTable').innerHTML = '<tbody>' +
+      row('電力量料金の節約', man(v.yE) + '万円') + row('基本料金の節約（最大需要電力が下がる分）', man(v.yB) + '万円') +
+      (v.yM > 0 ? row('保守費の差', man(v.yM) + '万円') : '') + row('1年間の節約額', man(v.year) + '万円', true) +
+      row('導入費用の差額を回収するまで', isFinite(v.pay) ? (v.capex <= 0 ? '差額なし' : '約 ' + v.pay.toFixed(1) + ' 年') : '—', true) +
+      row('10年間の差し引き', man(v.year * 10 - v.capex) + '万円') + row('20年間の差し引き', man(v.year * 20 - v.capex) + '万円') +
+      row('CO2の削減', (v.co2 / 1000).toFixed(1) + 't／年（杉の木 約' + Math.round(v.co2 / 14).toLocaleString('ja-JP') + '本分）') + '</tbody>';
+  }
+  function drawSav() {
+    if (!sav) return;
+    var f = fit($('sav')), c = f.c; if (f.w < 40) return;
+    var L = 42, R = 10, T = 8, B = 16, w = f.w - L - R, h = f.h - T - B, Y = 20, v0 = -sav.capex / 1e4, v1 = (sav.year * Y - sav.capex) / 1e4;
+    var lo = Math.min(0, v0), hi = Math.max(v1, 1), span = hi - lo, stp = Math.pow(10, Math.floor(Math.log10(span / 3)));
+    if (span / stp > 8) stp *= 2.5; if (span / stp > 8) stp *= 2;
+    function X(y) { return L + w * y / Y; } function Yp(v) { return T + h * (1 - (v - lo) / span); }
+    savGeom = { L: L, w: w, Y: Y };
+    c.strokeStyle = C['--line']; c.fillStyle = C['--ink-2']; c.lineWidth = 1; c.textAlign = 'right'; c.textBaseline = 'middle';
+    for (var g = Math.ceil(lo / stp) * stp; g <= hi; g += stp) { c.beginPath(); c.moveTo(L, Yp(g) + 0.5); c.lineTo(L + w, Yp(g) + 0.5); c.stroke(); c.fillText(Math.round(g).toLocaleString('ja-JP'), L - 4, Yp(g)); }
+    c.textAlign = 'center'; c.textBaseline = 'top';
+    [0, 5, 10, 15, 20].forEach(function (y) { c.fillText(y + '年', X(y) + (y === 0 ? 8 : y === Y ? -8 : 0), T + h + 3); });
+    c.strokeStyle = C['--ink-3']; c.beginPath(); c.moveTo(L, Yp(0) + 0.5); c.lineTo(L + w, Yp(0) + 0.5); c.stroke();
+    var py = Math.min(sav.pay, Y); // 回収後（黒字）の部分を塗る
+    if (sav.pay < Y) { c.fillStyle = C['--m-eco']; c.globalAlpha = 0.16; c.beginPath(); c.moveTo(X(py), Yp(0)); c.lineTo(X(Y), Yp(v1)); c.lineTo(X(Y), Yp(0)); c.closePath(); c.fill(); c.globalAlpha = 1; }
+    c.strokeStyle = C['--m-eco']; c.lineWidth = 2.5; c.beginPath(); c.moveTo(X(0), Yp(v0)); c.lineTo(X(Y), Yp(v1)); c.stroke();
+    if (sav.pay > 0 && sav.pay < Y) {
+      c.fillStyle = C['--surface']; c.strokeStyle = C['--m-eco']; c.lineWidth = 2; c.beginPath(); c.arc(X(py), Yp(0), 4.5, 0, 6.2832); c.fill(); c.stroke();
+      c.fillStyle = C['--ink']; c.textAlign = py > Y * 0.7 ? 'right' : 'left'; c.textBaseline = 'bottom'; c.font = '700 11px ' + getComputedStyle(document.body).fontFamily;
+      c.fillText('約' + sav.pay.toFixed(1) + '年で回収', X(py) + (py > Y * 0.7 ? -8 : 8), Yp(0) - 5);
+    }
   }
 
   // ------------------------------------------------------------ 操作
@@ -894,6 +969,7 @@
       $('city').value = S.city; $('occ').value = S.occupants; $('panels').value = S.panels;
       press('insul', S.insul); press('actSeg', S.sensible); press('preheatSeg', S.preheat);
       press('layoutSeg', S.layout); $('customNote').hidden = S.layout !== 'custom';
+      press('rateSeg', S.rateMode); $('rateR').value = S.rateCustom;
       press('modeSeg', S.mode); press('leftSeg', S.left); press('layerSeg', S.layer); press('zSeg', S.z); press('speedSeg', S.speed);
       [].forEach.call($('overlays').querySelectorAll('.chip'), function (b) { b.setAttribute('aria-pressed', String(!!S[b.dataset.k])); });
       $('chartsToggle').setAttribute('aria-pressed', String(S.charts)); $('charts').hidden = !S.charts;
@@ -918,6 +994,15 @@
     seg('insul', 'insul', null, recomputeSim);
     seg('actSeg', 'sensible', parseFloat, recomputeSim);
     seg('preheatSeg', 'preheat', parseFloat, recomputeSim);
+    seg('rateSeg', 'rateMode', null, function () { renderSavings(); chartsDirty = true; dirty = true; });
+    $('rateR').addEventListener('input', function () { S.rateCustom = +$('rateR').value; renderSavings(); chartsDirty = true; dirty = true; });
+    $('savePill').addEventListener('click', function () { setSide(true); showTab('year'); });
+    var savC = $('sav');
+    savC.addEventListener('pointermove', function (e) {
+      if (!savGeom || !sav) return; var b = savC.getBoundingClientRect(), y = Math.round(M.clamp((e.clientX - b.left - savGeom.L) / savGeom.w, 0, 1) * savGeom.Y);
+      showTip(e, y + '年後<br>節約額の合計 <b>' + man(sav.year * y) + '</b>万円<br>導入費用の差額を引くと <b>' + man(sav.year * y - sav.capex) + '</b>万円');
+    });
+    savC.addEventListener('pointerleave', hideTip);
     seg('layoutSeg', 'layout', null, function () { $('customNote').hidden = true; recomputeAll(); });
     $('occ').addEventListener('input', function () { S.occupants = +$('occ').value; outs(); later(recomputeSim); });
     $('panels').addEventListener('input', function () { S.panels = +$('panels').value; outs(); if (S.layout === 'custom') { S.layout = 'rows'; press('layoutSeg', 'rows'); $('customNote').hidden = true; } later(recomputeAll); });
@@ -1020,7 +1105,7 @@
     mon.addEventListener('pointerleave', hideTip);
 
     // 配置と条件の保存・読込（このブラウザの中に保存する）
-    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'left', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split', 'volume', 'speed', 'charts'];
+    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'left', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split', 'volume', 'speed', 'charts', 'rateMode', 'rateCustom', 'capex', 'maint'];
     function say(t) { var e = $('saveMsg'); e.textContent = t; clearTimeout(say.t); say.t = setTimeout(function () { e.textContent = ''; }, 4000); }
     $('saveScene').addEventListener('click', function () {
       var o = { v: 4 }; KEYS.forEach(function (k) { o[k] = S[k]; });
@@ -1106,9 +1191,10 @@
     if (dirty) {
       updateRangeTarget();
       ms.forEach(function (m, i) { M.computeField(S.layer, m, sts[m], heat, S.z, F, heat ? jet.heat : jet.cool, target[i]); });
-      var wn = wxAt(S.t); sunI = wn.I; renderNow(sts, wn); renderProbe(sts, heat); if (scene3) scene3.markVolume();
+      M.MODES.forEach(function (m) { spread[m] = fieldSpread(m, sts[m], heat); });
+      var wn = wxAt(S.t); sunI = wn.I; renderNow(sts, wn); renderScore(sts, heat); renderProbe(sts, heat); if (scene3) scene3.markVolume();
       var d = Math.floor(S.t / 24);
-      if (chartsDirty || d !== lastDay) { if (chartsDirty) { buildCal(); drawMon(); } lastDay = d; chartsDirty = false; }
+      if (chartsDirty || d !== lastDay) { if (chartsDirty) { buildCal(); drawMon(); drawSav(); } lastDay = d; chartsDirty = false; }
       drawCal(); drawDay();
       dirty = false; settle = 1;
     }

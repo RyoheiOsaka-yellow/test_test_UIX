@@ -48,6 +48,27 @@ button { cursor: pointer; }
 .top .grow { flex: 1 1 auto; }
 .badge { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 .note { color: var(--ink-3); font-size: 11.5px; }
+.savepill { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 12px 0 9px; border-radius: 999px; border: 1.5px solid var(--m-eco); background: var(--accent-soft); color: var(--ink); font-weight: 700; white-space: nowrap; }
+.savepill b { font-family: var(--num); font-size: 17px; margin: 0 1px; }
+.savepill small { font-weight: 400; color: var(--ink-2); font-size: 11px; margin-left: 3px; }
+.savepill .ic { color: var(--m-eco); }
+.savehero { background: var(--accent-soft); border-radius: var(--r); padding: 12px 12px 10px; text-align: center; }
+.savehero .lead { font-weight: 700; font-size: 13px; }
+.savehero .big { font-size: 20px; font-weight: 600; color: var(--accent); line-height: 1.1; margin: 2px 0; }
+.savehero .big span { font-size: 54px; margin: 0 2px; }
+.savehero .sub { color: var(--ink-2); font-size: 12px; margin-top: 6px; }
+.savehero .sub b { font-family: var(--num); font-size: 15px; color: var(--ink); }
+table.cmp.sv th { white-space: normal; } table.cmp.sv tr.tot th, table.cmp.sv tr.tot td { color: var(--ink); font-weight: 700; font-size: 13.5px; background: var(--surface-2); }
+table.cmp.sv tr.tot th { padding-left: 6px; }
+.chart.sav canvas { height: 150px; cursor: default; }
+.score { display: grid; gap: 12px; }
+.sc .sch { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+.sc .sch b { display: block; font-weight: 700; } .sc .sch small { display: block; color: var(--ink-3); font-size: 11px; line-height: 1.35; }
+.scd { display: inline-flex; align-items: center; gap: 3px; border-radius: 999px; padding: 1px 9px; font-family: var(--num); font-weight: 600; font-size: 13px; white-space: nowrap; border: 1px solid var(--line); color: var(--ink-2); }
+.scd.good { background: var(--m-eco); border-color: var(--m-eco); color: #fff; } .scd.good .ic { width: 13px; height: 13px; stroke-width: 3; }
+.scb { display: grid; grid-template-columns: 52px 1fr 64px; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-2); margin-top: 2px; }
+.scb .track { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; } .scb .bar { height: 100%; border-radius: 5px; }
+.scb b { text-align: right; font-family: var(--num); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink); }
 
 /* ボタン：押せるものは枠と面を持ち、高さをそろえる */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--tap); padding: 0 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); font-weight: 500; white-space: nowrap; text-decoration: none; }
@@ -277,8 +298,9 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 <div class="app">
   <header class="top">
     <h1>体育館デジタルツイン<span class="sub">ecowinハイブリッド 設置効果の推計</span></h1>
-    <span class="badge">推計値（実測ではありません）</span>
+    <span class="badge">推計値</span>
     <span class="badge" id="wxBadge"></span>
+    <button class="savepill" id="savePill" type="button" title="節約額の内訳を開きます"><svg class="ic"><use href="#i-yen"/></svg>年間 約<b id="savePillV"></b>万円の節約<small>推計</small></button>
     <span class="grow"></span>
     <span class="note" id="saveMsg" role="status"></span>
     <button class="btn" id="openHelp" type="button"><svg class="ic"><use href="#i-help"/></svg>使い方</button>
@@ -293,7 +315,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <div class="seg full" id="tabs" role="group" aria-label="パネルの切り替え">
         <button type="button" data-v="cond">見どころ・条件</button>
         <button type="button" data-v="now">いまの値</button>
-        <button type="button" data-v="year">年間の効果</button>
+        <button type="button" data-v="year">節約額</button>
       </div>
 
       <div class="pane col" data-pane="cond">
@@ -304,7 +326,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
             <button class="scene" type="button" data-v="s2"><span class="n">2</span><span><b>夏：2つの方式を並べる</b><small>体感温度を左右で比べる</small></span><svg class="ic"><use href="#i-right"/></svg></button>
             <button class="scene" type="button" data-v="s3"><span class="n">3</span><span><b>真冬の朝：暖気はどこへ</b><small>断面で天井付近の溜まり方を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
             <button class="scene" type="button" data-v="s4"><span class="n">4</span><span><b>風の強さを比べる</b><small>真上から、人の高さの風を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
-            <button class="scene" type="button" data-v="s5"><span class="n">5</span><span><b>1年間の電気代</b><small>消費電力量と料金の差を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+            <button class="scene" type="button" data-v="s5"><span class="n">5</span><span><b>節約額を見る</b><small>電気代の差と、何年で回収できるか</small></span><svg class="ic"><use href="#i-right"/></svg></button>
           </div>
         </section>
 
@@ -353,6 +375,10 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
       <div class="pane col" data-pane="now" hidden>
         <section class="card">
+          <h2><svg class="ic"><use href="#i-star"/></svg>ecowinの強み <small>いま・エアコンのみと比べて</small></h2>
+          <div class="score" id="score"></div>
+        </section>
+        <section class="card">
           <h2><svg class="ic"><use href="#i-thermo"/></svg>いまの時刻の値 <small>館内の平均</small></h2>
           <div class="now" id="now"></div>
           <table class="cmp" id="cmp"></table>
@@ -362,7 +388,27 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
       <div class="pane col" data-pane="year" hidden>
         <section class="card stack">
-          <h2><svg class="ic"><use href="#i-yen"/></svg><span id="annT">年間の推計</span></h2>
+          <h2><svg class="ic"><use href="#i-yen"/></svg>節約額シミュレーション</h2>
+          <div class="savehero"><div class="lead">ecowinハイブリッドにすると、1年で</div><div class="big num">約<span id="svYear"></span><small>万円</small></div><div class="lead">の節約</div><div class="sub" id="svSub"></div></div>
+          <div>
+            <div class="fl"><span>消費電力量をどれだけ減らせるか</span><output id="rateOut"></output></div>
+            <div class="seg full" id="rateSeg" role="group" aria-label="削減率の決め方"><button type="button" data-v="model">この計算の値</button><button type="button" data-v="max">メーカー最大</button><button type="button" data-v="custom">自分で決める</button></div>
+            <input type="range" id="rateR" min="1" max="34" step="1" aria-label="削減率" hidden><div class="ends" id="rateEnds" hidden><span>1%</span><span>34%</span></div>
+            <div class="note" id="rateNote" style="margin-top:5px"></div>
+          </div>
+          <div class="pair">
+            <div><div class="fl"><span>導入費用の差額</span></div><div class="stepper" data-key="capex" data-min="0" data-max="30000" data-step="100" data-unit="万円"></div></div>
+            <div><div class="fl"><span>保守費の差（年）</span></div><div class="stepper" data-key="maint" data-min="0" data-max="500" data-step="5" data-unit="万円"></div></div>
+          </div>
+          <div class="note">導入費用の差額は「ecowinハイブリッド − エアコンのみ」、保守費の差は ecowin が安くなる分です。どちらも仮の値なので、見積に合わせて変えてください。</div>
+          <table class="cmp sv" id="svTable"></table>
+          <div class="chart sav">
+            <div class="ct"><span><b>節約額の積み上がり</b>（導入費用の差額を引いた額・万円）</span></div>
+            <canvas id="sav"></canvas>
+          </div>
+        </section>
+        <section class="card stack">
+          <h2><svg class="ic"><use href="#i-chart"/></svg><span id="annT">年間の推計</span></h2>
           <div class="hero"><div class="big num" id="rate"></div><div class="cap" id="rateCap"></div></div>
           <table class="cmp" id="ann"></table>
           <div class="chart mon">
@@ -500,7 +546,8 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <ul><li>室内の空気と、床・壁の構造体の2つの温度を、屋根・壁・窓・すきま風・日射・人・照明・空調の熱の出入りから5分刻みで1年分計算します。</li>
       <li>空調能力は熱負荷計算書の単位負荷（冷房 300W/㎡、暖房 185W/㎡）と地域係数から決め、ecowinハイブリッドは補正係数 0.7 を掛けています。</li>
       <li>暖房時、温風は天井付近に溜まります。上下の温度勾配の係数はエアコンのみ 0.03、ecowinハイブリッド 0.01【推計】で、天井付近が熱いほど屋根から逃げる熱が増えます。</li>
-      <li>パネル表面は暖房 45℃（代理店の測定資料の下限）、冷房 15℃【仮定】。パネルの輻射で体感温度が変わる分だけ、空気の設定温度を最大 1℃ 緩めます。</li></ul>
+      <li>パネル表面は暖房 45℃（代理店の測定資料の下限）、冷房 15℃【仮定】。</li>
+      <li>2つの方式は<b>同じ体感</b>で比べます。この部屋をエアコンだけで設定温度にしたときの館内平均の体感温度を目標にして、ecowinハイブリッドはパネルの輻射と風の弱さを織り込んだ空気温度で運転します（調整幅は最大 2.5℃）。</li></ul>
     <h3>体感温度・暑さ指数・風</h3>
     <ul><li>放射温度は、評価点から床・屋根・壁・窓・パネルが見える大きさ（立体角）で各面の温度を平均したものです。パネルは向いている面の正面ほど大きく見えるため、正面で効果が強く出ます。</li>
       <li>「空気の層」は、館内の空気温度を立体の格子（1m × 1m × 0.5m）に入れ、腰の高さの空気温度から離れた部分ほど濃く重ねて描いたものです。色は腰の高さの空気との差で、暖かい空気が赤、冷たい空気が青です。天井付近に溜まる暖気や、吹出しの温風・冷風の広がりが見えます。人の色は、立っている場所の床の色と同じ値です。</li>
@@ -510,7 +557,8 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <h3>電力・料金</h3>
     <ul><li>消費電力は空調の出力を外気温に応じた効率（COP）で割り、送風機の電力を加えたものです。</li>
       <li>削減率がメーカー公表の最大値 34% を超える条件では、34% を上限として表示します。</li>
-      <li>契約電力は計算上の最大需要電力とし、基本料金は入力した単価で計算します。CO2 は 0.423kg-CO2/kWh で換算します。</li></ul>
+      <li>契約電力は計算上の最大需要電力とし、基本料金は入力した単価で計算します。CO2 は 0.423kg-CO2/kWh で換算します。</li>
+      <li>節約額シミュレーションの削減率は、この画面の計算値、メーカー公表の最大値 34%、1〜34% の任意の値から選べます。基本料金の節約は計算上の最大需要電力の差によります。導入費用の差額と保守費の差は仮の値です。杉の木の本数は、1本あたり年 14kg の吸収として換算しています。</li></ul>
     <h3>扱っていないこと</h3>
     <ul><li>気流の詳細な数値解析（CFD）は行っていません。風と温度の分布は傾向を示す近似です。</li>
       <li>熱の計算では屋内全体を1つの箱として扱い、観覧席の段やトラスの形は放射の計算に含めていません。</li>

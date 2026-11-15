@@ -49,7 +49,7 @@
     radFrac: 0.55,      // パネル放熱のうち輻射の割合
     TpHeat: 45,         // 暖房時パネル表面温度（S4: 45〜50℃の下限）
     TpCool: 15,         // 冷房時パネル表面温度【仮定】
-    relaxMax: 1,        // 輻射による空気設定の緩和幅の上限
+    relaxMax: 2.5,      // 同じ体感にするための空気設定の調整幅の上限
     gStrat: { none: 0, ac: 0.03, eco: 0.01 },   // 暖房時の上下温度勾配の係数
     gRoof: 0.04,        // 屋根面の加熱による成層の係数
     u0: { none: 0, ac: 5.0, eco: 1.5 },         // 吹出し風速 [m/s]
@@ -331,6 +331,7 @@
         var Tsol = To + 0.7 * I / 23, Twsol = To + 0.15 * I / 23;
         var qInt = occ * p.sensible + (occ > 0 ? K.light * Af : 0), qSol = ins.shgc * GEOM.Ag * 0.35 * I;
         var C = heat ? cap[eco ? 'eco' : 'ac'].heat : cap[eco ? 'eco' : 'ac'].cool;
+        var jm = heat ? jetMean.heat : jetMean.cool, aAc = otCoef(0.1 + K.u0.ac * jm), aEco = otCoef(0.1 + K.u0.eco * jm);
         var sG = 0, sQa = 0, sQp = 0, sFan = 0, sPf = 0, E = 0, G = 0;
         for (var s = 0; s < NS; s++) {
           G = K.gRoof * Math.max(0, Tri - Ta) + (heat && heatFrac > 0 ? K.gStrat[mode] * Math.max(0, Ta - To) * (0.4 + 0.6 * heatFrac) : 0);
@@ -343,9 +344,13 @@
           var Qa = 0, Qp = 0, pf = 0;
           if (on) {
             var Tt = heat ? p.setHeat : p.setCool;
-            if (eco && Fp > 0) { // 輻射で体感が上がる（下がる）分だけ空気の設定を緩める
-              var others = (Fm.floor * Tm + Fm.roof * Tri + Fm.wall * Twall + Fm.win * Twin) / (1 - Fp);
-              Tt += heat ? -clamp(Fp * (K.TpHeat - others), 0, K.relaxMax) : clamp(Fp * (others - K.TpCool), 0, K.relaxMax);
+            if (eco && Fp > 0) {
+              // 同じ体感で比べる：この部屋をエアコンだけで設定温度にしたときの体感温度を目標にして、
+              // パネルの輻射と風の弱さを織り込んだうえで必要な空気温度を求める
+              var mNo = (Fm.floor * Tm + Fm.roof * Tri + Fm.wall * Twall + Fm.win * Twin) / (1 - Fp);
+              var mEco = mNo * (1 - Fp) + Fp * (heat ? K.TpHeat : K.TpCool);
+              var Tneed = (aAc * Tt + (1 - aAc) * mNo - (1 - aEco) * mEco) / aEco;
+              Tt = clamp(Tneed, Tt - K.relaxMax, Tt + K.relaxMax);
             }
             var req = (Tt - Ta) * Ca / dt - Q0, need = heat ? req : -req;
             if (need > 0) {
