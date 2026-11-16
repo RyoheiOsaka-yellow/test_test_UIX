@@ -39,6 +39,8 @@ figcaption { color: var(--ink3); font-size: 8.8pt; margin-top: 1.2mm; }
 .parts div span { color: var(--ink2); font-size: 9pt; line-height: 1.45; display: block; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
 .side-text { display: grid; grid-template-columns: 62mm 1fr; gap: 7mm; align-items: start; }
+.side-text.wide { grid-template-columns: 78mm 1fr; }
+.three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; align-items: start; }
 .crop { overflow: hidden; border: 1px solid var(--line); border-radius: 1.5mm; }
 .crop img { display: block; width: 100%; border: 0; border-radius: 0; }
 table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9.6pt; break-inside: avoid; }
@@ -64,87 +66,69 @@ small { color: var(--ink3); }
   <h1>体育館デジタルツイン</h1>
   <div class="sub">ecowinハイブリッド 設置効果の推計</div>
   <img src="img/focus.jpg" alt="左右比較の画面">
-  <div class="meta">対象ファイル：ecowin-gym-twin.html（v8）　／　作成：2026年11月<br>画面の数値はすべて簡易モデルによる推計値で、実測値ではありません。</div>
+  <div class="meta">対象ファイル：ecowin-gym-twin.html（v10）　／　作成：2026年11月<br>建物は、日出町 中央体育館・日出中学校の設計図をもとにしています。画面の数値はすべて簡易モデルによる推計値で、実測値ではありません。</div>
 </section>
 
 <section>
   <h2>この資料について</h2>
-  <p class="lead">まだ ecowinハイブリッドを設置していない体育館に、設置した場合の温度・風・電気代がどう変わるかを、3Dの体育館の中で見せるための画面です。この資料は、初めて触る方が商談で使えるようになるまでの手順をまとめています。</p>
-
+  <p class="lead">ecowinハイブリッド（壁掛形エアコン＋輻射パネル）を設置した体育館の温度・風・電気代を、3Dと断面図で見せるための画面です。この資料は、初めて触る方が商談で使えるようになるまでの手順をまとめています。</p>
   <h3>開き方</h3>
   <ol class="steps">
-    <li><span><b>ecowin-gym-twin.html</b> をダブルクリックします。ブラウザで開きます（Chrome か Edge を推奨）。</span></li>
-    <li><span>通信は不要です。3Dの描画に数秒かかることがあります。</span></li>
+    <li><span><b>ecowin-gym-twin.html</b> をダブルクリックします。ブラウザで開きます（Chrome か Edge を推奨）。通信は不要です。</span></li>
     <li><span>左上の <b>見どころ</b> を 1 から順に押すと、主な場面をひととおり見られます。</span></li>
+    <li><span>資料として渡すときは、右上の <b>検証シート</b> を押すと、縦1枚の画像ができます。</span></li>
   </ol>
-
   <h3>もくじ</h3>
   <ol class="toc">
-    <li><b>1</b>画面の見かた</li>
-    <li><b>2</b>まずは「見どころ」を順に押す</li>
-    <li><b>3</b>比べる・色を変える・重ねて表示する</li>
-    <li><b>4</b>時間を動かす</li>
-    <li><b>5</b>3Dを動かす・場所の値を見る・パネルを置き換える</li>
-    <li><b>6</b>条件を変える</li>
-    <li><b>7</b>いまの値と「ecowinの強み」</li>
-    <li><b>8</b>節約額シミュレーション</li>
-    <li><b>9</b>大きく表示・画像にする・保存と読込</li>
-    <li><b>10</b>商談での進め方の例</li>
-    <li><b>11</b>説明するときの注意</li>
-    <li><b>12</b>困ったとき</li>
+    <li><b>1</b>画面の見かた</li><li><b>2</b>まずは「見どころ」を順に押す</li><li><b>3</b>比べる・色を変える・重ねて表示する</li><li><b>4</b>時間を動かす</li>
+    <li><b>5</b>3Dを動かす・場所の値を見る・パネルを動かす</li><li><b>6</b>断面図と検証シート</li><li><b>7</b>条件を変える</li><li><b>8</b>建物の仕様を図面から入れる</li>
+    <li><b>9</b>パネルの置き方を比べる</li><li><b>10</b>いまの値と「ecowinの強み」</li><li><b>11</b>節約額シミュレーション</li><li><b>12</b>拡大・画像・保存と読込</li>
+    <li><b>13</b>商談での進め方の例</li><li><b>14</b>説明するときの注意</li><li><b>15</b>困ったとき</li>
   </ol>
-
   <h3>ボタンの形の意味</h3>
   <table>
     <thead><tr><th>形</th><th>意味</th><th>使っている場所</th></tr></thead>
     <tbody>
-      <tr><td>つながったボタン</td><td>どれか1つを選ぶ。選択中は青く塗られます</td><td>画面、方式、色で見るもの、視点、速さ</td></tr>
+      <tr><td>つながったボタン</td><td>どれか1つを選ぶ。選択中は青く塗られます</td><td>画面、方式、色で見るもの、視点、建物、速さ</td></tr>
       <tr><td>丸いチップ</td><td>入・切。入のときはチェック印が付きます</td><td>風の流れ、断面、グラフ など</td></tr>
-      <tr><td>− 数値 ＋</td><td>数値を1段ずつ増減</td><td>設定温度、空調の時刻、料金</td></tr>
-      <tr><td>説明や図のついた選択肢</td><td>内容を読んで1つを選ぶ</td><td>断熱性能、パネルの置き方</td></tr>
+      <tr><td>− 数値 ＋</td><td>数値を1段ずつ増減</td><td>設定温度、空調の時刻、料金、エアコンの能力</td></tr>
+      <tr><td>説明や図のついた選択肢</td><td>内容を読んで1つを選ぶ</td><td>断熱性能、パネルの置き方、窓の種類</td></tr>
     </tbody>
   </table>
-
   <div class="box warn"><b class="t">はじめに知っておくこと</b>
-    建物の寸法、パネルの冷房時の表面温度、電気料金の単価、導入費用の差額は<b>仮の値</b>です。図面や見積が手に入ったら置き換えてください。気象は、東京都練馬区を選ぶと2025年の観測値です。</div>
+    建物の寸法と、エアコン・輻射パネルの台数・能力・位置は設計図の値です。窓の大きさ、断熱の仕様、比べる相手の「エアコンのみ」の能力、電気料金の単価、導入費用の差額は<b>仮の値</b>です。分かっている値に置き換えてください。</div>
 </section>
 
 <section>
   <h2>1　画面の見かた</h2>
   <figure class="w88">
     <div class="shot"><img src="img/main.jpg" alt="画面全体">
-      <span class="n" style="left:54.3%;top:2.7%">1</span>
-      <span class="n" style="left:11.8%;top:8.3%">2</span>
-      <span class="n" style="left:20.2%;top:27.8%">3</span>
-      <span class="n" style="left:50%;top:7.3%">4</span>
-      <span class="n" style="left:97.4%;top:7.3%">5</span>
-      <span class="n" style="left:61%;top:50%">6</span>
-      <span class="n" style="left:50.2%;top:14.6%">7</span>
-      <span class="n" style="left:34.3%;top:86.2%">8</span>
-      <span class="n" style="left:88.5%;top:86.6%">9</span>
-      <span class="n" style="left:61%;top:96%">10</span>
+      <span class="n" style="left:46.8%;top:2.7%">1</span><span class="n" style="left:70.1%;top:4.6%">2</span><span class="n" style="left:11.5%;top:6.9%">3</span><span class="n" style="left:20.2%;top:30.6%">4</span>
+      <span class="n" style="left:55.1%;top:7.3%">5</span><span class="n" style="left:96.2%;top:10.1%">6</span><span class="n" style="left:61.1%;top:55.2%">7</span><span class="n" style="left:50.4%;top:18.8%">8</span>
+      <span class="n" style="left:45.0%;top:86.2%">9</span><span class="n" style="left:88.5%;top:85.3%">10</span><span class="n" style="left:61.1%;top:96.0%">11</span>
     </div>
-    <figcaption>開いた直後の画面（真夏の午後・左右比較）</figcaption>
+    <figcaption>開いた直後の画面（中央体育館・真夏の午後・左右比較）</figcaption>
   </figure>
   <ul class="parts">
-    <li><span class="n">1</span><div><b>見出しと節約額</b><span>年間の節約額がいつも出ています。押すと内訳が開きます。右に「使い方」「画像にする」「保存」「読込」「前提と出典」。</span></div></li>
-    <li><span class="n">2</span><div><b>左のパネル</b><span>「見どころ・条件」「いまの値」「節約額」の3つを切り替えます。</span></div></li>
-    <li><span class="n">3</span><div><b>見どころ</b><span>5つのボタン。押すと日時・方式・色・視点がまとめて切り替わります。</span></div></li>
-    <li><span class="n">4</span><div><b>表示の切り替え</b><span>左から、パネルの開閉、画面（1画面／比較）、方式、色で見るもの、「表示」。</span></div></li>
-    <li><span class="n">5</span><div><b>大きく表示</b><span>3Dだけを画面いっぱいにします。</span></div></li>
-    <li><span class="n">6</span><div><b>3Dの比較画面</b><span>左が今の方式、右が ecowinハイブリッド。同じ視点・同じ時刻・同じ色の尺度です。</span></div></li>
-    <li><span class="n">7</span><div><b>方式名の札</b><span>体感温度、場所によるムラ、いちばん強い風、消費電力の4つの数字。</span></div></li>
-    <li><span class="n">8</span><div><b>色の凡例</b><span>床の色の意味。マウスを重ねると説明が出ます。</span></div></li>
-    <li><span class="n">9</span><div><b>視点</b><span>斜め・真上・客席から。</span></div></li>
-    <li><span class="n">10</span><div><b>時間の操作</b><span>再生、日付、時刻のつまみ、速さ、グラフ。</span></div></li>
+    <li><span class="n">1</span><div><b>年間の節約額</b><span>いつも出ています。押すと内訳が開きます。</span></div></li>
+    <li><span class="n">2</span><div><b>検証シート・画像・保存・読込</b><span>資料づくりと、条件の保存に使います。右端に「使い方」「前提と出典」。</span></div></li>
+    <li><span class="n">3</span><div><b>左のパネル</b><span>「見どころ・条件」「いまの値」「節約額」の3つを切り替えます。</span></div></li>
+    <li><span class="n">4</span><div><b>見どころ</b><span>6つのボタン。押すと日時・方式・色・視点がまとめて切り替わります。</span></div></li>
+    <li><span class="n">5</span><div><b>表示の切り替え</b><span>左から、パネルの開閉、画面（1画面／比較／断面図）、方式、色で見るもの、「表示」。</span></div></li>
+    <li><span class="n">6</span><div><b>拡大</b><span>3Dだけを画面いっぱいにします。</span></div></li>
+    <li><span class="n">7</span><div><b>3Dの比較画面</b><span>左が比べる相手、右が ecowinハイブリッド。同じ視点・時刻・色の尺度です。</span></div></li>
+    <li><span class="n">8</span><div><b>方式名の札</b><span>体感温度、場所によるムラ、いちばん強い風、消費電力の4つの数字。</span></div></li>
+    <li><span class="n">9</span><div><b>色の凡例</b><span>床の色の意味。緑が設定温度の付近、青が低い、赤が高い。</span></div></li>
+    <li><span class="n">10</span><div><b>視点</b><span>斜め・真上・客席から。</span></div></li>
+    <li><span class="n">11</span><div><b>時間の操作</b><span>再生、日付、時刻のつまみ、速さ、グラフ。</span></div></li>
   </ul>
-
+  <p>3Dの中では、南北の2階ギャラリーに白い箱（壁掛形エアコン）が8台ずつ並び、ecowin の画面ではその下に輻射パネルが付きます。色の付いた流線は空気の流れ、床の色は選んだ値の分布です。</p>
 </section>
 
 <section>
   <h2>2　まずは「見どころ」を順に押す</h2>
   <div class="side-text">
-    <div class="crop" style="height:88mm"><img src="img/scenes.jpg" alt="見どころのボタン"></div>
+    <div class="crop" style="height:96mm"><img src="img/scenes.jpg" alt="見どころのボタン"></div>
     <div>
       <p>左のパネルのいちばん上にあります。上から順に押すだけで、商談で見せたい場面がそろいます。</p>
       <table>
@@ -152,63 +136,62 @@ small { color: var(--ink3); }
         <tbody>
           <tr><td>1 真夏の午後、<br>空調がないと</td><td>最も暑い日の14時、空調なし、暑さ指数</td><td>熱中症の危険がある場所と時間</td></tr>
           <tr><td>2 夏：2つの方式を<br>並べる</td><td>同じ日時、左右比較、体感温度</td><td>同じ体感で、風が弱い</td></tr>
-          <tr><td>3 真冬の朝：<br>暖気はどこへ</td><td>最も寒い日の9時、断面、空気温度</td><td>温風が天井に溜まる差</td></tr>
-          <tr><td>4 風の強さを<br>比べる</td><td>真上から、風速</td><td>人の高さの風の強さの差</td></tr>
-          <tr><td>5 節約額を見る</td><td>左パネルが「節約額」に</td><td>電気代の差と回収年数</td></tr>
+          <tr><td>3 真冬の朝：<br>暖気はどこへ</td><td>最も寒い日の9時、3Dの断面、空気温度</td><td>温風が屋根の下に溜まる差</td></tr>
+          <tr><td>4 断面図と平面図<br>で見る</td><td>同じ日時を、2Dの断面図で</td><td>高さごとの温度と各地点の数値</td></tr>
+          <tr><td>5 風の強さを<br>比べる</td><td>真上から、風速</td><td>人の高さの風の強さの差</td></tr>
+          <tr><td>6 節約額を見る</td><td>左パネルが「節約額」に</td><td>電気代の差と回収年数</td></tr>
         </tbody>
       </table>
     </div>
   </div>
-  <div class="two">
-    <figure><img src="img/s1.jpg" alt="見どころ1"><figcaption>1　空調なしの真夏の午後。赤いほど暑さ指数が高い</figcaption></figure>
-    <figure><img src="img/s4.jpg" alt="見どころ4"><figcaption>4　真上から見た風速。左がエアコンのみ、右が ecowin</figcaption></figure>
+  <div class="three">
+    <figure><img src="img/s1.jpg" alt="見どころ1"><figcaption>1　空調なしの真夏の午後（暑さ指数）</figcaption></figure>
+    <figure><img src="img/s3.jpg" alt="見どころ3"><figcaption>3　真冬の朝の断面。上がエアコンのみ、下が ecowin</figcaption></figure>
+    <figure><img src="img/s4.jpg" alt="見どころ5"><figcaption>5　真上から見た風速</figcaption></figure>
   </div>
-  <figure class="w58"><img src="img/s3.jpg" alt="見どころ3"><figcaption>3　真冬の朝の断面。上がエアコンのみ、下が ecowin。上は温風が天井付近に溜まり、赤い層が厚くなります</figcaption></figure>
 </section>
 
 <section>
   <h2>3　比べる・色を変える・重ねて表示する</h2>
-  <p>3Dのすぐ上の1段で、何をどう見るかを決めます。</p>
   <table>
     <thead><tr><th>ボタン</th><th>できること</th></tr></thead>
     <tbody>
-      <tr><td>画面：1画面／比較</td><td>「比較」で、左に今の方式、右に ecowinハイブリッドが並びます。「1画面」では1つの方式を大きく見ます。</td></tr>
-      <tr><td>方式</td><td>比較のときは、左に出す方式を「空調なし」「エアコンのみ」から選びます。右は ecowin で固定です。<br>1画面のときは3つから選びます。</td></tr>
+      <tr><td>画面：1画面／比較／断面図</td><td>「比較」で左右に2つの方式が並びます。「断面図」は2Dの図面表示です（6章）。</td></tr>
+      <tr><td>方式</td><td>比較と断面図のときは、比べる相手を「空調なし」「エアコンのみ」から選びます。もう一方は ecowin で固定です。1画面のときは3つから選びます。</td></tr>
       <tr><td>色で見るもの</td><td>床の色を、体感温度・空気温度・放射温度・風速・暑さ指数から選びます。</td></tr>
-      <tr><td>表示</td><td>重ねて表示するものと、色を見る高さを選ぶ小さなパネルが開きます。</td></tr>
+      <tr><td>表示</td><td>重ねて表示するもの、温度の色の付け方、色を見る高さを選ぶ小さなパネルが開きます。</td></tr>
     </tbody>
   </table>
-
   <h3>色で見るものの意味</h3>
   <table>
     <thead><tr><th>項目</th><th>意味</th><th>色</th></tr></thead>
     <tbody>
-      <tr><td>体感温度</td><td>人が感じる温度。空気の温度と、床・壁・天井・パネルから受ける熱を合わせた値</td><td rowspan="3">青＝設定より寒い<br>灰＝設定どおり<br>赤＝設定より暑い</td></tr>
+      <tr><td>体感温度</td><td>人が感じる温度。空気の温度と、床・壁・天井・パネルから受ける熱を合わせた値</td><td rowspan="3">青→水色→緑→黄→赤。<br>緑が設定温度の付近。<br>線と線の間は 0.5〜1℃</td></tr>
       <tr><td>空気温度</td><td>空気そのものの温度</td></tr>
       <tr><td>放射温度</td><td>まわりの面から受ける熱を温度で表した値</td></tr>
       <tr><td>風速</td><td>選んだ高さでの風の強さ</td><td>濃い青ほど強い</td></tr>
       <tr><td>暑さ指数</td><td>熱中症の危険度（WBGT）。28以上は厳重警戒、31以上は危険</td><td>青→緑→黄→橙→赤</td></tr>
     </tbody>
   </table>
-
-  <h3>「表示」で重ねられるもの</h3>
+  <h3>「表示」で選べるもの</h3>
   <figure class="w66"><img src="img/viewpop.jpg" alt="表示のパネル"><figcaption>「表示」を押したところ。外側を押すか Esc キーで閉じます</figcaption></figure>
   <table>
-    <thead><tr><th>チップ</th><th>表示されるもの</th></tr></thead>
+    <thead><tr><th>項目</th><th>内容</th></tr></thead>
     <tbody>
       <tr><td>風の流れ</td><td>空気の流れに乗って漂う流線。暖かい空気は橙、冷たい空気は青</td></tr>
-      <tr><td>パネルの輻射</td><td>パネルの面からまっすぐ進む光の筋（冷房のときはパネルへ向かう向き）</td></tr>
-      <tr><td>空気の層</td><td>館内の空気温度を立体で重ねたもや。天井付近の暖気や吹出しの広がりが見えます</td></tr>
-      <tr><td>断面</td><td>館内を縦に切った面の空気温度。入れると視点が横からに変わります</td></tr>
-      <tr><td>人／床の色</td><td>人の表示、床の色分布の表示。床の色を切ると、色を重ねない体育館が見られます</td></tr>
+      <tr><td>パネルの輻射</td><td>パネルの面からまっすぐ進む光の筋</td></tr>
+      <tr><td>空気の層</td><td>館内の空気温度を立体で重ねたもや。屋根の下の暖気や吹出しの広がりが見えます</td></tr>
+      <tr><td>断面</td><td>3Dの中に、館内を縦に切った面の空気温度を立てます</td></tr>
+      <tr><td>人／床の色</td><td>人の表示、床の色分布の表示</td></tr>
+      <tr><td>温度の色の付け方</td><td>「虹色（細かく）」は青から赤までの段階表示。「青−灰−赤」は設定温度を灰色にした3色の表示</td></tr>
+      <tr><td>色を見る高さ</td><td>足元（0.1m）・腰（1.1m）・頭（1.7m）</td></tr>
     </tbody>
   </table>
-  <p><b>色を見る高さ</b>は、足元（0.1m）・腰（1.1m）・頭（1.7m）から選びます。</p>
 </section>
 
 <section class="flow">
   <h2>4　時間を動かす</h2>
-  <p>3Dの下の1行で、日付と時刻を動かします。1年分（2025年1月1日〜12月31日）のどの日時でも見られます。</p>
+  <p>3Dの下の1行で、日付と時刻を動かします。2025年の1年分のどの日時でも見られます。</p>
   <table>
     <thead><tr><th>部品</th><th>できること</th></tr></thead>
     <tbody>
@@ -216,23 +199,18 @@ small { color: var(--ink3); }
       <tr><td>＜　日付　＞</td><td>前の日・次の日へ。日付を押すと、日付の指定と「最も暑い日」「最も寒い日」が開きます。</td></tr>
       <tr><td>時刻のつまみ</td><td>0時から24時まで、その日の時刻を動かします。</td></tr>
       <tr><td>速さ</td><td>1秒で進む時間を、3分・5分・10分・30分・1時間・6時間から選びます。</td></tr>
-      <tr><td>グラフ</td><td>年間マップと1日の推移を出します。</td></tr>
+      <tr><td>グラフ</td><td>年間マップ（なぞると日時が変わります）と、1日の推移を出します。</td></tr>
     </tbody>
   </table>
   <div class="two">
     <figure><img src="img/datepop.jpg" alt="日付のパネル"><figcaption>日付を押したところ</figcaption></figure>
     <figure><img src="img/speedpop.jpg" alt="速さのパネル"><figcaption>「速さ」を押したところ</figcaption></figure>
   </div>
-  <h3>グラフ（年間マップと1日の推移）</h3>
-  <figure><img src="img/charts.jpg" alt="年間マップと1日の推移"><figcaption>「グラフ」を入れたところ</figcaption></figure>
-  <ul>
-    <li><b>年間マップ</b>：横が1月から12月、縦が0時から24時です。青は設定より寒い、赤は設定より暑い時間です。<b>なぞると、その日時に切り替わります。</b></li>
-    <li><b>1日の推移</b>：選んだ日の体感温度を、外気温・空調なし・エアコン・ecowin で比べます。網かけは空調の運転時間です。なぞると時刻が変わります。</li>
-  </ul>
+  <figure><img src="img/charts.jpg" alt="年間マップと1日の推移"><figcaption>「グラフ」を入れたところ。左が年間マップ（横が1〜12月、縦が0〜24時）、右が1日の推移</figcaption></figure>
 </section>
 
 <section>
-  <h2>5　3Dを動かす・場所の値を見る・パネルを置き換える</h2>
+  <h2>5　3Dを動かす・場所の値を見る・パネルを動かす</h2>
   <table>
     <thead><tr><th>やりたいこと</th><th>操作</th></tr></thead>
     <tbody>
@@ -240,65 +218,124 @@ small { color: var(--ink3); }
       <tr><td>拡大・縮小</td><td>マウスのホイール（スマホやタブレットは2本指）</td></tr>
       <tr><td>決まった視点にする</td><td>右下の「視点」：斜め・真上・客席から</td></tr>
       <tr><td>ある場所の値を見る</td><td>床をクリック。吹き出しに、その場所の体感温度・空気温度・放射温度・風速・暑さ指数が出ます</td></tr>
-      <tr><td>パネルを動かす</td><td>右側（ecowin）の3Dで、パネルをドラッグ</td></tr>
+      <tr><td>パネルを動かす</td><td>ecowin の画面（比較のときは右側）で、パネルをドラッグ</td></tr>
       <tr><td>パネルの向きを変える</td><td>パネルをダブルクリック（90°回転）</td></tr>
     </tbody>
   </table>
   <figure><img src="img/probe.jpg" alt="床をクリックしたところ"><figcaption>床をクリックしたところ。比較のときは、同じ場所の2つの方式の値が並びます</figcaption></figure>
   <div class="box"><b class="t">パネルを動かすと</b>
     動かしている間も床の色が変わり、離すと年間の電気代や節約額も計算し直されます。置き方の表示は「ドラッグで変更済み」になります。台数のつまみを動かすと、決まった並べ方に戻ります。</div>
-  <p>パネルの輻射は、パネルの正面に近いほど強く効きます。人が集まる場所（ベンチ、観覧席の前、コートの脇）に寄せると、その場所の体感温度が変わる様子を見せられます。</p>
 </section>
 
 <section>
-  <h2>6　条件を変える</h2>
-  <p>左のパネルの「見どころ・条件」を下へ送ると、建物・使い方・パネル・電気料金を変えられます。変えると、3Dと年間の結果がすぐに計算し直されます。</p>
-  <div class="two">
-    <div class="crop" style="height:150mm"><img src="img/cond1.jpg" alt="建物と使い方"></div>
-    <div class="crop" style="height:150mm"><img src="img/cond2.jpg" alt="パネルと電気料金"></div>
-  </div>
-  <table>
-    <thead><tr><th>項目</th><th>内容</th></tr></thead>
-    <tbody>
-      <tr><td>地域</td><td>気象データ。東京都練馬区は2025年の観測値、ほかは合成した気象です</td></tr>
-      <tr><td>断熱性能</td><td>低（既存・断熱なし）／中（一部改修）／高（新築・改修済み）</td></tr>
-      <tr><td>利用人数・活動</td><td>人の発熱と換気量に反映されます</td></tr>
-      <tr><td>空調の時刻・設定温度</td><td>運転を始める時刻と止める時刻、冬と夏の設定温度</td></tr>
-      <tr><td>パネルの台数・置き方</td><td>0〜120台。置き方は3通りの図から選びます</td></tr>
-      <tr><td>予熱運転</td><td>ecowin だけ、運転開始を1〜2時間早めます（冬の朝の立ち上がりを補います）</td></tr>
-      <tr><td>電気料金</td><td>電力量の単価と基本料金。節約額の計算に使います</td></tr>
-    </tbody>
-  </table>
-</section>
-
-<section>
-  <h2>7　いまの値と「ecowinの強み」</h2>
-  <div class="side-text">
-    <div class="crop" style="height:176mm"><img src="img/now.jpg" alt="いまの値"></div>
+  <h2>6　断面図と検証シート</h2>
+  <h3>断面図（画面で見る）</h3>
+  <p>上の「画面」で「断面図」を選ぶか、見どころ 4 を押します。再生や日付の変更にも追従します。</p>
+  <figure><img src="img/sheet.jpg" alt="断面図"><figcaption>断面図。上段が A−A 断面の空気温度、下段が選んだ高さの平面、右が高さごとの空気温度</figcaption></figure>
+  <ul>
+    <li><b>A−A 断面</b>：エアコンを通る断面の空気温度です。床上1.5mの3地点と、屋根の下の温度が数字で出ます。</li>
+    <li><b>平面</b>：「色で見るもの」で選んだ値です。9地点の数字が出ます。赤い線が断面の位置です。</li>
+    <li><b>高さごとの空気温度</b>：館内の平均を高さごとに結んだ線です。屋根の下と人の高さの差が数字で出ます。</li>
+  </ul>
+  <div class="side-text wide">
+    <div><figure style="margin:0"><img src="img/report.jpg" alt="検証シート"><figcaption>検証シート（縦1枚）</figcaption></figure></div>
     <div>
-      <p>左のパネルの「いまの値」には、選んでいる日時の値が出ます。</p>
-      <h3>ecowinの強み</h3>
-      <p>エアコンのみと並べた棒グラフです。ecowin のほうが小さい項目に、青い印と何%小さいかが付きます。差が無いときは「ほぼ同じ」と出ます。</p>
+      <h3 style="margin-top:0">検証シート（資料として渡す）</h3>
+      <p>右上の「検証シート」を押すと、いまの日時・条件で縦1枚の画像を作ります。「画像を保存」で保存できます。</p>
       <table>
-        <thead><tr><th>項目</th><th>意味</th></tr></thead>
         <tbody>
-          <tr><td>風の強さ</td><td>弱いほど、羽根やボールが流されにくい</td></tr>
-          <tr><td>場所による<br>温度のムラ</td><td>小さいほど、どこにいても同じ体感</td></tr>
-          <tr><td>天井付近に<br>たまる熱</td><td>腰の高さとの空気温度の差。小さいほど無駄が少ない</td></tr>
-          <tr><td>消費電力</td><td>その瞬間に使っている電力</td></tr>
-          <tr><td>体感温度</td><td>2つの方式は、同じ体感になるように運転しています</td></tr>
+          <tr><td>見出し</td><td>空調方式と、比べる相手</td></tr>
+          <tr><td>KEY PLAN</td><td>室内機の位置と吹出しの向き、断面の位置</td></tr>
+          <tr><td>仕様表</td><td>空調設備の能力と台数、建物の寸法・断熱・使い方・気象</td></tr>
+          <tr><td>温度分布</td><td>CASE1（比べる相手）と CASE2（ecowin）の、A−A 断面と床上1.5mの空気温度</td></tr>
+          <tr><td>説明文</td><td>中央部と周辺部の温度、ばらつき、屋根の下との温度差、風の強さ。数字はその時刻の計算結果から自動で入ります</td></tr>
+          <tr><td>年間の比較</td><td>最大需要電力と消費電力量の低減率、電気代</td></tr>
         </tbody>
       </table>
-      <div class="box"><b class="t">差が出やすい場面</b>
-        冬（見どころ 3）は、風・ムラ・天井付近の熱・消費電力のすべてで差が出ます。真夏のいちばん暑い時間は、風の強さ以外の差が小さくなります。</div>
-      <h3>いまの時刻の値</h3>
-      <p>空調なし・エアコン・ecowin の3つを並べた表です。体感温度、空気温度、天井付近の空気、屋根の内側の表面、暑さ指数、いちばん強い風、消費電力が出ます。</p>
+      <div class="box"><b class="t">使い分け</b>夏と冬で1枚ずつ作ると、季節ごとの違いを並べて渡せます。先に見どころ 2（夏）や 3（冬）で日時を合わせてから「検証シート」を押してください。</div>
     </div>
   </div>
 </section>
 
 <section>
-  <h2>8　節約額シミュレーション</h2>
+  <h2>7　条件を変える</h2>
+  <p>左のパネルの「見どころ・条件」を下へ送ると、建物・使い方・パネル・比べるエアコン・電気料金を変えられます。変えると、3Dと年間の結果がすぐに計算し直されます。</p>
+  <div class="three">
+    <div class="crop" style="height:128mm"><img src="img/cond1.jpg" alt="建物"></div>
+    <div class="crop" style="height:128mm"><img src="img/cond2.jpg" alt="使い方とパネル"></div>
+    <div class="crop" style="height:128mm"><img src="img/cond3.jpg" alt="比べるエアコンと電気料金"></div>
+  </div>
+  <table>
+    <thead><tr><th>項目</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td>建物</td><td>中央体育館／日出中学校。切り替えると画面を読み直して、3Dを作り直します</td></tr>
+      <tr><td>地域</td><td>気象データ。「大分」は日出町に最も近い気象台の2025年の観測値です</td></tr>
+      <tr><td>断熱性能</td><td>低・中・高の目安か、「図面・仕様書から入力」（8章）</td></tr>
+      <tr><td>利用人数・活動</td><td>人の発熱と換気量に反映されます</td></tr>
+      <tr><td>空調の時刻・設定温度</td><td>運転を始める時刻と止める時刻、冬と夏の設定温度</td></tr>
+      <tr><td>パネルの台数・置き方</td><td>設計図は16台・2階ギャラリー。1階の壁際に下ろした場合も選べます（9章）</td></tr>
+      <tr><td>予熱運転</td><td>ecowin だけ、運転開始を1〜2時間早めます</td></tr>
+      <tr><td>比べるエアコン</td><td>「エアコンのみ」の能力と効率（COP）。「自動」は設計図の能力を 0.7 で割り戻した値です。比べたい機種が決まっていれば、その値を入れてください</td></tr>
+      <tr><td>電気料金</td><td>電力量の単価と基本料金</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>8　建物の仕様を図面から入れる</h2>
+  <p>断熱性能で「図面・仕様書から入力」を選ぶと開きます。図面や仕様書にある材料と厚さを入れると、熱の通しやすさ（U値）を求めて計算に使います。</p>
+  <figure class="w88"><img src="img/spec.jpg" alt="建物の仕様"><figcaption>建物の仕様の入力。屋根に断熱材と遮熱シートを足した例</figcaption></figure>
+  <ol class="steps">
+    <li><span><b>屋根・天井、外壁</b>：外側から室内側へ、材料と厚さ（mm）の層を並べます。「＋ 層を追加」で増やせます。右上に U値が出ます。</span></li>
+    <li><span><b>屋根の遮熱</b>：なし／遮熱塗装／遮熱シートから選びます。</span></li>
+    <li><span><b>窓</b>：単板、単板＋遮熱フィルム、複層、Low-E 複層から選びます。</span></li>
+    <li><span><b>すきま風</b>：1時間に空気が入れ替わる回数を増減します。</span></li>
+    <li><span><b>この仕様で計算する</b> を押すと、3Dと年間の結果に反映されます。</span></li>
+  </ol>
+  <ul>
+    <li><b>図面の画像</b>：控えとして添えられます（計算には使いません）。PDFの図面は画像にしてから選びます。</li>
+    <li><b>仕様データ</b>：「仕様データを書き出す」でファイルに保存でき、次回は読み込むだけで同じ仕様に戻せます。</li>
+    <li>下の表で、入力した仕様と、目安の「低・中・高」の値を見比べられます。</li>
+  </ul>
+  <h3>取り込んだ設計資料を見る</h3>
+  <p>「建物」の欄の「取り込んだ設計資料を見る」を押すと、設計書と設計図から読み取った3施設の機器（エアコンの能力と台数、輻射パネルの寸法と台数、冷媒管の長さなど）の一覧が開きます。</p>
+</section>
+
+<section>
+  <h2>9　パネルの置き方を比べる</h2>
+  <p>「ecowinパネル」の欄の「置き方を比べる（年間の結果）」を押すと、同じ台数のパネルを置き方だけ変えて1年分を計算し、表にします。</p>
+  <figure><img src="img/layout.jpg" alt="置き方の比較"><figcaption>設計図どおりの2階ギャラリーと、1階の壁際に下ろした場合の比較</figcaption></figure>
+  <table>
+    <thead><tr><th>列</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td>人から見えるパネルの割合</td><td>腰の高さから見て、まわりの面のうちパネルが占める割合（館内平均）。大きいほど輻射が人に届きます</td></tr>
+      <tr><td>冬・夏の体感</td><td>空調が立ち上がったあとの運転時間の平均</td></tr>
+      <tr><td>年間の消費電力量、エアコンのみとの差</td><td>ecowin の値と、エアコンのみに対する増減</td></tr>
+      <tr><td>最大需要電力</td><td>基本料金のもとになる値</td></tr>
+    </tbody>
+  </table>
+  <div class="box warn"><b class="t">読み方</b>
+    設計図どおりの配置では、パネルが人から遠く、人から見える割合は館内平均で 0.5% ほどです。1階の壁際に下ろすと約2倍になりますが、それでも1%前後です。パネルをドラッグして人の近くに寄せた配置も、同じ表で比べられます（いまの配置の行が加わります）。</div>
+  <h2 style="margin-top:8mm">10　いまの値と「ecowinの強み」</h2>
+  <div class="side-text">
+    <div class="crop" style="height:92mm"><img src="img/now.jpg" alt="いまの値"></div>
+    <div>
+      <p>左のパネルの「いまの値」に、選んでいる日時の値が出ます。上の「ecowinの強み」は、エアコンのみと並べた棒グラフです。ecowin のほうが小さい項目に、青い印と何%小さいかが付きます。差が無いときは「ほぼ同じ」と出ます。</p>
+      <table>
+        <tbody>
+          <tr><td>風の強さ</td><td>弱いほど、羽根やボールが流されにくい</td></tr>
+          <tr><td>場所による温度のムラ</td><td>小さいほど、どこにいても同じ体感</td></tr>
+          <tr><td>屋根の下にたまる熱</td><td>腰の高さとの空気温度の差</td></tr>
+          <tr><td>消費電力</td><td>その瞬間に使っている電力</td></tr>
+          <tr><td>体感温度</td><td>同じ体感になるように運転しています</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>11　節約額シミュレーション</h2>
   <div class="side-text">
     <div class="crop" style="height:200mm"><img src="img/save.jpg" alt="節約額"></div>
     <div>
@@ -307,14 +344,14 @@ small { color: var(--ink3); }
       <table>
         <thead><tr><th>選び方</th><th>意味</th></tr></thead>
         <tbody>
-          <tr><td>この計算の値</td><td>この画面の条件（建物・気象・使い方・パネル配置）で計算した削減率</td></tr>
+          <tr><td>この計算の値</td><td>この画面の条件で計算した削減率</td></tr>
           <tr><td>メーカー最大</td><td>メーカー公表の最大値 34%（高性能エアコン単体との比較）</td></tr>
           <tr><td>自分で決める</td><td>つまみで 1〜34% の範囲から選ぶ</td></tr>
         </tbody>
       </table>
       <h3>入力する金額</h3>
       <ul>
-        <li><b>導入費用の差額</b>：ecowinハイブリッド − エアコンのみ。<b>見積の値に必ず置き換えてください</b>（初期値の1,500万円は仮の値です）。</li>
+        <li><b>導入費用の差額</b>：ecowinハイブリッド − エアコンのみ。<b>見積の値に必ず置き換えてください</b>（初期値は仮の値です）。</li>
         <li><b>保守費の差（年）</b>：ecowin が安くなる分。</li>
       </ul>
       <h3>出てくる結果</h3>
@@ -328,88 +365,64 @@ small { color: var(--ink3); }
           <tr><td>CO2の削減</td><td>年間の削減量と、杉の木に換算した本数</td></tr>
         </tbody>
       </table>
-      <p>下のグラフは、節約額が年ごとに積み上がる様子です。0の線を越える点が回収の時期です。</p>
-      <p><small>節約額の下には、年間の消費電力量・最大需要電力・料金の内訳と、月ごとの消費電力量のグラフがあります。</small></p>
+      <div class="box"><b class="t">中央体育館・初期条件での値</b>
+        計算値では、消費電力量の削減は 2%、最大需要電力は 97kW → 67kW で、節約額は年 約44万円（大半が基本料金）です。「メーカー最大」を選ぶと年 約106万円になります。どちらの前提で話すかを決めてから見せてください。</div>
     </div>
   </div>
 </section>
 
 <section>
-  <h2>9　大きく表示・画像にする・保存と読込</h2>
-  <h3>大きく表示</h3>
-  <p>3Dの右上の「大きく表示」を押すと、見出しと左のパネルが消え、3Dが画面いっぱいになります。「元に戻す」で戻ります。表示の切り替えと時間の操作は、そのまま使えます。</p>
-  <h3>画像にする</h3>
-  <p>右上の「画像にする」を押すと、いまの3D表示に日時・条件・凡例を添えた画像ができます。「画像を保存」を押すか、画像を右クリックして保存し、提案資料に貼ってください。</p>
+  <h2>12　拡大・画像・保存と読込</h2>
   <div class="two">
-    <figure><img src="img/focus.jpg" alt="大きく表示"><figcaption>「大きく表示」にしたところ</figcaption></figure>
-    <figure><img src="img/export.jpg" alt="画像にする"><figcaption>「画像にする」を押したところ</figcaption></figure>
+    <figure><img src="img/focus.jpg" alt="拡大"><figcaption>「拡大」にしたところ</figcaption></figure>
+    <figure><img src="img/export.jpg" alt="画像"><figcaption>「画像」を押したところ</figcaption></figure>
   </div>
-  <h3>保存と読込</h3>
   <ul>
-    <li><b>保存</b>：条件、日時、表示の設定、パネルの位置を、そのブラウザの中に保存します。</li>
-    <li><b>読込</b>：保存した状態に戻します。</li>
-    <li>保存先はそのパソコンのそのブラウザだけです。ほかのパソコンには引き継がれません。</li>
+    <li><b>拡大</b>：3Dの右上。見出しと左のパネルが消え、3Dが画面いっぱいになります。「戻す」で戻ります。</li>
+    <li><b>画像</b>：いまの3D表示（または断面図）に、日時・条件・凡例を添えた画像を作ります。</li>
+    <li><b>検証シート</b>：縦1枚のレポートを作ります（6章）。</li>
+    <li><b>保存・読込</b>：条件、日時、表示の設定、パネルの位置、建物の仕様を、そのブラウザの中に保存し、あとで戻せます。ほかのパソコンには引き継がれません。建物（中央体育館／日出中学校）ごとに保存し直してください。</li>
   </ul>
+
+  <h2 style="margin-top:8mm">13　商談での進め方の例</h2>
+  <ol class="steps">
+    <li><span><b>見どころ 1</b>：真夏の午後、空調がない体育館。赤い範囲が「危険」の暑さ指数です。</span></li>
+    <li><span><b>見どころ 2</b>：同じ日時で、エアコンのみと ecowin を並べます。札の数字で、体感と風の強さを示します。</span></li>
+    <li><span><b>見どころ 5</b>：真上から風速を見せます。エアコンのみは吹出しの先に強い風の帯ができます。</span></li>
+    <li><span><b>見どころ 3・4</b>：真冬の朝。屋根の下に溜まる暖気の差を、3Dの断面と断面図で見せます。</span></li>
+    <li><span><b>床をクリック</b>：相手が気にしている場所の値を見せます。</span></li>
+    <li><span><b>見どころ 6</b>：節約額。導入費用の差額に見積の値を入れ、回収までの年数を見せます。</span></li>
+    <li><span><b>検証シート</b>：夏と冬で1枚ずつ作り、資料として渡します。</span></li>
+  </ol>
 </section>
 
 <section>
-  <h2>10　商談での進め方の例</h2>
-  <p>10分ほどで、課題から効果、金額まで見せる流れです。事前に「大きく表示」にしておくと、3Dが見やすくなります。</p>
-  <ol class="steps">
-    <li><span><b>見どころ 1</b>：真夏の午後、空調がない体育館。赤い範囲が「危険」の暑さ指数です。再生すると、朝から夕方まで危険な時間が続く様子が見えます。</span></li>
-    <li><span><b>見どころ 2</b>：同じ日時で、エアコンのみと ecowin を並べます。札の数字で「体感は同じ、風は約3分の1」を示します。</span></li>
-    <li><span><b>見どころ 4</b>：真上から風速を見せます。エアコンのみは吹出しの下に強い風の帯ができます。バドミントンや卓球を使う施設で有効です。</span></li>
-    <li><span><b>見どころ 3</b>：真冬の朝の断面。エアコンのみは温風が天井付近に溜まります。「いまの値」の「ecowinの強み」で、天井付近の熱と消費電力の差を数字で示します。</span></li>
-    <li><span><b>床をクリック、パネルをドラッグ</b>：相手が気にしている場所（ベンチ、観覧席の前）の値を見せ、パネルを寄せるとどう変わるかを試します。</span></li>
-    <li><span><b>見どころ 5</b>：節約額。導入費用の差額に見積の値を入れ、回収までの年数と積み上がりのグラフを見せます。</span></li>
-    <li><span><b>画像にする</b>：見せた場面を画像にして、あとで資料として渡します。</span></li>
-  </ol>
-  <div class="box"><b class="t">初期の条件で出る数字（東京都練馬区・断熱「低」・80人・パネル72台・予熱1時間）</b>
-    年間の消費電力量 −21%（エアコンのみ 240MWh）　／　電気代 770万円 → 629万円　／　年間の節約額 約142万円（メーカー最大の 34% を選ぶと 約209万円）<br>
-    真冬の朝（2月20日9時）：風 1.7 → 0.6m/s、天井付近にたまる熱 4.8 → 1.3℃、消費電力 156 → 107kW</div>
-
-  <h2 style="margin-top:8mm">11　説明するときの注意</h2>
+  <h2>14　説明するときの注意</h2>
   <ul>
-    <li><b>推計値です。</b>画面の数値はすべて簡易モデルによる推計で、実測値や保証値ではありません。</li>
-    <li><b>建物は想定の寸法です。</b>写真をもとに、アリーナ 46m × 38m、屋内全体 56m × 48m、天井高 12.5m と置いています。図面があれば置き換えられます。</li>
-    <li><b>同じ体感で比べています。</b>ecowin は、エアコンだけで設定温度にしたときと同じ体感になるように運転する前提です。</li>
-    <li><b>冬の朝の立ち上がりは ecowin のほうが遅く出ます。</b>能力を70%としているためで、予熱運転で補う想定です。</li>
-    <li><b>流線は見た目の表現です。</b>3Dの中の流れは表示用で、床の色の風速や電気代の計算とは別です。風は近似で、詳細な気流解析ではありません。</li>
-    <li><b>日射量は観測値ではありません。</b>練馬の気温・湿度・風速は気象庁の観測値、日射量は再解析の値です。</li>
-    <li><b>仮の値があります。</b>冷房時のパネル表面温度（15℃）、電気料金の単価、導入費用の差額は仮の値です。</li>
+    <li><b>推計値です。</b>画面の数値はすべて簡易モデルによる推計で、実測値や保証値ではありません。風と温度の分布は噴流の近似式によるもので、3次元の気流解析（CFD）ではありません。</li>
+    <li><b>この建物の計算では、消費電力量の差は小さく出ます。</b>中央体育館・断熱「低」で 2%、「中」で 5%、「高」で 12% です。差が大きいのは最大需要電力（約3割）と風の強さです。メーカー公表の最大 34% とは開きがあります。</li>
+    <li><b>理由は、パネルの位置です。</b>設計図では、パネルが2階ギャラリーにあり、人から遠く小さく見えます。輻射で体感が変わる分は、館内平均ではごく小さくなります。</li>
+    <li><b>比べる相手の能力は仮定です。</b>「エアコンのみ」は、設計図の能力を 0.7 で割り戻した値です。この置き方で最大需要電力の差が決まります。比べる機種が決まっていれば、その値を入れてください。</li>
+    <li><b>冬の朝は ecowin の立ち上がりが遅く出ます。</b>能力が小さいためです。予熱運転（1〜2時間前から）で補えますが、その分の電力は増えます。</li>
+    <li><b>断熱の仕様は設計図にありません。</b>低・中・高の目安か、仕様書の値を入れて使ってください。窓の大きさも立面図からの目安です。</li>
+    <li><b>日出中学校の屋根は、平均の高さの箱として扱っています。</b>大きな寄棟屋根の形は、熱の計算には入っていません。小体育館（天吊形2台）も対象外です。</li>
+    <li><b>流線は見た目の表現です。</b>3Dの中の流れは表示用で、床の色の風速や電気代の計算とは別です。</li>
   </ul>
   <p>計算の前提と出典は、画面右上の「前提と出典」と、<code>docs/calc_logic_gym.md</code> にまとめています。</p>
-</section>
 
-<section>
-  <h2>12　困ったとき</h2>
+  <h2 style="margin-top:8mm">15　困ったとき</h2>
   <table>
     <thead><tr><th>こんなとき</th><th>対処</th></tr></thead>
     <tbody>
-      <tr><td>動きが重い・カクつく</td><td>「表示」で「空気の層」を切ってください。それでも重いときは「風の流れ」も切ります。比較をやめて「1画面」にすると、さらに軽くなります。</td></tr>
-      <tr><td>「空気の層」が押せない</td><td>その端末のブラウザが対応していません。ほかの表示はそのまま使えます。</td></tr>
-      <tr><td>3Dが出ない</td><td>ブラウザを Chrome か Edge の新しい版にしてください。出ない場合でも、グラフと数値は使えます。</td></tr>
-      <tr><td>視点が分からなくなった</td><td>右下の「視点」で「斜め」を押すと戻ります。</td></tr>
-      <tr><td>条件を変えすぎた</td><td>ページを再読み込みすると、初期の状態に戻ります。「保存」しておいた状態は「読込」で戻せます。</td></tr>
+      <tr><td>動きが重い・カクつく</td><td>「表示」で「空気の層」を切ってください。それでも重いときは「風の流れ」も切り、「1画面」にします。</td></tr>
+      <tr><td>3Dが出ない</td><td>ブラウザを Chrome か Edge の新しい版にしてください。断面図と検証シート、数値は使えます。</td></tr>
+      <tr><td>条件を変えすぎた</td><td>ページを再読み込みすると、初期の状態に戻ります。</td></tr>
       <tr><td>パネルをつかめない</td><td>パネルは ecowin の画面（比較のときは右側）でだけ動かせます。</td></tr>
-      <tr><td>日付が「08/05/2025」と出る</td><td>ブラウザの言語設定によります。日付のボタンには「8月5日」と出ます。</td></tr>
-      <tr><td>画像が保存できない</td><td>画像を右クリック（スマホは長押し）して保存してください。</td></tr>
-      <tr><td>操作の説明の帯を消したい</td><td>帯の右の × を押すと、次回から出ません。</td></tr>
+      <tr><td>建物を切り替えたら条件が戻った</td><td>切り替えるとページを読み直すためです。条件は建物ごとに入れ直すか、「保存」しておきます。</td></tr>
+      <tr><td>画像やファイルが保存できない</td><td>画像は右クリック（スマホは長押し）で保存できます。仕様データは、表示された文字をコピーして保存できます。</td></tr>
     </tbody>
   </table>
-
-  <h3>キーボードでの操作</h3>
-  <table>
-    <tbody>
-      <tr><td><span class="key">スペース</span></td><td>再生・停止</td></tr>
-      <tr><td><span class="key">←</span> <span class="key">→</span></td><td>1時間戻す・進める</td></tr>
-      <tr><td><span class="key">Shift</span> ＋ <span class="key">←</span> <span class="key">→</span></td><td>1日戻す・進める</td></tr>
-      <tr><td><span class="key">Esc</span></td><td>開いている小さなパネルを閉じる</td></tr>
-    </tbody>
-  </table>
-
-  <h3>3つの方式の色</h3>
-  <p><span class="dot" style="background:#7d8792"></span>空調なし　　<span class="dot" style="background:var(--ac)"></span>エアコンのみ　　<span class="dot" style="background:var(--eco)"></span>ecowinハイブリッド　（グラフ・表・札で共通です）</p>
+  <p><b>キーボード</b>：<span class="key">スペース</span> 再生・停止　<span class="key">←</span> <span class="key">→</span> 1時間　<span class="key">Shift</span>＋<span class="key">←</span> <span class="key">→</span> 1日　<span class="key">Esc</span> 小さなパネルを閉じる</p>
 </section>
 
 </body>
