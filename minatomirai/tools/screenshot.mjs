@@ -129,6 +129,15 @@ await shot('44_people_real', `a.applyTheme('real'); a.setClock(8.5); a.camera.po
   await shot('91_isochrone', `a.analysis().set({ layer: 'access', style: 'contour' }); a.camera.position.set(100, 2500, 700); a.controls.target.set(100, 0, 20);`);
   await shot('93_flows', `const an = a.analysis(); an.set({ layer: 'none', style: 'flat' }); a.selectByName('MARK IS'); an.set({ flows: true }); a.camera.position.set(-760, 620, 900); a.controls.target.set(60, 40, 160);`);
   await page.evaluate(() => { const a = window.__app; a.analysis().set({ flows: false }); a.select(-1); a.people().set({ vol: true, agents: true }); }); }
+// 追加の描き方と指標: 六角形・点密度・上位の範囲・混雑度の面・待ち人数・モデルの当てはまり
+{ const OBL = `a.camera.position.set(-560, 760, 900); a.controls.target.set(40, 0, 120);`, TOP = `a.camera.position.set(100, 2300, 600); a.controls.target.set(100, 0, 40);`;
+  await shot('96_hex', `const an = a.analysis(), p = a.people(); a.applyTheme('paper'); a.setClock(12.5); p.set({ vol: false, agents: false }); an.set({ layer: 'stay', style: 'hex', bmetric: 'none', diff: 'none', split: false }); ${OBL}`);
+  await shot('97_dots', `a.analysis().set({ layer: 'ped', style: 'dots' }); a.camera.position.set(-300, 520, 620); a.controls.target.set(20, 0, 160);`);
+  await shot('98_hot', `a.analysis().set({ layer: 'arrCar', style: 'hot' }); ${TOP}`);
+  await shot('99_los', `a.setClock(8.5); a.analysis().set({ layer: 'los', style: 'flat' }); ${TOP}`);
+  await shot('99b_wait', `a.setClock(18.25); a.analysis().set({ layer: 'wait', style: 'bars' }); ${OBL}`);
+  await shot('99c_fit', `a.analysis().set({ layer: 'fit', style: 'flat' }); ${TOP}`);
+  await page.evaluate(() => { const a = window.__app; a.analysis().set({ layer: 'none', style: 'flat' }); a.people().set({ vol: true, agents: true }); }); }
 // ガイドツアー: 各場面へ切り替えた直後の 3D 表示 (説明文の箱は 09_ui と同じく DOM なのでここには写らない)
 { const n = await page.evaluate(() => window.__app.tour().scenes.length);
   for (let i = 0; i < n; i++) { await page.evaluate(i => { const a = window.__app; a.paused = true; a.tour().start(i, true); }, i); await shot(`tour_${String(i + 1).padStart(2, '0')}`, ``); }

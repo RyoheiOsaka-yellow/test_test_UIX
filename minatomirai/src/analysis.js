@@ -10,6 +10,7 @@ import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeome
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { WALK_SPEED } from './people_model.js';
 import { LOS, SIG_CYCLE, SIG_GREEN } from './people.js';
+import { initViz } from './viz.js';
 
 const BOX = [-1300, -1350, 1500, 1200], CELL = 10, NX = (BOX[2] - BOX[0]) / CELL, NY = (BOX[3] - BOX[1]) / CELL;
 const RAMPS = {
@@ -17,6 +18,7 @@ const RAMPS = {
   dark: ['#2a0a6b', '#5c01a6', '#9c179e', '#cc4778', '#ed7953', '#fdb42f', '#f0f921'],
   access: ['#1a9850', '#66bd63', '#a6d96a', '#fee08b', '#fdae61', '#f46d43', '#d73027'],
   water: ['#deebf7', '#9ecae1', '#6baed6', '#3182bd', '#08519c', '#08306b'],
+  los: ['#5b8fd9', '#16c2c9', '#7ed957', '#ffd84a', '#ff7326', '#ff2a30'],
 };
 const USE = { res: ['住宅', '#6fdc7a'], off: ['業務', '#4da3ff'], tower: ['高層ビル', '#7fa8e8'], ret: ['商業', '#ffb347'], hot: ['宿泊', '#c58bff'], att: ['集客施設', '#ff6f91'], pub: ['公共・教育・医療', '#2fb27a'], sta: ['駅', '#ffd84a'], mix: ['不明', '#b0b7c3'], extra: ['架空ビル', '#e040fb'] };
 const hexRGB = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -88,6 +90,15 @@ export function initAnalysis(ctx) {
   let accessCache = null;
   const nodeMinutes = () => { if (accessCache && accessCache.m === people.model) return accessCache.v; const N = graph.nodes.length, v = new Float32Array(N).fill(Infinity); for (const st of people.model.stations) for (let i = 0; i < N; i++) if (st.out.dist[i] < v[i]) v[i] = st.out.dist[i]; for (let i = 0; i < N; i++) v[i] = v[i] / WALK_SPEED / 60; accessCache = { m: people.model, v }; return v; };
 
+  // 目的地 (建物) の値を、その建物の範囲の升目へ広げる (人/ha)
+  const spreadDest = (v, d, val) => { const bb = buildingMeta[d.b]?.bb; if (!bb || val <= 0) return; const x0 = Math.max(0, Math.floor((bb[0] / 10 - BOX[0]) / CELL)), x1 = Math.min(NX - 1, Math.floor((bb[2] / 10 - BOX[0]) / CELL)), y0 = Math.max(0, Math.floor((bb[1] / 10 - BOX[1]) / CELL)), y1 = Math.min(NY - 1, Math.floor((bb[3] / 10 - BOX[1]) / CELL)), n = (x1 - x0 + 1) * (y1 - y0 + 1); if (n <= 0) return; const add = val / n * 100; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) v[y * NX + x] += add; };
+  // 発着点 (駅・駐車場・バス停・外周) ごとの 1 日の到着人数を、行き先の建物別に出す
+  const dailyOf = (c, d) => { let t = 0; for (let h = 0.25; h < 24; h += 0.5) t += c.rate(h, d) * 0.5; return t; };
+  function arriveBy(q, pred) {
+    const v = new Float32Array(NX * NY), m = q.model, per = new Float32Array(m.dests.length);
+    for (const c of m.classes) { if (c.dir !== 'out' || c.station == null || !c.share || !pred(m.stations[c.station])) continue; const t = dailyOf(c, q.day); if (t <= 0) continue; for (let i = 0; i < per.length; i++) { const sh = c.share[i]; if (sh) per[i] += t * sh; } }
+    m.dests.forEach((d, i) => { if (d.b >= 0) spreadDest(v, d, per[i]); }); return { v: blur(v, 1) };
+  }
   const LAYERS = {
     none: { n: 'なし' },
     ped: { n: '歩行者密度（モデル・現在時刻）', unit: '人/ha', time: true, note: '人流モデルの通行量から、その時刻に各地点を歩いている人数を面にしたもの', make: (q = Q()) => {
@@ -115,6 +126,17 @@ export function initAnalysis(ctx) {
     empAttr: { n: '集客施設の従業者数（経済センサス 小分類・500m）', unit: '人/ha', nearest: true, note: '映画館、興行場・興行団、博物館・美術館、動物園・水族館の従業者数の合計', make: () => econLayer(c => c.empAttr ?? 0) },
     empDept: { n: '百貨店・総合スーパーの従業者数（経済センサス 小分類・500m）', unit: '人/ha', nearest: true, note: '百貨店・総合スーパーの従業者数', make: () => econLayer(c => c.empDept ?? 0) },
     estMed: { n: '病院・診療所の数（経済センサス 小分類・500m）', unit: '件/ha', nearest: true, note: '病院、一般診療所、歯科診療所の事業所数の合計', make: () => econLayer(c => c.estMed ?? 0) },
+    los: { n: '混雑度（流動係数・現在時刻）', unit: '人/m/分', time: true, fixedMax: 82, ramp: 'los', solid: true, note: '通行量 ÷ 有効幅員。23 未満が歩行者サービス水準 A、82 以上が F。その地点でいちばん混んでいる区間の値', make: (q = Q()) => {
+      const v = new Float32Array(NX * NY), vol = new Float32Array(graph.links.length); q.model.volumes(q.hour, q.day, vol);
+      for (let i = 0; i < vol.length; i++) { const l = graph.links[i]; if (vol[i] < 30 || l.vt) continue; const h = Math.hypot(l.bx - l.ax, l.by - l.ay); if (h < 0.5) continue; const f = vol[i] / (60 * l.w), k = Math.max(1, Math.ceil(h / 5)); for (let j = 0; j <= k; j++) { const t = j / k, x = l.ax + (l.bx - l.ax) * t, y = l.ay + (l.by - l.ay) * t; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const c = cellOf(x + dx * CELL, y + dy * CELL); if (c >= 0 && f > v[c]) v[c] = f; } } }   // 面で見えるよう、区間の両側 10 m まで塗る
+      return { v }; } },
+    wait: { n: '信号・横断の待ち人数（推計・現在時刻）', unit: '人/ha', time: true, note: '横断歩道で待っている人数の推計（信号待ちと、信号の無い横断歩道での車の切れ目待ち）を平滑化', make: (q = Q()) => { const v = new Float32Array(NX * NY); for (const w of waitStats(q.hour, q.day, null, q.model)) { const c = cellOf(w.x, w.y); if (c >= 0) v[c] += w.avg * 100; } return { v: blur(v, 5) }; } },
+    arrRail: { n: '鉄道で来る人の行き先（1 日の到着）', unit: '人/ha', dayDep: true, note: '駅から街へ向かう人が、どの建物へ行くか。1 日の到着人数を建物の範囲に広げた密度', make: (q = Q()) => arriveBy(q, S => !S.nonRail) },
+    arrCar: { n: '車で来る人の行き先（1 日の到着）', unit: '人/ha', dayDep: true, note: '駐車場から歩く人の行き先。量は駐車台数などからの見積もり', make: (q = Q()) => arriveBy(q, S => S.id === 'car') },
+    arrBus: { n: 'バスで来る人の行き先（1 日の到着）', unit: '人/ha', dayDep: true, note: 'バス停から歩く人の行き先。量は運行本数などからの見積もり', make: (q = Q()) => arriveBy(q, S => S.id === 'bus') },
+    arrWalk: { n: '徒歩・自転車などで来る人の行き先（1 日の到着）', unit: '人/ha', dayDep: true, note: '範囲の外周から歩いて入る人の行き先。量は総量から鉄道・車・バスを引いた残り', make: (q = Q()) => arriveBy(q, S => S.id === 'walk') },
+    dayNight: { n: '昼夜間人口比（人流オープンデータ 1km・昼 ÷ 深夜）', unit: '倍', nearest: true, dayDep: true, fixedMax: 4, note: '昼（11〜14 時台）の滞在人口 ÷ 深夜（1〜4 時台）の滞在人口。1 より大きいほど昼に人が集まる', make: (q = Q()) => { const v = new Float32Array(NX * NY); for (const m of calib?.meshes ?? []) { const d = q.dayKey === 'holiday' ? m.holDay / Math.max(1, m.holNight) : m.wkDay / Math.max(1, m.wkNight); fillRect(v, m.rect, d); } return { v }; } },
+    fit: { n: 'モデルの当てはまり（モデル ÷ 実測 − 1・1km）', unit: '%', nearest: true, dayDep: true, div: true, fixedMax: 60, note: '較正後のモデルの昼間の滞在人口と、人流オープンデータの実測との差。赤はモデルが多すぎ、青は少なすぎ', make: (q = Q()) => { const v = new Float32Array(NX * NY); for (const m of calib?.meshes ?? []) { const o = q.dayKey === 'holiday' ? m.obsHol : m.obsWk, md = q.dayKey === 'holiday' ? m.modelHol : m.modelWk; if (m.use && o > 0 && md != null) fillRect(v, m.rect, (md / o - 1) * 100 || 0.01); } return { v }; } },   // 較正に使ったメッシュだけ (範囲との重なりが小さいものは除く)
   };
   const DIV = ['#2166ac', '#67a9cf', '#d1e5f0', '#f7f7f7', '#fddbc7', '#ef8a62', '#b2182b'].map(hexRGB);
   const DIFFS = {
@@ -124,7 +146,7 @@ export function initAnalysis(ctx) {
     prev: { n: '現在 − 1 時間前', ok: L => L.time, pair: () => [Q(), Q({ hour: (people.state.hour + 23) % 24 })] },
   };
   function fillTexture(d, t, v, max, stops, L) {
-    for (let i = 0; i < v.length; i++) { const x = v[i], o = i * 4; if (L.zeroOk ? x < 0 : x <= max * 0.01) { d[o + 3] = 0; continue; } const tt = Math.min(1, x / max), c = rampAt(stops, L.zeroOk ? tt : Math.sqrt(tt)); d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = L.zeroOk ? 215 : Math.round(90 + 150 * Math.min(1, tt * 3)); }
+    for (let i = 0; i < v.length; i++) { const x = v[i], o = i * 4; if (L.zeroOk ? x < 0 : x <= max * 0.01) { d[o + 3] = 0; continue; } const tt = Math.min(1, x / max), c = rampAt(stops, L.zeroOk ? tt : Math.sqrt(tt)); d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = L.zeroOk || L.solid ? 215 : Math.round(90 + 150 * Math.min(1, tt * 3)); }
     t.magFilter = L.nearest ? THREE.NearestFilter : THREE.LinearFilter; t.needsUpdate = true;
   }
   function paint() {
@@ -132,6 +154,12 @@ export function initAnalysis(ctx) {
     if (L.cat) {   // 区分 (用途地域): コードごとの色で塗る
       const v = L.make().v, cols = ZN.map(n => hexRGB(ZCOL[n] ?? '#999999')); for (let i = 0; i < v.length; i++) { const o = i * 4, c = v[i]; if (!c) { data[o + 3] = 0; continue; } const k = cols[c - 1]; data[o] = k[0]; data[o + 1] = k[1]; data[o + 2] = k[2]; data[o + 3] = 200; }
       tex.magFilter = THREE.NearestFilter; tex.needsUpdate = true; heat.material.opacity = S.opacity; heat.visible = true; cur = { v, max: 1, unit: '', stops: [], L, cat: true }; renderLegend(); paint2(); return;
+    }
+    if (L.div) {   // 0 を中心に、青 (負) − 白 − 赤 (正) で塗る指標
+      const v = L.make().v, max = L.fixedMax ?? Math.max(1e-6, pctl(v.map(Math.abs), 0.985));
+      for (let i = 0; i < v.length; i++) { const o = i * 4, t = Math.max(-1, Math.min(1, v[i] / max)); if (v[i] === 0) { data[o + 3] = 0; continue; } const c = rampAt(DIV, 0.5 + 0.5 * Math.sign(t) * Math.sqrt(Math.abs(t))); data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 205; }
+      tex.magFilter = L.nearest ? THREE.NearestFilter : THREE.LinearFilter; tex.needsUpdate = true; heat.material.opacity = S.opacity; heat.visible = true;
+      cur = { v, max, unit: L.unit, stops: DIV, L, diff: { n: L.n } }; renderLegend(); paint2(); return;
     }
     const D = DIFFS[S.diff];
     if (D.pair && D.ok(L)) {   // 差分: 2 条件の値の差を、青 (減) − 白 − 赤 (増) で塗る
@@ -187,6 +215,7 @@ export function initAnalysis(ctx) {
   function renderLegend() {
     if (!$('an-legend')) return;
     $('an-legend').innerHTML = !cur ? '' : cur.cat ? `<div class="legend" style="margin-top:4px">${[...new Set(cur.v)].filter(c => c).sort((a, b) => a - b).map(c => `<span><i style="background:${ZCOL[ZN[c - 1]]}"></i>${ZN[c - 1]}</span>`).join('')}</div><div class="note">${cur.L.note}</div>` : cur.diff ? `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks"><span>−${fmt(cur.max)}</span><span>減</span><span>0</span><span>増</span><span>+${fmt(cur.max)}</span><span class="an-unit">${cur.unit}</span></div><div class="note">差分: ${cur.diff.n}（${hourTxt()} 時点）</div>` : `<div class="an-grad" style="background:${grad(cur.stops)}"></div><div class="an-ticks">${ticks(cur.max, cur.unit, !cur.L.zeroOk)}</div><div class="note">${cur.L.note ?? ''}${cur.L.time ? `（${hourTxt()} 時点）` : ''}${S.diff !== 'none' ? '<br>この指標は選んだ差分に対応していません。' : ''}</div>`;
+    renderDist();
     const b = $('an-blegend'); if (!b) return;
     if (!bcur) b.innerHTML = '';
     else if (bcur.M.cat) b.innerHTML = '<div class="legend">' + Object.values(USE).map(([n, c]) => `<span><i style="background:${c}"></i>${n}</span>`).join('') + '</div><div class="note">横浜市の PLATEAU には用途属性が無いため、OSM の建物タグ・店舗数・名称・高さからの推定です。</div>';
@@ -289,8 +318,8 @@ export function initAnalysis(ctx) {
   const nameNear = (x, y, lim = 120) => { let nm = '', bd = lim; for (const dd of people.model.dests) { if (!dd.n || dd.n === '公園・緑地' || dd.extra) continue; const q = Math.hypot(dd.x - x, dd.y - y); if (q < bd) { bd = q; nm = dd.n; } } return nm; };
   // その時刻の交差点ごとの値 (平均の待ち人数の多い順)
   // opt: 仮定を動かす。dC = 周期の増減 (秒, 青の割合は保つ)、dShare = 青の割合の増減 (周期に対する割合)
-  function waitStats(hour = people.state.hour, d = day(), opt = null) {
-    if (!crosswalks) buildCrosswalks(); const vol = new Float32Array(graph.links.length); people.model.volumes(hour, d, vol); const cells = new Map();
+  function waitStats(hour = people.state.hour, d = day(), opt = null, model = people.model) {
+    if (!crosswalks) buildCrosswalks(); const vol = new Float32Array(graph.links.length); model.volumes(hour, d, vol); const cells = new Map();
     for (const c of crosswalks) {
       const sg = people.signalOf(c.links[0]), dly = sg ? 0 : people.crossDelay(c.links[0], hour); if (!sg && dly <= 0) continue; let v = 0; for (const i of c.links) if (vol[i] > v) v = vol[i]; if (v < 1) continue; const q = v / 3600;
       let e = cells.get(c.key); if (!e) cells.set(c.key, e = { key: c.key, x: 0, y: 0, n: 0, flow: 0, avg: 0, peak: 0, C: 0, G: 0, top: 0, gap: 0 }); e.x += c.x; e.y += c.y; e.n++; e.flow += v;
@@ -470,6 +499,17 @@ export function initAnalysis(ctx) {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, sizeAttenuation: false, fog: false })); sp.scale.set(w / 36 * 0.019, 0.019, 1); sp.renderOrder = 46; return sp;
   };
   const fmtLv = x => { const a = Math.abs(x); return (x < 0 ? '−' : '') + (a >= 100 ? Math.round(a).toLocaleString('ja-JP') : a >= 10 ? a.toFixed(0) : a >= 1 ? a.toFixed(1) : a.toFixed(2)); };
+  // 六角形の升目 (外接円の半径 HEX_R m)。値はその六角形の中の平均
+  const HEX_R = 42, HEX_DX = Math.sqrt(3) * HEX_R, HEX_DY = 1.5 * HEX_R, HEX_NX = Math.ceil((BOX[2] - BOX[0]) / HEX_DX) + 1, HEX_NY = Math.ceil((BOX[3] - BOX[1]) / HEX_DY) + 1;
+  const hexGeo = new THREE.CylinderGeometry(1, 1, 1, 6); hexGeo.translate(0, 0.5, 0);
+  const hexes = new THREE.InstancedMesh(hexGeo, new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.92 }), HEX_NX * HEX_NY); hexes.instanceMatrix.setUsage(THREE.DynamicDrawUsage); hexes.visible = false; hexes.frustumCulled = false; hexes.name = 'analysis-hex'; hexes.renderOrder = 3; scene.add(hexes);
+  // 点密度: 値に比例した数の点を、その升目の中にばらまく (1 点 = 一定の人数)
+  const DOT_MAX = 45000, dotGeo = new THREE.BufferGeometry(); dotGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(DOT_MAX * 3), 3)); dotGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(DOT_MAX * 3), 3)); dotGeo.setDrawRange(0, 0);
+  const dots = new THREE.Points(dotGeo, new THREE.PointsMaterial({ size: 2.6, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false, fog: false })); dots.visible = false; dots.frustumCulled = false; dots.name = 'analysis-dots'; dots.renderOrder = 5; scene.add(dots);
+  const rng = seed => () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const perHa = () => !!cur && !cur.diff && /\/ha$/.test(cur.L.unit ?? '');   // 人/ha・件/ha のように、足し合わせて総数になる指標か
+  // 値の集中の度合い: 値のある升目を大きい順に並べ、上位 q の面積が全体の何 % を占めるか。thr はその境目の値
+  function concentration(v, qs) { const a = []; let tot = 0; for (let i = 0; i < v.length; i++) if (v[i] > 0) { a.push(v[i]); tot += v[i]; } if (!a.length) return null; a.sort((x, y) => y - x); let acc = 0, k = 0; const out = []; for (const q of qs) { const n = Math.max(1, Math.round(a.length * q)); while (k < n) acc += a[k++]; out.push({ q, share: acc / tot, thr: a[n - 1] }); } let g = 0; for (let i = 0; i < a.length; i++) g += (2 * (a.length - i) - a.length - 1) * a[i]; return { n: a.length, tot, parts: out, gini: g / (a.length * tot) }; }
   const MS = { 1: [3, 0], 2: [0, 1], 3: [3, 1], 4: [1, 2], 5: [3, 2, 0, 1], 6: [0, 2], 7: [3, 2], 8: [2, 3], 9: [0, 2], 10: [0, 3, 1, 2], 11: [1, 2], 12: [1, 3], 13: [0, 1], 14: [3, 0] };
   function contourSegs(v, level, out) {   // マーチングスクエア法
     for (let j = 0; j < NY - 1; j++) for (let i = 0; i < NX - 1; i++) {
@@ -481,8 +521,8 @@ export function initAnalysis(ctx) {
   }
   const lin255 = c => { const k = new THREE.Color().setRGB(c[0] / 255, c[1] / 255, c[2] / 255, THREE.SRGBColorSpace); return [k.r, k.g, k.b]; };
   function restyle() {
-    const ok = cur && !cur.cat && S.style !== 'flat'; bars.visible = !!ok && S.style === 'bars'; contours.visible = contLabels.visible = !!ok && S.style === 'contour';
-    if (!ok) { if (cur) heat.material.opacity = S.opacity; return; }
+    const dotsOk = S.style !== 'dots' || perHa(), ok = cur && !cur.cat && S.style !== 'flat' && dotsOk; bars.visible = !!ok && S.style === 'bars'; hexes.visible = !!ok && S.style === 'hex'; dots.visible = !!ok && S.style === 'dots'; contours.visible = contLabels.visible = !!ok && (S.style === 'contour' || S.style === 'hot');
+    if (!ok) { if (cur) heat.material.opacity = S.opacity; renderDist(); return; }
     const v = cur.v, max = cur.max, diff = !!cur.diff, zeroOk = cur.L.zeroOk;
     if (S.style === 'bars') {
       heat.material.opacity = S.opacity * 0.3; const M4 = new THREE.Matrix4(), col = new THREE.Color(); let n = 0;
@@ -492,18 +532,36 @@ export function initAnalysis(ctx) {
         M4.makeScale(BG * CELL * 0.82, 4 + t * 230, BG * CELL * 0.82); M4.setPosition(cx, Math.max(0, terrainSampler(cx, cy)) + 1, -cy); bars.setMatrixAt(n, M4); bars.setColorAt(n, col.setRGB(rgb[0], rgb[1], rgb[2])); n++;
       }
       bars.count = n; bars.instanceMatrix.needsUpdate = true; if (bars.instanceColor) bars.instanceColor.needsUpdate = true;
+    } else if (S.style === 'hex') {
+      heat.material.opacity = S.opacity * 0.18; const M4 = new THREE.Matrix4(), col = new THREE.Color(); let n = 0;
+      for (let hy = 0; hy < HEX_NY; hy++) for (let hx = 0; hx < HEX_NX; hx++) {
+        const cx = BOX[0] + hx * HEX_DX + (hy & 1 ? HEX_DX / 2 : 0), cy = BOX[1] + hy * HEX_DY; let sm = 0, c = 0;
+        for (let k = 0; k < 7; k++) { const a = k * Math.PI / 3, r = k === 6 ? 0 : HEX_R * 0.6, i = cellOf(cx + Math.sin(a) * r, cy + Math.cos(a) * r); if (i < 0) continue; const q = v[i]; if (zeroOk && q < 0) continue; sm += q; c++; }
+        if (!c) continue; const val = sm / c, t = Math.min(1, Math.abs(val) / max); if (t < 0.02) continue;
+        const rgb = lin255(diff ? rampAt(DIV, 0.5 + 0.5 * Math.sign(val) * Math.sqrt(t)) : rampAt(cur.stops, zeroOk ? t : Math.sqrt(t)));
+        M4.makeScale(HEX_R * 0.95, 3 + t * 70, HEX_R * 0.95); M4.setPosition(cx, Math.max(0, terrainSampler(cx, cy)) + 1, -cy); hexes.setMatrixAt(n, M4); hexes.setColorAt(n, col.setRGB(rgb[0], rgb[1], rgb[2])); n++;
+      }
+      hexes.count = n; hexes.instanceMatrix.needsUpdate = true; if (hexes.instanceColor) hexes.instanceColor.needsUpdate = true;
+    } else if (S.style === 'dots') {
+      heat.material.opacity = S.opacity * 0.2; let tot = 0; for (let i = 0; i < v.length; i++) if (v[i] > 0) tot += v[i] * 0.01;   // 1 升 = 0.01 ha
+      const nice = x => { const p = Math.pow(10, Math.floor(Math.log10(x))), m = x / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; }, per = Math.max(0.01, nice(tot / 30000)), rnd = rng(12345), pos = dotGeo.attributes.position.array, colr = dotGeo.attributes.color.array; let n = 0;
+      for (let i = 0; i < v.length && n < DOT_MAX; i++) { if (v[i] <= 0) continue; const e = v[i] * 0.01 / per; let k = Math.floor(e); if (rnd() < e - k) k++; if (!k) continue; const x0 = BOX[0] + (i % NX) * CELL, y0 = BOX[1] + Math.floor(i / NX) * CELL, t = Math.min(1, v[i] / max), rgb = lin255(rampAt(cur.stops, Math.max(0.45, Math.sqrt(t)))), kd = S.dark ? 1 : 0.8;
+        for (let j = 0; j < k && n < DOT_MAX; j++) { const x = x0 + rnd() * CELL, y = y0 + rnd() * CELL; pos[n * 3] = x; pos[n * 3 + 1] = Math.max(0, terrainSampler(x, y)) + 1.6; pos[n * 3 + 2] = -y; colr[n * 3] = rgb[0] * kd; colr[n * 3 + 1] = rgb[1] * kd; colr[n * 3 + 2] = rgb[2] * kd; n++; } }
+      dotGeo.setDrawRange(0, n); dotGeo.attributes.position.needsUpdate = true; dotGeo.attributes.color.needsUpdate = true; cur.dot = { per, n, tot };
     } else {
       for (const o of [...contLabels.children]) { contLabels.remove(o); o.material.map.dispose(); o.material.dispose(); }
-      heat.material.opacity = S.opacity * 0.45; const marks = [], pos = [], colr = [], levels = zeroOk ? [3, 5, 8, 10, 15] : diff ? [-0.6, -0.3, -0.1, 0.1, 0.3, 0.6].map(t => t * max) : [0.06, 0.15, 0.3, 0.5, 0.75].map(t => t * max);
+      const hot = S.style === 'hot' && !diff && !zeroOk ? concentration(v, [0.05, 0.1, 0.25]) : null; cur.hot = hot;
+      heat.material.opacity = S.opacity * 0.45; const marks = [], pos = [], colr = [], hotName = new Map(hot ? hot.parts.map(q => [q.thr, `上位 ${Math.round(q.q * 100)}%`]) : []), levels = hot ? hot.parts.map(q => q.thr).reverse() : zeroOk ? [3, 5, 8, 10, 15] : diff ? [-0.6, -0.3, -0.1, 0.1, 0.3, 0.6].map(t => t * max) : [0.06, 0.15, 0.3, 0.5, 0.75].map(t => t * max);
       for (const lv of levels) { const segs = []; if (diff && lv < 0) { const neg = new Float32Array(v.length); for (let i = 0; i < v.length; i++) neg[i] = Math.max(0, -v[i]); contourSegs(neg, -lv, segs); } else contourSegs(diff ? v.map(x => Math.max(0, x)) : v, lv, segs);
         const t = Math.min(1, Math.abs(lv) / max), rgb = lin255(diff ? rampAt(DIV, lv > 0 ? 0.62 + 0.38 * t : 0.38 - 0.38 * t) : rampAt(cur.stops, zeroOk ? t : Math.max(0.35, Math.sqrt(t)))), k = S.dark ? 1 : 0.72;
         for (let i = 0; i < segs.length; i += 2) { pos.push(segs[i], Math.max(0, terrainSampler(segs[i], segs[i + 1])) + 2.2, -segs[i + 1]); colr.push(rgb[0] * k, rgb[1] * k, rgb[2] * k); }
         // 値のラベル: その等値線の上で、互いに 320 m 以上離れた場所に最大 3 個
         const at = [], nSeg = segs.length / 4; for (let c = 0; c < 14 && at.length < 3 && nSeg > 6; c++) { const i = Math.floor(nSeg * ((c * 0.381966 + 0.19) % 1)) * 4, x = segs[i], y = segs[i + 1]; if (marks.every(m => Math.hypot(m[0] - x, m[1] - y) > 150) && at.every(m => Math.hypot(m[0] - x, m[1] - y) > 320)) { at.push([x, y]); marks.push([x, y]); } }   // 線の全体から黄金比の間隔で候補を取り、地図全体に散らす
-        for (const [x, y] of at) { const sp = contLabel(fmtLv(lv) + (lv === levels[levels.length - 1] ? ' ' + (cur.L.unit ?? '') : ''), [rgb[0] * k, rgb[1] * k, rgb[2] * k]); sp.position.set(x, Math.max(0, terrainSampler(x, y)) + 4, -y); contLabels.add(sp); } }
+        for (const [x, y] of at) { const sp = contLabel(hotName.get(lv) ?? (fmtLv(lv) + (lv === levels[levels.length - 1] ? ' ' + (cur.L.unit ?? '') : '')), [rgb[0] * k, rgb[1] * k, rgb[2] * k]); sp.position.set(x, Math.max(0, terrainSampler(x, y)) + 4, -y); contLabels.add(sp); } }
       if (pos.length) { contGeo.setPositions(pos); contGeo.setColors(colr); contGeo.instanceCount = pos.length / 6; contours.visible = true; } else contours.visible = false;
       cur.levels = levels;
     }
+    renderDist();
   }
   // ---- 時刻別の一覧 (スモールマルチプル) ----
   function renderMulti() {
@@ -567,18 +625,36 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
 <div class="note">歩行者・滞在人数・建物内の人数は、駅の乗降人員などの公表値と仮定から組み立てたモデルの推計で、実測ではありません。</div></body></html>`;
     download(`minatomirai_report_${when.toISOString().slice(0, 10)}_${hourTxt().replace(':', '')}.html`, html, 'text/html');
   }
+  // ---- 図表タブ (表の形のヒートマップなど) ----
+  const flyBuilding = b => { const m = buildingMeta[b], x = m.c[0] / 10, z = -m.c[1] / 10, h = (m.h ?? 40); flyTo(new THREE.Vector3(x - 180 - h * 0.5, 120 + h * 0.8, z + 200 + h * 0.5), new THREE.Vector3(x, h * 0.35, z)); };
+  const viz = initViz({ people, calib, buildingMeta, USE, setClock, selectBuilding, flyBuilding, flyPoint: (x, y) => flyTo(new THREE.Vector3(x - 110, 170, -y + 140), new THREE.Vector3(x, 0, -y)), getMonth: () => realMonth(), setMonth: m => { const me = document.getElementById('r-month'); if (me) { me.value = m; me.dispatchEvent(new Event('input')); } },
+    an: { rampCss: t => `rgb(${rampAt(RAMPS[S.dark ? 'dark' : 'light'].map(hexRGB), t).map(Math.round).join(',')})`, waitSeries: () => waitSeries(), waitStats: h => waitStats(h), nameNear: (x, y) => nameNear(x, y) } });
+  // ---- 値の分布 (凡例の下): 色の段階ごとの升目の数と、値の集中の度合い ----
+  function renderDist() {
+    const el = $('an-dist'); if (!el) return; if (!cur || cur.cat) { el.innerHTML = ''; return; }
+    const v = cur.v, B = 30, W = 300, H = 40, diff = !!cur.diff, zeroOk = cur.L.zeroOk, bins = new Float32Array(B); let n = 0;
+    for (let i = 0; i < v.length; i++) { const x = v[i]; if (diff ? x === 0 : zeroOk ? x < 0 : x <= cur.max * 0.01) continue; const t = diff ? 0.5 + 0.5 * Math.sign(x) * Math.sqrt(Math.min(1, Math.abs(x) / cur.max)) : zeroOk ? Math.min(1, x / cur.max) : Math.sqrt(Math.min(1, x / cur.max)); bins[Math.min(B - 1, Math.floor(t * B))]++; n++; }
+    if (!n) { el.innerHTML = ''; return; } const mb = Math.max(1, ...bins), bw = W / B;
+    const bars = [...bins].map((c, k) => c ? `<rect x="${(k * bw).toFixed(1)}" y="${(H - Math.sqrt(c / mb) * H).toFixed(1)}" width="${(bw - 0.8).toFixed(1)}" height="${(Math.sqrt(c / mb) * H).toFixed(1)}" fill="rgb(${rampAt(cur.stops, (k + 0.5) / B).map(Math.round).join(',')})"><title>${fmtN(c * 0.01)} ha</title></rect>` : '').join('');
+    const con = perHa() ? concentration(v, [0.05, 0.1, 0.25]) : null, unit = (cur.L.unit ?? '').replace('/ha', '');
+    let note = `値の分布（横は上の色の段階、高さは面積）。値のある範囲は 約 ${fmtN(n * 0.01)} ha。`;
+    if (con) note += `面積の上位 10% に全体の <b>${Math.round(con.parts[1].share * 100)}%</b>、上位 25% に ${Math.round(con.parts[2].share * 100)}% が集まっています（偏りの大きさ: ジニ係数 ${con.gini.toFixed(2)}）。`;
+    if (S.style === 'dots') note += perHa() && cur.dot ? `<br>点密度: 1 点 = ${cur.dot.per >= 1 ? fmtN(cur.dot.per) : cur.dot.per} ${unit}（${fmtN(cur.dot.n)} 点）。` : '<br>点密度は、人/ha や 件/ha のように足し合わせて総数になる指標で使えます。';
+    if (S.style === 'hot') note += cur.hot ? `<br>上位の範囲: 線の内側が、値の大きい順に面積の上位 5%（全体の ${Math.round(cur.hot.parts[0].share * 100)}%）、10%（${Math.round(cur.hot.parts[1].share * 100)}%）、25%（${Math.round(cur.hot.parts[2].share * 100)}%）です。` : '<br>上位の範囲は、差分や徒歩時間の指標では通常の等値線になります。';
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:4px">${bars}</svg><div class="note" style="margin-top:2px">${note}</div>`;
+  }
   // ---- パネル ----
   function buildPanel() {
     const el = $('analysis'); if (!el) return;
     const opt = (o, sel, f = () => true) => Object.entries(o).filter(([k, v]) => f(k, v)).map(([k, v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${v.n}</option>`).join('');
     const badge = { use: ['使用中', '#2fb27a'], ref: ['参考', '#4da3ff'], can: ['取得可・未使用', '#ffb648'], none: ['対象エリアに無い', '#8a93a6'] };
-    el.innerHTML = `<div class="an-head"><b>分析</b><div class="an-tabs"><button data-tab="heat" class="active">ヒート</button><button data-tab="cmp">比較</button><button data-tab="ts">推移</button><button data-tab="bldg">建物内</button><button data-tab="rank">集計</button><button data-tab="data">データ</button></div><button id="an-toggle" title="たたむ">−</button></div>
+    el.innerHTML = `<div class="an-head"><b>分析</b><div class="an-tabs"><button data-tab="heat" class="active">ヒート</button><button data-tab="cmp">比較</button><button data-tab="ts">推移</button><button data-tab="viz">図表</button><button data-tab="bldg">建物内</button><button data-tab="rank">集計</button><button data-tab="data">データ</button></div><button id="an-toggle" title="たたむ">−</button></div>
       <div class="an-body">
         <div data-pane="heat">
           <div class="sec-title">地表のヒートマップ</div><select id="an-layer" class="p-select" style="width:100%">${opt(LAYERS, S.layer)}</select>
-          <div class="seg-row" id="an-style" style="margin-top:4px"><button data-s="flat" class="active">面</button><button data-s="bars">立体の柱</button><button data-s="contour">等値線</button></div>
+          <div id="an-style"><div class="seg-row" style="margin-top:4px"><button data-s="flat" class="active">面</button><button data-s="bars">立体の柱</button><button data-s="contour">等値線</button></div><div class="seg-row" style="margin-top:3px"><button data-s="hex" title="六角形の升目ごとの平均を、色と高さで示します">六角形</button><button data-s="dots" title="値に比例した数の点をばらまきます（人/ha・件/ha の指標のみ）">点密度</button><button data-s="hot" title="値の大きい順に面積の上位 5%・10%・25% の範囲を線で囲みます">上位の範囲</button></div></div>
           <div class="cal-row"><span>濃さ</span><input type="range" id="an-opacity" min="0.2" max="1" step="0.05" value="${S.opacity}" /><b></b></div>
-          <div id="an-legend"></div><div id="an-hover" class="an-hover"></div>
+          <div id="an-legend"></div><div id="an-dist"></div><div id="an-hover" class="an-hover"></div>
           <label class="row"><input type="checkbox" id="an-multi-on" /><span class="chip chip-outline"></span>時刻別に並べる（6 枚）</label><div id="an-multi"></div>
           <div class="sec-title" style="margin-top:8px">建物の色分け</div><select id="an-bmetric" class="p-select" style="width:100%">${opt(BM, S.bmetric)}</select>
           <div id="an-blegend"></div>
@@ -586,7 +662,7 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
         <div data-pane="cmp" style="display:none">
           <div class="sec-title">画面を左右に分けて 2 つの指標を比べる</div>
           <label class="row"><input type="checkbox" id="an-split" /><span class="chip chip-outline"></span>画面分割（左 =「ヒート」で選んだ指標）</label>
-          <div class="cal-row"><span>右側</span><select id="an-layer2" class="p-select">${opt(LAYERS, S.layer2, (k, v) => v.make && !v.cat)}</select></div>
+          <div class="cal-row"><span>右側</span><select id="an-layer2" class="p-select">${opt(LAYERS, S.layer2, (k, v) => v.make && !v.cat && !v.div)}</select></div>
           <div class="sec-title" style="margin-top:6px">差分ヒートマップ（「ヒート」の指標に適用）</div><select id="an-diff" class="p-select" style="width:100%">${opt(DIFFS, S.diff)}</select>
           <div class="sec-title" style="margin-top:8px">散布図（指標どうしの関係）</div>
           <div class="seg-row" id="an-scunit"><button data-u="mesh" class="active">250m メッシュ</button><button data-u="bldg">建物</button></div>
@@ -603,6 +679,7 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
           <div class="seg-row" id="an-ts-shape" style="margin:2px 0 4px"><button data-p="0" class="active">折れ線</button><button data-p="1">時計型（24 時間）</button></div>
           <div id="an-ts"></div>
         </div>
+        <div data-pane="viz" style="display:none"><div id="an-viz"></div></div>
         <div data-pane="bldg" style="display:none"><div id="an-bldg"></div></div>
         <div data-pane="rank" style="display:none"><div id="an-rank"></div></div>
         <div data-pane="data" style="display:none"><div class="note" style="margin-top:0">公開されているデータを調べ、使えるものを取り込みました。</div>${CATALOG.map(c => `<div class="an-ds"><span class="an-badge" style="background:${badge[c.s][1]}">${badge[c.s][0]}</span><b>${c.n}</b><div>${c.by} ／ ${c.g}</div><div class="an-use">${c.u}</div></div>`).join('')}</div>
@@ -610,7 +687,7 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
     el.querySelectorAll('.an-tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
     $('an-toggle').addEventListener('click', () => { S.open = !S.open; el.classList.toggle('closed', !S.open); $('an-toggle').textContent = S.open ? '−' : '＋'; });
     $('an-layer').addEventListener('change', e => { S.layer = e.target.value; paint(); });
-    $('an-opacity').addEventListener('input', e => { S.opacity = Number(e.target.value); heat2.material.opacity = S.opacity; heat.material.opacity = S.opacity * (!cur || cur.cat || S.style === 'flat' ? 1 : S.style === 'bars' ? 0.3 : 0.45); });
+    $('an-opacity').addEventListener('input', e => { S.opacity = Number(e.target.value); heat2.material.opacity = S.opacity; heat.material.opacity = S.opacity * (!cur || cur.cat || S.style === 'flat' ? 1 : ({ bars: 0.3, hex: 0.18, dots: 0.2 })[S.style] ?? 0.45); });
     $('an-bmetric').addEventListener('change', e => { S.bmetric = e.target.value; paintBuildings(); });
     $('an-split').addEventListener('change', e => { S.split = e.target.checked; if (S.split && S.layer === 'none') { S.layer = 'stay'; $('an-layer').value = 'stay'; } paint(); });
     $('an-layer2').addEventListener('change', e => { S.layer2 = e.target.value; paint2(); });
@@ -634,7 +711,7 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
     renderLegend(); renderBuilding(); renderRange();
   }
   const syncSeg = () => { document.querySelectorAll('#an-style button').forEach(b => b.classList.toggle('active', b.dataset.s === S.style)); document.querySelectorAll('#an-ts-shape button').forEach(b => b.classList.toggle('active', (b.dataset.p === '1') === S.tsPolar)); if ($('an-multi-on')) $('an-multi-on').checked = S.multi; };
-  function setTab(tab) { S.tab = tab; const el = $('analysis'); el.querySelectorAll('.an-tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); el.querySelectorAll('[data-pane]').forEach(p => { p.style.display = p.dataset.pane === tab ? '' : 'none'; }); if (tab === 'rank') renderRank(); if (tab === 'bldg') renderBuilding(); if (tab === 'cmp') { renderScatter(); renderRange(); } if (tab === 'ts') renderTS(); }
+  function setTab(tab) { S.tab = tab; const el = $('analysis'); el.querySelectorAll('.an-tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); el.querySelectorAll('[data-pane]').forEach(p => { p.style.display = p.dataset.pane === tab ? '' : 'none'; }); if (tab === 'viz') viz.render($('an-viz')); if (tab === 'rank') renderRank(); if (tab === 'bldg') renderBuilding(); if (tab === 'cmp') { renderScatter(); renderRange(); } if (tab === 'ts') renderTS(); }
   // カーソル位置の値
   let lastMove = 0;
   el0.addEventListener('pointermove', e => {
@@ -651,7 +728,7 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
     const L = LAYERS[S.layer]; if (L.make && (L.time || (L.dayDep && dayCh))) paint(); else { const L2 = LAYERS[S.layer2]; if (S.split && L2?.make && (L2.time || (L2.dayDep && dayCh))) paint2(); }
     const M = BM[S.bmetric]; if (M.val && (M.time || (M.dayDep && dayCh))) paintBuildings();
     if (dayCh) syncFlows();
-    if (S.tab === 'rank') renderRank(); if (S.tab === 'bldg') { renderBuilding(); if (S.floorHeat) applyFloorHeat(); } if (S.tab === 'cmp') { renderScatter(); renderRange(); } if (S.tab === 'ts') renderTS(); if (S.multi) renderMulti();
+    if (S.tab === 'viz') viz.render($('an-viz')); if (S.tab === 'rank') renderRank(); if (S.tab === 'bldg') { renderBuilding(); if (S.floorHeat) applyFloorHeat(); } if (S.tab === 'cmp') { renderScatter(); renderRange(); } if (S.tab === 'ts') renderTS(); if (S.multi) renderMulti();
   }
   function onSelect(bid) { setTimeout(syncFlows, 0); if (bid >= 0 && S.floorHeat) setTimeout(applyFloorHeat, 0); if (S.tab === 'bldg' || bid >= 0) setTimeout(renderBuilding, 0); if (S.tab === 'ts' && S.tsTarget === 'bldg') setTimeout(renderTS, 0); }
   onTheme(t => { S.dark = new THREE.Color(t.bg).getHSL({}).l < 0.3 && !t.real; if (cur) paint(); if (bcur) paintBuildings(); });
@@ -662,5 +739,5 @@ ${getSel()?.bid >= 0 ? `<h2>選択中の建物</h2><div class="box">${grab('an-b
     if ('style' in o || 'tsPolar' in o || 'multi' in o) { syncSeg(); restyle(); renderLegend(); renderMulti(); } if ('flows' in o) syncFlows();
     if ('tsTarget' in o) { if ($('an-ts-target')) $('an-ts-target').value = S.tsTarget; } if ('tab' in o) setTab(S.tab); else if (S.tab === 'ts') renderTS(); else if (S.tab === 'cmp') renderScatter(); if ('floorHeat' in o) { applyFloorHeat(); renderBuilding(); }
   };
-  return { update, onSelect, set, state: S, LAYERS, BM, floorStats, exportBuildings, exportLinks, exportMesh, exportWaits, waitStats, waitSeries, capturing: () => capMode !== null || justCaptured, seriesOf, scatterData, exportState, importState, makeReport, sankeyHTML, get current() { return cur; }, get current2() { return cur2; } };
+  return { update, onSelect, set, state: S, LAYERS, BM, floorStats, exportBuildings, exportLinks, exportMesh, exportWaits, waitStats, waitSeries, viz, concentration: () => cur ? concentration(cur.v, [0.05, 0.1, 0.25]) : null, capturing: () => capMode !== null || justCaptured, seriesOf, scatterData, exportState, importState, makeReport, sankeyHTML, get current() { return cur; }, get current2() { return cur2; } };
 }
