@@ -4,29 +4,34 @@
   'use strict';
 
   // ---------------------------------------------------------------- 建物
-  // 写真をもとにした想定寸法：アリーナ 46m×38m を四周の観覧席（奥行5m）が囲む。屋内全体は 56m×48m、天井高 12.5m。
-  // 熱の計算は屋内全体を1つの箱として扱い、分布はアリーナの床の範囲（ax0〜ax1, ay0〜ay1）で評価する。
-  var GEOM = { W: 56, D: 48, H: 12.5, zRef: 1.1, cell: 0.5, ax0: 5, ay0: 5, ax1: 51, ay1: 43, galleryZ: 3.2 };
+  // 日出町 中央体育館（設計図 M-04〜M-07 から読み取った寸法）
+  //   アリーナ：通り芯 2〜10 の 38.8m × A〜H の 28.5m。1階床から2階床まで 3.5m、梁天端まで 7.5m、屋根まで 10.6m。
+  //   南北の長い壁に沿って、2階の高さにギャラリー（通路）があり、そこに壁掛形エアコンと輻射パネルが並ぶ。
+  // 熱の計算はアリーナを1つの箱として扱い、分布は床の範囲（ax0〜ax1, ay0〜ay1）で評価する。
+  var GEOM = { W: 38.8, D: 28.5, H: 10.6, trussZ: 7.5, zRef: 1.1, cell: 0.5, ax0: 0.4, ay0: 0.25, ax1: 38.4, ay1: 28.25, galleryZ: 3.5, galleryD: 1.5 };
   GEOM.NX = Math.round((GEOM.ax1 - GEOM.ax0) / GEOM.cell);
   GEOM.NY = Math.round((GEOM.ay1 - GEOM.ay0) / GEOM.cell);
   GEOM.Af = GEOM.W * GEOM.D;
   GEOM.V = GEOM.Af * GEOM.H;
-  // 窓：南面は観覧席の上に縦長の窓が8か所、北面と東面は小窓が4か所ずつ。a は壁に沿った位置
+  GEOM.bays = [0, 5.0, 9.8, 14.6, 19.4, 24.2, 29.0, 33.8, 38.8]; // 通り芯 2〜10 の位置
+  // 窓：南北面の2階に連窓（8スパン）、1階に腰窓（5スパン）。大きさは立面図からの目安。a は壁に沿った位置
   var WINDOWS = [];
-  for (var wi = 0; wi < 8; wi++) WINDOWS.push({ wall: 'S', a1: 6.4 + wi * 5.6, a2: 10.2 + wi * 5.6, z1: 4.8, z2: 9.0 });
-  [9, 19.5, 33.3, 43.8].forEach(function (a) { WINDOWS.push({ wall: 'N', a1: a, a2: a + 3.2, z1: 5.0, z2: 7.4 }); });
-  [9, 17.6, 27.2, 35.8].forEach(function (a) { WINDOWS.push({ wall: 'E', a1: a, a2: a + 3.2, z1: 5.0, z2: 7.4 }); });
+  ['N', 'S'].forEach(function (wall) {
+    for (var bi = 0; bi < 8; bi++) WINDOWS.push({ wall: wall, a1: GEOM.bays[bi] + 0.3, a2: GEOM.bays[bi + 1] - 0.3, z1: 4.7, z2: 7.2 });
+    [1, 2, 3, 5, 6].forEach(function (bi) { WINDOWS.push({ wall: wall, a1: GEOM.bays[bi] + 0.3, a2: GEOM.bays[bi + 1] - 0.3, z1: 0.5, z2: 1.5 }); });
+  });
   GEOM.Ag = WINDOWS.reduce(function (s, w) { return s + (w.a2 - w.a1) * (w.z2 - w.z1); }, 0);
   GEOM.Awall = 2 * (GEOM.W + GEOM.D) * GEOM.H - GEOM.Ag;
 
-  // 空調の吹出し：観覧席の上を通る南北2本のダクトに、ノズルが6個ずつ。高さ 8.2m からアリーナ中央へ吹き下ろす
+  // 空調の吹出し：壁掛形の室内機が南北のギャラリーに8台ずつ（計16台）。吹出しの高さは1階床から約4.9m
   var AC_UNITS = [];
-  for (var ui = 0; ui < 6; ui++) {
-    AC_UNITS.push({ x: 8.5 + ui * 7.5, y: 6.5, dir: 1, z0: 8.2 });
-    AC_UNITS.push({ x: 10 + ui * 7.5, y: GEOM.D - 6.5, dir: -1, z0: 8.2 });
+  for (var ui = 0; ui < 8; ui++) {
+    AC_UNITS.push({ x: GEOM.W * (ui + 0.5) / 8, y: GEOM.galleryD + 0.1, dir: 1, z0: 4.9 });
+    AC_UNITS.push({ x: GEOM.W * (ui + 0.5) / 8, y: GEOM.D - GEOM.galleryD - 0.1, dir: -1, z0: 4.9 });
   }
 
-  var PANEL = { w: 0.86, h: 2.35, z0: 0.1, faceArea: 0.86 * 2.35 };
+  // 輻射パネル：体育館仕様・横型 W2,200 × H600 × D135（機器表）。取付架台の図から、下端は1階床から約3.95m
+  var PANEL = { w: 2.2, h: 0.6, z0: 3.95, faceArea: 2.2 * 0.6 };
 
   // ---------------------------------------------------------------- 係数
   var INSUL = {
@@ -39,7 +44,7 @@
     hi: 8,              // 室内側の表面熱伝達率
     hAm: 3,             // 空気と構造体の対流熱伝達率
     CaFactor: 3,        // 空気の熱容量に対する、備品等を含めた倍率
-    Cm: 700e6,          // 床・壁の有効熱容量 [J/K]
+    Cm: 290e6,          // 床・壁の有効熱容量 [J/K]
     light: 8,           // 照明 [W/㎡]
     ventPer: 20,        // 1人あたり換気量 [m3/h]
     loadCool: 300,      // 冷房の単位負荷 [W/㎡]（熱負荷計算書）
@@ -52,9 +57,14 @@
     relaxMax: 2.5,      // 同じ体感にするための空気設定の調整幅の上限
     gStrat: { none: 0, ac: 0.03, eco: 0.01 },   // 暖房時の上下温度勾配の係数
     gRoof: 0.04,        // 屋根面の加熱による成層の係数
-    u0: { none: 0, ac: 5.0, eco: 1.5 },         // 吹出し風速 [m/s]
+    u0: { none: 0, ac: 4.3, eco: 2.2 },          // 吹出し風速 [m/s]：壁掛形の強風（約26m3/分）と、弱風運転
+    core: 1.8,          // 吹出し風速が保たれる距離 [m]（吹出し口の大きさから）
+    u0old: null,         // 吹出し風速 [m/s]
     dTs: { ac: { heat: 16, cool: -11 }, eco: { heat: 9, cool: -6 } }, // 吹出し温度差
-    fanKW: { none: 0, ac: 18, eco: 6 },
+    fanKW: { none: 0, ac: 3.4, eco: 1.2 },  // 壁掛形の室内機の送風機（エアコンのみは台数が多い想定）
+    fin: 3,             // パネルのフィンを含めた放熱面積の倍率【仮定】
+    capCool: 160e3,     // ecowinハイブリッドの冷房能力（機器表：20.0kW × 8系統）
+    capHeat: 179.2e3,   // 同 暖房能力（22.4kW × 8系統）
     latent: 1.25,       // 冷房時の潜熱分の割増
     capRate: 0.34,      // メーカー公表の最大削減率
     co2: 0.423,         // kg-CO2/kWh
@@ -189,16 +199,15 @@
     return out;
   }
   function buildPanels(layout, count) {
-    var g = GEOM, rows, list = [], xa = g.ax0 + 3, xb = g.ax1 - 3;
-    if (layout === 'rows') rows = [{ axis: 'y', c: g.ay0 + 1.2, a: xa, b: xb }, { axis: 'y', c: (g.ay0 + g.ay1) / 2, a: xa, b: xb }, { axis: 'y', c: g.ay1 - 1.2, a: xa, b: xb }];
-    else if (layout === 'perimeter') rows = [{ axis: 'y', c: g.ay0 + 1.0, a: xa, b: xb }, { axis: 'y', c: g.ay1 - 1.0, a: xa, b: xb }, { axis: 'x', c: g.ax0 + 1.0, a: g.ay0 + 3, b: g.ay1 - 3 }];
-    else rows = [{ axis: 'y', c: g.ay0 + 1.0, a: xa, b: xb }, { axis: 'y', c: g.ay1 - 1.0, a: xa, b: xb }];
+    // gallery：図面どおり、2階ギャラリーの手すり位置。floor：同じパネルを1階の壁際に下ろした場合
+    var g = GEOM, rows, list = [], z = layout === 'floor' ? 0.3 : PANEL.z0, off = layout === 'floor' ? 0.5 : g.galleryD + 0.25;
+    rows = [{ axis: 'y', c: off, a: 0, b: g.W }, { axis: 'y', c: g.D - off, a: 0, b: g.W }];
     var ns = distribute(count, rows.map(function (r) { return r.b - r.a; }));
     rows.forEach(function (r, i) {
       var n = ns[i];
       for (var j = 0; j < n; j++) {
         var t = r.a + (r.b - r.a) * (j + 0.5) / n;
-        list.push(r.axis === 'y' ? { axis: 'y', x: t, y: r.c } : { axis: 'x', x: r.c, y: t });
+        list.push(r.axis === 'y' ? { axis: 'y', x: t, y: r.c, z: z } : { axis: 'x', x: r.c, y: t, z: z });
       }
     });
     return list;
@@ -219,7 +228,7 @@
   function gx(i) { return GEOM.ax0 + (i + 0.5) * GEOM.cell; }
   function gy(j) { return GEOM.ay0 + (j + 0.5) * GEOM.cell; }
   function panelOmega(P, x, y, z) {
-    var hw = PANEL.w / 2, z1 = PANEL.z0 - z, z2 = PANEL.z0 + PANEL.h - z;
+    var hw = PANEL.w / 2, pz = P.z === undefined ? PANEL.z0 : P.z, z1 = pz - z, z2 = pz + PANEL.h - z;
     return P.axis === 'y' ? rectOmega(P.y - y, P.x - hw - x, P.x + hw - x, z1, z2) : rectOmega(P.x - x, P.y - hw - y, P.y + hw - y, z1, z2);
   }
   function normalizeWeights(F) {
@@ -270,7 +279,7 @@
   // ---------------------------------------------------------------- 気流（自由噴流の近似）
   // 噴流の軸の高さ。暖房の温風は中央付近で人の高さに届いたあと浮き上がり、冷房の冷風は床に沿って流れる
   function jetAxisZ(s, heat, z0) {
-    var z = heat ? z0 - 0.75 * s + 0.022 * s * s : z0 - 0.5 * s - 0.002 * s * s;
+    var z = heat ? z0 - 0.5 * s + 0.018 * s * s : z0 - 0.3 * s - 0.004 * s * s;
     return clamp(z, heat ? 0.5 : 0.6, GEOM.H - 0.8);
   }
   // 吹出し風速に対する相対風速（0〜1程度）
@@ -282,7 +291,7 @@
       var l = x - u.x, dz = z - jetAxisZ(s, heat, u.z0), b = 0.35 + 0.11 * s;
       var e = (l * l + dz * dz) / (b * b);
       if (e > 9) continue;
-      sum += Math.min(1, 3.5 / s) * Math.exp(-e);
+      sum += Math.min(1, K.core / s) * Math.exp(-e);
     }
     return sum;
   }
@@ -303,18 +312,16 @@
   var MODES = ['none', 'ac', 'eco'];
   var FIELDS = ['Ta', 'Tm', 'Tri', 'Twall', 'Twin', 'Tp', 'G', 'lf', 'fan', 'RH', 'P', 'MRT', 'OT', 'WBGT', 'v'];
 
-  function capacities(wx) {
-    var c = wx.city;
-    var cool = K.loadCool * GEOM.Af * c.coefCool, heat = K.loadHeat * GEOM.Af * c.coefHeat;
-    return { ac: { cool: cool, heat: heat }, eco: { cool: cool * K.ecoCap, heat: heat * K.ecoCap } };
+  function capacities() { // 機器表の能力。エアコンのみは、補正係数 0.7 で割り戻した能力とする
+    return { eco: { cool: K.capCool, heat: K.capHeat }, ac: { cool: K.capCool / K.ecoCap, heat: K.capHeat / K.ecoCap } };
   }
-  function copHeat(To) { return clamp(3.6 + 0.08 * (To - 7), 2.0, 4.6); }
-  function copCool(To) { return clamp(3.4 - 0.07 * (To - 35), 2.6, 5.6); }
+  function copHeat(To) { return clamp(3.41 + 0.08 * (To - 7), 2.0, 4.6); } // 機器表：暖房 22.4kW / 6.57kW
+  function copCool(To) { return clamp(3.08 - 0.07 * (To - 35), 2.4, 5.6); } // 機器表：冷房 20.0kW / 6.50kW
 
   function simulate(p, wx, Fm, jetMean) {
-    var ins = INSUL[p.insul], cap = capacities(wx), Af = GEOM.Af, H = GEOM.H, zr = GEOM.zRef;
+    var ins = p.custom || INSUL[p.insul], aRoof = ins.aRoof === undefined ? 0.7 : ins.aRoof, cap = capacities(wx), Af = GEOM.Af, H = GEOM.H, zr = GEOM.zRef;
     var Ca = 1.2 * 1005 * GEOM.V * K.CaFactor, Cm = K.Cm, hA = K.hAm * (Af + GEOM.Awall);
-    var Ap = p.panels * PANEL.faceArea * 2;
+    var Ap = p.panels * PANEL.faceArea * 2 * K.fin;
     var Tg = 0; for (var i = 0; i < 8760; i++) Tg += wx.T[i]; Tg /= 8760;
     var dt = 300, NS = 12;
     var res = {};
@@ -328,7 +335,7 @@
         var kk = (k + 8760) % 8760, d = Math.floor(kk / 24), h = kk % 24, m = monthOfDay(d);
         var To = wx.T[kk], I = wx.I[kk], heat = K.heatMonths[m] === 1;
         var on = hvac && h >= p.opStart - (eco ? (p.preheat || 0) : 0) && h < p.opEnd, occ = (h >= p.opStart && h < p.opEnd) ? p.occupants : 0;
-        var Tsol = To + 0.7 * I / 23, Twsol = To + 0.15 * I / 23;
+        var Tsol = To + aRoof * I / 23, Twsol = To + 0.15 * I / 23;
         var qInt = occ * p.sensible + (occ > 0 ? K.light * Af : 0), qSol = ins.shgc * GEOM.Ag * 0.35 * I;
         var C = heat ? cap[eco ? 'eco' : 'ac'].heat : cap[eco ? 'eco' : 'ac'].cool;
         var jm = heat ? jetMean.heat : jetMean.cool, aAc = otCoef(0.1 + K.u0.ac * jm), aEco = otCoef(0.1 + K.u0.eco * jm);

@@ -153,6 +153,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; height:
 .center { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; min-height: 0; min-width: 0; }
 .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .tools .grow { flex: 1 1 0; }
+.tools .seg button { padding: 0 7px; }
 .ic.sm { width: 14px; height: 14px; }
 .popwrap { position: relative; display: inline-flex; }
 .pop { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; display: grid; gap: 8px; min-width: 250px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.22); }
@@ -172,6 +173,8 @@ input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; height:
 .view { position: relative; background: var(--scene); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-height: 280px; }
 .view canvas.gl { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .hud { position: absolute; pointer-events: none; }
+.view canvas.sheetc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.view.sheet .hud { display: none; }
 .clock { top: 10px; left: 12px; background: color-mix(in srgb, var(--surface) 88%, transparent); border-radius: var(--r); padding: 6px 10px; }
 .clock .d { font-family: var(--num); font-size: 26px; font-weight: 600; line-height: 1; }
 .clock .w { color: var(--ink-2); font-size: 12px; margin-top: 4px; }
@@ -250,6 +253,15 @@ table.cmp tr:last-child td, table.cmp tr:last-child th { border-bottom: 0; }
 .tip b { font-family: var(--num); }
 dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 0; width: min(760px, calc(100vw - 32px)); max-height: 86vh; }
 #shotDlg { width: min(1100px, calc(100vw - 32px)); }
+#specDlg { width: min(980px, calc(100vw - 32px)); }
+.specgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 10px; margin-top: 8px; }
+.layers { display: grid; gap: 6px; }
+.layer { display: grid; grid-template-columns: minmax(0, 1fr) 54px auto 42px 34px; gap: 4px; align-items: center; }
+.layer select, .layer input { min-height: var(--tap); min-width: 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 0 6px; }
+.layer input { text-align: right; font-family: var(--num); }
+.layer .u, .layer .r { color: var(--ink-2); font-size: 11.5px; white-space: nowrap; }
+.layer .r { text-align: right; }
+dialog .card h2 small { margin-left: auto; font-size: 13px; color: var(--accent); font-weight: 600; }
 dialog::backdrop { background: rgba(8, 12, 16, .55); }
 dialog header { position: sticky; top: 0; background: var(--surface); display: flex; justify-content: space-between; align-items: center; padding: 10px 18px; border-bottom: 1px solid var(--line); }
 dialog header h2 { margin: 0; font-size: 15px; }
@@ -351,15 +363,18 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
             <button class="scene" type="button" data-v="s1"><span class="n">1</span><span><b>真夏の午後、空調がないと</b><small>暑さ指数で危険な場所を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
             <button class="scene" type="button" data-v="s2"><span class="n">2</span><span><b>夏：2つの方式を並べる</b><small>体感温度を左右で比べる</small></span><svg class="ic"><use href="#i-right"/></svg></button>
             <button class="scene" type="button" data-v="s3"><span class="n">3</span><span><b>真冬の朝：暖気はどこへ</b><small>断面で天井付近の溜まり方を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
-            <button class="scene" type="button" data-v="s4"><span class="n">4</span><span><b>風の強さを比べる</b><small>真上から、人の高さの風を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
-            <button class="scene" type="button" data-v="s5"><span class="n">5</span><span><b>節約額を見る</b><small>電気代の差と、何年で回収できるか</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+            <button class="scene" type="button" data-v="s6"><span class="n">4</span><span><b>断面図と平面図で見る</b><small>高さごとの温度と、各地点の数値</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+            <button class="scene" type="button" data-v="s4"><span class="n">5</span><span><b>風の強さを比べる</b><small>真上から、人の高さの風を見る</small></span><svg class="ic"><use href="#i-right"/></svg></button>
+            <button class="scene" type="button" data-v="s5"><span class="n">6</span><span><b>節約額を見る</b><small>電気代の差と、何年で回収できるか</small></span><svg class="ic"><use href="#i-right"/></svg></button>
           </div>
         </section>
 
         <section class="card stack">
           <h2><svg class="ic"><use href="#i-build"/></svg>建物</h2>
+          <div class="hintbox"><svg class="ic"><use href="#i-book"/></svg><span><b>日出町 中央体育館</b>の設計図をもとにしています（アリーナ 38.8m × 28.5m、屋根まで 10.6m）。<button class="btn quiet" id="openDocs" type="button" style="min-height:24px;padding:0">取り込んだ設計資料を見る</button></span></div>
           <div class="field"><div class="fl"><label for="city">地域（気象データ）</label></div><select id="city"></select></div>
-          <div><div class="fl"><span>断熱性能</span></div><div class="opts" id="insul" role="group" aria-label="断熱性能"></div></div>
+          <div><div class="fl"><span>断熱性能</span></div><div class="opts" id="insul" role="group" aria-label="断熱性能"></div>
+            <button class="btn" id="editSpec" type="button" style="margin-top:6px;width:100%" hidden><svg class="ic"><use href="#i-build"/></svg>入力した仕様を開く</button></div>
         </section>
 
         <section class="card stack">
@@ -378,12 +393,11 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
         <section class="card stack">
           <h2><svg class="ic"><use href="#i-panel"/></svg>ecowinパネル</h2>
-          <div><div class="fl"><label for="panels">台数</label><output id="panelsOut" for="panels"></output></div><input type="range" id="panels" min="0" max="120" step="2"><div class="ends"><span>0台</span><span>120台</span></div></div>
+          <div><div class="fl"><label for="panels">台数</label><output id="panelsOut" for="panels"></output></div><input type="range" id="panels" min="0" max="32" step="2"><div class="ends"><span>0台</span><span>設計図は16台</span><span>32台</span></div></div>
           <div><div class="fl"><span>置き方</span><span class="note" id="customNote" hidden>ドラッグで変更済み</span></div>
-            <div class="opts three" id="layoutSeg" role="group" aria-label="パネルの置き方">
-              <button class="opt pic" type="button" data-v="rows"><svg viewBox="0 0 54 40"><rect class="w" x="3" y="3" width="48" height="34" rx="2"/><path class="p" d="M10 9h34M10 20h34M10 31h34"/></svg><span>コート脇に3列</span></button>
-              <button class="opt pic" type="button" data-v="wall"><svg viewBox="0 0 54 40"><rect class="w" x="3" y="3" width="48" height="34" rx="2"/><path class="p" d="M10 8h34M10 32h34"/></svg><span>長い辺の壁際</span></button>
-              <button class="opt pic" type="button" data-v="perimeter"><svg viewBox="0 0 54 40"><rect class="w" x="3" y="3" width="48" height="34" rx="2"/><path class="p" d="M12 8h32M12 32h32M8 10v20"/></svg><span>壁際の3辺</span></button>
+            <div class="opts" id="layoutSeg" role="group" aria-label="パネルの置き方" style="grid-template-columns:1fr 1fr">
+              <button class="opt pic" type="button" data-v="gallery"><svg viewBox="0 0 54 40"><path class="w" d="M4 36h46M6 36V6h42v30M6 20h8M48 20h-8"/><path class="p" d="M14 16v6M40 16v6"/></svg><span>設計図どおり<br>2階ギャラリー</span></button>
+              <button class="opt pic" type="button" data-v="floor"><svg viewBox="0 0 54 40"><path class="w" d="M4 36h46M6 36V6h42v30M6 20h8M48 20h-8"/><path class="p" d="M10 28v6M44 28v6"/></svg><span>1階の壁際に<br>下ろした場合</span></button>
             </div>
           </div>
           <div class="hintbox"><svg class="ic"><use href="#i-hand"/></svg><span>3Dの中のパネルは、<b>ドラッグで移動</b>、<b>ダブルクリックで向きを90°回転</b>できます。動かすと結果に反映されます。</span></div>
@@ -449,7 +463,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
     <div class="center">
       <div class="tools">
         <button class="btn icon" id="sideToggle" type="button" aria-expanded="true" title="左のパネルを閉じる・開く" aria-label="左のパネルを閉じる・開く"><svg class="ic"><use href="#i-side"/></svg></button>
-        <div class="seg" id="splitSeg" role="group" aria-label="画面の分け方"><button type="button" data-v="0">1画面</button><button type="button" data-v="1"><svg class="ic"><use href="#i-two"/></svg>比較</button></div>
+        <div class="seg" id="splitSeg" role="group" aria-label="画面の分け方"><button type="button" data-v="0">1画面</button><button type="button" data-v="1">比較</button><button type="button" data-v="2">断面図</button></div>
         <div class="grp" id="modeGrp">
           <div class="seg" id="modeSeg" role="group" aria-label="空調方式"><button type="button" data-v="none"><i class="dot" style="background:var(--m-none)"></i>空調なし</button><button type="button" data-v="ac"><i class="dot" style="background:var(--m-ac)"></i>エアコンのみ</button><button type="button" data-v="eco"><i class="dot" style="background:var(--m-eco)"></i>ecowin</button></div>
         </div>
@@ -477,11 +491,12 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
           </div>
         </div>
         <span class="grow"></span>
-        <button class="btn" id="focusBtn" type="button" aria-pressed="false" title="3Dだけを画面いっぱいに表示します"><svg class="ic"><use href="#i-expand"/></svg><span>大きく表示</span></button>
+        <button class="btn" id="focusBtn" type="button" aria-pressed="false" title="3Dだけを画面いっぱいに表示します"><svg class="ic"><use href="#i-expand"/></svg><span>拡大</span></button>
       </div>
 
       <div class="view" id="view">
         <canvas class="gl" id="gl" aria-label="体育館の3D表示"></canvas>
+        <canvas class="sheetc" id="sheet" aria-label="断面図と平面図" hidden></canvas>
         <div class="hud clock"><div class="d" id="clockD"></div><div class="w" id="clockW"></div></div>
         <div class="hud tips" id="tips"><div class="rows"><span><kbd>ドラッグ</kbd>回す</span><span><kbd>ホイール</kbd>拡大する</span><span><kbd>床をクリック</kbd>その場所の値</span><span><kbd>パネルをドラッグ</kbd>置き場所を変える</span></div><button type="button" id="tipsClose" aria-label="操作の説明を閉じる"><svg class="ic"><use href="#i-x"/></svg></button></div>
         <div class="hud divider" id="divider" hidden></div>
@@ -538,6 +553,52 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
 <div class="tip" id="tip" hidden></div>
 
+<dialog id="specDlg">
+  <header><h2>建物の仕様（図面・仕様書から入力）</h2><button class="btn" id="closeSpec" type="button">閉じる</button></header>
+  <div class="body" style="max-width:none">
+    <p>図面や仕様書にある屋根・外壁の材料と厚さ、窓の種類を入れると、熱の通しやすさ（U値）を求めて計算に使います。値は外側から室内側へ、上から順に並べてください。</p>
+    <div class="specgrid">
+      <section class="card stack">
+        <h2><svg class="ic"><use href="#i-build"/></svg>屋根・天井 <small class="num" id="uRoof"></small></h2>
+        <div class="layers" id="lyRoof"></div>
+        <button class="btn" type="button" data-add="roof">＋ 層を追加</button>
+        <div><div class="fl"><span>屋根の遮熱（日射をはね返す工夫）</span></div><div class="seg full" id="reflSeg" role="group" aria-label="屋根の遮熱"></div></div>
+      </section>
+      <section class="card stack">
+        <h2><svg class="ic"><use href="#i-build"/></svg>外壁 <small class="num" id="uWall"></small></h2>
+        <div class="layers" id="lyWall"></div>
+        <button class="btn" type="button" data-add="wall">＋ 層を追加</button>
+        <div><div class="fl"><span>すきま風（1時間に空気が入れ替わる回数）</span><output id="achOut"></output></div>
+          <div class="pair"><button class="btn" type="button" data-ach="-1">− 少なく</button><button class="btn" type="button" data-ach="1">＋ 多く</button></div></div>
+      </section>
+      <section class="card stack">
+        <h2><svg class="ic"><use href="#i-grid"/></svg>窓 <small class="num" id="uGlass"></small></h2>
+        <div class="opts" id="glassSeg" role="group" aria-label="窓の種類"></div>
+      </section>
+      <section class="card stack">
+        <h2><svg class="ic"><use href="#i-image"/></svg>図面とデータ</h2>
+        <div><div class="fl"><span>図面の画像（控えとして添えます。計算には使いません）</span></div>
+          <input type="file" id="specImgIn" accept="image/*" aria-label="図面の画像を選ぶ">
+          <div class="note" id="specImgName" style="margin-top:4px"></div>
+          <img id="specImg" alt="取り込んだ図面" hidden style="max-width:100%;max-height:180px;margin-top:6px;border:1px solid var(--line);border-radius:6px">
+          <button class="btn" id="specImgDel" type="button" style="margin-top:6px">図面を外す</button></div>
+        <div><div class="fl"><span>仕様データ（.json）の読み込み</span></div><input type="file" id="specFile" accept=".json,application/json" aria-label="仕様データを選ぶ"></div>
+        <div><button class="btn" id="specExport" type="button"><svg class="ic"><use href="#i-save"/></svg>仕様データを書き出す</button>
+          <a class="btn" id="specDl" hidden style="margin-left:6px">ファイルに保存</a></div>
+        <textarea id="specJson" readonly hidden rows="5" aria-label="仕様データ" style="width:100%;font:11px/1.4 ui-monospace,monospace;background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px"></textarea>
+      </section>
+    </div>
+    <table class="cmp sv" id="specCmp" style="margin-top:12px"></table>
+    <p class="note">材料の熱の伝わりやすさ（熱伝導率）、窓と遮熱の値は一般的な目安です。仕様書に U値 や性能値の記載がある場合は、その値に近くなるよう層を調整してください。</p>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px"><button class="btn primary" id="specApply" type="button">この仕様で計算する</button><span class="note" id="specMsg" role="status"></span></div>
+  </div>
+</dialog>
+
+<dialog id="docsDlg">
+  <header><h2>取り込んだ設計資料</h2><button class="btn" id="closeDocs" type="button">閉じる</button></header>
+  <div class="body" id="docsBody" style="max-width:none"></div>
+</dialog>
+
 <dialog id="helpDlg">
   <header><h2>使い方</h2><button class="btn" id="closeHelp" type="button">閉じる</button></header>
   <div class="body">
@@ -568,16 +629,20 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
   <div class="body">
     <p>この画面は、まだ ecowinハイブリッドを設置していない体育館に設置した場合の温度・風・電力の変化を、簡易モデルで推計して見せるものです。数値は実測値ではなく、建物の実寸・断熱・既存設備が分かれば置き換えられます。</p>
     <h3>建物</h3>
-    <ul><li>いただいた写真をもとにした想定寸法です。アリーナ 46m × 38m を四周の観覧席（奥行 5m）が囲み、屋内全体は 56m × 48m（2,688㎡）、天井高 12.5m としています【仮定】。図面があれば置き換えられます。</li>
-      <li>窓は南面の縦長窓8か所と、北面・東面の小窓で合計約 190㎡。屋根・壁・窓の性能は断熱性能の3段階で切り替えます【推計】。</li>
-      <li>空調は、観覧席の上を通る南北2本のダクトのノズル（高さ 8.2m）からアリーナへ吹き下ろす方式としています。</li></ul>
+    <ul><li>日出町 中央体育館の設計図（機械設備工事）から読み取った寸法です。アリーナは通り芯 2〜10 の 38.8m × A〜H の 28.5m、1階床から2階床まで 3.5m、梁天端まで 7.5m、屋根まで 10.6m。</li>
+      <li>南北の長い壁に沿って2階の高さにギャラリーがあり、壁掛形エアコンの室内機 16台と輻射パネル 16台が並びます（機器表・平面図）。パネルは W2,200 × H600 の横型で、下端は1階床から約 3.95m です。</li>
+      <li>窓の大きさは立面図からの目安で、合計 約212㎡。屋根・壁・窓の断熱の仕様は設計図に記載がないため、断熱性能の3段階【推計】か「図面・仕様書から入力」で指定します。</li>
+      <li>「図面・仕様書から入力」を選ぶと、屋根と外壁の材料・厚さから熱の通しやすさ（U値）を求めます。U = 1 ÷（表面の熱抵抗 ＋ 各層の厚さ÷熱伝導率 の合計）。表面の熱抵抗は屋根 0.13、外壁 0.15㎡K/W。屋根の遮熱は、日射を吸収する割合を なし 0.7、遮熱塗装 0.4、遮熱シート 0.25 とします。材料・窓・遮熱の値は一般的な目安です。</li>
+      <li>「断面図」は、エアコンを通る A−A 断面の空気温度、選んだ高さの平面の値、高さごとの館内平均の空気温度を、2つの方式で並べた図面です。</li></ul>
     <h3>気象</h3>
-    <ul><li>東京都練馬区は、2025年の1時間ごとの観測値です。気温・湿度・風速は気象庁「過去の気象データ」のアメダス練馬の値、天気の区分は同じ観測の降水量と日照時間から決めています。</li>
-      <li>アメダス練馬は日射量を観測していないため、日射量は Open-Meteo Historical Weather API（ERA5 再解析）の練馬付近の値を使っています。</li>
+    <ul><li>「大分」は、日出町に最も近い大分地方気象台の2025年の1時間ごとの観測値です（気温・湿度・風速・全天日射量。気象庁「過去の気象データ」を加工）。天気の区分は降水量と日照時間から決めています。</li>
+      <li>「東京都練馬区」は、アメダス練馬の2025年の観測値（日射量のみ Open-Meteo の再解析値）です。</li>
       <li>そのほかの地域は、平年値から合成した1時間値です【ダミー】。</li></ul>
     <h3>熱の計算</h3>
     <ul><li>室内の空気と、床・壁の構造体の2つの温度を、屋根・壁・窓・すきま風・日射・人・照明・空調の熱の出入りから5分刻みで1年分計算します。</li>
-      <li>空調能力は熱負荷計算書の単位負荷（冷房 300W/㎡、暖房 185W/㎡）と地域係数から決め、ecowinハイブリッドは補正係数 0.7 を掛けています。</li>
+      <li>ecowinハイブリッドの空調能力は機器表の値（冷房 20.0kW × 8系統 ＝ 160kW、暖房 22.4kW × 8 ＝ 179.2kW）です。比べる相手の「エアコンのみ」は、熱負荷計算書の補正係数 0.7 で割り戻した能力（冷房 約229kW）としています【仮定】。</li>
+      <li>効率は機器表の消費電力から、冷房 COP 3.08（外気 35℃）、暖房 COP 3.41（外気 7℃）を基準に、外気温で変えています。</li>
+      <li>輻射パネルの放熱面積は、正面の面積（両面）にフィンの分として 3倍を掛けています【仮定】。</li>
       <li>暖房時、温風は天井付近に溜まります。上下の温度勾配の係数はエアコンのみ 0.03、ecowinハイブリッド 0.01【推計】で、天井付近が熱いほど屋根から逃げる熱が増えます。</li>
       <li>パネル表面は暖房 45℃（代理店の測定資料の下限）、冷房 15℃【仮定】。</li>
       <li>2つの方式は<b>同じ体感</b>で比べます。この部屋をエアコンだけで設定温度にしたときの館内平均の体感温度を目標にして、ecowinハイブリッドはパネルの輻射と風の弱さを織り込んだ空気温度で運転します（調整幅は最大 2.5℃）。</li></ul>
@@ -587,7 +652,7 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <li>体感温度（作用温度）は空気温度と放射温度の平均で、風が強い場所ほど空気温度の重みを大きくします（ASHRAE 55）。</li>
       <li>暑さ指数（WBGT）は 0.7×湿球温度＋0.3×黒球温度（屋内の式）。区分は日本スポーツ協会の熱中症予防運動指針によります。</li>
       <li>3Dの中の流線は、噴流・まわりの空気の巻き込み・館内の循環・パネルまわりの上昇流や下降流・乱れを合わせた表示用の流れに、粒を乗せて描いたものです。床の色の風速や年間の計算とは別の、見た目のための表現です。</li>
-      <li>風は吹出し口からの噴流として近似しています。吹出し風速はエアコンのみ 5.0m/s、ecowinハイブリッド 1.5m/s【推計】。暖房の温風は中央付近で人の高さに届いたあと浮き上がります。</li></ul>
+      <li>風は吹出し口からの噴流として近似しています。吹出し風速は、壁掛形の強風に相当する 4.3m/s（エアコンのみ）と、弱風運転の 2.2m/s（ecowinハイブリッド）としています【推計】。</li></ul>
     <h3>電力・料金</h3>
     <ul><li>消費電力は空調の出力を外気温に応じた効率（COP）で割り、送風機の電力を加えたものです。</li>
       <li>削減率がメーカー公表の最大値 34% を超える条件では、34% を上限として表示します。</li>
@@ -595,12 +660,13 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
       <li>節約額シミュレーションの削減率は、この画面の計算値、メーカー公表の最大値 34%、1〜34% の任意の値から選べます。基本料金の節約は計算上の最大需要電力の差によります。導入費用の差額と保守費の差は仮の値です。杉の木の本数は、1本あたり年 14kg の吸収として換算しています。</li></ul>
     <h3>扱っていないこと</h3>
     <ul><li>気流の詳細な数値解析（CFD）は行っていません。風と温度の分布は傾向を示す近似です。</li>
-      <li>熱の計算では屋内全体を1つの箱として扱い、観覧席の段やトラスの形は放射の計算に含めていません。</li>
-      <li>予熱運転は、ecowinハイブリッドだけ空調の開始を早める設定です（能力が70%のため、立ち上がりに時間がかかります）。</li></ul>
+      <li>熱の計算ではアリーナを1つの箱として扱い、ギャラリーやトラス、ステージの形は放射の計算に含めていません。</li>
+      <li>予熱運転は、ecowinハイブリッドだけ空調の開始を早める設定です。初期値は「なし」です。</li></ul>
     <h3>出典</h3>
     <ul><li>エコファクトリー ecowinHYBRID 製品情報（削減率 最大34%、組み合わせる空調能力の目安）</li>
       <li>ワイズプランニング「エコウィンHYBRIDの冷暖効果実証データ」（パネル表面温度 45〜50℃）</li>
-      <li>気象庁「過去の気象データ」（アメダス練馬 2025年の1時間値）を加工して使用／Open-Meteo Historical Weather API（CC BY 4.0）</li>
+      <li>令和8年度 日出町立屋内運動場等3施設空調設備設置工事（機械設備工事）設計書・設計図（建物の寸法、機器の台数・能力・寸法・位置）</li>
+      <li>気象庁「過去の気象データ」（大分地方気象台・アメダス練馬 2025年の1時間値）を加工して使用／Open-Meteo Historical Weather API（CC BY 4.0）</li>
       <li>熱負荷計算書（標準）・ランニングコスト試算表（単位負荷、地域係数、補正係数 0.7）</li>
       <li>ANSI/ASHRAE Standard 55（評価高さ、作用温度）／日本スポーツ協会 熱中症予防運動指針（WBGT の区分）</li></ul>
   </div>
@@ -608,7 +674,9 @@ dialog ul { padding-left: 18px; margin: 4px 0; }
 
 <script src="vendor/three.min.js"></script>
 <script src="vendor/OrbitControls.js"></script>
+<script src="data/oita2025.js"></script>
 <script src="data/nerima2025.js"></script>
+<script src="data/hiji_design.js"></script>
 <script src="js/model.js"></script>
 <script src="js/app.js"></script>
 <!--PAGE-END-->
