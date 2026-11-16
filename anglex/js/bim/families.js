@@ -5,6 +5,7 @@ import { parseSpec, sectionOutline, sectionBox, parseCuts, cutDepth } from '../g
 import { PIPES, UBOLTS, BOLTS, pipeOD } from '../data/sections.js';
 import { boltDims } from '../geo/fasteners.js';
 import { parseWire, solveFrame } from './skeleton.js';
+import { registerMore } from './families_more.js';
 
 // ---------- 配置ユーティリティ ----------
 const v3 = (x = 0, y = 0, z = 0) => [x, y, z];
@@ -424,6 +425,9 @@ reg({
     bool('base', '柱脚のベースプレート', false, { group: 'ベース' }), num('baseW', 'ベース寸法', 150, { group: 'ベース' }), num('baseT', 'ベース板厚', 9, { group: 'ベース' }), num('anchorD', 'アンカー穴径', 14, { group: 'ベース' }), bool('anchorDraw', 'アンカーを描く', true, { group: 'ベース' }), P.weldSize, P.material, P.finish],
   parts(p) { return solveFrame(parseWire(p.lines), { spec: p.spec, align: p.align, joint: p.joint, orient: p.orient, base: p.base ? { on: true, size: p.baseW, t: p.baseT, holeD: p.anchorD, anchors: p.anchorDraw } : null, weldSize: p.weldSize, finish: p.finish, material: p.material }, { place, flushEnds, outlineWeld }).parts; },
 });
+
+// 追加ファミリ（総合カタログの 1〜25 章。js/bim/families_more.js）
+registerMore({ reg, place, DIR, P, num, int, sel, bool });
 
 export function familyById(id) { return FAMILIES.find(f => f.id === id); }
 export const CATEGORIES = [...new Set(FAMILIES.map(f => f.category))];

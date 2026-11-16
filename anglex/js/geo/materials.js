@@ -89,7 +89,7 @@ export async function loadPolyhaven(name, { res = '1k', repeat = 1 } = {}) {
 }
 // 既存マテリアルへ Polyhaven マップを適用（アルベドは tint と乗算）
 export function upgradeMaterial(m, name, { repeat = 1, normalScale = 0.6, useAlbedo = true } = {}) {
-  if (globalThis.__anglexNoPBR) return m;
+  if (globalThis.__anglexNoPBR || globalThis.__anglexOffline) return m; // オフライン版では写真テクスチャを取りに行かない（外部への通信をしない）
   loadPolyhaven(name, { repeat }).then(t => { if (!m) return; if (useAlbedo && t.map) { m.map = t.map; } if (t.normalMap) { m.normalMap = t.normalMap; m.normalScale = new THREE.Vector2(normalScale, normalScale); } if (t.roughMap) { m.roughnessMap = t.roughMap; } if (t.armMap) { m.aoMap = t.armMap; m.aoMapIntensity = 0.8; } m.needsUpdate = true; }).catch(() => { });
   return m;
 }
@@ -112,18 +112,28 @@ export function finishMaterial(finish = 'HDZ', opts = {}) {
   let m;
   switch (finish) {
     case 'HDZ': case 'HDZ35': case 'HDZ45': case 'HDZ55': { const t = spangle(512, 7 + (finish.length)); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, roughnessMap: t.roughnessMap, normalMap: t.normalMap, normalScale: new THREE.Vector2(0.18, 0.18), metalness: 0.72, roughness: 0.5, envMapIntensity: 1.15, clearcoat: 0.05, clearcoatRoughness: 0.5 }); addGrunge(m, 0.10); break; }
-    case 'SUS304': case 'SUS': { const t = hairline(); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, roughnessMap: t.roughnessMap, normalMap: t.normalMap, normalScale: new THREE.Vector2(0.4, 0.4), metalness: 0.95, roughness: 0.36, envMapIntensity: 1.05, anisotropy: 0.6 }); upgradeMaterial(m, 'metal_plate', { repeat: 1, normalScale: 0.35, useAlbedo: false }); break; }
-    case 'EZ': { const t = noise(256, [200, 204, 212], 10, 11); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.9, roughness: 0.28, envMapIntensity: 1.0 }); upgradeMaterial(m, 'metal_plate_02', { repeat: 1, normalScale: 0.25, useAlbedo: false }); addGrunge(m, 0.08); break; }
-    case 'ZAM': { const t = noise(256, [186, 190, 194], 14, 12); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0.8, roughness: 0.45 }); break; }
-    case 'PAINT': m = new THREE.MeshPhysicalMaterial({ color: FINISH_COLORS.PAINT, metalness: 0.0, roughness: 0.72, clearcoat: 0.15, clearcoatRoughness: 0.6 }); upgradeMaterial(m, 'metal_plate', { normalScale: 0.3, useAlbedo: false }); addGrunge(m, 0.12); break;
+    case 'SUS304': case 'SUS': { const t = hairline(); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, roughnessMap: t.roughnessMap, normalMap: t.normalMap, normalScale: new THREE.Vector2(0.4, 0.4), metalness: 0.95, roughness: 0.36, envMapIntensity: 1.05, anisotropy: 0.6, clearcoat: 0.08, clearcoatRoughness: 0.3 }); break; }
+    case 'EZ': { const t = noise(256, [178, 184, 194], 14, 11); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, bumpMap: t.map, bumpScale: 0.12, metalness: 0.9, roughness: 0.36, envMapIntensity: 1.0, iridescence: globalThis.__anglexNoPBR ? 0 : 0.22, iridescenceIOR: 1.5, iridescenceThicknessRange: [140, 380], clearcoat: 0.12, clearcoatRoughness: 0.35 }); /* 電気亜鉛めっき + クロメート: ごく薄い虹色の膜 */ addGrunge(m, 0.09); break; }
+    case 'ZAM': { const t = noise(256, [186, 190, 194], 14, 12); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, bumpMap: t.map, bumpScale: 0.25, metalness: 0.84, roughness: 0.42, clearcoat: 0.06, clearcoatRoughness: 0.5 }); addGrunge(m, 0.08); break; }
+    case 'PAINT': { const t = noise(256, [128, 128, 128], 40, 61); m = new THREE.MeshPhysicalMaterial({ color: FINISH_COLORS.PAINT, bumpMap: t.map, bumpScale: 0.18, metalness: 0.0, roughness: 0.66, clearcoat: 0.22, clearcoatRoughness: 0.55 }); addGrunge(m, 0.12); break; } /* サビ止め塗装: 刷毛・吹付けのゆず肌 */
     case 'BLACK': { const t = millscale(); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0.55, roughness: 0.78 }); upgradeMaterial(m, 'rusty_metal_04', { repeat: 1, normalScale: 0.6, useAlbedo: false }); addGrunge(m, 0.16); break; }
-    case 'PVC': m = new THREE.MeshStandardMaterial({ color: FINISH_COLORS.PVC, metalness: 0.0, roughness: 0.55 }); break;
-    case 'RUBBER': m = new THREE.MeshStandardMaterial({ color: FINISH_COLORS.RUBBER, metalness: 0.0, roughness: 0.95 }); break;
+    case 'PVC': { const t = noise(256, [158, 163, 168], 5, 51); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.0, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.5 }); break; }
+    case 'RUBBER': { const t = noise(256, [40, 41, 44], 12, 53); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, bumpMap: t.map, bumpScale: 0.5, metalness: 0.0, roughness: 0.88, sheen: 0.5, sheenRoughness: 0.75, sheenColor: new THREE.Color(0x6a6d72) }); break; }
     case 'BOLT': { const t = noise(256, [190, 194, 200], 14, 31); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.92, roughness: 0.34, envMapIntensity: 1.0 }); addGrunge(m, 0.08); break; }
     case 'THREAD': { m = new THREE.MeshStandardMaterial({ color: 0xaeb2b7, metalness: 0.9, roughness: 0.42, normalMap: threadNormalMap(8), normalScale: new THREE.Vector2(1.0, 1.0) }); break; }
     case 'WELD': { m = new THREE.MeshStandardMaterial({ color: 0x8a8e94, metalness: 0.72, roughness: 0.52, vertexColors: true, normalMap: weldNormalMap(), normalScale: new THREE.Vector2(1.2, 1.2) }); break; }
     case 'CONCRETE': { const t = noise(256, [168, 164, 156], 22, 21); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0, roughness: 0.95 }); upgradeMaterial(m, 'concrete_floor_02', { repeat: 20, normalScale: 0.7, useAlbedo: true }); break; }
-    case 'PIPE': m = new THREE.MeshStandardMaterial({ color: 0x2a7d8c, metalness: 0.35, roughness: 0.5 }); break;
+    case 'PIPE': { const t = noise(256, [42, 125, 140], 9, 57); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.25, roughness: 0.48, clearcoat: 0.45, clearcoatRoughness: 0.38 }); addGrunge(m, 0.08); break; } /* 配管（参考）: 塗装した鋼管 */
+    // 樹脂（PP の成形品）: つやを抑えた面に、うすい上塗りの照り
+    case 'RESIN': case 'RESIN_GRAY': { const base = finish === 'RESIN' ? [232, 229, 220] : [141, 146, 152]; const t = noise(256, base, 5, 41); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.0, roughness: 0.46, clearcoat: 0.35, clearcoatRoughness: 0.45, sheen: 0.25, sheenRoughness: 0.6, sheenColor: new THREE.Color(0xffffff) }); break; }
+    // 硬質ウレタン（発泡体）: ざらつきを凹凸で出す
+    case 'URETHANE': { const t = noise(256, [222, 205, 140], 30, 43); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, bumpMap: t.map, bumpScale: 1.4, metalness: 0.0, roughness: 0.96 }); break; }
+    // ワイヤロープ: より線の筋
+    case 'WIRE': { m = new THREE.MeshStandardMaterial({ color: 0xa4a9af, metalness: 0.9, roughness: 0.38, normalMap: threadNormalMap(8), normalScale: new THREE.Vector2(0.7, 0.7) }); break; }
+    // アルミの押出材（レールなど）: アルマイトのつや消し
+    case 'ALUMI': { const t = hairline(); m = new THREE.MeshPhysicalMaterial({ color: 0xe4e6e8, roughnessMap: t.roughnessMap, metalness: 0.9, roughness: 0.42, clearcoat: 0.1, clearcoatRoughness: 0.4 }); break; }
+    // 鋳鉄（ローラー玉など）
+    case 'CAST': { const t = noise(256, [70, 72, 76], 26, 47); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, bumpMap: t.map, bumpScale: 0.9, metalness: 0.6, roughness: 0.74 }); addGrunge(m, 0.14); break; }
     case 'GHOST': m = new THREE.MeshStandardMaterial({ color: 0x8b98a5, transparent: true, opacity: 0.28, roughness: 0.8, depthWrite: false }); break;
     default: m = new THREE.MeshStandardMaterial({ color: opts.color || 0xb0b4b8, metalness: 0.7, roughness: 0.5 });
   }

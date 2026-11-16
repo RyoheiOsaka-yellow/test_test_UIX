@@ -2,6 +2,7 @@
 // 部材は長さ方向を +Z、断面を XY 平面に置く。各プレートは2Dシェイプ(穴付き)を厚み方向に押し出して作るため、
 // 穴・長穴は本当の貫通穴として表現される（CSG不要）。
 import * as THREE from 'three';
+import { creaseNormals } from './normals.js';
 import { ANGLES, UANGLES, CHANNELS, LIPCHANNELS, SQUARES, HBEAMS, PIPES, PVC, DENSITY } from '../data/sections.js';
 import { finishMaterial } from './materials.js';
 
@@ -163,15 +164,15 @@ function filletStrip(r, L, material, origin, quadrant) {
   const g = new THREE.ExtrudeGeometry(s, { depth: L, bevelEnabled: false, curveSegments: 6 });
   if (quadrant === 2) g.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1)); // mirror x
   if (quadrant === 3) g.applyMatrix4(new THREE.Matrix4().makeScale(1, -1, 1));
-  g.translate(origin.x, origin.y, origin.z); g.computeVertexNormals(); const m = new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.userData.fillet = true; return m;
+  g.translate(origin.x, origin.y, origin.z); creaseNormals(g, 0.5); const m = new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.userData.fillet = true; return m;
 }
 
 // 円管（内径付き）
 function pipeMesh(p, L, material, lod) {
   const shape = new THREE.Shape(); shape.absarc(0, 0, p.od / 2, 0, Math.PI * 2, false);
   const inner = new THREE.Path(); inner.absarc(0, 0, p.od / 2 - p.t, 0, Math.PI * 2, true); shape.holes.push(inner);
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: L, bevelEnabled: false, curveSegments: lod >= 400 ? 48 : 24 });
-  geo.computeVertexNormals(); const m = new THREE.Mesh(geo, material); m.castShadow = m.receiveShadow = true; m.userData.plate = 'pipe'; return m;
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: L, bevelEnabled: false, curveSegments: lod >= 400 ? 64 : lod >= 300 ? 40 : 24 });
+  creaseNormals(geo, 0.5); const m = new THREE.Mesh(geo, material); m.castShadow = m.receiveShadow = true; m.userData.plate = 'pipe'; return m;
 }
 
 // ---- 端部の斜め切り ----
@@ -200,7 +201,7 @@ export function buildMember(opts) {
   const mat = opts.material || finishMaterial(p.material === 'PVC' ? 'PVC' : (opts.finish || 'HDZ'));
   const g = new THREE.Group(); g.name = p.label; g.userData.profile = p; g.userData.length = L;
   if (p.kind === 'PIPE' || p.kind === 'RB') {
-    if (p.kind === 'RB') { const geo = new THREE.CylinderGeometry(p.d / 2, p.d / 2, L, lod >= 400 ? 32 : 16); geo.rotateX(Math.PI / 2); geo.translate(0, 0, L / 2); const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; g.add(m); }
+    if (p.kind === 'RB') { const geo = new THREE.CylinderGeometry(p.d / 2, p.d / 2, L, lod >= 400 ? 48 : lod >= 300 ? 32 : 16); geo.rotateX(Math.PI / 2); geo.translate(0, 0, L / 2); const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; g.add(m); }
     else g.add(pipeMesh(p, L, mat, lod));
     g.userData.plates = []; if (opts.cuts) applyCuts(g, p, L, opts.cuts); return g;
   }

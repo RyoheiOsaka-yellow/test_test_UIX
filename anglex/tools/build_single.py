@@ -4,7 +4,8 @@ CDN ライブラリ（Three.js / PDF.js / pdf-lib / web-ifc / SheetJS / Poly Hav
 import os, re, base64, json, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 import sys
-OFFLINE = '--offline' in sys.argv; WITHOUT_OCCT = '--without-occt' in sys.argv; args = [a for a in sys.argv[1:] if not a.startswith('--')]  # --without-occt: LGPL の STEP 読込ライブラリを同梱しない
+OFFLINE = '--offline' in sys.argv; WITHOUT_OCCT = '--without-occt' in sys.argv; DEMO = '--demo' in sys.argv;  # --demo: 顧客に渡す試用版（デモ版の印・進め方の案内つき）
+args = [a for a in sys.argv[1:] if not a.startswith('--')]  # --without-occt: LGPL の STEP 読込ライブラリを同梱しない
 HTML = args[0] if len(args) > 0 else 'index.html'; CSS = args[1] if len(args) > 1 else 'css/app.css'; OUT = args[2] if len(args) > 2 else ('dist/ANGLEX_offline.html' if OFFLINE else 'dist/ANGLEX.html')
 VEN = ROOT / 'vendor'
 def data_url(path, mime):
@@ -89,8 +90,10 @@ html = html.replace('<link rel="stylesheet" href="' + CSS + '">', '<style>\n' + 
 if OFFLINE:
     html = re.sub(r'<link[^>]*fonts\.g(oogleapis|static)\.com[^>]*>\s*', '', html)  # Web フォントは参照しない（システムフォントで表示）
     html = html.replace('</head>', '<script>globalThis.__anglexOffline=true;</script>\n</head>', 1)
+if DEMO:
+    html = html.replace('</head>', '<script>window.ANGLEX_DEMO=true;</script>\n</head>', 1); html = re.sub(r'<title>[^<]*</title>', '<title>ANGLEX デモ版</title>', html, count=1)
 font = ROOT / 'fonts' / 'NotoSansJP-JIS.ttf'
 fontTag = ('<script>window.__anglexFontB64=' + json.dumps(base64.b64encode(font.read_bytes()).decode()) + ';</script>\n') if font.exists() else ''
 html = html.replace('<script type="module" src="js/main.js"></script>', fontTag + '<script type="module">import "anglex:js/main.js";</script>')
 out = ROOT / OUT; out.parent.mkdir(exist_ok=True); out.write_text(html, encoding='utf-8')
-print('wrote', out, round(out.stat().st_size / 1024), 'KB,', len(mods), 'modules', '(offline: vendored libs embedded)' if OFFLINE else '')
+print('wrote', out, round(out.stat().st_size / 1024), 'KB,', len(mods), 'modules', '(offline: vendored libs embedded)' if OFFLINE else '', '(demo)' if DEMO else '')

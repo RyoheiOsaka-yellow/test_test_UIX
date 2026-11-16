@@ -1,0 +1,53 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ANGLEX デモ版のご案内</title><link rel="stylesheet" href="doc.css"><style>
+.hd{border-bottom:3px solid var(--accent);padding-bottom:6pt;margin-bottom:8pt}.hd .b{font-size:9pt;letter-spacing:.2em;color:var(--ink3)}.hd h1{font-size:20pt;margin-top:2pt}.hd .w{font-size:9pt;color:var(--ink3);margin-top:2pt}
+table{font-size:9pt}th,td{padding:4pt 6pt;vertical-align:top}tr{break-inside:avoid}
+h2{margin-top:12pt}
+.lead{font-size:10.5pt;line-height:1.75}
+.fig{display:grid;grid-template-columns:1fr 1fr;gap:6pt;margin:8pt 0}.fig figure{margin:0;break-inside:avoid}.fig img{width:100%;border:1px solid #cfcabd;border-radius:3pt}.fig figcaption{font-size:8pt;color:var(--ink3);margin-top:2pt}
+.steps td:first-child{width:8mm;font-weight:700;color:var(--accent2);text-align:center}
+.box{border:1px solid #cfcabd;border-left:4px solid var(--accent);border-radius:3pt;padding:6pt 9pt;margin:8pt 0;font-size:9.5pt;break-inside:avoid}
+</style></head><body>
+<div class="hd"><div class="b">ANGLEX ／ FABRICATION INTELLIGENCE</div><h1>ANGLEX デモ版のご案内</h1><div class="w">提出元: ワールド化成　／　2026 年 11 月 16 日　／　試用のための版です</div></div>
+
+<p class="lead">ANGLEX は、配管支持金具と架台を 3D で組み、重量・見積・加工指示・検査記録までを一つのデータから出す道具です。このデモ版は、<b>ファイルを 1 つ開くだけ</b>で動きます。インストールは要りません。入力したデータは、お使いのブラウザの中だけに保存され、外部には送られません。</p>
+
+<h2>1. 始め方</h2>
+<table class="steps"><tr><th>#</th><th>すること</th><th>補足</th></tr>
+<tr><td>1</td><td>お渡しした <b>ANGLEX_demo_offline.html</b> を、Chrome か Edge で開く</td><td>ダブルクリックで開きます。約 62 MB あるため、開くまで少し時間がかかります</td></tr>
+<tr><td>2</td><td>何も入力せずに「サインイン」を押す</td><td>デモ版の認証は形だけです</td></tr>
+<tr><td>3</td><td>「図面から加工指示（3D）」を選ぶ</td><td>「かんたん見積（チャットで相談）」からも始められます</td></tr>
+<tr><td>4</td><td>画面の下の「進め方」を押す</td><td>5 つの手順が出ます。初回は自動で開きます</td></tr></table>
+
+<h2>2. 試していただきたいこと（10 分ほど）</h2>
+<table class="steps"><tr><th>#</th><th>手順</th><th>見どころ</th></tr>
+<tr><td>1</td><td>サンプルの架台を開く</td><td>3D を回す・寄る。部材をクリックして寸法を変えると、重量と見積がその場で変わります</td></tr>
+<tr><td>2</td><td>部材を選んで 3D に置く</td><td>画面の右端の「部材を選ぶ」から、203 製品・1,296 サイズを選べます。サインイン後は、どの画面からでも開けます</td></tr>
+<tr><td>3</td><td>重量と見積を見る</td><td>重量の集計、見積、相手先への受け渡しまでを一つの画面で追えます</td></tr>
+<tr><td>4</td><td>案件の進行を見る</td><td>依頼から納品までの 9 段階。段階ごとの確認、期限、工場の選定、注文書・納品書・検収書</td></tr>
+<tr><td>5</td><td>図面・データを書き出す</td><td>IFC・STEP・DXF・NC データ・PDF・Excel など 21 種類。お手元のソフトで開いて確かめられます</td></tr></table>
+
+<div class="fig">
+<figure><img src="img/demo_picker.png" alt=""><figcaption>部材を選ぶ: 章で絞り、サイズを選んで 3D に置く</figcaption></figure>
+<figure><img src="img/demo_order.png" alt=""><figcaption>案件進行: 依頼から納品までの段階・確認・期限</figcaption></figure>
+<figure><img src="img/demo_3d.jpg" alt=""><figcaption>3D の表示: 金具・配管・断熱材の質感</figcaption></figure>
+<figure><img src="img/demo_guide.png" alt=""><figcaption>進め方: 5 つの手順を順に試せます</figcaption></figure>
+</div>
+
+<h2>3. デモ版に入っているもの</h2>
+<table><tr><th>内容</th><th>数</th><th>補足</th></tr>
+<tr><td>3D にできる部材の型</td><td>67 種類</td><td>架台、ブラケット、吊バンド、立バンド、床バンド、サドル、ローラー、断熱支持、振れ止め、基礎ブロック、スリーブ、インサートなど</td></tr>
+<tr><td>製品とサイズ</td><td>203 製品・1,296 サイズ</td><td>配管支持金具の総合カタログの寸法表から</td></tr>
+<tr><td>読み込める形式</td><td>24 種類</td><td>DXF・PDF・IFC・STEP・画像など。DWG・JWW はサーバー版が必要です</td></tr>
+<tr><td>書き出せる形式</td><td>21 種類</td><td>IFC（IFC4・IFC2x3）、STEP、DXF、DSTV NC、glTF、PDF、Excel など</td></tr>
+<tr><td>帳票</td><td>—</td><td>重量計算書、見積書、加工指示書、検査記録シート、注文書、納品書、検収書</td></tr></table>
+
+<h2>4. あらかじめお伝えしておくこと</h2>
+<table><tr><th>項目</th><th>内容</th></tr>
+<tr><td>数値の位置づけ</td><td>重量・金額は参考値です。単価、工場の一覧、検査の許容差、難易度と標準日数は、サンプルの値です。貴社の値に置き換えて使う前提です</td></tr>
+<tr><td>部材の形</td><td>「形は推定」と表示される部材（今回追加した 54 製品）は、寸法表の数値から形を起こしています。寸法図との照合はこれからで、細部は実物と違うことがあります</td></tr>
+<tr><td>確認していないこと</td><td>お使いの BIM・CAD ソフトでの IFC の読込、加工機での NC データの動作は、まだ確かめていません。お試しの結果を教えていただけると助かります</td></tr>
+<tr><td>データの保存</td><td>ブラウザの中に保存されます。別の PC やブラウザには引き継がれません。「案件を保存」でファイルに書き出せます</td></tr>
+<tr><td>動作環境</td><td>Chrome または Edge の最近の版（Chromium 系のブラウザで動作を確認しています）。通信は使いません。Safari・Firefox では確認していません</td></tr></table>
+
+<div class="box"><b>ご感想のお願い</b><br>画面の下の「感想をメモ」に、気づいたことをその場で書き留められます。「ファイルにする」を押すと、テキストファイルになります。そのファイルを担当者までお送りください。使いにくい所、足りない部材、帳票の体裁など、どんなことでも構いません。<br>最初からやり直すときは、「進め方」の中の「最初の状態に戻す」を押してください。</div>
+</body></html>

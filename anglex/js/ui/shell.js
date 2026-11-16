@@ -11,6 +11,7 @@ import { costParts, yen } from '../bim/cost.js';
 import { buildChecklist, openCount, detectMisalignment, holeDSL } from '../bim/review.js';
 import { parseSpec, sectionOutline, sectionProps, holeFaces, FACE_LABEL } from '../geo/profiles.js';
 import { CATALOG } from '../data/catalog.js';
+import '../data/catalog_more.js';
 import { renderEstimatePanel, createEstimate } from './estimate.js';
 import { renderDrawingView } from './importer.js';
 import { openAlign, openAlerts } from './review.js';

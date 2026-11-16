@@ -1,0 +1,15 @@
+// 画面写真（デモ版・v2）: 進め方、部材えらび、案件進行。SHOT_DIR に demo_guide.png / demo_picker.png / demo_order.png を出す
+const dir = process.env.SHOT_DIR || '/tmp';
+await page.evaluate(() => { localStorage.setItem('anglex.demo', '1'); }); await page.reload({ waitUntil: 'load' }); await page.waitForFunction(() => window.__ready === true, null, { timeout: 90000 });
+await page.evaluate(() => { document.querySelectorAll('.modal-back').forEach(m => m.remove()); app.shell.showView('signin'); }); await page.waitForTimeout(400); await page.screenshot({ path: dir + '/demo_signin.png' });
+await page.click('#smSignIn'); await page.waitForFunction(() => app.shell.view === 'modeselect'); await page.evaluate(() => app.openDemoGuide()); await page.waitForSelector('.demo-step'); await page.waitForTimeout(500); await page.screenshot({ path: dir + '/demo_guide.png' });
+await page.evaluate(() => document.querySelectorAll('.modal-back').forEach(m => m.remove()));
+// 部材えらび（モード選択の画面から）
+await page.click('#btnParts'); await page.waitForSelector('.modal.partpicker .pk-card'); await page.click('.pk-ch[data-ch="11"]'); await page.click('.pk-card[data-pid="LIB11_01"]'); await page.waitForSelector('.pk-detail [data-k="sku"]'); await page.selectOption('.pk-detail [data-k="sku"]', { label: '50A' }); await page.click('.pk-detail [data-act="add"]'); await page.click('.pk-ch:first-child');
+await page.waitForFunction(() => [...document.querySelectorAll('.pk-card img')].slice(0, 12).every(i => i.complete && i.naturalWidth > 0), null, { timeout: 60000 }).catch(() => { }); await page.waitForTimeout(800); await page.screenshot({ path: dir + '/demo_picker.png' });
+await page.evaluate(() => { app.partTray.length = 0; document.querySelectorAll('.modal-back').forEach(m => m.remove()); });
+// 案件進行（サンプルのモデルで、いくつか進めた状態）
+await page.evaluate(async () => { app.shell.enterApp(4); const OD = await import('./js/core/order.js'); const O = await import('./js/ui/order.js'); app.project.order = null; const o = O.ensureOrder(app); const user = app.user(); o.request = { customer: '○○設備工業', site: '△△ビル 3F 機械室', contact: '工事部 佐藤様', due: OD.addBizDays(OD.today(), 38), qty: 1, finish: '溶融亜鉛めっき', notes: '搬入は平日の午前' }; OD.replan(o, { need: O.orderNeed(app), user }); for (const s of ['request', 'drawing', 'spec']) { o.stages[s].manual = { agreed: true }; OD.completeStage(o, s, { user, checks: [], note: '' }); } OD.addChange(o, { user, what: '架台の高さを 100 mm 上げる', costDelta: 12000, dayDelta: 1 }); await app.openOrder({ stage: 'quote' }); });
+await page.waitForSelector('.modal.order .order-step'); await page.waitForTimeout(600); await page.screenshot({ path: dir + '/demo_order.png' });
+await page.click('.modal.order .tab[data-tab="factory"]'); await page.waitForSelector('.order-fac'); await page.waitForTimeout(400); await page.screenshot({ path: dir + '/demo_factory.png' });
+await page.evaluate(() => { document.querySelectorAll('.modal-back').forEach(m => m.remove()); localStorage.removeItem('anglex.demo'); localStorage.removeItem('anglex.demo.seen'); localStorage.removeItem('anglex.demo.done'); });

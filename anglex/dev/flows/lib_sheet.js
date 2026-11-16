@@ -1,0 +1,8 @@
+// 追加した製品（LIB…）のサムネイルを一覧にする（形の目視確認用）。SKU は env LIB_SKU=last で最後のサイズ
+const res = await page.evaluate(async (which) => { const T = await import('./js/ui/thumbs.js'); const { CATALOG } = await import('./js/data/catalog.js'); const { familyById } = await import('./js/bim/families.js'); const ps = CATALOG.products.filter(p => p.pid.startsWith('LIB')); const out = []; const errs = [];
+  for (const p of ps) { const sku = which === 'last' ? p.skus[p.skus.length - 1] : which === 'mid' ? p.skus[Math.floor(p.skus.length / 2)] : p.skus[0]; if (!familyById(p.family)) { errs.push('no family ' + p.family); continue; } const url = await new Promise(r => T.thumbFor(p, sku, r)); out.push({ pid: p.pid, name: p.name, sku: sku?.sku, fam: p.family, ok: !!url, url }); }
+  const host = document.createElement('div'); host.id = 'libSheet'; host.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f4f2ec;overflow:auto;display:grid;grid-template-columns:repeat(8,1fr);gap:4px;padding:6px;font:10px sans-serif;color:#222';
+  for (const o of out) { const c = document.createElement('div'); c.style.cssText = 'background:#fff;border:1px solid #ccc;padding:2px;text-align:center'; c.innerHTML = (o.url ? `<img src="${o.url}" style="width:100%;display:block">` : '<div style="height:100px;color:red">NG</div>') + `<div>${o.pid} ${o.name}</div><div style="color:#777">${o.sku}</div>`; host.append(c); } document.body.append(host);
+  return { n: out.length, ng: out.filter(o => !o.ok).map(o => o.pid + ' ' + o.fam), errs }; }, process.env.LIB_SKU || 'first');
+console.log('LIB sheet', JSON.stringify(res));
+await page.waitForTimeout(500);

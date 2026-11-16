@@ -1,6 +1,7 @@
 // カタログブラウザ: Drive 由来の製品DB（151製品 / 700 SKU）を章・サブカテゴリ・検索で絞り込み、タイプとして登録／配置
 import { h, modal, toast, esc } from './common.js';
 import { CATALOG } from '../data/catalog.js';
+import '../data/catalog_more.js';
 import { familyById } from '../bim/families.js';
 import { pipeOD } from '../data/sections.js';
 export function openCatalog(app) {
@@ -28,7 +29,8 @@ export function openCatalog(app) {
 export function productParams(p, sku) {
   const fam = familyById(p.family); if (!fam) throw new Error('ファミリ未対応: ' + p.family); const params = { ...(p.familyParams || {}) };
   params.finish = p.finish === 'HDZ' ? 'HDZ' : p.finish === 'SUS304' ? 'SUS304' : p.finish === 'ZAM' ? 'ZAM' : 'EZ'; if (p.finish === 'SUS304') params.material = 'SUS304';
-  if (sku) { const d = sku.dims; const num = s => { const m = String(s || '').match(/-?\d+(?:\.\d+)?/); return m ? +m[0] : null; };
+  if (sku && sku.params) { Object.assign(params, sku.params); params.__sku = sku.sku; }
+  else if (sku) { const d = sku.dims; const num = s => { const m = String(s || '').match(/-?\d+(?:\.\d+)?/); return m ? +m[0] : null; };
     if (d['適合配管径']) params.od = num(d['適合配管径']); else if (d['管径称']) params.od = pipeOD(d['管径称'], 'SGP') || num(d['管径称']); else if (d['管径称(VP)']) params.od = pipeOD(d['管径称(VP)'].replace('A', ''), 'VP') || num(d['管径称(VP)']);
     if (d['t×B']) { const m = d['t×B'].match(/(\d+(?:\.\d+)?)×(\d+)/); if (m) { params.t = +m[1]; params.B = +m[2]; } } if (d['t']) params.t = num(d['t']); if (d['B']) params.B = num(d['B']);
     if (d['d']) params.d = /^M/.test(d['d']) ? d['d'] : 'W' + d['d'].replace(/^W/, ''); if (d['C']) params.C = num(d['C']); if (d['H']) params.H = num(d['H']); if (d['L1']) params.L1 = num(d['L1']); if (d['L2']) params.L2 = num(d['L2']); if (d['ゴム厚']) params.rubber = num(d['ゴム厚']);

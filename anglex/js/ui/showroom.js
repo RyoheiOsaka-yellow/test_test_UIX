@@ -1,11 +1,12 @@
 // カタログ ショールーム: 製品を選ぶとその場で 3D に現れ、並んでいく（もう一度選ぶと消える）
 import { $, h, toast, confirmDialog } from './common.js';
 import { CATALOG } from '../data/catalog.js';
+import '../data/catalog_more.js';
 import { familyById } from '../bim/families.js';
 import { addTypeFromProduct } from './catalog.js';
 import { thumbFor, thumbCached, loadThumbCache, warmThumbs } from './thumbs.js';
 
-const CH_LABEL = { 1: '吊バンド', 13: 'アングル・チャンネルブラケット', 14: '特注加工品' };
+const CH_LABEL = { 13: 'アングル・チャンネルブラケット', 14: '特注加工品' };
 
 export function openShowroom(app) {
   const old = document.querySelector('.showroom'); if (old) { old.remove(); return; }

@@ -27,6 +27,7 @@ export async function loadPdfLibs() {
 const A4 = [595.28, 841.89];
 // 汎用レポート: { title, subtitle, meta:[[k,v]], sections:[{heading, table:{cols:[{label,w,align}], rows:[[...]]}, text, image:{dataUrl,w,h}, kv:[[k,v]] }], footer, landscape }
 export async function buildReport(doc) {
+  if (globalThis.__anglexDemo) doc = { ...doc, footer: (doc.footer || 'ANGLEX') + '（デモ版・検証用）' };
   const { PDFDocument, rgb, StandardFonts } = await loadPdfLibs(); const pdf = await PDFDocument.create(); pdf.registerFontkit(libs.fontkit);
   await loadHb(); let fb = fontBytes; try { const sub = hbSubset(fontBytes, collectText(doc)); if (sub) fb = sub; } catch (e) { console.warn('subset failed', e); }
   const font = await pdf.embedFont(fb, { subset: false }); const mono = await pdf.embedFont(StandardFonts.Helvetica);

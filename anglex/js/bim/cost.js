@@ -46,6 +46,7 @@ export function costParts(parts, R = DEFAULT_RATES) {
     else if (it.kind === 'anchor') { c.fasteners += (R.fasteners.anchor[it.M] || 240) * q; }
     else if (it.kind === 'rod') { c.fasteners += (R.fasteners.rodPerM[it.M] || 200) * (it.L || 1000) / 1000 * q + 2 * R.fasteners.nut * q; }
     else if (it.kind === 'nut') c.fasteners += R.fasteners.nut * q; else if (it.kind === 'washer') c.fasteners += R.fasteners.washer * q;
+    else if (it.kind === 'custom' && it.nonSteel) { const u = it.unitPrice || 0; c.fasteners += u * q; c.lines.push({ name: it.name, kind: 'custom', qty: q, mass: (it.mass || 0) * q, material: u * q, note: u ? '' : '購入品（単価未設定）' }); }
     else if (it.kind === 'custom') { if (it.mass) { c.material += it.mass * R.steel.SS400 * R.scrapFactor * q; if (it.finish && it.finish.startsWith('HDZ')) galvKg += it.mass * q; steelParts += q; c.cut += R.cut.small * q; c.lines.push({ name: it.name, kind: 'custom', qty: q, mass: it.mass * q, material: r1(it.mass * R.steel.SS400 * q) }); } }
   }
   if (galvKg > 0) c.finish += Math.max(R.galvMin, galvKg * R.galvPerKg); if (ezKg > 0) c.finish += Math.max(R.ezMin, ezKg * R.ezPerKg); if (paintM2 > 0) c.finish += paintM2 * R.paintPerM2;

@@ -34,7 +34,7 @@
 
 <!-- 表紙 -->
 <div class="pcover page"><div class="veil"></div>
-<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 7 版　2026 年 11 月 15 日</span></div>
+<div class="top"><span>導入 PoC 計画書 ／ 開発済み機能一覧</span><span>第 8 版　2026 年 11 月 16 日</span></div>
 <div class="in"><div class="brand">ANGLEX</div><div class="sub">FABRICATION INTELLIGENCE ・ 図面に、語らせる</div>
 <div class="doc">ANGLEX 導入 PoC 計画書<br>および 開発済み機能一覧</div>
 <div class="lead">配管支持金具の積算を、図面の読込から 3D での確認、重量・見積まで。まずは「初期段階」に絞って、貴社の実図面と実務で効果を確かめます。</div>
@@ -212,14 +212,14 @@
 <table class="ov">
 <tr><th style="width:8mm">#</th><th>分類</th><th>主な内容</th><th>機能数</th><th>PoC で検証</th></tr>
 <tr><td>2</td><td>図面の読込・部材認識</td><td style="text-align:left">DXF・PDF・スキャン画像（TIFF 含む）、部材リスト、OCR、図面上の修正</td><td>15</td><td>9</td></tr>
-<tr><td>3</td><td>3D モデリング・部材配置</td><td style="text-align:left">ファミリ 35 種、カタログ 151 製品、線から組む、配管へ取付、接合、斜め切り</td><td>11</td><td>4</td></tr>
+<tr><td>3</td><td>3D モデリング・部材配置</td><td style="text-align:left">ファミリ 67 種、カタログ 203 製品、部材えらび、線から組む、配管へ取付、接合、斜め切り</td><td>12</td><td>4</td></tr>
 <tr><td>4</td><td>3D 表示・操作</td><td style="text-align:left">回す・中央へ・寄る、見どころ表示、分解、表示スタイル</td><td>8</td><td>2</td></tr>
 <tr><td>5</td><td>確認・品質管理</td><td style="text-align:left">確認の旗、ウィザード、見どころ送り、断面ゲージ、溶接記号、ピンとコメント</td><td>9</td><td>5</td></tr>
 <tr><td>6</td><td>重量・積算・帳票</td><td style="text-align:left">JIS 質量、集計表、重量計算書、見積書、加工指示書、検査記録</td><td>9</td><td>5</td></tr>
 <tr><td>7</td><td>業務フロー・多社連携</td><td style="text-align:left">受け渡し・権限、Rev・監査ログ、ダッシュボード、期限通知</td><td>8</td><td>0</td></tr>
 <tr><td>8</td><td>シミュレータ</td><td style="text-align:left">ライブゲージ、X 線、限界探索、動画</td><td>1</td><td>0</td></tr>
 <tr><td>9</td><td>書出し・外部連携</td><td style="text-align:left">IFC（IFC4 / IFC2x3）・DXF・glTF・OBJ・STL・USD、DSTV NC ほか（全 21 種類）</td><td>5</td><td>0</td></tr>
-<tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、操作ガイド、コマンド検索、ライセンス表示</td><td>7</td><td>3</td></tr>
+<tr><td>10</td><td>画面・動作環境</td><td style="text-align:left">v1 / v2 画面、オフライン版、サーバー版、デモ版、案件進行、操作ガイド、コマンド検索、ライセンス表示</td><td>9</td><td>3</td></tr>
 </table>
 <figure><img src="img/b01_hero_full.png"><figcaption>ANGLEX の作業画面（v1）。左: プロジェクトブラウザ、中央: 3D、右: プロパティ。選んだ部材の質量・原価がその場で出ます</figcaption></figure>
 
@@ -251,11 +251,12 @@
 <div class="shots3"><figure><img src="img/p03_placed3d.png"><figcaption>図面から読み込んだ部材に寄った状態。穴と要確認の旗、断面ゲージ</figcaption></figure><figure><img src="img/b03_context.png"><figcaption>部品に触れると出るコンテキストバー</figcaption></figure><figure><img src="img/b04_showroom.png"><figcaption>カタログ ショールーム（151 製品）</figcaption></figure></div>
 <table class="ft">
 <tr><th>機能</th><th>できること</th><th>区分</th></tr>
-<tr><td>ファミリ 35 種</td><td>門型架台・ブラケット・吊り金具など。寸法を変えると形・穴・溶接・質量が連動</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>ファミリ 67 種</td><td>門型架台・ブラケット・吊り金具・各種バンド・ローラー・断熱支持・基礎ブロックなど。寸法を変えると形・穴・溶接・質量が連動。追加した 32 種は、形が寸法表からの推定</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>コンテキストバー</td><td>部材に触れて「＋隣に」「＋穴」「＋溶接」、寸法を ±5 mm で調整</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>移動・直接ドラッグ・自動密着</td><td>ギズモや部材の直接ドラッグで移動（5 mm 刻み）。接する部材にぴたりと合わせる</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>接合と日本語の加工指示</td><td>溶接・ボルト・U ボルトの接合。「MF-1 と LB-1 を隅肉溶接 6」などの文章で指示</td><td><span class="m poc">PoC で検証</span></td></tr>
-<tr><td>カタログとショールーム</td><td>カタログ 151 製品・700 SKU から選ぶだけで 3D に並ぶ</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>カタログとショールーム</td><td>カタログ 203 製品・1,296 サイズから選ぶだけで 3D に並ぶ</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>部材えらび</td><td>サインイン後のどの画面からでも「部材を選ぶ」で開き、章・名前・サイズで探して 3D に置く</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>配管へ取付</td><td>近くの配管に「◎ 呼び径」が出て、口径と U ボルト穴ピッチを同時に合わせる</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>等ピッチ配置・複数選択</td><td>配管に沿った等間隔配置、まとめて整列・複製・削除</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>ボルト接合の提案</td><td>重なった板の穴が一致すると、ボルト接合を提案</td><td><span class="m demo">参考デモ</span></td></tr>
@@ -357,6 +358,8 @@
 <tr><th>機能</th><th>できること</th><th>区分</th></tr>
 <tr><td>v1 / v2 の 2 つの画面</td><td>経験者向けの BIM ワークスペース（v1）と、初めてでも迷わないステップ型（v2）。同じデータのままボタン 1 つで切替</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>オフライン版</td><td>単一の HTML ファイル（約 60 MB）。インストール不要、外部通信なしで OCR・PDF 出力・IFC／STEP 読込まで動作</td><td><span class="m poc">PoC で検証</span></td></tr>
+<tr><td>案件進行</td><td>依頼から納品までの 9 段階。段階ごとの確認、難易度と期限、工場の選定、変更と履歴、注文書・納品書・検収書。基準の値はサンプル</td><td><span class="m demo">参考デモ</span></td></tr>
+<tr><td>デモ版</td><td>顧客に渡す試用版。進め方の案内、感想メモ、最初の状態に戻す</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>コマンド検索・ツールチップ</td><td>Ctrl + K でやりたいことを名前で探して実行。ボタンに乗せるとすぐ説明が出る。リボンは横に送れる</td><td><span class="m demo">参考デモ</span></td></tr>
 <tr><td>操作ガイド・ショートカット</td><td>初回の操作ガイド、「?」キーでショートカット一覧</td><td><span class="m poc">PoC で検証</span></td></tr>
 <tr><td>ライセンス表示</td><td>同梱している第三者ソフトウェア 16 件の一覧と全文を画面で表示。LGPL の STEP 読込ライブラリは差し替え可能（同梱しない版も作成可能）</td><td><span class="m demo">参考デモ</span></td></tr>
