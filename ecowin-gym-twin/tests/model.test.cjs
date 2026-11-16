@@ -7,7 +7,7 @@ assert.deepStrictEqual(Array.from(wx.T.slice(0, 200)), Array.from(wx2.T.slice(0,
 for (let k = 0; k < 8760; k++) { assert(wx.T[k] > -25 && wx.T[k] < 45); assert(wx.I[k] >= 0 && wx.I[k] < 1200); assert(wx.RH[k] > 0 && wx.RH[k] <= 100); }
 const panels = M.buildPanels('gallery', p.panels); assert.strictEqual(panels.length, 16); assert(panels.every(q => q.z === M.PANEL.z0));
 assert(Math.abs(M.GEOM.W - 38.8) < 1e-9 && Math.abs(M.GEOM.D - 28.5) < 1e-9 && M.AC_UNITS.length === 16, '設計図の寸法と台数');
-const capc = M.capacities(); assert(capc.eco.cool === 160e3 && Math.abs(capc.ac.cool - 160e3 / 0.7) < 1, '機器表の能力');
+const capc = M.capacities({}); assert(capc.eco.cool === 160e3 && Math.abs(capc.ac.cool - 160e3 / 0.7) < 1, '機器表の能力');
 const F = M.computeViewWeights(1.1, panels);
 for (let k = 0; k < F.floor.length; k += 97) assert(Math.abs(F.floor[k] + F.roof[k] + F.wall[k] + F.win[k] + F.panel[k] - 1) < 1e-5, '見える割合の合計は1');
 // パネルの無い部屋の中央では、6面の立体角の合計が全球（4π）になる

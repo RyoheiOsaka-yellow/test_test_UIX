@@ -4,34 +4,44 @@
   'use strict';
 
   // ---------------------------------------------------------------- 建物
-  // 日出町 中央体育館（設計図 M-04〜M-07 から読み取った寸法）
-  //   アリーナ：通り芯 2〜10 の 38.8m × A〜H の 28.5m。1階床から2階床まで 3.5m、梁天端まで 7.5m、屋根まで 10.6m。
-  //   南北の長い壁に沿って、2階の高さにギャラリー（通路）があり、そこに壁掛形エアコンと輻射パネルが並ぶ。
-  // 熱の計算はアリーナを1つの箱として扱い、分布は床の範囲（ax0〜ax1, ay0〜ay1）で評価する。
-  var GEOM = { W: 38.8, D: 28.5, H: 10.6, trussZ: 7.5, zRef: 1.1, cell: 0.5, ax0: 0.4, ay0: 0.25, ax1: 38.4, ay1: 28.25, galleryZ: 3.5, galleryD: 1.5 };
-  GEOM.NX = Math.round((GEOM.ax1 - GEOM.ax0) / GEOM.cell);
-  GEOM.NY = Math.round((GEOM.ay1 - GEOM.ay0) / GEOM.cell);
-  GEOM.Af = GEOM.W * GEOM.D;
-  GEOM.V = GEOM.Af * GEOM.H;
-  GEOM.bays = [0, 5.0, 9.8, 14.6, 19.4, 24.2, 29.0, 33.8, 38.8]; // 通り芯 2〜10 の位置
-  // 窓：南北面の2階に連窓（8スパン）、1階に腰窓（5スパン）。大きさは立面図からの目安。a は壁に沿った位置
-  var WINDOWS = [];
-  ['N', 'S'].forEach(function (wall) {
-    for (var bi = 0; bi < 8; bi++) WINDOWS.push({ wall: wall, a1: GEOM.bays[bi] + 0.3, a2: GEOM.bays[bi + 1] - 0.3, z1: 4.7, z2: 7.2 });
-    [1, 2, 3, 5, 6].forEach(function (bi) { WINDOWS.push({ wall: wall, a1: GEOM.bays[bi] + 0.3, a2: GEOM.bays[bi + 1] - 0.3, z1: 0.5, z2: 1.5 }); });
-  });
-  GEOM.Ag = WINDOWS.reduce(function (s, w) { return s + (w.a2 - w.a1) * (w.z2 - w.z1); }, 0);
-  GEOM.Awall = 2 * (GEOM.W + GEOM.D) * GEOM.H - GEOM.Ag;
-
-  // 空調の吹出し：壁掛形の室内機が南北のギャラリーに8台ずつ（計16台）。吹出しの高さは1階床から約4.9m
-  var AC_UNITS = [];
-  for (var ui = 0; ui < 8; ui++) {
-    AC_UNITS.push({ x: GEOM.W * (ui + 0.5) / 8, y: GEOM.galleryD + 0.1, dir: 1, z0: 4.9 });
-    AC_UNITS.push({ x: GEOM.W * (ui + 0.5) / 8, y: GEOM.D - GEOM.galleryD - 0.1, dir: -1, z0: 4.9 });
-  }
-
-  // 輻射パネル：体育館仕様・横型 W2,200 × H600 × D135（機器表）。取付架台の図から、下端は1階床から約3.95m
+  // 設計図（令和8年度 日出町立屋内運動場等3施設空調設備設置工事）から読み取った寸法と機器。
+  // どちらも、南北の長い壁に沿った2階ギャラリーに、壁掛形エアコン（室内機16台）と輻射パネル（16台）が並ぶ。
+  var BUILDINGS = {
+    chuo: { name: '日出町 中央体育館', short: '中央体育館', W: 38.8, D: 28.5, H: 10.6, trussZ: 7.5, galleryZ: 3.5, galleryD: 1.5,
+      bays: [0, 5.0, 9.8, 14.6, 19.4, 24.2, 29.0, 33.8, 38.8], lowBays: [1, 2, 3, 5, 6], winZ: [4.7, 7.2], unitZ: 4.9, panelZ: 3.95, mass: 290e6,
+      note: 'アリーナは通り芯 2〜10 の 38.8m × A〜H の 28.5m。1階床から2階床 3.5m、梁天端 7.5m、屋根 10.6m' },
+    hijichu: { name: '日出町立 日出中学校 体育館', short: '日出中学校', W: 31.5, D: 28.0, H: 9.5, trussZ: 7.0, galleryZ: 3.4, galleryD: 1.2,
+      bays: [0, 6.3, 12.6, 18.9, 25.2, 31.5], lowBays: [0, 1, 3, 4], winZ: [4.5, 6.9], unitZ: 4.8, panelZ: 4.1, mass: 235e6,
+      note: 'アリーナは通り芯 3〜8 の 31.5m × 28.0m。1階床から2階床 3.4m、軒まで約 7.1m。屋根は大きな寄棟で、熱の計算では平均の高さ 9.5m の箱とした' }
+  };
+  var GEOM = { zRef: 1.1, cell: 0.5 }, WINDOWS = [], AC_UNITS = [];
+  // 輻射パネル：体育館仕様・横型 W2,200 × H600 × D135（機器表）。エアコンの下に取り付く
   var PANEL = { w: 2.2, h: 0.6, z0: 3.95, faceArea: 2.2 * 0.6 };
+  function setBuilding(key) { // 建物を切り替える（同じ入れ物を書き換えるので、参照している側はそのまま使える）
+    var b = BUILDINGS[key] || BUILDINGS.chuo, g = GEOM;
+    g.key = BUILDINGS[key] ? key : 'chuo'; g.name = b.name; g.short = b.short; g.note = b.note;
+    g.W = b.W; g.D = b.D; g.H = b.H; g.trussZ = b.trussZ; g.galleryZ = b.galleryZ; g.galleryD = b.galleryD; g.bays = b.bays; g.mass = b.mass;
+    g.NX = Math.floor((b.W - 0.4) / g.cell); g.NY = Math.floor((b.D - 0.4) / g.cell);
+    g.ax0 = (b.W - g.NX * g.cell) / 2; g.ax1 = g.ax0 + g.NX * g.cell; g.ay0 = (b.D - g.NY * g.cell) / 2; g.ay1 = g.ay0 + g.NY * g.cell;
+    g.Af = b.W * b.D; g.V = g.Af * b.H;
+    // 窓：南北面の2階に連窓（全スパン）、1階に腰窓。大きさは立面図からの目安。a は壁に沿った位置
+    WINDOWS.length = 0;
+    ['N', 'S'].forEach(function (wall) {
+      for (var bi = 0; bi < b.bays.length - 1; bi++) WINDOWS.push({ wall: wall, a1: b.bays[bi] + 0.3, a2: b.bays[bi + 1] - 0.3, z1: b.winZ[0], z2: b.winZ[1] });
+      b.lowBays.forEach(function (bi) { WINDOWS.push({ wall: wall, a1: b.bays[bi] + 0.3, a2: b.bays[bi + 1] - 0.3, z1: 0.5, z2: 1.5 }); });
+    });
+    g.Ag = WINDOWS.reduce(function (s, w) { return s + (w.a2 - w.a1) * (w.z2 - w.z1); }, 0);
+    g.Awall = 2 * (b.W + b.D) * b.H - g.Ag;
+    // 壁掛形の室内機：南北のギャラリーに8台ずつ
+    AC_UNITS.length = 0;
+    for (var ui = 0; ui < 8; ui++) {
+      AC_UNITS.push({ x: b.W * (ui + 0.5) / 8, y: b.galleryD + 0.1, dir: 1, z0: b.unitZ });
+      AC_UNITS.push({ x: b.W * (ui + 0.5) / 8, y: b.D - b.galleryD - 0.1, dir: -1, z0: b.unitZ });
+    }
+    PANEL.z0 = b.panelZ;
+    return g;
+  }
+  setBuilding('chuo');
 
   // ---------------------------------------------------------------- 係数
   var INSUL = {
@@ -312,15 +322,16 @@
   var MODES = ['none', 'ac', 'eco'];
   var FIELDS = ['Ta', 'Tm', 'Tri', 'Twall', 'Twin', 'Tp', 'G', 'lf', 'fan', 'RH', 'P', 'MRT', 'OT', 'WBGT', 'v'];
 
-  function capacities() { // 機器表の能力。エアコンのみは、補正係数 0.7 で割り戻した能力とする
-    return { eco: { cool: K.capCool, heat: K.capHeat }, ac: { cool: K.capCool / K.ecoCap, heat: K.capHeat / K.ecoCap } };
+  function capacities(p) { // ecowin は機器表の能力。エアコンのみは、指定が無ければ補正係数 0.7 で割り戻した能力とする
+    var a = p && p.acSpec;
+    return { eco: { cool: K.capCool, heat: K.capHeat }, ac: { cool: a ? a.cool * 1000 : K.capCool / K.ecoCap, heat: a ? a.heat * 1000 : K.capHeat / K.ecoCap } };
   }
   function copHeat(To) { return clamp(3.41 + 0.08 * (To - 7), 2.0, 4.6); } // 機器表：暖房 22.4kW / 6.57kW
   function copCool(To) { return clamp(3.08 - 0.07 * (To - 35), 2.4, 5.6); } // 機器表：冷房 20.0kW / 6.50kW
 
   function simulate(p, wx, Fm, jetMean) {
-    var ins = p.custom || INSUL[p.insul], aRoof = ins.aRoof === undefined ? 0.7 : ins.aRoof, cap = capacities(wx), Af = GEOM.Af, H = GEOM.H, zr = GEOM.zRef;
-    var Ca = 1.2 * 1005 * GEOM.V * K.CaFactor, Cm = K.Cm, hA = K.hAm * (Af + GEOM.Awall);
+    var ins = p.custom || INSUL[p.insul], aRoof = ins.aRoof === undefined ? 0.7 : ins.aRoof, cap = capacities(p), Af = GEOM.Af, H = GEOM.H, zr = GEOM.zRef;
+    var Ca = 1.2 * 1005 * GEOM.V * K.CaFactor, Cm = GEOM.mass || K.Cm, hA = K.hAm * (Af + GEOM.Awall);
     var Ap = p.panels * PANEL.faceArea * 2 * K.fin;
     var Tg = 0; for (var i = 0; i < 8760; i++) Tg += wx.T[i]; Tg /= 8760;
     var dt = 300, NS = 12;
@@ -328,6 +339,7 @@
     MODES.forEach(function (mode) {
       var o = {}; FIELDS.forEach(function (f) { o[f] = new Float32Array(8760); });
       var eco = mode === 'eco', hvac = mode !== 'none';
+      var kH = mode === 'ac' && p.acSpec ? p.acSpec.copH / 3.41 : 1, kC = mode === 'ac' && p.acSpec ? p.acSpec.copC / 3.08 : 1; // 比べるエアコンの定格効率
       var Fp = eco ? Fm.panel : 0, nf = eco ? 1 : 1 / (1 - Fm.panel); // パネルなしの方式は残りの面で正規化
       var Ff = Fm.floor * nf, Fr = Fm.roof * nf, Fw = Fm.wall * nf, Fg = Fm.win * nf;
       var Ta = wx.T[0] + 2, Tm = wx.T[0] + 3, Tri = Ta, heatFrac = 0;
@@ -375,7 +387,7 @@
           Ta += dt * (Q0 + sg * (Qa + (1 - K.radFrac) * Qp)) / Ca;
           Tm += dt * (-Qam + 0.5 * qInt + qSol + ins.Uw * GEOM.Awall * (Twsol - Tm) + K.Uf * Af * (Tg - Tm) + sg * K.radFrac * Qp) / Cm;
           var q = Qa + Qp;
-          E += heat ? q / copHeat(To) : q * K.latent / copCool(To);
+          E += heat ? q / (copHeat(To) * kH) : q * K.latent / (copCool(To) * kC);
           sG += G; sQa += sg * Qa / C; sQp += Qp; sPf += pf;
         }
         if (k < 0) continue;
@@ -478,7 +490,7 @@
   }
 
   var api = {
-    GEOM: GEOM, WINDOWS: WINDOWS, AC_UNITS: AC_UNITS, PANEL: PANEL, INSUL: INSUL, K: K, CITIES: CITIES, MODES: MODES, FIELDS: FIELDS,
+    GEOM: GEOM, BUILDINGS: BUILDINGS, setBuilding: setBuilding, WINDOWS: WINDOWS, AC_UNITS: AC_UNITS, PANEL: PANEL, INSUL: INSUL, K: K, CITIES: CITIES, MODES: MODES, FIELDS: FIELDS,
     MSTART: MSTART, MDAYS: MDAYS, monthOfDay: monthOfDay, clamp: clamp, lerp: lerp,
     generateWeather: generateWeather, weatherFromData: weatherFromData, buildPanels: buildPanels, computeViewWeights: computeViewWeights, movePanelWeights: movePanelWeights,
     gx: gx, gy: gy, computeJetPattern: computeJetPattern, jetNorm: jetNorm, jetAxisZ: jetAxisZ, simulate: simulate,

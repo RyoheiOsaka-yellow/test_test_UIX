@@ -1,7 +1,14 @@
 /* ecowinハイブリッド 体育館デジタルツイン — 画面（3D表示・時間軸・グラフ） */
 (function () {
   'use strict';
-  var M = window.GymModel, G = M.GEOM, K = M.K;
+  var M = window.GymModel, K = M.K;
+  // 建物の選択：アドレスの # か、前回の選択から。切り替えるときはページを読み直して、3Dを作り直す
+  var BKEY = (function () {
+    var k = (location.hash || '').replace('#', '');
+    if (!M.BUILDINGS[k]) { try { k = localStorage.getItem('ecowin-gym-building'); } catch (e) { k = null; } }
+    return M.BUILDINGS[k] ? k : 'chuo';
+  })();
+  var G = M.setBuilding(BKEY);
   var $ = function (id) { return document.getElementById(id); };
   var N = G.NX * G.NY;
   var MODE_NAME = { none: '空調なし', ac: 'エアコンのみ', eco: 'ecowinハイブリッド' };
@@ -19,7 +26,7 @@
     city: 'oita', insul: 'low', occupants: 80, sensible: 150, setHeat: 18, setCool: 27, opStart: 8, opEnd: 21,
     panels: 16, preheat: 0, field: true, layout: 'gallery', price: 22, basic: 1100,
     mode: 'eco', layer: 'ot', z: 1.1, t: 0, playing: false, speed: 0.05,
-    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true, left: 'ac', charts: false, rateMode: 'model', rateCustom: 30, capex: 1500, maint: 0, sheet: false, spec: null
+    wind: true, rays: true, volume: true, section: false, people: true, probe: null, split: true, left: 'ac', charts: false, rateMode: 'model', rateCustom: 30, capex: 1500, maint: 0, sheet: false, spec: null, palette: 'rainbow', acMode: 'auto', acCool: Math.round(K.capCool / K.ecoCap / 5000) * 5, acHeat: Math.round(K.capHeat / K.ecoCap / 5000) * 5, acCopC: 3.1, acCopH: 3.4
   };
   var wxCache = {}, wx, panels = [], F, F11, jet = {}, sim, dirty = true, chartsDirty = true;
   var target = [new Float32Array(N), new Float32Array(N)], shown = [new Float32Array(N), new Float32Array(N)], scratch = new Float32Array(N), first = true;
@@ -44,7 +51,10 @@
     ['--bg', '--surface', '--surface-2', '--ink', '--ink-2', '--ink-3', '--line', '--m-none', '--m-ac', '--m-eco', '--div-mid', '--scene', '--wood', '--accent'].forEach(function (k) { C[k] = css(k) || '#888888'; });
     var mid = C['--div-mid'];
     // 温度：設定温度を中央の無彩色に置く、青（寒い）と赤（暑い）の2色の尺度
-    LUT.temp = ramp([[0, '#0d366b'], [0.14, '#1c5cab'], [0.28, '#3987e5'], [0.40, '#86b6ef'], [0.5, mid], [0.60, '#f0a39c'], [0.72, '#e34948'], [0.86, '#b02a2e'], [1, '#6e1220']], 512);
+    LUT.div = ramp([[0, '#0d366b'], [0.14, '#1c5cab'], [0.28, '#3987e5'], [0.40, '#86b6ef'], [0.5, mid], [0.60, '#f0a39c'], [0.72, '#e34948'], [0.86, '#b02a2e'], [1, '#6e1220']], 512);
+    // 虹色：青→水色→緑→黄→橙→赤（気流解析の図でよく使われる色の並び）
+    LUT.rain = ramp([[0, '#1b2a9e'], [0.1, '#1f5fe0'], [0.22, '#18aeea'], [0.34, '#17d2c2'], [0.46, '#2fcf5d'], [0.56, '#8fdc2e'], [0.66, '#e9e225'], [0.78, '#ffb01f'], [0.9, '#f4571c'], [1, '#d61c1c']], 512);
+    LUT.temp = S.palette === 'rainbow' ? LUT.rain : LUT.div;
     // 風速：1色の濃淡
     LUT.wind = ramp([[0, mid], [0.2, '#b7d3f6'], [0.45, '#5598e7'], [0.7, '#1c5cab'], [1, '#0d366b']], 512);
     // 暑さ指数：運動指針の5区分（15〜35℃）
@@ -59,7 +69,7 @@
     var sets = window.WX_SETS || {}, k = typeof S.city === 'string' && !sets[S.city] ? 6 : S.city;
     return wxCache[k] || (wxCache[k] = typeof k === 'string' ? M.weatherFromData(sets[k]) : M.generateWeather(k));
   }
-  function params() { return { custom: S.insul === 'custom' ? specIns(S.spec) : null, insul: S.insul === 'custom' ? 'low' : S.insul, occupants: S.occupants, sensible: S.sensible, setHeat: S.setHeat, setCool: S.setCool, opStart: S.opStart, opEnd: S.opEnd, panels: panels.length, preheat: S.preheat, price: S.price, basic: S.basic }; }
+  function params() { return { acSpec: S.acMode === 'custom' ? { cool: S.acCool, heat: S.acHeat, copC: S.acCopC, copH: S.acCopH } : null, custom: S.insul === 'custom' ? specIns(S.spec) : null, insul: S.insul === 'custom' ? 'low' : S.insul, occupants: S.occupants, sensible: S.sensible, setHeat: S.setHeat, setCool: S.setCool, opStart: S.opStart, opEnd: S.opEnd, panels: panels.length, preheat: S.preheat, price: S.price, basic: S.basic }; }
   function recomputeGeometry() {
     if (S.layout !== 'custom') panels = M.buildPanels(S.layout, S.panels);
     F11 = M.computeViewWeights(1.1, panels);
@@ -113,14 +123,14 @@
     for (i = 0; i < h; i++) { var gy = M.clamp((i + 0.5) / scale - 0.5, 0, ny - 1.001); yi[i] = Math.floor(gy); yf[i] = gy - yi[i]; }
     return {
       canvas: cv,
-      paint: function (vals, lut, lo, hi, step, line) {
+      paint: function (vals, lut, lo, hi, step, line, band) { // band：等値線の間を1色で塗る（段階表示）
         var d = img.data, inv = 511 / (hi - lo), p = 0, lr = line[0], lg = line[1], lb = line[2], is = 1 / step;
         for (var y = 0; y < h; y++) {
           var r0 = yi[y] * nx, r1 = r0 + nx, fy = yf[y];
           for (var x = 0; x < w; x++, p++) {
             var a = xi[x], fx = xf[x];
             var v0 = vals[r0 + a] + (vals[r0 + a + 1] - vals[r0 + a]) * fx, v1 = vals[r1 + a] + (vals[r1 + a + 1] - vals[r1 + a]) * fx;
-            var v = v0 + (v1 - v0) * fy, t = (v - lo) * inv, li = (t < 0 ? 0 : t > 511 ? 511 : t | 0) * 3, o = p * 4;
+            var v = v0 + (v1 - v0) * fy, t = ((band ? (Math.floor(v * is) + 0.5) * step : v) - lo) * inv, li = (t < 0 ? 0 : t > 511 ? 511 : t | 0) * 3, o = p * 4;
             // 等値線：いちばん近い線までの距離（画素）を、値の傾きから求めて濃さにする
             var gxv = x > 0 ? v - row[x - 1] : 0, gyv = y > 0 ? v - row[x] : 0, gr = Math.sqrt(gxv * gxv + gyv * gyv) * is, fr = v * is; fr -= Math.floor(fr); if (fr > 0.5) fr = 1 - fr;
             row[x] = v;
@@ -194,7 +204,8 @@
     function circle(x, y, r) { for (var a = 0; a < 32; a++) { var t1 = a / 32 * 6.2832, t2 = (a + 1) / 32 * 6.2832; seg(x + r * Math.cos(t1), y + r * Math.sin(t1), x + r * Math.cos(t2), y + r * Math.sin(t2)); } }
     rect(cx - 14, cz - 7.5, cx + 14, cz + 7.5); seg(cx, cz - 7.5, cx, cz + 7.5); circle(cx, cz, 1.8); // バスケットボールコート 28m×15m
     rect(cx - 14, cz - 2.45, cx - 8.2, cz + 2.45); rect(cx + 8.2, cz - 2.45, cx + 14, cz + 2.45);
-    [cz - 9.5, cz + 9.5].forEach(function (yc) { rect(cx - 16, yc - 3.05, cx - 2.6, yc + 3.05); rect(cx + 2.6, yc - 3.05, cx + 16, yc + 3.05); }); // バドミントンコート 13.4m×6.1m を4面
+    var bw2 = Math.min(16, W / 2 - 1.2);
+    [cz - 9.5, cz + 9.5].forEach(function (yc) { rect(cx - bw2, yc - 3.05, cx - bw2 + 13.4, yc + 3.05); rect(cx + bw2 - 13.4, yc - 3.05, cx + bw2, yc + 3.05); }); // バドミントンコート 13.4m×6.1m を4面
     var courtLines = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)), lineMat); scene.add(courtLines);
 
     // 外壁・屋根は内側の面だけ描く（外から見ると手前の壁が消え、中が見える）
@@ -658,7 +669,7 @@
         lutTex.needsUpdate = true;
       },
       paintHeat: function (slot, vals) {
-        painters[slot].paint(vals, lutFor(S.layer), range.lo, range.hi, range.step, hex(C['--ink']));
+        painters[slot].paint(vals, lutFor(S.layer), range.lo, range.hi, range.step, hex(C['--ink']), banded() && S.layer !== 'wind' && S.layer !== 'wbgt');
         heatTex[slot].needsUpdate = true;
       },
       // views: [{ mode, st }]（1つ、または左右比較の2つ）
@@ -700,7 +711,7 @@
               secVals[j * G.NY + k] = S.layer === 'wind' ? a.v : a.T;
             }
             var wl = S.layer === 'wind', lo = wl ? 0 : S.layer === 'wbgt' ? st.Ta - 8 : range.lo, hi = wl ? 2.5 : S.layer === 'wbgt' ? st.Ta + 8 : range.hi;
-            secPainter.paint(secVals, wl ? LUT.wind : LUT.temp, lo, hi, wl ? 0.25 : range.step, hex(C['--ink']));
+            secPainter.paint(secVals, wl ? LUT.wind : LUT.temp, lo, hi, wl ? 0.25 : range.step, hex(C['--ink']), banded() && !wl);
             secTex.needsUpdate = true;
           }
           ptScale.value = q.h * renderer.getPixelRatio() / (2 * Math.tan(cam.fov * Math.PI / 360));
@@ -1015,7 +1026,7 @@
       c.fillText('体感 ' + f1(st.OT) + '℃　ムラ ±' + spread[m].toFixed(1) + '℃　電力 ' + Math.round(st.P) + 'kW', x0 + colW, yHead + 10);
       // ---- A-A 断面（空気温度）
       for (j = 0; j < NZS; j++) for (k = 0; k < G.NY; k++) sheetP.sv[j * G.NY + k] = M.airAt(SX, M.gy(k), (NZS - 1 - j + 0.5) * CZS, m, st, heat).T;
-      sheetP.sec[i].paint(sheetP.sv, LUT.temp, tlo, thi, tstep, hex(ink));
+      sheetP.sec[i].paint(sheetP.sv, LUT.temp, tlo, thi, tstep, hex(ink), banded());
       function Y(y) { return x0 + y * sc; } function Z(z) { return ySec + (G.H + 0.6 - z) * sc; }
       c.drawImage(sheetP.sec[i].canvas, Y(G.ay0), Z(G.H), LYm * sc, G.H * sc);
       // 建物の輪郭：外壁、屋根、トラス、2階ギャラリー、壁掛形エアコンとパネル
@@ -1051,7 +1062,7 @@
       // ---- 平面（選んだ高さ・選んだ値）
       var px0 = x0 + (colW - planW) / 2, py0 = yPlanT;
       M.computeField(S.layer, m, st, heat, S.z, F, heat ? jet.heat : jet.cool, sheetP.pv);
-      sheetP.plan[i].paint(sheetP.pv, lutFor(S.layer), range.lo, range.hi, range.step, hex(ink));
+      sheetP.plan[i].paint(sheetP.pv, lutFor(S.layer), range.lo, range.hi, range.step, hex(ink), banded() && tempLayer);
       c.drawImage(sheetP.plan[i].canvas, px0, py0, planW, planH);
       function PX(x) { return px0 + (x - G.ax0) * ps; } function PY(y) { return py0 + (y - G.ay0) * ps; }
       c.strokeStyle = ink; c.lineWidth = 2; c.strokeRect(px0, py0, planW, planH);
@@ -1105,6 +1116,139 @@
       for (var q3 = 0; q3 <= 4; q3++) { c.textAlign = q3 === 0 ? 'left' : q3 === 4 ? 'right' : 'center'; c.fillText((tlo + (thi - tlo) * q3 / 4).toFixed(0), gx0 + profW * q3 / 4, ly + 20); }
       c.textAlign = 'left'; c.font = '10.5px ' + ff; c.fillText('空気温度（℃）', gx0, ly - 9);
     }
+  }
+
+  // ------------------------------------------------------------ 検証シート（縦のレポート。1枚の画像として描く）
+  var repP = null, jet15 = {};
+  function banded() { return S.palette === 'rainbow'; }
+  function drawReport(cv, sts, heat) {
+    var RW = 1240, RH = 1754, c = cv.getContext('2d'); cv.width = RW; cv.height = RH;
+    if (!repP) repP = { sec: [makeFieldPainter(G.NY, NZS, 8), makeFieldPainter(G.NY, NZS, 8)], plan: [makeFieldPainter(G.NX, G.NY, 6), makeFieldPainter(G.NX, G.NY, 6)], sv: new Float32Array(G.NY * NZS), pv: new Float32Array(N) };
+    var key = heat ? 'h' : 'c'; if (!jet15[key]) jet15[key] = M.computeJetPattern(1.5, heat);
+    var ff = '"Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic UI", "IPAPGothic", sans-serif', nf = 'Barlow, ' + ff;
+    var INK = '#1b2733', INK2 = '#4c5966', CY = '#2aa7e1', CYD = '#1479b8', RED = '#d6352b', ms = [S.left, 'eco'], SX = M.AC_UNITS[4].x;
+    var d = Math.floor(S.t / 24), w = wxAt(S.t), sum = sim.summary, a = sum.modes.ac, e = sum.modes.eco, ins = S.insul === 'custom' ? specIns(S.spec) : M.INSUL[S.insul];
+    // 色の範囲は、1℃刻みで読みやすい幅にそろえる
+    var lo = Math.floor(range.lo), hi = Math.ceil(range.hi), step = (hi - lo) > 16 ? 1 : 0.5;
+    if (S.layer === 'wind' || S.layer === 'wbgt') { lo = Math.floor(sts.eco.Ta - 8); hi = lo + 16; step = 0.5; }
+    function T(text, x, y, font, color, align) { c.font = font; c.fillStyle = color || INK; c.textAlign = align || 'left'; c.textBaseline = 'middle'; c.fillText(text, x, y); }
+    function wrap(text, x, y, maxW, lh, font, color) { // 日本語の文を、幅に合わせて折り返す
+      c.font = font; c.fillStyle = color || INK; c.textAlign = 'left'; c.textBaseline = 'middle'; var line = '';
+      for (var i = 0; i < text.length; i++) { var ch = text[i]; if (ch === '\n' || c.measureText(line + ch).width > maxW) { c.fillText(line, x, y); y += lh; line = ch === '\n' ? '' : ch; } else line += ch; }
+      if (line) { c.fillText(line, x, y); y += lh; } return y;
+    }
+    function rr(x, y, w2, h2, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w2, y, x + w2, y + h2, r); c.arcTo(x + w2, y + h2, x, y + h2, r); c.arcTo(x, y + h2, x, y, r); c.arcTo(x, y, x + w2, y, r); c.closePath(); }
+    function label(x, y, text, size) { c.font = '700 ' + (size || 19) + 'px ' + nf; var tw = c.measureText(text).width; c.fillStyle = 'rgba(255,255,255,.82)'; c.fillRect(x - tw / 2 - 4, y - 12, tw + 8, 24); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, x, y + 1); }
+    function heading(text, y) { c.font = '700 25px ' + ff; var tw = c.measureText(text).width; c.fillStyle = '#bfe3f7'; c.beginPath(); c.moveTo(30, y + 10); c.lineTo(tw + 70, y + 10); c.lineTo(tw + 56, y + 22); c.lineTo(30, y + 22); c.closePath(); c.fill(); T(text, 34, y, '700 25px ' + ff, INK); }
+    function legend(x, y, w2) {
+      for (var i = 0; i < w2; i++) { var v = lo + (hi - lo) * i / (w2 - 1), vb = banded() ? (Math.floor(v / step) + 0.5) * step : v, col = colorAt(LUT.temp, vb, lo, hi); c.fillStyle = rgb(col); c.fillRect(x + i, y, 1.5, 13); }
+      c.strokeStyle = INK2; c.lineWidth = 1; c.strokeRect(x, y, w2, 13);
+      var n = (hi - lo) <= 12 ? (hi - lo) / 2 : (hi - lo) / 4; for (var k = 0; k <= n; k++) T(String(Math.round(lo + (hi - lo) * k / n)), x + w2 * k / n, y + 26, '15px ' + nf, INK2, 'center');
+      T('℃', x + w2 + 14, y + 26, '14px ' + ff, INK2);
+    }
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, RW, RH);
+    // ---- 見出しの帯
+    c.fillStyle = '#e9edf2'; c.fillRect(0, 0, RW, 132);
+    c.fillStyle = '#fff'; c.strokeStyle = INK; c.lineWidth = 3; c.beginPath(); c.arc(74, 66, 50, 0, 6.2832); c.fill(); c.stroke();
+    T('検 証', 74, 46, '700 22px ' + ff, INK, 'center'); T('1', 74, 82, '700 40px ' + nf, INK, 'center');
+    T('【空調方式】', 150, 24, '700 21px ' + ff, INK); c.fillStyle = '#62c0c7'; rr(150, 42, 250, 70, 6); c.fill(); T('対流式', 275, 62, '700 22px ' + ff, '#fff', 'center'); T('＋ 輻射パネル', 275, 92, '700 22px ' + ff, '#fff', 'center');
+    T('【比べる相手】', 420, 24, '700 21px ' + ff, INK); c.fillStyle = CYD; rr(420, 42, 220, 70, 6); c.fill(); T(MODE_NAME[ms[0]], 530, 77, '700 23px ' + ff, '#fff', 'center');
+    wrap('本検証は、簡易的な建物モデルを用いて、ecowinハイブリッド（壁掛形エアコン＋輻射パネル）の有無による違いを比較したものです。実際の施設に必要な空調設備の能力は、建物の仕様や運用条件、夏季・冬季の使用状況を踏まえて、個別に検討する必要があります。', 668, 24, 552, 25, '17px ' + ff, INK2);
+    // ---- KEY PLAN と仕様表
+    T('KEY PLAN', 34, 172, '20px ' + nf, INK);
+    var kx = 150, ky = 150, ks = 300 / G.W, kw = G.W * ks, kh = G.D * ks;
+    c.strokeStyle = INK; c.lineWidth = 2; c.strokeRect(kx, ky, kw, kh); c.lineWidth = 1; c.strokeStyle = '#9aa3ad';
+    c.strokeRect(kx, ky, kw, G.galleryD * ks); c.strokeRect(kx, ky + kh - G.galleryD * ks, kw, G.galleryD * ks);
+    M.AC_UNITS.forEach(function (u) {
+      var ux = kx + u.x * ks, uy = ky + u.y * ks; c.fillStyle = RED; c.fillRect(ux - 7, uy - 2, 14, 4);
+      c.strokeStyle = '#2f8fea'; c.lineWidth = 2; c.beginPath(); c.moveTo(ux, uy + u.dir * 8); c.lineTo(ux, uy + u.dir * 34); c.stroke();
+      c.fillStyle = '#2f8fea'; c.beginPath(); c.moveTo(ux, uy + u.dir * 40); c.lineTo(ux - 5, uy + u.dir * 30); c.lineTo(ux + 5, uy + u.dir * 30); c.closePath(); c.fill();
+    });
+    c.strokeStyle = RED; c.lineWidth = 1.5; c.beginPath(); c.moveTo(kx + SX * ks, ky - 12); c.lineTo(kx + SX * ks, ky + kh + 12); c.stroke();
+    T('A', kx + SX * ks - 12, ky - 10, '700 15px ' + nf, RED, 'center'); T('A', kx + SX * ks - 12, ky + kh + 12, '700 15px ' + nf, RED, 'center');
+    T('赤い印は室内機（16台）を示す', kx, ky + kh + 30, '15px ' + ff, INK2);
+    var tx = 500, ty = 150, tw1 = 330, tw2 = 386, th = 46;
+    c.fillStyle = '#55c0ee'; c.fillRect(tx, ty, tw1 + tw2, th); c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(tx + tw1, ty); c.lineTo(tx + tw1, ty + th); c.stroke();
+    T('空調設備の仕様', tx + tw1 / 2, ty + th / 2, '700 20px ' + ff, '#fff', 'center'); T('建物の仕様', tx + tw1 + tw2 / 2, ty + th / 2, '700 20px ' + ff, '#fff', 'center');
+    c.strokeStyle = '#55c0ee'; c.lineWidth = 1.5; c.strokeRect(tx, ty, tw1 + tw2, 232); c.beginPath(); c.moveTo(tx + tw1, ty + th); c.lineTo(tx + tw1, ty + 232); c.moveTo(tx, ty + 139); c.lineTo(tx + tw1, ty + 139); c.stroke();
+    T(MODE_NAME[ms[0]], tx + tw1 / 2, ty + 68, '700 18px ' + ff, INK, 'center');
+    T(ms[0] === 'none' ? '空調を運転しない場合' : '壁掛形 冷房 約' + Math.round(sum.cap.ac.cool / 1000) + 'kW 相当', tx + tw1 / 2, ty + 96, '17px ' + ff, INK, 'center');
+    T(ms[0] === 'none' ? '' : S.acMode === 'custom' ? '（入力した能力。COP 冷房 ' + S.acCopC.toFixed(1) + '・暖房 ' + S.acCopH.toFixed(1) + '）' : '（補正係数 0.7 で割り戻した仮定）', tx + tw1 / 2, ty + 120, '14.5px ' + ff, INK2, 'center');
+    T('ecowinハイブリッド', tx + tw1 / 2, ty + 160, '700 18px ' + ff, RED, 'center');
+    T('室内機 冷房 10.0kW × 16台／室外機 20.0kW × 8台', tx + tw1 / 2, ty + 186, '15.5px ' + ff, INK, 'center');
+    T('輻射パネル W2,200×H600 × ' + panels.length + '台', tx + tw1 / 2, ty + 210, '15.5px ' + ff, INK, 'center');
+    var bx = tx + tw1 + 16, rows = [['建物', G.name + '（設計図）'], ['アリーナ', G.W + 'm × ' + G.D.toFixed(1) + 'm、屋根まで ' + G.H + 'm'], ['断熱', S.insul === 'custom' ? '図面・仕様書から入力' : M.INSUL[S.insul].label],
+      ['屋根／壁／窓', 'U = ' + ins.Ur.toFixed(2) + ' ／ ' + ins.Uw.toFixed(2) + ' ／ ' + ins.Ug.toFixed(1) + ' W/㎡K'], ['使い方', S.occupants + '人、' + S.opStart + '時〜' + S.opEnd + '時、設定 冬' + S.setHeat + '℃・夏' + S.setCool + '℃'], ['気象', (wx.city.short || wx.city.name) + (wx.observed ? '（2025年の観測値）' : '（合成）')]];
+    rows.forEach(function (r, i) { T(r[0], bx, ty + 68 + i * 28, '700 15.5px ' + ff, INK2); T(r[1], bx + 104, ty + 68 + i * 28, '15.5px ' + ff, INK); });
+    // ---- 温度分布
+    heading(fmtDate(d) + ' ' + fmtHour(S.t - d * 24) + ' の温度分布（外気 ' + f1(w.T) + '℃・' + (heat ? '暖房' : '冷房') + '）', 432);
+    var colW = 575, gap = 30, x0s = [30, 30 + colW + gap], sc = colW / (G.D + 1.2), secH = (G.H + 0.5) * sc, ySec = 512, spreadT = [0, 0], topT = [0, 0], lowT = [0, 0], cen = [0, 0], edge = [0, 0];
+    ms.forEach(function (m, i) {
+      var st = sts[m], x0 = x0s[i], j, k;
+      T('CASE', x0 + colW / 2 - 118, 478, '26px ' + nf, INK, 'center'); T(String(i + 1), x0 + colW / 2 - 70, 474, '700 36px ' + nf, INK, 'center'); T(MODE_NAME[m], x0 + colW / 2 - 46, 478, '700 24px ' + ff, INK);
+      for (j = 0; j < NZS; j++) for (k = 0; k < G.NY; k++) repP.sv[j * G.NY + k] = M.airAt(SX, M.gy(k), (NZS - 1 - j + 0.5) * CZS, m, st, heat).T;
+      repP.sec[i].paint(repP.sv, LUT.temp, lo, hi, step, [20, 28, 36], banded());
+      function Y(y) { return x0 + (y + 0.6) * sc; } function Z(z) { return ySec + (G.H + 0.5 - z) * sc; }
+      c.fillStyle = '#f3f5f7'; c.fillRect(x0, ySec - 6, colW, secH + 12); c.strokeStyle = '#b7bfc7'; c.lineWidth = 1; c.strokeRect(x0, ySec - 6, colW, secH + 56);
+      c.drawImage(repP.sec[i].canvas, Y(G.ay0), Z(G.H), (G.ay1 - G.ay0) * sc, G.H * sc);
+      c.strokeStyle = '#111'; c.lineWidth = 3; c.strokeRect(Y(0), Z(G.H), G.D * sc, G.H * sc); c.lineWidth = 5; c.beginPath(); c.moveTo(Y(-0.5), Z(G.H)); c.lineTo(Y(G.D + 0.5), Z(G.H)); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1; c.beginPath();
+      for (var ti = 0; ti < 8; ti++) { c.moveTo(Y(ti * G.D / 8), Z(G.H - 0.15)); c.lineTo(Y((ti + 0.5) * G.D / 8), Z(G.trussZ + 0.1)); c.lineTo(Y((ti + 1) * G.D / 8), Z(G.H - 0.15)); }
+      c.moveTo(Y(0), Z(G.trussZ + 0.1)); c.lineTo(Y(G.D), Z(G.trussZ + 0.1)); c.stroke();
+      [[0, 1], [G.D, -1]].forEach(function (sd) {
+        var ye = sd[0] + sd[1] * G.galleryD, xa = Math.min(Y(sd[0]), Y(ye));
+        c.fillStyle = '#111'; c.fillRect(xa, Z(G.galleryZ), G.galleryD * sc, 4); c.fillRect(Y(ye) - 1, Z(G.galleryZ + 1.1), 2, 1.1 * sc);
+        c.fillStyle = '#fff'; c.strokeStyle = RED; c.lineWidth = 2; var ux = Y(ye) - (sd[1] > 0 ? 0 : 0.3 * sc); c.fillRect(ux, Z(5.05), 0.3 * sc + 2, 0.3 * sc); c.strokeRect(ux, Z(5.05), 0.3 * sc + 2, 0.3 * sc);
+        if (m === 'eco') panels.forEach(function (P, pi) { if (pi > 1 || (P.y < G.D / 2) !== (sd[1] > 0)) return; var pz = P.z === undefined ? M.PANEL.z0 : P.z; c.fillStyle = '#1479b8'; c.fillRect(Y(P.y) - 2, Z(pz + M.PANEL.h), 4, M.PANEL.h * sc); });
+      });
+      c.strokeStyle = '#111'; c.lineWidth = 1; c.setLineDash([5, 4]); c.beginPath(); c.moveTo(Y(G.ay0), Z(1.5)); c.lineTo(Y(G.ay1), Z(1.5)); c.stroke(); c.setLineDash([]);
+      T('▼1FL+1,500', Y(0.4), Z(1.5) - 10, '12px ' + nf, '#111'); T('▼1FL', Y(0.4), Z(0) - 9, '12px ' + nf, '#111');
+      [0.2, 0.5, 0.8].forEach(function (fq) { var yy = G.ay0 + (G.ay1 - G.ay0) * fq; label(Y(yy), Z(1.5) - 16, f1(M.airAt(SX, yy, 1.5, m, st, heat).T) + '℃'); });
+      topT[i] = M.airAt(SX, G.D / 2, G.H - 1.6, m, st, heat).T; lowT[i] = M.airAt(SX, G.D / 2, 1.5, m, st, heat).T; label(Y(G.D / 2), Z(G.H - 1.6), f1(topT[i]) + '℃');
+      T('アリーナ A−A 断面の温度分布図', x0 + 10, ySec + secH + 28, '15px ' + ff, INK); legend(x0 + 262, ySec + secH + 10, 270);
+      // 床上1.5mの温度分布（斜めから見た図）
+      M.computeField('ta', m, st, heat, 1.5, F, jet15[key], repP.pv);
+      repP.plan[i].paint(repP.pv, LUT.temp, lo, hi, step, [20, 28, 36], banded());
+      var py = ySec + secH + 78, ph = 388, pw = colW, ox = x0 + 208, oy = py + 44, ax = 9.2, ay = 3.9, bxv = -4.7, byv = 7.9; // 斜めの軸：x方向（東）と y方向（南）の1mあたりの画素
+      c.fillStyle = '#fff'; c.strokeStyle = '#111'; c.lineWidth = 1.5; c.fillRect(x0, py, pw, ph); c.strokeRect(x0, py, pw, ph);
+      function OP(x, y) { return [ox + x * ax + y * bxv, oy + x * ay + y * byv]; }
+      function poly(pts, fill, stroke) { c.beginPath(); pts.forEach(function (p, q) { if (q) c.lineTo(p[0], p[1]); else c.moveTo(p[0], p[1]); }); c.closePath(); if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.strokeStyle = stroke; c.lineWidth = 1; c.stroke(); } }
+      poly([OP(-2.5, -2.5), OP(G.W + 2.5, -2.5), OP(G.W + 2.5, G.D + 2.5), OP(-2.5, G.D + 2.5)], '#d5d8dc', '#8d949b'); // 外まわりの床
+      var p3 = OP(G.W + 2.5, G.D + 2.5), p4 = OP(-2.5, G.D + 2.5), p2 = OP(G.W + 2.5, -2.5);
+      poly([p4, p3, [p3[0], p3[1] + 14], [p4[0], p4[1] + 14]], '#b9bec4', '#8d949b'); poly([p3, p2, [p2[0], p2[1] + 14], [p3[0], p3[1] + 14]], '#c6cace', '#8d949b');
+      c.save(); c.setTransform(ax, ay, bxv, byv, ox, oy); c.imageSmoothingEnabled = true;
+      c.drawImage(repP.plan[i].canvas, G.ax0, G.ay0, G.ax1 - G.ax0, G.ay1 - G.ay0); c.restore();
+      poly([OP(G.ax0, G.ay0), OP(G.ax1, G.ay0), OP(G.ax1, G.ay1), OP(G.ax0, G.ay1)], null, '#111');
+      M.AC_UNITS.forEach(function (u) { var q = OP(u.x, u.dir > 0 ? -0.6 : G.D + 0.6); c.fillStyle = '#fff'; c.strokeStyle = '#555'; c.lineWidth = 1; c.beginPath(); c.ellipse(q[0], q[1], 9, 4, 0.4, 0, 6.2832); c.fill(); c.stroke(); });
+      [[0.2, 0.22], [0.5, 0.22], [0.8, 0.22], [0.2, 0.5], [0.5, 0.5], [0.8, 0.5], [0.2, 0.78], [0.5, 0.78], [0.8, 0.78]].forEach(function (fq) {
+        var gx = Math.floor(G.NX * fq[0]), gy = Math.floor(G.NY * fq[1]), q = OP(M.gx(gx), M.gy(gy)), v = repP.pv[gy * G.NX + gx];
+        c.fillStyle = '#111'; c.beginPath(); c.arc(q[0], q[1], 2.5, 0, 6.2832); c.fill(); label(q[0], q[1] - 16, f1(v) + '℃');
+      });
+      c.fillStyle = '#fff'; c.strokeStyle = '#b7bfc7'; c.lineWidth = 1; c.fillRect(x0 + 12, py + ph - 40, 250, 28); c.strokeRect(x0 + 12, py + ph - 40, 250, 28); T('アリーナ床上1.5mの温度分布図', x0 + 22, py + ph - 26, '15px ' + ff, INK);
+      var s1 = 0, s2 = 0, n1 = 0, n2 = 0, mean = 0, vv = 0, q2;
+      for (q2 = 0; q2 < N; q2++) mean += repP.pv[q2]; mean /= N; for (q2 = 0; q2 < N; q2++) { var dd = repP.pv[q2] - mean; vv += dd * dd; var jy = Math.floor(q2 / G.NX); if (jy > G.NY * 0.35 && jy < G.NY * 0.65) { s1 += repP.pv[q2]; n1++; } else if (jy < G.NY * 0.12 || jy > G.NY * 0.88) { s2 += repP.pv[q2]; n2++; } }
+      spreadT[i] = Math.sqrt(vv / N); cen[i] = s1 / n1; edge[i] = s2 / n2;
+    });
+    // ---- 説明文
+    var yT = ySec + secH + 78 + 388 + 34, on0 = Math.abs(sts[ms[0]].lf) > 0.02 || sts[ms[0]].fan > 0.02, wA = maxWind(sts[ms[0]], ms[0], heat), wE = maxWind(sts.eco, 'eco', heat);
+    var txt = '　温度分布図では、' + (ms[0] === 'none' ? '空調を運転しない場合、アリーナ中央部の床上1.5mの温度は ' + f1(cen[0]) + '℃ となった。' :
+      on0 ? MODE_NAME[ms[0]] + 'は吹出し気流が届くアリーナ中央部（' + f1(cen[0]) + '℃）と、気流が届きにくい周辺部（' + f1(edge[0]) + '℃）で温度に差があり、床上1.5mのばらつきは ±' + spreadT[0].toFixed(1) + '℃ であった。' : 'この時刻は空調の運転時間外で、床上1.5mの温度は ' + f1(cen[0]) + '℃ であった。') +
+      '\n　ecowinハイブリッドでは、床上1.5mの温度は中央部 ' + f1(cen[1]) + '℃・周辺部 ' + f1(edge[1]) + '℃、ばらつきは ±' + spreadT[1].toFixed(1) + '℃ となった。屋根の下と床上1.5mの温度差は ' + MODE_NAME[ms[0]] + ' ' + f1(Math.abs(topT[0] - lowT[0])) + '℃ に対して ' + f1(Math.abs(topT[1] - lowT[1])) + '℃、人の高さのいちばん強い風は ' + wA.toFixed(1) + 'm/s に対して ' + wE.toFixed(1) + 'm/s である。';
+    yT = wrap(txt, 30, yT, RW - 60, 30, '19px ' + ff, INK);
+    // ---- 年間の比較
+    heading('年間の消費電力量と最大需要電力の比較', yT + 26);
+    var yB = yT + 74, pk = a.contract > 0 ? (1 - e.contract / a.contract) * 100 : 0;
+    T('　エアコンのみと ecowinハイブリッドを1年間（' + (wx.city.short || wx.city.name) + 'の気象）で比べた結果、', 30, yB, '19px ' + ff, INK);
+    T('最大需要電力が', 30, yB + 40, '700 20px ' + ff, INK); T(pk.toFixed(0) + '%低減', 196, yB + 38, '700 34px ' + nf, CYD);
+    c.font = '700 34px ' + nf; var w1 = c.measureText(pk.toFixed(0) + '%低減').width;
+    T('、年間の消費電力量が', 204 + w1, yB + 40, '700 20px ' + ff, INK); T((sum.rate * 100).toFixed(0) + '%低減', 418 + w1, yB + 38, '700 34px ' + nf, CYD);
+    c.font = '700 34px ' + nf; var w2 = c.measureText((sum.rate * 100).toFixed(0) + '%低減').width; T('する結果となった。', 428 + w1 + w2, yB + 40, '20px ' + ff, INK);
+    T('　電気代は年間 ' + man(a.cost) + '万円 → ' + man(e.cost) + '万円（基本料金を含む。単価 ' + S.price + '円/kWh、基本料金 ' + S.basic + '円/kW月）。', 30, yB + 82, '19px ' + ff, INK);
+    // ---- CASE の箱
+    var cy = yB + 116; c.fillStyle = '#55c0ee'; c.fillRect(270, cy, 320, 76); c.strokeStyle = '#55c0ee'; c.lineWidth = 3; c.strokeRect(270, cy, 700, 76);
+    T('ecowinハイブリッド', 430, cy + 24, '700 22px ' + ff, INK, 'center'); T('設計図の設備容量', 430, cy + 54, '20px ' + ff, INK, 'center');
+    T('室内機冷房能力：10.0kW × 16台', 612, cy + 24, '19px ' + ff, INK); T('室外機：20.0kW × 8台　輻射パネル：' + panels.length + '台', 612, cy + 54, '19px ' + ff, INK);
+    T('※ 数値はすべて簡易モデルによる推計値で、実測値や保証値ではありません。3次元の気流解析（CFD）ではなく、噴流の近似式による分布です。', 30, RH - 26, '14.5px ' + ff, INK2);
   }
 
   // ------------------------------------------------------------ 営業向け：強みの比較と節約額
@@ -1208,10 +1352,11 @@
     steppers.forEach(function (el) {
       var key = el.dataset.key, lo = +el.dataset.min, hi = +el.dataset.max, st = +el.dataset.step;
       el.innerHTML = '<button type="button" data-d="-1" aria-label="下げる">−</button><output></output><button type="button" data-d="1" aria-label="上げる">＋</button>';
-      el.refresh = function () { el.children[1].textContent = S[key] + el.dataset.unit; el.children[0].disabled = S[key] <= lo; el.children[2].disabled = S[key] >= hi; };
+      var dec = st < 1 ? 1 : 0;
+      el.refresh = function () { el.children[1].textContent = S[key].toFixed(dec) + el.dataset.unit; el.children[0].disabled = S[key] <= lo; el.children[2].disabled = S[key] >= hi; };
       el.addEventListener('click', function (e) {
         var b = e.target.closest('button'); if (!b) return;
-        S[key] = M.clamp(S[key] + st * +b.dataset.d, lo, hi); el.refresh(); later(function () { recomputeSim(); jumpsReady = false; });
+        S[key] = Math.round(M.clamp(S[key] + st * +b.dataset.d, lo, hi) * 100) / 100; el.refresh(); later(function () { recomputeSim(); jumpsReady = false; });
       });
     });
     function outs() { $('occOut').textContent = S.occupants + '人'; $('panelsOut').textContent = S.panels + '台'; }
@@ -1224,7 +1369,7 @@
     function syncInputs() { // 状態を画面の部品へ反映する
       $('city').value = S.city; $('occ').value = S.occupants; $('panels').value = S.panels;
       press('insul', S.insul); $('editSpec').hidden = S.insul !== 'custom'; press('actSeg', S.sensible); press('preheatSeg', S.preheat);
-      press('layoutSeg', S.layout); $('customNote').hidden = S.layout !== 'custom';
+      press('layoutSeg', S.layout); $('customNote').hidden = S.layout !== 'custom'; press('palSeg', S.palette); press('acSeg', S.acMode); $('acBox').hidden = S.acMode !== 'custom'; press('bldSeg', BKEY);
       press('rateSeg', S.rateMode); $('rateR').value = S.rateCustom;
       press('modeSeg', S.mode); press('leftSeg', S.left); press('layerSeg', S.layer); press('zSeg', S.z); press('speedSeg', S.speed);
       [].forEach.call($('overlays').querySelectorAll('.chip'), function (b) { b.setAttribute('aria-pressed', String(!!S[b.dataset.k])); });
@@ -1445,12 +1590,37 @@
       $('specMsg').textContent = '下の「ファイルに保存」を押すか、表示された文字をコピーして保存してください。';
     });
 
+    // 建物の切り替え（ページを読み直す）
+    $('bldNote').innerHTML = '<b>' + G.name + '</b>の設計図をもとにしています（アリーナ ' + G.W + 'm × ' + G.D.toFixed(1) + 'm、屋根まで ' + G.H + 'm）。';
+    $('bldSeg').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b || b.dataset.v === BKEY) return;
+      try { localStorage.setItem('ecowin-gym-building', b.dataset.v); } catch (err) { /* 保存できない環境では # だけで切り替える */ }
+      location.hash = b.dataset.v; location.reload();
+    });
+    // 比べるエアコン（エアコンのみ）の能力と効率
+    seg('acSeg', 'acMode', null, function () { $('acBox').hidden = S.acMode !== 'custom'; recomputeSim(); jumpsReady = false; });
+    // パネルの置き方を比べる：置き方ごとに年間計算を回して表にする
+    $('cmpLayout').addEventListener('click', function () {
+      var cases = [['設計図どおり（2階ギャラリー）', M.buildPanels('gallery', S.panels)], ['1階の壁際に下ろした場合', M.buildPanels('floor', S.panels)]];
+      if (S.layout === 'custom') cases.push(['いまの配置（ドラッグで変更）', panels]);
+      var p = params(), h = '<thead><tr><th>置き方</th><th>人から見える<br>パネルの割合</th><th>冬の体感<br>（平均）</th><th>夏の体感<br>（平均）</th><th>年間の<br>消費電力量</th><th>エアコンのみ<br>との差</th><th>最大<br>需要電力</th></tr></thead><tbody>';
+      cases.forEach(function (cs) {
+        p.panels = cs[1].length; var Fm = M.computeViewWeights(1.1, cs[1]).mean, r = M.simulate(p, wx, Fm, jet.m11), o = r.eco, sh = 0, nh = 0, sc = 0, nc = 0;
+        for (var k = 0; k < 8760; k++) { var hh = k % 24; if (hh < S.opStart + 2 || hh >= S.opEnd) continue; if (isHeat(k)) { sh += o.OT[k]; nh++; } else { sc += o.OT[k]; nc++; } }
+        var sm = r.summary;
+        h += '<tr><th>' + cs[0] + '</th><td>' + (Fm.panel * 100).toFixed(1) + '%</td><td>' + f1(sh / nh) + '℃</td><td>' + f1(sc / nc) + '℃</td><td>' + (sm.modes.eco.kwh / 1000).toFixed(1) + 'MWh</td><td>' + (sm.rate >= 0 ? '−' : '+') + Math.abs(sm.rate * 100).toFixed(1) + '%</td><td>' + Math.round(sm.modes.eco.contract) + 'kW</td></tr>';
+      });
+      $('layoutTable').innerHTML = h + '</tbody>';
+      var d = $('layoutDlg'); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+    });
+    $('closeLayout').addEventListener('click', function () { var d = $('layoutDlg'); if (d.close) d.close(); else d.removeAttribute('open'); });
+
     // 取り込んだ設計資料の一覧
     (function () {
       var dd = window.DESIGN_DOCS; if (!dd) { $('openDocs').hidden = true; return; }
       var h = '<p><b>' + dd.title + '</b><br><span class="note">' + dd.source + '</span></p><h3>3施設に共通の機器</h3><ul>' + Object.keys(dd.common).map(function (k) { return '<li>' + dd.common[k] + '</li>'; }).join('') + '</ul>';
       dd.sites.forEach(function (st) {
-        h += '<h3>' + st.name + (st.modeled ? '　<span class="pill" style="background:var(--accent-soft);color:var(--ink)">この画面でモデル化</span>' : '') + '</h3>' + (st.size ? '<p class="note">平面：' + st.size + '　／　高さ：' + st.height + '</p>' : '') +
+        h += '<h3>' + st.name + (st.key === BKEY ? '　<span class="pill" style="background:var(--accent-soft);color:var(--ink)">この画面でモデル化</span>' : '') + '</h3>' + (st.size ? '<p class="note">平面：' + st.size + '　／　高さ：' + st.height + '</p>' : '') +
           '<table class="cmp sv"><tbody>' + st.rows.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>'; }).join('') + '</tbody></table>';
       });
       $('docsBody').innerHTML = h + '<p class="note">金額は資料に記載がないため取り込んでいません。断熱の仕様（屋根・壁・窓の材料）もこの資料には記載がないため、「断熱性能」は目安の3段階か、「図面・仕様書から入力」で指定します。</p>';
@@ -1458,7 +1628,7 @@
     })();
 
     // 配置と条件の保存・読込（このブラウザの中に保存する）
-    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'left', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split', 'volume', 'speed', 'charts', 'rateMode', 'rateCustom', 'capex', 'maint', 'sheet'];
+    var KEYS = ['city', 'insul', 'occupants', 'sensible', 'setHeat', 'setCool', 'opStart', 'opEnd', 'panels', 'preheat', 'layout', 'price', 'basic', 'mode', 'left', 'layer', 'z', 't', 'wind', 'rays', 'section', 'people', 'field', 'split', 'volume', 'speed', 'charts', 'rateMode', 'rateCustom', 'capex', 'maint', 'sheet', 'palette', 'acMode', 'acCool', 'acHeat', 'acCopC', 'acCopH'];
     function say(t) { var e = $('saveMsg'); e.textContent = t; clearTimeout(say.t); say.t = setTimeout(function () { e.textContent = ''; }, 4000); }
     $('saveScene').addEventListener('click', function () {
       var o = { v: 5 }; KEYS.forEach(function (k) { o[k] = S[k]; });
@@ -1512,6 +1682,17 @@
       $(closeBtn).addEventListener('click', function () { var d = $(id); if (d.close) d.close(); else d.removeAttribute('open'); });
     }
     dlg('helpDlg', 'openHelp', 'closeHelp');
+    // 色の付け方
+    function repaint() { buildColors(); if (scene3) scene3.applyTheme(); legendKey = ''; first = true; redraw(); }
+    seg('palSeg', 'palette', null, repaint);
+    // 検証シート（縦のレポート）
+    $('openReport').addEventListener('click', function () {
+      var sts = {}, heat = isHeat(Math.floor(S.t)); M.MODES.forEach(function (m) { sts[m] = stateAt(m, S.t); });
+      var cv = $('reportCv'); drawReport(cv, sts, heat);
+      var a = $('reportDl'), d0 = Math.floor(S.t / 24); try { a.href = cv.toDataURL('image/png'); a.download = 'ecowin-kensho-' + fmtDate(d0) + '.png'; } catch (err) { a.hidden = true; }
+      var dg = $('reportDlg'); if (dg.showModal) dg.showModal(); else dg.setAttribute('open', '');
+    });
+    $('closeReport').addEventListener('click', function () { var d = $('reportDlg'); if (d.close) d.close(); else d.removeAttribute('open'); });
     // 操作の説明の帯は、閉じたら次回から出さない
     try { if (localStorage.getItem('ecowin-gym-tips') === '1') $('tips').hidden = true; } catch (e) { /* 保存できない環境では毎回表示する */ }
     $('tipsClose').addEventListener('click', function () { $('tips').hidden = true; try { localStorage.setItem('ecowin-gym-tips', '1'); } catch (e) { /* 同上 */ } });
@@ -1562,7 +1743,7 @@
       if (first || rd < 0.5) range.step = rangeT.step;
       range.lo += (rangeT.lo - range.lo) * a; range.hi += (rangeT.hi - range.hi) * a; range.c = rangeT.c;
       if (scene3) ms.forEach(function (m, s) { scene3.paintHeat(s, shown[s]); });
-      var lk = S.layer + S.z + range.lo.toFixed(1) + range.hi.toFixed(1) + C['--div-mid'];
+      var lk = S.layer + S.z + range.lo.toFixed(1) + range.hi.toFixed(1) + C['--div-mid'] + S.palette;
       if (lk !== legendKey) { renderLegend(); legendKey = lk; }
       settle = (mx > 0.004 || rd > 0.02) ? 1 : 0; first = false; sheetDirty = true;
     }
