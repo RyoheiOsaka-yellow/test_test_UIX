@@ -1,0 +1,201 @@
+<title>OBJECT STROBE ターボチャージャー</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Mono&family=Noto+Sans+JP:wght@400;500&family=Space+Grotesk:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column, like an inspection sheet. The temperature ramp is the only colour; everything else is cool steel neutrals. */
+:root{
+  --bg:#F3F5F8; --panel:#FFFFFF; --fg:#131821; --muted:#5B6575; --line:#D5DAE2;
+  --accent:#1239A6; --alarm:#C4200E; --plate:#0A0B10; --plate-fg:#E8ECF3;
+  --display:"Space Grotesk","Noto Sans JP",system-ui,sans-serif;
+  --body:"Noto Sans JP",system-ui,sans-serif;
+  --data:"Fira Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C0F15; --panel:#141922; --fg:#E6EAF1; --muted:#96A0B2; --line:#2A3140;
+  --accent:#9FD4FF; --alarm:#FF6A4D; --plate:#05070B; --plate-fg:#E8ECF3; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C0F15; --panel:#141922; --fg:#E6EAF1; --muted:#96A0B2; --line:#2A3140;
+  --accent:#9FD4FF; --alarm:#FF6A4D; --plate:#05070B; --plate-fg:#E8ECF3; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.75}
+.wrap{max-width:820px;margin:0 auto;padding-block:40px 72px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:44px}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+h1{font-family:var(--display);font-weight:500;font-size:34px;line-height:1.2;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:500;font-size:21px;margin:0;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-family:var(--display);font-weight:500;font-size:15px;margin:8px 0 0;color:var(--muted)}
+p{margin:0;max-width:66ch}
+.eyebrow{font-family:var(--data);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lead{color:var(--muted)}
+code,.num{font-family:var(--data);font-size:.92em}
+.scroll{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:7px 12px 7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:12px;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.id{font-family:var(--data);color:var(--muted);white-space:nowrap}
+.ok{color:var(--accent)} .bad{color:var(--alarm)}
+.plate{background:var(--plate);color:var(--plate-fg);padding:20px;border-radius:4px;display:flex;flex-direction:column;gap:10px}
+.formula{font-family:var(--data);font-size:16px}
+.ramp-box{position:relative;padding-top:26px}
+.ramp{height:34px;border-radius:2px;background:linear-gradient(90deg,#050B24 0%,#1239A6 18%,#9FD4FF 36%,#0A0B10 46%,#5A1206 56%,#D81E0A 72%,#FF7A1A 88%,#FFF1DC 100%);outline:1px solid #2A3140}
+.tick{position:absolute;top:22px;height:42px;width:2px;background:#E8ECF3;mix-blend-mode:difference}
+.limit{position:absolute;top:0;left:95.1%;transform:translateX(-100%);font-family:var(--data);font-size:12px;color:#FF7A1A;white-space:nowrap;padding-right:6px}
+.limit-line{position:absolute;top:0;left:95.1%;height:64px;width:2px;background:#FF7A1A}
+.axis{display:flex;justify-content:space-between;font-family:var(--data);font-size:12px;color:#96A0B2}
+.acts{display:flex;height:30px;border-radius:2px;overflow:hidden;min-width:640px}
+.acts div{font-family:var(--data);font-size:11px;padding:6px 0 0 5px;color:#E8ECF3;border-right:1px solid var(--bg);box-sizing:border-box;white-space:nowrap;overflow:hidden}
+.light{background:#C9CFD9;color:#131821!important}.dark{background:#232A38}.hot{background:#8A2A10}.over{background:#D81E0A}
+ol.decide{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:14px}
+ol.decide li{max-width:66ch}
+ol.decide strong{font-weight:500}
+.rec{font-family:var(--data);font-size:12px;color:var(--accent)}
+</style>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:10px">
+  <div class="eyebrow">Checkpoint · §1 preflight + §2 object study</div>
+  <h1>ターボチャージャーを、熱で診断する</h1>
+  <p class="lead">9.6 秒・288 フレームの縦型ループ。モデリングに入る前の確認用シートです。部品表、場の定義、物語、寸法、そして判断をお願いしたい 3 点をまとめています。</p>
+</header>
+
+<section>
+  <h2>プリフライト</h2>
+  <div class="scroll"><table>
+    <tr><th>必要なもの</th><th>状態</th><th>対応</th></tr>
+    <tr><td>Blender ≥ 4.2</td><td class="ok">解決</td><td><code>bpy</code> 5.3.0 を <code>.venv</code> に導入。Khronos PBR Neutral あり</td></tr>
+    <tr><td>Cycles 用 GPU</td><td class="bad">なし</td><td>CPU 4 コア + OpenImageDenoise。OptiX は使えません</td></tr>
+    <tr><td>ffmpeg</td><td class="ok">あり</td><td>6.1.1</td></tr>
+    <tr><td>Python + numpy / opencv / pillow</td><td class="ok">解決</td><td>Python 3.13、<code>.venv</code> に導入</td></tr>
+    <tr><td>Fira Mono / Space Grotesk</td><td class="ok">解決</td><td><code>strobe/fonts/</code> に取得。Regular のみ使用</td></tr>
+  </table></div>
+  <h3>レンダ時間の見積り</h3>
+  <p>立方体テスト（540×960、128 spp、閾値 0.03、3 層分散ガラス）は 1 フレーム <span class="num">44.6</span> 秒でした。下の表は立方体からの外挿で、実物の密なガラスでは幅があります。確かな数字は §3 のルックデブで実アセットを計測して出します。</p>
+  <div class="scroll"><table>
+    <tr><th>設定</th><th class="num">1 フレーム</th><th class="num">全 288 フレーム</th></tr>
+    <tr><td>フル解像度・128 spp（仕様どおり）</td><td class="num">6〜12 分</td><td class="num">30〜60 時間</td></tr>
+    <tr><td>フル解像度・64 spp（CPU 時の半減ルール、フックは 256）</td><td class="num">3〜6 分</td><td class="num">15〜30 時間</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>場：金属温度 °C</h2>
+  <p>ターボチャージャーは、鉄が赤熱する排気と、温めてはいけない吸気のあいだで働きます。インコネルの翼車も、遮熱板も、長い軸受ハウジングも、すべてこの温度勾配のための設計です。</p>
+  <div class="plate">
+    <div class="formula">T(v) = 20 + 1030 · v^1.6 &nbsp;[°C]</div>
+    <div class="ramp-box">
+      <div class="limit">LIMIT 950 °C</div><div class="limit-line"></div>
+      <div class="ramp"></div>
+      <div class="tick" style="left:30%"></div><div class="tick" style="left:52%"></div>
+      <div class="tick" style="left:88%"></div><div class="tick" style="left:92%"></div><div class="tick" style="left:99%"></div>
+    </div>
+    <div class="axis"><span>v 0.0 · 20 °C</span><span>v 1.0 · 1050 °C</span></div>
+  </div>
+  <div class="scroll"><table>
+    <tr><th class="num">v</th><th class="num">温度</th><th>目盛りの位置</th></tr>
+    <tr><td class="num">0.00</td><td class="num">20 °C</td><td>冷間</td></tr>
+    <tr><td class="num">0.30</td><td class="num">170 °C</td><td>コンプレッサハウジング、作動時</td></tr>
+    <tr><td class="num">0.52</td><td class="num">382 °C</td><td>軸受ハウジング、作動時</td></tr>
+    <tr><td class="num">0.88</td><td class="num">859 °C</td><td>タービンホイール、作動時</td></tr>
+    <tr><td class="num">0.92</td><td class="num">921 °C</td><td>タービンハウジング、作動時。限界の直前</td></tr>
+    <tr><td class="num bad">0.951</td><td class="num bad">950 °C</td><td class="bad">限界（タービン入口の連続最高温度）</td></tr>
+    <tr><td class="num">0.99</td><td class="num">1034 °C</td><td>タービンハウジング、ピーク</td></tr>
+  </table></div>
+  <p>パレットは寒色（ネイビー → コバルト → アイス）、無発光の暗帯、暖色（残り火 → 赤 → オレンジ → 白に近い色）の 2 色相だけです。緑は使いません。限界値がオレンジと白の境目に来るので、白く光るのは限界を超えた金属だけになります。ログには軸回転数も出します（4 000 → 150 000 → ピーク 180 000 rpm）。</p>
+</section>
+
+<section>
+  <h2>物語</h2>
+  <div class="scroll"><div class="acts">
+    <div class="light" style="flex:12">0</div><div class="dark" style="flex:42">12 分離</div><div class="dark" style="flex:36">54 検査</div>
+    <div class="dark" style="flex:42">90 コア</div><div class="dark" style="flex:36">132 再組立</div><div class="hot" style="flex:48">168 作動</div>
+    <div class="over" style="flex:30">216 限界</div><div class="hot" style="flex:24">246 回復</div><div class="light" style="flex:18">270</div>
+  </div></div>
+  <div class="scroll"><table>
+    <tr><th>フレーム</th><th>拍</th><th>起きること</th></tr>
+    <tr><td class="num">0–167</td><td>冷間</td><td>エンジン停止、全体が 20 °C。場のパスは青いスキャン。コアロックの 3 パルスはタービンホイールへの負荷予測で、200 °C 未満</td></tr>
+    <tr><td class="num">168–215</td><td>作動</td><td>排気がタービン入口に到達。熱フロントが入口スタッドとウェイストゲートからコンプレッサハウジングまで走る。入口 921 °C、150 000 rpm</td></tr>
+    <tr><td class="num">216–245</td><td>限界超え</td><td>ウェイストゲートが固着。216 で警告、228 で 950 °C を超えてアラームと赤が始まる。240 がピークで 1034 °C、180 000 rpm</td></tr>
+    <tr><td class="num">246–269</td><td>回復</td><td>ウェイストゲートが開く。冷却フロントがコンプレッサ側から戻り、通過した部品から順にソリッドへ。タービンハウジングが最後</td></tr>
+    <tr><td class="num">270–287</td><td>クリーン</td><td>製品だけ。ソリッド、明るい背景、グラフィックなし。フレーム 0 へつながる</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>部品表（46 点）</h2>
+  <p>X がシャフト軸で、タービン側が −X、コンプレッサ側が +X です。分解ベクトルは mm。軸受ハウジング S03 は動かず、再組立の着座点になります。</p>
+  <h3>シェル（9）</h3>
+  <div class="scroll"><table>
+    <tr><th>ID</th><th>部品</th><th>材質</th><th class="num">分解 (x, y, z)</th><th class="num">v</th></tr>
+    <tr><td class="id">S01</td><td>タービンハウジング</td><td>SiMo ダクタイル鋳鉄</td><td class="num">−170, 0, 0</td><td class="num">0.92</td></tr>
+    <tr><td class="id">S02</td><td>コンプレッサハウジング</td><td>A356 アルミ鋳物</td><td class="num">+185, 0, 0</td><td class="num">0.30</td></tr>
+    <tr><td class="id">S03</td><td>軸受ハウジング</td><td>ねずみ鋳鉄</td><td class="num">0, 0, 0</td><td class="num">0.52</td></tr>
+    <tr><td class="id">S04</td><td>コンプレッサバックプレート</td><td>アルミ鋳物</td><td class="num">+70, 0, 0</td><td class="num">0.36</td></tr>
+    <tr><td class="id">S05</td><td>タービン遮熱板</td><td>304 ステンレス</td><td class="num">−62, 0, 0</td><td class="num">0.78</td></tr>
+    <tr><td class="id">S06</td><td>タービン V バンドクランプ</td><td>304 ステンレス</td><td class="num">−105, 0, 22</td><td class="num">0.74</td></tr>
+    <tr><td class="id">S07</td><td>コンプレッサクランプリング</td><td>ばね鋼</td><td class="num">+120, 0, 0</td><td class="num">0.33</td></tr>
+    <tr><td class="id">S08</td><td>ウェイストゲートアクチュエータ缶</td><td>プレス鋼板</td><td class="num">+60, −95, 40</td><td class="num">0.28</td></tr>
+    <tr><td class="id">S09</td><td>アクチュエータブラケット</td><td>プレス鋼板</td><td class="num">+95, −70, 25</td><td class="num">0.30</td></tr>
+  </table></div>
+  <h3>コア（10）</h3>
+  <div class="scroll"><table>
+    <tr><th>ID</th><th>部品</th><th>材質</th><th class="num">分解 (x, y, z)</th><th class="num">v</th></tr>
+    <tr><td class="id">C01</td><td>タービンホイール（11 枚翼）</td><td>インコネル 713C</td><td class="num">−118, 0, 0</td><td class="num">0.88</td></tr>
+    <tr><td class="id">C02</td><td>シャフト</td><td>4140 鋼</td><td class="num">−40, 0, 0</td><td class="num">0.60</td></tr>
+    <tr><td class="id">C03</td><td>コンプレッサホイール（6 + 6 枚翼）</td><td>2618 鍛造アルミ</td><td class="num">+138, 0, 0</td><td class="num">0.26</td></tr>
+    <tr><td class="id">C04</td><td>ジャーナル軸受、タービン側</td><td>鉛青銅</td><td class="num">−22, 0, 0</td><td class="num">0.58</td></tr>
+    <tr><td class="id">C05</td><td>ジャーナル軸受、コンプレッサ側</td><td>鉛青銅</td><td class="num">+22, 0, 0</td><td class="num">0.46</td></tr>
+    <tr><td class="id">C06</td><td>軸受スペーサ</td><td>鋼</td><td class="num">0, 0, 0</td><td class="num">0.50</td></tr>
+    <tr><td class="id">C07</td><td>スラスト軸受</td><td>焼結青銅</td><td class="num">+50, 0, 0</td><td class="num">0.42</td></tr>
+    <tr><td class="id">C08</td><td>スラストカラー</td><td>焼入れ鋼</td><td class="num">+41, 0, 0</td><td class="num">0.43</td></tr>
+    <tr><td class="id">C09</td><td>スラストスペーサ / オイルスリンガ</td><td>焼入れ鋼</td><td class="num">+60, 0, 0</td><td class="num">0.40</td></tr>
+    <tr><td class="id">C10</td><td>オイルデフレクタ</td><td>プレス鋼板</td><td class="num">+56, 0, −14</td><td class="num">0.40</td></tr>
+  </table></div>
+  <h3>小物（27）</h3>
+  <div class="scroll"><table>
+    <tr><th>ID</th><th>部品</th><th>材質</th><th class="num">分解 (x, y, z)</th><th class="num">v</th></tr>
+    <tr><td class="id">F01</td><td>コンプレッサロックナット（逆ねじ M6）</td><td>鋼</td><td class="num">+165, 0, 0</td><td class="num">0.25</td></tr>
+    <tr><td class="id">F02</td><td>タービン側ピストンリングシール</td><td>鋳鉄</td><td class="num">−52, 0, 0</td><td class="num">0.72</td></tr>
+    <tr><td class="id">F03</td><td>コンプレッサ側ピストンリングシール</td><td>鋳鉄</td><td class="num">+66, 0, 0</td><td class="num">0.38</td></tr>
+    <tr><td class="id">F04</td><td>バックプレート O リング</td><td>FKM ゴム</td><td class="num">+64, 0, 0</td><td class="num">0.37</td></tr>
+    <tr><td class="id">F05–08</td><td>軸受止め輪 ×4</td><td>ばね鋼</td><td class="num">−30 〜 +30, 0, 0</td><td class="num">0.48–0.58</td></tr>
+    <tr><td class="id">F09–11</td><td>スラスト軸受ねじ ×3（M4）</td><td>鋼</td><td class="num">+78, 0, 0</td><td class="num">0.41</td></tr>
+    <tr><td class="id">F12–15</td><td>バックプレートボルト ×4（M6）</td><td>鋼、亜鉛めっき</td><td class="num">+98, 0, 0</td><td class="num">0.35</td></tr>
+    <tr><td class="id">F16–19</td><td>タービン入口スタッド ×4（M10）</td><td>耐熱鋼</td><td class="num">−170, 0, +42</td><td class="num">0.94</td></tr>
+    <tr><td class="id">F20</td><td>V バンド T ボルトとナット</td><td>ステンレス</td><td class="num">−105, 0, 50</td><td class="num">0.70</td></tr>
+    <tr><td class="id">F21</td><td>ウェイストゲートフラッパ弁</td><td>耐熱鋳鋼</td><td class="num">−205, −30, 0</td><td class="num">0.96</td></tr>
+    <tr><td class="id">F22</td><td>ウェイストゲートアームとスピンドル</td><td>耐熱鋼</td><td class="num">−190, −58, 0</td><td class="num">0.90</td></tr>
+    <tr><td class="id">F23</td><td>ウェイストゲートブッシュ</td><td>ステンレス</td><td class="num">−178, −44, 0</td><td class="num">0.88</td></tr>
+    <tr><td class="id">F24</td><td>アクチュエータロッド</td><td>鋼</td><td class="num">0, −110, 30</td><td class="num">0.45</td></tr>
+    <tr><td class="id">F25</td><td>ロッドエンド E クリップ</td><td>ばね鋼</td><td class="num">−150, −84, 6</td><td class="num">0.80</td></tr>
+    <tr><td class="id">F26</td><td>オイル入口フィッティング（M12、絞り付き）</td><td>鋼、亜鉛めっき</td><td class="num">0, 0, +85</td><td class="num">0.44</td></tr>
+    <tr><td class="id">F27</td><td>オイルドレンフランジ、ガスケット、ボルト ×2</td><td>鋼 / 繊維ガスケット</td><td class="num">0, 0, −85</td><td class="num">0.50</td></tr>
+  </table></div>
+  <p>カメラが留まるヒーロー部品は、タービンホイール C01、コンプレッサホイール C03、両ボリュート S01・S02、軸受ハウジング S03 です。鋳肌、見切り線、ボス、機械加工面までここに作り込みます。</p>
+</section>
+
+<section>
+  <h2>主要寸法（mm）</h2>
+  <div class="scroll"><table>
+    <tr><th>項目</th><th class="num">値</th><th>項目</th><th class="num">値</th></tr>
+    <tr><td>全長（X）</td><td class="num">196</td><td>全高（Z）</td><td class="num">178</td></tr>
+    <tr><td>コンプレッサホイール 入口 / 出口径</td><td class="num">46 / 60</td><td>タービンホイール 入口 / 出口径</td><td class="num">54 / 47</td></tr>
+    <tr><td>コンプレッサボリュート外径</td><td class="num">142</td><td>タービンボリュート外径</td><td class="num">128</td></tr>
+    <tr><td>コンプレッサ肉厚</td><td class="num">4.0</td><td>タービン肉厚</td><td class="num">5.5</td></tr>
+    <tr><td>タービン入口フランジ</td><td class="num">86 × 56</td><td>入口スタッド</td><td class="num">4 × M10</td></tr>
+    <tr><td>軸受ハウジング 長さ / 胴径</td><td class="num">72 / 62</td><td>シャフト ジャーナル径 / 長さ</td><td class="num">8.0 / 122</td></tr>
+    <tr><td>ジャーナル軸受 外径 / 内径 / 長さ</td><td class="num">13.0 / 8.03 / 9</td><td>スラスト軸受 径 / 厚さ</td><td class="num">46 / 4.5</td></tr>
+    <tr><td>ウェイストゲート ポート / フラッパ径</td><td class="num">26 / 32</td><td>画面上の主軸角度</td><td class="num">−27°</td></tr>
+  </table></div>
+  <p class="lead">全項目は <code>strobe/board/OBJECT.md</code> の定数表にあり、形状スクリプトはすべてそこから読みます。</p>
+</section>
+
+<section>
+  <h2>判断をお願いしたい 3 点</h2>
+  <ol class="decide">
+    <li><strong>サンプル数。</strong>フル解像度のまま 64 spp（フックは 256）を勧めます。128 spp だと 2 日を超える可能性があります。ソリッドと場のパスは適応サンプリングで早く収束します。ガラスの粒状感が 100 % クロップで残れば、そのフレームだけ再レンダします。</li>
+    <li><strong>フレームの保全。</strong>コンテナは非アクティブで回収されます。16 bit PNG 288 枚は 2〜3 GB あり、git には重すぎます。スクリプトと SDF キャッシュだけを push し、フレームは落ちたら再開レンダする方針を勧めます。Google Drive への退避もできますが、外部送信になるので許可が必要です。</li>
+    <li><strong>アラームのタイミング。</strong>216 で警告、228 で限界超えとアラーム開始、240 でピークにしています。216 の瞬間から赤にしたい場合は、限界超えを 216 に前倒しします。</li>
+  </ol>
+</section>
+</div>
