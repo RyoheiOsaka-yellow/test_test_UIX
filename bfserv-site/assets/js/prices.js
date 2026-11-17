@@ -169,6 +169,7 @@ window.BF_WC_PRICES = {
   }
   const m1 = document.querySelector('[data-prices="bicycle"]'); if (m1) render(window.BF_PRICES, m1);
   const m2 = document.querySelector('[data-prices="wheelchair"]'); if (m2) render(window.BF_WC_PRICES, m2);
+  if (window.BF_labelTables) window.BF_labelTables();
   const nav = document.querySelector('[data-price-nav]');
   if (nav && m1) nav.innerHTML = window.BF_PRICES.groups.map(g => `<a class="chip" href="#${g.id}">${g.code} ${g.title}</a>`).join('');
 

@@ -103,6 +103,19 @@
   /* ---------- photo strip loop ---------- */
   $$('.pstrip__track').forEach(t => { t.innerHTML += t.innerHTML; });
 
+  /* ---------- table cells get their column name (mobile card layout reads data-label) ---------- */
+  window.BF_labelTables = () => {
+    $$('table.price-table').forEach(t => {
+      const heads = $$('thead th', t).map(th => th.textContent.trim());
+      $$('tbody tr', t).forEach(tr => {
+        if (tr.classList.contains('price-detail')) return;
+        let col = 0;
+        [...tr.cells].forEach(td => { const span = td.colSpan || 1; if (!td.hasAttribute('data-label')) td.setAttribute('data-label', heads[col + span - 1] || ''); col += span; });
+      });
+    });
+  };
+  window.BF_labelTables();
+
   /* ---------- counters ---------- */
   const cio = new IntersectionObserver(entries => {
     entries.forEach(e => {

@@ -1095,3 +1095,87 @@ h1, h2, h3, .lead, .hero__big { word-break: auto-phrase; text-wrap: balance; }
 
 .form label .req { color: var(--pink-strong); }
 .form label.check a { display: inline-block; padding: 12px 0; }
+
+/* ==========================================================================
+   Responsive pass (320px - 1920px, portrait + landscape)
+   ========================================================================== */
+/* price tables become cards on phones: no sideways scrolling to find the price */
+@media (max-width: 640px) {
+  .price-table-wrap { overflow: visible; }
+  .price-table { min-width: 0; }
+  .price-table thead { display: none; }
+  .price-table, .price-table tbody, .price-table tr, .price-table td { display: block; width: 100%; }
+  .price-table tbody tr:not(.price-detail) { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+  .price-table tbody tr.has-detail { border-bottom: 0; padding-bottom: 6px; }
+  .price-table tbody tr:last-child { border-bottom: 0; }
+  .price-table td { border: 0; padding: 3px 0; font-size: 14px; }
+  .price-table td:first-child { font-weight: 700; font-size: 15px; padding-bottom: 6px; }
+  .price-table td[data-label]:not(:first-child) { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; text-align: right; }
+  .price-table td[data-label]:not(:first-child)::before { content: attr(data-label); flex: 0 0 auto; max-width: 48%; text-align: left; font-size: 12px; color: var(--ink-3); font-weight: 500; }
+  .price-table td[data-label=""]::before { content: none; }
+  .price-table td .sub { display: block; }
+  .price-table tr.price-detail td { padding: 0 16px 14px; }
+  .price-table tbody tr:hover { background: transparent; }
+  .spec-table th { width: 40%; }
+}
+
+/* very small phones (320-359px) */
+@media (max-width: 359px) {
+  :root { --gutter: 14px; }
+  .btn--lg { padding: 16px 22px; font-size: 15px; }
+  .hero__big { font-size: 38px; }
+  .page-hero h1 { font-size: 30px; }
+  .section-head .eyebrow, .split > div > .eyebrow { font-size: 26px; }
+  .honeycomb--areas { --hex-w: 96px; --hex-gap: 5px; }
+  .honeycomb--areas > * b { font-size: 13px; }
+  .honeycomb--areas > * span { font-size: 9px; letter-spacing: .06em; }
+  .mobile-bar a { font-size: 13px; padding: 13px 8px; }
+  .hero--brush .hero__cards a { font-size: 11px; }
+}
+
+/* phones held sideways / short screens: the first view must not be all hero */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero--brush { min-height: auto; padding: calc(var(--header-h) + 16px) 0 32px; }
+  .hero__center { padding: 0; }
+  .hero__big { font-size: clamp(32px, 7vh, 52px); }
+  .hero__ctas { margin-top: 18px; flex-direction: row; width: auto; }
+  .hero__ctas .btn { width: auto; min-width: 0; }
+  .hero--brush .hero__cards { display: none; }
+  .hero__scrolldown { display: none; }
+  .page-hero { padding: calc(var(--header-h) + 24px) 0 32px; }
+  .page-hero__inner { grid-template-columns: 1.2fr .8fr; gap: 24px; }
+  .page-hero h1 { font-size: 30px; margin-bottom: 10px; }
+  .page-hero .lead { font-size: 14px; margin-bottom: 14px; }
+  .hex-frame, .as-hero { max-width: 240px; }
+  .mobile-bar { padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+  .mobile-bar a { padding: 10px; }
+  .drawer__grid { grid-template-columns: 1fr 1fr; padding-top: calc(var(--header-h) + 8px); }
+  .drawer__main a { padding: 6px 0; }
+  .drawer__main a b { font-size: 20px; }
+  .drawer__bg { display: none; }
+}
+
+/* tablets: comfortable two-column grids and hero media size */
+@media (min-width: 600px) and (max-width: 960px) {
+  .page-hero__inner { grid-template-columns: 1fr; }
+  .hex-frame { max-width: 380px; }
+  .as-hero { max-width: 420px; }
+  .svc-grid { grid-template-columns: repeat(2, 1fr); }
+  .steps { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* two-column content blocks stack earlier (company profile + history were cramped on tablets) */
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+/* product cards: 4 across only when there is room for the price lines */
+@media (max-width: 1280px) { .product-grid { grid-template-columns: repeat(2, 1fr); } .product-grid .product__img { aspect-ratio: 4/3; } }
+@media (max-width: 520px) { .product-grid { grid-template-columns: 1fr; } }
+.product .price { overflow-wrap: anywhere; }
+/* TOP brush stroke: keep it readable in portrait where it crosses the pale sky of the photo */
+.brush__iso { background: linear-gradient(115deg, #5fd39a 0%, #6ec3f0 36%, #ff94c2 70%, #a99bff 100%); }
+.brush__photo { mix-blend-mode: multiply; opacity: .42; filter: grayscale(1) brightness(1.2) contrast(1.1); }
+.brush__tint { display: none; }
+
+/* long English section titles (INSTALLATION GALLERY, MAINTENANCE PLAN...) scale with the screen */
+.section-head .eyebrow, .split > div > .eyebrow { font-size: clamp(22px, 7.4vw, 52px); overflow-wrap: anywhere; max-width: 100%; }
+.section-head > div, .split > div { min-width: 0; }
+@media (max-width: 359px) { .section-head .eyebrow, .split > div > .eyebrow { font-size: clamp(20px, 7.2vw, 26px); } }
