@@ -1183,3 +1183,17 @@ h1, h2, h3, .lead, .hero__big { word-break: auto-phrase; text-wrap: balance; }
 /* very narrow screens: long button labels may wrap instead of sticking out */
 @media (max-width: 400px) { .btn { white-space: normal; text-align: center; line-height: 1.4; max-width: 100%; } .tel-block .big { font-size: clamp(28px, 9vw, 40px); } }
 .btn { word-break: auto-phrase; }
+
+/* TOP service shortcuts: compact pills on PC, a clear vertical list on phones */
+.hero--brush .hero__cards .hc__t small, .hero--brush .hero__cards .hc__a { display: none; }
+@media (max-width: 720px) {
+  .hero--brush .hero__cards { flex-direction: column; align-items: stretch; gap: 10px; width: min(100%, 360px); margin: 26px auto 0; }
+  .hero--brush .hero__cards a { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; padding: 12px 16px 12px 12px; border-radius: 16px; background: rgba(255,255,255,.9); box-shadow: 0 10px 24px -18px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.05); text-align: left; font-size: 15px; }
+  .hero--brush .hero__cards .hex-ic { width: 40px; height: 46px; font-size: 13px; }
+  .hero--brush .hero__cards .hc__t { display: grid; gap: 2px; font-weight: 700; line-height: 1.35; }
+  .hero--brush .hero__cards .hc__t small { display: block; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+  .hero--brush .hero__cards .hc__a { display: grid; place-items: center; width: 30px; height: 34px; font-style: normal; font-size: 13px; color: #fff; background: var(--ink); clip-path: var(--hex); }
+  .hero--brush .hero__cards a:active { transform: scale(.98); }
+}
+@media (max-width: 359px) { .hero--brush .hero__cards a { font-size: 14px; gap: 10px; } .hero--brush .hero__cards .hc__t small { font-size: 11px; } }
+.hero--brush .hero__cards .hc__t small { word-break: auto-phrase; }
