@@ -109,6 +109,20 @@
     schedule();
   }
 
+  // ---- News: show the latest 5, expand the rest on demand ----
+  var newsList = document.getElementById('newsList');
+  var newsMore = document.getElementById('newsMore');
+  if (newsList && newsMore && newsList.querySelector('.news-item--more')) {
+    var moreLabel = newsMore.innerHTML;
+    newsList.classList.add('is-collapsed');
+    newsMore.hidden = false;
+    newsMore.addEventListener('click', function () {
+      var open = newsList.classList.toggle('is-collapsed') === false;
+      newsMore.setAttribute('aria-expanded', open ? 'true' : 'false');
+      newsMore.innerHTML = open ? moreLabel.replace(/もっと見る（ほか\d+件）/, '閉じる') : moreLabel;
+    });
+  }
+
   // ---- Scroll reveal ----
   var revealEls = document.querySelectorAll('.reveal');
   if ('IntersectionObserver' in window && !reduceMotion) {

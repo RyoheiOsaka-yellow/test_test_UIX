@@ -33,7 +33,7 @@
     "postalCode": "103-0027",
     "addressRegion": "東京都",
     "addressLocality": "中央区",
-    "streetAddress": "日本橋3-2-17 新槙町ビル2F",
+    "streetAddress": "日本橋3-2-14 新槇町ビル2F",
     "addressCountry": "JP"
   }
 }
@@ -142,8 +142,18 @@
         <a href="#company" class="textlink">会社概要を見る<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="about__visual reveal reveal--delay">
-        <figure class="about__figure">
+        <figure class="about__figure has-note">
           <img src="assets/img/about.webp" width="840" height="768" alt="マンションをみんなで持ち上げて支えるイメージ" loading="lazy" decoding="async">
+          <!-- 【画像差し替え予定】差し替え時は assets/img/about.webp を上書きし、この .replace-note を削除 -->
+            <div class="replace-note" aria-hidden="true">
+              <span class="replace-note__badge">画像差し替え予定</span>
+              <div class="replace-note__box">
+                <p><b>挿入内容</b>「小さな改修が、建物の未来を変える。」に合う実写写真</p>
+                <p><b>例</b>マンション外観と施工スタッフ、建物を支える・守るイメージ</p>
+                <p><b>サイズ</b>横1000×縦915px以上（ほぼ正方形）</p>
+                <p><b>ファイル</b>assets/img/about.webp</p>
+              </div>
+            </div>
         </figure>
         <div class="about__badge">
           <span class="about__badge-num"><small>SINCE</small>2014</span>
@@ -185,7 +195,8 @@
             <span class="service-card__num">02</span>
             <h3 class="service-card__title">LED照明化（改修工事）</h3>
             <p class="service-card__catch">あかりで、<br>もっといい未来を。</p>
-            <p class="service-card__text">高効率・長寿命なLED製品のご提案から、導入計画、施工、アフターフォローまで一貫して対応。お客様のニーズや利用環境に合わせた最適な照明環境を実現し、電力コストの削減とCO₂排出量の低減に貢献します。</p>
+            <!-- 1文目は先方原稿のまま。表現は確認中（修正案：「2027年末までに、一般照明用蛍光ランプの製造・輸出入が終了します。」） -->
+            <p class="service-card__text">分譲・賃貸マンションにおけるLED化の波が訪れ、2027年には、全て一般照明蛍光ランプが廃止になります。高効率・長寿命なLED製品のご提案から、導入計画、施工、アフターフォローまで一貫して対応。お客様のニーズや利用環境に合わせた最適な照明環境を実現し、電力コストの削減とCO₂排出量の低減に貢献します。</p>
           </div>
         </article>
 
@@ -248,6 +259,16 @@
         <article class="service-card reveal" id="service-power" style="--i:1">
           <div class="service-card__visual">
             <img src="assets/img/svc-power.webp" width="800" height="450" alt="" loading="lazy" decoding="async">
+            <!-- 【画像差し替え予定】差し替え時は assets/img/svc-power.webp を上書きし、この .replace-note を削除 -->
+            <div class="replace-note" aria-hidden="true">
+              <span class="replace-note__badge">画像差し替え予定</span>
+              <div class="replace-note__box">
+                <p><b>挿入内容</b>マンションの電力削減を表す写真</p>
+                <p><b>例</b>電子ブレーカー・分電盤、共用部のLED照明など</p>
+                <p><b>サイズ</b>横1600×縦900px以上（16:9）</p>
+                <p><b>ファイル</b>assets/img/svc-power.webp</p>
+              </div>
+            </div>
             <span class="service-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/><path d="M14 9l3 3 4-5"/></svg></span>
           </div>
           <div class="service-card__body">
@@ -280,7 +301,6 @@
   </section>
 
   <!-- ===== Strength ===== -->
-  <!-- 「数字で見る」の正式な内容は先方からの原稿待ち。届いたら下記4項目を差し替え -->
   <section class="section strength" id="strength">
     <div class="container">
       <div class="strength__head reveal">
@@ -289,20 +309,16 @@
       </div>
       <div class="strength__grid">
         <div class="strength-item reveal" style="--i:0">
-          <p class="strength-item__num">2014<small>年</small></p>
-          <p class="strength-item__label">設立<span>建物設備の省エネ・省コスト化に取り組み続けています。</span></p>
+          <p class="strength-item__num">600<small>件+</small></p>
+          <p class="strength-item__label">累計施工実績</p>
         </div>
         <div class="strength-item reveal" style="--i:1">
-          <p class="strength-item__num">6<small>事業</small></p>
-          <p class="strength-item__label">事業領域<span>照明・受信・防犯・電力まで、建物の設備を幅広くカバー。</span></p>
+          <p class="strength-item__num">35<small>%</small></p>
+          <p class="strength-item__label">平均電力コスト削減率</p>
         </div>
         <div class="strength-item reveal" style="--i:2">
-          <p class="strength-item__num">1<small>社完結</small></p>
-          <p class="strength-item__label">ワンストップ対応<span>調査・ご提案・施工・アフターフォローまで一貫して対応。</span></p>
-        </div>
-        <div class="strength-item reveal" style="--i:3">
-          <p class="strength-item__num">0<small>円</small></p>
-          <p class="strength-item__label">現地調査・お見積り<span>費用はいただきません。まずはお気軽にご相談ください。</span></p>
+          <p class="strength-item__num">95<small>%</small></p>
+          <p class="strength-item__label">顧客満足率</p>
         </div>
       </div>
     </div>
@@ -334,8 +350,18 @@
       <div class="message__head reveal">
         <p class="section__label"><span class="section__label-en">Top Message</span><span class="section__label-ja">トップメッセージ</span></p>
         <h2 class="message__title">確かな技術と、<br>誠実な仕事で、<br>未来の環境へ。</h2>
-        <figure class="message__illust">
+        <figure class="message__illust has-note">
           <img src="assets/img/message-illust.webp" width="1200" height="555" alt="建物を手のひらで支えるイラスト" loading="lazy" decoding="async">
+          <!-- 【画像差し替え予定】差し替え時は assets/img/message-illust.webp を上書きし、この .replace-note を削除 -->
+            <div class="replace-note" aria-hidden="true">
+              <span class="replace-note__badge">画像差し替え予定</span>
+              <div class="replace-note__box">
+                <p><b>挿入内容</b>トップメッセージに添える写真</p>
+                <p><b>例</b>代表 味澤様のお写真、施工風景、会社の雰囲気が伝わる写真</p>
+                <p><b>サイズ</b>横1200×縦555px以上（約2:1）※代表写真など縦長の場合は枠を調整</p>
+                <p><b>ファイル</b>assets/img/message-illust.webp</p>
+              </div>
+            </div>
         </figure>
       </div>
       <div class="message__body reveal reveal--delay">
@@ -351,19 +377,78 @@
   </section>
 
   <!-- ===== News ===== -->
-  <!-- お知らせの内容は先方からの原稿待ち。届いたら <li class="news-item"> を追加 -->
+  <!-- 「ホームページをリニューアルしました。」の日付は公開月に合わせて更新 -->
   <section class="section news" id="news">
     <div class="container news__grid">
       <div class="news__head reveal">
         <p class="section__label"><span class="section__label-en">News</span><span class="section__label-ja">お知らせ</span></p>
         <h2 class="section__title">お知らせ</h2>
       </div>
-      <ul class="news__list reveal reveal--delay">
+      <div class="news__body reveal reveal--delay">
+        <ul class="news__list" id="newsList">
         <li class="news-item"><div class="news-item__row">
           <time datetime="2026-11">2026.11</time><span class="news-item__cat">お知らせ</span>
           <p>ホームページをリニューアルしました。</p>
         </div></li>
-      </ul>
+        <li class="news-item"><div class="news-item__row">
+          <time datetime="2026-10">2026.10</time><span class="news-item__cat">施工実績</span>
+          <p>ファミール小平壱番館の電波障害設備を撤去しました。</p>
+        </div></li>
+        <li class="news-item"><div class="news-item__row">
+          <time datetime="2026-09">2026.09</time><span class="news-item__cat">施工実績</span>
+          <p>グリーンキャピタル西新宿の電波障害設備を撤去しました。</p>
+        </div></li>
+        <li class="news-item"><div class="news-item__row">
+          <time datetime="2026-07">2026.07</time><span class="news-item__cat">施工実績</span>
+          <p>エクセル国立グレイスコートの電波障害設備を撤去しました。</p>
+        </div></li>
+        <li class="news-item"><div class="news-item__row">
+          <time datetime="2026-06">2026.06</time><span class="news-item__cat">施工実績</span>
+          <p>パークウエル下北沢の電波障害設備を撤去しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2026-05">2026.05</time><span class="news-item__cat">施工実績</span>
+          <p>立川三和ビルの電波障害設備を撤去しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2026-05">2026.05</time><span class="news-item__cat">施工実績</span>
+          <p>イトーピア目白のBS110°アンテナ設置工事を完了しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2026-03">2026.03</time><span class="news-item__cat">施工実績</span>
+          <p>パレソレイユ西新宿のBS110°アンテナ設置工事を完了しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2025-11">2025.11</time><span class="news-item__cat">施工実績</span>
+          <p>ナビウス御茶ノ水のBS110°アンテナ設置工事を完了しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2025-10">2025.10</time><span class="news-item__cat">施工実績</span>
+          <p>リーデンススクエア所沢の電波障害設備を撤去しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2025-10">2025.10</time><span class="news-item__cat">施工実績</span>
+          <p>ブリヂストン松島社宅の電波障害設備を撤去しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2025-09">2025.09</time><span class="news-item__cat">施工実績</span>
+          <p>オーベル越谷南の電波障害設備を撤去しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2025-09">2025.09</time><span class="news-item__cat">施工実績</span>
+          <p>オーベル柏の葉のBS110°アンテナ設置工事を完了しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2025-06">2025.06</time><span class="news-item__cat">施工実績</span>
+          <p>千住ミルディスオフィス棟のLED化工事を完了しました。</p>
+        </div></li>
+        <li class="news-item news-item--more"><div class="news-item__row">
+          <time datetime="2025-05">2025.05</time><span class="news-item__cat">施工実績</span>
+          <p>タワーレジデンス東京のLED化工事及び、地デジアンテナ設置工事を完了しました。</p>
+        </div></li>
+        </ul>
+        <button type="button" class="news__more" id="newsMore" aria-controls="newsList" aria-expanded="false" hidden>もっと見る（ほか10件）<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
     </div>
   </section>
 
@@ -381,18 +466,20 @@
             <tr><th scope="row">商号（英字）</th><td>ECO PROJECT Inc.</td></tr>
             <tr><th scope="row">代表者</th><td>代表取締役社長　味澤 幸弘</td></tr>
             <tr><th scope="row">設立年月日</th><td>2014年10月20日</td></tr>
-            <tr><th scope="row">所在地</th><td>〒103-0027<br>東京都中央区日本橋3-2-17 新槙町ビル2F</td></tr>
+            <tr><th scope="row">所在地</th><td>〒103-0027<br>東京都中央区日本橋3-2-14 新槇町ビル2F</td></tr>
             <tr><th scope="row">電話番号</th><td><a href="tel:0361102645">03-6110-2645</a><span class="company__sub">Mobile <a href="tel:08034230072">080-3423-0072</a></span></td></tr>
+            <tr><th scope="row">受付時間</th><td>9:00〜18:00（平日）</td></tr>
             <tr><th scope="row">事業内容</th><td>電気工事<span class="company__sub">LED照明工事／テレビ共聴設備工事／電波障害設備撤去／防犯カメラ設置工事／電力削減コンサルティング／太陽光発電設備工事</span></td></tr>
+            <tr><th scope="row">取引銀行</th><td>三井住友銀行 東京中央支店</td></tr>
           </tbody>
         </table>
         <div class="company__map reveal reveal--delay">
           <figure class="map-figure">
-            <iframe title="株式会社エコプロジェクト 所在地マップ" src="https://www.google.com/maps?q=%E6%9D%B1%E4%BA%AC%E9%83%BD%E4%B8%AD%E5%A4%AE%E5%8C%BA%E6%97%A5%E6%9C%AC%E6%A9%8B3-2-17&amp;hl=ja&amp;z=16&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+            <iframe title="株式会社エコプロジェクト 所在地マップ" src="https://www.google.com/maps?q=%E6%9D%B1%E4%BA%AC%E9%83%BD%E4%B8%AD%E5%A4%AE%E5%8C%BA%E6%97%A5%E6%9C%AC%E6%A9%8B3-2-14&amp;hl=ja&amp;z=16&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
           </figure>
           <div class="company__map-foot">
-            <p>東京都中央区日本橋3-2-17 新槙町ビル2F</p>
-            <a class="textlink" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%9D%B1%E4%BA%AC%E9%83%BD%E4%B8%AD%E5%A4%AE%E5%8C%BA%E6%97%A5%E6%9C%AC%E6%A9%8B3-2-17" target="_blank" rel="noopener">Googleマップを開く<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+            <p>東京都中央区日本橋3-2-14 新槇町ビル2F</p>
+            <a class="textlink" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%9D%B1%E4%BA%AC%E9%83%BD%E4%B8%AD%E5%A4%AE%E5%8C%BA%E6%97%A5%E6%9C%AC%E6%A9%8B3-2-14" target="_blank" rel="noopener">Googleマップを開く<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
           </div>
         </div>
       </div>
@@ -420,6 +507,7 @@
             <span class="contact-tel__label">MOBILE</span>
             <span class="contact-tel__num">080-3423-0072</span>
           </a>
+          <p class="contact__hours">受付時間 9:00〜18:00（平日）</p>
         </div>
       </div>
 
@@ -505,8 +593,9 @@
         </span>
       </a>
       <p class="footer__addr">
-        〒103-0027 東京都中央区日本橋3-2-17 新槙町ビル2F<br>
-        TEL 03-6110-2645 ／ Mobile 080-3423-0072
+        〒103-0027 東京都中央区日本橋3-2-14 新槇町ビル2F<br>
+        TEL 03-6110-2645 ／ Mobile 080-3423-0072<br>
+        受付時間 9:00〜18:00（平日）
       </p>
     </div>
     <nav class="footer__nav" aria-label="フッターナビゲーション">

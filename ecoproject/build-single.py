@@ -21,7 +21,7 @@ def data_uri(m):
     mime = mimetypes.guess_type(path)[0] or 'image/webp'
     with open(os.path.join(root, path), 'rb') as f:
         return 'data:%s;base64,%s' % (mime, base64.b64encode(f.read()).decode())
-html = re.sub(r'assets/img/[\w.-]+', data_uri, html)
+html = re.sub(r'(?<=src=")assets/img/[\w.-]+|(?<=href=")assets/img/[\w.-]+', data_uri, html)  # 属性内のみ（注釈の文字は残す）
 
 os.makedirs(os.path.join(root, 'dist'), exist_ok=True)
 out = os.path.join(root, 'dist', 'ecoproject.html')
