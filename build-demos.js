@@ -31,9 +31,9 @@ const CONF   = REPO + 'demos' + path.sep + 'demos.json';
 // スロット名 → どのページの何番目のパネルか（0始まり）
 const SLOTS = {
   'home-hero':          { page: 'page-home',         panel: 0 },
-  'home-xinteractive':  { page: 'page-home',         panel: 1 },
-  'home-xmotion':           { page: 'page-home',         panel: 2 },
-  'home-xbuild':        { page: 'page-home',         panel: 3 },
+  'home-xbuild':        { page: 'page-home',         panel: 1 },
+  'home-xmotion':       { page: 'page-home',         panel: 2 },
+  'home-xinteractive':  { page: 'page-home',         panel: 3 },
   'home-careers':       { page: 'page-home',         panel: 4 },
   'home-contact':       { page: 'page-home',         panel: 5 },
   'xbuild-hero':        { page: 'page-xbuild',       panel: 0 },
@@ -271,6 +271,12 @@ for (const [slot, ids] of Object.entries(conf.slots || {})) {
 
   const vm = body.match(/<video class="panel__vid"[^>]*data-src="([^"]+)"[^>]*><\/video>/);
   if (!vm) throw new Error(slot + ': このパネルに差し替え対象の動画がありません');
+
+  // ホームの節の並びを変えたときの取り違え防止: home-<id> のスロットは id="<id>" の節に入る
+  const openTag0 = h.slice(sa, h.indexOf('>', sa) + 1);
+  const idm = openTag0.match(/\sid="([^"]+)"/);
+  if (slot.startsWith('home-') && idm && 'home-' + idm[1] !== slot)
+    throw new Error(slot + ': パネルの位置がずれています（' + SLOTS[slot].panel + '番目は id="' + idm[1] + '" の節）。SLOTS の panel を直してください');
 
   const theme = (conf.theme || {})[slot];
   const keepAll = list.every(id => (conf.keep || []).indexOf(id) !== -1);
