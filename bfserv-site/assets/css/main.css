@@ -1032,3 +1032,12 @@ html[data-bike="black"] .svc--bike:hover .link-arrow .arrow { color: #141414; }
 .brush__photo { filter: grayscale(1) brightness(1.32) contrast(.78); }
 .brush__tint { background: linear-gradient(115deg, #8fe0b5 0%, #9fd8f5 35%, #ffb8d4 70%, #c6b9ff 100%); opacity: .9; }
 .brush__paint[data-blobs] { opacity: .6; }
+
+/* AirStation hero: light like the other pages; two machines standing on a soft floor shadow */
+.as-hero { position: relative; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4%; align-items: end; max-width: 520px; margin-inline: auto; padding-bottom: 18px; }
+.as-hero::before { content: ""; position: absolute; left: 50%; bottom: 0; width: 120%; aspect-ratio: 1 / 1.1547; transform: translate(-50%, 18%); background: #fff; clip-path: var(--hex); opacity: .7; z-index: -1; }
+.as-hero::after { content: ""; position: absolute; left: 6%; right: 6%; bottom: 6px; height: 28px; background: radial-gradient(ellipse at center, rgba(20,40,80,.22), transparent 70%); filter: blur(6px); z-index: -1; }
+.as-hero img { width: 100%; height: auto; filter: drop-shadow(0 14px 18px rgba(20,40,80,.18)); }
+.as-hero img:nth-child(2) { transform: translateY(14px); }
+.page-hero--as { isolation: isolate; }
+.page-hero--as .page-hero__inner { z-index: 1; }
