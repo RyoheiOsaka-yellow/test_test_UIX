@@ -145,6 +145,16 @@
     var wrap = form.closest('.form');
     var status = document.getElementById('formStatus');
     var submitBtn = form.querySelector('button[type="submit"]');
+    var el = {
+      type: document.getElementById('f-type'),
+      company: document.getElementById('f-company'),
+      name: document.getElementById('f-name'),
+      email: document.getElementById('f-email'),
+      tel: document.getElementById('f-tel'),
+      message: document.getElementById('f-message'),
+      agree: document.getElementById('f-agree'),
+      trap: document.getElementById('f-wana')
+    };
     var messages = {
       name: 'お名前をご入力ください。',
       email: 'メールアドレスを正しくご入力ください。',
@@ -152,8 +162,8 @@
       agree: '個人情報の取り扱いへの同意が必要です。'
     };
 
-    function setError(name, msg) {
-      var input = form.elements[name];
+    function setError(key, msg) {
+      var input = el[key];
       var field = input.closest('.field, .form__agree');
       var err = field.querySelector('.field__error');
       field.classList.toggle('is-invalid', !!msg);
@@ -163,19 +173,19 @@
     function validate() {
       var ok = true;
       var first = null;
-      function check(name, valid) {
-        setError(name, valid ? '' : messages[name]);
-        if (!valid) { ok = false; first = first || form.elements[name]; }
+      function check(key, valid) {
+        setError(key, valid ? '' : messages[key]);
+        if (!valid) { ok = false; first = first || el[key]; }
       }
-      check('name', form.elements.name.value.trim() !== '');
-      check('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.elements.email.value.trim()));
-      check('message', form.elements.message.value.trim() !== '');
-      check('agree', form.elements.agree.checked);
+      check('name', el.name.value.trim() !== '');
+      check('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.email.value.trim()));
+      check('message', el.message.value.trim() !== '');
+      check('agree', el.agree.checked);
       if (first) first.focus();
       return ok;
     }
-    ['name', 'email', 'message', 'agree'].forEach(function (n) {
-      form.elements[n].addEventListener('input', function () { setError(n, ''); });
+    ['name', 'email', 'message', 'agree'].forEach(function (k) {
+      el[k].addEventListener(k === 'agree' ? 'change' : 'input', function () { setError(k, ''); });
     });
 
     function done() {
@@ -187,21 +197,21 @@
       status.classList.add('is-error');
     }
 
-    var endpoint = form.getAttribute('data-endpoint') || '';
+    // SSGformのフォームURL（form の action 属性）
+    var endpoint = (form.getAttribute('action') || '').trim();
 
-    // 送信サービス未設定の間は、入力内容を本文に入れてメールソフトを起動する
+    // フォームURL未設定の間は、入力内容を本文に入れてメールソフトを起動する
     function openMailer() {
-      var f = form.elements;
       var to = form.getAttribute('data-mail-user') + '@' + form.getAttribute('data-mail-domain');
       var lines = [
-        '■ お問い合わせ種別： ' + (f.type.value || '（未選択）'),
-        '■ 会社名・管理組合名： ' + (f.company.value.trim() || '（未入力）'),
-        '■ お名前： ' + f.name.value.trim(),
-        '■ メールアドレス： ' + f.email.value.trim(),
-        '■ 電話番号： ' + (f.tel.value.trim() || '（未入力）'),
+        '■ お問い合わせ種別： ' + (el.type.value || '（未選択）'),
+        '■ 会社名・管理組合名： ' + (el.company.value.trim() || '（未入力）'),
+        '■ お名前： ' + el.name.value.trim(),
+        '■ メールアドレス： ' + el.email.value.trim(),
+        '■ 電話番号： ' + (el.tel.value.trim() || '（未入力）'),
         '',
         '■ お問い合わせ内容',
-        f.message.value.trim()
+        el.message.value.trim()
       ];
       window.location.href = 'mailto:' + to +
         '?subject=' + encodeURIComponent('【ホームページ】お問い合わせ') +
@@ -214,22 +224,26 @@
       status.textContent = '';
       status.classList.remove('is-error');
       if (!validate()) return;
-      if (form.elements.website.value !== '') return; // honeypot
+      if (el.trap.value !== '') return; // bot
 
       if (!endpoint) { openMailer(); return; }
 
       submitBtn.disabled = true;
       status.textContent = '送信中です…';
+      // SSGformはこのヘッダーでAjax送信を判定し、成功時に200を返す（CAPTCHA失敗などは204）
       fetch(endpoint, {
         method: 'POST',
         body: new FormData(form),
-        headers: { 'Accept': 'application/json' }
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
       })
         .then(function (res) {
-          if (res.ok) { status.textContent = ''; done(); } else { fail(); }
+          if (res.status === 200) { status.textContent = ''; done(); } else { fail(); }
         })
         .catch(function () { fail(); })
         .then(function () { submitBtn.disabled = false; });
     });
+
+    // JavaScriptが無効な環境：SSGformの「送信後転送先URL」を index.html?sent=1#contact にしておくと完了表示になる
+    if (new URLSearchParams(window.location.search).get('sent') === '1') wrap.classList.add('is-sent');
   }
 })();

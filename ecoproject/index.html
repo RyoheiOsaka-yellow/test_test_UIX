@@ -515,12 +515,14 @@
         <div class="form__body">
           <h3 class="form__title">お問い合わせフォーム</h3>
           <p class="form__lead">内容を確認のうえ、担当者よりご連絡いたします。</p>
-          <!-- data-endpoint にフォーム送信サービスのURLを入れると直接送信。空の間はメールソフトを起動して送信 -->
-          <form id="contactForm" data-endpoint="" data-mail-user="ajisawa" data-mail-domain="e-project.jpn.com" novalidate>
+          <!-- 【SSGform】action に発行されたフォームURL（https://ssgform.com/s/xxxxxxxx）を入れると送信開始。
+               空の間は、入力内容を本文に入れたメールソフトを起動する仮の動作になります。
+               name属性がそのまま通知メールの項目名になります（「メールアドレス」の値は返信先に自動で入ります）。 -->
+          <form id="contactForm" action="" method="post" data-mail-user="ajisawa" data-mail-domain="e-project.jpn.com" novalidate>
             <div class="form__grid">
               <div class="field field--full">
                 <label for="f-type">お問い合わせ種別<span class="opt">任意</span></label>
-                <select id="f-type" name="type">
+                <select id="f-type" name="お問い合わせ種別">
                   <option value="">選択してください</option>
                   <option>電波障害施設撤去</option>
                   <option>LED照明化（改修工事）</option>
@@ -533,35 +535,36 @@
               </div>
               <div class="field">
                 <label for="f-company">会社名・管理組合名<span class="opt">任意</span></label>
-                <input id="f-company" name="company" type="text" autocomplete="organization" maxlength="100">
+                <input id="f-company" name="会社名・管理組合名" type="text" autocomplete="organization" maxlength="100">
               </div>
               <div class="field">
                 <label for="f-name">お名前<span class="req">必須</span></label>
-                <input id="f-name" name="name" type="text" autocomplete="name" maxlength="60" required aria-describedby="e-name">
+                <input id="f-name" name="お名前" type="text" autocomplete="name" maxlength="60" required aria-describedby="e-name">
                 <span class="field__error" id="e-name" role="alert"></span>
               </div>
               <div class="field">
                 <label for="f-email">メールアドレス<span class="req">必須</span></label>
-                <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="120" required aria-describedby="e-email">
+                <input id="f-email" name="メールアドレス" type="email" autocomplete="email" inputmode="email" maxlength="120" required aria-describedby="e-email">
                 <span class="field__error" id="e-email" role="alert"></span>
               </div>
               <div class="field">
                 <label for="f-tel">電話番号<span class="opt">任意</span></label>
-                <input id="f-tel" name="tel" type="tel" autocomplete="tel" inputmode="tel" maxlength="20">
+                <input id="f-tel" name="電話番号" type="tel" autocomplete="tel" inputmode="tel" maxlength="20">
               </div>
               <div class="field field--full">
                 <label for="f-message">お問い合わせ内容<span class="req">必須</span></label>
-                <textarea id="f-message" name="message" maxlength="3000" required aria-describedby="e-message" placeholder="建物の種類・規模、お困りの内容などをご記入ください。"></textarea>
+                <textarea id="f-message" name="お問い合わせ内容" maxlength="3000" required aria-describedby="e-message" placeholder="建物の種類・規模、お困りの内容などをご記入ください。"></textarea>
                 <span class="field__error" id="e-message" role="alert"></span>
               </div>
             </div>
             <div class="hp-field" aria-hidden="true">
-              <label for="f-website">このフィールドは空のままにしてください</label>
-              <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off">
+              <!-- SSGformの簡易スパム対策（name="wana" に入力があると破棄される） -->
+              <label for="f-wana">このフィールドは空のままにしてください</label>
+              <input id="f-wana" name="wana" type="text" tabindex="-1" autocomplete="off">
             </div>
             <div class="form__agree">
               <p>ご入力いただいた個人情報は、お問い合わせへの回答およびご連絡のためにのみ利用いたします。</p>
-              <label><input type="checkbox" name="agree" value="1" required aria-describedby="e-agree">個人情報の取り扱いに同意する</label>
+              <label><input id="f-agree" type="checkbox" name="個人情報の取り扱い" value="同意する" required aria-describedby="e-agree">個人情報の取り扱いに同意する</label>
               <span class="field__error" id="e-agree" role="alert"></span>
             </div>
             <div class="form__foot">
