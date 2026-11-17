@@ -3,6 +3,10 @@
 const dir = process.env.SHOT_DIR || '/tmp'; const W = +(process.env.VW || 1440), H = +(process.env.VH || 900);
 const shot = async n => { await page.evaluate(() => app.viewer.invalidate(2)); await page.waitForTimeout(900); await page.screenshot({ path: `${dir}/v3_${n}.png`, clip: { x: 0, y: 0, width: W, height: H } }); };
 const clean = () => page.evaluate(() => { document.querySelectorAll('.modal-back,.v3-pop,.toast').forEach(m => m.remove()); });
+// 入口: サインイン → ホーム → 開いている案件へ
+await page.waitForSelector('.v3-entry[data-view="signin"].in'); await page.waitForTimeout(1500); await shot('e1_signin');
+await page.click('#v3SignIn'); await page.waitForSelector('.v3-entry[data-view="home"].in .v3-proj'); await page.waitForTimeout(800); await shot('e2_home');
+await page.click('.v3-proj.cur'); await page.waitForFunction(() => !document.querySelector('.v3-entry')); await page.waitForTimeout(600);
 await page.evaluate(() => { localStorage.setItem('anglex.v3.hint', '0'); document.querySelectorAll('.modal-back').forEach(m => m.remove()); app.select(null); app.viewer.fit(); }); await page.waitForTimeout(1500);
 await shot('01_home');
 // 何もないとき

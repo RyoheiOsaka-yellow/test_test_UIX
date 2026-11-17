@@ -1,6 +1,18 @@
 // v3（空気のような画面）: 帯とパネルを出さない、道具箱・数字の札、選ぶと輪と取っ手、つまんで寸法、ホバー、見積の札、工場への ZIP
 const log = (k, v) => console.log(k + ':', typeof v === 'string' ? v : JSON.stringify(v));
 const chk = (name, ok) => console.log('CHECK ' + JSON.stringify({ name, ok: !!ok }));
+// (0) 入口: サインイン（最初に出る・3D は後ろでゆっくり回る・道具は隠れる）→ ホーム → 開いている案件で 3D の作業へ
+await page.waitForSelector('.v3-entry[data-view="signin"].in', { timeout: 30000 });
+const en0 = await page.evaluate(() => ({ dock: getComputedStyle(document.querySelector('#v3Dock')).display, spin: app.viewer.controls.autoRotate, roles: document.querySelectorAll('.v3-role').length, bkey: (() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true })); return !!document.querySelector('.modal.partpicker'); })() }));
+await page.click('.v3-role[data-org="B"]'); const phB = await page.evaluate(() => document.querySelector('[data-k="email"]').placeholder); await page.click('.v3-role[data-org="A"]');
+await page.fill('[data-k="pass"]', 'x'); await page.press('[data-k="pass"]', 'Enter'); await page.waitForSelector('.v3-entry[data-view="home"].in .v3-proj');
+const en1 = await page.evaluate(() => ({ hi: document.querySelector('.v3-home-top .hi').textContent, starts: [...document.querySelectorAll('[data-start]')].map(e => e.dataset.start), cur: !!document.querySelector('.v3-proj.cur'), sess: sessionStorage.getItem('anglex.v3.in'), user: app.user().org }));
+await page.click('.v3-proj.cur'); await page.waitForFunction(() => !document.querySelector('.v3-entry')); await page.waitForTimeout(400);
+const en2 = await page.evaluate(() => ({ dock: getComputedStyle(document.querySelector('#v3Dock')).display, spin: app.viewer.controls.autoRotate, role: document.body.dataset.v3role, n: app.model.instances.length }));
+console.log('entry:', JSON.stringify({ en0, phB, en1, en2 }));
+console.log('CHECK ' + JSON.stringify({ name: '入口: 最初にサインイン。道具は隠れ、3D は後ろで回り、B キーも効かない。役割を選ぶとメールの例が変わる', ok: en0.dock === 'none' && en0.spin && en0.roles === 3 && !en0.bkey && phB === 'b@example.com' }));
+console.log('CHECK ' + JSON.stringify({ name: '入口: Enter でサインインしてホーム（あいさつ・新しく作る / 図面から / サンプル・続きから）', ok: /さん$/.test(en1.hi) && en1.starts.join() === 'new,drawing,sample' && en1.cur && en1.sess === '1' && en1.user === 'A' }));
+console.log('CHECK ' + JSON.stringify({ name: '入口: 案件を選ぶと 3D の作業へ（回転は止まり、道具が出る）', ok: en2.dock === 'flex' && !en2.spin && en2.role === 'A' && en2.n === 5 }));
 await page.evaluate(() => { localStorage.setItem('anglex.v3.hint', '9'); document.querySelectorAll('.modal-back').forEach(m => m.remove()); app.select(null); app.viewer.fit(); }); await page.waitForTimeout(1200);
 // (1) 画面の骨組み: v1 の帯・パネル・状態行は見えない。道具箱・右上・右下・左のつまみはある。3D は画面いっぱい
 const r1 = await page.evaluate(() => { const vis = sel => { const e = document.querySelector(sel); if (!e) return false; const cs = getComputedStyle(e); const r = e.getBoundingClientRect(); return cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0.05 && r.width > 0 && r.right > 0 && r.left < innerWidth; }; const c = app.viewer.renderer.domElement.getBoundingClientRect();
@@ -66,3 +78,6 @@ log('zoom', z);
 chk('右側に拡大・縮小の帯（寄る・引く・全体）。押すと寄る・引く（0.8 倍・1.25 倍）', z.bar.right >= 10 && z.bar.right <= 24 && z.bar.n === 3 && Math.abs(z.in1 / z.d0 - 0.8) < 0.03 && Math.abs(z.out1 / z.in1 - 1.25) < 0.03);
 chk('押し続けると続けて寄る。キーの - と + でも動く', z.hold < z.out1 * 0.6 && z.keyOut > z.hold && z.keyIn < z.keyOut);
 chk('つまみで高さを変えられ、位置を覚える。詳しい値の引き出しが出ると左へよける', z.moved.top > 0 && Math.abs(z.moved.saved - z.moved.top) < 2 && z.withDrawer > 300);
+// (9) 工場の役割: ホームの入口が変わり、形を変える道具は出ない。輪にも編集の操作が出ない
+const c9 = await page.evaluate(async () => { app.v3.signOut(); await new Promise(r => setTimeout(r, 300)); document.querySelector('.v3-role[data-org="C"]').click(); document.querySelector('#v3SignIn').click(); for (let k = 0; k < 50 && !document.querySelector('.v3-entry[data-view="home"] .v3-proj'); k++) await new Promise(r => setTimeout(r, 100)); const starts = [...document.querySelectorAll('[data-start]')].map(e => e.dataset.start); document.querySelector('.v3-proj').click(); for (let k = 0; k < 50 && document.querySelector('.v3-entry'); k++) await new Promise(r => setTimeout(r, 100)); const vis = id => getComputedStyle(document.getElementById(id)).display !== 'none'; const inst = app.model.instances[0]; app.select(inst.id); await new Promise(r => setTimeout(r, 600)); const out = { starts, org: app.user().org, add: vis('v3Add'), wire: vis('v3Wire'), measure: vis('v3Measure'), send: vis('v3Send'), haloBtns: document.querySelectorAll('#v3Halo .v3-btn').length, handles: document.querySelectorAll('.v3-hd').length }; app.v3.signOut(); await new Promise(r => setTimeout(r, 200)); document.querySelector('#v3SignIn').click(); return out; });
+log('factoryRole', c9); chk('工場の役割: ホームは「サンプル・届いた案件」、部材を足す・線・読むは出さず、測る・工場へは出す。取っ手も出ない', c9.org === 'C' && c9.starts.join() === 'sample,inbox' && !c9.add && !c9.wire && c9.measure && c9.send && c9.haloBtns === 1 && c9.handles === 0);

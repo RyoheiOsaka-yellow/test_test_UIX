@@ -19,6 +19,7 @@ import { ncOptions } from '../import/nc1.js';
 import { exportInspectionXLSX } from './inspection.js';
 import { createEstimate, openEstimate } from './estimate.js';
 import { loadXLSX } from './pdfgen.js';
+import { initEntry } from './v3entry.js';
 
 // ---------- 図像（線のアイコン。文字の代わり） ----------
 const P = {
@@ -217,13 +218,15 @@ export function initV3(app) {
   canvas.addEventListener('pointerleave', () => { setHover(app, null); hoverTag.style.opacity = 0; });
   canvas.addEventListener('pointerdown', () => { hoverTag.style.opacity = 0; });
   // キー
-  document.addEventListener('keydown', e => { const t = e.target; if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable) || e.ctrlKey || e.metaKey || e.altKey) return; if (document.querySelector('.modal-back,.cmdk-back')) return;
+  document.addEventListener('keydown', e => { const t = e.target; if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable) || e.ctrlKey || e.metaKey || e.altKey) return; if (document.querySelector('.modal-back,.cmdk-back,.v3-entry')) return;
     if (e.key === '+' || e.key === '=' || e.key === ';') { e.preventDefault(); zoomBy(app, 0.8); return; } if (e.key === '-') { e.preventDefault(); zoomBy(app, 1.25); return; } if (e.key === '0') { e.preventDefault(); click('btnFit')(); return; }
     const k = e.key.toLowerCase(); if (k === 'e') { e.preventDefault(); openEstimateSheet(app); } else if (k === 't') { e.preventDefault(); openFactorySheet(app); } else if (k === 'l') { e.preventDefault(); toggle('v3-list'); } else if (k === 'p') { e.preventDefault(); toggle('v3-props'); } else if (k === 'v') { e.preventDefault(); viewMenu(app, document.getElementById('v3View')); } else if (e.key === 'Escape' && V.sheet) { e.preventDefault(); closeSheet(app); } });
   // 何もないときの案内と、はじめの一言
   // 3D の中の文字の札（符号・高さの線・溶接記号・確認の旗）は既定で隠す。「見え方」から出せる
   setLabels(app, 'all', LS.get('anglex.v3.labels', '0') === '1', false);
   refreshNumbers(app); onSelect(app, app.selection); hint(app);
+  // 入口（サインイン → ホーム）。このタブでまだサインインしていなければ、最初に出す
+  document.body.dataset.v3role = app.role(); initEntry(app);
   return V;
 }
 
@@ -247,7 +250,7 @@ function zoomBar(app) {
 
 // ---------- 案件のメニュー・見え方のメニュー ----------
 function popover(anchor, items, { up = false } = {}) { document.querySelector('.v3-pop')?.remove(); const box = h('div', { class: 'v3-pop v3-glass' }, items.map(it => it === '-' ? h('div', { class: 'sep' }) : h('button', { class: it.on ? 'on' : '', onClick: () => { box.remove(); it.run(); } }, icon(it.icon || 'more', 18), it.label))); document.body.append(box); const r = anchor.getBoundingClientRect(); const bw = box.offsetWidth, bh = box.offsetHeight; box.style.left = Math.max(8, Math.min(innerWidth - bw - 8, r.left + r.width / 2 - bw / 2)) + 'px'; box.style.top = (up || r.top > innerHeight / 2 ? r.top - bh - 10 : r.bottom + 10) + 'px'; setTimeout(() => { const off = e => { if (!box.contains(e.target)) { box.remove(); removeEventListener('pointerdown', off, true); } }; addEventListener('pointerdown', off, true); }, 0); return box; }
-function projectMenu(app, anchor) { popover(anchor, [{ icon: 'plus', label: '新しい案件', run: click('btnNew') }, { icon: 'list', label: '案件を開く', run: click('btnOpen') }, { icon: 'draw', label: '名前を変える', run: click('btnRename') }, '-', { icon: 'flow', label: '案件の進み（依頼から納品）', run: () => app.openOrder?.() }, { icon: 'layers', label: '案件の一覧（ダッシュボード）', run: click('btnDashboard') }, { icon: 'doc', label: '書き出し（21 形式）', run: click('btnFormats') }, '-', { icon: 'swap', label: 'v2 の画面で開く', run: () => app.switchUI('v2') }, { icon: 'swap', label: 'v1 の画面で開く', run: () => app.switchUI('v1') }]); }
+function projectMenu(app, anchor) { popover(anchor, [{ icon: 'cube', label: 'ホームへ', run: () => app.v3.showEntry?.('home') }, '-', { icon: 'plus', label: '新しい案件', run: click('btnNew') }, { icon: 'list', label: '案件を開く', run: click('btnOpen') }, { icon: 'draw', label: '名前を変える', run: click('btnRename') }, '-', { icon: 'flow', label: '案件の進み（依頼から納品）', run: () => app.openOrder?.() }, { icon: 'layers', label: '案件の一覧（ダッシュボード）', run: click('btnDashboard') }, { icon: 'doc', label: '書き出し（21 形式）', run: click('btnFormats') }, '-', { icon: 'swap', label: 'v2 の画面で開く', run: () => app.switchUI('v2') }, { icon: 'swap', label: 'v1 の画面で開く', run: () => app.switchUI('v1') }, '-', { icon: 'user', label: '役割を変える・サインアウト', run: () => app.v3.signOut?.() }]); }
 function viewMenu(app, anchor) { const s = app.viewer.displayStyle; const set = st => { const sel = document.querySelector('#selStyle'); if (sel) { sel.value = st; sel.dispatchEvent(new Event('change')); } else app.viewer.setDisplayStyle(st); }; popover(anchor, [{ icon: 'cube', label: '本物らしく（材質）', on: s === 'realistic', run: () => set('realistic') }, { icon: 'eye', label: '形を見やすく（線あり）', on: s === 'shaded-edges', run: () => set('shaded-edges') }, { icon: 'layers', label: '透かす', on: s === 'ghost', run: () => set('ghost') }, '-', { icon: 'tag', label: LS.get('anglex.v3.labels', '0') === '1' ? '文字の札を隠す' : '文字の札を出す（符号・高さ・溶接・旗）', run: () => setLabels(app, 'all', LS.get('anglex.v3.labels', '0') !== '1') }, { icon: 'cut', label: '断面で切る', run: click('btnSection') }, { icon: 'move', label: '分解して見る', run: click('btnExplodeView') }, { icon: 'search', label: '全体を見る', run: click('btnFit') }], { up: true }); }
 
 // 3D の中の文字の札: 'all' = 符号・高さの線・溶接記号・確認の旗、'alerts' = 確認の旗だけ
