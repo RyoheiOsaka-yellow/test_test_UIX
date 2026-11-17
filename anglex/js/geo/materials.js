@@ -88,8 +88,13 @@ export async function loadPolyhaven(name, { res = '1k', repeat = 1 } = {}) {
   phCache.set(key, p); return p;
 }
 // 既存マテリアルへ Polyhaven マップを適用（アルベドは tint と乗算）
-export function upgradeMaterial(m, name, { repeat = 1, normalScale = 0.6, useAlbedo = true } = {}) {
+// 写真テクスチャは「画面に出たとき」に初めて取りに行く（wakeTextures）。起動時にまとめて 1.4 MB を落とさない
+export function upgradeMaterial(m, name, opts = {}) {
   if (globalThis.__anglexNoPBR || globalThis.__anglexOffline) return m; // オフライン版では写真テクスチャを取りに行かない（外部への通信をしない）
+  m.userData.lazyTex = () => upgradeNow(m, name, opts); return m;
+}
+export function wakeTextures(m) { const f = m?.userData?.lazyTex; if (!f) return; m.userData.lazyTex = null; f(); }
+function upgradeNow(m, name, { repeat = 1, normalScale = 0.6, useAlbedo = true } = {}) {
   loadPolyhaven(name, { repeat }).then(t => { if (!m) return; if (useAlbedo && t.map) { m.map = t.map; } if (t.normalMap) { m.normalMap = t.normalMap; m.normalScale = new THREE.Vector2(normalScale, normalScale); } if (t.roughMap) { m.roughnessMap = t.roughMap; } if (t.armMap) { m.aoMap = t.armMap; m.aoMapIntensity = 0.8; } m.needsUpdate = true; }).catch(() => { });
   return m;
 }
@@ -120,7 +125,8 @@ export function finishMaterial(finish = 'HDZ', opts = {}) {
     case 'PVC': { const t = noise(256, [158, 163, 168], 5, 51); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.0, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.5 }); break; }
     case 'RUBBER': { const t = noise(256, [40, 41, 44], 12, 53); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, bumpMap: t.map, bumpScale: 0.5, metalness: 0.0, roughness: 0.88, sheen: 0.5, sheenRoughness: 0.75, sheenColor: new THREE.Color(0x6a6d72) }); break; }
     case 'BOLT': { const t = noise(256, [190, 194, 200], 14, 31); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.92, roughness: 0.34, envMapIntensity: 1.0 }); addGrunge(m, 0.08); break; }
-    case 'THREAD': { m = new THREE.MeshStandardMaterial({ color: 0xaeb2b7, metalness: 0.9, roughness: 0.42, normalMap: threadNormalMap(8), normalScale: new THREE.Vector2(1.0, 1.0) }); break; }
+    // ねじ部（縞の法線マップ）: 色と粗さはボルトと同じにして、螺旋で作ったねじ部と並んでも違和感がないようにする
+    case 'THREAD': { const t = noise(256, [190, 194, 200], 14, 31); const nm = threadNormalMap(8); nm.anisotropy = 8; m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.92, roughness: 0.36, envMapIntensity: 1.0, normalMap: nm, normalScale: new THREE.Vector2(0.9, 0.9) }); addGrunge(m, 0.08); break; }
     case 'WELD': { m = new THREE.MeshStandardMaterial({ color: 0x8a8e94, metalness: 0.72, roughness: 0.52, vertexColors: true, normalMap: weldNormalMap(), normalScale: new THREE.Vector2(1.2, 1.2) }); break; }
     case 'CONCRETE': { const t = noise(256, [168, 164, 156], 22, 21); m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: t.map, metalness: 0, roughness: 0.95 }); upgradeMaterial(m, 'concrete_floor_02', { repeat: 20, normalScale: 0.7, useAlbedo: true }); break; }
     case 'PIPE': { const t = noise(256, [42, 125, 140], 9, 57); m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t.map, metalness: 0.25, roughness: 0.48, clearcoat: 0.45, clearcoatRoughness: 0.38 }); addGrunge(m, 0.08); break; } /* 配管（参考）: 塗装した鋼管 */
@@ -140,4 +146,8 @@ export function finishMaterial(finish = 'HDZ', opts = {}) {
   if (opts.color && finish !== 'PAINT') m.color.set(opts.color);
   m.userData.finish = finish; m.side = THREE.FrontSide; cache.set(key, m); return m;
 }
-export function clearMaterialCache() { cache.clear(); }
+export function clearMaterialCache() { cache.clear(); dsCache.clear(); }
+// 両面描画の材質（回転体など）。仕上げごとに 1 つだけ作って使い回す（以前は部品ごとに複製していた）
+const dsCache = new Map();
+export function doubleSided(finish) { let m = dsCache.get(finish); if (!m) { m = finishMaterial(finish).clone(); m.side = THREE.DoubleSide; m.userData = { ...m.userData, finish }; dsCache.set(finish, m); } return m; }
+export const FINISH_KEYS = ['HDZ', 'HDZ35', 'HDZ55', 'EZ', 'SUS304', 'ZAM', 'PAINT', 'BLACK', 'PVC', 'RUBBER', 'BOLT', 'THREAD', 'WELD', 'CONCRETE', 'PIPE', 'RESIN', 'RESIN_GRAY', 'URETHANE', 'WIRE', 'ALUMI', 'CAST'];

@@ -93,7 +93,8 @@ if OFFLINE:
 if DEMO:
     html = html.replace('</head>', '<script>window.ANGLEX_DEMO=true;</script>\n</head>', 1); html = re.sub(r'<title>[^<]*</title>', '<title>ANGLEX デモ版</title>', html, count=1)
 font = ROOT / 'fonts' / 'NotoSansJP-JIS.ttf'
-fontTag = ('<script>window.__anglexFontB64=' + json.dumps(base64.b64encode(font.read_bytes()).decode()) + ';</script>\n') if font.exists() else ''
+import gzip  # PDF 用フォントは gzip で縮めて同梱（3.3 MB → 2.0 MB）。PDF を作るときにブラウザの DecompressionStream で展開する
+fontTag = ('<script>window.__anglexFontGz=' + json.dumps(base64.b64encode(gzip.compress(font.read_bytes(), 9, mtime=0)).decode()) + ';</script>\n') if font.exists() else ''
 html = html.replace('<script type="module" src="js/main.js"></script>', fontTag + '<script type="module">import "anglex:js/main.js";</script>')
 out = ROOT / OUT; out.parent.mkdir(exist_ok=True); out.write_text(html, encoding='utf-8')
 print('wrote', out, round(out.stat().st_size / 1024), 'KB,', len(mods), 'modules', '(offline: vendored libs embedded)' if OFFLINE else '', '(demo)' if DEMO else '')

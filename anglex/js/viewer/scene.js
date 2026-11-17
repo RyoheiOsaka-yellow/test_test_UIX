@@ -10,9 +10,12 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-import { finishMaterial } from '../geo/materials.js';
+import { finishMaterial, wakeTextures } from '../geo/materials.js';
 const HDRI_URL = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr';
 // 環境光プリセット（Poly Haven CC0）
+// 輪郭線の形は元の形（geometry）ごとに 1 つだけ作って使い回す。元の形が捨てられたら一緒に捨てる
+const EDGE_CACHE = new WeakMap();
+export function edgesOf(geo, thr) { let m = EDGE_CACHE.get(geo); if (!m) { m = new Map(); EDGE_CACHE.set(geo, m); geo.addEventListener('dispose', () => { for (const e of m.values()) e.dispose(); m.clear(); }); } let e = m.get(thr); if (!e) { e = new THREE.EdgesGeometry(geo, thr); m.set(thr, e); } return e; }
 export const ENVIRONMENTS = { studio: { label: 'スタジオ', url: HDRI_URL }, warehouse: { label: '倉庫（工場）', url: 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/empty_warehouse_01_1k.hdr' }, workshop: { label: '工作機械室', url: 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/machine_shop_01_1k.hdr' }, overcast: { label: '屋外（曇天）', url: 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kloofendal_48d_partly_cloudy_puresky_1k.hdr' } };
 
 // CAD 図面色（元デモの図面ビューの配色）: 役割ごとのフラットカラー。暗背景＋明るいエッジで図面と照合しやすくする
@@ -33,7 +36,7 @@ export class Viewer {
     this.scene = new THREE.Scene();
     this.theme = opts.theme || 'light'; // light: Revit 風白背景 / dark: 工場モデル風
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false, logarithmicDepthBuffer: false });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); this.renderer.setSize(W, H);
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); this.renderer.setSize(W, H);
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
     this.renderer.localClippingEnabled = true;
@@ -71,10 +74,17 @@ export class Viewer {
     this.quality = opts.quality !== false; this._buildComposer();
     this.setTheme(this.theme);
     this.noAnim = !!(globalThis.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !!globalThis.__anglexNoAnim; this._bindPointer(); this._resizeObs = new ResizeObserver(() => this.resize()); this._resizeObs.observe(container);
-    // オンデマンド描画: 変化があったフレームだけ描画（GPU/バッテリー節約）。最低でも 1 秒に 1 回は描画してテクスチャ到着等を反映
-    this._dirty = 2; this._lastRender = 0; this.invalidate = (n = 2) => { this._dirty = Math.max(this._dirty, n); };
-    this.controls.addEventListener('change', () => this.invalidate()); this.controls.addEventListener('end', () => { clearTimeout(this._kivT); this._kivT = setTimeout(() => this.keepInView(), 520); }); this._bindOrbitCross(); this.orthoControls.addEventListener('change', () => this.invalidate()); this.gizmo.addEventListener('change', () => this.invalidate());
-    this._raf = (t) => { this._frame = requestAnimationFrame(this._raf); if (this._tween) this._stepTween(); const moved = this.controls.update() | this.orthoControls.update(); if (moved) this.invalidate(); if (this.selRoot.children.length && (moved || this._dirty > 0)) this.syncSelection(); if (this._dirty > 0 || t - this._lastRender > 1000) { this._dirty = Math.max(0, this._dirty - 1); this._lastRender = t; this.render(); } }; this._raf(0);
+    // オンデマンド描画: 変化があったフレームだけ描画（GPU/バッテリー節約）。テクスチャ・環境光の到着は読み込みの知らせで描き直す
+    // 影: 太陽は固定なので、視点を動かすだけなら影の画像は描き直さない（invalidate(n, true) = 視点だけの変化）
+    this.renderer.shadowMap.autoUpdate = false; this.renderer.shadowMap.needsUpdate = true;
+    this._dirty = 2; this._lastRender = 0; this.invalidate = (n = 2, cameraOnly = false) => { this._dirty = Math.max(this._dirty, n); if (!cameraOnly) this.renderer.shadowMap.needsUpdate = true; };
+    { const mgr = THREE.DefaultLoadingManager; const prev = mgr.onProgress; mgr.onProgress = (...a) => { this.invalidate(2); prev?.(...a); }; const prevL = mgr.onLoad; mgr.onLoad = (...a) => { this.invalidate(2); prevL?.(...a); }; }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.invalidate(2); }); addEventListener('focus', () => this.invalidate(1, true));
+    this.controls.addEventListener('change', () => this.invalidate(2, true)); this.controls.addEventListener('start', () => { this._userDrag = true; }); this.controls.addEventListener('end', () => { this._userDrag = false; clearTimeout(this._kivT); this._kivT = setTimeout(() => this.keepInView(), 520); }); this._bindOrbitCross(); this.orthoControls.addEventListener('change', () => this.invalidate(2, true)); this.gizmo.addEventListener('change', () => this.invalidate());
+    this._raf = (t) => { this._frame = requestAnimationFrame(this._raf); if (this._tween) this._stepTween(); const moved = this.controls.update() | this.orthoControls.update(); if (moved) this.invalidate(2, true); if (this.selRoot.children.length && (moved || this._dirty > 0)) this.syncSelection();
+      if (moved || this._tween || this.gizmo?.dragging) this._motionT = t; const fast = t - (this._motionT ?? -1e9) < 180; if (this._fast && !fast) this.invalidate(1, true); this._fast = fast;
+      // 自動回転（見どころ表示）だけで動いているときは秒 30 枚に抑える。手で回しているときは毎フレーム描く
+      const idleSpin = this.controls.autoRotate && !this._tween && !this.gizmo?.dragging && !this._userDrag; if (this._dirty > 0 && !(idleSpin && t - this._lastRender < 32)) { this._dirty = Math.max(0, this._dirty - 1); this._lastRender = t; this.render(); } }; this._raf(0);
   }
   // 回転中心の十字: 回している間だけ目標点（回転の中心）の位置に小さな十字を出し、離すと消える。部材を掴んだ直後はその部材に乗る
   _bindOrbitCross() { const el = document.createElement('div'); el.className = 'orbit-cross'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<i></i><i></i><b></b>'; this.container.append(el); this.orbitCross = el; let on = false, hideT = null; const v2 = new THREE.Vector3();
@@ -101,12 +111,12 @@ export class Viewer {
     else { this.scene.background = new THREE.Color(0xf4f5f7); this.scene.fog = null; this.grid.material.color.set(0xc3cad2); this.grid.material.opacity = 0.7; this.ground.material.opacity = 0.2; this.hemi.color.set(0xdfe8f2); this.hemi.groundColor.set(0x6a665f); this.renderer.toneMappingExposure = 1.02; }
   }
   resize() { const W = this.container.clientWidth, H = this.container.clientHeight; if (!W || !H) return; this.camera.aspect = W / H; this.camera.updateProjectionMatrix(); const a = W / H, s = this.ortho.top; this.ortho.left = -s * a; this.ortho.right = s * a; this.ortho.updateProjectionMatrix(); this.renderer.setSize(W, H); this.labelRenderer.setSize(W, H); this.invalidate(); if (this.composer) { this.composer.setSize(W, H); this.gtao?.setSize(W, H); } }
-  render() { if (this.quality && this.composer) this.composer.render(); else this.renderer.render(this.scene, this.activeCamera); this.labelRenderer.render(this.scene, this.activeCamera); }
+  render() { const fast = !!this._fast; if (this.gtao) this.gtao.enabled = !fast; if (this.smaa) this.smaa.enabled = !fast; if (this.quality && this.composer) this.composer.render(); else this.renderer.render(this.scene, this.activeCamera); this.labelRenderer.render(this.scene, this.activeCamera); }
   // ポストプロセス: GTAO（接触陰影）+ SMAA（AA）+ Output（トーンマップ/色空間）
   _buildComposer() {
     const W = this.container.clientWidth || 800, H = this.container.clientHeight || 600;
     let rt = null; try { if (this.renderer.capabilities.isWebGL2 && !globalThis.__anglexNoPBR) rt = new THREE.WebGLRenderTarget(W, H, { samples: 4, type: THREE.HalfFloatType }); } catch { rt = null; } // MSAA 4x（WebGL2）
-    this.composer = new EffectComposer(this.renderer, rt || undefined); this.composer.setPixelRatio(Math.min(devicePixelRatio, 2)); this.composer.setSize(W, H);
+    this.composer = new EffectComposer(this.renderer, rt || undefined); this.composer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); this.composer.setSize(W, H);
     this.renderPass = new RenderPass(this.scene, this.activeCamera); this.composer.addPass(this.renderPass);
     try { this.gtao = new GTAOPass(this.scene, this.activeCamera, W, H); this.gtao.output = GTAOPass.OUTPUT.Default; this.gtao.updateGtaoMaterial({ radius: 28, distanceExponent: 1.2, thickness: 12, scale: 1.0, samples: 12, distanceFallOff: 1.0, screenSpaceRadius: false }); this.gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 8 }); this.gtao.blendIntensity = 0.85; this.composer.addPass(this.gtao); } catch (e) { console.warn('GTAO unavailable', e); this.gtao = null; }
     this.composer.addPass(new OutputPass()); this.smaa = new SMAAPass(); this.composer.addPass(this.smaa);
@@ -117,14 +127,19 @@ export class Viewer {
   _syncCamera() { if (this.renderPass) this.renderPass.camera = this.activeCamera; if (this.gtao) { this.gtao.camera = this.activeCamera; } }
   async setEnvironment(name) { if (globalThis.__anglexOffline) name = 'studio'; /* オフライン版は同梱の 1 種類だけ（外部へ取りに行かない） */ const e = ENVIRONMENTS[name] || ENVIRONMENTS.studio; this.envName = name; await this.loadHDRI(e.url); this.applyDisplayStyle(); }
   async loadHDRI(url = HDRI_URL) { try { const hdr = await new RGBELoader().loadAsync(url); hdr.mapping = THREE.EquirectangularReflectionMapping; this.hdri = hdr; this.scene.environment = this.pmrem.fromEquirectangular(hdr).texture; this.scene.environmentIntensity = 1.0; this.applyDisplayStyle(); } catch (e) { console.warn('HDRI 読込失敗（RoomEnvironment を使用）', e.message); } }
+  // シェーダーの先読み: 仕上げごとの材質を、見えない小さな場面で先にコンパイルしておく（GPU の並列コンパイルが使えるときは待たずに進む）
+  async warmShaders(materials) { if (this._warmed || !this.renderer.compileAsync) return 0; this._warmed = true; const tmp = new THREE.Scene(); const geo = new THREE.BoxGeometry(1, 1, 1); for (const m of materials) { const mesh = new THREE.Mesh(geo, m); mesh.castShadow = mesh.receiveShadow = true; tmp.add(mesh); } const t = performance.now(); try { await this.renderer.compileAsync(tmp, this.camera, this.scene); } catch (e) { console.warn('warmShaders', e.message); } geo.dispose(); return performance.now() - t; }
   dispose() { cancelAnimationFrame(this._frame); this._resizeObs.disconnect(); this.renderer.dispose(); }
 
   // ---- モデル操作 ----
   clear() { this.invalidate(); while (this.modelRoot.children.length) this.modelRoot.remove(this.modelRoot.children[0]); this.clearEdges(); this.clearOverlays(); this.select(null); this.clearSelection(); while (this.ghostRoot.children.length) this.ghostRoot.remove(this.ghostRoot.children[0]); }
-  add(obj) { this.modelRoot.add(obj); this.applyDisplayStyle(); this.invalidate(); return obj; }
-  remove(obj) { this.modelRoot.remove(obj); this.applyDisplayStyle(); this.invalidate(); }
+  add(obj) { this.modelRoot.add(obj); this.applyDisplayStyle(obj); this.invalidate(); return obj; }
+  remove(obj) { this.modelRoot.remove(obj); this.removeEdgesOf(obj); this.invalidate(); }
   clearOverlays() { this.invalidate(); while (this.overlayRoot.children.length) { const c = this.overlayRoot.children[0]; this.overlayRoot.remove(c); c.traverse?.(o => { if (o.element?.parentNode) o.element.parentNode.removeChild(o.element); }); } }
   clearEdges() { while (this.edgeRoot.children.length) this.edgeRoot.remove(this.edgeRoot.children[0]); }
+  // obj（部材のまとまり）に属する輪郭線だけを外す
+  removeEdgesOf(obj) { const inObj = o => { for (let p = o; p; p = p.parent) if (p === obj) return true; return false; }; for (const ln of [...this.edgeRoot.children]) if (!ln.userData.src || inObj(ln.userData.src)) this.edgeRoot.remove(ln); }
+  _edgeMaterial(s) { const k = s + '|' + this.theme; const c = (this._edgeMats ||= new Map()); let m = c.get(k); if (!m) { m = new THREE.LineBasicMaterial({ color: s === 'hidden-line' ? 0x111827 : s === 'cad' ? 0xe8e4d6 : (this.theme === 'dark' ? 0x0b0f14 : 0x1f2937), transparent: true, opacity: s === 'hidden-line' ? 1 : s === 'cad' ? 0.45 : 0.55 }); c.set(k, m); } return m; }
   // 影カメラをモデルに合わせる
   fitShadow() { const box = new THREE.Box3().setFromObject(this.modelRoot); if (box.isEmpty()) return; const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() * 0.6 + 200; const sc = this.sun.shadow.camera; sc.left = sc.bottom = -r; sc.right = sc.top = r; sc.updateProjectionMatrix(); this.sun.target.position.copy(c); this.sun.position.copy(c).add(new THREE.Vector3(1800, 3200, 1400).normalize().multiplyScalar(r * 2.2)); this.sun.shadow.camera.far = r * 6; }
   fit(obj = this.modelRoot, pad = 1.35, { animate = null, ms = 420 } = {}) { this.invalidate(); if (obj === this.modelRoot) { this.pushView(); this._setFocus(null); } clearTimeout(this._kivT);
@@ -146,7 +161,7 @@ export class Viewer {
   animateTo(pos, target, { ms = 420, onDone = null, ortho = null } = {}) { this.flushInertia();
     const cam = this.camera, ctl = this.controls; this._tween = { t0: performance.now(), ms, p0: cam.position.clone(), t0v: ctl.target.clone(), p1: pos.clone(), t1: target.clone(), onDone, ortho: ortho ? { p0: this.ortho.position.clone(), t0: this.orthoControls.target.clone(), p1: ortho.pos.clone(), t1: ortho.target.clone() } : null }; this.invalidate(2);
   }
-  _stepTween() { const tw = this._tween; if (!tw) return; /* RAF のタイムスタンプは開始時刻より前のことがある（k<0 で逆向きに跳ねる）ので performance.now() で進行度を測り 0..1 に収める */ const k = Math.max(0, Math.min(1, (performance.now() - tw.t0) / tw.ms)); const e = 1 - Math.pow(1 - k, 3); this.camera.position.lerpVectors(tw.p0, tw.p1, e); this.controls.target.lerpVectors(tw.t0v, tw.t1, e); if (tw.ortho) { this.ortho.position.lerpVectors(tw.ortho.p0, tw.ortho.p1, e); this.orthoControls.target.lerpVectors(tw.ortho.t0, tw.ortho.t1, e); } this.invalidate(2); if (k >= 1) { this._tween = null; tw.onDone && tw.onDone(); } }
+  _stepTween() { const tw = this._tween; if (!tw) return; /* RAF のタイムスタンプは開始時刻より前のことがある（k<0 で逆向きに跳ねる）ので performance.now() で進行度を測り 0..1 に収める */ const k = Math.max(0, Math.min(1, (performance.now() - tw.t0) / tw.ms)); const e = 1 - Math.pow(1 - k, 3); this.camera.position.lerpVectors(tw.p0, tw.p1, e); this.controls.target.lerpVectors(tw.t0v, tw.t1, e); if (tw.ortho) { this.ortho.position.lerpVectors(tw.ortho.p0, tw.ortho.p1, e); this.orthoControls.target.lerpVectors(tw.ortho.t0, tw.ortho.t1, e); } this.invalidate(2, true); if (k >= 1) { this._tween = null; tw.onDone && tw.onDone(); } }
   // アニメーション中か（テスト・UI が完了を待つため）
   get animating() { return !!this._tween; }
   cancelTween() { this._tween = null; }
@@ -160,24 +175,26 @@ export class Viewer {
   }
   // 表示スタイル: realistic | shaded | shaded-edges | hidden-line | wireframe | ghost
   setDisplayStyle(s) { this.displayStyle = s; this.applyDisplayStyle(); }
-  applyDisplayStyle() {
-    this.invalidate(); const s = this.displayStyle; this.clearEdges();
-    this.modelRoot.traverse(o => {
+  // root を渡すと、その部材の分だけ（輪郭線の作り直しを画面全体に広げない）
+  applyDisplayStyle(root = null) {
+    this.invalidate(); const s = this.displayStyle; const part = !!root && root !== this.modelRoot; if (part) this.removeEdgesOf(root); else this.clearEdges();
+    (part ? root : this.modelRoot).traverse(o => {
       if (!o.isMesh) return; const m = o.material; if (!m) return;
       if (!o.userData._mat) o.userData._mat = m;
-      const base = o.userData._mat;
+      const base = o.userData._mat; if (base.userData?.lazyTex) wakeTextures(base);
       if (s === 'realistic' || s === 'shaded' || s === 'shaded-edges') o.material = base;
       else if (s === 'hidden-line') { o.material = o.userData._white || (o.userData._white = new THREE.MeshBasicMaterial({ color: 0xffffff, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })); }
       else if (s === 'wireframe') { o.material = o.userData._wire || (o.userData._wire = new THREE.MeshBasicMaterial({ color: 0x334155, wireframe: true })); }
       else if (s === 'ghost') { o.material = o.userData._ghost || (o.userData._ghost = new THREE.MeshStandardMaterial({ color: 0x9aa6b2, transparent: true, opacity: 0.35, depthWrite: false })); }
       else if (s === 'cad') { o.material = cadMaterial(this._partOf(o)); }
-      if (s === 'shaded-edges' || s === 'hidden-line' || s === 'cad') {
-        const eg = o.userData._edges || (o.userData._edges = new THREE.EdgesGeometry(o.geometry, s === 'hidden-line' ? 12 : 22));
-        const ln = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: s === 'hidden-line' ? 0x111827 : s === 'cad' ? 0xe8e4d6 : (this.theme === 'dark' ? 0x0b0f14 : 0x1f2937), transparent: true, opacity: s === 'hidden-line' ? 1 : s === 'cad' ? 0.45 : 0.55 }));
+      if ((s === 'shaded-edges' || s === 'hidden-line' || s === 'cad') && !o.userData.noEdges && !o.geometry?.userData?.noEdges) {
+        const eg = edgesOf(o.geometry, s === 'hidden-line' ? 12 : 22);
+        const ln = new THREE.LineSegments(eg, this._edgeMaterial(s));
         o.updateWorldMatrix(true, false); ln.matrixAutoUpdate = false; ln.matrix.copy(o.matrixWorld); ln.userData.src = o; this.edgeRoot.add(ln);
       }
     });
-    this.floor.visible = (s === 'realistic'); this.sun.intensity = s === 'realistic' ? 2.2 : 1.6; this.hemi.intensity = s === 'realistic' ? 0.35 : 0.55; this.ground.visible = !this.floor.visible; this.grid.visible = this.gridOn !== false && s !== 'realistic';
+    if (part) return;
+    this.floor.visible = (s === 'realistic'); if (this.floor.visible) wakeTextures(this.floor.material); this.sun.intensity = s === 'realistic' ? 2.2 : 1.6; this.hemi.intensity = s === 'realistic' ? 0.35 : 0.55; this.ground.visible = !this.floor.visible; this.grid.visible = this.gridOn !== false && s !== 'realistic';
     if (s === 'realistic' && this.hdri && this.theme === 'light') { this.scene.background = this.hdri; this.scene.backgroundBlurriness = 0.55; this.scene.backgroundIntensity = 0.9; } else this.setTheme(this.theme);
     if (s === 'cad') { this.scene.background = new THREE.Color(0x141410); this.scene.fog = null; this.grid.material.color.set(0x3a3a30); this.grid.material.opacity = 0.55; this.ground.visible = false; this.sun.intensity = 1.1; this.hemi.intensity = 0.9; this.hemi.color.set(0xffffff); this.hemi.groundColor.set(0x666666); this.renderer.toneMappingExposure = 1.0; }
     if (this.onStyleApplied) this.onStyleApplied(s);
@@ -283,7 +300,7 @@ export class Viewer {
   clearSelection() { while (this.selRoot.children.length) this.selRoot.remove(this.selRoot.children[0]); }
   _tint(inst, color, k = 0.4) { if (!inst) return; inst.traverse(o => { if (!o.isMesh || !o.material) return; if (!o.userData._emis) o.userData._emis = (o.material.emissive ? o.material.emissive.getHex() : 0); if (o.material.emissive) { if (color == null) { o.material.emissive.setHex(o.userData._emis); o.material.emissiveIntensity = 1; } else { o.material = o.material.clone(); o.material.emissive.setHex(color); o.material.emissiveIntensity = k; } } }); }
   attachGizmo(inst, mode = 'translate', axis = 'all') { this.invalidate(); if (!inst) { this.gizmo.detach(); return; } this.gizmo.attach(inst); this.gizmo.setMode(mode); this.gizmo.showX = axis === 'all' || axis === 'x'; this.gizmo.showY = axis === 'all' || axis === 'y'; this.gizmo.showZ = axis === 'all' || axis === 'z'; }
-  screenshot(w = 1600, h = 1000) { const sv = this.selRoot.visible; this.selRoot.visible = false; const gv = this.ghostRoot.visible; this.ghostRoot.visible = false; const pr = this.renderer.getPixelRatio(); const oldW = this.container.clientWidth, oldH = this.container.clientHeight; this.renderer.setPixelRatio(1); this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.quality && this.composer) { this.composer.setSize(w, h); this.gtao?.setSize(w, h); this.composer.render(); } else this.renderer.render(this.scene, this.activeCamera); const url = this.renderer.domElement.toDataURL('image/png'); this.selRoot.visible = sv; this.ghostRoot.visible = gv; if (this.composer) { this.composer.setSize(oldW, oldH); this.gtao?.setSize(oldW, oldH); } this.renderer.setPixelRatio(pr); this.renderer.setSize(oldW, oldH); this.camera.aspect = oldW / oldH; this.camera.updateProjectionMatrix(); return url; }
+  screenshot(w = 1600, h = 1000) { this.renderer.shadowMap.needsUpdate = true; this._fast = false; const sv = this.selRoot.visible; this.selRoot.visible = false; const gv = this.ghostRoot.visible; this.ghostRoot.visible = false; const pr = this.renderer.getPixelRatio(); const oldW = this.container.clientWidth, oldH = this.container.clientHeight; this.renderer.setPixelRatio(1); this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.quality && this.composer) { this.composer.setSize(w, h); this.gtao?.setSize(w, h); this.composer.render(); } else this.renderer.render(this.scene, this.activeCamera); const url = this.renderer.domElement.toDataURL('image/png'); this.selRoot.visible = sv; this.ghostRoot.visible = gv; if (this.composer) { this.composer.setSize(oldW, oldH); this.gtao?.setSize(oldW, oldH); } this.renderer.setPixelRatio(pr); this.renderer.setSize(oldW, oldH); this.camera.aspect = oldW / oldH; this.camera.updateProjectionMatrix(); return url; }
   setGrid(on) { this.invalidate(); this.gridOn = on; this.grid.visible = on && this.displayStyle !== 'realistic'; this.axes.visible = on; }
   setShadows(on) { this.invalidate(); this.renderer.shadowMap.enabled = on; this.sun.castShadow = on; this.modelRoot.traverse(o => { if (o.isMesh && o.material) o.material.needsUpdate = true; }); }
 }

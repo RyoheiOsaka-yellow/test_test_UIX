@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { buildMember, parseSpec } from '../geo/profiles.js';
 import { hexBolt, uBolt, anchorBolt, hangerRod, hexNut, flatWasher } from '../geo/fasteners.js';
 import { filletBead, buttBead } from '../geo/welds.js';
-import { finishMaterial } from '../geo/materials.js';
+import { finishMaterial, doubleSided } from '../geo/materials.js';
 import { creaseNormals } from '../geo/normals.js';
 
 function matrixOf(pl) { const [x, y, z] = pl.basis; const m = new THREE.Matrix4(); m.makeBasis(new THREE.Vector3(...x), new THREE.Vector3(...y), new THREE.Vector3(...z)); m.setPosition(new THREE.Vector3(...pl.pos)); return m; }
@@ -51,9 +51,9 @@ function latheGeometry(pt, lod) { const pr = (pt.profile || []).map(([r, z]) => 
     for (let j = 0; j <= seg; j++) { const a = j / seg * Math.PI * 2, c = Math.cos(a), s = Math.sin(a); let ca = c, sa = s; if (flat) { const am = (Math.floor(Math.min(j, seg - 1)) + 0.5) / seg * Math.PI * 2; ca = Math.cos(am); sa = Math.sin(am); }
       pos.push(r0 * c, r0 * s, z0, r1 * c, r1 * s, z1); nor.push(nr * ca, nr * sa, nz, nr * ca, nr * sa, nz); const u = a * Math.max(r0, r1, 4) / 130; uv.push(u, run / 130, u, (run + dl) / 130); }
     for (let j = 0; j < seg; j++) { const a = v0 + j * 2, b = a + 1, c2 = a + 2, d = a + 3; idx.push(a, c2, b, b, c2, d); } v0 += (seg + 1) * 2; run += dl; }
-  if (flat) { const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g2.setIndex(idx); const ni = g2.toNonIndexed(); ni.computeVertexNormals(); const mat = finishMaterial(pt.finish || 'EZ').clone(); mat.side = THREE.DoubleSide; const m = new THREE.Mesh(ni, mat); m.castShadow = m.receiveShadow = true; return m; }
+  if (flat) { const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g2.setIndex(idx); const ni = g2.toNonIndexed(); ni.computeVertexNormals(); const mat = doubleSided(pt.finish || 'EZ'); const m = new THREE.Mesh(ni, mat); m.castShadow = m.receiveShadow = true; return m; }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx);
-  const mat = finishMaterial(pt.finish || 'EZ').clone(); mat.side = THREE.DoubleSide; const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; return m; }
+  const mat = doubleSided(pt.finish || 'EZ'); const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; return m; }
 // 曲げ棒・ワイヤ: 点列 pts（ローカル XYZ）に沿って半径 r の丸棒を通す
 function sweepGeometry(pt, lod) { const v = (pt.pts || []).map(a => new THREE.Vector3(a[0], a[1], a[2] || 0)); if (v.length < 2) return new THREE.Group(); const path = new THREE.CurvePath(); for (let i = 0; i < v.length - 1; i++) path.add(new THREE.LineCurve3(v[i], v[i + 1])); if (pt.closed) path.add(new THREE.LineCurve3(v[v.length - 1], v[0]));
   const g = new THREE.Group(); const mat = finishMaterial(pt.finish || 'EZ'); const r = pt.r || 3; const seg = lod >= 400 ? 12 : 8;

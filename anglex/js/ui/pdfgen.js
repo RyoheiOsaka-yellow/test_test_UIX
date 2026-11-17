@@ -19,8 +19,9 @@ export async function loadPdfLibs() {
   loadHb(); // 並行ロード（失敗しても可）
   if (!window.fontkit) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
   if (!fontBytes) { // 1) 同梱の JIS サブセット TrueType（サブセット埋込可 → 小さい PDF） 2) 失敗時は CDN の Noto Sans JP（CFF: 全文埋込）
-    if (window.__anglexFontB64) { try { fontBytes = Uint8Array.from(atob(window.__anglexFontB64), c => c.charCodeAt(0)).buffer; fontIsTrueType = true; } catch (e) { fontBytes = null; } } // 単一 HTML 版: 同梱フォント
-    try { const r = await fetch(new URL('fonts/NotoSansJP-JIS.ttf', document.baseURI)); if (r.ok) { fontBytes = await r.arrayBuffer(); fontIsTrueType = new DataView(fontBytes).getUint32(0) === 0x00010000; } } catch (e) { }
+    if (window.__anglexFontGz) { try { const bin = Uint8Array.from(atob(window.__anglexFontGz), c => c.charCodeAt(0)); fontBytes = await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(); fontIsTrueType = true; window.__anglexFontGz = null; } catch (e) { fontBytes = null; } } // 単一 HTML 版: 圧縮して同梱したフォント（PDF を作るときに初めて展開）
+    if (!fontBytes && window.__anglexFontB64) { try { fontBytes = Uint8Array.from(atob(window.__anglexFontB64), c => c.charCodeAt(0)).buffer; fontIsTrueType = true; } catch (e) { fontBytes = null; } } // 単一 HTML 版: 同梱フォント
+    if (!fontBytes) try { const r = await fetch(new URL('fonts/NotoSansJP-JIS.ttf', document.baseURI)); if (r.ok) { fontBytes = await r.arrayBuffer(); fontIsTrueType = new DataView(fontBytes).getUint32(0) === 0x00010000; } } catch (e) { }
     if (!fontBytes) { const r = await fetch('https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-jp/NotoSansJP_400Regular.ttf'); if (!r.ok) throw new Error('日本語フォントを取得できません'); fontBytes = await r.arrayBuffer(); fontIsTrueType = false; } }
   libs = { ...pdfLib, fontkit: window.fontkit }; return libs;
 }
