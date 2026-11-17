@@ -36,25 +36,40 @@ window.BF_PRICES = {
     {
       id: 'g02', code: '02', title: 'タイヤ・チューブ交換 1（普通自転車）', time: '作業時間 20〜30分', cols: ['区分', '対象サイズ', '前輪（英式）', '後輪（英式）'],
       rows: [
-        ['02-1 シティサイクル', '24・26・27インチ × 1-3/8、× 1-1/2', 7400, 7900],
+        ['02-1 シティサイクル', '24・26・27インチ × 1-3/8<br>24・26・27インチ × 1-1/2', 7400, 7900],
         ['02-2 小径車', '14・16・18・20インチ × 1.75・1.95', 8800, 9900]
       ],
-      notes: ['上記以外のサイズはお問い合わせください。', '日本メーカー以外の自転車は別途費用がかかります。', '米式・仏式バルブは割高になります。', '交換部品例：パナレーサー製ロイヤルロード、IRC製シティポップ など']
+      details: [
+        { bikes: ['シティサイクル、ママチャリ等'], parts: ['パナレーサー製：ロイヤルロード', 'IRC製：シティポップ', 'etc'] },
+        { bikes: ['小径車'], parts: ['パナレーサー製：ロイヤルロードプラス', 'パナレーサー製：カスタムタフ【のこり在庫分】', 'etc'] }
+      ],
+      notes: ['上記以外のサイズはお問い合わせください。', '日本メーカー以外の自転車は別途費用がかかります。', '米式・仏式バルブは割高になります。']
     },
     {
       id: 'g03', code: '03', title: 'タイヤ・チューブ交換 2（電動アシスト）', time: '作業時間 20〜30分', cols: ['区分', '対象サイズ', '前輪（英式）', '後輪（英式）'],
       rows: [
         ['03-1', '24・26・27インチ × 1-3/8', 8800, 9900],
-        ['03-2', '前：24・26・27 × 1-1/2 ／ 後：22・24・26・27 × 1-1/2', 9800, 10900],
+        ['03-2', '前：24・26・27インチ × 1-1/2<br>後：22・24・26・27インチ × 1-1/2', 9800, 10900],
         ['03-3', '20インチ × 1.75・1.95', 9800, 10900],
         ['03-4', '20インチ × 1-3/8', 10800, 11900],
         ['03-5', '24インチ × 1.75', 9800, 10900],
-        ['03-6【在庫分のみ】', '26インチ × 1.75・2.00', 10800, 11900],
-        ['03-7', '前：20インチ × 1-3/4 ・ 22 × 1-1/2', 11800, 12900],
+        ['03-6', '26インチ × 1.75・2.00', 10800, 11900],
+        ['03-7', '20インチ × 1-3/4<br>22インチ × 1-1/2', 11800, 12900],
         ['03-8.1', '20インチ × 2.125', 10800, 11900],
         ['03-8.2', '20インチ × 2.00', 11800, 12900]
       ],
-      notes: ['上記以外のサイズはお問い合わせください。', '日本メーカー以外の自転車は別途費用がかかります。', '米式・仏式バルブは割高になります。']
+      details: [
+        { bikes: ['パナソニック：ビビ、ティモ', 'ブリヂストン：アシスタ', 'ヤマハ：パス', 'etc'], parts: ['パナレーサー製：E-ライド', 'IRC製：サイクルシード', 'etc'] },
+        { bikes: ['パナソニック：ビビ、ティモ', 'ブリヂストン：アシスタ', 'ヤマハ：パス', 'etc'], parts: ['ブリヂストン製：Eマイティロード4.5', 'パナレーサー製：E-ライドプラス', 'IRC製：足楽', 'etc'] },
+        { bikes: ['パナソニック：プロム、SW、グリッター、ベロスターミニ、EZ', 'ブリヂストン：アシスタユニ、ラクット', 'ヤマハ：パスシティC', 'etc'], parts: ['パナレーサー製：ロイヤルロードプラス', 'パナレーサー製：カスタムタフ【のこり在庫分】', 'etc'] },
+        { bikes: ['ブリヂストン：リアルストリーム ミニ', 'ヤマハ：パスシティX', 'etc'], parts: ['パナレーサー製：ハードランナーII', 'etc'] },
+        { bikes: ['ブリヂストン：ビッケ グリ、モブ【前輪向け】', 'ヤマハ：パスシティV、パスシオン-U', 'etc'], parts: ['IRC製：足楽', 'etc'] },
+        { bikes: ['パナソニック：ギュット【26インチ】、ティモ、BP02', 'ブリヂストン：ハイディー、ステップクルーズ', 'ヤマハ：パスシティULU・RIN', 'etc'], parts: ['IRC製：ブリロ', 'etc'] },
+        { bikes: ['パナソニック：ギュット、ギュット・ステージ・22【22インチ】', 'etc'], parts: ['パナレーサー製：E-ride PLUS', 'パナソニック製：パンクガードマンPLUS', 'etc'] },
+        { bikes: ['パナソニック：ギュット【20インチ】', 'ブリヂストン：ビッケ', 'ヤマハ：パス', 'etc'], parts: ['IRC製：ロイヤルロードプラス', 'etc'] },
+        { bikes: ['パナソニック：ギュット【20インチ】', 'ブリヂストン：ビッケ', 'ヤマハ：パス', 'etc'], parts: ['パナソニック製：パンクガードマンα'] }
+      ],
+      notes: ['上記以外のサイズはお問い合わせください。', '日本メーカー以外の自転車は別途費用がかかります。', '米式・仏式バルブは割高になります。', '03-6 は在庫分のみの対応です。']
     },
     {
       id: 'g04', code: '04', title: 'ブレーキ関連', time: '作業時間 10〜30分', cols: ['区分', '前輪', '後輪', '前後輪'],
@@ -146,7 +161,7 @@ window.BF_WC_PRICES = {
         <div class="price-group__head"><span class="code">${g.code}</span><h3>${g.title}</h3>${g.time ? `<span class="time">${g.time}</span>` : ''}</div>
         <div class="price-table-wrap"><table class="price-table">
           <thead><tr>${g.cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>
-          <tbody>${g.rows.map(r => `<tr>${r.map((c, i) => `<td>${i === 0 ? c : yen(c)}</td>`).join('')}</tr>`).join('')}
+          <tbody>${g.rows.map((r, ri) => { const d = g.details && g.details[ri]; return `<tr${d ? ' class="has-detail"' : ''}>${r.map((c, i) => `<td>${i === 0 ? c : yen(c)}</td>`).join('')}</tr>` + (d ? `<tr class="price-detail"><td colspan="${g.cols.length}"><div class="pd"><div><b>対応自転車</b>${d.bikes.join('<br>')}</div><div><b>交換部品</b>${d.parts.join('<br>')}</div></div></td></tr>` : ''); }).join('')}
           ${(g.extra || []).map(r => `<tr><td colspan="${Math.max(1, g.cols.length - 2)}">${r[0]}</td><td>${yen(r[1])}</td><td colspan="${g.cols.length > 3 ? 1 : 1}"><span class="sub">${r[2] || ''}</span></td></tr>`).join('')}
           </tbody></table></div>
         ${g.notes ? `<ul class="price-notes">${g.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}
@@ -165,7 +180,7 @@ window.BF_WC_PRICES = {
       const s = q.value.trim().toLowerCase(); let any = false;
       document.querySelectorAll('.price-group').forEach(g => {
         let hit = 0;
-        g.querySelectorAll('tbody tr').forEach(tr => { const ok = !s || tr.textContent.toLowerCase().includes(s) || g.dataset.title.toLowerCase().includes(s); tr.classList.toggle('is-hidden', !ok); if (ok) hit++; });
+        g.querySelectorAll('tbody tr:not(.price-detail)').forEach(tr => { const det = tr.classList.contains('has-detail') ? tr.nextElementSibling : null; const text = (tr.textContent + (det ? det.textContent : '')).toLowerCase(); const ok = !s || text.includes(s) || g.dataset.title.toLowerCase().includes(s); tr.classList.toggle('is-hidden', !ok); if (det) det.classList.toggle('is-hidden', !ok); if (ok) hit++; });
         g.classList.toggle('is-hidden', hit === 0); if (hit) any = true;
       });
       if (empty) empty.style.display = any ? 'none' : 'block';

@@ -950,3 +950,45 @@ body[data-accent="plus"] { --accent: var(--plus); --accent-ink: var(--plus-ink);
 @media (max-width: 1560px) { .header__tagline { display: none; } }
 @media (max-width: 1320px) { .header__logo small { display: none; } }
 @media (max-width: 1240px) { .header__tel small { display: none; } }
+
+/* --- FB 2026-11-17 --- */
+.hex-ic--icon svg { width: 46%; height: auto; display: block; }
+.feature .hex-ic--icon { background: var(--accent); color: var(--accent-ink); }
+.tl b { display: grid; gap: 4px; line-height: 1.1; }
+.tl b small { font-family: var(--font-jp); font-size: 11px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+.ebike-media { position: relative; background: #fff; border-radius: var(--radius); aspect-ratio: 1; display: grid; place-items: center; padding: 10%; overflow: hidden; }
+.ebike-media img { width: 100%; height: 100%; object-fit: contain; position: relative; z-index: 1; }
+.ebike-media::after { content: ""; position: absolute; width: 30%; aspect-ratio: 1/1.1547; right: 4%; bottom: 3%; background: var(--plus); clip-path: var(--hex); opacity: .9; }
+/* price table: compatible bikes / replacement parts */
+.price-table tr.price-detail td { padding: 0 16px 14px; border-bottom: 1px solid var(--line); background: #fcfbf8; }
+.price-table tr.has-detail td { border-bottom: 0; }
+.price-detail .pd { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 2px; }
+.price-detail .pd > div { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.7; color: var(--ink-2); }
+.price-detail .pd b { display: block; font-size: 11px; letter-spacing: .06em; color: var(--ink); margin-bottom: 2px; }
+.price-detail .pd b::before { content: "■"; color: var(--accent); margin-right: 4px; }
+@media (max-width: 640px) { .price-detail .pd { grid-template-columns: 1fr; } }
+
+/* --- UX review fixes --- */
+.nav__item--has-mega:focus-within .mega { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.form label.check { flex-wrap: wrap; }
+.form label.check .error { flex-basis: 100%; padding-left: 26px; }
+.form label.check:has(.is-invalid) { border-color: var(--magenta); }
+.drawer[inert] { visibility: hidden; transition: visibility 0s .7s; }
+body.menu-open .drawer { visibility: visible; transition: none; }
+
+/* --- review round 2 --- */
+.ebike-media { background: var(--sand); }
+.ebike-media img { mix-blend-mode: multiply; }
+.ebike-media::after { z-index: 0; }
+/* mobile: price chips in one horizontally scrollable row */
+@media (max-width: 720px) {
+  .price-nav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 24px), transparent); -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 24px), transparent); }
+  .price-nav::-webkit-scrollbar { display: none; }
+  .price-nav .chip { flex: 0 0 auto; white-space: nowrap; }
+}
+/* form: keep the 必須 badge on the label line */
+.form label:not(.check) { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 6px; }
+.form label:not(.check) > input, .form label:not(.check) > textarea, .form label:not(.check) > select, .form label:not(.check) > .error, .form label:not(.check) > .small { flex-basis: 100%; }
+.form label .req { margin-left: 0; }
+
+.ebike-media::after { width: 22%; right: 5%; bottom: 5%; }

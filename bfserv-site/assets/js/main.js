@@ -11,7 +11,9 @@
     const y = window.scrollY;
     header && header.classList.toggle('is-scrolled', y > 24);
     if (header && !document.body.classList.contains('menu-open')) {
-      header.classList.toggle('is-hidden', y > lastY && y > 400 && Math.abs(y - lastY) > 4);
+      const hide = y > lastY && y > 400 && Math.abs(y - lastY) > 4;
+      header.classList.toggle('is-hidden', hide);
+      if (hide) $$('.nav__item.is-open').forEach(i => i.classList.remove('is-open'));
     }
     lastY = y;
     const tt = $('.totop'); tt && tt.classList.toggle('is-shown', y > 800);
@@ -25,17 +27,55 @@
     item.addEventListener('mouseenter', () => { clearTimeout(t); $$('.nav__item--has-mega').forEach(i => i !== item && i.classList.remove('is-open')); item.classList.add('is-open'); });
     item.addEventListener('mouseleave', () => { t = setTimeout(() => item.classList.remove('is-open'), 160); });
     link.addEventListener('click', e => { if (link.getAttribute('href') === '#') { e.preventDefault(); item.classList.toggle('is-open'); } });
+    link.setAttribute('aria-haspopup', 'true'); link.setAttribute('aria-expanded', 'false');
+    item.addEventListener('focusin', () => { clearTimeout(t); $$('.nav__item--has-mega').forEach(i => i !== item && i.classList.remove('is-open')); item.classList.add('is-open'); link.setAttribute('aria-expanded', 'true'); });
+    item.addEventListener('focusout', e => { if (!item.contains(e.relatedTarget)) { item.classList.remove('is-open'); link.setAttribute('aria-expanded', 'false'); } });
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { $$('.nav__item.is-open').forEach(i => i.classList.remove('is-open')); document.body.classList.remove('menu-open'); } });
-
   /* drawer */
-  const burger = $('.burger');
-  burger && burger.addEventListener('click', () => {
-    const open = document.body.classList.toggle('menu-open');
-    burger.setAttribute('aria-expanded', open);
+  const burger = $('.burger'); const drawer = $('.drawer');
+  function setMenu(open, restoreFocus) {
+    document.body.classList.toggle('menu-open', open);
+    if (burger) { burger.setAttribute('aria-expanded', String(open)); burger.setAttribute('aria-label', open ? 'メニューを閉じる' : 'メニュー'); }
     document.documentElement.style.overflow = open ? 'hidden' : '';
+    if (drawer) drawer.toggleAttribute('inert', !open);
+    if (open && drawer) setTimeout(() => { const first = $('a', drawer); if (first) first.focus({ preventScroll: true }); }, 350);
+    if (!open && restoreFocus && burger) burger.focus({ preventScroll: true });
+  }
+  window.BF_setMenu = setMenu;
+  if (drawer) drawer.setAttribute('inert', '');
+  if (burger) burger.addEventListener('click', () => setMenu(!document.body.classList.contains('menu-open'), true));
+  $$('.drawer a').forEach(a => a.addEventListener('click', () => setMenu(false)));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      $$('.nav__item.is-open').forEach(i => i.classList.remove('is-open'));
+      if (document.body.classList.contains('menu-open')) setMenu(false, true);
+      return;
+    }
+    // keep Tab inside the open drawer (the close button stays reachable)
+    if (e.key !== 'Tab' || !document.body.classList.contains('menu-open') || !drawer) return;
+    const f = [burger].concat($$('a, button', drawer)).filter(Boolean); const i = f.indexOf(document.activeElement);
+    if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && (i === f.length - 1 || i === -1)) { e.preventDefault(); f[0].focus(); }
   });
-  $$('.drawer a').forEach(a => a.addEventListener('click', () => { document.body.classList.remove('menu-open'); document.documentElement.style.overflow = ''; }));
+
+  /* in-page anchors: smooth scroll below the fixed header (and sticky price nav); never rewrite the hash,
+     so the #/route of the all-in-one preview survives "page top" and chip clicks */
+  function scrollToEl(el) {
+    const headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 76;
+    const sticky = $('.price-nav'); const inPrices = sticky && el.closest('[data-prices]');
+    const off = headerH + 16 + (inPrices ? sticky.getBoundingClientRect().height + 8 : 0);
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - off, behavior: reduce ? 'auto' : 'smooth' });
+  }
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]'); if (!a) return;
+    const href = a.getAttribute('href'); if (href.startsWith('#/')) return;
+    if (href === '#' || href === '#top') { e.preventDefault(); window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); return; }
+    const id = decodeURIComponent(href.slice(1));
+    const scope = document.querySelector('.sp-page:not([hidden])') || document;
+    const el = scope.querySelector('#' + CSS.escape(id)) || document.getElementById(id); if (!el) return;
+    e.preventDefault(); scrollToEl(el);
+    if (id === 'main') { el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true }); }
+  });
 
   /* ---------- reveal on scroll ---------- */
   const io = new IntersectionObserver(entries => {
@@ -150,8 +190,10 @@
     form.addEventListener('submit', e => {
       e.preventDefault(); let ok = true;
       $$('[required]', form).forEach(f => {
-        const err = f.closest('label').querySelector('.error'); const bad = !f.value.trim() || (f.type === 'email' && !/^\S+@\S+\.\S+$/.test(f.value));
-        f.classList.toggle('is-invalid', bad); if (err) err.textContent = bad ? (f.type === 'email' ? 'メールアドレスの形式を確認してください' : '必須項目です') : '';
+        const err = f.closest('label').querySelector('.error');
+        const bad = f.type === 'checkbox' ? !f.checked : (!f.value.trim() || (f.type === 'email' && !/^\S+@\S+\.\S+$/.test(f.value)));
+        f.classList.toggle('is-invalid', bad); f.setAttribute('aria-invalid', String(bad));
+        if (err) err.textContent = bad ? (f.type === 'checkbox' ? 'プライバシーポリシーへの同意が必要です' : f.type === 'email' ? 'メールアドレスの形式を確認してください' : '必須項目です') : '';
         if (bad) ok = false;
       });
       if (!ok) { $('.is-invalid', form).focus(); return; }
