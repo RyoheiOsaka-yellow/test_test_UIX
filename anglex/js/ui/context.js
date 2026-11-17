@@ -13,6 +13,7 @@ const RELATED = { column: /^(H|L|colSpec|spec|t)$/, beam: /^(W|L|beamSpec|spec|o
 export function hideContextBar(app) { const el = document.querySelector('.ctx-bar'); if (el) el.remove(); app.ctx = null; app.hideAttachGhost?.(); }
 
 export function showContextBar(app, { inst, partIndex = null, part = null, x = 0, y = 0, anchor = null, avoid = null }) {
+  if (app.v3 && partIndex == null && part == null) return; // v3: 部材を選んだときは輪（ハロー）と取っ手を出すので、文字の帯は出さない
   hideContextBar(app); const stage = $('#d3stage') || $('#stage'); if (!stage || !inst) return; const editable = app.role() === 'A';
   const fam = app.model.familyOf(inst); const type = app.model.getType(inst.typeId); const p = app.model.resolved(inst); const parts = app.instanceParts(inst); const pt = part || (partIndex != null ? parts[partIndex] : null);
   const role = pt ? cadRole(pt) : null; app.ctx = { inst, partIndex, part: pt };

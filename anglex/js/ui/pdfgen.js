@@ -59,6 +59,6 @@ export async function buildReport(doc) {
   const pages = pdf.getPages(); pages.forEach((p, i) => { p.drawText(`${doc.footer || 'ANGLEX'}  —  ${i + 1} / ${pages.length}`, { x: M, y: 22, size: 7, font, color: mute }); p.drawText(new Date().toLocaleString('ja-JP'), { x: W - M - 90, y: 22, size: 7, font, color: mute }); });
   return pdf.save();
 }
-export async function downloadPdf(name, doc) { const bytes = await buildReport(doc); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+export async function downloadPdf(name, doc) { const bytes = await buildReport(doc); if (globalThis.__anglexCapture) { globalThis.__anglexCapture.push({ name, blob: new Blob([bytes], { type: 'application/pdf' }) }); return; } const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
 // SheetJS（XLSX）ローダ
 export async function loadXLSX() { if (window.XLSX) return window.XLSX; await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); return window.XLSX; }

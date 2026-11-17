@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANGLEX v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2313130f'/%3E%3Cpath d='M8 24 L16 8 L24 24 M11 18 H21' stroke='%23B8A67A' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body data-ui="v3">
+<div id="app" class="app">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">ANGLEX</span><span class="brand-sub">FABRICATION INTELLIGENCE · BIM</span></div>
+    <div class="topbar-divider"></div>
+    <div class="project-pill" id="projectPill"><span class="dot"></span><span class="pname" id="projectName">プロジェクト</span><span class="proj-branch" id="projectBranch" title="案件の営業所（クリックで変更）">—</span><span class="pmeta" id="projectMeta"></span></div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <span class="mode-badge" id="storeMode">local</span>
+      <div class="user-pill" id="userPill"><span class="org-badge" id="orgBadge">A</span><span id="userName">—</span><span class="branch-badge" id="branchBadge" title="所属営業所">—</span><span class="caret">▾</span></div>
+      <button class="btn ghost" id="btnSave" title="保存 (Ctrl+S)">保存</button>
+      <button class="btn ghost" id="btnSwitchUI" title="v2 インターフェース（サインイン → 5 ステップ）へ切替。プロジェクトは引き継がれます">⇄ UI v2</button>
+    </div>
+  </header>
+  <nav class="ribbon">
+    <div class="ribbon-tabs" id="ribbonTabs">
+      <button class="rtab on" data-tab="home">ホーム</button><button class="rtab" data-tab="import">読込</button><button class="rtab" data-tab="view">表示</button><button class="rtab" data-tab="project">プロジェクト</button><button class="rtab" data-tab="help">ヘルプ</button>
+    </div>
+    <div class="ribbon-panels">
+      <div class="rpanel on" data-panel="home">
+        <div class="rgroup"><div class="rgroup-title">配置</div><button class="rbtn big" id="btnCatalog"><span class="ri">▦</span>カタログ</button><button class="rbtn big" id="btnShowroom" title="製品を選ぶとその場で 3D に現れて並びます"><span class="ri">◫</span>ショールーム</button><button class="rbtn" id="btnWire" title="骨格の線（寸法・図面の線・直接入力）に断面を付けて架台を組む。端部の突き合わせ・斜め切りは自動">線から組む</button><button class="rbtn big" id="btnFamily"><span class="ri">◧</span>ファミリ</button><button class="rbtn" id="btnNewType">新規タイプ</button></div>
+        <div class="rgroup"><div class="rgroup-title">接合・加工</div><button class="rbtn big" id="btnJoint"><span class="ri">▷</span>接合</button><button class="rbtn" id="btnHoleTool">穴あけ</button><button class="rbtn" id="btnInstr">指示入力</button></div>
+        <div class="rgroup"><div class="rgroup-title">編集</div><button class="rbtn" id="btnMove">移動 (G)</button><button class="rbtn" id="btnRotate">回転 (R)</button><button class="rbtn" id="btnDup">複製</button><button class="rbtn danger" id="btnDelete">削除</button><button class="rbtn" id="btnUndo">↶</button><button class="rbtn" id="btnRedo">↷</button></div>
+        <div class="rgroup"><div class="rgroup-title">集計・見積</div><button class="rbtn big" id="btnDashboard2" title="案件横断ダッシュボード"><span class="ri">▦</span>案件一覧</button><button class="rbtn big" id="btnFlow" title="図面 → 確認 → 重量 → 見積 → 共有 → 確定 を 1 画面で"><span class="ri">⇶</span>業務フロー</button><button class="rbtn big" id="btnOrder" title="案件進行: 依頼から納品までの段階・期限・工場・書類"><span class="ri">⛟</span>案件進行 <span class="cnt" id="orderCnt"></span></button><button class="rbtn big" id="btnSchedules"><span class="ri">≣</span>集計表</button><button class="rbtn big" id="btnEstimate"><span class="ri">¥</span>見積</button><button class="rbtn" id="btnClash">干渉チェック</button></div>
+        <div class="rgroup"><div class="rgroup-title">確認・補正</div><button class="rbtn big" id="btnAlerts" title="人が必ず確認する箇所（溶接・穴・アンカー・図面根拠）の一覧。ここから溶接指示・穴あけ指示"><span class="ri">⚑</span>確認リスト</button><button class="rbtn" id="btnPins" title="図面と 3D の位置にピンを立てて、やり取りを残す (K)">💬 コメント <span class="cnt" id="pinCnt"></span></button><button class="rbtn" id="btnAlign" title="隙間・レベル不一致・穴の板外/5mm単位外・配管位置を検出して自動補正">ズレ補正</button></div>
+        <div class="rgroup"><div class="rgroup-title">作業</div><button class="rbtn" id="btnSnapshot" title="現在の状態に名前を付けて保存 (Ctrl+Shift+S)">作業を保存</button><button class="rbtn" id="btnHistory">作業履歴</button></div>
+      </div>
+      <div class="rpanel" data-panel="import">
+        <div class="rgroup"><div class="rgroup-title">図面・BIM 読込</div><button class="rbtn big" id="btnImport"><span class="ri">⤓</span>ファイル読込</button><button class="rbtn" id="btnDrawing">図面ビュー</button><button class="rbtn" id="btn3d">3D ビュー</button></div>
+        <div class="rgroup"><div class="rgroup-title">対応形式</div><div class="rtext">DXF・SVG・PDF・画像・TIFF / 部材リスト CSV・Excel / IFC・STEP・IGES / glTF・OBJ・STL・FBX・PLY・3MF・DAE・3DS / DSTV NC / ZIP<br>DWG・JWW・SFC/P21・RVT・DGN・SKP・3DM → サーバ変換（<span id="convStatus">未設定</span>）　<button class="rbtn" id="btnFormats" title="読込・書出しの対応形式を一覧で見る">対応形式一覧…</button></div></div>
+        <div class="rgroup"><div class="rgroup-title">デモ</div><button class="rbtn" id="btnDemoDxf">サンプル DXF</button><button class="rbtn" id="btnDemoModel">サンプルモデル</button></div>
+      </div>
+      <div class="rpanel" data-panel="view">
+        <div class="rgroup"><div class="rgroup-title">ビュー</div><button class="rbtn" data-view="3d">3D</button><button class="rbtn" data-view="iso">アイソメ</button><button class="rbtn" data-view="plan">平面</button><button class="rbtn" data-view="front">正面</button><button class="rbtn" data-view="side">側面</button><button class="rbtn" data-view="2d">図面</button><button class="rbtn" id="btnFit">全体表示</button></div>
+        <div class="rgroup"><div class="rgroup-title">表示スタイル</div><select id="selStyle" class="rsel"><option value="realistic">リアル（材質）</option><option value="shaded-edges" selected>陰影 + エッジ</option><option value="shaded">陰影</option><option value="hidden-line">隠線処理</option><option value="wireframe">ワイヤ</option><option value="ghost">半透明</option><option value="cad">CAD 図面色（暗背景・役割色）</option></select><select id="selEnv" class="rsel" title="HDRI 環境光（Poly Haven CC0）"><option value="studio">環境: スタジオ</option><option value="warehouse">環境: 倉庫（工場）</option><option value="workshop">環境: 工作機械室</option><option value="overcast">環境: 屋外</option></select><select id="selLod" class="rsel"><option value="200">LOD200 概略</option><option value="300">LOD300 設計</option><option value="400" selected>LOD400 製作</option></select><button class="rbtn" id="btnTheme">背景 明/暗</button></div>
+        <div class="rgroup"><div class="rgroup-title">補助</div><label class="chk" title="GTAO 接触陰影 + SMAA + HDRI 環境光"><input type="checkbox" id="chkQuality" checked>高品質</label><label class="chk"><input type="checkbox" id="chkGrid" checked>グリッド</label><label class="chk"><input type="checkbox" id="chkShadow" checked>影</label><label class="chk"><input type="checkbox" id="chkLevels" checked>レベル</label><label class="chk"><input type="checkbox" id="chkRefs" checked>参照（配管）</label><label class="chk"><input type="checkbox" id="chkSite" checked>現場材（アンカー・吊ボルト）</label><label class="chk"><input type="checkbox" id="chkTags" checked>符号</label><label class="chk" title="JIS Z 3021: ▷隅肉 ○全周 ▶現場溶接 V突合せ"><input type="checkbox" id="chkWeldSym" checked>溶接記号</label><label class="chk" title="未確認の確認事項を 3D 上に旗で表示"><input type="checkbox" id="chkAlerts" checked>確認フラグ</label></div>
+        <div class="rgroup"><div class="rgroup-title">分解・確認</div><button class="rbtn big" id="btnSim" title="シミュレータ v3: どの部品も押せる・数字が生きている・分解できる・壊せる（荷重を上げて限界を探す）"><span class="ri">⚙</span>シミュレータ</button><button class="rbtn big" id="btnExplodeView" title="選択部材を部品ごとにバラして確認（部品表・バルーン・単独表示）"><span class="ri">⤧</span>分解図</button><label class="chk" title="選択部材があればその部品を、無ければ部材同士をバラします">分解 <input type="range" id="rngExplode" min="0" max="1" step="0.05" value="0"></label><label class="chk"><input type="checkbox" id="chkBalloons">バルーン</label><button class="rbtn" id="btnUngroup" title="組立品を単材・板のインスタンスへ分解">個別部材化</button></div>
+        <div class="rgroup"><div class="rgroup-title">視点</div><button class="rbtn" id="btnCenter" title="選択部材を画面中央へ (C) ・ ダブルクリックでも中央へ">中央へ (C)</button><button class="rbtn" id="btnPan" title="左ドラッグで画面を掴んで移動（もう一度で回転に戻る）">✋ 手のひら</button><button class="rbtn" id="btnViews" title="視点ブックマーク (B): 今の視点に名前を付けて保存、一覧から戻る。📷 PDF を付けた視点は見積・指示書のスナップの角度になる">☆ 視点</button><button class="rbtn" id="btnSection">断面ボックス</button><button class="rbtn" id="btnMeasure">計測</button></div>
+      </div>
+      <div class="rpanel" data-panel="project">
+        <div class="rgroup"><div class="rgroup-title">プロジェクト</div><button class="rbtn big" id="btnDashboard" title="案件横断: 見積状態・担当・合計・期限。自分の番を上に"><span class="ri">▦</span>ダッシュボード</button><button class="rbtn" id="btnNew">新規</button><button class="rbtn" id="btnOpen">開く</button><button class="rbtn" id="btnSave2">保存</button><button class="rbtn" id="btnRename">名称変更</button></div>
+        <div class="rgroup"><div class="rgroup-title">書出し</div><button class="rbtn" id="btnExpJson">JSON</button><button class="rbtn" id="btnExpGltf">glTF/GLB</button><button class="rbtn" id="btnExpDxf">DXF 加工図</button><button class="rbtn" id="btnExpIfc">IFC-JSON</button><button class="rbtn" id="btnExpSimReady" title="USD + GLB + PBR テクスチャ + metadata（BOM/質量/重心）+ サムネイルの ZIP">SimReady パッケージ</button><button class="rbtn" id="btnExpIfc4" title="IFC4（.ifc）: BIM ソフト・IFC ビューア向け。実形状（穴つき）と属性">IFC4</button><button class="rbtn" id="btnExpAll" title="IFC4・OBJ・STL・PLY・USDZ・DXF 3D・加工図 SVG・DSTV NC・穴座標 CSV・部品 JSON・PNG ほか、すべての書出し形式">すべての形式…</button><button class="rbtn" id="btnShot">画像</button></div>
+        <div class="rgroup"><div class="rgroup-title">帳票</div><button class="rbtn" id="btnWeightPdf">重量計算書 PDF</button><button class="rbtn" id="btnWeightXlsx">重量計算書 XLSX</button><button class="rbtn" id="btnWeightCsv">重量計算書 CSV</button><button class="rbtn" id="btnEstPdf">見積書 PDF</button></div>
+        <div class="rgroup"><div class="rgroup-title">設定</div><button class="rbtn" id="btnRates">単価表</button><button class="rbtn" id="btnAdmin" title="拠点マスタ・ユーザーの所属・CSV 一括取込">営業所・ユーザー</button><button class="rbtn" id="btnLevels">レベル</button><button class="rbtn" id="btnUsers">アカウント</button></div>
+      </div>
+      <div class="rpanel" data-panel="help"><div class="rgroup"><div class="rgroup-title">情報</div><button class="rbtn" id="btnLicenses" title="同梱・利用している第三者ソフトウェアとライセンス。STEP 読込ライブラリ（LGPL）の差し替え">ライセンス</button><button class="rbtn" id="btnFormats2" title="読込・書出しの対応形式">対応形式</button></div><div class="rgroup"><div class="rtext help">
+        <b>考え方（Revit 準拠）</b>: ファミリ（パラメトリック定義）→ タイプ（寸法セット）→ インスタンス（配置）。タイプ パラメータ[T]の変更は同タイプ全てに、インスタンス パラメータ[I]は1体のみに反映。幾何・重量・集計・見積は同じ部品リストから生成（単一ソース）。<br>
+        <b>操作</b>: 左ドラッグ＝空間を回す（既定） / 右ドラッグ＝画面全体を掴んで動かす（✋/⟳ で左右を入替） / ホイール拡縮 / <b>部材をクリック（掴む）＝選択してその部材を画面中央へ、以後はそれを中心に回る</b> / 部材のダブルクリック＝その部材へ寄る、空白のダブルクリック＝全体へ戻る / 回している間は回転中心に十字、掴んだ部材は上中央のピルに表示（Esc で全体へ）。寄ったときはその部材の穴・溶接・確認だけ残し、3 秒触らなければゆっくり自転 / Alt+← / Alt+→ で視点の履歴 / 寄ってピルの「確認 N」＝見どころを順に回る（N で次、✓ で確認済） / B 視点ブックマーク（Shift+B で保存、📷 PDF で撮影角度に） / 寄るとピルの下に断面ゲージ（穴にホバーで 3D が光る） / C 選択部材を中央へ / F 全体表示 / ✋ 手のひら＝左ドラッグで画面を掴んで移動 / G 移動 / R 回転 / Delete 削除 / Ctrl+Z 元に戻す。<br>
+        <b>分解・CAD色</b>: 「分解図」で選択部材を部品ごとにバラし（スライダー・バルーン番号・部品表、行クリックでその部品だけ表示）、「個別部材化」で組立品を単材・板のインスタンスへ。表示スタイル「CAD 図面色」は図面ビューと同じ暗背景・役割色（柱=青 / 梁=緑 / ベース=青緑 / ガセット=紫 / 方杖=黄 / 支持金物=橙 / 配管=水色）で 3D と図面を照合できます。<br>
+        <b>接合</b>: 「接合」→ 2部材をクリック → 溶接 or ボルト。指示入力例: 「MF-1 と LB-1 を隅肉溶接 6 両側」「PL-1 を MF-1 に M12 ボルト 4本 @100 で接合」「MF-1 に φ15 穴 2個 @100 端から50 脚A」。<br>
+        <b>確認・補正</b>: 図面から 3D 化した部材には、溶接・穴・アンカー・図面根拠など人が必ず確認する箇所が「確認事項」として付き、3D に旗（⚑）で表示。プロパティの確認事項から「確認済」「溶接指示」「穴あけ指示」を行うと 3D・集計・見積に同期。「ズレ補正」は隙間・レベル・穴位置・配管位置を検出して自動修正。「作業を保存」（Ctrl+Shift+S）で名前付きスナップショット、「作業履歴」から復元。<br>
+        <b>多社ワークフロー</b>: A社（見積作成）→ B社（利益上乗せのみ）→ C社（工場原価のみ）。各社が触れる項目はフィールド単位で制限され、受け渡しごとに改訂凍結・監査ログ。</div></div></div>
+    </div>
+  </nav>
+  <main class="main">
+    <aside class="side left"><div class="side-head">プロジェクトブラウザ</div><div class="side-body" id="browser"></div></aside>
+    <section class="stage" id="stage">
+      <div class="viewport" id="viewport"></div>
+      <div class="drawing" id="drawing" hidden></div>
+      <div class="hud" id="hud"></div>
+      <div class="drop-hint" id="dropHint">図面・BIM ファイルをここへドロップ（DXF / PDF / IFC / glTF / DWG…）</div>
+      <div class="instr-box" id="instrBox"><input id="instrInput" placeholder="加工指示を日本語で入力（例: MF-1 と LB-1 を隅肉溶接 6 両側 / MF-1 に φ15 穴 2個 @100 端から50）"><button class="btn primary sm" id="instrRun">実行</button></div>
+    </section>
+    <aside class="side right"><div class="side-head">プロパティ</div><div class="side-body" id="props"></div></aside>
+  </main>
+  <footer class="statusbar"><span id="status">準備完了</span><span class="spacer"></span><span id="statusModel"></span><span class="sep"></span><span id="statusWarn"></span></footer>
+</div>
+<input type="file" id="fileInput" multiple hidden>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
