@@ -992,3 +992,33 @@ body.menu-open .drawer { visibility: visible; transition: none; }
 .form label .req { margin-left: 0; }
 
 .ebike-media::after { width: 22%; right: 5%; bottom: 5%; }
+
+/* ==========================================================================
+   Service cards: hover fills the card with the service colour and keeps it
+   (fix: the colour hex sat behind the white card and only flashed while the
+   card was transforming; reveal-stagger also overrode the hover lift)
+   ========================================================================== */
+.svc { isolation: isolate; background: #fff; }
+.svc::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--c);
+  clip-path: inset(100% 0 0 0 round var(--radius)); transition: clip-path .6s var(--ease-out);
+}
+.svc .hexmedia::before { z-index: -1; }
+.svc__body, .svc__body h3, .svc__body p, .svc__body .en, .svc .link-arrow { transition: color .35s var(--ease-out); }
+.svc .link-arrow .arrow { transition: background .35s, color .35s, transform .35s var(--ease-out); }
+.svc .svc__num { transition: background .35s, color .35s; }
+
+/* hover / keyboard focus — beats .reveal-stagger.is-in > * and its stagger delays */
+.svc-grid.is-in > .svc:hover, .svc-grid.is-in > .svc:focus-visible,
+.grid.is-in > .svc:hover, .grid.is-in > .svc:focus-visible,
+.svc:hover, .svc:focus-visible { transform: translateY(-6px); transition-delay: 0s; box-shadow: 0 1px 0 rgba(0,0,0,.05), 0 40px 60px -30px color-mix(in srgb, var(--c) 55%, rgba(0,0,0,.4)); }
+.svc:hover::before, .svc:focus-visible::before { clip-path: inset(0 0 0 0 round var(--radius)); }
+.svc:hover .svc__body, .svc:hover .svc__body h3, .svc:hover .svc__body p, .svc:hover .svc__body .en, .svc:hover .link-arrow,
+.svc:focus-visible .svc__body, .svc:focus-visible .svc__body h3, .svc:focus-visible .svc__body p, .svc:focus-visible .svc__body .en, .svc:focus-visible .link-arrow { color: #fff; }
+.svc:hover .svc__body .en, .svc:focus-visible .svc__body .en { color: rgba(255,255,255,.75); }
+.svc:hover .link-arrow .arrow, .svc:focus-visible .link-arrow .arrow { background: #fff; color: var(--c); transform: translateX(4px); }
+.svc:hover .svc__num, .svc:focus-visible .svc__num { background: #fff; color: var(--c); }
+.svc:hover .hexmedia::before, .svc:focus-visible .hexmedia::before { background: rgba(255,255,255,.28); transform: translate(8%, 7%) rotate(4deg); }
+/* the black bicycle variant needs light text too — already white; keep links readable on very light colours */
+html[data-bike="black"] .svc--bike:hover .link-arrow .arrow { color: #141414; }
+@media (hover: none) { .svc:hover::before { clip-path: inset(100% 0 0 0 round var(--radius)); } .svc:hover .svc__body, .svc:hover .svc__body h3, .svc:hover .svc__body p, .svc:hover .link-arrow { color: inherit; } .svc:hover .svc__body .en { color: var(--ink-3); } }
