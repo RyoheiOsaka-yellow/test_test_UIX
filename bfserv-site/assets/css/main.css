@@ -1041,3 +1041,57 @@ html[data-bike="black"] .svc--bike:hover .link-arrow .arrow { color: #141414; }
 .as-hero img:nth-child(2) { transform: translateY(14px); }
 .page-hero--as { isolation: isolate; }
 .page-hero--as .page-hero__inner { z-index: 1; }
+
+/* ==========================================================================
+   Review 2026-11-17: legibility & touch
+   ========================================================================== */
+:root {
+  --ink-3: #6b6860;                                   /* was #8a877f: 3.6:1 -> 5.3:1 on white */
+  --green-strong: #00803e; --cyan-strong: #0a7396; --pink-strong: #c42a70; --orange-strong: #b8490c; --blue-strong: #2457f5;
+  --bike-strong: var(--green-strong); --plus-strong: var(--pink-strong);
+  --accent-strong: var(--green-strong);
+}
+html[data-bike="pink"]  { --bike-strong: var(--pink-strong); --plus-strong: var(--green-strong); }
+html[data-bike="black"] { --bike-strong: #141414; }
+body[data-accent="green"]   { --accent-strong: var(--green-strong); }
+body[data-accent="bike"]    { --accent-strong: var(--bike-strong); }
+body[data-accent="blue"]    { --accent-strong: var(--blue-strong); }
+body[data-accent="cyan"]    { --accent-strong: var(--cyan-strong); }
+body[data-accent="plus"], body[data-accent="magenta"] { --accent-strong: var(--plus-strong); }
+body[data-accent="orange"]  { --accent-strong: var(--orange-strong); }
+/* fills that carry white text use the deeper shade (WCAG AA 4.5:1) */
+.btn--accent { --btn-bg: var(--accent-strong); --btn-fg: #fff; }
+.feature .hex-ic, .feature .hex-ic--icon, .step::before, .acc__btn .q, .product .tag, .honeycomb--areas > .area--main { background: var(--accent-strong); color: #fff; }
+.honeycomb--areas > .area--main span { color: rgba(255,255,255,.85); opacity: 1; }
+.svc { --c-strong: var(--green-strong); }
+.svc--bike { --c-strong: var(--bike-strong); } .svc--blue { --c-strong: var(--blue-strong); } .svc--cyan { --c-strong: var(--cyan-strong); }
+.svc--plus, .svc--magenta { --c-strong: var(--plus-strong); } .svc--orange { --c-strong: var(--orange-strong); }
+.svc__num { background: var(--c-strong); color: #fff; }
+.svc::before { background: var(--c-strong); }
+.svc:hover .link-arrow .arrow, .svc:focus-visible .link-arrow .arrow, .svc:hover .svc__num, .svc:focus-visible .svc__num { color: var(--c-strong); }
+.mobile-bar a:last-child { background: var(--accent-strong); color: #fff; }
+.breadcrumb { color: var(--ink-2); }
+/* minimum readable sizes */
+.header__logo small, .header__tel small { font-size: 11px; }
+.hero--brush .hero__cards .hex-ic { font-size: 11px; }
+.swatch b, .swatch { font-size: 11px; }
+.maker small { font-size: 12px; }
+.price-detail .pd > div { font-size: 13px; }
+/* Japanese headings: break between phrases, balance line lengths, never orphan one character */
+h1, h2, h3, .lead, .hero__big { word-break: auto-phrase; text-wrap: balance; }
+.nowrap { white-space: nowrap; }
+/* touch targets (>= 44px) */
+.drawer__side .sub a { display: block; padding: 10px 0; }
+.drawer__side .tel { display: inline-block; padding: 6px 0; }
+.link-arrow { min-height: 44px; }
+.footer li a { padding: 9px 0; }
+@media (max-width: 720px) { .breadcrumb a { display: inline-block; padding: 8px 0; } }
+/* mobile heroes: keep bubbles calm behind the text */
+@media (max-width: 960px) { .page-hero__fluid[data-blobs] { -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.5) 60%, #000); mask-image: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.5) 60%, #000); } }
+/* company map fallback */
+.map-box { position: relative; background: var(--sand) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='46'><polygon points='20,1 39,12 39,34 20,45 1,34 1,12' fill='none' stroke='%23000' stroke-opacity='.06'/></svg>"); }
+.map-box iframe { position: relative; z-index: 1; }
+.map-box__link { position: absolute; z-index: 2; right: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 999px; background: #fff; box-shadow: 0 8px 20px -10px rgba(0,0,0,.35); font-size: 13px; font-weight: 600; }
+
+.form label .req { color: var(--pink-strong); }
+.form label.check a { display: inline-block; padding: 12px 0; }
