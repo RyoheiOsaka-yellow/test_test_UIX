@@ -124,7 +124,7 @@
     }
 
     // --- config
-    const palette = (canvas.dataset.colors || '#f5c518,#2457f5,#00a54f,#ff6b1a,#e8408c,#19b5e0').split(',').map(s => hex(s.trim()));
+    const palette = (canvas.dataset.colors || '#00a54f,#2457f5,#19b5e0,#ff6b1a,#e8408c,#7fd8a8').split(',').map(s => hex(s.trim()));
     const bg = hex(canvas.dataset.bg || '#f8f5ec');
     const strength = parseFloat(canvas.dataset.strength || '1');
     const auto = canvas.dataset.auto !== '0';
