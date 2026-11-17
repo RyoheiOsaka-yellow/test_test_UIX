@@ -1182,3 +1182,4 @@ h1, h2, h3, .lead, .hero__big { word-break: auto-phrase; text-wrap: balance; }
 
 /* very narrow screens: long button labels may wrap instead of sticking out */
 @media (max-width: 400px) { .btn { white-space: normal; text-align: center; line-height: 1.4; max-width: 100%; } .tel-block .big { font-size: clamp(28px, 9vw, 40px); } }
+.btn { word-break: auto-phrase; }
