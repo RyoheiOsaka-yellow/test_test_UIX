@@ -714,12 +714,12 @@
  },
  "ad-analytics": {
   "title": "Performance-advertising analytics tool",
-  "eyebrow": "xAD / Data / Advertising",
+  "eyebrow": "xMOTION / Data / Advertising",
   "tags": "Other",
   "lead": "A tool that analyses performance-advertising data and visualises results.",
   "alts": [
    "Performance-advertising analytics | Geo-lift experiment design and incremental lift measurement",
-   "Performance-advertising analytics | xAD",
+   "Performance-advertising analytics | xMOTION",
    "Performance-advertising analytics | Industry dashboards",
    "Performance-advertising analytics | Effect analysis and improvement-proposal report",
    "Performance-advertising analytics | What the data shows (observations)",
@@ -763,7 +763,7 @@
  },
  "retail-promo-sim": {
   "title": "In-store promotion simulation",
-  "eyebrow": "xAD / In-store promotion / Simulation",
+  "eyebrow": "xMOTION / In-store promotion / Simulation",
   "tags": "Retail, Other",
   "lead": "A simulator that reproduces a store in 3D and tests how combinations of digital advertising, in-store signage, giveaways, and shelf layout work from store visit through to purchase. Online ad exposure and offline in-store behaviour are linked in a single model.",
   "alts": [

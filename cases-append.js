@@ -5,12 +5,12 @@ const path = require('path');
 
 const PRODUCT_OF = {
   XBUILD: { id: 'xbuild', label: 'xBUILD' },
-  XAD: { id: 'xad', label: 'xAD' },
+  XMOTION: { id: 'xmotion', label: 'xMOTION' },
   XINTERACTIVE: { id: 'xinteractive', label: 'xINTERACTIVE' },
 };
 
 function productOf(eyebrow) {
-  const m = /^(XBUILD|XAD|XINTERACTIVE)/.exec((eyebrow || '').toUpperCase());
+  const m = /^(XBUILD|XMOTION|XINTERACTIVE)/.exec((eyebrow || '').toUpperCase());
   return m ? PRODUCT_OF[m[1]] : null;
 }
 
@@ -111,7 +111,7 @@ const COMMON = {
   cs_nav_list:  ['← 事例一覧', '← All cases'],
   cs_nav_contact: ['お問い合わせ →', 'Contact →'],
   cs_about_xbuild: ['xBUILD について →', 'About xBUILD →'],
-  cs_about_xad: ['xAD について →', 'About xAD →'],
+  cs_about_xmotion: ['xMOTION について →', 'About xMOTION →'],
   cs_about_xinteractive: ['xINTERACTIVE について →', 'About xINTERACTIVE →'],
 };
 
@@ -277,13 +277,13 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID, extra }) {
       '<script>window.__PAGE=' + JSON.stringify(meta.page) + ';</script>\n<link rel="preconnect" href="https://fonts.googleapis.com">');
     // ハッシュルーターのリンクを実URLへ（これが無いと事例ページから事業・法務へ飛べない）
     h = h.replace(/href="#\/xbuild"/g, 'href="/xbuild/"')
-         .replace(/href="#\/xad"/g, 'href="/xad/"')
+         .replace(/href="#\/xmotion"/g, 'href="/xmotion/"')
          .replace(/href="#\/xinteractive"/g, 'href="/xinteractive/"')
          .replace(/href="#\/privacy"/g, 'href="/privacy/"')
          .replace(/href="#\/terms"/g, 'href="/terms/"');
     // ヘッダー/フッターのリンクはサブページ扱い
     h = h.replace(/<a class="back" href="#top"/g, '<a class="back" href="/"')
-         .replace(/href="#(contact|record|company|careers|xbuild|xad|xinteractive|hero)"/g, 'href="/#$1"')
+         .replace(/href="#(contact|record|company|careers|xbuild|xmotion|xinteractive|hero)"/g, 'href="/#$1"')
          .replace(/<a href="#top" class="hdr__logo">/g, '<a href="/" class="hdr__logo">');
     const out = path.join(DIST, dir);
     fs.mkdirSync(out, { recursive: true });

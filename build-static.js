@@ -1,5 +1,5 @@
 // v8（1URL・ハッシュルーター）から、実URLを持つ静的サイトを生成する。
-//   dist/index.html  /xinteractive/  /xad/  /xbuild/  /privacy/  /terms/
+//   dist/index.html  /xinteractive/  /xmotion/  /xbuild/  /privacy/  /terms/
 // 各ファイルは自分のページのマークアップだけを持ち、独自の title / description /
 // canonical / OGP / JSON-LD を備える。ページ間は通常のページ遷移。
 const fs = require('fs');
@@ -11,29 +11,29 @@ const ORIGIN = 'https://yellow.technology';   // ★ドメイン確定時はこ�
 
 const ROUTES = [
   { id: 'home', dir: '', title: '株式会社YELLOW｜研究を、素材として。',
-    desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。xINTERACTIVE（エンタメ・体験・UI/UX）、xAD（戦略分析とプロトタイピング）、xBUILD（人流・工業の大規模開発）の3つの事業を手がけます。群馬県高崎市。',
+    desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。xINTERACTIVE（楽しさと好奇心のための体験・UI/UX）、xMOTION（動きながら考える、伴走型のプロトタイピング）、xBUILD（人流・工業など、より大きなものの開発）の3つの事業を手がけます。群馬県高崎市。',
     en: { title: 'YELLOW Inc. — Research as material.',
-          desc: 'YELLOW Inc. turns research seeds into real products: xINTERACTIVE (experiences and UI/UX), xAD (strategy and prototyping), xBUILD (mobility and industry).' } },
-  { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜エンタメ・体験・UI/UXに、研究シーズとAIの知見を — 株式会社YELLOW',
-    desc: 'エンターテインメント、体験、UI/UXを対象に、研究シーズ（リアルタイム3D、シミュレーション、空間データ）とAIの知見を盛り込んだプロジェクトを提供。企画・体験設計から実装、現場運用まで手がけます。株式会社YELLOWの事業 xINTERACTIVE。',
-    en: { title: 'xINTERACTIVE — Entertainment, experiences and UI/UX, built with research seeds and AI | YELLOW Inc.',
-          desc: 'Projects for entertainment, experiences and UI/UX, built with research seeds (real-time 3D, simulation, spatial data) and AI, from concept to on-site operation.' },
-    service: { name: 'xINTERACTIVE', alt: 'エンタメ・体験・UI/UXの企画・開発',
-               desc: 'エンターテインメント、体験、UI/UXを対象に、研究シーズやAIの知見を盛り込んで提供するプロジェクト。',
+          desc: 'YELLOW Inc. turns research seeds into real products: xINTERACTIVE (experiences for delight and curiosity), xMOTION (hands-on prototyping, thinking in motion), xBUILD (bigger builds for mobility and industry).' } },
+  { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜楽しさと好奇心のために、エンタメ・体験・UI/UXをつくる — 株式会社YELLOW',
+    desc: '楽しさと好奇心のためにつくる事業。エンターテインメント、体験、UI/UXを対象に、研究シーズ（リアルタイム3D、シミュレーション、空間データ）とAIの知見を盛り込み、企画・体験設計から実装、現場運用まで手がけます。株式会社YELLOWの事業 xINTERACTIVE。',
+    en: { title: 'xINTERACTIVE — Entertainment, experiences and UI/UX, built for delight and curiosity | YELLOW Inc.',
+          desc: 'Built for delight and curiosity: entertainment, experiences and UI/UX made with research seeds (real-time 3D, simulation, spatial data) and AI, from concept to on-site operation.' },
+    service: { name: 'xINTERACTIVE', alt: '楽しさと好奇心のための、エンタメ・体験・UI/UXの企画・開発',
+               desc: '楽しさと好奇心のために、エンターテインメント、体験、UI/UXを、研究シーズやAIの知見を盛り込んでつくるプロジェクト。',
                offers: ['体験・エンターテインメント', 'UI/UX デザイン・開発'] } },
-  { id: 'xad', dir: 'xad', title: 'xAD｜戦略分析とプロトタイピングを、PM・コンサルタントとして — 株式会社YELLOW',
-    desc: '新規事業やマーケティングの戦略分析と、AIを使ったプロトタイピングを、プロジェクトマネージャー・コンサルタントとして担います。データから戦略を設計し、試せる形まで届けます。株式会社YELLOWの事業 xAD。',
-    en: { title: 'xAD — Strategy analysis and prototyping, as project managers and consultants | YELLOW Inc.',
-          desc: 'Strategy analysis and AI-driven prototyping for new businesses and marketing, delivered as project managers and consultants: from data to something you can test.' },
-    service: { name: 'xAD', alt: '戦略分析・プロトタイピング（PM・コンサルティング）',
-               desc: '戦略分析とプロトタイピングを、プロジェクトマネージャー・コンサルタントとして担うプロジェクト。',
-               offers: ['プロトタイピング', '戦略分析'] } },
-  { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜人流や工業など、大規模な領域の分析と開発 — 株式会社YELLOW',
-    desc: '人流や工業といった大規模な領域の開発プロジェクト。都市・施設・工場・設備をデジタルツインとして再現し、人流データや点群、衛星データ、機械の稼働までを分析して、現場で動くシステムまで開発します。株式会社YELLOWの事業 xBUILD。',
-    en: { title: 'xBUILD — Large-scale analysis and development, from mobility to industry | YELLOW Inc.',
-          desc: 'Large-scale development for mobility and industry: cities, factories and equipment as digital twins, analysed and built into systems that run on site.' },
-    service: { name: 'xBUILD', alt: '人流・工業の大規模開発（デジタルツイン・システム開発）',
-               desc: '人流や工業といった大規模な領域の分析と開発を行うプロジェクト。',
+  { id: 'xmotion', dir: 'xmotion', title: 'xMOTION｜動きながら考える、伴走型のプロトタイピング — 株式会社YELLOW',
+    desc: '動きながら考える、伴走型のプロトタイピング。プロジェクトマネージャー・コンサルタントとしてチームに入り、AIを使った試作と分析を短いサイクルで回して、試せる形をつくります。株式会社YELLOWの事業 xMOTION。',
+    en: { title: 'xMOTION — Hands-on prototyping, thinking in motion | YELLOW Inc.',
+          desc: 'Thinking while moving: we join your team as project managers and consultants and run short loops of AI-driven prototypes and analysis until there is something you can test.' },
+    service: { name: 'xMOTION', alt: '伴走型のプロトタイピング（PM・コンサルティング）',
+               desc: '動きながら考える、伴走型のプロトタイピングのプロジェクト。プロジェクトマネージャー・コンサルタントとしてチームに入り、試作と分析を往復させる。',
+               offers: ['伴走型プロトタイピング', '検証と分析'] } },
+  { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜人流や工業など、より大きなものをつくる — 株式会社YELLOW',
+    desc: 'より大きなものをつくる事業。人流や工業といった大規模な領域で、都市・施設・工場・設備をデジタルツインとして再現し、人流データや点群、衛星データ、機械の稼働までを分析して、現場で動くシステムまで開発します。株式会社YELLOWの事業 xBUILD。',
+    en: { title: 'xBUILD — Building bigger things, from mobility to industry | YELLOW Inc.',
+          desc: 'We build bigger things for mobility and industry: cities, factories and equipment as digital twins, analysed and built into systems that run on site.' },
+    service: { name: 'xBUILD', alt: '人流・工業など、より大きなものの開発（デジタルツイン・システム開発）',
+               desc: '人流や工業といった、より大きなものをつくるプロジェクト。',
                offers: ['工業・設備', '人流・都市'] } },
   { id: 'privacy', dir: 'privacy', title: 'プライバシーポリシー — 株式会社YELLOW',
     desc: '株式会社YELLOWのウェブサイトにおける個人情報の取り扱いについて定めています。取得する情報、利用目的、第三者提供、委託、安全管理、開示・訂正・削除の窓口を記載しています。',
@@ -53,12 +53,12 @@ const ORG_LD = {
   logo: { '@type': 'ImageObject', url: ORIGIN + '/og.png', width: 1200, height: 630 },
   email: 'info@yellow.technology',
   foundingDate: '2022',
-  description: '大学・研究機関・企業の技術シーズを社会へ橋渡しする会社。xINTERACTIVE（エンタメ・体験・UI/UX）、xAD（戦略分析とプロトタイピング）、xBUILD（人流・工業の大規模開発）の3つの事業を手がける。',
+  description: '大学・研究機関・企業の技術シーズを社会へ橋渡しする会社。xINTERACTIVE（楽しさと好奇心のための体験・UI/UX）、xMOTION（動きながら考える、伴走型のプロトタイピング）、xBUILD（人流・工業など、より大きなものの開発）の3つの事業を手がける。',
   address: {
     '@type': 'PostalAddress', addressCountry: 'JP', addressRegion: '群馬県',
     addressLocality: '高崎市', streetAddress: '白銀町9番地 白銀ビル3F',
   },
-  knowsAbout: ['技術シーズの社会実装', 'インタラクティブコンテンツ', 'デジタルサイネージ・什器', '販促・広告のデータ分析', 'AIプロトタイピング', 'デジタルツイン', '3Dモデリング', '点群データ', '産学連携'],
+  knowsAbout: ['技術シーズの社会実装', 'インタラクティブコンテンツ', 'デジタルサイネージ・什器', '販促・広告のデータ分析', 'AIプロトタイピング', '伴走型プロトタイピング', 'デジタルツイン', '3Dモデリング', '点群データ', '産学連携'],
   member: [
     { '@type': 'Person', name: '大坂 亮平', jobTitle: '共同創業者' },
     { '@type': 'Person', name: '岩渕 知弘', jobTitle: '共同創業者' },
@@ -348,13 +348,13 @@ for (const r of ROUTES) {
 
   // 2b. リンクを実URLへ。サブページからのセクションリンクはトップ配下へ
   h = h.replace(/href="#\/xbuild"/g, 'href="/xbuild/"')
-       .replace(/href="#\/xad"/g, 'href="/xad/"')
+       .replace(/href="#\/xmotion"/g, 'href="/xmotion/"')
        .replace(/href="#\/xinteractive"/g, 'href="/xinteractive/"')
        .replace(/href="#\/privacy"/g, 'href="/privacy/"')
        .replace(/href="#\/terms"/g, 'href="/terms/"');
   if (r.id !== 'home') {
     h = h.replace(/<a class="back" href="#top"/g, '<a class="back" href="/"');
-    h = h.replace(/href="#(contact|record|selected-cases|news|company|careers|xbuild|xad|xinteractive|hero)"/g, 'href="/#$1"');
+    h = h.replace(/href="#(contact|record|selected-cases|news|company|careers|xbuild|xmotion|xinteractive|hero)"/g, 'href="/#$1"');
     h = h.replace(/<a href="#top" class="hdr__logo">/g, '<a href="/" class="hdr__logo">');
     h = h.replace(/<a class="ft__logo-link" href="#top">/g, '<a class="ft__logo-link" href="/">');
   }
@@ -495,11 +495,11 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 株式会社YELLOWは、研究水準の手法と、その現場での実装をつなぐレイヤーを担う。
 事業は3つに整理されている。
 
-- **xINTERACTIVE（動かす）**: エンターテインメント、体験、UI/UXを対象に、研究シーズやAIの知見を盛り込んで提供するプロジェクト。
+- **xINTERACTIVE（楽しく、つくる）**: 楽しさと好奇心のためにつくるプロジェクト。エンターテインメント、体験、UI/UXを対象に、研究シーズやAIの知見を盛り込む。
   内訳は「体験・エンターテインメント」と「UI/UX デザイン・開発」。企画・体験設計から実装、現場運用まで。
-- **xAD（届ける）**: 戦略分析とプロトタイピングを、プロジェクトマネージャー・コンサルタントとして担うプロジェクト。
-  内訳は「プロトタイピング」と「戦略分析」。分析と試作を往復させ、意思決定と実行を伴走する。
-- **xBUILD（つくる）**: 人流や工業といった大規模な領域の分析と開発を行うプロジェクト。
+- **xMOTION（動きながら、つくる）**: 動きながら考える、伴走型のプロトタイピングのプロジェクト。プロジェクトマネージャー・コンサルタントとしてチームに入る。
+  内訳は「伴走型プロトタイピング」と「検証と分析」。試作と分析を往復させ、意思決定と実行を一緒に前へ進める。旧称 xAD。
+- **xBUILD（大きく、つくる）**: 人流や工業など、より大きなものをつくるプロジェクト。
   都市・施設・工場・設備をデジタルツインとして再現し、現場で稼働するシステムまで開発する。
   内訳は「工業・設備」と「人流・都市」。TOLIC 加盟。
 
@@ -508,9 +508,9 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 - [ホーム](${ORIGIN}/): 会社概要、3プロダクト、事例、お知らせ、採用、お問い合わせ
 - [事例](${ORIGIN}/cases/): 実装した事例の一覧
 - [お知らせ](${ORIGIN}/news/): 採択・加盟・プレスリリース
-- [xINTERACTIVE](${ORIGIN}/xinteractive/): エンタメ・体験・UI/UX（研究シーズ×AI）
-- [xAD](${ORIGIN}/xad/): 戦略分析とプロトタイピング（PM・コンサルティング）
-- [xBUILD](${ORIGIN}/xbuild/): 人流・工業の大規模開発（デジタルツイン）
+- [xINTERACTIVE](${ORIGIN}/xinteractive/): 楽しさと好奇心のための体験・UI/UX（研究シーズ×AI）
+- [xMOTION](${ORIGIN}/xmotion/): 動きながら考える、伴走型のプロトタイピング（PM・コンサルティング）
+- [xBUILD](${ORIGIN}/xbuild/): 人流・工業など、より大きなものの開発（デジタルツイン）
 - [プライバシーポリシー](${ORIGIN}/privacy/)
 - [利用規約](${ORIGIN}/terms/)
 
@@ -611,4 +611,24 @@ function execSizeMB(dir) {
   const finalize = require('./seo-append.js');
   const r = finalize({ DIST, ORIGIN, newsItems: NEWS_ITEMS, cases: CASES.cases, routes: ROUTES, today });
   console.log('日本語版ページ ' + r.ja + ' 件（/ja/）、hreflang・RSS・画像つきサイトマップ・llms-full.txt を出力');
+}
+
+// ── 5. 旧名 xAD（現 xMOTION）の URL を新しいページへ送る
+//      サーバ設定（.htaccess / _redirects）で 301。設定が効かない置き場所でも、旧 URL に置いた
+//      案内ページがすぐ新しいページへ移す（検索エンジンには noindex と canonical で新 URL を伝える）。
+//      サイトマップに載らないよう、SEO の仕上げ（4.）のあとに書く
+{
+  const OLD = [['xad/', 'xmotion/'], ['ja/xad/', 'ja/xmotion/']];
+  for (const [from, to] of OLD) {
+    fs.mkdirSync(DIST + from, { recursive: true });
+    fs.writeFileSync(DIST + from + 'index.html',
+      '<!doctype html><html lang="' + (from.startsWith('ja/') ? 'ja' : 'en') + '"><head><meta charset="utf-8">'
+      + '<meta name="robots" content="noindex"><link rel="canonical" href="' + ORIGIN + '/' + to + '">'
+      + '<meta http-equiv="refresh" content="0; url=/' + to + '"><title>xMOTION | YELLOW Inc.</title>'
+      + '<script>location.replace("/' + to + '" + location.search + location.hash);</script></head>'
+      + '<body><p><a href="/' + to + '">xMOTION</a></p></body></html>\n');
+  }
+  fs.appendFileSync(DIST + '.htaccess', '\n# 旧名 xAD（現 xMOTION）\nRedirectMatch 301 ^/xad/?$ /xmotion/\nRedirectMatch 301 ^/ja/xad/?$ /ja/xmotion/\n');
+  fs.writeFileSync(DIST + '_redirects', '/xad      /xmotion/     301\n/xad/     /xmotion/     301\n/ja/xad   /ja/xmotion/  301\n/ja/xad/  /ja/xmotion/  301\n');
+  console.log('旧 URL /xad/ → /xmotion/ の転送を出力（.htaccess / _redirects / 案内ページ）');
 }

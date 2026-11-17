@@ -3,22 +3,22 @@
   "id": "about",
   "ja": {
    "q": "株式会社YELLOWはどのような会社ですか？",
-   "a": "大学・研究機関・企業が持つ技術シーズを社会に実装する会社です。群馬県高崎市に本社を置き、2022年に設立しました。xINTERACTIVE、xAD、xBUILD の3つの事業で、エンタメ・体験・UI/UXの開発から、戦略分析とプロトタイピングの伴走、人流や工業の大規模開発までを手がけます。"
+   "a": "大学・研究機関・企業が持つ技術シーズを社会に実装する会社です。群馬県高崎市に本社を置き、2022年に設立しました。xINTERACTIVE、xMOTION、xBUILD の3つの事業で、楽しさと好奇心のための体験・UI/UXの開発、動きながら考える伴走型のプロトタイピング、人流や工業など、より大きなものの開発を手がけます。"
   },
   "en": {
    "q": "What does YELLOW Inc. do?",
-   "a": "YELLOW brings technology seeds from universities, research institutions and companies into society. Founded in 2022 and based in Takasaki, Gunma, we work through three businesses: xINTERACTIVE, xAD and xBUILD, covering entertainment, experience and UI/UX development; strategy analysis and prototyping as project managers and consultants; and large-scale development for mobility and industry."
+   "a": "YELLOW brings technology seeds from universities, research institutions and companies into society. Founded in 2022 and based in Takasaki, Gunma, we build through three businesses: xINTERACTIVE, xMOTION and xBUILD, covering experiences and UI/UX for delight and curiosity; hands-on prototyping that thinks in motion; and bigger, large-scale development for mobility and industry."
   }
  },
  {
   "id": "products",
   "ja": {
-   "q": "xINTERACTIVE・xAD・xBUILD の違いは何ですか？",
-   "a": "xINTERACTIVE は、エンターテインメント・体験・UI/UXを対象に、研究シーズやAIの知見を盛り込んで提供するプロジェクトです。xAD は、戦略分析とプロトタイピングをプロジェクトマネージャー・コンサルタントとして担うプロジェクトです。xBUILD は、人流や工業といった大規模な領域の分析と開発を行うプロジェクトです。"
+   "q": "xINTERACTIVE・xMOTION・xBUILD の違いは何ですか？",
+   "a": "3つとも「つくる」事業ですが、何のためにつくるかが違います。xINTERACTIVE は、楽しさと好奇心のために、エンターテインメント・体験・UI/UXをつくります。xMOTION は、動きながら考える伴走型のプロトタイピングで、PM・コンサルタントとしてチームに入り、試作と分析を往復させます。xBUILD は、人流や工業など、より大きなものをつくります。"
   },
   "en": {
-   "q": "What is the difference between xINTERACTIVE, xAD and xBUILD?",
-   "a": "xINTERACTIVE delivers projects for entertainment, experiences and UI/UX, bringing in research seeds and AI know-how. xAD takes on strategy analysis and prototyping, with YELLOW acting as project manager and consultant. xBUILD carries out large-scale analysis and development for fields such as mobility and industry."
+   "q": "What is the difference between xINTERACTIVE, xMOTION and xBUILD?",
+   "a": "All three are about building; what differs is what we build for. xINTERACTIVE builds entertainment, experiences and UI/UX for delight and curiosity. xMOTION is hands-on prototyping that thinks in motion: we join the team as project managers and consultants and move back and forth between prototype and analysis. xBUILD builds bigger things, in fields such as mobility and industry."
   }
  },
  {

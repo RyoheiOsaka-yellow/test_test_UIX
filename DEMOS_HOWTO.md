@@ -30,7 +30,7 @@ demos/src/lattice.html
   "slots": {
     "xbuild-hero":       ["flowfield", "lattice", "truss", "weld"],
     "xinteractive-hero": ["morphosis"],
-    "xad-cap01":         []
+    "xmotion-cap01":         []
   }
 }
 ```
@@ -69,9 +69,9 @@ demos/src/lattice.html
 
 | ページ | スロット名 |
 |---|---|
-| トップ | `home-hero` `home-xbuild` `home-xad` `home-xinteractive` `home-careers` `home-contact` |
+| トップ | `home-hero` `home-xbuild` `home-xmotion` `home-xinteractive` `home-careers` `home-contact` |
 | xBUILD | `xbuild-hero` `xbuild-cap01` `xbuild-cap02` |
-| xAD | `xad-hero` `xad-cap01` `xad-cap02` |
+| xMOTION | `xmotion-hero` `xmotion-cap01` `xmotion-cap02` |
 | xINTERACTIVE | `xinteractive-hero` `xinteractive-cap01` `xinteractive-cap02` |
 
 ### 3. ビルドする
@@ -157,17 +157,25 @@ node build-static.js    # 公開用 dist/ を作り直す
 `demos.json` の `mobile` で決めます。
 
 ```json
-"mobile": { "dpr": 1.0, "shift": { "home-xad": "-17%" }, "skip": ["xad-store", "xbuild-factory", "xbuild-arena"] }
+"mobile": { "dpr": 1.0, "shift": {}, "skip": ["xmotion-store", "xbuild-factory", "xbuild-arena"] }
 ```
 
 - `shift` … スマホでデモの絵柄が見出しに重なるスロットを上へずらす量（デモとポスターの両方が動く）。
   縦長の画面では文字が画面の下半分に来るので、中央にロゴがあるデモで使います
 
 **スマホ用のポスター**: 横長のポスターを縦長の画面に敷くと絵柄の左右が切れます。気になるスロットは、
-そのセクションの `style` に `--bg-sp:url(...)`（縦長の静止画）と `--bg-sp-size:cover` を足すと、
-幅 900px 以下ではそちらが使われます。静止画は `node demos/tools/poster-sp.js <デモ.html> <出力.webp>` で
-撮れます（390×844 の 2倍。動きを止めた状態で撮るので、動く版の最初の絵と同じ位置・大きさになる）。
-xAD のトップのパネルで使っています（元画像は `demos/src/xad-logo.poster-sp.webp`）
+そのセクションの `style` に `--bg-sp:url(...)`（縦長の静止画）を足すと、幅 900px 以下の縦向きではそちらが使われます。
+敷き方は `--bg-sp-size` / `--bg-sp-pos` / `--bg-sp-color` で決めます。スマホは機種やブラウザの枠で縦の長さが
+変わるので、幅に合わせて敷き（`100% auto`）、絵柄の要（ロゴなど）がある高さの割合を `--bg-sp-pos` に入れると、
+どの縦横比でも動く版と同じ位置に来ます（静止画が短い画面で余る上下は `--bg-sp-color` で埋める）。
+静止画は `node demos/tools/poster-sp.js <デモ.html> <出力.webp>` で撮れます（390×844 の 2倍。動きを止めた状態で撮る）。
+トップの xMOTION のパネルで使っています（元画像は `demos/src/xmotion-logo.poster-sp.webp`、
+指定は `--bg-sp-size:100% auto;--bg-sp-pos:50% 33%;--bg-sp-color:#0d0d10`）。
+
+**ロゴのデモ（xmotion-logo）**: 文字はフォントで組まず、Inter Black のアウトラインをマスクにして塗っています。
+フォントで組むと端末ごとに別の書体に置き換わり、静止画と動く版で字形も幅も変わるためです。
+アウトラインは `node demos/tools/outline-mark.js <Inter-Black.otf> xMOTION <out.svg>` で作り、デモの CSS の
+`mask` に入れます。大きさと位置はパネルの高さ基準（vh）なので、静止画とどの画面でも一致します。
 
 - `dpr` … 描画解像度の上限。多くのデモは端末の画素密度をそのまま描画に使うため、
   3倍の端末では9倍の画素を描くことになります。1.0 に抑えると描画量が9分の1です
@@ -250,8 +258,8 @@ HTML ファイルをそのまま送っていただければ、こちらで
 
 ## 各デモの「合図のあとの動き」（patch で仕込んであるもの）
 
-- `xad-store`（xAD ヒーロー）: 起動時から「デジタルツイン（点群×CCTV）」表示。設定パネルは畳み、
-  LOG・ホットスポット・ライブ・KPI は出したまま。パネル位置は `xad-store.css` でサイトのヘッダーと
+- `xmotion-store`（xMOTION ヒーロー）: 起動時から「デジタルツイン（点群×CCTV）」表示。設定パネルは畳み、
+  LOG・ホットスポット・ライブ・KPI は出したまま。パネル位置は `xmotion-store.css` でサイトのヘッダーと
   左下の見出しを避けて配置。ポスターはヒーロー枠と同じ縦横比（1440×1062）で撮る。
 - `xbuild-factory`（xBUILD ヒーロー）: 第一ペイント棟の内部を BIM 表示にし、作業者目線（高さ 1.62m）で
   通路を自動で歩く。歩行可能な 1m 格子を作り、通路の真ん中を優先する経路（右通路 → 充填ライン →

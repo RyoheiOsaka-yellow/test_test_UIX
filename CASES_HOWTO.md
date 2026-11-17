@@ -65,7 +65,7 @@ node build-static.js
 | `key` | ● | **URLになります**（`/cases/<key>/`）。英小文字・数字・ハイフンのみ。あとから変えると既存リンクが切れるので慎重に |
 | `title` | ● | 事例名。ページの `<h1>` と `<title>` |
 | `lead` | ● | 要約。カード・meta description・OGP・llms.txt に使われる。**検索結果に出る文章なので一番重要** |
-| `eyebrow` | | 見出しの上の小さい文字。先頭を `XBUILD` / `XAD` / `XINTERACTIVE` にすると、その事業ページへのリンクが自動で付く |
+| `eyebrow` | | 見出しの上の小さい文字。先頭を `XBUILD` / `XMOTION` / `XINTERACTIVE` にすると、その事業ページへのリンクが自動で付く |
 | `demo` | | 「デモを開く」ボタンのURL。省略するとボタンが出ない |
 | `imgs` | ● | 最低1枚。1枚目が一覧のサムネイル。詳細ページは最大6枚まで表示 |
 | `sections` | | 本文。`paras` は段落の配列、`items` は箇条書きの配列。どちらか片方だけでも可 |

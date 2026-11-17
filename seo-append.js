@@ -141,7 +141,7 @@ module.exports = function finalize({ DIST, ORIGIN, newsItems, cases, routes, tod
   }
 
   // ── サイトマップ（英日・hreflang・画像）
-  const prio = (e) => e.rel === '' ? '1.0' : /^(xinteractive|xad|xbuild)\/$/.test(e.rel) ? '0.8' : e.rel === 'cases/' ? '0.9' : /^cases\//.test(e.rel) ? '0.7' : /^news\/.+/.test(e.rel) ? '0.6' : /^news\/$/.test(e.rel) ? '0.8' : '0.3';
+  const prio = (e) => e.rel === '' ? '1.0' : /^(xinteractive|xmotion|xbuild)\/$/.test(e.rel) ? '0.8' : e.rel === 'cases/' ? '0.9' : /^cases\//.test(e.rel) ? '0.7' : /^news\/.+/.test(e.rel) ? '0.6' : /^news\/$/.test(e.rel) ? '0.8' : '0.3';
   const urlXml = (loc, e, withImages) => `  <url>
     <loc>${loc}</loc>
     <lastmod>${e.date || today}</lastmod>

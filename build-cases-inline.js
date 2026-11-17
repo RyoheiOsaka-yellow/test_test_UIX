@@ -40,7 +40,7 @@ function toHash(html) {
     .replace(/href="\/cases\/"/g, 'href="#/cases"')
     .replace(/href="\/news\/([a-z0-9-]+)\/"/g, 'href="#/news/$1"')
     .replace(/href="\/news\/"/g, 'href="#/news"')
-    .replace(/href="\/(xbuild|xad|xinteractive)\/"/g, 'href="#/$1"')
+    .replace(/href="\/(xbuild|xmotion|xinteractive)\/"/g, 'href="#/$1"')
     .replace(/href="\/#contact"/g, 'href="#contact"')
     .replace(/href="\/"/g, 'href="#top"');
 }
