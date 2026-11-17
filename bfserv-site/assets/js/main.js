@@ -205,12 +205,18 @@
     });
   }
 
-  /* ---------- fluid canvas on sub-page heroes (fluid.js picks it up) ---------- */
+  /* ---------- pastel bubble canvas on sub-page heroes (blobs.js picks it up) ---------- */
+  const rootCS = getComputedStyle(document.documentElement);
+  const ACCENT = name => ({ green: '#00a54f', blue: '#2457f5', cyan: '#19b5e0', orange: '#ff6b1a', magenta: '#e8408c',
+    bike: (rootCS.getPropertyValue('--bike') || '#00a54f').trim(), plus: (rootCS.getPropertyValue('--plus') || '#e8408c').trim() }[name] || '#00a54f');
   $$('.page-hero:not([data-no-fluid])').forEach(hero => {
-    const c = document.createElement('canvas'); c.className = 'page-hero__fluid'; c.setAttribute('data-fluid', '');
+    const c = document.createElement('canvas'); c.className = 'page-hero__fluid'; c.setAttribute('data-blobs', '');
     const bg = getComputedStyle(hero).backgroundColor.match(/\d+/g);
     if (bg) c.dataset.bg = '#' + bg.slice(0, 3).map(n => (+n).toString(16).padStart(2, '0')).join('');
-    c.dataset.strength = '0.8'; c.setAttribute('aria-hidden', 'true');
+    const holder = hero.closest('[data-accent]'); const a = ACCENT(holder ? holder.getAttribute('data-accent') : 'green');
+    const acc = /^#[0-9a-f]{6}$/i.test(a) ? a : '#00a54f';
+    c.dataset.colors = [acc, '#19b5e0', acc, '#ff9ec4', '#9d8cf7', acc, '#7fd8a8'].join(',');
+    c.dataset.mix = '0.45'; c.setAttribute('aria-hidden', 'true');
     hero.prepend(c);
   });
 

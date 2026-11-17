@@ -1022,3 +1022,13 @@ body.menu-open .drawer { visibility: visible; transition: none; }
 /* the black bicycle variant needs light text too — already white; keep links readable on very light colours */
 html[data-bike="black"] .svc--bike:hover .link-arrow .arrow { color: #141414; }
 @media (hover: none) { .svc:hover::before { clip-path: inset(100% 0 0 0 round var(--radius)); } .svc:hover .svc__body, .svc:hover .svc__body h3, .svc:hover .svc__body p, .svc:hover .link-arrow { color: inherit; } .svc:hover .svc__body .en { color: var(--ink-3); } }
+
+/* pastel bubbles: softer than the ink, so the left-side fade can be lighter */
+.page-hero__fluid[data-blobs] { -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.7) 40%, #000 70%); mask-image: linear-gradient(90deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.7) 40%, #000 70%); }
+@media (max-width: 960px) { .page-hero__fluid[data-blobs] { -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.4), #000); mask-image: linear-gradient(180deg, rgba(0,0,0,.4), #000); } }
+.brush__paint[data-blobs] { opacity: .75; }
+
+/* TOP brush stroke: light pastel instead of dark photo + saturated multiply */
+.brush__photo { filter: grayscale(1) brightness(1.32) contrast(.78); }
+.brush__tint { background: linear-gradient(115deg, #8fe0b5 0%, #9fd8f5 35%, #ffb8d4 70%, #c6b9ff 100%); opacity: .9; }
+.brush__paint[data-blobs] { opacity: .6; }
