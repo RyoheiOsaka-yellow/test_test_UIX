@@ -30,6 +30,7 @@ const P = {
   doc: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7', sheet: 'M4 4h16v16H4zM4 10h16M4 15h16M10 4v16', file3d: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM4 7.5l8 4.5 8-4.5', nc: 'M4 18V6l8 12V6M15 6h5M15 12h4M15 18h5', clip: 'M9 4h6v3H9zM6 6h12v15H6zM9 12l2 2 4-4', draw: 'M4 20h16M6 16 16 6l2 2L8 18H6z',
   swap: 'M4 8h13l-3-3M20 16H7l3 3', spark: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6', flow: 'M5 6a2 2 0 1 0 0 .01M19 18a2 2 0 1 0 0 .01M5 8v4a4 4 0 0 0 4 4h8', help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01',
   flag: 'M5 21V4M5 4h11l-2 4 2 4H5', tag: 'M3 12V4h8l10 10-8 8zM7.5 7.5h.01',
+  zin: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14M20 20l-4-4M11 8v6M8 11h6', zout: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14M20 20l-4-4M8 11h6', fit: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', grip: 'M8 9h8M8 12h8M8 15h8',
   cut: 'M6 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6M6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6M8.5 7.5 20 19M8.5 16.5 20 5',
 };
 export function icon(name, size = 20) { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('width', size); s.setAttribute('height', size); s.setAttribute('class', 'v3i'); s.innerHTML = `<path d="${P[name] || P.more}"/>`; return s; }
@@ -53,7 +54,7 @@ body.v3 .side-head{font-size:12px;letter-spacing:.06em;color:#6b7280;padding:12p
 .v3-btn:hover{background:rgba(20,24,28,.06)}.v3-btn:active{transform:scale(.94)}
 .v3-btn.on{background:#1f2933;color:#fff}
 .v3-btn .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);white-space:nowrap;font-size:11.5px;padding:4px 8px;border-radius:7px;background:#1f2933;color:#fff;opacity:0;pointer-events:none;transition:opacity .14s,transform .14s}
-.v3-btn .tip kbd{font:inherit;opacity:.65;margin-left:6px}
+.v3-btn .tip kbd{font:inherit;font-size:11px;opacity:.7;margin-left:7px;background:none!important;border:0!important;box-shadow:none!important;color:inherit!important;padding:0!important;min-width:0!important;height:auto!important}
 .v3-btn:hover .tip{opacity:1;transform:translateX(-50%) translateY(0);transition-delay:.25s}
 .v3-top .v3-btn .tip{bottom:auto;top:calc(100% + 8px)}
 .v3-btn .badge{position:absolute;top:5px;right:5px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;background:var(--accent,#b34a2a);color:#fff;font:600 9.5px/15px var(--font);text-align:center}
@@ -148,6 +149,13 @@ body.v3-dragging .v3-hd:not(.drag),body.v3-dragging .v3-halo{opacity:0;pointer-e
 .v3-pop button{display:flex;align-items:center;gap:10px;padding:9px 12px;border:none;background:none;border-radius:10px;font:500 13px var(--font);color:#1f2933;cursor:pointer;text-align:left}
 .v3-pop button:hover{background:rgba(20,24,28,.06)}.v3-pop button.on{background:#1f2933;color:#fff}
 .v3-pop .sep{height:1px;background:rgba(20,24,28,.08);margin:4px 6px}
+.v3-zoom{position:fixed;right:16px;z-index:60;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;border-radius:24px;transform:translateY(-50%);transition:right .22s cubic-bezier(.2,.8,.2,1)}
+.v3-zoom .v3-btn .tip{bottom:auto;top:50%;left:auto;right:calc(100% + 10px);transform:translateY(-50%) translateX(4px)}
+.v3-zoom .v3-btn:hover .tip{transform:translateY(-50%) translateX(0)}
+.v3-zoom .grip{width:42px;height:16px;display:grid;place-items:center;color:#9ca3af;cursor:ns-resize;touch-action:none;border-radius:8px}
+.v3-zoom .grip:hover{color:#4b5563;background:rgba(20,24,28,.05)}
+.v3-zoom .sep{width:22px;height:1px;background:rgba(20,24,28,.1);margin:2px 0}
+body.v3.v3-props .v3-zoom{right:370px}
 @media(max-width:720px){.v3-dock .opt{display:none}.v3-tl .st{display:none}.v3-empty .v3-tiles{grid-template-columns:1fr}.v3-br .v3-pill span{display:none}}
 `;
 
@@ -183,7 +191,8 @@ export function initV3(app) {
   // ---------- 左: 部材の一覧のつまみ ----------
   const ltab = h('div', { class: 'v3-left-tab v3-glass', id: 'v3ListTab', title: '部材の一覧 (L)', onClick: () => toggle('v3-list') }, icon('list', 18), h('b', { id: 'v3Count' }, '0'));
   const hoverTag = h('div', { class: 'v3-hover-tag' });
-  document.body.append(tl, top, dock, br, ltab, hoverTag);
+  const zoom = zoomBar(app);
+  document.body.append(tl, top, dock, br, ltab, hoverTag, zoom);
   // 左右の引き出しに閉じるボタン
   for (const [sel, cls] of [['.side.left', 'v3-list'], ['.side.right', 'v3-props']]) { const head = document.querySelector(sel + ' .side-head'); if (head && !head.querySelector('.v3-btn')) { head.style.display = 'flex'; head.style.alignItems = 'center'; head.append(h('span', { style: { flex: 1 } }), btn('x', '閉じる', () => document.body.classList.remove(cls))); } }
   const toggle = cls => { document.body.classList.toggle(cls); v.invalidate?.(1, true); };
@@ -209,12 +218,31 @@ export function initV3(app) {
   canvas.addEventListener('pointerdown', () => { hoverTag.style.opacity = 0; });
   // キー
   document.addEventListener('keydown', e => { const t = e.target; if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable) || e.ctrlKey || e.metaKey || e.altKey) return; if (document.querySelector('.modal-back,.cmdk-back')) return;
+    if (e.key === '+' || e.key === '=' || e.key === ';') { e.preventDefault(); zoomBy(app, 0.8); return; } if (e.key === '-') { e.preventDefault(); zoomBy(app, 1.25); return; } if (e.key === '0') { e.preventDefault(); click('btnFit')(); return; }
     const k = e.key.toLowerCase(); if (k === 'e') { e.preventDefault(); openEstimateSheet(app); } else if (k === 't') { e.preventDefault(); openFactorySheet(app); } else if (k === 'l') { e.preventDefault(); toggle('v3-list'); } else if (k === 'p') { e.preventDefault(); toggle('v3-props'); } else if (k === 'v') { e.preventDefault(); viewMenu(app, document.getElementById('v3View')); } else if (e.key === 'Escape' && V.sheet) { e.preventDefault(); closeSheet(app); } });
   // 何もないときの案内と、はじめの一言
   // 3D の中の文字の札（符号・高さの線・溶接記号・確認の旗）は既定で隠す。「見え方」から出せる
   setLabels(app, 'all', LS.get('anglex.v3.labels', '0') === '1', false);
   refreshNumbers(app); onSelect(app, app.selection); hint(app);
   return V;
+}
+
+// ---------- 拡大・縮小（右側の縦の帯） ----------
+// 押すと 0.16 秒でなめらかに寄る・引く。押し続けると続けて動く。上のつまみで、右側の好きな高さに動かせる（位置は覚える）
+export function zoomBy(app, f, ms = 160) {
+  const v = app.viewer; const cam = v.activeCamera; const V = app.v3; cancelAnimationFrame(V.zoomRaf); const t0 = performance.now(); const ease = k => 1 - Math.pow(1 - k, 3); const prog = () => ms > 0 ? Math.min(1, (performance.now() - t0) / ms) : 1;
+  if (cam.isOrthographicCamera) { const z0 = cam.zoom, z1 = Math.min(80, Math.max(0.01, z0 / f)); const step = () => { const k = prog(); cam.zoom = z0 * Math.pow(z1 / z0, ease(k)); cam.updateProjectionMatrix(); v.invalidate(2, true); V.zoomRaf = k < 1 ? requestAnimationFrame(step) : 0; }; step(); return z1; }
+  const ctl = v.controls; const off = cam.position.clone().sub(ctl.target); const d0 = off.length() || 1; const d1 = Math.min(ctl.maxDistance || Infinity, Math.max(ctl.minDistance || 1, d0 * f)); off.normalize();
+  const step = () => { const k = prog(); cam.position.copy(ctl.target).addScaledVector(off, d0 * Math.pow(d1 / d0, ease(k))); ctl.update(); v.invalidate(2, true); V.zoomRaf = k < 1 ? requestAnimationFrame(step) : 0; }; step(); return d1;
+}
+function zoomBar(app) {
+  // 押し続けたときは、時間に比例してなめらかに寄り続ける（1 秒でおよそ 4 倍）
+  const hold = (f, tip, name, key, id) => { const b = btn(name, tip, null, { key, id }); let tm = 0, raf = 0, held = false, last = 0; const loop = t => { if (!held) return; const dt = Math.min(250, t - last); last = t; if (dt > 0) zoomBy(app, Math.pow(f, dt / 160), 0); raf = requestAnimationFrame(loop); }; const stop = () => { held = false; clearTimeout(tm); cancelAnimationFrame(raf); }; b.addEventListener('pointerdown', e => { if (e.button !== 0) return; e.preventDefault(); zoomBy(app, f); held = true; tm = setTimeout(() => { if (!held) return; last = performance.now(); raf = requestAnimationFrame(loop); }, 320); }); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, stop); b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); zoomBy(app, f); } }); return b; };
+  const grip = h('div', { class: 'grip', title: 'つまんで上下に動かす', 'aria-label': '拡大・縮小の帯を動かす' }, icon('grip', 16));
+  const bar = h('div', { class: 'v3-zoom v3-glass', id: 'v3Zoom' }, grip, hold(0.8, '寄る（拡大）', 'zin', '+', 'v3ZoomIn'), hold(1.25, '引く（縮小）', 'zout', '−', 'v3ZoomOut'), h('span', { class: 'sep' }), btn('fit', '全体を見る', click('btnFit'), { key: '0', id: 'v3ZoomFit' }));
+  const place = y => { const top = Math.max(110, Math.min(innerHeight - 150, y)); bar.style.top = top + 'px'; return top; }; place(+LS.get('anglex.v3.zoomY', 0) || innerHeight / 2); addEventListener('resize', () => place(parseFloat(bar.style.top)));
+  grip.addEventListener('pointerdown', e => { e.preventDefault(); grip.setPointerCapture?.(e.pointerId); const y0 = e.clientY, t0 = parseFloat(bar.style.top); const mv = ev => place(t0 + ev.clientY - y0); const up = () => { grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); LS.set('anglex.v3.zoomY', Math.round(parseFloat(bar.style.top))); }; grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up); });
+  return bar;
 }
 
 // ---------- 案件のメニュー・見え方のメニュー ----------
