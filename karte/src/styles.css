@@ -608,7 +608,7 @@ a.kpi:hover { border-color: var(--blue); }
 .b2-photos button:hover { outline: 2px solid var(--blue); outline-offset: 1px; }
 .b2-photos em { position: absolute; left: 6px; bottom: 6px; font-style: normal; background: rgba(15, 22, 40, 0.72); color: #fff; font-size: 0.82em; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
 .b2-photos .more, .b2-photos .add { display: grid; place-items: center; align-content: center; gap: 2px; border: 1.5px dashed var(--line-2); color: var(--muted); font-weight: 700; font-size: 0.9em; cursor: pointer; }
-.b2-photos .add { cursor: default; }
+.b2-photos .add { cursor: pointer; }
 .shot { width: 100%; height: 100%; display: block; }
 .v-phone .b2 { grid-template-columns: minmax(0, 1fr); }
 .v-phone .b2-photos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -844,3 +844,47 @@ a.kpi:hover { border-color: var(--blue); }
   .card .ck-tile dl { grid-column: 1; grid-row: auto; margin-top: 4px; }
 }
 @media (max-width: 1100px) { .tbl.cards td[data-label="報告書"] { display: none; } }
+
+/* ---------- 操作まわりの調整 ---------- */
+/* お知らせ(元に戻す操作つき) */
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 200; display: flex; align-items: center; gap: 16px; background: #1c2433; color: #fff; padding: 11px 16px; border-radius: 10px; box-shadow: 0 8px 24px rgba(10, 20, 40, 0.28); font-size: 14px; max-width: calc(100vw - 32px); animation: toast-in 0.18s ease-out; }
+.toast button { border: 0; background: none; color: #8fb8ff; font-weight: 700; font-size: 14px; cursor: pointer; padding: 6px 4px; white-space: nowrap; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+/* 行全体を押せる一覧 */
+.tbl tr.rowclick { cursor: pointer; }
+/* 物件詳細の写真(押して拡大) */
+.photo-btn { border: 0; padding: 0; background: none; cursor: zoom-in; border-radius: 6px; overflow: hidden; display: block; }
+.photo-btn:hover .shot { filter: brightness(1.06); }
+.modal.zoom .shot { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 8px; display: block; }
+.zoom-nav { display: flex; justify-content: space-between; margin-top: 10px; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+/* 配置図のピン番号(一覧の番号と対応) */
+.pinno { display: inline-grid; place-items: center; min-width: 18px; height: 18px; border-radius: 9px; font-style: normal; font-size: 11px; font-weight: 700; color: #fff; margin-right: 6px; vertical-align: 1px; }
+.pinno.sev-urgent { background: #d92d20; }
+.pinno.sev-watch { background: #c98200; }
+.pinno.sev-ok { background: #12925a; }
+/* 説明用画面の新着 */
+.bell-wrap { position: relative; display: inline-grid; }
+.mp-user button.ic { border: 0; background: none; color: inherit; cursor: pointer; padding: 6px; margin: -6px; border-radius: 8px; }
+.mp-user button.ic:hover { background: #ffffff1a; }
+.bell-pop { position: absolute; right: -8px; top: calc(100% + 12px); z-index: 50; width: min(340px, 86vw); background: #fff; color: var(--text); border-radius: 10px; box-shadow: 0 10px 30px rgba(10, 20, 40, 0.25); padding: 12px 14px; white-space: normal; font-size: 14px; }
+.bell-pop > b { display: block; margin-bottom: 6px; }
+.bell-pop ul { list-style: none; margin: 0 0 8px; padding: 0; }
+.bell-pop li { padding: 7px 0; border-bottom: 1px solid var(--line); display: grid; gap: 1px; }
+.bell-pop li small { color: var(--muted); font-size: 12px; }
+.bell-pop a { color: var(--blue, #2a62d6); font-weight: 700; font-size: 13px; }
+/* デモ用の表示切り替えは製品の操作と見分けられるようにする */
+.mp-toolbar .seg.demo-seg { background: transparent; border: 1px dashed #ffffff66; align-items: center; }
+.mp-toolbar .seg.demo-seg > small { color: #b9c3da; font-size: 11px; padding: 0 6px 0 8px; white-space: nowrap; }
+/* 指で押しやすい大きさ(スマホ・タブレット) */
+@media (pointer: coarse), (max-width: 760px) {
+  .btn, .seg button, .mp-seg button, .mp-toolbar .btn, .mp-toolbar .seg button, .mp-switch, .tabs button, select, input[type='search'], input[type='text'] { min-height: 44px; }
+  .mp-toolbar .seg.demo-seg > small { display: none; }
+  .tbl th button { min-height: 36px; }
+}
+#pd-spot { scroll-margin-top: 80px; }
+/* 実機のスマホでは表示切り替え(デモ用)は不要なので隠し、操作部を2段に収める */
+@media (max-width: 700px) {
+  .mp-toolbar .seg.demo-seg { display: none; }
+  .mp-toolbar { gap: 8px; padding: 8px 10px; }
+}

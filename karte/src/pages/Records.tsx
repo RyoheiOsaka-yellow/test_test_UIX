@@ -14,7 +14,7 @@ import {
   repairs,
   SEVERITY_LABEL,
 } from '../data';
-import { CheckBadge, CheckItems, Empty, SeverityBadge, StatusBadge, downloadCsv, useStore } from '../ui';
+import { CheckBadge, CheckItems, Empty, SeverityBadge, StatusBadge, downloadCsv, useRowOpen, useStore } from '../ui';
 
 type Tab = 'findings' | 'repairs' | 'inspections';
 const TABS: { key: Tab; label: string }[] = [
@@ -25,6 +25,7 @@ const TABS: { key: Tab; label: string }[] = [
 const LIMIT = 100;
 
 export default function Records() {
+  const openRow = useRowOpen();
   const { findings } = useStore();
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) || 'findings';
@@ -198,6 +199,11 @@ export default function Records() {
             ))}
           </select>
         )}
+        {[...params.keys()].some((k) => k !== 'tab' && params.get(k)) && (
+          <button className="btn ghost" onClick={() => setParams(tab === 'findings' ? {} : { tab }, { replace: true })}>
+            条件をクリア
+          </button>
+        )}
       </section>
 
       <section className="card">
@@ -231,7 +237,7 @@ export default function Records() {
                   {fRows.slice(0, LIMIT).map((f) => {
                     const p = propertyById.get(f.propertyId)!;
                     return (
-                      <tr key={f.id}>
+                      <tr key={f.id} className="rowclick" onClick={(e) => openRow(e, `/properties/${f.propertyId}?f=${f.id}`)}>
                         <td data-label="緊急度">
                           <SeverityBadge severity={f.severity} short />
                         </td>
@@ -274,7 +280,7 @@ export default function Records() {
                   {rRows.slice(0, LIMIT).map((r) => {
                     const p = propertyById.get(r.propertyId)!;
                     return (
-                      <tr key={r.id}>
+                      <tr key={r.id} className="rowclick" onClick={(e) => openRow(e, `/properties/${r.propertyId}`)}>
                         <td data-label="修繕日" className="nowrap">{fmtDate(r.date)}</td>
                         <td data-label="物件">
                           <Link className="strong rowlink" to={`/properties/${p.id}`}>
@@ -310,7 +316,7 @@ export default function Records() {
                   {iRows.slice(0, LIMIT).map((i) => {
                     const p = propertyById.get(i.propertyId)!;
                     return (
-                      <tr key={i.id}>
+                      <tr key={i.id} className="rowclick" onClick={(e) => openRow(e, `/properties/${i.propertyId}`)}>
                         <td data-label="種別" className="nowrap">
                           <CheckBadge kind={i.kind} />
                         </td>

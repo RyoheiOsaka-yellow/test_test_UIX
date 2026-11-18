@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { CalendarClock, ChevronRight, CircleAlert, Hourglass, Wallet } from 'lucide-react';
 import { PARTS, STATUSES, TODAY, addMonths, daysBetween, fmtDate, fmtMan, fmtYm, properties, propertyById, checkPlan } from '../data';
-import { CheckBadge, Empty, LEGEND, StatusBadge, useStore } from '../ui';
+import { CheckBadge, Empty, LEGEND, StatusBadge, useRowOpen, useStore } from '../ui';
 
 const ME = '青木 涼';
 
 export default function Dashboard() {
+  const openRow = useRowOpen();
   const { findings } = useStore();
   const [scope, setScope] = useState<'all' | 'mine'>('all');
 
@@ -253,7 +254,7 @@ export default function Dashboard() {
                   {d.queue.slice(0, 9).map(({ f, wait }) => {
                     const p = propertyById.get(f.propertyId)!;
                     return (
-                      <tr key={f.id}>
+                      <tr key={f.id} className="rowclick" onClick={(e) => openRow(e, `/properties/${f.propertyId}?f=${f.id}`)}>
                         <td>
                           <Link to={`/properties/${p.id}?f=${f.id}`} className="strong">
                             {p.name}

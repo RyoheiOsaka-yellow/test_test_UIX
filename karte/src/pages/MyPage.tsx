@@ -40,6 +40,8 @@ import {
   PARTS,
   STATUSES,
   properties,
+  TODAY,
+  daysBetween,
   fmtDate,
   fmtMan,
   fmtYen,
@@ -211,6 +213,7 @@ export default function MyPage() {
   const [notify, setNotify] = useState({ mail: true, line: true, push: false });
   const [slide, setSlide] = useState(0);
   const { present, setPresent } = store;
+  const [bellOpen, setBellOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
 
   const all = useMemo(() => store.findings.filter((f) => f.propertyId === id), [store.findings, id]);
@@ -245,6 +248,7 @@ export default function MyPage() {
   const selected = findings.find((f) => f.id === selectedId) ?? null;
   const insp = inspectionsOf(p.id);
   const cks = checksOf(p.id).slice(0, 6);
+  const recent = store.activities.filter((x) => x.propertyId === p.id && daysBetween(x.date, TODAY) <= 30);
   const cksAll = checksOf(p.id).length;
   const reps = repairsOf(p.id);
   const peer = compare === 'age' ? peerAverage(p) : regionAverage(p);
@@ -463,10 +467,10 @@ export default function MyPage() {
                     +{selected.photos - (big ? 4 : 5)}枚
                   </button>
                 ) : (
-                  <span className="add" title="デモでは追加できません">
+                  <button className="add" onClick={() => store.notify('デモ版のため、写真の追加はできません(本番では現地で撮影して登録できます)')}>
                     <ImagePlus size={18} />
                     写真を追加
-                  </span>
+                  </button>
                 )}
               </div>
               {selected.severity !== 'ok' && (
@@ -782,7 +786,7 @@ export default function MyPage() {
   );
   const reportBtn = (
     <Link to={`/properties/${p.id}/report`} className="mp-btn primary">
-      <FileText size={big ? 20 : 16} /> {big ? 'お客様用PDF' : 'お客様向けレポート(PDF)'}
+      <FileText size={big ? 20 : 16} /> {big ? 'レポートを開く' : 'お客様向けレポートを開く'}
     </Link>
   );
 
@@ -848,7 +852,7 @@ export default function MyPage() {
             <Eye size={15} /> お客様表示中
           </b>
         ) : (
-          <Link to={`/properties/${p.id}`} className="btn light">
+          <Link to={`/properties/${p.id}`} className="btn light" aria-label="物件詳細へ戻る">
             <ArrowLeft size={15} /> <span>物件詳細へ</span>
           </Link>
         )}
@@ -862,7 +866,8 @@ export default function MyPage() {
         <button className={`btn light mp-present ${present ? 'on' : ''}`} onClick={() => setPresent(!present)} aria-pressed={present}>
           {present ? <EyeOff size={15} /> : <Eye size={15} />} {present ? '社内表示に戻す' : 'お客様に見せる'}
         </button>
-        <div className="seg" role="group" aria-label="表示デバイス">
+        <div className="seg demo-seg" role="group" aria-label="表示デバイス(デモ用)">
+          <small>表示確認</small>
           <button className={variant === 'desktop' ? 'on' : ''} onClick={() => setVariant('desktop')}>
             <Monitor size={15} /> ブラウザ
           </button>
@@ -885,10 +890,34 @@ export default function MyPage() {
               </span>
             </div>
             <div className="mp-user">
-              <span className="ic" title="担当物件の新着" hidden={present}>
-                <Bell size={18} />
-                <i>1</i>
-              </span>
+              {!present && (
+                <span className="bell-wrap">
+                  <button className="ic" title="この物件の新着" aria-label="この物件の新着を見る" aria-expanded={bellOpen} onClick={() => setBellOpen(!bellOpen)}>
+                    <Bell size={18} />
+                    {recent.length > 0 && <i>{recent.length}</i>}
+                  </button>
+                  {bellOpen && (
+                    <div className="bell-pop" role="dialog" aria-label="この物件の新着">
+                      <b>この物件の新着(30日以内)</b>
+                      {recent.length === 0 ? (
+                        <p className="muted">新しい記録はありません</p>
+                      ) : (
+                        <ul>
+                          {recent.slice(0, 4).map((a) => (
+                            <li key={a.id}>
+                              <small>
+                                {fmtDate(a.date)} ／ {a.type}
+                              </small>
+                              <span>{a.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <Link to={`/properties/${p.id}`}>物件詳細で連携記録をすべて見る</Link>
+                    </div>
+                  )}
+                </span>
+              )}
               <b>
                 {p.staff}
                 <small> 担当</small>

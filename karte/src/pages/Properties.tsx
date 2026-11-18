@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, Search, X } from 'lucide-react';
 import { STAFF, TODAY, daysBetween, fmtDate, fmtMan, fmtYm, matches, properties, type Property } from '../data';
-import { Empty, ScoreBar, useStore } from '../ui';
+import { Empty, ScoreBar, useRowOpen, useStore } from '../ui';
 
 type SortKey = 'overall' | 'age' | 'nextInspection' | 'cost' | 'due' | 'name';
 
@@ -16,6 +16,7 @@ const AGE_BANDS = [
 ];
 
 export default function Properties() {
+  const openRow = useRowOpen();
   const { findings } = useStore();
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
@@ -181,7 +182,7 @@ export default function Properties() {
                 {rows.map(({ p, s }) => {
                   const days = daysBetween(TODAY, p.nextInspection);
                   return (
-                    <tr key={p.id}>
+                    <tr key={p.id} className="rowclick" onClick={(e) => openRow(e, `/properties/${p.id}`)}>
                       <td data-label="物件">
                         <Link to={`/properties/${p.id}`} className="strong rowlink">
                           {p.name}

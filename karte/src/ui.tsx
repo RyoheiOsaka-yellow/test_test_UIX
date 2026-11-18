@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   TODAY,
   activities as baseActivities,
@@ -28,6 +29,14 @@ interface Store {
   /** お客様表示中か(画面を移っても保持する) */
   present: boolean;
   setPresent: (v: boolean) => void;
+  /** 画面下に短いお知らせを出す(元に戻す操作つきも可) */
+  notify: (text: string, undo?: () => void) => void;
+}
+
+interface Toast {
+  id: number;
+  text: string;
+  undo?: () => void;
 }
 const StoreCtx = createContext<Store | null>(null);
 
@@ -35,6 +44,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<Record<string, FindingStatus>>({});
   const [extra, setExtra] = useState<Activity[]>([]);
   const [present, setPresent] = useState(false);
+  const [toast, setToast] = useState<Toast | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), toast.undo ? 6000 : 3000);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
   const value = useMemo<Store>(() => {
     const findings = baseFindings.map((f) =>
@@ -45,14 +60,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       activities: [...extra, ...baseActivities],
       present,
       setPresent,
+      notify: (text, undo) => setToast({ id: Date.now(), text, undo }),
       setStatus: (id, status) => {
         const f = baseFindings.find((x) => x.id === id);
         if (!f) return;
         const p = propertyById.get(f.propertyId)!;
+        const prev = overrides[id] ?? f.status;
+        if (prev === status) return;
+        const actId = `A-new-${Date.now()}`;
         setOverrides((o) => ({ ...o, [id]: status }));
+        setToast({
+          id: Date.now(),
+          text: `${f.part}|${f.location} を「${status}」に変更しました`,
+          undo: () => {
+            setOverrides((o) => {
+              const n = { ...o };
+              if (prev === f.status) delete n[id];
+              else n[id] = prev;
+              return n;
+            });
+            setExtra((e) => e.filter((a) => a.id !== actId));
+            setToast({ id: Date.now(), text: `「${prev}」に戻しました` });
+          },
+        });
         setExtra((e) => [
           {
-            id: `A-new-${e.length + 1}`,
+            id: actId,
             propertyId: f.propertyId,
             date: TODAY,
             type: status === '提案済' ? '提案' : status === '承認済' ? '承認' : status === '見積中' ? '見積' : '工事',
@@ -66,7 +99,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [overrides, extra, present]);
 
-  return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
+  return (
+    <StoreCtx.Provider value={value}>
+      {children}
+      {toast && (
+        <div className="toast no-print" role="status" key={toast.id}>
+          <span>{toast.text}</span>
+          {toast.undo && (
+            <button onClick={toast.undo}>元に戻す</button>
+          )}
+        </div>
+      )}
+    </StoreCtx.Provider>
+  );
 }
 
 export function useStore(): Store {
@@ -230,4 +275,13 @@ export function CheckPlanTiles({ plan, ownerView }: { plan: CheckPlan[]; ownerVi
       ))}
     </div>
   );
+}
+
+/** 一覧の行全体を押して開けるようにする(行内のリンク・ボタン・入力欄の操作は優先) */
+export function useRowOpen() {
+  const navigate = useNavigate();
+  return (e: MouseEvent, to: string) => {
+    if ((e.target as HTMLElement).closest('a, button, select, input, label')) return;
+    navigate(to);
+  };
 }

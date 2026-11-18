@@ -62,6 +62,7 @@ export default function PropertyDetail() {
   const [beforeAfter, setBeforeAfter] = useState<Repair | null>(null);
   const [notify, setNotify] = useState(p?.notify ?? { mail: true, line: false, push: false });
   const [showAllLog, setShowAllLog] = useState(false);
+  const [zoom, setZoom] = useState<number | null>(null);
 
   useEffect(() => {
     const fromUrl = params.get('f');
@@ -160,7 +161,7 @@ export default function PropertyDetail() {
             </Link>
           )}
           <Link className="btn" to={`/properties/${p.id}/report`}>
-            <Printer size={15} /> お客様向けレポート(PDF)
+            <Printer size={15} /> お客様向けレポートを開く
           </Link>
         </div>
       </div>
@@ -271,7 +272,7 @@ export default function PropertyDetail() {
         </section>
 
         {/* ② 要修繕箇所の見える化 */}
-        <section className="card">
+        <section className="card" id="pd-spot">
           <header>
             <h2>
               <i className="no">2</i>要修繕箇所の見える化
@@ -317,7 +318,9 @@ export default function PropertyDetail() {
                   <small className="muted">写真 {selected.photos}枚(最大10枚まで登録可能)</small>
                   <div className="photos">
                     {Array.from({ length: Math.min(selected.photos, 5) }, (_, i) => (
-                      <Shot key={i} part={selected.part} kind={kindOf(i)} index={i} seed={selected.pin.x} after={selected.severity === 'ok'} />
+                      <button key={i} className="photo-btn" onClick={() => setZoom(i)} aria-label={`写真${i + 1}を拡大`}>
+                        <Shot part={selected.part} kind={kindOf(i)} index={i} seed={selected.pin.x} after={selected.severity === 'ok'} />
+                      </button>
                     ))}
                     {selected.photos > 5 && <span className="photo-more">+{selected.photos - 5}</span>}
                   </div>
@@ -448,9 +451,9 @@ export default function PropertyDetail() {
                       <CheckItems items={i.items} />
                     </td>
                     <td data-label="報告書">
-                      <button className="iconbtn" title="報告書を表示(デモでは印刷画面を開きます)" onClick={() => window.print()}>
+                      <Link className="iconbtn" to={`/properties/${p.id}/report`} title="お客様向けレポートを開く" aria-label="お客様向けレポートを開く">
                         <FileText size={15} />
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -545,11 +548,20 @@ export default function PropertyDetail() {
               </thead>
               <tbody>
                 {listed.map((f) => (
-                  <tr key={f.id} className={f.id === selectedId ? 'sel' : ''} onClick={() => setSelectedId(f.id)}>
+                  <tr
+                    key={f.id}
+                    className={f.id === selectedId ? 'sel' : ''}
+                    title="押すと上の配置図と写真に表示します"
+                    onClick={() => {
+                      setSelectedId(f.id);
+                      document.getElementById('pd-spot')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                  >
                     <td>
                       <SeverityBadge severity={f.severity} short />
                     </td>
                     <td className="nowrap strong">
+                      <i className={`pinno sev-${f.severity}`}>{findings.indexOf(f) + 1}</i>
                       {f.part}|{f.location}
                     </td>
                     <td>{f.title}</td>
@@ -653,6 +665,29 @@ export default function PropertyDetail() {
         </label>
       </section>
 
+      {zoom !== null && selected && (
+        <div className="modal-veil" onClick={() => setZoom(null)}>
+          <div className="modal zoom" role="dialog" aria-label="写真の拡大" onClick={(e) => e.stopPropagation()}>
+            <header>
+              <h2>
+                {selected.part}|{selected.location} 写真 {zoom + 1} / {Math.min(selected.photos, 5)}({kindOf(zoom)})
+              </h2>
+              <button className="iconbtn" onClick={() => setZoom(null)} aria-label="閉じる">
+                <X size={18} />
+              </button>
+            </header>
+            <Shot part={selected.part} kind={kindOf(zoom)} index={zoom} seed={selected.pin.x} after={selected.severity === 'ok'} />
+            <div className="zoom-nav">
+              <button className="btn" disabled={zoom === 0} onClick={() => setZoom(zoom - 1)}>
+                前の写真
+              </button>
+              <button className="btn" disabled={zoom >= Math.min(selected.photos, 5) - 1} onClick={() => setZoom(zoom + 1)}>
+                次の写真
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {beforeAfter && (
         <div className="modal-veil" onClick={() => setBeforeAfter(null)}>
           <div className="modal" role="dialog" aria-label="修繕前後の比較" onClick={(e) => e.stopPropagation()}>
@@ -728,7 +763,7 @@ function SitePlan({
         N
       </text>
       <path d="M368 44 l-4 10 h8 z" fill="#7a8494" />
-      {findings.map((f) => {
+      {findings.map((f, idx) => {
         const on = f.id === selectedId;
         return (
           <g
@@ -739,15 +774,14 @@ function SitePlan({
             role="button"
             aria-label={`${f.part} ${f.location}`}
           >
-            {on && <circle r="15" fill={PIN_COLOR[f.severity]} opacity="0.2" />}
-            <path
-              d="M0 0 C-9 -11 -9 -22 0 -22 C9 -22 9 -11 0 0 Z"
-              fill={PIN_COLOR[f.severity]}
-              stroke="#fff"
-              strokeWidth={on ? 2.2 : 1.2}
-              transform={on ? 'scale(1.25)' : undefined}
-            />
-            <circle cy={on ? -17.5 : -14} r={on ? 4 : 3.2} fill="#fff" />
+            {on && <circle r="22" fill={PIN_COLOR[f.severity]} opacity="0.2" />}
+            <circle cy="-16" r="20" fill="transparent" />
+            <g transform={on ? 'scale(1.6)' : 'scale(1.35)'}>
+              <path d="M0 0 C-9 -11 -9 -22 0 -22 C9 -22 9 -11 0 0 Z" fill={PIN_COLOR[f.severity]} stroke="#fff" strokeWidth="1.4" />
+              <text y="-11.5" textAnchor="middle" fontSize="10" fontWeight="700" fill="#fff">
+                {idx + 1}
+              </text>
+            </g>
           </g>
         );
       })}
