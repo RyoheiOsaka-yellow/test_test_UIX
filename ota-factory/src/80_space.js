@@ -288,7 +288,7 @@ function spTalkTo(id){ const a = SP.avatars.get(id); if (!a) return; const p = S
 // ---------------------------------------------------------------- tick
 let spPrevT = performance.now();
 function spTick(){
-  requestAnimationFrame(spTick); const now = performance.now(); const dt = Math.min(0.05, (now - spPrevT) / 1000); spPrevT = now; if (!SP.started) return;
+  requestAnimationFrame(spTick); const now = performance.now(); const dt = Math.min(0.2, (now - spPrevT) / 1000); spPrevT = now; if (!SP.started) return;   // 低 fps でも移動速度を保つ
   const p = SP.pos; const k = SP.keys; let ix = 0, iz = 0;
   if (k.KeyW || k.ArrowUp) iz += 1; if (k.KeyS || k.ArrowDown) iz -= 1; if (k.KeyA || k.ArrowLeft) ix -= 1; if (k.KeyD || k.ArrowRight) ix += 1;
   let dx = 0, dz = 0; const yaw = camState.yaw; const sp = (k.ShiftLeft || k.ShiftRight ? 6 : 3.2) * dt;
