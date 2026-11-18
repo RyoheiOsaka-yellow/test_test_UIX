@@ -203,10 +203,10 @@ function spBubbleSprite(text){ const cvs = document.createElement("canvas"); con
 const SP_ROOT = new THREE.Group(); SP_ROOT.name = "spaceAvatars";
 function spEnsureAvatar(u, refresh){
   let a = SP.avatars.get(u.id); const key = JSON.stringify(u.avatar || {}), tagKey = JSON.stringify([u.name, u.status, u.org, u.role]);
-  if (a && a.key === key){ if (a.tagKey !== tagKey){ a.g.remove(a.tag); a.tag = spTag(u); a.tag.position.y = 2.15; a.g.add(a.tag); a.tagKey = tagKey; } return a; }
+  if (a && a.key === key){ if (a.tagKey !== tagKey){ a.g.remove(a.tag); a.tag = spTag(u); a.tag.position.y = 1.95; a.g.add(a.tag); a.tagKey = tagKey; } return a; }
   let keep = null; if (a){ keep = { cur:a.cur, tgt:a.tgt, mv:a.mv }; spRemoveAvatar(u.id); a = null; }
   const g = new THREE.Group(); g.userData.spUser = u.id; const fb = makeWorker(u.avatar && u.avatar.char && u.avatar.char.startsWith("worker") ? "hall" : "office"); fb.userData.spFallback = true; g.add(fb);
-  const tag = spTag(u); tag.position.y = 2.15; g.add(tag); SP_ROOT.add(g);
+  const tag = spTag(u); tag.position.y = 1.95; g.add(tag); SP_ROOT.add(g);
   const isMe = u.id === SP.me.id; const p = isMe ? SP.pos : (u.pos || { x:-36, z:12, f:u.f || 1, ry:0 });
   a = { g, tag, key, tagKey, cur:{ x:p.x, z:p.z, f:p.f || 1, ry:p.ry || 0 }, tgt:{ x:p.x, z:p.z, f:p.f || 1, ry:p.ry || 0 }, mv:0, blend:0, bubble:null, until:0, ...(keep || {}) }; SP.avatars.set(u.id, a);
   const char = (u.avatar && u.avatar.char) || "casual_m";
@@ -216,7 +216,7 @@ function spEnsureAvatar(u, refresh){
     const mx = new THREE.AnimationMixer(root); const idle = mx.clipAction(ch.anims.find(x => x.name === "Idle")); const walk = mx.clipAction(ch.anims.find(x => x.name === "Walk")); idle.play(); walk.play(); walk.setEffectiveWeight(0); Object.assign(a, { mx, idle, walk }); dirtyShadow(); }).catch(() => {});
   return a; }
 function spRemoveAvatar(id){ const a = SP.avatars.get(id); if (!a) return; SP_ROOT.remove(a.g); SP.avatars.delete(id); }
-function spBubble(uid, text){ const a = SP.avatars.get(uid); if (!a) return; if (a.bubble) a.g.remove(a.bubble); a.bubble = spBubbleSprite(text); a.bubble.position.y = 2.45; a.g.add(a.bubble); a.until = performance.now() + 7000; }
+function spBubble(uid, text){ const a = SP.avatars.get(uid); if (!a) return; if (a.bubble) a.g.remove(a.bubble); a.bubble = spBubbleSprite(text); a.bubble.position.y = 2.3; a.g.add(a.bubble); a.until = performance.now() + 7000; }
 function spIsNear(u){ const a = SP.avatars.get(u.id); if (!a) return false; return a.cur.f === SP.pos.f && Math.hypot(a.cur.x - SP.pos.x, a.cur.z - SP.pos.z) <= 10; }
 
 // ---------------------------------------------------------------- movement & camera
