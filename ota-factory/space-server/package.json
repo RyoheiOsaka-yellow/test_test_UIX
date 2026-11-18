@@ -1,0 +1,11 @@
+{
+  "name": "xantalos-space-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "XANTALOS Space: real-time presence, avatars and chat on the factory model",
+  "type": "module",
+  "main": "server.js",
+  "engines": { "node": ">=22.13" },
+  "scripts": { "start": "node --no-warnings server.js", "test": "node --no-warnings --test test/*.test.js" },
+  "dependencies": { "google-auth-library": "^9.15.0", "ws": "^8.18.0" }
+}

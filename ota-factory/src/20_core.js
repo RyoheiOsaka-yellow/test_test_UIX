@@ -255,6 +255,7 @@ const camState = { yaw:-0.75, pitch:0.55, dist:190, target:new THREE.Vector3(0,6
 const camGoal  = { yaw:-0.75, pitch:0.55, dist:190, target:new THREE.Vector3(0,6,0) };
 const walk = { on:false, pos:new THREE.Vector3(-30, 1.65, 26), yaw:Math.PI, pitch:0, keys:{} };
 let camDirty = true;
+let camCollide = null; // (pos, target) => void：三人称カメラの遮蔽回避（Space で使用）
 function setCam(goal, instant=false){
   if (goal.yaw !== undefined) camGoal.yaw = goal.yaw; if (goal.pitch !== undefined) camGoal.pitch = goal.pitch;
   if (goal.dist !== undefined) camGoal.dist = goal.dist; if (goal.target) camGoal.target.set(...goal.target);
@@ -270,6 +271,7 @@ function applyCam(){
   s.yaw = lerp(s.yaw, g.yaw, k); s.pitch = lerp(s.pitch, g.pitch, k); s.dist = lerp(s.dist, g.dist, k); s.target.lerp(g.target, k);
   const p = clamp(s.pitch, 0.02, 1.55);
   camera.position.set(s.target.x + s.dist*Math.cos(p)*Math.sin(s.yaw), s.target.y + s.dist*Math.sin(p), s.target.z + s.dist*Math.cos(p)*Math.cos(s.yaw));
+  if (camCollide) camCollide(camera.position, s.target);
   camera.lookAt(s.target);
   if (Math.abs(s.yaw-g.yaw)+Math.abs(s.pitch-g.pitch)+Math.abs(s.dist-g.dist)+s.target.distanceTo(g.target) < 0.002) camDirty = false;
 }

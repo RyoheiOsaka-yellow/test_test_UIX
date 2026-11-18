@@ -11,6 +11,9 @@ out=index.html
   cat src/99_tail.html
 } > "$out"
 echo "built $out ($(wc -c < "$out") bytes, $(wc -l < "$out") lines)"
+# 多人数版（XANTALOS Space）：同じモデル＋ src/80_space.js。space-server から配信する。
+{ head -n -"$(wc -l < src/99_tail.html)" "$out"; printf '\n// ===== src/80_space.js =====\n'; cat src/80_space.js; cat src/99_tail.html; } > space.html
+echo "built space.html ($(wc -c < space.html) bytes)"
 # 画像を base64 で埋め込んだ単体配布版も生成する
 python3 -I - <<'PY'
 import base64, re, os

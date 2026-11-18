@@ -157,6 +157,16 @@ Edge Runtime、Fleet 協調、Scheduler、MES、Quality AI、Digital Twin、予�
 - 読込前・オフライン・読込失敗時は従来の手続きモデルを表示します。URL に `?assets=off` を付けると SimReady の読込を止められます。
 - punch.glb と irb.glb は実在製品を模したモデルです。構想上の代表機として置いており、機種選定を意味しません。
 
+### 多人数版：XANTALOS Space（試作）
+
+社員と他工場の方がログインし、アバターで工場内を歩き、チェックインし、チャットできる版です。
+`space.html` とサーバー `space-server/` の組み合わせで動きます。使い方とデプロイ手順は `space-server/README.md` にあります。
+
+- 社員は Google アカウント、他工場の方は招待リンクからログインします。
+- チャンネル、DM、近くの人だけに届く会話、場所のチャンネル、設備スレッド、検索、在席とチェックインに対応しています。
+- 社外の方が入れるのは連携用チャンネルと自分宛ての DM だけです。
+- Slack との相互転送は任意で設定できます。
+
 ### ブランド
 
 工場名は **XANTALOS（ザンタロス）** です。ロゴは次の場所に配置しています。
@@ -175,6 +185,8 @@ Edge Runtime、Fleet 協調、Scheduler、MES、Quality AI、Digital Twin、予�
 ota-factory/
   xantalos-ota-factory-standalone.html  ← 配布用の単体版（build.sh で生成）
   index.html                            ← 開発用（build.sh で生成）
+  space.html                            ← 多人数版のクライアント（build.sh で生成、space-server から配信）
+  space-server/                         ← 多人数版のサーバー（ログイン・在席・チャット・Slack 連携）
   build.sh                              ← src/ を連結して 2 つの HTML を作る
   src/
     00_head.html    CSS・パネル DOM・importmap
@@ -193,6 +205,7 @@ ota-factory/
     65_assets.js    実物モデルの読込・配置（SimReady と同梱モデル、距離別 LOD、レーン連動、fallback）
     66_people.js    人物モデル（歩行・待機アニメ、着席者のベイク）
     70_ui.js        UI・ツアー・ホバー表示・メインループ
+    80_space.js     多人数版のクライアント（space.html のみに含める）
   models/           同梱 3D モデル（工作機械・ロボット・人物）と CREDITS.md
   img/              構想イメージとロゴ
   preview/          確認用スクリーンショット
