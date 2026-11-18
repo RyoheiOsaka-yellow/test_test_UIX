@@ -61,13 +61,13 @@ MAN_CSS = """
 .ch h2 .ic{display:inline-grid;place-items:center;width:22pt;height:22pt;border-radius:6pt;background:var(--vc);color:#fff;font-size:12pt}
 .fig{position:relative;margin:8pt 0 4pt;border:1px solid #cfcabd;border-radius:4pt;overflow:hidden;break-inside:avoid}
 .fig img{display:block;width:100%}
-.fig .mk{position:absolute;width:15pt;height:15pt;margin:-7.5pt 0 0 -7.5pt;border-radius:50%;background:var(--vc);color:#fff;font:700 8.5pt/15pt sans-serif;text-align:center;border:1.5pt solid #fff;box-shadow:0 1pt 3pt rgba(0,0,0,.35)}
+.fig .mk{position:absolute;width:15pt;height:15pt;margin:-7.5pt 0 0 -7.5pt;border-radius:50%;background:var(--vc);color:#fff;font:700 8.5pt sans-serif;display:flex;align-items:center;justify-content:center;line-height:1;font-variant-numeric:tabular-nums;border:1.5pt solid #fff;box-shadow:0 1pt 3pt rgba(0,0,0,.35)}
 .fig .bx{position:absolute;border:1.6pt solid var(--vc);border-radius:3pt;background:rgba(255,255,255,.06)}
 .legend{display:grid;grid-template-columns:repeat(2,1fr);gap:2pt 14pt;font-size:9pt;margin:2pt 0 8pt;break-inside:avoid}
-.legend span{display:inline-grid;place-items:center;width:12pt;height:12pt;border-radius:50%;background:var(--vc);color:#fff;font:700 7.5pt/12pt sans-serif;margin-right:4pt}
+.legend div{display:flex;align-items:center;gap:0}.legend span{flex:none;width:12pt;height:12pt;border-radius:50%;background:var(--vc);color:#fff;font:700 7.5pt sans-serif;display:flex;align-items:center;justify-content:center;line-height:1;font-variant-numeric:tabular-nums;margin-right:4pt}
 ol.msteps{list-style:none;padding:0;margin:6pt 0;counter-reset:s}
 ol.msteps>li{position:relative;padding:4pt 0 4pt 22pt;break-inside:avoid;font-size:10.5pt;line-height:1.65}
-ol.msteps>li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:4pt;width:15pt;height:15pt;border-radius:50%;border:1.5pt solid var(--vc);color:var(--vc);font:700 8.5pt/15pt sans-serif;text-align:center}
+ol.msteps>li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:4pt;width:15pt;height:15pt;border-radius:50%;border:1.5pt solid var(--vc);color:var(--vc);font:700 8.5pt sans-serif;display:flex;align-items:center;justify-content:center;line-height:1;font-variant-numeric:tabular-nums;}
 ol.msteps .see{font-size:9pt;color:var(--ink3)}
 .box{border:1px solid #cfcabd;border-left:4pt solid var(--vc);border-radius:3pt;padding:6pt 9pt;margin:8pt 0;font-size:10pt;break-inside:avoid}
 table.k td:first-child{white-space:nowrap;font-weight:700;width:46mm}
@@ -129,14 +129,14 @@ main{padding:22px clamp(14px,3vw,36px) 40px;max-width:1240px;width:100%}
 .top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}.top h2{margin:0;font-size:22px}.top .n{color:var(--ink3);font-size:13px}
 .stage{position:relative;margin:0 auto;max-width:max(320px,calc((100vh - 270px) * 1.6));border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#ddd;box-shadow:0 12px 36px rgba(0,0,0,.10)}
 .stage img{display:block;width:100%;height:auto}
-.mk{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:var(--vc);color:#fff;font:700 13px/28px system-ui;text-align:center;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:default;transition:transform .2s,opacity .2s;opacity:.35}
+.mk{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:var(--vc);color:#fff;font:700 13px system-ui;display:flex;align-items:center;justify-content:center;line-height:1;font-variant-numeric:tabular-nums;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:default;transition:transform .2s,opacity .2s;opacity:.35}
 .mk.on{opacity:1;transform:scale(1.12);animation:pulse 1.6s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,214,10,.75),0 2px 8px rgba(0,0,0,.35)}70%{box-shadow:0 0 0 14px rgba(255,214,10,0),0 2px 8px rgba(0,0,0,.35)}100%{box-shadow:0 0 0 0 rgba(255,214,10,0),0 2px 8px rgba(0,0,0,.35)}}
 .bx{position:absolute;border:3px solid var(--hi);border-radius:8px;box-shadow:0 0 0 9999px rgba(10,12,16,.28);pointer-events:none;transition:all .25s}
 .mk .tip{position:absolute;left:34px;top:50%;transform:translateY(-50%);white-space:nowrap;background:#111827;color:#fff;font:500 12px system-ui;padding:5px 9px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .15s}
 .mk:hover .tip{opacity:1}.mk:hover{opacity:1}
 .step{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
-.step .no{width:40px;height:40px;border-radius:12px;background:var(--vc);color:#fff;display:grid;place-items:center;font:700 17px system-ui}
+.step .no{width:40px;height:40px;border-radius:12px;background:var(--vc);color:#fff;font:700 17px system-ui;display:flex;align-items:center;justify-content:center;line-height:1;font-variant-numeric:tabular-nums;}
 .step p{margin:2px 0 0;font-size:15.5px;line-height:1.75}
 .step .see{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.step .see span{font-size:12px;padding:3px 9px;border-radius:999px;background:rgba(127,127,127,.12);color:var(--ink2)}
 .ctl{display:flex;align-items:center;gap:10px;margin-top:14px}
@@ -150,7 +150,7 @@ td.k{white-space:nowrap;font-weight:700}
 kbd{font:600 12px ui-monospace,monospace;padding:2px 6px;border-radius:6px;border:1px solid var(--line);background:rgba(127,127,127,.08)}
 .intro{font-size:15px;line-height:1.8;max-width:760px}.for li{margin:4px 0}
 .legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 18px;margin-top:12px;font-size:13.5px}
-.legend span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--vc);color:#fff;font:700 11px system-ui;margin-right:6px}
+.legend div{display:flex;align-items:center}.legend span{flex:none;width:20px;height:20px;border-radius:50%;background:var(--vc);color:#fff;font:700 11px system-ui;display:flex;align-items:center;justify-content:center;line-height:1;font-variant-numeric:tabular-nums;margin-right:6px}
 @media (max-width:860px){html,body{height:auto}body{grid-template-columns:1fr;align-content:start}aside{position:sticky;top:0;z-index:5;max-height:none;padding:10px 10px 8px;display:block;border-right:none;border-bottom:1px solid var(--line)}.brand{padding:2px 4px 8px}.brand h1{font-size:16px;display:inline;margin-right:8px}.brand .s{display:inline}#navs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}.nav{flex:none;padding:7px 10px;font-size:13px}.nav .c,.sep{display:none}}
 </style></head><body>
 <aside id="side"><div class="brand"><div class="b">ANGLEX 操作ガイド</div><h1>__NAME__</h1><div class="s">__SUB__</div></div><div id="navs"></div></aside>
