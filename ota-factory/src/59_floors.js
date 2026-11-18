@@ -51,7 +51,7 @@ function buildFloorDetail(){
   // ---- 受入検査：ゲージキャビネット・計測アーム ----
   F1.box(2.4, 1.9, 0.6, M.machineWhite, 26, y1, 17.4); F1.box(0.4, 0.4, 0.4, M.machineDark, 18.5, y1+0.9, 6); F1.cyl(0.05, 1.3, M.machineWhite, 18.5, y1+1.3, 6, 8); doorPlate(g1, "受入検査 / INCOMING QC", 22, 2.6, 3.2, 0);
   // ---- 休憩・更衣：テーブル・自販機・流し ----
-  for (const x of [29.5, 32.5]){ F1.box(1.6, 0.04, 0.8, M.timber, x, y1+0.72, 9); F1.box(0.06, 0.72, 0.6, M.darkSteel, x-0.6, y1, 9); F1.box(0.06, 0.72, 0.6, M.darkSteel, x+0.6, y1, 9); for (const dz of [-0.9, 0.9]) F1.box(0.42, 0.45, 0.42, M.chair, x, y1, 9+dz); }
+  for (const x of [29.5, 32.5]){ F1.box(1.6, 0.04, 0.8, M.timber, x, y1+0.72, 9); F1.box(0.06, 0.72, 0.6, M.darkSteel, x-0.6, y1, 9); F1.box(0.06, 0.72, 0.6, M.darkSteel, x+0.6, y1, 9); for (const dz of [-0.9, 0.9]){ F1.box(0.42, 0.45, 0.42, M.chair, x, y1, 9+dz); F1.seat(x, y1, 9+dz, dz < 0 ? 0 : Math.PI); } }
   vending(F1, 29, 3.3, y1, 0xd13b3b); vending(F1, 30.2, 3.3, y1, 0x2a5ea8); kitchenette(F1, 33.5, 3.4, y1); doorPlate(g1, "休憩・更衣 / LOCKER", 32, 2.6, 2.5, 0);
   // ---- 1F コア：WC・EV かご扉 ----
   wcFixtures(F1, -43.5, -37.5, 14.5, y1); wcFixtures(F1, 37.5, 43.5, 14.5, y1); elevatorCar(F1, -42.4, 5.4, y1, 2.2); elevatorCar(F1, 37.6, 5.4, y1, 2.2);
@@ -67,7 +67,7 @@ function buildFloorDetail(){
   // ---- 3F：プロッタ・サンプル棚・模型台・役員ボードルーム・カフェ厨房 ----
   F3.box(1.6, 1.0, 0.8, std(0xe8e9ea), -34.5, y3, 16.4); F3.box(1.5, 0.3, 0.1, M.darkSteel, -34.5, y3+1.0, 16.2); for (let i=0;i<5;i++) F3.box(2.4, 0.03, 0.4, M.steel, -12, y3+0.4+i*0.5, 17.4); F3.box(2.5, 2.6, 0.45, M.darkSteel, -12, y3, 17.5);
   F3.box(2.4, 0.9, 1.4, M.timber, -20, y3, 16.2); F3.box(2.2, 0.08, 1.2, std(0xe6e1d6), -20, y3+0.9, 16.2);   // 模型台
-  F3.box(4.0, 0.05, 1.4, std(0x4a3626,{roughness:0.4}), 13, y3+0.73, 10); for (let i=0;i<5;i++) for (const dz of [-1.0, 1.0]){ F3.box(0.46, 0.08, 0.46, M.chair, 11.2+i*0.9, y3+0.42, 10+dz); F3.box(0.44, 0.5, 0.06, M.chair, 11.2+i*0.9, y3+0.5, 10+dz+Math.sign(dz)*0.2); }
+  F3.box(4.0, 0.05, 1.4, std(0x4a3626,{roughness:0.4}), 13, y3+0.73, 10); for (let i=0;i<5;i++) for (const dz of [-1.0, 1.0]){ F3.seat(11.2+i*0.9, y3, 10+dz, dz < 0 ? 0 : Math.PI); F3.box(0.46, 0.08, 0.46, M.chair, 11.2+i*0.9, y3+0.42, 10+dz); F3.box(0.44, 0.5, 0.06, M.chair, 11.2+i*0.9, y3+0.5, 10+dz+Math.sign(dz)*0.2); }
   F3.box(0.15, 3.3, 15.5, M.glassIn, 10, y3, 10); F3.box(0.15, 3.3, 15.5, M.glassIn, 16, y3, 10); doorPlate(g3, "ボードルーム", 13, y3+2.6, 3.2, 0);
   F3.box(5.0, 0.9, 2.4, std(0xdfe3e6,{metalness:0.4}), 31, y3, 15.5); F3.box(1.0, 0.5, 0.7, std(0x8d939a,{metalness:0.6}), 30, y3+0.9, 15.5); F3.box(2.0, 0.6, 1.0, std(0xd8dcdf,{metalness:0.5}), 32.5, y3+0.9, 15.5); F3.box(5.2, 0.8, 0.1, M.timberDark, 31, y3+2.4, 16.6); // 厨房
   for (let x = 18; x < 36; x += 1.0) { F3.box(0.4, 0.75, 0.4, M.chair, x, y3, 3.4); } F3.box(18, 0.04, 0.5, M.timber, 27, y3+1.0, 3.0);   // 窓際カウンター席

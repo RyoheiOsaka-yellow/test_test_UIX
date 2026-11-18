@@ -702,8 +702,12 @@ function boxAt(parent, w,h,d, mat, x, yb, z, opts={}){ const m = mesh(G.box(w,h,
 function cylAt(parent, r,h, mat, x, yb, z, opts={}){ const m = mesh(G.cyl(r,h,opts.seg||24,opts.rt), mat, x, yb+h/2, z, opts); parent.add(m); return m; }
 
 // ---- 静的ジオメトリの材質別マージ（描画コール削減） ----
+// 座れる席（Space で使用）：{ parent, list:[[x, yFloor, z, ry]] }。ry は着席者の向き（+z 正面＝0）
+const SEATS_RAW = [];
+function addSeats(parent, list){ if (list && list.length) SEATS_RAW.push({ parent, list }); }
 class Merger {
   constructor(){ this.buckets = new Map(); }
+  seat(x, y, z, ry=0){ (this._chairs || (this._chairs = [])).push([x, y, z, ry]); }
   add(geo, mat, matrix){ const g = geo.clone(); if (matrix) g.applyMatrix4(matrix); if(!this.buckets.has(mat)) this.buckets.set(mat, []); this.buckets.get(mat).push(g); geo.dispose?.(); }
   box(w,h,d, mat, x, yb, z, ry=0){ const mtx = new THREE.Matrix4().makeRotationY(ry).setPosition(x, yb+h/2, z); this.add(G.box(w,h,d), mat, mtx); }
   boxC(w,h,d, mat, x, y, z, rot){ const mtx = new THREE.Matrix4(); if(rot) mtx.makeRotationFromEuler(new THREE.Euler(...rot)); mtx.setPosition(x,y,z); this.add(G.box(w,h,d), mat, mtx); }
@@ -718,6 +722,7 @@ class Merger {
     }
     this.buckets.clear();
     if (this._seats){ PEOPLE.seated.push({ parent, seats:this._seats }); this._seats = null; }
+    if (this._chairs){ addSeats(parent, this._chairs); this._chairs = null; }
   }
 }
 
@@ -750,6 +755,7 @@ const camState = { yaw:-0.75, pitch:0.55, dist:190, target:new THREE.Vector3(0,6
 const camGoal  = { yaw:-0.75, pitch:0.55, dist:190, target:new THREE.Vector3(0,6,0) };
 const walk = { on:false, pos:new THREE.Vector3(-30, 1.65, 26), yaw:Math.PI, pitch:0, keys:{} };
 let camDirty = true;
+let camOverride = null; // () => bool：true ならカメラを自前で置いた（一人称など）
 let camCollide = null; // (pos, target) => void：三人称カメラの遮蔽回避（Space で使用）
 function setCam(goal, instant=false){
   if (goal.yaw !== undefined) camGoal.yaw = goal.yaw; if (goal.pitch !== undefined) camGoal.pitch = goal.pitch;
@@ -763,6 +769,7 @@ function applyCam(){
     camera.position.copy(walk.pos); camera.lookAt(walk.pos.clone().add(dir)); return;
   }
   const s = camState, g = camGoal, k = 0.12;
+  if (camOverride && camOverride()) return;
   s.yaw = lerp(s.yaw, g.yaw, k); s.pitch = lerp(s.pitch, g.pitch, k); s.dist = lerp(s.dist, g.dist, k); s.target.lerp(g.target, k);
   const p = clamp(s.pitch, 0.02, 1.55);
   camera.position.set(s.target.x + s.dist*Math.cos(p)*Math.sin(s.yaw), s.target.y + s.dist*Math.sin(p), s.target.z + s.dist*Math.cos(p)*Math.cos(s.yaw));
@@ -1420,19 +1427,19 @@ function deskCluster(m, x, z, people, ry=0){ // 4席アイランド（m: Merger�
     m.box(1.5, 0.03, 0.75, M.deskWhite, px, 0.72, pz, rot); for (const dx of [-0.65, 0.65]) { const [lx,lz] = R(sx+dx, sz); m.box(0.05, 0.72, 0.6, M.darkSteel, lx, 0, lz, rot); }
     const [mx,mz] = R(sx, sz - side*0.25); m.box(0.6, 0.36, 0.03, M.screen, mx, 0.85, mz, rot); m.box(0.2, 0.12, 0.15, M.darkSteel, mx, 0.73, mz, rot);
     const [cx,cz] = R(sx, sz + side*0.75); m.box(0.46, 0.08, 0.46, M.chair, cx, 0.42, cz, rot); m.box(0.44, 0.5, 0.06, M.chair, cx, 0.5, cz + side*0.2, rot); m.cyl(0.03, 0.42, M.darkSteel, cx, 0, cz, 8); m.box(0.5, 0.04, 0.5, M.darkSteel, cx, 0.02, cz, rot);
-    if (people && Math.random() < 0.55) seatedPerson(m, cx, cz, rot + (side>0? Math.PI : 0)); }
+    m.seat(cx, 0, cz, rot + (side>0? Math.PI : 0)); if (people && Math.random() < 0.55) seatedPerson(m, cx, cz, rot + (side>0? Math.PI : 0)); }
   m.box(3.2, 0.5, 0.05, std(0xcbd5df), x, 0.72, z, rot);   // 中央パーティション
   { const p = R(1.9, 0); m.box(0.4, 0.5, 0.4, M.pot, p[0], 0, p[1], rot); m.box(0.5, 0.7, 0.5, M.plant, p[0], 0.5, p[1], rot); }
 }
 function seatedPerson(m, x, z, ry){ (m._seats || (m._seats = [])).push([x, z, ry]); m.box(0.42, 0.55, 0.26, Math.random()<0.5? M.shirt : M.uniform2, x, 0.48, z, ry); m.cyl(0.11, 0.24, M.skin, x, 1.02, z, 10); m.box(0.4, 0.12, 0.45, M.uniform, x, 0.45, z, ry); }
 function meetingRoom(m, x0, x1, z0, z1, y){ const cx=(x0+x1)/2, cz=(z0+z1)/2, L = Math.min(x1-x0-2, 4.5);
   m.box(L, 0.05, 1.3, M.desk, cx, y+0.73, cz); m.box(0.12, 0.73, 1.0, M.darkSteel, cx-L/2+0.4, y, cz); m.box(0.12, 0.73, 1.0, M.darkSteel, cx+L/2-0.4, y, cz);
-  for (let i=0;i<Math.floor(L/0.8); i++) for (const dz of [-1.0, 1.0]){ const px = cx-L/2+0.5+i*0.8; m.box(0.46, 0.08, 0.46, M.chair, px, y+0.42, cz+dz); m.box(0.44, 0.5, 0.06, M.chair, px, y+0.5, cz+dz+Math.sign(dz)*0.2); m.cyl(0.03, 0.42, M.darkSteel, px, y, cz+dz, 8); }
+  for (let i=0;i<Math.floor(L/0.8); i++) for (const dz of [-1.0, 1.0]){ const px = cx-L/2+0.5+i*0.8; m.seat(px, y, cz+dz, dz < 0 ? 0 : Math.PI); m.box(0.46, 0.08, 0.46, M.chair, px, y+0.42, cz+dz); m.box(0.44, 0.5, 0.06, M.chair, px, y+0.5, cz+dz+Math.sign(dz)*0.2); m.cyl(0.03, 0.42, M.darkSteel, px, y, cz+dz, 8); }
   m.box(2.2, 1.3, 0.06, M.monitor, cx, y+1.0, z1-0.6); m.box(2.1, 1.2, 0.02, M.screen, cx, y+1.05, z1-0.63); m.box(3.0, 1.2, 0.03, std(0xf8f8f6), cx, y+0.9, z0+0.3);
 }
-function sofaSet(m, x, z, y, ry=0){ m.box(2.0, 0.42, 0.9, std(0x6b7c8a,{roughness:0.95}), x, y, z, ry); m.box(2.0, 0.4, 0.2, std(0x6b7c8a,{roughness:0.95}), x, y+0.42, z-0.35, ry); m.box(1.0, 0.4, 0.6, M.timber, x, y, z+1.2, ry); }
+function sofaSet(m, x, z, y, ry=0){ m.seat(x-0.5, y, z+0.05, 0); m.seat(x+0.5, y, z+0.05, 0); m.box(2.0, 0.42, 0.9, std(0x6b7c8a,{roughness:0.95}), x, y, z, ry); m.box(2.0, 0.4, 0.2, std(0x6b7c8a,{roughness:0.95}), x, y+0.42, z-0.35, ry); m.box(1.0, 0.4, 0.6, M.timber, x, y, z+1.2, ry); }
 function cafeTable(m, x, z, y){ m.cyl(0.55, 0.04, M.timber, x, y+0.72, z, 20); m.cyl(0.04, 0.72, M.darkSteel, x, y, z, 8); m.cyl(0.25, 0.02, M.darkSteel, x, y, z, 14);
-  for (let k=0;k<4;k++){ const a = k*Math.PI/2; const px = x+Math.cos(a)*0.85, pz = z+Math.sin(a)*0.85; m.box(0.4, 0.06, 0.4, M.chair, px, y+0.42, pz, -a); m.cyl(0.02, 0.42, M.darkSteel, px, y, pz, 6); m.box(0.4, 0.42, 0.05, M.chair, px+Math.cos(a)*0.2, y+0.48, pz+Math.sin(a)*0.2, -a); if (Math.random()<0.35) seatedPerson(m, px, pz, -a-Math.PI/2); } }
+  for (let k=0;k<4;k++){ const a = k*Math.PI/2; const px = x+Math.cos(a)*0.85, pz = z+Math.sin(a)*0.85; m.seat(px, y, pz, -a-Math.PI/2); m.box(0.4, 0.06, 0.4, M.chair, px, y+0.42, pz, -a); m.cyl(0.02, 0.42, M.darkSteel, px, y, pz, 6); m.box(0.4, 0.42, 0.05, M.chair, px+Math.cos(a)*0.2, y+0.48, pz+Math.sin(a)*0.2, -a); if (Math.random()<0.35) seatedPerson(m, px, pz, -a-Math.PI/2); } }
 function plantBig(m, x, z, y){ m.cyl(0.35, 0.5, M.pot, x, y, z, 12); m.cyl(0.04, 1.2, M.trunk, x, y+0.5, z, 6); m.add(G.sph(0.6, 10), M.plant, new THREE.Matrix4().setPosition(x, y+1.9, z)); m.add(G.sph(0.45, 10), M.plant, new THREE.Matrix4().setPosition(x+0.3, y+1.5, z-0.2)); }
 function lockerRow(m, x0, x1, z, y){ for (let x=x0; x<x1; x+=0.45) { m.box(0.42, 1.8, 0.5, std(0x9aa5ae,{metalness:0.4}), x+0.22, y, z); m.box(0.3, 0.02, 0.02, M.darkSteel, x+0.22, y+1.0, z+0.26); } }
 
@@ -1471,7 +1478,7 @@ function buildInterior(){
   F1.box(5.0, 0.4, 3.0, std(0xe4e4e0), -23, 0, 10); const demo = makeLathe(); demo.name = "showDemo"; demo.position.set(-23, 0.4, 10); demo.rotation.y = Math.PI; g1.add(demo);    // 実機展示（開発機スケールモデル代替）
   F1.box(1.2, 1.0, 0.8, std(0xe4e4e0), -27.5, 0, 14); F1.box(1.0, 0.7, 0.03, M.screen, -27.5, 1.0, 13.6);   // 説明パネル
   for (const x of [-20, -17]) plantBig(F1, x, 16.5, 0);
-  F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]) F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz);  // 休憩・更衣
+  F1.box(2.2, 0.75, 0.9, M.desk, 32, 0, 6); for (const dz of [-0.8,0.8]){ F1.box(0.46, 0.45, 0.46, M.chair, 32, 0, 6+dz); F1.seat(32, 0, 6+dz, dz < 0 ? 0 : Math.PI); }  // 休憩・更衣
   // 受入検査
   for (let i=0;i<3;i++){ F1.box(1.1, 0.14, 1.1, M.pallet, 18+i*1.6, 0, 14); F1.box(0.9, 0.7, 0.9, M.box, 18+i*1.6, 0.14, 14); } F1.box(3.0, 0.9, 1.2, M.steel, 23, 0, 6); F1.box(0.6, 0.4, 0.05, M.screen, 23, 1.0, 5.6); F1.box(0.5, 0.5, 0.5, M.machineWhite, 25.5, 0.9, 6.5);
   F1.flush(g1, { name:"furn1", layer:"furniture" });
@@ -1562,7 +1569,7 @@ function makeDemoStage(){ const g = new THREE.Group(); const w = 10, d = 7;
   boxAt(g, 6.0, 3.0, 0.15, M.monitor, 0, 0.6, -d/2+0.2); boxAt(g, 5.8, 2.8, 0.02, M.screen, 0, 0.7, -d/2+0.29);                // 大型ディスプレイ
   const demoM = makeMC5(); demoM.scale.setScalar(0.75); demoM.position.set(-2.2, 0.3, -1.4); g.add(demoM);
   const r = makeRobot(0.9, M.robotWhite); r.position.set(2.4, 0.3, -1.2); cylAt(g, 0.45, 0.3, M.machineDark, 2.4, 0.3, -1.2, {seg:16}); g.add(r); animateRobot(r, 0.3, 0.8);
-  for (let row=0; row<2; row++) for (let i=0;i<6;i++){ const x = -3.5+i*1.4, z = 1.6+row*1.2; boxAt(g, 0.5, 0.08, 0.5, M.chair, x, 0.42, z); boxAt(g, 0.48, 0.5, 0.06, M.chair, x, 0.5, z+0.22); cylAt(g, 0.03, 0.42, M.darkSteel, x, 0, z, 6); if ((i+row)%2) { const m = new Merger(); seatedPerson(m, x, z, Math.PI); m.flush(g); } }
+  for (let row=0; row<2; row++) for (let i=0;i<6;i++){ const x = -3.5+i*1.4, z = 1.6+row*1.2; addSeats(g, [[x, 0, z, Math.PI]]); boxAt(g, 0.5, 0.08, 0.5, M.chair, x, 0.42, z); boxAt(g, 0.48, 0.5, 0.06, M.chair, x, 0.5, z+0.22); cylAt(g, 0.03, 0.42, M.darkSteel, x, 0, z, 6); if ((i+row)%2) { const m = new Merger(); seatedPerson(m, x, z, Math.PI); m.flush(g); } }
   for (const x of [-4.5, 4.5]) { cylAt(g, 0.05, 3.0, M.darkSteel, x, 0.3, -d/2+0.6, {seg:6}); boxAt(g, 0.4, 0.3, 0.3, M.lampWarm, x, 3.2, -d/2+0.6); }
   boxAt(g, 1.2, 0.9, 0.6, M.deskWhite, 4.2, 0.3, -0.5); boxAt(g, 0.5, 0.35, 0.03, M.screen, 4.2, 1.25, -0.6); return g; }
 function makeTestCellStation(){ const g = makeTestCell(); return g; }
@@ -2223,7 +2230,7 @@ function buildFloorDetail(){
   // ---- 受入検査：ゲージキャビネット・計測アーム ----
   F1.box(2.4, 1.9, 0.6, M.machineWhite, 26, y1, 17.4); F1.box(0.4, 0.4, 0.4, M.machineDark, 18.5, y1+0.9, 6); F1.cyl(0.05, 1.3, M.machineWhite, 18.5, y1+1.3, 6, 8); doorPlate(g1, "受入検査 / INCOMING QC", 22, 2.6, 3.2, 0);
   // ---- 休憩・更衣：テーブル・自販機・流し ----
-  for (const x of [29.5, 32.5]){ F1.box(1.6, 0.04, 0.8, M.timber, x, y1+0.72, 9); F1.box(0.06, 0.72, 0.6, M.darkSteel, x-0.6, y1, 9); F1.box(0.06, 0.72, 0.6, M.darkSteel, x+0.6, y1, 9); for (const dz of [-0.9, 0.9]) F1.box(0.42, 0.45, 0.42, M.chair, x, y1, 9+dz); }
+  for (const x of [29.5, 32.5]){ F1.box(1.6, 0.04, 0.8, M.timber, x, y1+0.72, 9); F1.box(0.06, 0.72, 0.6, M.darkSteel, x-0.6, y1, 9); F1.box(0.06, 0.72, 0.6, M.darkSteel, x+0.6, y1, 9); for (const dz of [-0.9, 0.9]){ F1.box(0.42, 0.45, 0.42, M.chair, x, y1, 9+dz); F1.seat(x, y1, 9+dz, dz < 0 ? 0 : Math.PI); } }
   vending(F1, 29, 3.3, y1, 0xd13b3b); vending(F1, 30.2, 3.3, y1, 0x2a5ea8); kitchenette(F1, 33.5, 3.4, y1); doorPlate(g1, "休憩・更衣 / LOCKER", 32, 2.6, 2.5, 0);
   // ---- 1F コア：WC・EV かご扉 ----
   wcFixtures(F1, -43.5, -37.5, 14.5, y1); wcFixtures(F1, 37.5, 43.5, 14.5, y1); elevatorCar(F1, -42.4, 5.4, y1, 2.2); elevatorCar(F1, 37.6, 5.4, y1, 2.2);
@@ -2239,7 +2246,7 @@ function buildFloorDetail(){
   // ---- 3F：プロッタ・サンプル棚・模型台・役員ボードルーム・カフェ厨房 ----
   F3.box(1.6, 1.0, 0.8, std(0xe8e9ea), -34.5, y3, 16.4); F3.box(1.5, 0.3, 0.1, M.darkSteel, -34.5, y3+1.0, 16.2); for (let i=0;i<5;i++) F3.box(2.4, 0.03, 0.4, M.steel, -12, y3+0.4+i*0.5, 17.4); F3.box(2.5, 2.6, 0.45, M.darkSteel, -12, y3, 17.5);
   F3.box(2.4, 0.9, 1.4, M.timber, -20, y3, 16.2); F3.box(2.2, 0.08, 1.2, std(0xe6e1d6), -20, y3+0.9, 16.2);   // 模型台
-  F3.box(4.0, 0.05, 1.4, std(0x4a3626,{roughness:0.4}), 13, y3+0.73, 10); for (let i=0;i<5;i++) for (const dz of [-1.0, 1.0]){ F3.box(0.46, 0.08, 0.46, M.chair, 11.2+i*0.9, y3+0.42, 10+dz); F3.box(0.44, 0.5, 0.06, M.chair, 11.2+i*0.9, y3+0.5, 10+dz+Math.sign(dz)*0.2); }
+  F3.box(4.0, 0.05, 1.4, std(0x4a3626,{roughness:0.4}), 13, y3+0.73, 10); for (let i=0;i<5;i++) for (const dz of [-1.0, 1.0]){ F3.seat(11.2+i*0.9, y3, 10+dz, dz < 0 ? 0 : Math.PI); F3.box(0.46, 0.08, 0.46, M.chair, 11.2+i*0.9, y3+0.42, 10+dz); F3.box(0.44, 0.5, 0.06, M.chair, 11.2+i*0.9, y3+0.5, 10+dz+Math.sign(dz)*0.2); }
   F3.box(0.15, 3.3, 15.5, M.glassIn, 10, y3, 10); F3.box(0.15, 3.3, 15.5, M.glassIn, 16, y3, 10); doorPlate(g3, "ボードルーム", 13, y3+2.6, 3.2, 0);
   F3.box(5.0, 0.9, 2.4, std(0xdfe3e6,{metalness:0.4}), 31, y3, 15.5); F3.box(1.0, 0.5, 0.7, std(0x8d939a,{metalness:0.6}), 30, y3+0.9, 15.5); F3.box(2.0, 0.6, 1.0, std(0xd8dcdf,{metalness:0.5}), 32.5, y3+0.9, 15.5); F3.box(5.2, 0.8, 0.1, M.timberDark, 31, y3+2.4, 16.6); // 厨房
   for (let x = 18; x < 36; x += 1.0) { F3.box(0.4, 0.75, 0.4, M.chair, x, y3, 3.4); } F3.box(18, 0.04, 0.5, M.timber, 27, y3+1.0, 3.0);   // 窓際カウンター席

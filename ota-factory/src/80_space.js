@@ -1,11 +1,13 @@
 // ================= XANTALOS Space（space.html のみ）：ログイン・アバター・移動・在席・チャット =================
 // サーバー（space-server/）と WebSocket でつながり、全員の位置と会話を同期する。
 const SP = { cfg:{}, token:"", me:null, ws:null, wsOk:false, retry:0, users:new Map(), avatars:new Map(), channels:[], dms:[], eqs:[], cur:"all", msgs:{}, more:{}, unread:{}, mention:{},
-  near:[], pos:{ x:-36, z:12, f:1, ry:Math.PI, mv:0 }, keys:{}, target:null, zone:"", lastSent:0, lastSentPos:"", design:false, npc:false, invite:new URLSearchParams(location.search).get("invite") || "", searching:"" };
+  near:[], pos:{ x:-36, z:12, f:1, ry:Math.PI, mv:0, po:0 }, keys:{}, target:null, sitAfter:null, fp:false, zone:"", lastSent:0, lastSentPos:"", design:false, npc:false, invite:new URLSearchParams(location.search).get("invite") || "", searching:"" };
 const SP_STATUS = { "在席":"#3fb950", "集中":"#58a6ff", "会議中":"#f85149", "休憩":"#f2c744", "外出":"#8b949e" };
 const SP_COLORS = ["#5b7fa6", "#2f6fd0", "#3fb950", "#f2a93b", "#d13b3b", "#bc8cff", "#2ec4b6", "#e9ecef"];
 const SP_CHARS = [["casual_m","私服（男性）"],["casual_f","私服（女性）"],["worker_m","作業服（男性）"],["worker_f","作業服（女性）"]];
 const SP_SPOTS = { "受付":[1,-36,12], "機械加工":[1,-28,-14.5], "組立ベイ":[1,4,-14.5], "試験セル":[1,30,-1], "ソフト開発（2F）":[2,-20,10], "設計（3F）":[3,-22,10], "カフェ（3F）":[3,26,9] };
+const SP_EMO = { wave:["👋","手を振っています"], like:["👍","いいね！"], bow:["🙇","おじぎ"], clap:["👏","拍手"], coffee:["☕","休憩しませんか？"], ask:["✋","質問があります"], talk:["💬","話しかけています"] };
+const SP_EMO_KEYS = ["wave", "like", "bow", "clap", "coffee", "ask"];
 const spLS = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch {} }, del(k){ try { localStorage.removeItem(k); } catch {} } };
 const spFloorY = f => BLD.lv[f - 1];
 
@@ -38,6 +40,10 @@ function spInjectUI(){
   #spCompose { display:flex; gap:6px; padding:10px; border-top:1px solid var(--line); } #spCompose .btn { flex:none; }
   #spBar { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); z-index:12; display:flex; gap:6px; align-items:center; padding:7px 9px; } body.space #spBar { left:calc(50% - 55px); }
   #spBar select { background:#21262d; color:var(--txt); border:1px solid var(--line); border-radius:7px; padding:5px 6px; font-size:12px; }
+  #spBar .emo { font-size:15px; padding:2px 5px; min-width:28px; } #spBar .sep { width:1px; height:20px; background:var(--line); }
+  #spHint { position:absolute; left:calc(50% - 55px); bottom:62px; transform:translateX(-50%); z-index:12; background:rgba(13,17,23,.82); border:1px solid var(--line); color:#e6edf3; border-radius:16px; padding:4px 12px; font-size:12px; display:none; pointer-events:none; } #spHint kbd { background:#2b3340; border-radius:4px; padding:0 5px; margin-right:4px; font:600 11px ui-monospace,monospace; }
+  #spCross { position:fixed; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.8); box-shadow:0 0 0 1px rgba(0,0,0,.5); z-index:11; display:none; pointer-events:none; } body.spFP #spCross { display:block; }
+  #spToast.info { background:#14283d; border-color:#2f6fd0; color:#d6e8ff; }
   #spToast { position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:320; background:#3a1d1d; border:1px solid #7a3030; color:#ffd1d1; padding:8px 14px; border-radius:8px; font-size:12.5px; display:none; }
   #spConn { color:var(--bad); font-size:11px; display:none; } body.spOffline #spConn { display:inline; }
   .spLink { word-break:break-all; background:#0d1117; border:1px solid var(--line); border-radius:6px; padding:6px; font-size:11px; }
@@ -63,11 +69,15 @@ function spInjectUI(){
   <section id="spChat" class="panel"><header><b id="spChName"></b><div class="sub" id="spChDesc"></div></header><div id="spMsgs"></div>
     <div id="spCompose"><input id="spInput" maxlength="2000" placeholder="メッセージを送信"><button class="btn on" id="spSend">送信</button></div></section>
   <div id="spBar" class="panel"><select id="spGo"><option value="">場所へ移動…</option>${Object.keys(SP_SPOTS).map(k => `<option>${k}</option>`).join("")}</select>
-    <button class="btn sm" id="spNpc">NPC を表示</button><button class="btn sm" id="spDesign" hidden>設計ビュー</button><span class="sub" style="font-size:10.5px">WASD・クリックで移動 ／ アバターをクリックで DM</span></div>
+    <button class="btn sm" id="spFP" title="自分の目線で歩く（V キー／ホイールで寄り切る）">👁 一人称</button><span class="sep"></span>
+    ${SP_EMO_KEYS.map((k, i) => `<button class="btn sm emo" data-emo="${k}" title="${SP_EMO[k][1]}（${i + 1} キー）">${SP_EMO[k][0]}</button>`).join("")}<span class="sep"></span>
+    <button class="btn sm" id="spNpc">NPC を表示</button><button class="btn sm" id="spDesign" hidden>設計ビュー</button>
+    <span class="sub" style="font-size:12px;cursor:help" title="WASD／矢印：移動（Shift で速く）&#10;床をクリック：そこへ歩く&#10;椅子をクリック／E：座る・立つ&#10;人をクリック：話しかける・手を振る・DM&#10;V：一人称と三人称の切替&#10;1〜6：しぐさ&#10;Enter：チャット入力">？</span></div>
+  <div id="spHint"></div><div id="spCross"></div>
   <div id="spToast"></div>`;
   document.body.insertAdjacentHTML("beforeend", html);
 }
-function spToast(t){ const el = $("spToast"); el.textContent = t; el.style.display = "block"; clearTimeout(spToast.tm); spToast.tm = setTimeout(() => el.style.display = "none", 3500); }
+function spToast(t, kind){ const el = $("spToast"); el.textContent = t; el.className = kind || ""; el.style.display = "block"; clearTimeout(spToast.tm); spToast.tm = setTimeout(() => el.style.display = "none", 3500); }
 async function spApi(p, opts = {}){ const r = await fetch(p, { ...opts, headers:{ "Content-Type":"application/json", ...(SP.token ? { Authorization:"Bearer " + SP.token } : {}), ...(opts.headers || {}) } }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || r.statusText); return j; }
 
 // ---------------------------------------------------------------- login
@@ -111,14 +121,15 @@ function spOnMsg(m){
       if (SP.pendingAvatar){ spSend({ t:"avatar", avatar:SP.pendingAvatar }); SP.pendingAvatar = null; }
       if (!SP.channels.find(c => c.id === SP.cur)) SP.cur = (SP.channels[0] || {}).id || "near";
       spSendPos(true); spRenderSide(); spOpen(SP.cur); break; }
-    case "pres": { const prev = SP.users.get(m.u.id); SP.users.set(m.u.id, m.u); if (m.u.id === SP.me.id) SP.me = { ...SP.me, ...m.u }; const a = spEnsureAvatar(m.u, true); if (!prev && a && m.u.id !== SP.me.id && m.u.pos){ a.cur = { ...m.u.pos }; a.tgt = { ...m.u.pos }; } spRenderSide(); break; }
+    case "pres": { const prev = SP.users.get(m.u.id); SP.users.set(m.u.id, m.u); if (m.u.id === SP.me.id) SP.me = { ...SP.me, ...m.u }; const a = spEnsureAvatar(m.u, true); if (!prev && a && m.u.id !== SP.me.id && m.u.pos){ a.cur = { ...m.u.pos }; a.tgt = { ...m.u.pos }; a.po = m.u.pos.po || 0; } spRenderSide(); break; }
     case "leave": { SP.users.delete(m.id); spRemoveAvatar(m.id); spRenderSide(); break; }
-    case "mv": { for (const [id, x, z, f, ry, mv] of m.l){ if (id === SP.me.id) continue; const a = SP.avatars.get(id); if (a){ a.tgt = { x, z, f, ry }; a.mv = mv; } const u = SP.users.get(id); if (u) u.f = f; } break; }
+    case "mv": { for (const [id, x, z, f, ry, mv, po] of m.l){ if (id === SP.me.id) continue; const a = SP.avatars.get(id); if (a){ a.tgt = { x, z, f, ry }; a.mv = mv; a.po = po || 0; } const u = SP.users.get(id); if (u) u.f = f; } break; }
     case "msg": spOnChat(m.m); break;
     case "near": { SP.near.push(m.m); if (SP.near.length > 200) SP.near.shift(); spBubble(m.m.uid, m.m.text); if (SP.cur === "near") spRenderMsgs(); else if (m.m.uid !== SP.me.id){ SP.unread.near = (SP.unread.near || 0) + 1; spRenderSide(); } break; }
     case "hist": { if (m.denied){ spToast("このチャンネルは閲覧できません"); break; } const cur = SP.msgs[m.ch] || []; const ids = new Set(cur.map(x => x.id)); SP.msgs[m.ch] = m.msgs.filter(x => !ids.has(x.id)).concat(cur); SP.more[m.ch] = m.more; if (m.ch === SP.cur) spRenderMsgs(m.prepend); break; }
     case "chan": { if (m.c.kind === "dm" && !SP.dms.find(d => d.id === m.c.id)) SP.dms.unshift(m.c); spOpen(m.c.id); break; }
     case "chans": spRefreshChannels(); break;
+    case "emo": spOnEmote(m); break;
     case "err": if (m.e !== "auth") spToast(m.e); break;
   }
 }
@@ -159,9 +170,12 @@ function spRenderSide(){
 }
 function spUserMenu(id, ev){ const u = SP.users.get(id); if (!u) return; const old = document.getElementById("spMenu"); if (old) old.remove();
   const m = document.createElement("div"); m.id = "spMenu"; m.className = "panel"; m.style.cssText = `position:fixed;left:${ev.clientX + 6}px;top:${ev.clientY}px;z-index:330;display:flex;flex-direction:column;gap:4px;padding:6px`;
-  m.innerHTML = `<button class="btn sm" data-a="dm">メッセージを送る</button><button class="btn sm" data-a="go">そばへ移動</button>`; document.body.appendChild(m);
+  const near = spIsNear(u); m.style.left = Math.min(ev.clientX + 6, innerWidth - 190) + "px"; m.style.top = Math.min(ev.clientY, innerHeight - 190) + "px";
+  m.innerHTML = `<div style="font-size:12px;padding:2px 4px 4px;color:var(--txt)"><b>${pe(u.name)}</b>${u.role === "guest" ? `<span class="spGuest">${pe(u.org)}</span>` : ""}<div class="sub" style="font-size:10.5px">${pe(u.status || "在席")} ・ ${pe(spPlace(u))}</div></div>
+    <button class="btn sm" data-a="talk">💬 ${near ? "話しかける" : "そばへ行って話しかける"}</button><button class="btn sm" data-a="wave">👋 手を振る</button><button class="btn sm" data-a="dm">✉ メッセージ（DM）</button>`; document.body.appendChild(m);
+  m.querySelector('[data-a="talk"]').onclick = () => { spTalkTo(id); m.remove(); };
+  m.querySelector('[data-a="wave"]').onclick = () => { spEmote("wave", id); m.remove(); };
   m.querySelector('[data-a="dm"]').onclick = () => { spSend({ t:"dm", to:id }); m.remove(); };
-  m.querySelector('[data-a="go"]').onclick = () => { const a = SP.avatars.get(id); if (a){ Object.assign(SP.pos, { x:a.cur.x + 1.2, z:a.cur.z + 1.2, f:a.cur.f }); SP.target = null; spSendPos(true); } m.remove(); };
   setTimeout(() => addEventListener("pointerdown", function h(e){ if (!m.contains(e.target)){ m.remove(); removeEventListener("pointerdown", h, true); } }, true), 0); }
 
 // ---------------------------------------------------------------- chat panel
@@ -193,7 +207,7 @@ function spTag(u){ const cvs = document.createElement("canvas"); const c = cvs.g
   c.fillStyle = SP_STATUS[u.status] || "#3fb950"; c.beginPath(); c.arc(24, cvs.height / 2, 9, 0, 6.3); c.fill(); c.fillStyle = "#fff"; c.textBaseline = "middle"; c.fillText(name, 44, cvs.height / 2 + 2);
   const t = new THREE.CanvasTexture(cvs); t.colorSpace = THREE.SRGBColorSpace; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map:t, depthTest:false, depthWrite:false, sizeAttenuation:false, transparent:true }));
   const hN = 0.026; sp.scale.set(w / cvs.height * hN / (innerWidth / innerHeight), hN, 1); sp.renderOrder = 70; sp.userData.aspect = w / cvs.height; return sp; }
-function spBubbleSprite(text){ const cvs = document.createElement("canvas"); const c = cvs.getContext("2d"); const fs = 30; c.font = `500 ${fs}px -apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif`;
+function spBubbleSprite(text, big){ const cvs = document.createElement("canvas"); const c = cvs.getContext("2d"); const fs = big ? 52 : 30; c.font = `500 ${fs}px -apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif`;
   const lines = []; let line = ""; for (const ch of text.slice(0, 80)){ if (c.measureText(line + ch).width > 420){ lines.push(line); line = ""; } line += ch; } lines.push(line);
   const w = Math.ceil(Math.max(...lines.map(l => c.measureText(l).width)) + 40), h = lines.length * fs * 1.3 + 28; cvs.width = w; cvs.height = h + 14; c.font = `500 ${fs}px -apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif`;
   c.fillStyle = "rgba(255,255,255,0.96)"; c.beginPath(); c.roundRect(0, 0, w, h, 16); c.fill(); c.beginPath(); c.moveTo(w / 2 - 12, h); c.lineTo(w / 2, h + 14); c.lineTo(w / 2 + 12, h); c.fill();
@@ -204,19 +218,21 @@ const SP_ROOT = new THREE.Group(); SP_ROOT.name = "spaceAvatars";
 function spEnsureAvatar(u, refresh){
   let a = SP.avatars.get(u.id); const key = JSON.stringify(u.avatar || {}), tagKey = JSON.stringify([u.name, u.status, u.org, u.role]);
   if (a && a.key === key){ if (a.tagKey !== tagKey){ a.g.remove(a.tag); a.tag = spTag(u); a.tag.position.y = 1.95; a.g.add(a.tag); a.tagKey = tagKey; } return a; }
-  let keep = null; if (a){ keep = { cur:a.cur, tgt:a.tgt, mv:a.mv }; spRemoveAvatar(u.id); a = null; }
+  let keep = null; if (a){ keep = { cur:a.cur, tgt:a.tgt, mv:a.mv, po:a.po }; spRemoveAvatar(u.id); a = null; }
   const g = new THREE.Group(); g.userData.spUser = u.id; const fb = makeWorker(u.avatar && u.avatar.char && u.avatar.char.startsWith("worker") ? "hall" : "office"); fb.userData.spFallback = true; g.add(fb);
   const tag = spTag(u); tag.position.y = 1.95; g.add(tag); SP_ROOT.add(g);
   const isMe = u.id === SP.me.id; const p = isMe ? SP.pos : (u.pos || { x:-36, z:12, f:u.f || 1, ry:0 });
-  a = { g, tag, key, tagKey, cur:{ x:p.x, z:p.z, f:p.f || 1, ry:p.ry || 0 }, tgt:{ x:p.x, z:p.z, f:p.f || 1, ry:p.ry || 0 }, mv:0, blend:0, bubble:null, until:0, ...(keep || {}) }; SP.avatars.set(u.id, a);
+  a = { g, tag, key, tagKey, cur:{ x:p.x, z:p.z, f:p.f || 1, ry:p.ry || 0 }, tgt:{ x:p.x, z:p.z, f:p.f || 1, ry:p.ry || 0 }, mv:0, po: p.po || 0, blend:0, bubble:null, until:0, ...(keep || {}) }; SP.avatars.set(u.id, a);
   const char = (u.avatar && u.avatar.char) || "casual_m";
   loadChar(char).then(ch => { if (SP.avatars.get(u.id) !== a) return; const root = SkeletonUtils.clone(ch.scene); root.scale.setScalar(1.72 / ch.h);
     const of = outfit(char.startsWith("worker") ? "hall" : "office", sRand("sp" + u.id)); const col = (u.avatar && u.avatar.color) || "#5b7fa6"; of.Shirt = col; if (char.startsWith("worker")) of.Vest = col; dressChar(root, of);
     root.traverse(o => { if (o.isMesh) o.userData.spUser = u.id; }); fb.visible = false; g.add(root);
-    const mx = new THREE.AnimationMixer(root); const idle = mx.clipAction(ch.anims.find(x => x.name === "Idle")); const walk = mx.clipAction(ch.anims.find(x => x.name === "Walk")); idle.play(); walk.play(); walk.setEffectiveWeight(0); Object.assign(a, { mx, idle, walk }); dirtyShadow(); }).catch(() => {});
+    const mx = new THREE.AnimationMixer(root); const idle = mx.clipAction(ch.anims.find(x => x.name === "Idle")); const walk = mx.clipAction(ch.anims.find(x => x.name === "Walk")); idle.play(); walk.play(); walk.setEffectiveWeight(0);
+    const sitClip = ch.anims.find(x => x.name === "SitDown"); const sit = sitClip ? mx.clipAction(sitClip) : null; if (sit){ sit.setLoop(THREE.LoopOnce); sit.clampWhenFinished = true; }
+    root.rotation.order = "YXZ"; Object.assign(a, { mx, idle, walk, sit, root, scale: 1.72 / ch.h, sitting:false }); spSitPose(char).then(o => { a.sitOff = o; }).catch(() => {}); dirtyShadow(); }).catch(() => {});
   return a; }
 function spRemoveAvatar(id){ const a = SP.avatars.get(id); if (!a) return; SP_ROOT.remove(a.g); SP.avatars.delete(id); }
-function spBubble(uid, text){ const a = SP.avatars.get(uid); if (!a) return; if (a.bubble) a.g.remove(a.bubble); a.bubble = spBubbleSprite(text); a.bubble.position.y = 2.3; a.g.add(a.bubble); a.until = performance.now() + 7000; }
+function spBubble(uid, text, ms = 7000, big = false){ const a = SP.avatars.get(uid); if (!a) return; if (a.bubble) a.g.remove(a.bubble); a.bubble = spBubbleSprite(text, big); a.bubble.position.y = a.po === 1 ? 1.75 : 2.3; a.g.add(a.bubble); a.until = performance.now() + ms; }
 function spIsNear(u){ const a = SP.avatars.get(u.id); if (!a) return false; return a.cur.f === SP.pos.f && Math.hypot(a.cur.x - SP.pos.x, a.cur.z - SP.pos.z) <= 10; }
 
 // ---------------------------------------------------------------- movement & camera
@@ -224,29 +240,92 @@ function spBounds(f, x, z){ const { x0, x1, z0, zh, z1, terraceZ } = BLD;
   if (f === 1) return [clamp(x, -SITE.w / 2 + 0.5, SITE.w / 2 - 0.5), clamp(z, -SITE.d / 2 + 0.5, SITE.d / 2 + 14)];
   if (f === 2) return [clamp(x, x0 + 0.5, x1 - 0.5), clamp(z, zh - 1.8, terraceZ - 0.6)];
   return [clamp(x, x0 + 0.5, x1 - 0.5), clamp(z, zh - 0.8, z1 - 0.5)]; }
-function spSendPos(force){ const p = SP.pos; const s = [p.x.toFixed(2), p.z.toFixed(2), p.f, p.ry.toFixed(1), p.mv].join(); const now = performance.now();
-  if (!force && (s === SP.lastSentPos || now - SP.lastSent < 120) && now - SP.lastSent < 2000) return; SP.lastSent = now; SP.lastSentPos = s; spSend({ t:"mv", x:p.x, z:p.z, f:p.f, ry:p.ry, mv:p.mv, zone:SP.zone }); }
+function spSendPos(force){ const p = SP.pos; const s = [p.x.toFixed(2), p.z.toFixed(2), p.f, p.ry.toFixed(1), p.mv, p.po].join(); const now = performance.now();
+  if (!force && (s === SP.lastSentPos || now - SP.lastSent < 120) && now - SP.lastSent < 2000) return; SP.lastSent = now; SP.lastSentPos = s; spSend({ t:"mv", x:p.x, z:p.z, f:p.f, ry:p.ry, mv:p.mv, po:p.po, zone:SP.zone }); }
 function spViewFor(p){ if (p.f >= 2) return p.f; const { x0, x1, z0 } = BLD; return (p.x > x0 - 0.5 && p.x < x1 + 0.5 && p.z > z0 - 0.5 && p.z < BLD.z1 + 0.5) ? 1 : "ext"; }
+// ---------------------------------------------------------------- seats（座る）
+let SP_SEATS = null;
+function spFloorOf(y){ let best = 0, bd = 0.7; BLD.lv.forEach((ly, i) => { const d = Math.abs(y - ly); if (d < bd){ bd = d; best = i + 1; } }); return best; }
+function spSeats(){ if (SP_SEATS) return SP_SEATS; SP_SEATS = []; const v = new THREE.Vector3(), q = new THREE.Quaternion(), e = new THREE.Euler();
+  for (const s of SEATS_RAW){ let top = s.parent; while (top.parent) top = top.parent; if (top !== scene) continue;
+    s.parent.updateWorldMatrix(true, false); s.parent.getWorldQuaternion(q); e.setFromQuaternion(q, "YXZ");
+    for (const [x, y, z, ry] of s.list){ v.set(x, y, z).applyMatrix4(s.parent.matrixWorld); const f = spFloorOf(v.y); if (f) SP_SEATS.push({ x:v.x, z:v.z, f, ry: ry + e.y }); } }
+  return SP_SEATS; }
+function spSeatNear(x, z, f, r){ let best = null, bd = r; for (const st of spSeats()){ if (st.f !== f) continue; const d = Math.hypot(st.x - x, st.z - z); if (d < bd){ bd = d; best = st; } } return best; }
+function spSeatTaken(st){ for (const [id, a] of SP.avatars){ if (id !== SP.me.id && a.po === 1 && a.cur.f === st.f && Math.hypot(a.cur.x - st.x, a.cur.z - st.z) < 0.35) return true; } return false; }
+function spSitAt(st){ if (spSeatTaken(st)) return spToast("この席は使われています", "info");
+  SP.sitAfter = st; SP.target = { x: st.x + Math.sin(st.ry) * 0.7, z: st.z + Math.cos(st.ry) * 0.7 }; }
+function spDoSit(st){ const p = SP.pos; SP.sitAfter = null; SP.target = null; Object.assign(p, { x:st.x, z:st.z, ry:st.ry, po:1, mv:0 }); spSendPos(true); }
+function spStand(){ const p = SP.pos; if (!p.po) return; p.po = 0; p.x += Math.sin(p.ry) * 0.55; p.z += Math.cos(p.ry) * 0.55; spSendPos(true); }
+// 着席ポーズ（SitDown の最終姿勢）で腰を座面に合わせるためのオフセット。キャラごとに 1 回だけ計算
+const SP_SITPOSE = {};
+function spSitPose(char){ return SP_SITPOSE[char] || (SP_SITPOSE[char] = loadChar(char).then(ch => { const b = bakePose(ch, "SitDown"); b.parts.forEach(x => x.geo.dispose()); return { ax:b.anchor.x, az:b.anchor.z, minY:b.minY }; })); }
+
+// ---------------------------------------------------------------- 一人称
+function spSetFP(on){ if (SP.design) return; SP.fp = on; document.body.classList.toggle("spFP", on); $("spFP").classList.toggle("on", on); $("spFP").textContent = on ? "👁 三人称" : "👁 一人称";
+  if (on){ camGoal.pitch = camState.pitch = 0.35; } else setCam({ dist:11, pitch:0.38 }); camDirty = true; }
+const _spDir = new THREE.Vector3();
+function spCamFP(){ if (!SP.started || !SP.fp || SP.design) return false;
+  const s = camState, g = camGoal; s.yaw = lerp(s.yaw, g.yaw, 0.35); s.pitch = lerp(s.pitch, g.pitch, 0.35); s.dist = g.dist; s.target.copy(g.target);
+  const p = SP.pos; const lp = clamp((0.35 - s.pitch) * 1.4, -1.2, 0.75);
+  camera.position.set(p.x - Math.sin(s.yaw) * 0.12, spFloorY(p.f) + (p.po ? 1.2 : 1.62), p.z - Math.cos(s.yaw) * 0.12);
+  _spDir.set(-Math.sin(s.yaw) * Math.cos(lp), Math.sin(lp), -Math.cos(s.yaw) * Math.cos(lp)).add(camera.position); camera.lookAt(_spDir); return true; }
+
+// ---------------------------------------------------------------- しぐさ・話しかける
+function spEmote(e, to){ if (!SP_EMO[e]) return; spSend({ t:"emo", e, to: to || "" }); }
+function spOnEmote(m){ const a = SP.avatars.get(m.uid); const [icon, label] = SP_EMO[m.e] || ["", ""]; if (!icon) return;
+  if (a){ spBubble(m.uid, icon, 2600, true); a.emo = { e:m.e, t0:performance.now() }; }
+  if (m.to === SP.me.id && m.uid !== SP.me.id){ spToast(`${m.name} さんが${m.e === "talk" ? "話しかけています" : label} ${icon}`, "info");
+    if (m.e === "talk" && a){ const p = SP.pos; if (!p.po && !p.mv){ p.ry = Math.atan2(a.cur.x - p.x, a.cur.z - p.z); spSendPos(true); } if (SP.cur !== "near") SP.unread.near = (SP.unread.near || 0) + 1, SP.mention.near = 1, spRenderSide(); } } }
+function spTalkTo(id){ const a = SP.avatars.get(id); if (!a) return; const p = SP.pos; const u = SP.users.get(id);
+  if (a.cur.f !== p.f || Math.hypot(a.cur.x - p.x, a.cur.z - p.z) > 2.2){ spStand(); const ang = Math.atan2(p.x - a.cur.x, p.z - a.cur.z); const fr = a.po === 1 ? a.cur.ry : ang;   // 座っている相手には正面から
+    if (a.cur.f !== p.f){ Object.assign(p, { f:a.cur.f, x:a.cur.x + Math.sin(fr) * 1.4, z:a.cur.z + Math.cos(fr) * 1.4 }); SP.target = null; }
+    else SP.target = { x:a.cur.x + Math.sin(fr) * 1.3, z:a.cur.z + Math.cos(fr) * 1.3 };
+    SP.faceAfter = id; }
+  else if (!p.po){ p.ry = Math.atan2(a.cur.x - p.x, a.cur.z - p.z); spSendPos(true); }
+  spEmote("talk", id); spOpen("near"); const inp = $("spInput"); inp.placeholder = `${u ? u.name : ""} さんに話しかける（近くの人に届きます）`; inp.focus(); }
+
+// ---------------------------------------------------------------- tick
 let spPrevT = performance.now();
 function spTick(){
   requestAnimationFrame(spTick); const now = performance.now(); const dt = Math.min(0.05, (now - spPrevT) / 1000); spPrevT = now; if (!SP.started) return;
   const p = SP.pos; const k = SP.keys; let ix = 0, iz = 0;
   if (k.KeyW || k.ArrowUp) iz += 1; if (k.KeyS || k.ArrowDown) iz -= 1; if (k.KeyA || k.ArrowLeft) ix -= 1; if (k.KeyD || k.ArrowRight) ix += 1;
   let dx = 0, dz = 0; const yaw = camState.yaw; const sp = (k.ShiftLeft || k.ShiftRight ? 6 : 3.2) * dt;
-  if (ix || iz){ SP.target = null; const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw); dx = fx * iz + rx * ix; dz = fz * iz + rz * ix; const l = Math.hypot(dx, dz); dx = dx / l * sp; dz = dz / l * sp; }
-  else if (SP.target){ const tx = SP.target.x - p.x, tz = SP.target.z - p.z, l = Math.hypot(tx, tz); if (l < 0.15) SP.target = null; else { const s = Math.min(l, 3.2 * dt); dx = tx / l * s; dz = tz / l * s; } }
+  if (ix || iz){ SP.target = null; SP.sitAfter = null; SP.faceAfter = null; if (p.po) spStand(); const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw); dx = fx * iz + rx * ix; dz = fz * iz + rz * ix; const l = Math.hypot(dx, dz); dx = dx / l * sp; dz = dz / l * sp; }
+  else if (SP.target){ const tx = SP.target.x - p.x, tz = SP.target.z - p.z, l = Math.hypot(tx, tz);
+    if (l < 0.15){ SP.target = null; if (SP.sitAfter) spDoSit(SP.sitAfter); else if (SP.faceAfter){ const a = SP.avatars.get(SP.faceAfter); if (a) p.ry = Math.atan2(a.cur.x - p.x, a.cur.z - p.z); SP.faceAfter = null; spSendPos(true); } }
+    else { const s = Math.min(l, 3.2 * dt); dx = tx / l * s; dz = tz / l * s; } }
   p.mv = (dx || dz) ? 1 : 0; if (p.mv){ [p.x, p.z] = spBounds(p.f, p.x + dx, p.z + dz); p.ry = Math.atan2(dx, dz); }
+  else if (SP.fp && !p.po){ const want = yaw + Math.PI; if (Math.abs(Math.atan2(Math.sin(want - p.ry), Math.cos(want - p.ry))) > 0.05) p.ry = want; }   // 一人称では見ている方向を向く
   const zn = zoneAt(p.x, p.z, p.f); const zid = zn ? zn[0] : ""; if (zid !== SP.zone){ SP.zone = zid; spSendPos(true); spRenderSide(); } else spSendPos(false);
-  const v = spViewFor(p); if (!SP.design && v !== mode) setMode(v);
-  if (!SP.design){ camGoal.target.set(p.x, spFloorY(p.f) + 1.3, p.z); camDirty = true; }
+  const v = SP.fp ? "ext" : spViewFor(p); if (!SP.design && v !== mode) setMode(v);   // 一人称は天井・上階も表示
+  if (!SP.design){ camGoal.target.set(p.x, spFloorY(p.f) + (p.po ? 1.0 : 1.3), p.z); camDirty = true; }
+  // 操作ヒント（座れる席が近い／座っている）
+  if (now - (SP.hintAt || 0) > 200){ SP.hintAt = now; const h = $("spHint"); let t = "";
+    if (p.po) t = "<kbd>E</kbd>立ち上がる ・ WASD でも立てます"; else if (!SP.design){ const st = spSeatNear(p.x, p.z, p.f, 1.6); if (st) t = "<kbd>E</kbd>座る"; }
+    if (t !== SP.hintTxt){ SP.hintTxt = t; h.innerHTML = t; h.style.display = t ? "block" : "none"; } }
   // アバター更新
   const viewF = mode === "ext" ? 1 : Number(mode);
-  for (const [id, a] of SP.avatars){ if (id === SP.me.id){ a.cur = { x:p.x, z:p.z, f:p.f, ry:p.ry }; a.mv = p.mv; }
+  for (const [id, a] of SP.avatars){ const isMe = id === SP.me.id;
+    if (isMe){ a.cur = { x:p.x, z:p.z, f:p.f, ry:p.ry }; a.mv = p.mv; a.po = p.po; }
     else { const t = Math.min(1, dt * 8); a.cur.x += (a.tgt.x - a.cur.x) * t; a.cur.z += (a.tgt.z - a.cur.z) * t; a.cur.f = a.tgt.f; a.cur.ry = lerpAngle(a.cur.ry, a.tgt.ry, t); }
     a.g.position.set(a.cur.x, spFloorY(a.cur.f), a.cur.z); a.g.children.forEach(c => { if (!c.isSprite) c.rotation.y = a.cur.ry; });
-    a.g.visible = SP.design || (mode === "ext" ? a.cur.f === 1 : a.cur.f <= viewF);
-    if (a.mx){ a.blend += ((a.mv ? 1 : 0) - a.blend) * Math.min(1, dt * 8); a.walk.setEffectiveWeight(a.blend); a.idle.setEffectiveWeight(1 - a.blend); a.mx.update(dt); }
-    else { const w = a.g.children.find(c => c.userData.spFallback); if (w && w.userData.legs){ const ph = a.mv ? Math.sin(now / 1000 * 7) * 0.45 : 0; w.userData.legs[0].rotation.x = ph; w.userData.legs[1].rotation.x = -ph; } }
+    a.g.visible = SP.design || (SP.fp ? !isMe && a.cur.f === p.f && Math.hypot(a.cur.x - p.x, a.cur.z - p.z) < 45 : (mode === "ext" ? a.cur.f === 1 : a.cur.f <= viewF));
+    const sit = a.po === 1;
+    if (a.mx){
+      if (sit !== a.sitting && a.sit){ a.sitting = sit; if (sit){ a.sit.reset(); a.sit.setEffectiveWeight(1); a.sit.play(); } else { a.sit.stop(); a.root.position.set(0, 0, 0); } }
+      if (a.sitting){ a.idle.setEffectiveWeight(0); a.walk.setEffectiveWeight(0); a.blend = 0;
+        if (a.sitOff){ const o = a.sitOff, sc = a.scale, lx = -o.ax * sc, lz = (-o.az + 0.12) * sc, c = Math.cos(a.cur.ry), sn = Math.sin(a.cur.ry); a.root.position.set(lx * c + lz * sn, -o.minY * sc, -lx * sn + lz * c); } }
+      else { a.blend += ((a.mv ? 1 : 0) - a.blend) * Math.min(1, dt * 8); a.walk.setEffectiveWeight(a.blend); a.idle.setEffectiveWeight(1 - a.blend); }
+      a.mx.update(dt); }
+    else { const w = a.g.children.find(c => c.userData.spFallback); if (w && w.userData.legs){ const ph = a.mv ? Math.sin(now / 1000 * 7) * 0.45 : 0; w.userData.legs[0].rotation.x = sit ? -1.4 : ph; w.userData.legs[1].rotation.x = sit ? -1.4 : -ph; w.position.y = sit ? 0.05 : 0; } }
+    // しぐさ：手を振る・拍手は小さく跳ねる、おじぎは前に傾ける
+    const body = a.root || a.g.children.find(c => c.userData.spFallback);
+    if (a.emo && body){ const t = (now - a.emo.t0) / 1000;
+      if (t > 1.4){ a.emo = null; body.rotation.x = 0; if (!a.sitting) body.position.y = 0; }
+      else if (a.emo.e === "bow") body.rotation.x = Math.sin(Math.min(1, t / 1.2) * Math.PI) * 0.45;
+      else if (!a.sitting) body.position.y = Math.abs(Math.sin(t * Math.PI * 3)) * 0.09 * (1 - t / 1.4); }
     if (a.bubble && now > a.until){ a.g.remove(a.bubble); a.bubble = null; } }
 }
 // 三人称カメラの遮蔽回避：注視点→カメラの線分上に建物などがあれば手前に寄せる（6 Hz で判定、滑らかに追従）
@@ -268,7 +347,7 @@ function spCamCollide(pos, tgt){
   if (SP_CAM.cur < d - 0.01){ pos.sub(tgt).multiplyScalar(SP_CAM.cur / d).add(tgt); camDirty = true; }
 }
 function spEnterWorld(){
-  scene.add(SP_ROOT); setMode(spViewFor(SP.pos)); setCam({ yaw:0, pitch:0.38, dist:11, target:[SP.pos.x, spFloorY(SP.pos.f) + 1.3, SP.pos.z] }, true); camCollide = spCamCollide;
+  scene.add(SP_ROOT); setMode(spViewFor(SP.pos)); setCam({ yaw:0, pitch:0.38, dist:11, target:[SP.pos.x, spFloorY(SP.pos.f) + 1.3, SP.pos.z] }, true); camCollide = spCamCollide; camOverride = spCamFP;
   spNpc(false); setInterval(() => { if (!SP.npc) spNpc(false); }, 4000); spTick();
   addEventListener("resize", () => { for (const a of SP.avatars.values()) for (const s of [a.tag, a.bubble]) if (s){ const hN = s.scale.y; s.scale.x = s.material.map.image.width / s.material.map.image.height * hN / (innerWidth / innerHeight); } });
 }
@@ -279,7 +358,13 @@ function spNpc(on){ SP.npc = on; $("spNpc").classList.toggle("on", on); $("spNpc
 // ---------------------------------------------------------------- input wiring
 function spWire(){
   const typing = e => ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName);
-  addEventListener("keydown", e => { if (typing(e)) return; if (SP.started && !SP.design && /^[tT0-4]$/.test(e.key)){ e.stopPropagation(); return; } if (/^(Key[WASD]|Arrow|Shift)/.test(e.code)){ SP.keys[e.code] = true; if (e.code.startsWith("Arrow")) e.preventDefault(); } if (e.key === "Enter" && SP.started){ $("spInput").focus(); e.preventDefault(); } }, true);
+  addEventListener("keydown", e => { if (typing(e)) return;
+    if (SP.started && !SP.design && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey){
+      if (/^[1-6]$/.test(e.key)){ spEmote(SP_EMO_KEYS[+e.key - 1]); e.stopPropagation(); return; }
+      if (e.code === "KeyV"){ spSetFP(!SP.fp); e.stopPropagation(); return; }
+      if (e.code === "KeyE"){ const p = SP.pos; if (p.po) spStand(); else { const st = spSeatNear(p.x, p.z, p.f, 1.6); if (st) spSitAt(st); } e.stopPropagation(); return; }
+      if (e.key === "Escape" && SP.fp){ spSetFP(false); return; } }
+    if (SP.started && !SP.design && /^[tT0-4]$/.test(e.key)){ e.stopPropagation(); return; } if (/^(Key[WASD]|Arrow|Shift)/.test(e.code)){ SP.keys[e.code] = true; if (e.code.startsWith("Arrow")) e.preventDefault(); } if (e.key === "Enter" && SP.started){ $("spInput").focus(); e.preventDefault(); } }, true);
   addEventListener("keyup", e => { SP.keys[e.code] = false; });
   addEventListener("blur", () => { SP.keys = {}; });
   $("spInput").addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing){ e.preventDefault(); spSubmit(); } if (e.key === "Escape") e.target.blur(); e.stopPropagation(); });
@@ -289,9 +374,12 @@ function spWire(){
   $("spLogout").onclick = async () => { try { await spApi("/auth/logout", { method:"POST" }); } catch {} spLS.del("xspace.token"); location.href = location.pathname; };
   $("spSearch").addEventListener("keydown", async e => { e.stopPropagation(); if (e.key !== "Enter") return; const q = e.target.value.trim(); if (!q){ SP.searching = ""; return spOpen(SP.cur); }
     try { const { results } = await spApi("/api/search?q=" + encodeURIComponent(q)); SP.searching = q; SP.searchResults = results.slice().reverse(); $("spChName").textContent = `🔍 「${q}」の検索結果`; $("spChDesc").textContent = `${results.length} 件`; spRenderMsgs(); } catch (err){ spToast(err.message); } });
-  $("spGo").onchange = e => { const s = SP_SPOTS[e.target.value]; if (s){ Object.assign(SP.pos, { f:s[0], x:s[1], z:s[2] }); SP.target = null; spSendPos(true); } e.target.value = ""; };
+  $("spGo").onchange = e => { const s = SP_SPOTS[e.target.value]; if (s){ Object.assign(SP.pos, { f:s[0], x:s[1], z:s[2], po:0 }); SP.sitAfter = null; SP.target = null; spSendPos(true); } e.target.value = ""; };
   $("spNpc").onclick = () => spNpc(!SP.npc);
-  $("spDesign").onclick = () => { SP.design = !SP.design; document.body.classList.toggle("design", SP.design); $("spDesign").classList.toggle("on", SP.design); $("spDesign").textContent = SP.design ? "チャットに戻る" : "設計ビュー"; if (!SP.design) setCam({ dist:11, pitch:0.38 }); };
+  $("spFP").onclick = () => spSetFP(!SP.fp);
+  document.querySelectorAll("#spBar [data-emo]").forEach(b => b.onclick = () => spEmote(b.dataset.emo));
+  cvsEl.addEventListener("wheel", e => { if (!SP.started || SP.design) return; if (SP.fp && e.deltaY > 0) spSetFP(false); else if (!SP.fp && e.deltaY < 0 && camGoal.dist <= 3.01) spSetFP(true); }, { passive:true });
+  $("spDesign").onclick = () => { if (SP.fp) spSetFP(false); SP.design = !SP.design; document.body.classList.toggle("design", SP.design); $("spDesign").classList.toggle("on", SP.design); $("spDesign").textContent = SP.design ? "チャットに戻る" : "設計ビュー"; if (!SP.design) setCam({ dist:11, pitch:0.38 }); };
   $("spInviteBtn").onclick = async () => { const org = prompt("招待する工場・会社の名前"); if (!org) return; const email = prompt("招待する方のメールアドレス（空欄なら誰でも使えるリンク）", "") || "";
     try { const r = await spApi("/api/invites", { method:"POST", body: JSON.stringify({ org, email }) }); try { await navigator.clipboard.writeText(r.url); } catch {}
       SP.msgs.__invite = true; $("spMsgs").insertAdjacentHTML("beforeend", `<div class="spMsg"><div class="h"><b>招待リンクを作りました</b><small>${pe(r.org)}</small></div><div class="t">チャンネル「連携：${pe(r.org)}」に参加できます。30 日間有効です。<div class="spLink">${pe(r.url)}</div></div></div>`); $("spMsgs").scrollTop = 1e9; } catch (err){ spToast(err.message); } };
@@ -299,9 +387,10 @@ function spWire(){
   // 3D 上のクリック：アバター → DM、設備 → スレッド、床 → そこへ歩く
   cvsEl.addEventListener("pointerup", e => { if (!SP.started || SP.design || drag.moved > 6 || e.button !== 0) return;
     ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
-    const ah = ray.intersectObject(SP_ROOT, true).find(h => !h.object.isSprite && h.object.userData.spUser); if (ah){ const uid = ah.object.userData.spUser; if (uid !== SP.me.id) spSend({ t:"dm", to:uid }); return; }
+    const ah = ray.intersectObject(SP_ROOT, true).find(h => !h.object.isSprite && h.object.userData.spUser && h.object.visible); if (ah){ const uid = ah.object.userData.spUser; if (uid !== SP.me.id) spUserMenu(uid, e); return; }
+    { const pt = new THREE.Vector3(); if (ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -(spFloorY(SP.pos.f) + 0.45)), pt)){ const st = spSeatNear(pt.x, pt.z, SP.pos.f, 0.4); if (st){ spStand(); spSitAt(st); return; } } }
     const id = pickAt(e.clientX, e.clientY); if (typeof id === "string" && SP.me.role === "employee"){ spOpen("eq:" + id); return; }
-    const pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), -spFloorY(SP.pos.f)); const pt = new THREE.Vector3(); if (ray.ray.intersectPlane(pl, pt)){ const [bx, bz] = spBounds(SP.pos.f, pt.x, pt.z); SP.target = { x:bx, z:bz }; } });
+    const pl = new THREE.Plane(new THREE.Vector3(0, 1, 0), -spFloorY(SP.pos.f)); const pt = new THREE.Vector3(); if (ray.ray.intersectPlane(pl, pt)){ spStand(); SP.sitAfter = null; const [bx, bz] = spBounds(SP.pos.f, pt.x, pt.z); SP.target = { x:bx, z:bz }; } });
 }
 // ファクトリーモデルの構築完了を待ってから起動
 { const t = setInterval(() => { const l = document.getElementById("loading"); if (l && l.style.display === "none"){ clearInterval(t); spStart().then(spWire).catch(err => console.error(err)); } }, 120); }

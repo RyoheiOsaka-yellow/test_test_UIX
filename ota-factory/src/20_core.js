@@ -207,8 +207,12 @@ function boxAt(parent, w,h,d, mat, x, yb, z, opts={}){ const m = mesh(G.box(w,h,
 function cylAt(parent, r,h, mat, x, yb, z, opts={}){ const m = mesh(G.cyl(r,h,opts.seg||24,opts.rt), mat, x, yb+h/2, z, opts); parent.add(m); return m; }
 
 // ---- 静的ジオメトリの材質別マージ（描画コール削減） ----
+// 座れる席（Space で使用）：{ parent, list:[[x, yFloor, z, ry]] }。ry は着席者の向き（+z 正面＝0）
+const SEATS_RAW = [];
+function addSeats(parent, list){ if (list && list.length) SEATS_RAW.push({ parent, list }); }
 class Merger {
   constructor(){ this.buckets = new Map(); }
+  seat(x, y, z, ry=0){ (this._chairs || (this._chairs = [])).push([x, y, z, ry]); }
   add(geo, mat, matrix){ const g = geo.clone(); if (matrix) g.applyMatrix4(matrix); if(!this.buckets.has(mat)) this.buckets.set(mat, []); this.buckets.get(mat).push(g); geo.dispose?.(); }
   box(w,h,d, mat, x, yb, z, ry=0){ const mtx = new THREE.Matrix4().makeRotationY(ry).setPosition(x, yb+h/2, z); this.add(G.box(w,h,d), mat, mtx); }
   boxC(w,h,d, mat, x, y, z, rot){ const mtx = new THREE.Matrix4(); if(rot) mtx.makeRotationFromEuler(new THREE.Euler(...rot)); mtx.setPosition(x,y,z); this.add(G.box(w,h,d), mat, mtx); }
@@ -223,6 +227,7 @@ class Merger {
     }
     this.buckets.clear();
     if (this._seats){ PEOPLE.seated.push({ parent, seats:this._seats }); this._seats = null; }
+    if (this._chairs){ addSeats(parent, this._chairs); this._chairs = null; }
   }
 }
 
@@ -255,6 +260,7 @@ const camState = { yaw:-0.75, pitch:0.55, dist:190, target:new THREE.Vector3(0,6
 const camGoal  = { yaw:-0.75, pitch:0.55, dist:190, target:new THREE.Vector3(0,6,0) };
 const walk = { on:false, pos:new THREE.Vector3(-30, 1.65, 26), yaw:Math.PI, pitch:0, keys:{} };
 let camDirty = true;
+let camOverride = null; // () => bool：true ならカメラを自前で置いた（一人称など）
 let camCollide = null; // (pos, target) => void：三人称カメラの遮蔽回避（Space で使用）
 function setCam(goal, instant=false){
   if (goal.yaw !== undefined) camGoal.yaw = goal.yaw; if (goal.pitch !== undefined) camGoal.pitch = goal.pitch;
@@ -268,6 +274,7 @@ function applyCam(){
     camera.position.copy(walk.pos); camera.lookAt(walk.pos.clone().add(dir)); return;
   }
   const s = camState, g = camGoal, k = 0.12;
+  if (camOverride && camOverride()) return;
   s.yaw = lerp(s.yaw, g.yaw, k); s.pitch = lerp(s.pitch, g.pitch, k); s.dist = lerp(s.dist, g.dist, k); s.target.lerp(g.target, k);
   const p = clamp(s.pitch, 0.02, 1.55);
   camera.position.set(s.target.x + s.dist*Math.cos(p)*Math.sin(s.yaw), s.target.y + s.dist*Math.sin(p), s.target.z + s.dist*Math.cos(p)*Math.cos(s.yaw));

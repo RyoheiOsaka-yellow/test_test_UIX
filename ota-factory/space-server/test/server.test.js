@@ -71,6 +71,11 @@ test("dev login, invites, access rules and chat", async () => {
   a.send({ t:"say", ch:"near", text:"近くの人へ" }); await b.wait(m => m.t === "near" && m.m.text === "近くの人へ");
   await new Promise(r => setTimeout(r, 150)); assert.ok(!g.inbox.find(m => m.t === "near"), "far user must not hear");
 
+  // sitting pose is fanned out; gestures reach nearby users and the addressed user, but are validated
+  a.send({ t:"mv", x:0, z:0, f:1, ry:0, po:1 }); await b.wait(m => m.t === "mv" && m.l.some(r => r[0] === emp.body.user.id && r[6] === 1));
+  a.send({ t:"emo", e:"wave", to:guest.body.user.id }); await b.wait(m => m.t === "emo" && m.e === "wave"); await g.wait(m => m.t === "emo" && m.to === guest.body.user.id);
+  a.send({ t:"emo", e:"<script>" }); await new Promise(r => setTimeout(r, 150)); assert.ok(!b.inbox.find(m => m.t === "emo" && m.e !== "wave"), "unknown gestures are dropped");
+
   // history and search respect access
   const hist = await new Promise(r => { a.send({ t:"hist", ch:"all" }); a.wait(m => m.t === "hist" && m.ch === "all").then(r); }); assert.equal(hist.msgs.at(-1).text, "社内連絡");
   assert.equal((await get("/api/search?q=" + encodeURIComponent("社内"), guest.body.token)).body.results.length, 0);

@@ -88,8 +88,9 @@ function loginUser({ email, name, role, org, picture }){
 export function publicUser(u){ if (!u) return null; let avatar = {}; try { avatar = JSON.parse(u.avatar || "{}"); } catch {} return { id:u.id, name:u.name, role:u.role, org:u.org, picture:u.picture, avatar }; }
 
 // ---------------------------------------------------------------- live state
+const EMOTES = ["wave", "like", "bow", "clap", "coffee", "ask", "talk"];   // しぐさ（保存しない）
 const online = new Map();   // userId -> { user, socks:Set, pos:{x,z,f,ry,mv}, status, zone, dirty }
-function presenceOf(o){ const p = o.pos; return { ...publicUser(o.user), status:o.status, checkedIn: !!db.openAttendance(o.user.id), zone:o.zone, f:p.f, pos:{ x:p.x, z:p.z, f:p.f, ry:p.ry } }; }
+function presenceOf(o){ const p = o.pos; return { ...publicUser(o.user), status:o.status, checkedIn: !!db.openAttendance(o.user.id), zone:o.zone, f:p.f, pos:{ x:p.x, z:p.z, f:p.f, ry:p.ry, po:p.po || 0 } }; }
 function sendTo(ws, msg){ if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 function broadcast(msg, filter){ const data = JSON.stringify(msg); for (const o of online.values()){ if (filter && !filter(o)) continue; for (const ws of o.socks) if (ws.readyState === 1) ws.send(data); } }
 function deliver(m){ broadcast({ t:"msg", m }, o => canAccess(o.user, m.ch)); }
@@ -170,7 +171,7 @@ wss.on("connection", (ws) => {
     }
     const u = me.user;
     switch (m.t){
-      case "mv": { const n = v => Number.isFinite(+v) ? +v : 0; me.pos = { x:n(m.x), z:n(m.z), f:Math.max(1, Math.min(3, n(m.f) | 0)), ry:n(m.ry), mv: m.mv ? 1 : 0 }; me.dirty = true;
+      case "mv": { const n = v => Number.isFinite(+v) ? +v : 0; me.pos = { x:n(m.x), z:n(m.z), f:Math.max(1, Math.min(3, n(m.f) | 0)), ry:n(m.ry), mv: m.mv ? 1 : 0, po: m.po === 1 ? 1 : 0 }; me.dirty = true;
         const zone = typeof m.zone === "string" ? m.zone.slice(0, 20) : ""; if (zone !== me.zone){ me.zone = zone; broadcast({ t:"pres", u: presenceOf(me) }); } break; }
       case "say": { if (!allow()) return sendTo(ws, { t:"err", e:"送信が速すぎます。少し待ってください" }); const ch = String(m.ch || "");
         if (ch === "near"){ const text = String(m.text || "").trim().slice(0, 500); if (!text) return; const msg = { ch:"near", uid:u.id, name:u.name, org:u.org, role:u.role, text, ts:Date.now(), src:"app", id:"n" + Date.now() };
@@ -178,6 +179,8 @@ wss.on("connection", (ws) => {
         if (!canAccess(u, ch)) return sendTo(ws, { t:"err", e:"このチャンネルには投稿できません" });
         postMessage({ ch, user:u, text:m.text }); break; }
       case "hist": { const ch = String(m.ch || ""); if (!canAccess(u, ch)) return sendTo(ws, { t:"hist", ch, msgs:[], denied:true }); const msgs = db.history(ch, Number(m.before) || Infinity, 50); sendTo(ws, { t:"hist", ch, msgs, more: msgs.length === 50 }); break; }
+      case "emo": { if (!allow()) return; const e = String(m.e || ""); if (!EMOTES.includes(e)) return; const to = typeof m.to === "string" ? m.to.slice(0, 64) : "";
+        broadcast({ t:"emo", uid:u.id, name:u.name, e, to }, o => o === me || o.user.id === to || (o.pos.f === me.pos.f && Math.hypot(o.pos.x - me.pos.x, o.pos.z - me.pos.z) <= CONFIG.nearRadius * 2)); break; }
       case "dm": { const to = db.getUser(String(m.to || "")); if (!to) return; const id = dmId(u.id, to.id); sendTo(ws, { t:"chan", c:{ id, name:to.name, kind:"dm", peer:to.id } }); break; }
       case "status": { me.status = cleanName(m.s, 12) || "在席"; broadcast({ t:"pres", u: presenceOf(me) }); break; }
       case "checkin": { if (!db.openAttendance(u.id)) db.checkIn(u.id); broadcast({ t:"pres", u: presenceOf(me) }); break; }
@@ -189,7 +192,7 @@ wss.on("connection", (ws) => {
   ws.on("close", () => { clearTimeout(timer); if (!me) return; me.socks.delete(ws); if (me.socks.size === 0){ online.delete(me.user.id); broadcast({ t:"leave", id: me.user.id }); } });
 });
 // position fan-out at 10 Hz
-setInterval(() => { const l = []; for (const o of online.values()) if (o.dirty){ o.dirty = false; const p = o.pos; l.push([o.user.id, +p.x.toFixed(2), +p.z.toFixed(2), p.f, +p.ry.toFixed(2), p.mv]); } if (l.length) broadcast({ t:"mv", l }); }, 100);
+setInterval(() => { const l = []; for (const o of online.values()) if (o.dirty){ o.dirty = false; const p = o.pos; l.push([o.user.id, +p.x.toFixed(2), +p.z.toFixed(2), p.f, +p.ry.toFixed(2), p.mv, p.po || 0]); } if (l.length) broadcast({ t:"mv", l }); }, 100);
 setInterval(() => db.purgeSessions(), 3600e3);
 
 if (process.argv[1] === fileURLToPath(import.meta.url)){
