@@ -2,3 +2,4 @@ vendor/
 dev/external/dstvcheck/target/
 dev/external/out/
 dev/external/check-logs/
+__pycache__/

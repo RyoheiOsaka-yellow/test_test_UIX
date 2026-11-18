@@ -4,6 +4,19 @@
 穴・長穴・溶接ビード・ボルト・Uボルト・アンカーまで作り込んだ製作レベル（LOD400）のモデルから、重量・集計表・見積・加工指示書を **単一ソース** で生成します。
 見積は **A社（見積作成）→ B社（利益上乗せ）→ C社（加工工場）** の多社ワークフローでフィールド単位の権限管理・改訂凍結・監査ログつきで受け渡せます。
 
+## マニュアルと操作ガイド（v1 / v2 / v3、11/18）
+
+| 版 | 画面（1 ファイル） | マニュアル（印刷向け PDF） | 操作ガイド（手順を送って見る HTML） |
+|---|---|---|---|
+| v1（リボン型） | `dist/ANGLEX_v1.html` | `docs/pdf/ANGLEX_v1_マニュアル.pdf` | `docs/guide/ANGLEX_v1_操作ガイド.html` |
+| v2（5 つの手順） | `dist/ANGLEX_v2.html` | `docs/pdf/ANGLEX_v2_マニュアル.pdf` | `docs/guide/ANGLEX_v2_操作ガイド.html` |
+| v3（空気のような画面） | `dist/ANGLEX_v3.html` | `docs/pdf/ANGLEX_v3_マニュアル.pdf` | `docs/guide/ANGLEX_v3_操作ガイド.html` |
+
+- 本文は `tools/manual_content.py`（やりたいこと → 手順 → 写真の番号）。写真は実際の画面を撮ったもの。
+- 撮り直し: `node dev/manual-shots.mjs v1 <撮影フォルダ>`（v2・v3 も同じ）。写真と、番号の位置（`<版>_marks.json`）ができる。
+- 作り直し: `python3 tools/build_manuals.py --shots <撮影フォルダ>` → `node dev/render-docs.mjs manual_v1.html manual_v2.html manual_v3.html`。撮影フォルダを省くと `docs/spec/img/manual/` の前回の写真を使う。
+- 操作ガイドは写真を中に埋め込んだ 1 ファイル。左で「やりたいこと」を選び、← → キーか「次へ」で手順を送る。いま見るところが黄色い枠と番号で光る。スマートフォンの幅でも読める。
+
 ## 配布ファイル（v1 / v2）
 - `dist/ANGLEX_v1.html` — v1 UI（リボン＋プロジェクトブラウザ＋プロパティの BIM ワークスペース型）。分解図・中央へ・CAD 図面色を含む最新版（`index.html` = v1）
 - `dist/ANGLEX_v2.html` — 新 UI（サインイン → モード選択 → 案件管理 / チャット見積 / 5 ステップ 3D 詳細）＋分解図・個別部材化。`dist/ANGLEX.html` は v1 と同じ内容。v2 のソースは `v2.html` + `css/app_v2.css`（`python3 tools/build_single.py v2.html css/app_v2.css dist/ANGLEX_v2.html`）
