@@ -3186,7 +3186,7 @@ function spSeats(){ if (SP_SEATS) return SP_SEATS; SP_SEATS = []; const v = new 
 function spSeatNear(x, z, f, r){ let best = null, bd = r; for (const st of spSeats()){ if (st.f !== f) continue; const d = Math.hypot(st.x - x, st.z - z); if (d < bd){ bd = d; best = st; } } return best; }
 function spSeatTaken(st){ for (const [id, a] of SP.avatars){ if (id !== SP.me.id && a.po === 1 && a.cur.f === st.f && Math.hypot(a.cur.x - st.x, a.cur.z - st.z) < 0.35) return true; } return false; }
 function spSitAt(st){ if (spSeatTaken(st)) return spToast("この席は使われています", "info");
-  SP.sitAfter = st; SP.target = { x: st.x + Math.sin(st.ry) * 0.7, z: st.z + Math.cos(st.ry) * 0.7 }; }
+  SP.sitAfter = st; SP.target = { x: st.x, z: st.z }; }
 function spDoSit(st){ const p = SP.pos; SP.sitAfter = null; SP.target = null; Object.assign(p, { x:st.x, z:st.z, ry:st.ry, po:1, mv:0 }); spSendPos(true); }
 function spStand(){ const p = SP.pos; if (!p.po) return; p.po = 0; p.x += Math.sin(p.ry) * 0.55; p.z += Math.cos(p.ry) * 0.55; spSendPos(true); }
 // 着席ポーズ（SitDown の最終姿勢）で腰を座面に合わせるためのオフセット。キャラごとに 1 回だけ計算
@@ -3212,7 +3212,7 @@ function spOnEmote(m){ const a = SP.avatars.get(m.uid); const [icon, label] = SP
 function spTalkTo(id){ const a = SP.avatars.get(id); if (!a) return; const p = SP.pos; const u = SP.users.get(id);
   if (a.cur.f !== p.f || Math.hypot(a.cur.x - p.x, a.cur.z - p.z) > 2.2){ spStand(); const ang = Math.atan2(p.x - a.cur.x, p.z - a.cur.z); const fr = a.po === 1 ? a.cur.ry : ang;   // 座っている相手には正面から
     if (a.cur.f !== p.f){ Object.assign(p, { f:a.cur.f, x:a.cur.x + Math.sin(fr) * 1.4, z:a.cur.z + Math.cos(fr) * 1.4 }); SP.target = null; }
-    else SP.target = { x:a.cur.x + Math.sin(fr) * 1.3, z:a.cur.z + Math.cos(fr) * 1.3 };
+    else { const [tx, tz] = spBounds(p.f, a.cur.x + Math.sin(fr) * 1.3, a.cur.z + Math.cos(fr) * 1.3); SP.target = { x:tx, z:tz }; }
     SP.faceAfter = id; }
   else if (!p.po){ p.ry = Math.atan2(a.cur.x - p.x, a.cur.z - p.z); spSendPos(true); }
   spEmote("talk", id); spOpen("near"); const inp = $("spInput"); inp.placeholder = `${u ? u.name : ""} さんに話しかける（近くの人に届きます）`; inp.focus(); }
@@ -3226,7 +3226,7 @@ function spTick(){
   let dx = 0, dz = 0; const yaw = camState.yaw; const sp = (k.ShiftLeft || k.ShiftRight ? 6 : 3.2) * dt;
   if (ix || iz){ SP.target = null; SP.sitAfter = null; SP.faceAfter = null; if (p.po) spStand(); const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw); dx = fx * iz + rx * ix; dz = fz * iz + rz * ix; const l = Math.hypot(dx, dz); dx = dx / l * sp; dz = dz / l * sp; }
   else if (SP.target){ const tx = SP.target.x - p.x, tz = SP.target.z - p.z, l = Math.hypot(tx, tz);
-    if (l < 0.15){ SP.target = null; if (SP.sitAfter) spDoSit(SP.sitAfter); else if (SP.faceAfter){ const a = SP.avatars.get(SP.faceAfter); if (a) p.ry = Math.atan2(a.cur.x - p.x, a.cur.z - p.z); SP.faceAfter = null; spSendPos(true); } }
+    if (l < 0.15 || (SP.sitAfter && l < 0.6)){ SP.target = null; if (SP.sitAfter) spDoSit(SP.sitAfter); else if (SP.faceAfter){ const a = SP.avatars.get(SP.faceAfter); if (a) p.ry = Math.atan2(a.cur.x - p.x, a.cur.z - p.z); SP.faceAfter = null; spSendPos(true); } }
     else { const s = Math.min(l, 3.2 * dt); dx = tx / l * s; dz = tz / l * s; } }
   p.mv = (dx || dz) ? 1 : 0; if (p.mv){ [p.x, p.z] = spBounds(p.f, p.x + dx, p.z + dz); p.ry = Math.atan2(dx, dz); }
   else if (SP.fp && !p.po){ const want = yaw + Math.PI; if (Math.abs(Math.atan2(Math.sin(want - p.ry), Math.cos(want - p.ry))) > 0.05) p.ry = want; }   // 一人称では見ている方向を向く
