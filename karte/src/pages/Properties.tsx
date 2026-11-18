@@ -161,7 +161,7 @@ export default function Properties() {
           <Empty>条件に一致する物件がありません。キーワードや絞り込みを見直してください。</Empty>
         ) : (
           <div className="table-wrap">
-            <table className="tbl hover">
+            <table className="tbl hover cards">
               <thead>
                 <tr>
                   <Th k="name">物件</Th>
@@ -182,7 +182,7 @@ export default function Properties() {
                   const days = daysBetween(TODAY, p.nextInspection);
                   return (
                     <tr key={p.id}>
-                      <td>
+                      <td data-label="物件">
                         <Link to={`/properties/${p.id}`} className="strong rowlink">
                           {p.name}
                         </Link>
@@ -190,29 +190,29 @@ export default function Properties() {
                           {p.id} ／ {p.address}
                         </div>
                       </td>
-                      <td className="nowrap">{p.owner} 様</td>
-                      <td className="nowrap">
+                      <td data-label="オーナー" className="nowrap">{p.owner} 様</td>
+                      <td data-label="築年・構造" className="nowrap">
                         築{p.age}年
                         <div className="muted small">
                           {p.structure}・{p.units}戸
                         </div>
                       </td>
-                      <td>
+                      <td data-label="総合評価">
                         <ScoreBar score={p.overall} />
                       </td>
-                      <td className="nowrap">
+                      <td data-label="未完了の指摘" className="nowrap">
                         {s.urgent > 0 && <span className="count red">早急 {s.urgent}</span>}
                         {s.watch > 0 && <span className="count amber">観察 {s.watch}</span>}
                         {s.urgent + s.watch === 0 && <span className="muted">なし</span>}
                       </td>
-                      <td className="nowrap">{s.due ? `${fmtYm(s.due)}まで` : '—'}</td>
-                      <td className="r num">{s.cost ? fmtMan(s.cost) : '—'}</td>
-                      <td className="nowrap">
+                      <td data-label="最短の修繕推奨" className="nowrap">{s.due ? `${fmtYm(s.due)}まで` : '—'}</td>
+                      <td data-label="概算額" className="r num">{s.cost ? fmtMan(s.cost) : '—'}</td>
+                      <td data-label="次回点検" className="nowrap">
                         {fmtDate(p.nextInspection)}
                         {days < 0 && <div className="danger small">{-days}日超過</div>}
                         {days >= 0 && days <= 90 && <div className="warn small">あと{days}日</div>}
                       </td>
-                      <td className="nowrap">{p.staff}</td>
+                      <td data-label="担当" className="nowrap">{p.staff}</td>
                     </tr>
                   );
                 })}

@@ -229,9 +229,15 @@ export default function Report() {
   return (
     <div className="report">
       <div className="report-bar no-print">
-        <Link to={`/properties/${p.id}`} className="btn light">
-          <ArrowLeft size={15} /> 物件詳細に戻る
-        </Link>
+        {store.present ? (
+          <Link to={`/karte/${p.id}`} className="btn light">
+            <ArrowLeft size={15} /> 説明画面に戻る
+          </Link>
+        ) : (
+          <Link to={`/properties/${p.id}`} className="btn light">
+            <ArrowLeft size={15} /> 物件詳細に戻る
+          </Link>
+        )}
         <span>お客様にお渡しするAAAレポート(A4・{pages}ページ)</span>
         <button className="btn primary" onClick={() => window.print()}>
           <Printer size={15} /> 印刷 / PDFで保存

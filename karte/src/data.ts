@@ -54,6 +54,8 @@ export interface Repair {
   work: string;
   cost: number;
   contractor: string;
+  /** アフターサービスでの補修(計画修繕の周期判定には使わない) */
+  afterService?: boolean;
 }
 
 export type ActivityType = '点検' | '指摘登録' | '見積' | '提案' | 'オーナー連絡' | '承認' | '工事' | '報告書';
@@ -493,6 +495,16 @@ for (let n = 2; n <= 48; n++) {
 
 activities.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 inspections.sort((a, b) => (a.date < b.date ? 1 : -1));
+// 工事中の案件を数件用意する(サンプル物件は除く)
+for (const f of findings.filter((x) => x.propertyId !== 'P-0001' && x.severity === 'urgent' && x.status === '提案済').slice(0, 4)) {
+  const p = properties.find((q) => q.id === f.propertyId)!;
+  const d1 = addDays(f.statusDate, 18);
+  const d2 = addDays(d1, 21);
+  f.status = '工事中';
+  f.statusDate = d2 > TODAY ? TODAY : d2;
+  activities.push({ id: aid(), propertyId: p.id, date: d1 > TODAY ? TODAY : d1, type: '承認', actor: `${p.owner} 様`, channel: 'マイページ', text: `${f.part}|${f.location}の修繕をご承認`, ownerVisible: true });
+  activities.push({ id: aid(), propertyId: p.id, date: f.statusDate, type: '工事', actor: pick(CONTRACTORS), text: `${f.part}|${f.location}の修繕工事に着手`, ownerVisible: true });
+}
 repairs.sort((a, b) => (a.date < b.date ? 1 : -1));
 
 // ---------- queries ----------
@@ -620,7 +632,14 @@ export interface CheckPlan {
 }
 
 const AS_YEARS = [1, 2, 5, 10];
-const AS_WORK = ['建具の建付け調整', 'クロスの隙間補修', '外部シーリングの部分補修', '排水勾配の調整', '手すり固定部の増し締め', '共用灯の交換'];
+const AS_WORK: { work: string; part: Part; place: string; cost: [number, number] }[] = [
+  { work: '建具の建付け調整', part: '設備', place: '住戸 玄関扉', cost: [2, 6] },
+  { work: 'クロスの隙間補修', part: '設備', place: '住戸 内装', cost: [2, 8] },
+  { work: '外部シーリングの部分補修', part: '外壁', place: 'サッシ廻り', cost: [6, 18] },
+  { work: '排水勾配の調整', part: '防水', place: 'バルコニー', cost: [5, 15] },
+  { work: '手すり固定部の増し締め', part: '構造', place: '共用階段', cost: [2, 6] },
+  { work: '共用灯の交換', part: '設備', place: '共用廊下', cost: [2, 5] },
+];
 
 function handoverOf(p: Property, r: () => number): string {
   const m = 1 + Math.floor(r() * 12);
@@ -642,19 +661,30 @@ export const checks: Check[] = (() => {
       const date = addDays(addMonths(h, 12 * y), Math.floor(r() * 20));
       if (date > TODAY) continue;
       const clean = r() < 0.45;
+      const w = AS_WORK[Math.floor(r() * AS_WORK.length)];
       out.push({
         id: cid(), propertyId: p.id, kind: 'アフターサービス点検', date, round: `${y}年目点検`,
         result: clean ? '指摘なし' : '補修実施',
-        summary: clean ? '不具合は認められず' : `${AS_WORK[Math.floor(r() * AS_WORK.length)]}を実施`,
+        summary: clean ? '不具合は認められず' : `${w.place} ${w.work}を実施`,
         by: 'アフターサービス課',
       });
+      if (!clean) {
+        // アフターサービスでの補修は修繕履歴にも残す(無償補修のため金額は参考値)
+        const cost = Math.round(w.cost[0] + r() * (w.cost[1] - w.cost[0])) * 10000;
+        const rdate = addDays(date, 10 + Math.floor(r() * 20));
+        repairs.push({ id: rid(), propertyId: p.id, date: rdate, part: w.part, place: w.place, work: `${w.work}(アフターサービス)`, cost, contractor: 'アフターサービス課', afterService: true });
+        activities.push({ id: aid(), propertyId: p.id, date: rdate, type: '工事', actor: 'アフターサービス課', text: `${y}年目点検の補修(${w.place} ${w.work})完了`, ownerVisible: true });
+      }
     }
     for (let y = 10; ; y += 5) {
       const date = addDays(addMonths(h, 12 * y), -Math.floor(r() * 40));
       if (date > TODAY) break;
+      // 審査時点の状態は、現在の部位評価に経年分(年0.3点)を上乗せして推定する
+      const yearsAgo = Number(TODAY.slice(0, 4)) - Number(date.slice(0, 4));
       const items: CheckItem[] = REVIEW_AREAS.map((area) => {
-        const v = r();
-        return { area, judge: v < 0.74 ? '良好' : v < 0.95 ? '要観察' : '要修繕' };
+        const base = area === '室内' ? p.overall : p.scores[area];
+        const s = base + yearsAgo * 0.3 + (r() - 0.5) * 0.6;
+        return { area, judge: s >= 7.3 ? '良好' : s >= 6.2 ? '要観察' : '要修繕' };
       });
       const bad = items.filter((i) => i.judge === '要修繕').map((i) => i.area);
       const watch = items.filter((i) => i.judge === '要観察').map((i) => i.area);
@@ -677,6 +707,8 @@ export const checks: Check[] = (() => {
       });
     }
   }
+  repairs.sort((a, b) => (a.date < b.date ? 1 : -1));
+  activities.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   return out.sort((a, b) => (a.date < b.date ? 1 : -1));
 })();
 

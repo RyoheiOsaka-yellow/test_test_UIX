@@ -41,7 +41,7 @@ export function CycleCard({ p, repairs, ownerView }: { p: Property; repairs: Rep
         </div>
         {GUIDE.map((g) => {
           const done = repairs
-            .filter((r) => r.part === g.part)
+            .filter((r) => r.part === g.part && !r.afterService)
             .map((r) => Number(r.date.slice(0, 4)) - p.builtYear)
             .filter((age) => age >= g.from - 2);
           const state =

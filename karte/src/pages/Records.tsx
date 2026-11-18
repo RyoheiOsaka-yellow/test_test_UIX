@@ -74,7 +74,7 @@ export default function Records() {
     () =>
       checks.filter((i) => {
         const p = propertyById.get(i.propertyId)!;
-        if (!matches(q, i.summary, i.by, i.id, i.kind, i.round, i.result, p.name, p.owner, p.address)) return false;
+        if (!matches(q, i.summary, i.by, i.id, i.kind, i.round, i.result, p.name, p.owner, p.address, ...(i.items ?? []).map((x) => x.area + x.judge))) return false;
         if (year && !i.date.startsWith(year)) return false;
         if (kind && i.kind !== kind) return false;
         return true;
@@ -214,7 +214,7 @@ export default function Records() {
         ) : (
           <div className="table-wrap">
             {tab === 'findings' && (
-              <table className="tbl hover">
+              <table className="tbl hover cards">
                 <thead>
                   <tr>
                     <th>緊急度</th>
@@ -232,23 +232,23 @@ export default function Records() {
                     const p = propertyById.get(f.propertyId)!;
                     return (
                       <tr key={f.id}>
-                        <td>
+                        <td data-label="緊急度">
                           <SeverityBadge severity={f.severity} short />
                         </td>
-                        <td>
+                        <td data-label="物件">
                           <Link className="strong rowlink" to={`/properties/${p.id}?f=${f.id}`}>
                             {p.name}
                           </Link>
                           <div className="muted small">{p.owner} 様</div>
                         </td>
-                        <td className="nowrap">
+                        <td data-label="部位|箇所" className="nowrap">
                           {f.part}|{f.location}
                         </td>
-                        <td>{f.title}</td>
-                        <td className="nowrap">{fmtDate(f.foundDate)}</td>
-                        <td className="nowrap">{fmtYm(f.dueBy)}まで</td>
-                        <td className="r num">{fmtYen(f.estCost)}</td>
-                        <td>
+                        <td data-label="指摘内容">{f.title}</td>
+                        <td data-label="指摘日" className="nowrap">{fmtDate(f.foundDate)}</td>
+                        <td data-label="推奨時期" className="nowrap">{fmtYm(f.dueBy)}まで</td>
+                        <td data-label="概算費用" className="r num">{fmtYen(f.estCost)}</td>
+                        <td data-label="対応状況">
                           <StatusBadge status={f.status} />
                         </td>
                       </tr>
@@ -258,7 +258,7 @@ export default function Records() {
               </table>
             )}
             {tab === 'repairs' && (
-              <table className="tbl hover">
+              <table className="tbl hover cards">
                 <thead>
                   <tr>
                     <th>修繕日</th>
@@ -275,18 +275,18 @@ export default function Records() {
                     const p = propertyById.get(r.propertyId)!;
                     return (
                       <tr key={r.id}>
-                        <td className="nowrap">{fmtDate(r.date)}</td>
-                        <td>
+                        <td data-label="修繕日" className="nowrap">{fmtDate(r.date)}</td>
+                        <td data-label="物件">
                           <Link className="strong rowlink" to={`/properties/${p.id}`}>
                             {p.name}
                           </Link>
                           <div className="muted small">{p.owner} 様</div>
                         </td>
-                        <td>{r.part}</td>
-                        <td>{r.place}</td>
-                        <td>{r.work}</td>
-                        <td className="r num">{fmtYen(r.cost)}</td>
-                        <td className="nowrap">{r.contractor}</td>
+                        <td data-label="部位">{r.part}</td>
+                        <td data-label="修繕箇所">{r.place}</td>
+                        <td data-label="修繕内容">{r.work}</td>
+                        <td data-label="金額(税込)" className="r num">{fmtYen(r.cost)}</td>
+                        <td data-label="施工会社" className="nowrap">{r.contractor}</td>
                       </tr>
                     );
                   })}
@@ -294,7 +294,7 @@ export default function Records() {
               </table>
             )}
             {tab === 'inspections' && (
-              <table className="tbl hover">
+              <table className="tbl hover cards">
                 <thead>
                   <tr>
                     <th>種別</th>
@@ -311,23 +311,23 @@ export default function Records() {
                     const p = propertyById.get(i.propertyId)!;
                     return (
                       <tr key={i.id}>
-                        <td className="nowrap">
+                        <td data-label="種別" className="nowrap">
                           <CheckBadge kind={i.kind} />
                         </td>
-                        <td className="nowrap">{fmtDate(i.date)}</td>
-                        <td>
+                        <td data-label="実施日" className="nowrap">{fmtDate(i.date)}</td>
+                        <td data-label="物件">
                           <Link className="strong rowlink" to={`/properties/${p.id}`}>
                             {p.name}
                           </Link>
                           <div className="muted small">{p.owner} 様</div>
                         </td>
-                        <td className="nowrap">{i.round}</td>
-                        <td className="nowrap strong">{i.result}</td>
-                        <td>
+                        <td data-label="回次" className="nowrap">{i.round}</td>
+                        <td data-label="結果" className="nowrap strong">{i.result}</td>
+                        <td data-label="内容">
                       {i.summary}
                       <CheckItems items={i.items} />
                     </td>
-                        <td className="nowrap">{i.by}</td>
+                        <td data-label="実施者" className="nowrap">{i.by}</td>
                       </tr>
                     );
                   })}

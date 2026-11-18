@@ -65,8 +65,9 @@ export default function Dashboard() {
       .filter((x) => daysBetween(TODAY, x.next) <= 90)
       .sort((a, b) => (a.next < b.next ? -1 : 1));
     const soonAll = insp.filter((x) => x.next >= TODAY).length;
+    const overdueAll = insp.length - soonAll;
 
-    return { props, open, urgent, within3y, overdue, soon, soonAll, byYear, pipeline, queue, insp, byPart, bins };
+    return { props, open, urgent, within3y, overdue, soon, soonAll, overdueAll, byYear, pipeline, queue, insp, byPart, bins };
   }, [findings, scope]);
 
   const maxPipe = Math.max(1, ...d.pipeline.map((p) => p.count));
@@ -119,8 +120,8 @@ export default function Dashboard() {
           </span>
           <small>点検・審査の期限</small>
           <b>
-            {d.overdue.length}
-            <em>棟 超過</em>
+            {d.overdueAll}
+            <em>件 超過</em>
           </b>
           <span className="foot">90日以内に予定 {d.soonAll}件(3種別)</span>
         </Link>

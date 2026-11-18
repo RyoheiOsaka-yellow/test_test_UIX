@@ -423,7 +423,7 @@ export default function PropertyDetail() {
             点検・審査の履歴 <small className="muted">{cks.length}件</small>
           </h3>
           <div className="table-wrap ck-scroll">
-            <table className="tbl compact">
+            <table className="tbl compact cards">
               <thead>
                 <tr>
                   <th>種別</th>
@@ -437,17 +437,17 @@ export default function PropertyDetail() {
               <tbody>
                 {cks.map((i) => (
                   <tr key={i.id}>
-                    <td className="nowrap">
+                    <td data-label="種別" className="nowrap">
                       <CheckBadge kind={i.kind} short />
                     </td>
-                    <td className="nowrap">{fmtDate(i.date)}</td>
-                    <td className="nowrap">{i.round}</td>
-                    <td className="nowrap strong">{i.result}</td>
-                    <td>
+                    <td data-label="実施日" className="nowrap">{fmtDate(i.date)}</td>
+                    <td data-label="回次" className="nowrap">{i.round}</td>
+                    <td data-label="結果" className="nowrap strong">{i.result}</td>
+                    <td data-label="内容">
                       {i.summary}
                       <CheckItems items={i.items} />
                     </td>
-                    <td>
+                    <td data-label="報告書">
                       <button className="iconbtn" title="報告書を表示(デモでは印刷画面を開きます)" onClick={() => window.print()}>
                         <FileText size={15} />
                       </button>

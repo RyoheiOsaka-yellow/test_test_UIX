@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Building2, ChartColumn, ClipboardList, LayoutDashboard, Lightbulb, Presentation, Search } from 'lucide-react';
-import { matches, properties, propertyById, repairs } from './data';
-import { SeverityBadge, StoreProvider, useStore } from './ui';
+import { checks, matches, properties, propertyById, repairs } from './data';
+import { CheckBadge, SeverityBadge, StoreProvider, useStore } from './ui';
 import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties';
 import PropertyDetail from './pages/PropertyDetail';
@@ -46,7 +46,8 @@ function GlobalSearch() {
     const ps = properties.filter((p) => matches(q, p.name, p.address, p.owner, p.ownerKana, p.id, p.staff));
     const fs = findings.filter((f) => f.severity !== 'ok' && matches(q, f.title, f.part, f.location, f.id, f.description));
     const rs = repairs.filter((r) => matches(q, r.work, r.place, r.part, r.contractor, r.id));
-    return { ps, fs, rs };
+    const cs = checks.filter((c) => matches(q, c.kind, c.round, c.result, c.summary, c.by, c.id, ...(c.items ?? []).map((i) => i.area + i.judge)));
+    return { ps, fs, rs, cs };
   }, [q, findings]);
 
   const go = (to: string) => {
@@ -75,7 +76,7 @@ function GlobalSearch() {
         <>
           <div className="gsearch-veil" onClick={() => setOpen(false)} />
           <div className="gsearch-pop">
-            {res.ps.length + res.fs.length + res.rs.length === 0 && (
+            {res.ps.length + res.fs.length + res.rs.length + res.cs.length === 0 && (
               <div className="gs-none">「{q}」に一致するデータはありません</div>
             )}
             {res.ps.length > 0 && (
@@ -140,6 +141,28 @@ function GlobalSearch() {
                 )}
               </section>
             )}
+            {res.cs.length > 0 && (
+              <section>
+                <h4>
+                  点検・審査 <span>{res.cs.length}件</span>
+                </h4>
+                {res.cs.slice(0, 4).map((c) => (
+                  <button key={c.id} onClick={() => go(`/properties/${c.propertyId}`)}>
+                    <b>
+                      <CheckBadge kind={c.kind} short /> {c.round} {c.result}
+                    </b>
+                    <small>
+                      {propertyById.get(c.propertyId)!.name} ／ {c.date.replaceAll('-', '/')} ／ {c.summary}
+                    </small>
+                  </button>
+                ))}
+                {res.cs.length > 4 && (
+                  <button className="more" onClick={() => go(`/records?tab=inspections&q=${encodeURIComponent(q.trim())}`)}>
+                    すべての点検・審査結果を見る
+                  </button>
+                )}
+              </section>
+            )}
           </div>
         </>
       )}
@@ -191,7 +214,7 @@ function Shell() {
           <NavLink to="/records">
             <ClipboardList size={17} /> 指摘・修繕データ
           </NavLink>
-          <NavLink to="/karte/P-0001">
+          <NavLink to={`/karte/${loc.pathname.match(/^\/properties\/(P-\d+)/)?.[1] ?? 'P-0001'}`}>
             <Presentation size={17} /> AAA(説明用)
           </NavLink>
           <NavLink to="/analytics">

@@ -210,7 +210,7 @@ export default function MyPage() {
   const [ba, setBa] = useState<{ part: Part; seed: number; title: string; note: string } | null>(null);
   const [notify, setNotify] = useState({ mail: true, line: true, push: false });
   const [slide, setSlide] = useState(0);
-  const [present, setPresent] = useState(false);
+  const { present, setPresent } = store;
   const scroller = useRef<HTMLDivElement>(null);
 
   const all = useMemo(() => store.findings.filter((f) => f.propertyId === id), [store.findings, id]);
@@ -643,7 +643,7 @@ export default function MyPage() {
       <div className="b4">
         <div>
           <h3>点検・審査の予定</h3>
-          <CheckPlanTiles plan={checkPlan(p)} />
+          <CheckPlanTiles plan={checkPlan(p)} ownerView={present} />
           <h3>
             点検・審査の履歴 <small>直近{cks.length}件(全{cksAll}件)</small>
           </h3>

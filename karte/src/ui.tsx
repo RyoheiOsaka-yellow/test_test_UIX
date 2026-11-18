@@ -25,12 +25,16 @@ interface Store {
   findings: Finding[];
   activities: Activity[];
   setStatus: (id: string, status: FindingStatus) => void;
+  /** お客様表示中か(画面を移っても保持する) */
+  present: boolean;
+  setPresent: (v: boolean) => void;
 }
 const StoreCtx = createContext<Store | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<Record<string, FindingStatus>>({});
   const [extra, setExtra] = useState<Activity[]>([]);
+  const [present, setPresent] = useState(false);
 
   const value = useMemo<Store>(() => {
     const findings = baseFindings.map((f) =>
@@ -39,6 +43,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return {
       findings,
       activities: [...extra, ...baseActivities],
+      present,
+      setPresent,
       setStatus: (id, status) => {
         const f = baseFindings.find((x) => x.id === id);
         if (!f) return;
@@ -58,7 +64,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ]);
       },
     };
-  }, [overrides, extra]);
+  }, [overrides, extra, present]);
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }
@@ -202,7 +208,7 @@ export function CheckItems({ items }: { items?: CheckItem[] }) {
 }
 
 /** 3種別(アフターサービス点検・継続審査・建物定期点検)の前回と次回 */
-export function CheckPlanTiles({ plan }: { plan: CheckPlan[] }) {
+export function CheckPlanTiles({ plan, ownerView }: { plan: CheckPlan[]; ownerView?: boolean }) {
   return (
     <div className="ck-plan">
       {plan.map((c) => (
@@ -219,7 +225,7 @@ export function CheckPlanTiles({ plan }: { plan: CheckPlan[] }) {
               <dd className="strong">{c.next ? `${fmtYm(c.next)}　${c.nextLabel}` : c.nextLabel}</dd>
             </div>
           </dl>
-          {c.alert && <p className="ck-alert">{c.alert}</p>}
+          {c.alert && <p className="ck-alert">{ownerView ? '次回の審査までに、修繕をおすすめしている箇所があります' : c.alert}</p>}
         </div>
       ))}
     </div>
