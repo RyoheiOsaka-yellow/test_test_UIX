@@ -3205,7 +3205,7 @@ function spCamFP(){ if (!SP.started || !SP.fp || SP.design) return false;
 
 // ---------------------------------------------------------------- しぐさ・話しかける
 function spEmote(e, to){ if (!SP_EMO[e]) return; spSend({ t:"emo", e, to: to || "" }); }
-function spOnEmote(m){ const a = SP.avatars.get(m.uid); const [icon, label] = SP_EMO[m.e] || ["", ""]; if (!icon) return;
+function spOnEmote(m){ (SP.emoLog || (SP.emoLog = [])).push(m); if (SP.emoLog.length > 50) SP.emoLog.shift(); const a = SP.avatars.get(m.uid); const [icon, label] = SP_EMO[m.e] || ["", ""]; if (!icon) return;
   if (a){ spBubble(m.uid, icon, 2600, true); a.emo = { e:m.e, t0:performance.now() }; }
   if (m.to === SP.me.id && m.uid !== SP.me.id){ spToast(`${m.name} さんが${m.e === "talk" ? "話しかけています" : label} ${icon}`, "info");
     if (m.e === "talk" && a){ const p = SP.pos; if (!p.po && !p.mv){ p.ry = Math.atan2(a.cur.x - p.x, a.cur.z - p.z); spSendPos(true); } if (SP.cur !== "near") SP.unread.near = (SP.unread.near || 0) + 1, SP.mention.near = 1, spRenderSide(); } } }
