@@ -312,7 +312,7 @@ function spTick(){
     else { const t = Math.min(1, dt * 8); a.cur.x += (a.tgt.x - a.cur.x) * t; a.cur.z += (a.tgt.z - a.cur.z) * t; a.cur.f = a.tgt.f; a.cur.ry = lerpAngle(a.cur.ry, a.tgt.ry, t); }
     a.g.position.set(a.cur.x, spFloorY(a.cur.f), a.cur.z); a.g.children.forEach(c => { if (!c.isSprite) c.rotation.y = a.cur.ry; });
     a.g.visible = SP.design || (SP.fp ? !isMe && a.cur.f === p.f && Math.hypot(a.cur.x - p.x, a.cur.z - p.z) < 45 : (mode === "ext" ? a.cur.f === 1 : a.cur.f <= viewF));
-    const sit = a.po === 1;
+    const sit = a.po === 1; if (a.tag) a.tag.position.y = sit ? 1.5 : 1.95;
     if (a.mx){
       if (sit !== a.sitting && a.sit){ a.sitting = sit; if (sit){ a.sit.reset(); a.sit.setEffectiveWeight(1); a.sit.play(); } else { a.sit.stop(); a.root.position.set(0, 0, 0); } }
       if (a.sitting){ a.idle.setEffectiveWeight(0); a.walk.setEffectiveWeight(0); a.blend = 0;
