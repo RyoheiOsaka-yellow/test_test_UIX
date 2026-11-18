@@ -19,7 +19,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Bell, CalendarClock, ChevronRight, Eye, EyeOff, FileText, Mail, MessageCircle, Printer, X } from 'lucide-react';
+import { Bell, CalendarClock, Plus, ChevronRight, Eye, EyeOff, FileText, Mail, MessageCircle, Printer, X } from 'lucide-react';
 import {
   PARTS,
   STATUSES,
@@ -44,7 +44,7 @@ import {
 import { DEFAULT_SIM, openCost, simulate, type SimParams } from '../sim';
 import { Empty, LEGEND, PART_COLOR, SeverityBadge, Stars, StatusBadge, useStore, CheckBadge, CheckItems, CheckPlanTiles } from '../ui';
 import { CycleCard } from '../Cycle';
-import { Shot, kindOf } from '../Shot';
+import { FindingShot, Shot, kindOf } from '../Shot';
 
 const PIN_COLOR = { urgent: '#d92d20', watch: '#f5a524', ok: '#12925a' } as const;
 
@@ -55,7 +55,11 @@ export default function PropertyDetail() {
   const [params, setParams] = useSearchParams();
   const ownerView = params.get('view') === 'owner';
 
-  const findings = useMemo(() => store.findings.filter((f) => f.propertyId === id), [store.findings, id]);
+  // 番号は説明用画面と同じ順(緊急度の高い順)にそろえる
+  const findings = useMemo(() => {
+    const order = { urgent: 0, watch: 1, ok: 2 } as const;
+    return store.findings.filter((f) => f.propertyId === id).sort((a, b) => order[a.severity] - order[b.severity]);
+  }, [store.findings, id]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [part, setPart] = useState<Part | null>(null);
   const [sim, setSim] = useState<SimParams>(DEFAULT_SIM);
@@ -158,6 +162,11 @@ export default function PropertyDetail() {
           {!ownerView && (
             <Link className="btn primary" to={`/karte/${p.id}`}>
               <Eye size={15} /> AAA(説明用)で開く
+            </Link>
+          )}
+          {!ownerView && (
+            <Link className="btn" to={`/properties/${p.id}/new`}>
+              <Plus size={15} /> 指摘を登録
             </Link>
           )}
           <Link className="btn" to={`/properties/${p.id}/report`}>
@@ -319,7 +328,7 @@ export default function PropertyDetail() {
                   <div className="photos">
                     {Array.from({ length: Math.min(selected.photos, 5) }, (_, i) => (
                       <button key={i} className="photo-btn" onClick={() => setZoom(i)} aria-label={`写真${i + 1}を拡大`}>
-                        <Shot part={selected.part} kind={kindOf(i)} index={i} seed={selected.pin.x} after={selected.severity === 'ok'} />
+                        <FindingShot f={selected} i={i} />
                       </button>
                     ))}
                     {selected.photos > 5 && <span className="photo-more">+{selected.photos - 5}</span>}
@@ -482,7 +491,7 @@ export default function PropertyDetail() {
             <Empty>修繕の記録はまだありません</Empty>
           ) : (
             <div className="table-wrap">
-              <table className="tbl compact">
+              <table className="tbl compact cards">
                 <thead>
                   <tr>
                     <th>修繕日</th>
@@ -495,11 +504,11 @@ export default function PropertyDetail() {
                 <tbody>
                   {reps.map((r) => (
                     <tr key={r.id}>
-                      <td className="nowrap">{fmtDate(r.date)}</td>
-                      <td>{r.place}</td>
-                      <td>{r.work}</td>
-                      <td className="r num">{fmtYen(r.cost)}</td>
-                      <td>
+                      <td data-label="修繕日" className="nowrap">{fmtDate(r.date)}</td>
+                      <td data-label="修繕箇所">{r.place}</td>
+                      <td data-label="修繕内容">{r.work}</td>
+                      <td data-label="金額(税込)" className="r num">{fmtYen(r.cost)}</td>
+                      <td data-label="前後写真">
                         <button className="linkbtn" onClick={() => setBeforeAfter(r)}>
                           比較 <ChevronRight size={13} />
                         </button>
@@ -534,7 +543,7 @@ export default function PropertyDetail() {
           <Empty>{part}の指摘はありません</Empty>
         ) : (
           <div className="table-wrap">
-            <table className="tbl hover">
+            <table className="tbl hover cards">
               <thead>
                 <tr>
                   <th>緊急度</th>
@@ -557,17 +566,17 @@ export default function PropertyDetail() {
                       document.getElementById('pd-spot')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
                   >
-                    <td>
+                    <td data-label="緊急度">
                       <SeverityBadge severity={f.severity} short />
                     </td>
-                    <td className="nowrap strong">
+                    <td data-label="部位|箇所" className="nowrap strong">
                       <i className={`pinno sev-${f.severity}`}>{findings.indexOf(f) + 1}</i>
                       {f.part}|{f.location}
                     </td>
-                    <td>{f.title}</td>
-                    <td className="nowrap">{f.dueBy ? `${fmtYm(f.dueBy)}まで` : '—'}</td>
-                    <td className="r num">{f.estCost ? fmtYen(f.estCost) : '—'}</td>
-                    <td onClick={(e) => e.stopPropagation()}>
+                    <td data-label="指摘内容">{f.title}</td>
+                    <td data-label="推奨時期" className="nowrap">{f.dueBy ? `${fmtYm(f.dueBy)}まで` : '—'}</td>
+                    <td data-label="概算費用" className="r num">{f.estCost ? fmtYen(f.estCost) : '—'}</td>
+                    <td data-label="対応状況" onClick={(e) => e.stopPropagation()}>
                       {ownerView || f.severity === 'ok' ? (
                         <StatusBadge status={ownerLabel(f, ownerView)} />
                       ) : (
@@ -583,7 +592,7 @@ export default function PropertyDetail() {
                         </select>
                       )}
                     </td>
-                    {!ownerView && <td className="muted small">{f.memo || '—'}</td>}
+                    {!ownerView && <td data-label="社内メモ" className="muted small">{f.memo || '—'}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -676,7 +685,7 @@ export default function PropertyDetail() {
                 <X size={18} />
               </button>
             </header>
-            <Shot part={selected.part} kind={kindOf(zoom)} index={zoom} seed={selected.pin.x} after={selected.severity === 'ok'} />
+            <FindingShot f={selected} i={zoom} />
             <div className="zoom-nav">
               <button className="btn" disabled={zoom === 0} onClick={() => setZoom(zoom - 1)}>
                 前の写真

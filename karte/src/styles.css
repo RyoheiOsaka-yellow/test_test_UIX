@@ -888,3 +888,73 @@ a.kpi:hover { border-color: var(--blue); }
   .mp-toolbar .seg.demo-seg { display: none; }
   .mp-toolbar { gap: 8px; padding: 8px 10px; }
 }
+.tbl.cards td[data-label="指摘内容"], .tbl.cards td[data-label="社内メモ"] { grid-column: 1 / -1; }
+@media (max-width: 1100px) { .tbl.cards td[data-label="社内メモ"]:empty, .tbl.cards td[data-label="前後写真"]:empty { display: none; } }
+
+/* ---------- 指摘の登録 ---------- */
+.nf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-bottom: 90px; }
+@media (max-width: 1100px) { .nf { grid-template-columns: minmax(0, 1fr); } }
+.nf .card { min-width: 0; }
+.nf-map { width: 100%; height: auto; cursor: crosshair; border-radius: 8px; touch-action: manipulation; }
+.nf-hint { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+.req { color: var(--red); font-weight: 700; margin-left: 2px; }
+.nf-field { display: block; margin-bottom: 12px; }
+.nf-label { display: block; font-weight: 700; font-size: 13.5px; margin-bottom: 5px; }
+.nf-field input, .nf-field textarea { width: 100%; border: 1px solid var(--line-2, #d3d9e3); border-radius: 8px; padding: 9px 11px; font: inherit; font-size: 15px; background: #fff; }
+.nf-field input:disabled { background: #f2f4f7; color: var(--muted); }
+.nf-field.invalid input, .nf-field.invalid .nf-choices button, .card.invalid .nf-map { border-color: var(--red); }
+.card.invalid .nf-map { outline: 2px solid var(--red); }
+.nf-field.invalid .nf-label::after, .card.invalid header h2::after { content: '入力してください'; color: var(--red); font-size: 12px; font-weight: 700; margin-left: 8px; }
+.nf-choices { display: flex; gap: 6px; flex-wrap: wrap; }
+.nf-choices button, .nf-suggest button { border: 1px solid var(--line-2, #d3d9e3); background: #fff; border-radius: 8px; padding: 8px 14px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; min-height: 40px; display: inline-flex; align-items: center; gap: 6px; }
+.nf-choices button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.nf-suggest { display: flex; gap: 6px; flex-wrap: wrap; margin: -6px 0 12px; }
+.nf-suggest button { font-weight: 500; font-size: 13px; padding: 5px 10px; min-height: 34px; color: var(--muted); background: #f5f7fa; }
+.nf-sev { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 600px) { .nf-sev { grid-template-columns: 1fr; } }
+.nf-sev button { text-align: left; border: 1.5px solid var(--line-2, #d3d9e3); background: #fff; border-radius: 10px; padding: 9px 11px; cursor: pointer; display: grid; gap: 3px; font: inherit; }
+.nf-sev button b { font-size: 14px; }
+.nf-sev button small { color: var(--muted); font-size: 12px; line-height: 1.45; }
+.nf-sev button.sev-urgent.on { border-color: #d92d20; background: #fdecea; }
+.nf-sev button.sev-watch.on { border-color: #d99a00; background: #fff4dc; }
+.nf-sev button.sev-ok.on { border-color: #12925a; background: #e6f5ee; }
+.nf-field.invalid .nf-sev button { border-color: var(--red); }
+.nf-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.nf-photos figure { position: relative; margin: 0; border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; background: #eef1f5; }
+.nf-photos figure img, .nf-photos figure .shot { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nf-photos figcaption { position: absolute; left: 6px; bottom: 6px; background: #000000a0; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 4px; }
+.nf-del { position: absolute; right: 5px; top: 5px; border: 0; background: #ffffffe0; border-radius: 6px; width: 30px; height: 30px; display: grid; place-items: center; cursor: pointer; color: var(--red); }
+.nf-add { aspect-ratio: 4 / 3; border: 1.5px dashed var(--line-2, #c9d1dd); border-radius: 8px; background: #fafbfd; color: var(--muted); font: inherit; font-weight: 700; font-size: 13px; display: grid; place-items: center; align-content: center; gap: 4px; cursor: pointer; }
+.nf-sample { margin-top: 10px; }
+.nf-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 600px) { .nf-two { grid-template-columns: 1fr; } }
+.nf-bar { position: fixed; left: 216px; right: 0; bottom: 0; z-index: 40; background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 14px rgba(20, 30, 60, 0.06); display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 24px; font-size: 13.5px; color: var(--muted); }
+.nf-bar > div { display: flex; gap: 8px; }
+@media (max-width: 1100px) { .nf-bar { left: 0; } }
+img.shot.user-photo { width: 100%; object-fit: cover; aspect-ratio: 4 / 3; display: block; }
+
+/* ---------- 意見を送る ---------- */
+.fb-fab { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 999px; background: #1c2433; color: #fff; padding: 11px 16px; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(10, 20, 40, 0.25); min-height: 44px; }
+.fb-fab:hover { background: #2b3750; }
+@media (max-width: 760px) { .fb-fab span { display: none; } .fb-fab { padding: 12px; bottom: 86px; right: 14px; } }
+.mp-page ~ .fb-fab, .report ~ .fb-fab { bottom: 88px; }
+.nf-bar ~ .fb-fab { bottom: 76px; }
+.modal.fb { width: min(560px, 100%); }
+.fb-screen { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; }
+.fb-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.fb-kinds button { border: 1px solid var(--line-2, #d3d9e3); background: #fff; border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 13.5px; cursor: pointer; min-height: 38px; }
+.fb-kinds button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.fb-field { display: block; margin-bottom: 10px; }
+.fb-field span { display: block; font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+.fb-field textarea, .fb-field input { width: 100%; border: 1px solid var(--line-2, #d3d9e3); border-radius: 8px; padding: 9px 11px; font: inherit; font-size: 15px; }
+.fb-err { color: var(--red); font-weight: 700; font-size: 13px; margin: 0 0 8px; }
+.fb-actions { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.fb-list { list-style: none; padding: 0; margin: 0 0 10px; max-height: 50vh; overflow: auto; }
+.fb-list li { border-bottom: 1px solid var(--line); padding: 8px 0; display: grid; gap: 2px; font-size: 14px; }
+.fb-list small { color: var(--muted); font-size: 12px; }
+
+/* ---------- デモの初期化 ---------- */
+.side-note p { margin: 0 0 8px; }
+.side-reset { border: 1px solid #ffffff40; background: transparent; color: #cfd6e6; border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 12px; cursor: pointer; width: 100%; }
+.side-reset:hover { background: #ffffff14; color: #fff; }
+.fb-fab.up { bottom: 76px; }

@@ -31,6 +31,10 @@ interface Store {
   setPresent: (v: boolean) => void;
   /** 画面下に短いお知らせを出す(元に戻す操作つきも可) */
   notify: (text: string, undo?: () => void) => void;
+  /** 画面から指摘を登録する(デモではブラウザ内でのみ保持) */
+  addFinding: (f: Finding) => void;
+  /** デモの操作内容をすべて初期状態に戻す */
+  reset: () => void;
 }
 
 interface Toast {
@@ -44,6 +48,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<Record<string, FindingStatus>>({});
   const [extra, setExtra] = useState<Activity[]>([]);
   const [present, setPresent] = useState(false);
+  const [added, setAdded] = useState<Finding[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
   useEffect(() => {
     if (!toast) return;
@@ -52,7 +57,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const value = useMemo<Store>(() => {
-    const findings = baseFindings.map((f) =>
+    const findings = [...added, ...baseFindings].map((f) =>
       overrides[f.id] ? { ...f, status: overrides[f.id], statusDate: TODAY } : f,
     );
     return {
@@ -61,8 +66,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       present,
       setPresent,
       notify: (text, undo) => setToast({ id: Date.now(), text, undo }),
+      addFinding: (f) => {
+        const p = propertyById.get(f.propertyId)!;
+        setAdded((a) => [f, ...a]);
+        setExtra((e) => [
+          { id: `A-new-${Date.now()}`, propertyId: f.propertyId, date: TODAY, type: '指摘登録', actor: p.staff, text: `${f.part}|${f.location}「${f.title}」を登録(${f.id})`, ownerVisible: false },
+          ...e,
+        ]);
+      },
+      reset: () => {
+        setOverrides({});
+        setExtra([]);
+        setAdded([]);
+        setPresent(false);
+        setToast({ id: Date.now(), text: 'デモの状態を初期化しました' });
+      },
       setStatus: (id, status) => {
-        const f = baseFindings.find((x) => x.id === id);
+        const f = [...added, ...baseFindings].find((x) => x.id === id);
         if (!f) return;
         const p = propertyById.get(f.propertyId)!;
         const prev = overrides[id] ?? f.status;
@@ -97,7 +117,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ]);
       },
     };
-  }, [overrides, extra, present]);
+  }, [overrides, extra, present, added]);
 
   return (
     <StoreCtx.Provider value={value}>
@@ -217,8 +237,10 @@ export function downloadCsv(filename: string, header: string[], rows: (string | 
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function Empty({ children }: { children: ReactNode }) {

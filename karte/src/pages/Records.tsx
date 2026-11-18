@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Download, Search, X } from 'lucide-react';
 import {
+  TODAY,
   PARTS,
   STATUSES,
   fmtDate,
@@ -89,7 +90,7 @@ export default function Records() {
   const exportCsv = () => {
     if (tab === 'findings') {
       downloadCsv(
-        '指摘事項.csv',
+        `AAA_findings_${TODAY}.csv`,
         ['指摘ID', '物件', 'オーナー', '部位', '箇所', '緊急度', '指摘内容', '指摘日', '推奨時期', '概算費用', '対応状況'],
         fRows.map((f) => {
           const p = propertyById.get(f.propertyId)!;
@@ -98,7 +99,7 @@ export default function Records() {
       );
     } else if (tab === 'repairs') {
       downloadCsv(
-        '修繕履歴.csv',
+        `AAA_repairs_${TODAY}.csv`,
         ['修繕ID', '物件', 'オーナー', '修繕日', '部位', '修繕箇所', '修繕内容', '金額', '施工会社'],
         rRows.map((r) => {
           const p = propertyById.get(r.propertyId)!;
@@ -107,7 +108,7 @@ export default function Records() {
       );
     } else {
       downloadCsv(
-        '点検・審査履歴.csv',
+        `AAA_inspections_${TODAY}.csv`,
         ['ID', '物件', 'オーナー', '種別', '実施日', '回次', '結果', '内容', '実施者'],
         iRows.map((i) => {
           const p = propertyById.get(i.propertyId)!;

@@ -106,3 +106,10 @@ export function Shot({
     </svg>
   );
 }
+
+/** 指摘の写真。画面から登録した写真があればそれを、なければサンプル写真を表示する */
+export function FindingShot({ f, i }: { f: { part: Part; pin: { x: number }; severity: string; photoUrls?: string[] }; i: number }) {
+  const url = f.photoUrls?.[i];
+  if (url) return <img className="shot user-photo" src={url} alt={`登録した写真${i + 1}`} />;
+  return <Shot part={f.part} kind={kindOf(i)} index={i} seed={f.pin.x} after={f.severity === 'ok'} />;
+}

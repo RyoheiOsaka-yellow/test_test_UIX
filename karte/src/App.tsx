@@ -11,6 +11,8 @@ import Insights from './pages/Insights';
 import Analytics from './pages/Analytics';
 import Report from './pages/Report';
 import MyPage from './pages/MyPage';
+import NewFinding from './pages/NewFinding';
+import { FeedbackButton } from './Feedback';
 
 function GlobalSearch() {
   const { findings } = useStore();
@@ -171,6 +173,7 @@ function GlobalSearch() {
 }
 
 function Shell() {
+  const store = useStore();
   const [params] = useSearchParams();
   const ownerView = params.get('view') === 'owner';
   const loc = useLocation();
@@ -185,13 +188,20 @@ function Shell() {
       <Route path="/properties/:id" element={<PropertyDetail />} />
       <Route path="/properties/:id/report" element={<Report />} />
       <Route path="/karte/:id" element={<MyPage />} />
+      <Route path="/properties/:id/new" element={<NewFinding />} />
       <Route path="/records" element={<Records />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/insights" element={<Insights />} />
     </Routes>
   );
 
-  if (loc.pathname.endsWith('/report') || loc.pathname.startsWith('/karte/')) return routes;
+  if (loc.pathname.endsWith('/report') || loc.pathname.startsWith('/karte/'))
+    return (
+      <>
+        {routes}
+        <FeedbackButton />
+      </>
+    );
   if (ownerView) return <div className="owner-shell">{routes}</div>;
 
   return (
@@ -224,7 +234,17 @@ function Shell() {
             <Lightbulb size={17} /> 修繕の課題と狙い
           </NavLink>
         </nav>
-        <p className="side-note">デモ用データ(架空の物件・人物)を表示しています。</p>
+        <div className="side-note">
+          <p>デモ用データ(架空の物件・人物)を表示しています。</p>
+          <button
+            className="side-reset"
+            onClick={() => {
+              if (window.confirm('対応状況の変更や登録した指摘など、デモで操作した内容をすべて元に戻します。よろしいですか？')) store.reset();
+            }}
+          >
+            デモを初期状態に戻す
+          </button>
+        </div>
       </aside>
       <div className="main">
         <header className="top">
@@ -235,6 +255,7 @@ function Shell() {
           </div>
         </header>
         <main className="content">{routes}</main>
+        <FeedbackButton />
       </div>
     </div>
   );

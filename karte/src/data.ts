@@ -33,6 +33,8 @@ export interface Finding {
   pin: { x: number; y: number };
   photos: number;
   memo: string;
+  /** 画面から登録した写真(デモではブラウザ内でのみ保持) */
+  photoUrls?: string[];
 }
 
 export interface Inspection {
@@ -162,13 +164,13 @@ export const STAFF = ['青木 涼', '西村 沙織', '大野 健太', '藤井 �
 const INSPECTORS = ['点検員 三浦', '点検員 坂本', '点検員 遠藤', '点検員 菊地'];
 const CONTRACTORS = ['東和リフォーム', '城南防水工業', 'みなと塗装', '関東設備サービス', '明光建装'];
 
-interface Template {
+export interface Template {
   titles: string[];
   locations: string[];
   cost: [number, number];
   work: string[];
 }
-const TEMPLATES: Record<Part, Template> = {
+export const TEMPLATES: Record<Part, Template> = {
   外壁: {
     titles: ['外壁のひび割れ・塗膜の劣化', 'シーリングの破断・硬化', '外壁タイルの浮き', 'チョーキング(白亜化)の進行'],
     locations: ['北側', '南側', '東側', '西側'],
@@ -327,11 +329,15 @@ function addRepair(p: Property, date: string, part: Part, place: string, work: s
     builtYear: 2007,
     age: 19,
     structure: 'RC造',
-    floors: 3,
-    units: 24,
+    floors: 2,
+    units: 8,
     scores: { 外壁: 6.0, 屋根: 7.5, 防水: 6.5, 構造: 8.5, 設備: 7.5 },
     overall: 7.2,
-    site: makeSite(true),
+    // 写真の建物に合わせた配置: 南側道路に面した2階建て1棟。西面が道路側の角、東側に駐車場
+    site: {
+      buildings: [{ x: 70, y: 66, w: 200, h: 96, label: '本棟(2階建)' }],
+      parking: { x: 286, y: 118, w: 64, h: 124, label: '駐車場' },
+    },
     lastInspection: '2025-05-20',
     nextInspection: '2027-05-20',
     notify: { mail: true, line: true, push: false },
@@ -349,27 +355,27 @@ function addRepair(p: Property, date: string, part: Part, place: string, work: s
     {
       part: '外壁', location: '北側', severity: 'urgent', title: '外壁のひび割れ・塗膜の劣化',
       foundDate: '2025-05-20', dueBy: '2027-05', estCost: 2100000, status: '提案済',
-      pin: { x: 152, y: 50 }, photos: 5, memo: '2023年の塗装は南・東面のみ。北面は未施工のため優先度高。',
+      pin: { x: 170, y: 70 }, photos: 5, memo: '2023年の塗装は南・東面のみ。北面は未施工のため優先度高。',
     },
     {
       part: '外壁', location: '西側 階段室', severity: 'urgent', title: 'シーリングの破断・硬化',
       foundDate: '2025-05-20', dueBy: '2027-05', estCost: 480000, status: '見積中',
-      pin: { x: 76, y: 82 }, photos: 3, memo: '外壁北側と同時施工で足場費を圧縮できる見込み。',
+      pin: { x: 74, y: 120 }, photos: 3, memo: '外壁北側と同時施工で足場費を圧縮できる見込み。',
     },
     {
       part: '防水', location: '2Fバルコニー', severity: 'urgent', title: 'バルコニー防水層の摩耗',
       foundDate: '2025-05-20', dueBy: '2027-11', estCost: 980000, status: '未対応',
-      pin: { x: 150, y: 206 }, photos: 4, memo: '屋上は2024年に張替え済み。バルコニーは別工事。',
+      pin: { x: 160, y: 160 }, photos: 4, memo: '屋上は2024年に張替え済み。バルコニーは別工事。',
     },
     {
       part: '設備', location: '駐車場側', severity: 'watch', title: '排水管の勾配不良・詰まり',
       foundDate: '2025-05-20', dueBy: '2029-05', estCost: 420000, status: '未対応',
-      pin: { x: 262, y: 196 }, photos: 2, memo: '次回点検で再確認。',
+      pin: { x: 300, y: 200 }, photos: 2, memo: '次回点検で再確認。',
     },
     {
       part: '屋根', location: '屋根全面', severity: 'ok', title: '屋根・屋上の状態確認',
       foundDate: '2025-05-20', dueBy: null, estCost: 0, status: '完了',
-      pin: { x: 262, y: 74 }, photos: 2, memo: '',
+      pin: { x: 230, y: 112 }, photos: 2, memo: '',
     },
   ];
   for (const h of hf) {

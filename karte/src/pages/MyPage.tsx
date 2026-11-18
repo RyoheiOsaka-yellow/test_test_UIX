@@ -63,7 +63,7 @@ import {
 } from '../data';
 import { DEFAULT_SIM, deferredCosts, openCost, projectScores, simulate } from '../sim';
 import { CheckBadge, CheckItems, CheckPlanTiles, Empty, LEGEND, SeverityBadge, Stars, StatusBadge, useStore } from '../ui';
-import { Shot, kindOf } from '../Shot';
+import { FindingShot, Shot, kindOf } from '../Shot';
 
 type Variant = 'desktop' | 'tablet' | 'phone';
 const PIN = { urgent: '#d92d20', watch: '#f5a524', ok: '#12925a' } as const;
@@ -458,7 +458,7 @@ export default function MyPage() {
               <div className="b2-photos">
                 {Array.from({ length: Math.min(selected.photos, big ? 4 : 5) }, (_, i) => (
                   <button key={i} onClick={() => setLightbox({ f: selected, i })} aria-label={`写真${i + 1}を拡大`}>
-                    <Shot part={selected.part} kind={kindOf(i)} index={i} seed={selected.pin.x} after={selected.severity === 'ok'} />
+                    <FindingShot f={selected} i={i} />
                     <em>{kindOf(i)}</em>
                   </button>
                 ))}
@@ -810,7 +810,7 @@ export default function MyPage() {
               <button className="nav" onClick={() => setLightbox({ f: lightbox.f, i: (lightbox.i + lightbox.f.photos - 1) % lightbox.f.photos })} aria-label="前の写真">
                 <ChevronLeft size={26} />
               </button>
-              <Shot part={lightbox.f.part} kind={kindOf(lightbox.i)} index={lightbox.i} seed={lightbox.f.pin.x} after={lightbox.f.severity === 'ok'} />
+              <FindingShot f={lightbox.f} i={lightbox.i} />
               <button className="nav" onClick={() => setLightbox({ f: lightbox.f, i: (lightbox.i + 1) % lightbox.f.photos })} aria-label="次の写真">
                 <ChevronRight size={26} />
               </button>
@@ -818,7 +818,7 @@ export default function MyPage() {
             <div className="lb-thumbs">
               {Array.from({ length: lightbox.f.photos }, (_, i) => (
                 <button key={i} className={i === lightbox.i ? 'on' : ''} onClick={() => setLightbox({ f: lightbox.f, i })} aria-label={`写真${i + 1}`}>
-                  <Shot part={lightbox.f.part} kind={kindOf(i)} index={i} seed={lightbox.f.pin.x} after={lightbox.f.severity === 'ok'} />
+                  <FindingShot f={lightbox.f} i={i} />
                 </button>
               ))}
             </div>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>AAA プロトタイプ 社内試用の進め方およびデモ台本(案)</title>
+<style>
+@page { size: A4; margin: 15mm 15mm 16mm; }
+:root { --ink:#1c1c1c; --muted:#555; --line:#8a8a8a; --thin:#c9c9c9; --navy:#1f2f4f; --fill:#eef0f3; }
+* { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+body { margin:0; color:var(--ink); font-family:"Noto Sans CJK JP","Yu Gothic","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; font-size:9.6pt; line-height:1.65; }
+.wrap { max-width:180mm; margin:0 auto; }
+.head { display:flex; justify-content:space-between; align-items:flex-start; gap:6mm; }
+.head .label { font-size:9pt; letter-spacing:.1em; color:var(--muted); }
+h1 { font-family:"Noto Serif CJK JP","Yu Mincho","Hiragino Mincho ProN",serif; font-size:17pt; margin:1mm 0 0; letter-spacing:.03em; }
+.meta { border-collapse:collapse; font-size:8.5pt; }
+.meta td { border:1px solid var(--line); padding:1mm 3mm; white-space:nowrap; }
+.meta td:first-child { background:var(--fill); }
+hr { border:0; border-top:3px double var(--navy); margin:4mm 0 5mm; }
+h2 { font-size:11pt; margin:6mm 0 2.5mm; padding:1mm 3mm; border-left:5px solid var(--navy); background:var(--fill); break-after:avoid; }
+h3 { font-size:10pt; margin:4mm 0 1.5mm; break-after:avoid; }
+p { margin:0 0 2mm; }
+ol, ul { margin:0 0 2mm; padding-left:1.4em; }
+li { margin-bottom:.8mm; }
+table.t { width:100%; border-collapse:collapse; border:1.2px solid var(--ink); margin:0 0 3mm; font-size:9pt; }
+table.t th { background:var(--fill); border:1px solid var(--line); padding:1.4mm 2.2mm; text-align:left; white-space:nowrap; }
+table.t td { border:1px solid var(--line); padding:1.4mm 2.2mm; vertical-align:top; }
+table.t { break-inside:auto; }
+table.t td.k { white-space:nowrap; font-weight:700; background:#fafafa; }
+tr { break-inside:avoid; }
+.say { color:#1f2f4f; }
+.say::before { content:"「"; } .say::after { content:"」"; }
+.note { border:1px solid var(--line); background:#fafafa; padding:2mm 3mm; margin:0 0 3mm; font-size:9pt; break-inside:avoid; }
+.check li { list-style:"□ "; }
+.box { border:1.2px solid var(--ink); padding:2.5mm 3.5mm; margin:0 0 3mm; break-inside:avoid; }
+.box .line { border-bottom:1px solid var(--thin); height:9mm; }
+.pb { break-before:page; }
+.foot { margin-top:6mm; font-size:8.5pt; color:var(--muted); text-align:right; }
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <div>
+    <div class="label">修繕データ一元管理「AAA」プロトタイプ</div>
+    <h1>社内試用の進め方およびデモ台本(案)</h1>
+  </div>
+  <table class="meta">
+    <tr><td>作成日</td><td>2026年11月18日</td></tr>
+    <tr><td>版</td><td>第1版(案)</td></tr>
+    <tr><td>対象</td><td>試用の進行担当者</td></tr>
+  </table>
+</div>
+<hr>
+
+<h2>1. 試用の目的</h2>
+<ol>
+  <li>プロトタイプの画面構成と操作の流れが、担当者の実務(物件の状況把握、オーナーへの説明、指摘の記録)に合うかを確認する。</li>
+  <li>迷う箇所、分かりにくい表示、不足している情報を、モック完成(12月末)までに洗い出す。</li>
+  <li>現地での指摘登録について、入力の手間が許容できるかの感触をつかむ。</li>
+</ol>
+
+<h2>2. 実施要領</h2>
+<table class="t">
+  <tr><td class="k">対象者</td><td>担当者(営業・管理)3〜5名。可能であれば点検担当者1名を含める</td></tr>
+  <tr><td class="k">所要時間</td><td>1名あたり30分(デモ5分、操作課題15分、聞き取り10分)</td></tr>
+  <tr><td class="k">形式</td><td>1対1。進行担当者が横で操作を観察し、気づきを記録する</td></tr>
+  <tr><td class="k">使用する物</td><td>プロトタイプのHTMLファイル(tatemono-karte.html)、PC(Edge または Chrome)。可能であればiPadも用意</td></tr>
+  <tr><td class="k">記録</td><td>試用者は画面右下の「意見を送る」、進行担当者は本書末尾の観察記録票に記入</td></tr>
+</table>
+
+<h2>3. 事前準備</h2>
+<ul class="check">
+  <li>HTMLファイルを試用に使う端末に保存し、ダブルクリックで開けることを確認する(iPadはファイルアプリから開く)。</li>
+  <li>左メニュー下の「デモを初期状態に戻す」を押し、前の試用者の操作内容を消しておく。</li>
+  <li>前の試用者の意見を回収済みであることを確認する(5章)。</li>
+  <li>表示データはすべて架空であること、操作内容は保存されないことを試用者に伝える準備をする。</li>
+</ul>
+
+<h2>4. デモ台本(5分)</h2>
+<p>進行担当者が操作しながら説明する。<span class="say">…</span>は説明の例。</p>
+<table class="t">
+  <tr><th>時間</th><th>画面・操作</th><th>説明のポイント</th></tr>
+  <tr><td class="k">0:00</td><td>ダッシュボード</td><td><span class="say">修繕に関する情報を1か所にまとめ、今どこに手を打つべきかが分かる画面です</span><br>早急対応の件数、オーナー未提案の件数、点検・審査の期限を示す。</td></tr>
+  <tr><td class="k">0:45</td><td>「優先して動く案件」の行を押す → 物件詳細(サンライズコート石神井)</td><td><span class="say">物件ごとに、状態・指摘・試算・履歴・やり取りがまとまっています</span><br>配置図の番号と写真、対応状況の変更(変更後に「元に戻す」が出ること)を示す。</td></tr>
+  <tr><td class="k">2:00</td><td>「AAA(説明用)で開く」→「お客様に見せる」</td><td><span class="say">オーナー様にはこの画面を見せながら説明します。社内メモなどは自動で隠れます</span><br>①建物の状態 → ②修繕箇所 → ③先送りした場合の費用(約280万円の追加)→ ④履歴の順に見せる。</td></tr>
+  <tr><td class="k">3:30</td><td>「お客様向けレポートを開く」</td><td><span class="say">同じ内容をA4のレポートとしてお渡しできます</span><br>「説明画面に戻る」で戻り、「社内表示に戻す」を押す。</td></tr>
+  <tr><td class="k">4:15</td><td>物件詳細 →「指摘を登録」</td><td><span class="say">現地ではiPadからこの画面で指摘を記録します</span><br>配置図を押して位置を指定できることだけ示し、入力は試用者に任せる。</td></tr>
+</table>
+
+<h2>5. 操作課題(15分)</h2>
+<p>試用者に次の課題を口頭で伝え、説明なしで操作してもらう。進行担当者は手を出さず、迷った箇所・探した箇所・口にした疑問を記録する。</p>
+<table class="t">
+  <tr><th>#</th><th>課題</th><th>確認したいこと</th><th>目安</th></tr>
+  <tr><td class="k">1</td><td>あなたの担当物件のうち、オーナーへの提案が止まっている案件を見つけ、その物件のオーナー向け説明を準備してください</td><td>ダッシュボードから目的の物件にたどり着けるか。説明用画面の存在に気づくか</td><td>5分</td></tr>
+  <tr><td class="k">2</td><td>「グリーン常盤」で、外壁にひび割れを見つけたとします。写真付きで指摘を1件登録してください</td><td>配置図での位置指定、必須項目、写真の追加で迷わないか。入力にかかる時間</td><td>5分</td></tr>
+  <tr><td class="k">3</td><td>防水工事を過去に行った物件を探し、金額の合計を確認してください</td><td>全体検索、指摘・修繕データの絞り込みが使えるか</td><td>3分</td></tr>
+  <tr><td class="k">4</td><td>気づいたことを「意見を送る」から1件以上送ってください</td><td>意見の送り方が分かるか</td><td>2分</td></tr>
+</table>
+<div class="note">課題2では、写真は「デモ用のサンプル写真を追加」で代用してよい。iPadで試す場合は「撮影・写真を選ぶ」から実際に撮影できる。登録した内容は再読み込みで消える。</div>
+
+<h2>6. 聞き取り(10分)</h2>
+<ol>
+  <li>この画面を実際の業務で使う場面はありますか。それはどんなときですか。</li>
+  <li>オーナーへの説明で、足りない情報や、逆に見せたくない情報はありましたか。</li>
+  <li>今のやり方と比べて、手間が増えると感じた所はどこですか。</li>
+</ol>
+
+<h2>7. 意見の回収とまとめ</h2>
+<ol>
+  <li>試用後、「意見を送る」→「これまでの意見を見る」→「CSVで書き出す」で意見を回収する(ファイル名: AAA_feedback_日付.csv)。</li>
+  <li>CSVと観察記録票を、進行担当者がまとめて共有フォルダに保存する。</li>
+  <li>「デモを初期状態に戻す」を押してから、次の試用者に交代する。</li>
+  <li>週次定例会議で、集まった意見を「直す・保留・やらない」に仕分ける。</li>
+</ol>
+<div class="note">意見は端末のブラウザ内に保存される。ブラウザの閲覧履歴の削除や、プライベートモードでの利用では消えるため、試用ごとに回収する。</div>
+
+<h2 class="pb">8. 観察記録票</h2>
+<div class="box">
+  <table class="t" style="margin:0">
+    <tr><td class="k" style="width:28mm">実施日・時間</td><td></td><td class="k" style="width:22mm">試用者</td><td></td></tr>
+    <tr><td class="k">使用端末</td><td colspan="3">PC(Edge・Chrome) ／ iPad ／ その他(　　　　　　)</td></tr>
+  </table>
+</div>
+<table class="t">
+  <tr><th style="width:12mm">課題</th><th style="width:34mm">完了</th><th>迷った箇所・口にした疑問</th></tr>
+  <tr><td class="k">1</td><td>できた・一部・不可</td><td style="height:30mm"></td></tr>
+  <tr><td class="k">2</td><td>できた・一部・不可<br>所要　　分</td><td style="height:30mm"></td></tr>
+  <tr><td class="k">3</td><td>できた・一部・不可</td><td style="height:30mm"></td></tr>
+  <tr><td class="k">4</td><td>できた・一部・不可</td><td style="height:20mm"></td></tr>
+</table>
+<div class="box">
+  <b>聞き取りの回答</b>
+  <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+</div>
+
+<p class="foot">本書は協議用の案であり、試用の結果を踏まえて随時更新する。</p>
+</div></body></html>
