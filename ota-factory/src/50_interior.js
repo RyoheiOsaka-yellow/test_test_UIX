@@ -310,7 +310,7 @@ function buildInterior(){
   for (const x of [34.5, 35.5]) { F2.box(0.9, 2.2, 0.9, std(0x4a5560), x, 0, 15); }
   // 2F テラス 什器（木ベンチ・テーブル）
   for (const x of [-30, -10, 10, 30]){ F2.box(2.0, 0.05, 0.8, M.timber, x, 0.7, 20.4); F2.box(0.1, 0.7, 0.7, M.darkSteel, x-0.9, 0, 20.4); F2.box(0.1, 0.7, 0.7, M.darkSteel, x+0.9, 0, 20.4); for (const dx of [-0.6,0.6]) F2.box(0.4, 0.45, 0.4, M.chair, x+dx, 0, 19.3); }
-  F2.flush(g2, { name:"furn2", layer:"furniture" }); g2.children.filter(c=>c.name==="furn2").forEach(c=>c.position.y = lv[1]);
+  F2.flush(g2, { name:"furn2", layer:"furniture" }); g2.children.filter(c=>c.name==="furn2").forEach(c=>c.position.y = lv[1]); SEATS_RAW.forEach(st => { if (st.parent === g2 && !st.lifted){ st.lifted = true; st.list.forEach(r => r[1] += lv[1]); } });
 
   // ---- 3F ----
   for (let r=0;r<2;r++) for (let c=0;c<5;c++) deskCluster(F3, -33+c*4.6, 6.0+r*6.5, true);     // 設計 40席
@@ -319,7 +319,7 @@ function buildInterior(){
   for (let r=0;r<2;r++) for (let c=0;c<5;c++) cafeTable(F3, 18.5+c*3.4, 6.0+r*6.0, 0);          // カフェテリア
   F3.box(6.0, 1.0, 0.9, M.timber, 28, 0, 16.5); F3.box(6.2, 0.05, 1.0, M.deskWhite, 28, 1.0, 16.5); F3.box(1.0, 0.6, 0.6, std(0xd8dcdf,{metalness:0.4}), 30, 1.05, 16.5);
   plantBig(F3, 16.5, 16.5, 0); plantBig(F3, 35, 16.5, 0); plantBig(F3, -36, 16.5, 0); sofaSet(F3, 12, 15.5, 0, 0);
-  F3.flush(g3, { name:"furn3", layer:"furniture" }); g3.children.filter(c=>c.name==="furn3").forEach(c=>c.position.y = lv[2]);
+  F3.flush(g3, { name:"furn3", layer:"furniture" }); g3.children.filter(c=>c.name==="furn3").forEach(c=>c.position.y = lv[2]); SEATS_RAW.forEach(st => { if (st.parent === g3 && !st.lifted){ st.lifted = true; st.list.forEach(r => r[1] += lv[2]); } });
 
   // ---- MEP（ダクト・ケーブルラック・配管・照明）----
   const P = new Merger(); const W = x1-x0;

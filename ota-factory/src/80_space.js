@@ -394,4 +394,4 @@ function spWire(){
 }
 // ファクトリーモデルの構築完了を待ってから起動
 { const t = setInterval(() => { const l = document.getElementById("loading"); if (l && l.style.display === "none"){ clearInterval(t); spStart().then(spWire).catch(err => console.error(err)); } }, 120); }
-window.__space = SP;
+window.__space = SP; window.__spaceFn = { spSeats, spSeatNear, spSitAt, spStand, spSetFP, spTalkTo, spEmote, SEATS_RAW };   // 検証用
