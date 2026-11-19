@@ -263,7 +263,14 @@ function spSeats(){ if (SP_SEATS) return SP_SEATS; SP_SEATS = []; const v = new 
 function spSeatNear(x, z, f, r){ let best = null, bd = r; for (const st of spSeats()){ if (st.f !== f) continue; const d = Math.hypot(st.x - x, st.z - z); if (d < bd){ bd = d; best = st; } } return best; }
 function spSeatTaken(st){ for (const [id, a] of SP.avatars){ if (id !== SP.me.id && a.po === 1 && a.cur.f === st.f && Math.hypot(a.cur.x - st.x, a.cur.z - st.z) < 0.35) return true; } return false; }
 function spSitAt(st){ if (spSeatTaken(st)) return spToast("この席は使われています", "info");
-  SP.sitAfter = st; if (!spWalkTo(st.x, st.z, { exact:true })) SP.sitAfter = null; }
+  SP.sitAfter = st; const p = SP.pos;
+  if (Math.hypot(st.x - p.x, st.z - p.z) < 1.3) return spDoSit(st);   // すぐそばならそのまま座る
+  if (NAV.ready){ const direct = navPath(p.f, p.x, p.z, st.x, st.z); if (direct){ SP.path = direct; SP.target = direct[0]; return; }
+    // 席が机と隣の椅子に囲まれて届かないときは、席のまわりで歩いて行ける場所まで行ってから座る
+    const cand = []; for (const r of [0.7, 0.95, 1.2]) for (let k = 0; k < 16; k++){ const a = k / 16 * Math.PI * 2, x = st.x + Math.sin(a) * r, z = st.z + Math.cos(a) * r; if (navFree(p.f, x, z)) cand.push({ x, z, d: r + Math.hypot(x - p.x, z - p.z) * 0.05 }); }
+    cand.sort((a, b) => a.d - b.d); for (const c of cand.slice(0, 8)){ const path = navPath(p.f, p.x, p.z, c.x, c.z); if (path){ SP.path = path; SP.target = path[0]; return; } }
+    SP.sitAfter = null; spToast("その席までは行けません", "info"); return; }
+  SP.target = { x:st.x, z:st.z }; }
 function spDoSit(st){ const p = SP.pos; SP.sitAfter = null; SP.target = null; SP.path = null; Object.assign(p, { x:st.x, z:st.z, ry:st.ry, po:1, mv:0 }); spSendPos(true); }
 function spStand(){ const p = SP.pos; if (!p.po) return; p.po = 0; spSendPos(true); }   // 席の場所は通れるので、その場で立つ
 // 着席ポーズ（SitDown の最終姿勢）で腰を座面に合わせるためのオフセット。キャラごとに 1 回だけ計算
