@@ -2979,7 +2979,8 @@ function spInjectUI(){
   #spCompose { display:flex; gap:6px; padding:10px; border-top:1px solid var(--line); } #spCompose .btn { flex:none; }
   #spBar { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); z-index:12; display:flex; gap:6px; align-items:center; padding:7px 9px; } body.space #spBar { left:calc(50% - 55px); }
   #spBar select { background:#21262d; color:var(--txt); border:1px solid var(--line); border-radius:7px; padding:5px 6px; font-size:12px; }
-  #spBar .emo { font-size:15px; padding:2px 5px; min-width:28px; } #spBar .sep { width:1px; height:20px; background:var(--line); }
+  #spEmoPal { position:absolute; bottom:38px; left:50%; transform:translateX(-50%); display:none; grid-template-columns:repeat(4, 44px); gap:4px; padding:6px; z-index:14; } #spEmoPal.open { display:grid; }
+  #spEmoPal .emo { display:flex; flex-direction:column; align-items:center; padding:4px 0 2px; line-height:1.1; } #spEmoPal .emo b { font-size:18px; font-weight:400; } #spEmoPal .emo small { font-size:9px; color:var(--sub); } #spBar .sep { width:1px; height:20px; background:var(--line); }
   #spHint { position:absolute; left:calc(50% - 55px); bottom:62px; transform:translateX(-50%); z-index:12; background:rgba(13,17,23,.82); border:1px solid var(--line); color:#e6edf3; border-radius:16px; padding:4px 12px; font-size:12px; display:none; pointer-events:none; } #spHint kbd { background:#2b3340; border-radius:4px; padding:0 5px; margin-right:4px; font:600 11px ui-monospace,monospace; }
   #spCross { position:fixed; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.8); box-shadow:0 0 0 1px rgba(0,0,0,.5); z-index:11; display:none; pointer-events:none; } body.spFP #spCross { display:block; }
   #spToast.info { background:#14283d; border-color:#2f6fd0; color:#d6e8ff; }
@@ -3009,7 +3010,7 @@ function spInjectUI(){
     <div id="spCompose"><input id="spInput" maxlength="2000" placeholder="メッセージを送信"><button class="btn on" id="spSend">送信</button></div></section>
   <div id="spBar" class="panel"><select id="spGo"><option value="">場所へ移動…</option>${Object.keys(SP_SPOTS).map(k => `<option>${k}</option>`).join("")}</select>
     <button class="btn sm" id="spFP" title="自分の目線で歩く（V キー／ホイールで寄り切る）">👁 一人称</button><span class="sep"></span>
-    ${SP_EMO_KEYS.map((k, i) => `<button class="btn sm emo" data-emo="${k}" title="${SP_EMO[k][1]}（${i + 1} キー）">${SP_EMO[k][0]}</button>`).join("")}<span class="sep"></span>
+    <span style="position:relative"><button class="btn sm" id="spEmoBtn" title="身振り（1〜8 キー）">😀 身振り</button><div id="spEmoPal" class="panel">${SP_EMO_KEYS.map((k, i) => `<button class="btn sm emo" data-emo="${k}" title="${SP_EMO[k][1]}"><b>${SP_EMO[k][0]}</b><small>${i + 1}</small></button>`).join("")}</div></span>
     <button class="btn sm" id="spNpc">NPC を表示</button><button class="btn sm" id="spDesign" hidden>設計ビュー</button>
     <span class="sub" style="font-size:12px;cursor:help" title="WASD／矢印：移動（Shift で速く）&#10;床をクリック：そこへ歩く&#10;椅子をクリック／E：座る・立つ&#10;人をクリック：話しかける・手を振る・DM&#10;V：一人称と三人称の切替&#10;1〜8：しぐさ（手を振る・いいね・おじぎ・拍手・うなずく・指さす・休憩・質問）&#10;Enter：チャット入力">？</span></div>
   <div id="spHint"></div><div id="spCross"></div>
@@ -3095,13 +3096,13 @@ function spRenderSide(){
   $("spMeAv").style.background = col; $("spMeAv").textContent = spInitial(me.name); $("spMeName").textContent = me.name; $("spMeSub").innerHTML = (me.role === "guest" ? `ゲスト：${pe(me.org)}` : "社員") + ` ・ ${pe(spPlace(me) || "")}`;
   $("spStatus").value = me.status || "在席"; $("spCheck").textContent = me.checkedIn ? "チェックアウト" : "チェックイン"; $("spCheck").classList.toggle("on", !me.checkedIn);
   const zoneCh = SP.channels.find(c => c.zone && SP.zone && c.zone.split(",").includes(SP.zone));
-  const nearN = [...SP.users.values()].filter(u => u.id !== SP.me.id && spIsNear(u)).length;
+  const nearN = [...SP.users.values()].filter(u => u.id !== SP.me.id && (SP.room ? u.room === SP.room : !u.room && spIsNear(u))).length;
   const item = (id, label, extra = "") => { const un = SP.unread[id] || 0; return `<div class="spItem${SP.cur === id ? " on" : ""}" data-ch="${pe(id)}">${label}${extra}${un ? `<span class="badge${SP.mention[id] ? " men" : ""}">${un}</span>` : ""}</div>`; };
   const myRoom = spRoomOf(SP.pos); let h = `<h4>チャンネル</h4>` + item("near", myRoom ? `🚪 ${pe(myRoom.name)}` : `🗣 近くの人`, `<small>${nearN} 人</small>`);
   for (const c of SP.channels) h += item(c.id, `# ${pe(c.name)}${c.shared ? ` <span class="spGuest">社外</span>` : ""}`, zoneCh && zoneCh.id === c.id ? `<span class="here">● いまここ</span>` : "");
   if (SP.eqs.length){ h += `<h4>設備スレッド</h4>`; for (const e of SP.eqs) h += item(e.id, `⚙ ${pe(e.name)}`); }
   if (SP.rooms && SP.rooms.length){ h += `<h4>会議室</h4>`;
-    for (const r of SP.rooms){ const inR = [...SP.avatars.entries()].filter(([id, a]) => { const rr = spRoomOf(id === SP.me.id ? SP.pos : a.cur); return rr && rr.id === r.id; }).map(([id]) => (SP.users.get(id) || {}).name).filter(Boolean);
+    for (const r of SP.rooms){ const inR = [...SP.users.values()].filter(u => (u.id === SP.me.id ? SP.room : u.room) === r.id).map(u => u.name);
       h += `<div class="spItem${myRoom && myRoom.id === r.id ? " on" : ""}" data-room="${r.id}" title="${pe(inR.join("、") || "空室")}">🚪 ${pe(r.name)}<small>${r.f}F ・ ${inR.length ? inR.length + " 人" : "空室"}</small></div>`; } }
   h += `<h4>ダイレクトメッセージ</h4>`; for (const d of SP.dms){ const u = SP.users.get(d.peer); h += item(d.id, `<span class="spDot" style="background:${u ? SP_STATUS[u.status] || "#3fb950" : "#30363d"}"></span>${pe(d.name)}`); }
   const others = [...SP.users.values()].filter(u => u.id !== SP.me.id).sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "employee" ? -1 : 1));
@@ -3340,7 +3341,10 @@ function spWire(){
   $("spGo").onchange = e => { const s = SP_SPOTS[e.target.value]; if (s){ Object.assign(SP.pos, { f:s[0], x:s[1], z:s[2], po:0 }); SP.sitAfter = null; SP.target = null; SP.path = null; spNavFixPosition(); spSendPos(true); } e.target.value = ""; };
   $("spNpc").onclick = () => spNpc(!SP.npc);
   $("spFP").onclick = () => spSetFP(!SP.fp);
-  document.querySelectorAll("#spBar [data-emo]").forEach(b => b.onclick = () => spEmote(b.dataset.emo));
+  document.querySelectorAll("#spBar [data-emo]").forEach(b => b.onclick = () => { spEmote(b.dataset.emo); $("spEmoPal").classList.remove("open"); });
+  $("spEmoBtn").onclick = e => { e.stopPropagation(); $("spEmoPal").classList.toggle("open"); };
+  addEventListener("pointerdown", e => { const pal = $("spEmoPal"); if (pal.classList.contains("open") && !pal.contains(e.target) && e.target.id !== "spEmoBtn") pal.classList.remove("open"); });
+  setInterval(() => { if (!SP.started) return; const sig = [...SP.users.values()].map(u => u.id + (u.room || "") + (spIsNear(u) ? 1 : 0)).join(); if (sig !== SP.sideSig){ SP.sideSig = sig; spRenderSide(); } }, 2000);   // 人数表示の更新
   cvsEl.addEventListener("wheel", e => { if (!SP.started || SP.design) return; if (SP.fp && e.deltaY > 0) spSetFP(false); else if (!SP.fp && e.deltaY < 0 && camGoal.dist <= 3.01) spSetFP(true); }, { passive:true });
   $("spDesign").onclick = () => { if (SP.fp) spSetFP(false); SP.design = !SP.design; document.body.classList.toggle("design", SP.design); $("spDesign").classList.toggle("on", SP.design); $("spDesign").textContent = SP.design ? "チャットに戻る" : "設計ビュー"; if (!SP.design) setCam({ dist:11, pitch:0.38 }); };
   $("spInviteBtn").onclick = async () => { const org = prompt("招待する工場・会社の名前"); if (!org) return; const email = prompt("招待する方のメールアドレス（空欄なら誰でも使えるリンク）", "") || "";
