@@ -3502,11 +3502,11 @@ const SP_GEST = {
                         ["uaL", "laL", [0.35, -0.8, 0.4]], ["laL", "hL", [0.3, 0.15 + 0.3 * Math.sin(t * 4.1 + 2), 0.9]]],
                   rot:[["head", [1, 0, 0], 0.07 * Math.sin(t * 3.7)], ["head", [0, 1, 0], 0.1 * Math.sin(t * 1.9)]] }),
 };
-const _gq = new THREE.Quaternion(), _gW = new THREE.Quaternion(), _gR = new THREE.Quaternion(), _gI = new THREE.Quaternion(), _gv1 = new THREE.Vector3(), _gv2 = new THREE.Vector3(), _gv3 = new THREE.Vector3();
+const _gq = new THREE.Quaternion(), _gR2 = new THREE.Quaternion(), _gW = new THREE.Quaternion(), _gR = new THREE.Quaternion(), _gI = new THREE.Quaternion(), _gv1 = new THREE.Vector3(), _gv2 = new THREE.Vector3(), _gv3 = new THREE.Vector3();
 // ワールドでの回転 R を骨のローカルに直して掛ける：新ローカル = L · W⁻¹ · R · W
 function spApplyWorldRot(bone, R){ bone.getWorldQuaternion(_gW); const d = _gW.clone().invert().multiply(R).multiply(_gW); bone.quaternion.multiply(d); bone.updateMatrixWorld(true); }
 function spGestAim(bone, child, dir, w, rootQ){ bone.getWorldPosition(_gv1); child.getWorldPosition(_gv2); _gv2.sub(_gv1); if (_gv2.lengthSq() < 1e-8) return; _gv2.normalize();
-  _gv3.set(dir[0], dir[1], dir[2]).normalize().applyQuaternion(rootQ); _gR.setFromUnitVectors(_gv2, _gv3); _gR.slerpQuaternions(_gI, _gR, w); spApplyWorldRot(bone, _gR); }
+  _gv3.set(dir[0], dir[1], dir[2]).normalize().applyQuaternion(rootQ); _gR2.setFromUnitVectors(_gv2, _gv3); _gR.slerpQuaternions(_gI, _gR2, w); spApplyWorldRot(bone, _gR); }   // _gR2 を分けないと slerp の中で上書きされる
 function spGestRot(bone, axis, ang, w, rootQ){ _gv3.set(axis[0], axis[1], axis[2]).normalize().applyQuaternion(rootQ); _gR.setFromAxisAngle(_gv3, ang * w); spApplyWorldRot(bone, _gR); }
 // 毎フレーム：mixer.update の後に呼ぶ。終わったら a.gest を消す
 function spGestureUpdate(a, now){ const g = a.gest; if (!g || !a.bones || !a.root) return; const D = SP_GEST_DUR[g.e] || 2, t = g.hold != null ? g.hold : (now - g.t0) / 1000; if (t >= D){ a.gest = null; return; }   // hold：検証用に途中で止める
