@@ -351,7 +351,7 @@ function spTick(){
       if (a.sitting){ a.idle.setEffectiveWeight(0); a.walk.setEffectiveWeight(0); a.blend = 0;
         if (a.sitOff){ const o = a.sitOff, sc = a.scale, lx = -o.ax * sc, lz = (-o.az + 0.12) * sc, c = Math.cos(a.cur.ry), sn = Math.sin(a.cur.ry); a.root.position.set(lx * c + lz * sn, -o.minY * sc, -lx * sn + lz * c); } }
       else { a.blend += ((a.mv ? 1 : 0) - a.blend) * Math.min(1, dt * 8); a.walk.setEffectiveWeight(a.blend); a.idle.setEffectiveWeight(1 - a.blend); }
-      a.mx.update(dt); spGestureUpdate(a, now); }
+      spGestureRestore(a); a.mx.update(dt); spGestureUpdate(a, now); }
     else { const w = a.g.children.find(c => c.userData.spFallback); if (w && w.userData.legs){ const ph = a.mv ? Math.sin(now / 1000 * 7) * 0.45 : 0; w.userData.legs[0].rotation.x = sit ? -1.4 : ph; w.userData.legs[1].rotation.x = sit ? -1.4 : -ph; w.position.y = sit ? 0.05 : 0; } }
     // しぐさ：手を振る・拍手は小さく跳ねる、おじぎは前に傾ける
     const body = a.bones ? null : (a.root || a.g.children.find(c => c.userData.spFallback));
