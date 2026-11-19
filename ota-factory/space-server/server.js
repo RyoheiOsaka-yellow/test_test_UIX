@@ -150,7 +150,7 @@ const routes = {
     if (!db.getChannel(chId)) db.addChannel({ id:chId, name:"連携：" + org, kind:"team", shared:1, zone:"", orgs:org });
     db.addInvite({ code, org, email:(b.email || "").toLowerCase(), created_by:u.id, expires: Date.now() + 30 * 864e5 });
     broadcast({ t:"chans" }, o => o.user.role === "employee");
-    const base = CONFIG.publicUrl || `http://${req.headers.host}`; return { code, org, channel:chId, url:`${base}/space.html?invite=${code}` }; },
+    const fh = String(req.headers["x-forwarded-host"] || "").split(",")[0].trim(), fp = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim(); const base = CONFIG.publicUrl || (fh ? `${fp || "https"}://${fh}` : `http://${req.headers.host}`); return { code, org, channel:chId, url:`${base}/space.html?invite=${code}` }; },
   "GET /api/invites": async (req) => { requireUser(req, "employee"); return { invites: db.listInvites() }; },
   "GET /api/attendance": async (req, url) => { requireUser(req, "employee"); const day = url.searchParams.get("date") || new Date().toISOString().slice(0, 10); const rows = db.attendanceOn(day);
     if (url.searchParams.get("format") === "csv") return { __csv: "name,org,role,check_in,check_out\n" + rows.map(r => [r.name, r.org, r.role, new Date(r.in_ts).toISOString(), r.out_ts ? new Date(r.out_ts).toISOString() : ""].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n") };
