@@ -12,7 +12,7 @@ out=index.html
 } > "$out"
 echo "built $out ($(wc -c < "$out") bytes, $(wc -l < "$out") lines)"
 # 多人数版（XANTALOS Space）：同じモデル＋ src/80_space.js。space-server から配信する。
-{ head -n -"$(wc -l < src/99_tail.html)" "$out"; for f in src/80_space.js src/81_space_nav.js src/82_space_gesture.js; do printf '\n// ===== %s =====\n' "$f"; cat "$f"; done; cat src/99_tail.html; } > space.html
+{ head -n -"$(wc -l < src/99_tail.html)" "$out"; for f in src/80_space.js src/81_space_nav.js src/82_space_gesture.js src/83_space_local.js; do printf '\n// ===== %s =====\n' "$f"; cat "$f"; done; cat src/99_tail.html; } > space.html
 echo "built space.html ($(wc -c < space.html) bytes)"
 # 画像を base64 で埋め込んだ単体配布版も生成する
 python3 -I - <<'PY'
@@ -24,6 +24,11 @@ def rep(m):
     mime = "model/gltf-binary" if p.endswith(".glb") else "image/png" if p.endswith(".png") else "image/jpeg"
     return '"data:%s;base64,' % mime + base64.b64encode(open(p,"rb").read()).decode() + '"'
 s = re.sub(r'"((?:img|models)/[^"]+\.(?:jpg|png|glb))"', rep, s)
+# 多人数版のオフライン体験版（サーバーなしで HTML だけで動く。画像・モデルを埋め込む）
+sp = open("space.html", encoding="utf-8").read()
+sp = re.sub(r'"((?:img|models)/[^"]+\.(?:jpg|png|glb))"', rep, sp)
+open("xantalos-space-demo.html", "w", encoding="utf-8").write(sp)
+print("built xantalos-space-demo.html (%d bytes)" % os.path.getsize("xantalos-space-demo.html"))
 out = "xantalos-ota-factory-standalone.html"
 if os.path.exists("yellow-ota-factory-standalone.html"): os.remove("yellow-ota-factory-standalone.html")
 open(out, "w", encoding="utf-8").write(s)

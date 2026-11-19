@@ -80,14 +80,17 @@ function spInjectUI(){
   document.body.insertAdjacentHTML("beforeend", html);
 }
 function spToast(t, kind){ const el = $("spToast"); el.textContent = t; el.className = kind || ""; el.style.display = "block"; clearTimeout(spToast.tm); spToast.tm = setTimeout(() => el.style.display = "none", 3500); }
-async function spApi(p, opts = {}){ const r = await fetch(p, { ...opts, headers:{ "Content-Type":"application/json", ...(SP.token ? { Authorization:"Bearer " + SP.token } : {}), ...(opts.headers || {}) } }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || r.statusText); return j; }
+async function spApi(p, opts = {}){ if (SP.local) return splApi(p, opts); const r = await fetch(p, { ...opts, headers:{ "Content-Type":"application/json", ...(SP.token ? { Authorization:"Bearer " + SP.token } : {}), ...(opts.headers || {}) } }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || r.statusText); return j; }
 
 // ---------------------------------------------------------------- login
 async function spStart(){
   spInjectUI(); document.body.classList.add("space");
-  try { SP.cfg = await spApi("/api/config"); } catch { $("spLoginErr").textContent = "サーバーに接続できません"; return; }
-  if (SP.invite){ const n = $("spInviteNote"); n.hidden = false; n.textContent = "招待リンクから参加しています。ログインすると、招待元の工場との連携チャンネルに入れます。"; }
-  const tok = spLS.get("xspace.token");
+  // サーバーがない（file:// で開いた・つながらない）ときは、ブラウザの中だけで動くオフライン体験版にする
+  if (splWanted()) splInit(); else { try { SP.cfg = await spApi("/api/config"); } catch { splInit(); } }
+  if (SP.local){ SP.cfg = await spApi("/api/config"); const n = $("spInviteNote"); n.hidden = false; n.style.cssText = "background:#14283d;border-color:#2f6fd0;color:#d6e8ff";
+    n.textContent = "オフライン体験版：サーバーなしでこの HTML だけで動きます。周りの人は体験用の自動キャラクターで、会話はこのブラウザの中だけに残ります。"; $("spDev").querySelector(".sub").textContent = "表示名を入れて入る（体験版）"; }
+  if (SP.invite && !SP.local){ const n = $("spInviteNote"); n.hidden = false; n.textContent = "招待リンクから参加しています。ログインすると、招待元の工場との連携チャンネルに入れます。"; }
+  const tok = SP.local ? "" : spLS.get("xspace.token");
   if (tok){ SP.token = tok; try { const { user } = await spApi("/api/me"); return spAfterLogin(user); } catch { SP.token = ""; spLS.del("xspace.token"); } }
   if (SP.cfg.googleClientId){ const s = document.createElement("script"); s.src = "https://accounts.google.com/gsi/client"; s.async = true; s.onload = () => {
       google.accounts.id.initialize({ client_id: SP.cfg.googleClientId, callback: r => spLogin("/auth/google", { credential: r.credential, invite: SP.invite }) });
@@ -108,7 +111,7 @@ function spPickAvatar(done){
 }
 
 // ---------------------------------------------------------------- connection
-function spConnect(){
+function spConnect(){ if (SP.local) return splConnect();
   const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"); SP.ws = ws;
   ws.onopen = () => { ws.send(JSON.stringify({ t:"hello", token:SP.token })); };
   ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { return; } spOnMsg(m); };
@@ -419,7 +422,7 @@ function spWire(){
   $("spInviteBtn").onclick = async () => { const org = prompt("招待する工場・会社の名前"); if (!org) return; const email = prompt("招待する方のメールアドレス（空欄なら誰でも使えるリンク）", "") || "";
     try { const r = await spApi("/api/invites", { method:"POST", body: JSON.stringify({ org, email }) }); try { await navigator.clipboard.writeText(r.url); } catch {}
       SP.msgs.__invite = true; $("spMsgs").insertAdjacentHTML("beforeend", `<div class="spMsg"><div class="h"><b>招待リンクを作りました</b><small>${pe(r.org)}</small></div><div class="t">チャンネル「連携：${pe(r.org)}」に参加できます。30 日間有効です。<div class="spLink">${pe(r.url)}</div></div></div>`); $("spMsgs").scrollTop = 1e9; } catch (err){ spToast(err.message); } };
-  $("spAttBtn").onclick = async () => { try { const r = await fetch("/api/attendance?format=csv", { headers:{ Authorization:"Bearer " + SP.token } }); if (!r.ok) throw new Error("取得できませんでした"); const b = await r.blob(); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `attendance-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); } catch (err){ spToast(err.message); } };
+  $("spAttBtn").onclick = async () => { try { const r = SP.local ? new Response(splAttendanceCsv(), { status:200 }) : await fetch("/api/attendance?format=csv", { headers:{ Authorization:"Bearer " + SP.token } }); if (!r.ok) throw new Error("取得できませんでした"); const b = await r.blob(); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `attendance-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); } catch (err){ spToast(err.message); } };
   // 3D 上のクリック：アバター → DM、設備 → スレッド、床 → そこへ歩く
   cvsEl.addEventListener("pointerup", e => { if (!SP.started || SP.design || drag.moved > 6 || e.button !== 0) return;
     ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
