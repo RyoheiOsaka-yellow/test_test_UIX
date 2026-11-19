@@ -12,6 +12,9 @@ function finMat(k){ if (FIN_MAT[k]) return FIN_MAT[k];
   FIN_MAT[k] = (mk[k] || mk.vinyl)(); return FIN_MAT[k]; }
 
 function doorPlate(g, text, x, y, z, ry=0){ const lb = makeLabel(text, { scale:0.45, bg:"rgba(240,241,243,0.95)", color:"#111" }); lb.position.set(x, y, z); lb.userData.kind = "eq"; lb.userData.floor = g === floorGroup(1) ? 1 : g === floorGroup(2) ? 2 : 3; g.add(lb); }
+// x 一定の鉛直ガラス間仕切り（za〜zb）に、扉の開口（da〜db）を空ける。枠は濃色スチール
+function glassWallWithDoor(m, x, y, za, zb, da, db, h){ for (const [a, b] of [[za, da], [db, zb]]) if (b - a > 0.05) m.box(0.12, h, b - a, M.glassIn, x, y, (a + b) / 2);
+  for (const z of [da, db]) m.box(0.1, 2.3, 0.08, M.darkSteel, x, y, z); m.box(0.1, 0.1, db - da + 0.08, M.darkSteel, x, y + 2.25, (da + db) / 2); m.box(0.12, h - 2.3, db - da, M.glassIn, x, y + 2.3, (da + db) / 2); }
 function phoneBooth(m, x, z, y){ m.box(1.2, 2.3, 1.2, std(0x2f3540), x, y, z); m.box(1.0, 1.6, 0.04, M.glassTint, x, y+0.5, z+0.6); m.box(0.8, 0.04, 0.5, M.deskWhite, x, y+1.0, z-0.2); m.box(0.4, 0.4, 0.4, M.chair, x, y+0.1, z+0.1); }
 function printer(m, x, z, y){ m.box(1.0, 1.1, 0.7, std(0xe8e9ea), x, y, z); m.box(0.9, 0.08, 0.6, M.darkSteel, x, y+1.1, z); m.box(0.3, 0.04, 0.2, M.screen, x+0.25, y+1.18, z+0.15); }
 function lockers(m, x0, x1, z, y, ry=0){ for (let x=x0; x<x1; x+=0.45){ m.box(0.42, 1.8, 0.5, std(0x9aa5ae,{metalness:0.4}), x+0.22, y, z, ry); m.box(0.3, 0.02, 0.02, M.darkSteel, x+0.22, y+1.0, z+0.26, ry); } }
@@ -57,7 +60,7 @@ function buildFloorDetail(){
   wcFixtures(F1, -43.5, -37.5, 14.5, y1); wcFixtures(F1, 37.5, 43.5, 14.5, y1); elevatorCar(F1, -42.4, 5.4, y1, 2.2); elevatorCar(F1, 37.6, 5.4, y1, 2.2);
   downlights(F1, x0, x1, zh, z1, lv[1]-0.72, 3.5);
   // ---- 2F：フォンブース・複合機・ロッカー・ホワイトボード・立ち机・キッチン ----
-  for (const x of [-8, -6.6, 34.5]) phoneBooth(F2, x, 4.2, y2); printer(F2, -34, 4.0, y2); printer(F2, 12.5, 4.0, y2); lockers(F2, -35.5, -30, 17.6, y2);
+  for (const x of [-8, -6.6, 34.5]) phoneBooth(F2, x, 4.2, y2); printer(F2, -34, 4.0, y2); printer(F2, 12.5, 4.0, y2); lockers(F2, -32.4, -26.9, 17.6, y2);   // テラス出入口（x=-34）の前を空ける
   for (const x of [-28, -12, 20]) whiteboard(F2, x, 2.9, y2); for (const x of [-30, -24, -18]) standingDesk(F2, x, 16.4, y2); kitchenette(F2, 35, 8, y2);
   F2.box(0.6, 1.2, 0.06, std(0xf8f8f6), -8, y2+0.9, 17.5); F2.box(2.0, 1.4, 0.05, M.monitor, 18, y2+0.9, 17.5); F2.box(1.9, 1.3, 0.02, M.screen, 18, y2+0.95, 17.47);   // プロジェクトボード・ダッシュボード
   for (let i=0;i<2;i++){ F2.box(1.2, 0.8, 0.7, M.deskWhite, 15+i*4.0, y2, 15.5); F2.box(0.5, 0.3, 0.4, M.machineDark, 15+i*4.0, y2+0.8, 15.5); F2.box(0.4, 0.25, 0.02, M.screen, 15+i*4.0, y2+0.95, 15.72); }  // 制御ベンチ（オシロ）
@@ -68,7 +71,10 @@ function buildFloorDetail(){
   F3.box(1.6, 1.0, 0.8, std(0xe8e9ea), -34.5, y3, 16.4); F3.box(1.5, 0.3, 0.1, M.darkSteel, -34.5, y3+1.0, 16.2); for (let i=0;i<5;i++) F3.box(2.4, 0.03, 0.4, M.steel, -12, y3+0.4+i*0.5, 17.4); F3.box(2.5, 2.6, 0.45, M.darkSteel, -12, y3, 17.5);
   F3.box(2.4, 0.9, 1.4, M.timber, -20, y3, 16.2); F3.box(2.2, 0.08, 1.2, std(0xe6e1d6), -20, y3+0.9, 16.2);   // 模型台
   F3.box(4.0, 0.05, 1.4, std(0x4a3626,{roughness:0.4}), 13, y3+0.73, 10); for (let i=0;i<5;i++) for (const dz of [-1.0, 1.0]){ F3.seat(11.2+i*0.9, y3, 10+dz, dz < 0 ? 0 : Math.PI); F3.box(0.46, 0.08, 0.46, M.chair, 11.2+i*0.9, y3+0.42, 10+dz); F3.box(0.44, 0.5, 0.06, M.chair, 11.2+i*0.9, y3+0.5, 10+dz+Math.sign(dz)*0.2); }
-  F3.box(0.15, 3.3, 15.5, M.glassIn, 10, y3, 10); F3.box(0.15, 3.3, 15.5, M.glassIn, 16, y3, 10); doorPlate(g3, "ボードルーム", 13, y3+2.6, 3.2, 0);
+  glassWallWithDoor(F3, 10, y3, 2.25, 17.75, 3.4, 4.8, 3.3); glassWallWithDoor(F3, 16, y3, 2.25, 17.75, 3.4, 4.8, 3.3); doorPlate(g3, "ボードルーム", 13, y3+2.6, 3.2, 0);
+  // 会議室の間仕切り（ガラス＋扉の開口）：2F 会議室 A｜B、3F プロジェクトルーム 1｜2
+  glassWallWithDoor(F2, 7, y2, 2.2, 17.5, 4.0, 5.4, 2.9); doorPlate(g2, "会議室 A", 4.5, y2+2.6, 3.2, 0); doorPlate(g2, "会議室 B", 9.5, y2+2.6, 3.2, 0);
+  glassWallWithDoor(F3, -3, y3, 2.2, 17.5, 4.0, 5.4, 3.3); doorPlate(g3, "プロジェクトルーム 1", -6.5, y3+2.6, 3.2, 0); doorPlate(g3, "プロジェクトルーム 2", 0.5, y3+2.6, 3.2, 0);
   F3.box(5.0, 0.9, 2.4, std(0xdfe3e6,{metalness:0.4}), 31, y3, 15.5); F3.box(1.0, 0.5, 0.7, std(0x8d939a,{metalness:0.6}), 30, y3+0.9, 15.5); F3.box(2.0, 0.6, 1.0, std(0xd8dcdf,{metalness:0.5}), 32.5, y3+0.9, 15.5); F3.box(5.2, 0.8, 0.1, M.timberDark, 31, y3+2.4, 16.6); // 厨房
   for (let x = 18; x < 36; x += 1.0) { F3.box(0.4, 0.75, 0.4, M.chair, x, y3, 3.4); } F3.box(18, 0.04, 0.5, M.timber, 27, y3+1.0, 3.0);   // 窓際カウンター席
   for (let i=0;i<3;i++) F3.box(1.0, 1.8, 0.35, M.timberDark, 35.5, y3, 6+i*1.2);

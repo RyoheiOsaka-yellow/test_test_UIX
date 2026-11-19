@@ -88,9 +88,22 @@ function loginUser({ email, name, role, org, picture }){
 export function publicUser(u){ if (!u) return null; let avatar = {}; try { avatar = JSON.parse(u.avatar || "{}"); } catch {} return { id:u.id, name:u.name, role:u.role, org:u.org, picture:u.picture, avatar }; }
 
 // ---------------------------------------------------------------- live state
-const EMOTES = ["wave", "like", "bow", "clap", "coffee", "ask", "talk"];   // しぐさ（保存しない）
+const EMOTES = ["wave", "like", "bow", "clap", "nod", "point", "coffee", "ask", "talk"];   // しぐさ（保存しない）
+// 会議室：中にいる人どうしだけで「近くの人」の会話が届く（外には漏れない）。位置からサーバーが判定する
+const ROOMS = [
+  { id:"mtgA",  name:"会議室 A",            f:2, x0:2,   x1:7,  z0:2, z1:18 },
+  { id:"mtgB",  name:"会議室 B",            f:2, x0:7,   x1:12, z0:2, z1:18 },
+  { id:"prj1",  name:"プロジェクトルーム 1", f:3, x0:-10, x1:-3, z0:2, z1:18 },
+  { id:"prj2",  name:"プロジェクトルーム 2", f:3, x0:-3,  x1:4,  z0:2, z1:18 },
+  { id:"board", name:"ボードルーム",         f:3, x0:10,  x1:16, z0:2, z1:18 },
+];
+function roomOf(p){ if (!p) return ""; const r = ROOMS.find(r => r.f === p.f && p.x > r.x0 && p.x < r.x1 && p.z > r.z0 && p.z < r.z1); return r ? r.id : ""; }
+function hears(listener, speaker){   // 近くの人チャットが届くか
+  if (listener === speaker) return true; const rs = roomOf(speaker.pos), rl = roomOf(listener.pos);
+  if (rs || rl) return rs === rl;
+  return listener.pos.f === speaker.pos.f && Math.hypot(listener.pos.x - speaker.pos.x, listener.pos.z - speaker.pos.z) <= CONFIG.nearRadius; }
 const online = new Map();   // userId -> { user, socks:Set, pos:{x,z,f,ry,mv}, status, zone, dirty }
-function presenceOf(o){ const p = o.pos; return { ...publicUser(o.user), status:o.status, checkedIn: !!db.openAttendance(o.user.id), zone:o.zone, f:p.f, pos:{ x:p.x, z:p.z, f:p.f, ry:p.ry, po:p.po || 0 } }; }
+function presenceOf(o){ const p = o.pos; return { ...publicUser(o.user), status:o.status, checkedIn: !!db.openAttendance(o.user.id), zone:o.zone, room: roomOf(p), f:p.f, pos:{ x:p.x, z:p.z, f:p.f, ry:p.ry, po:p.po || 0 } }; }
 function sendTo(ws, msg){ if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 function broadcast(msg, filter){ const data = JSON.stringify(msg); for (const o of online.values()){ if (filter && !filter(o)) continue; for (const ws of o.socks) if (ws.readyState === 1) ws.send(data); } }
 function deliver(m){ broadcast({ t:"msg", m }, o => canAccess(o.user, m.ch)); }
@@ -165,17 +178,17 @@ wss.on("connection", (ws) => {
       clearTimeout(timer); let o = online.get(u.id);
       if (!o){ o = { user:u, socks:new Set(), pos:{ x:-36, z:12, f:1, ry:Math.PI, mv:0 }, status:"在席", zone:"", dirty:true }; online.set(u.id, o); }
       o.user = u; o.socks.add(ws); me = o;
-      sendTo(ws, { t:"welcome", me: presenceOf(o), channels: visibleChannels(u), dms: dmChannels(u), users: [...online.values()].map(presenceOf), pos:o.pos });
+      sendTo(ws, { t:"welcome", me: presenceOf(o), channels: visibleChannels(u), dms: dmChannels(u), users: [...online.values()].map(presenceOf), pos:o.pos, rooms: ROOMS });
       broadcast({ t:"pres", u: presenceOf(o) });
       return;
     }
     const u = me.user;
     switch (m.t){
       case "mv": { const n = v => Number.isFinite(+v) ? +v : 0; me.pos = { x:n(m.x), z:n(m.z), f:Math.max(1, Math.min(3, n(m.f) | 0)), ry:n(m.ry), mv: m.mv ? 1 : 0, po: m.po === 1 ? 1 : 0 }; me.dirty = true;
-        const zone = typeof m.zone === "string" ? m.zone.slice(0, 20) : ""; if (zone !== me.zone){ me.zone = zone; broadcast({ t:"pres", u: presenceOf(me) }); } break; }
+        const zone = typeof m.zone === "string" ? m.zone.slice(0, 20) : ""; const room = roomOf(me.pos); if (zone !== me.zone || room !== me.room){ me.zone = zone; me.room = room; broadcast({ t:"pres", u: presenceOf(me) }); } break; }
       case "say": { if (!allow()) return sendTo(ws, { t:"err", e:"送信が速すぎます。少し待ってください" }); const ch = String(m.ch || "");
         if (ch === "near"){ const text = String(m.text || "").trim().slice(0, 500); if (!text) return; const msg = { ch:"near", uid:u.id, name:u.name, org:u.org, role:u.role, text, ts:Date.now(), src:"app", id:"n" + Date.now() };
-          broadcast({ t:"near", m: msg }, o => o === me || (o.pos.f === me.pos.f && Math.hypot(o.pos.x - me.pos.x, o.pos.z - me.pos.z) <= CONFIG.nearRadius)); return; }
+          msg.room = roomOf(me.pos); broadcast({ t:"near", m: msg }, o => hears(o, me)); return; }
         if (!canAccess(u, ch)) return sendTo(ws, { t:"err", e:"このチャンネルには投稿できません" });
         postMessage({ ch, user:u, text:m.text }); break; }
       case "hist": { const ch = String(m.ch || ""); if (!canAccess(u, ch)) return sendTo(ws, { t:"hist", ch, msgs:[], denied:true }); const msgs = db.history(ch, Number(m.before) || Infinity, 50); sendTo(ws, { t:"hist", ch, msgs, more: msgs.length === 50 }); break; }
@@ -198,4 +211,4 @@ setInterval(() => db.purgeSessions(), 3600e3);
 if (process.argv[1] === fileURLToPath(import.meta.url)){
   server.listen(CONFIG.port, () => console.log(`XANTALOS Space on :${CONFIG.port}  (google:${CONFIG.googleClientId ? "on" : "off"}, devLogin:${CONFIG.devLogin}, slack:${slack.enabled ? "on" : "off"}, public:${CONFIG.publicDir})`));
 }
-export { server, db };
+export { ROOMS, roomOf, hears, server, db };

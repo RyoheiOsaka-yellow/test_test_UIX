@@ -76,6 +76,17 @@ test("dev login, invites, access rules and chat", async () => {
   a.send({ t:"emo", e:"wave", to:guest.body.user.id }); await b.wait(m => m.t === "emo" && m.e === "wave"); await g.wait(m => m.t === "emo" && m.to === guest.body.user.id);
   a.send({ t:"emo", e:"<script>" }); await new Promise(r => setTimeout(r, 150)); assert.ok(!b.inbox.find(m => m.t === "emo" && m.e !== "wave"), "unknown gestures are dropped");
 
+  // meeting rooms: talk stays inside the room even when someone outside is within 10 m, and outside talk does not leak in
+  const near = (c, text) => c.inbox.find(m => m.t === "near" && m.m.text === text);
+  a.send({ t:"mv", x:4, z:10, f:2, ry:0 }); b.send({ t:"mv", x:6, z:12, f:2, ry:0 }); g.send({ t:"mv", x:0.5, z:10, f:2, ry:0 }); await new Promise(r => setTimeout(r, 150));
+  a.send({ t:"say", ch:"near", text:"室内だけの話" }); const inRoom = await b.wait(m => m.t === "near" && m.m.text === "室内だけの話"); assert.equal(inRoom.m.room, "mtgA");
+  await new Promise(r => setTimeout(r, 150)); assert.ok(!near(g, "室内だけの話"), "people outside the room must not hear it");
+  g.send({ t:"say", ch:"near", text:"廊下から" }); await g.wait(m => m.t === "near" && m.m.text === "廊下から"); await new Promise(r => setTimeout(r, 150));
+  assert.ok(!near(a, "廊下から") && !near(b, "廊下から"), "talk outside must not leak into the room");
+  b.send({ t:"mv", x:9, z:12, f:2, ry:0 }); await new Promise(r => setTimeout(r, 150));   // 隣の会議室 B
+  a.send({ t:"say", ch:"near", text:"A室のみ" }); await new Promise(r => setTimeout(r, 200)); assert.ok(!near(b, "A室のみ"), "the next room must not hear it");
+  assert.equal(mod.roomOf({ f:3, x:13, z:9 }), "board"); assert.equal(mod.roomOf({ f:1, x:4, z:10 }), "");
+
   // history and search respect access
   const hist = await new Promise(r => { a.send({ t:"hist", ch:"all" }); a.wait(m => m.t === "hist" && m.ch === "all").then(r); }); assert.equal(hist.msgs.at(-1).text, "社内連絡");
   assert.equal((await get("/api/search?q=" + encodeURIComponent("社内"), guest.body.token)).body.results.length, 0);
