@@ -38,12 +38,15 @@ const SPL_BOT_DEFS = [
     replies:["2F・3F へは下の「場所へ移動」から行けます。", "人をクリックすると「話しかける」「手を振る」が選べます。", "会議室の中の会話は外に漏れません。試してみてください。"] },
   { id:"bot_sato", name:"佐藤", role:"employee", avatar:{ char:"casual_f", color:"#2ec4b6" }, status:"休憩", seat:{ f:3, x:24.5, z:9.5 },
     hello:"お疲れさまです。椅子をクリックすると座れます。座ってお話ししましょう ☕", hint:"設計",
+    kw:[[/座|椅子/, "どうぞどうぞ。ここは窓際で眺めがいいんですよ。"], [/図面|設計|CAD|改訂/, "Rev.C の図面、あとで一緒に見ましょう。"]],
     replies:["なるほど、詳しく聞かせてください。", "その図面、3F の設計フロアで一緒に見ましょうか。", "いいですね。#設計 チャンネルにも共有しておきます。"] },
   { id:"bot_tanaka", name:"田中", role:"guest", org:"川崎第二工場", avatar:{ char:"worker_m", color:"#f2a93b" }, status:"会議中", pos:{ f:2, x:4.6, z:7.4 }, face:[2, 4.7],
     hello:"こちらへどうぞ。この部屋の会話は外には聞こえません。治具の打合せを始めましょう。", hint:"協力工場",
+    kw:[[/治具|納品|納期/, "治具は来週火曜に納品予定です。改訂図面も連携チャンネルに上げますね。"], [/打合せ|打ち合わせ|会議|始め/, "はい、始めましょう。まず治具の図面から確認させてください。"], [/見積|価格|費用/, "お見積りは今週中にお送りします。"]],
     replies:["承知しました。川崎第二工場でも確認します。", "治具の納品は来週火曜の予定です。", "図面の改訂、連携チャンネルに上げておきますね。"] },
   { id:"bot_suzuki", name:"鈴木", role:"employee", avatar:{ char:"worker_f", color:"#3fb950" }, status:"集中", pos:{ f:1, x:-30, z:-6 }, walker:{ x0:-41, x1:-15, z0:-26, z1:-3 },
     hello:"5 軸 MC の段取り中です。危ないので黄色い線の外からどうぞ！", hint:"機械加工",
+    kw:[[/段取|機械|加工|MC/, "5 軸 MC で XR-200 のブラケットを削っています。"], [/危|安全/, "ありがとうございます。黄色い線の内側はロボットの動作範囲です。"]],
     replies:["午後から試作ロットを流します。", "工具の摩耗データは Factory OS で見られます。", "了解です、段取りが終わったら声をかけますね。"] },
 ];
 const SPL_KEYWORDS = [[/こんにち|おはよ|こんばん|はじめまして|よろしく/, "こんにちは！よろしくお願いします。"], [/ありがと/, "どういたしまして！"], [/休憩|コーヒー|カフェ|お茶/, "3F のカフェ、いいですね。ご一緒します ☕"],
@@ -81,7 +84,7 @@ function splBotFace(b){ if (b.pos.po) return; const me = SPL.myPos; b.pos.ry = M
 function splBotSay(b, text){ const m = { ch:"near", uid:b.id, name:b.name, org:b.role === "guest" ? b.org : "", role:b.role, text, ts:Date.now(), src:"app", id:"n" + SPL.seq++, room:splRoomOf(b.pos) };
   if (splHears(SPL.myPos, b.pos)) splPush({ t:"near", m }); }
 function splBotEmote(b, e, to){ if (splHears(SPL.myPos, b.pos) || to === SPL.me.id) splPush({ t:"emo", uid:b.id, name:b.name, e, to: to || "" }); }
-function splBotReply(b, text){ for (const [re, r] of SPL_KEYWORDS) if (re.test(text)) return r; b.ri = ((b.ri || 0) + 1) % b.replies.length; return b.replies[b.ri]; }
+function splBotReply(b, text){ for (const [re, r] of (b.kw || [])) if (re.test(text)) return r; for (const [re, r] of SPL_KEYWORDS) if (re.test(text)) return r; b.ri = ((b.ri || 0) + 1) % b.replies.length; return b.replies[b.ri]; }
 
 // ---- 疑似 WebSocket：spSend(...) の宛先（close はチャンネル一覧の取り直しなので、つなぎ直す）
 function splHandle(m){ const me = SPL.me; if (!me) return;
