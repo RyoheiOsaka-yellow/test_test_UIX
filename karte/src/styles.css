@@ -1045,3 +1045,29 @@ img.shot.user-photo { width: 100%; object-fit: cover; aspect-ratio: 4 / 3; displ
   .kpi .ico { width: 28px; height: 28px; right: 10px; top: 10px; }
   .kpi small { padding-right: 30px; display: block; line-height: 1.35; }
 }
+
+/* ---------- ①〜④の配置: 左列(①③)と右列(②④)を独立させ、高さの違いで空白が出ないようにする ---------- */
+.kg-col, .mp-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.kg-col > div, .mp-col > div { min-width: 0; }
+.kg-col .card { margin: 0; }
+.mp-col .mp-card { height: auto; }
+@media (max-width: 1100px) {
+  .karte-grid .kg-col { display: contents; }
+  .karte-grid .kg-o1 { order: 1; } .karte-grid .kg-o2 { order: 2; } .karte-grid .kg-o3 { order: 3; } .karte-grid .kg-o4 { order: 4; }
+}
+@media (max-width: 900px) {
+  .mp.v-desktop .mp-col { display: contents; }
+  .mp.v-desktop .kg-o1 { order: 1; } .mp.v-desktop .kg-o2 { order: 2; } .mp.v-desktop .kg-o3 { order: 3; } .mp.v-desktop .kg-o4 { order: 4; }
+}
+@media print { .karte-grid .kg-col { display: contents; } }
+.b4-tabs { margin: 0 0 12px; }
+@media (max-width: 1100px) { .karte-grid .kg-o5 { order: 5; } }
+.kg-col .cycle, .kg-col > .kg-o5 > * { margin: 0; }
+.mp-link { white-space: nowrap; }
+/* 列幅が狭いとき(iPad横向きのブラウザ表示など)は、①の項目表をレーダーの下に回す */
+.mp.v-desktop .mp-card { container-type: inline-size; }
+@container (max-width: 600px) {
+  .b1 { grid-template-columns: 150px minmax(0, 1fr); }
+  .b1-parts { grid-column: 1 / -1; }
+  .b3 .mp-seg button { font-size: 0.82em; padding: 5px 4px; }
+}

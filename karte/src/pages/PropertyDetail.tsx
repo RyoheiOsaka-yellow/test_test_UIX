@@ -67,6 +67,8 @@ export default function PropertyDetail() {
   const [notify, setNotify] = useState(p?.notify ?? { mail: true, line: false, push: false });
   const [showAllLog, setShowAllLog] = useState(false);
   const [zoom, setZoom] = useState<number | null>(null);
+  const [showAllChecks, setShowAllChecks] = useState(false);
+  const [histTab, setHistTab] = useState<'repairs' | 'checks'>('repairs');
 
   useEffect(() => {
     const fromUrl = params.get('f');
@@ -209,6 +211,8 @@ export default function PropertyDetail() {
       </div>
 
       <div className="karte-grid">
+        <div className="kg-col">
+          <div className="kg-o1">
         {/* ① 建物コンディション */}
         <section className="card">
           <header>
@@ -280,68 +284,8 @@ export default function PropertyDetail() {
           </div>
         </section>
 
-        {/* ② 要修繕箇所の見える化 */}
-        <section className="card" id="pd-spot">
-          <header>
-            <h2>
-              <i className="no">2</i>要修繕箇所の見える化
-            </h2>
-            <span className="hint">どこに問題があるか一目で分かる</span>
-          </header>
-          <div className="spot">
-            <div className="site">
-              <SitePlan site={p.site} findings={findings} selectedId={selectedId} onSelect={setSelectedId} />
-              <div className="legend">
-                <SeverityBadge severity="urgent" />
-                <SeverityBadge severity="watch" />
-                <SeverityBadge severity="ok" />
-              </div>
-            </div>
-            <div className="spot-detail">
-              {selected ? (
-                <>
-                  <div className="spot-title">
-                    <b>
-                      {selected.part}|{selected.location}
-                    </b>
-                    <SeverityBadge severity={selected.severity} />
-                  </div>
-                  <p className="spot-name">{selected.title}</p>
-                  <p className="spot-desc">{selected.description}</p>
-                  <dl className="kv">
-                    {selected.dueBy && (
-                      <>
-                        <dt>推奨時期</dt>
-                        <dd>{fmtYm(selected.dueBy)}まで</dd>
-                      </>
-                    )}
-                    {selected.estCost > 0 && (
-                      <>
-                        <dt>概算費用</dt>
-                        <dd>{fmtYen(selected.estCost)}</dd>
-                      </>
-                    )}
-                    <dt>指摘日</dt>
-                    <dd>{fmtDate(selected.foundDate)}</dd>
-                  </dl>
-                  <small className="muted">写真 {selected.photos}枚(最大10枚まで登録可能)</small>
-                  <div className="photos">
-                    {Array.from({ length: Math.min(selected.photos, 5) }, (_, i) => (
-                      <button key={i} className="photo-btn" onClick={() => setZoom(i)} aria-label={`写真${i + 1}を拡大`}>
-                        <FindingShot f={selected} i={i} />
-                      </button>
-                    ))}
-                    {selected.photos > 5 && <span className="photo-more">+{selected.photos - 5}</span>}
-                  </div>
-                  {!ownerView && selected.memo && <p className="memo">社内メモ: {selected.memo}</p>}
-                </>
-              ) : (
-                <Empty>登録された指摘はありません</Empty>
-              )}
-            </div>
           </div>
-        </section>
-
+          <div className="kg-o3">
         {/* ③ 将来修繕シミュレーション */}
         <section className="card">
           <header>
@@ -421,6 +365,77 @@ export default function PropertyDetail() {
           )}
         </section>
 
+          </div>
+          <div className="kg-o5">
+            <CycleCard p={p} repairs={reps} ownerView={ownerView} />
+          </div>
+        </div>
+        <div className="kg-col">
+          <div className="kg-o2">
+        {/* ② 要修繕箇所の見える化 */}
+        <section className="card" id="pd-spot">
+          <header>
+            <h2>
+              <i className="no">2</i>要修繕箇所の見える化
+            </h2>
+            <span className="hint">どこに問題があるか一目で分かる</span>
+          </header>
+          <div className="spot">
+            <div className="site">
+              <SitePlan site={p.site} findings={findings} selectedId={selectedId} onSelect={setSelectedId} />
+              <div className="legend">
+                <SeverityBadge severity="urgent" />
+                <SeverityBadge severity="watch" />
+                <SeverityBadge severity="ok" />
+              </div>
+            </div>
+            <div className="spot-detail">
+              {selected ? (
+                <>
+                  <div className="spot-title">
+                    <b>
+                      {selected.part}|{selected.location}
+                    </b>
+                    <SeverityBadge severity={selected.severity} />
+                  </div>
+                  <p className="spot-name">{selected.title}</p>
+                  <p className="spot-desc">{selected.description}</p>
+                  <dl className="kv">
+                    {selected.dueBy && (
+                      <>
+                        <dt>推奨時期</dt>
+                        <dd>{fmtYm(selected.dueBy)}まで</dd>
+                      </>
+                    )}
+                    {selected.estCost > 0 && (
+                      <>
+                        <dt>概算費用</dt>
+                        <dd>{fmtYen(selected.estCost)}</dd>
+                      </>
+                    )}
+                    <dt>指摘日</dt>
+                    <dd>{fmtDate(selected.foundDate)}</dd>
+                  </dl>
+                  <small className="muted">写真 {selected.photos}枚(最大10枚まで登録可能)</small>
+                  <div className="photos">
+                    {Array.from({ length: Math.min(selected.photos, 5) }, (_, i) => (
+                      <button key={i} className="photo-btn" onClick={() => setZoom(i)} aria-label={`写真${i + 1}を拡大`}>
+                        <FindingShot f={selected} i={i} />
+                      </button>
+                    ))}
+                    {selected.photos > 5 && <span className="photo-more">+{selected.photos - 5}</span>}
+                  </div>
+                  {!ownerView && selected.memo && <p className="memo">社内メモ: {selected.memo}</p>}
+                </>
+              ) : (
+                <Empty>登録された指摘はありません</Empty>
+              )}
+            </div>
+          </div>
+        </section>
+
+          </div>
+          <div className="kg-o4">
         {/* ④ 点検・修繕履歴 */}
         <section className="card">
           <header>
@@ -429,6 +444,16 @@ export default function PropertyDetail() {
             </h2>
             <span className="hint">過去の内容と費用の推移が分かる</span>
           </header>
+          <div className="seg b4-tabs" role="tablist" aria-label="履歴の種類">
+            <button role="tab" aria-selected={histTab === 'repairs'} className={histTab === 'repairs' ? 'on' : ''} onClick={() => setHistTab('repairs')}>
+              修繕履歴({reps.length}件)
+            </button>
+            <button role="tab" aria-selected={histTab === 'checks'} className={histTab === 'checks' ? 'on' : ''} onClick={() => setHistTab('checks')}>
+              点検・審査({cks.length}件)
+            </button>
+          </div>
+          {histTab === 'checks' && (
+            <>
           <h3>点検・審査の予定</h3>
           <CheckPlanTiles plan={checkPlan(p)} />
           <h3>
@@ -447,7 +472,7 @@ export default function PropertyDetail() {
                 </tr>
               </thead>
               <tbody>
-                {cks.map((i) => (
+                {(showAllChecks ? cks : cks.slice(0, 5)).map((i) => (
                   <tr key={i.id}>
                     <td data-label="種別" className="nowrap">
                       <CheckBadge kind={i.kind} short />
@@ -469,6 +494,15 @@ export default function PropertyDetail() {
               </tbody>
             </table>
           </div>
+          {cks.length > 5 && (
+            <button className="more-link" onClick={() => setShowAllChecks(!showAllChecks)}>
+              {showAllChecks ? '直近5件に戻す' : `すべて表示(${cks.length}件)`}
+            </button>
+          )}
+            </>
+          )}
+          {histTab === 'repairs' && (
+            <>
           <h3>
             修繕履歴
             {reps.length > 0 && <span className="hint"> 累計 {fmtYen(reps.reduce((s, r) => s + r.cost, 0))}</span>}
@@ -507,7 +541,7 @@ export default function PropertyDetail() {
                       <td data-label="修繕日" className="nowrap">{fmtDate(r.date)}</td>
                       <td data-label="修繕箇所">{r.place}</td>
                       <td data-label="修繕内容">{r.work}</td>
-                      <td data-label="金額(税込)" className="r num">{fmtYen(r.cost)}</td>
+                      <td data-label="金額(税込)" className="r num nowrap">{fmtYen(r.cost)}</td>
                       <td data-label="前後写真">
                         <button className="linkbtn" onClick={() => setBeforeAfter(r)}>
                           比較 <ChevronRight size={13} />
@@ -519,10 +553,12 @@ export default function PropertyDetail() {
               </table>
             </div>
           )}
+            </>
+          )}
         </section>
+          </div>
+        </div>
       </div>
-
-      <CycleCard p={p} repairs={reps} ownerView={ownerView} />
 
       {/* 指摘事項一覧 */}
       <section className="card">

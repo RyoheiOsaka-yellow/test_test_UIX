@@ -212,6 +212,7 @@ export default function MyPage() {
   const [ba, setBa] = useState<{ part: Part; seed: number; title: string; note: string } | null>(null);
   const [notify, setNotify] = useState({ mail: true, line: true, push: false });
   const [slide, setSlide] = useState(0);
+  const [b4tab, setB4tab] = useState<'repairs' | 'checks'>('repairs');
   const { present, setPresent } = store;
   const [bellOpen, setBellOpen] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
@@ -644,8 +645,17 @@ export default function MyPage() {
         </h2>
         <span>過去の内容と費用の推移が分かる</span>
       </header>
+      <div className="mp-seg b4-tabs" role="tablist" aria-label="履歴の種類">
+        <button role="tab" aria-selected={b4tab === 'repairs'} className={b4tab === 'repairs' ? 'on' : ''} onClick={() => setB4tab('repairs')}>
+          修繕履歴({reps.length}件)
+        </button>
+        <button role="tab" aria-selected={b4tab === 'checks'} className={b4tab === 'checks' ? 'on' : ''} onClick={() => setB4tab('checks')}>
+          点検・審査({cksAll}件)
+        </button>
+      </div>
       <div className="b4">
-        <div>
+        {b4tab === 'checks' && (
+          <div>
           <h3>点検・審査の予定</h3>
           <CheckPlanTiles plan={checkPlan(p)} ownerView={present} />
           <h3>
@@ -703,8 +713,10 @@ export default function MyPage() {
               </tbody>
             </table>
           )}
-        </div>
-        <div>
+          </div>
+        )}
+        {b4tab === 'repairs' && (
+          <div>
           <h3>
             修繕履歴一覧 <small>{reps.length}件 ／ 累計 {fmtYen(repTotal)}</small>
           </h3>
@@ -744,8 +756,8 @@ export default function MyPage() {
                     <td className="nowrap">{fmtDate(r.date)}</td>
                     <td>{r.place}</td>
                     <td>{r.work}</td>
-                    <td className="r num strong">{fmtYen(r.cost)}</td>
-                    <td>
+                    <td className="r num strong nowrap">{fmtYen(r.cost)}</td>
+                    <td className="nowrap">
                       <button
                         className="mp-link"
                         onClick={() => setBa({ part: r.part, seed: Number(r.id.slice(2)), title: `${r.place} ${r.work}`, note: `${fmtDate(r.date)} 完了 ／ ${fmtYen(r.cost)} ／ 施工: ${r.contractor}` })}
@@ -758,7 +770,8 @@ export default function MyPage() {
               </tbody>
             </table>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -969,7 +982,16 @@ export default function MyPage() {
             </>
           ) : (
             <>
-              <div className="mp-grid">{blocks}</div>
+              <div className="mp-grid">
+                <div className="mp-col">
+                  <div className="kg-o1">{block1}</div>
+                  <div className="kg-o3">{block3}</div>
+                </div>
+                <div className="mp-col">
+                  <div className="kg-o2">{block2}</div>
+                  <div className="kg-o4">{block4}</div>
+                </div>
+              </div>
               <footer className="mp-foot">
                 <div>
                   <b>オーナー様への通知設定</b>
