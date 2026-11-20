@@ -12,6 +12,7 @@ if (q.get('nopbr')) globalThis.__inspectNoPBR = true;
 const t0 = performance.now();
 const v = new Viewer(document.getElementById('v'), { quality: q.get('quality') !== '0' });
 if (q.get('noshadow')) { v.renderer.shadowMap.enabled = false; v.sun.castShadow = false; }
+const PACK = await import('inspect/private/pack.js').catch(() => null); if (PACK) { PARTS.unshift(...PACK.PARTS); Object.assign(BUILDERS, PACK.BUILDERS); }
 const part = PARTS.find(p => p.model === which);
 const built = BUILDERS[which](part.params);
 const t1 = performance.now();
@@ -19,6 +20,7 @@ v.setPart(built); v.setView(view, false);
 if (q.get('section')) v.setSection(q.get('section'), +q.get('t') || 0.5);
 if (q.get('style') === 'normal') { v.quality = false; built.group.traverse(o => { if (o.isMesh) o.material = new THREE.MeshNormalMaterial(); }); v.clearEdges(); } else if (q.get('style')) v.setDisplayStyle(q.get('style'));
 window.__built = built;
+if (q.get('cam')) { const [x, y, z] = q.get('cam').split(',').map(Number); const c = v.controls.target.clone(); const d = v.camera.position.distanceTo(c) * (+(q.get('zoom') || 1)); v.camera.position.copy(c).add(new THREE.Vector3(x, y, z).normalize().multiplyScalar(d)); v.controls.update(); }
 if (q.get('feat')) { const F = built.features[q.get('feat')]; v.showFeatures([{ no: 1, feature: F, status: 'ng', text: 'test', selected: true }]); v.focusFeature(F, { fill: +(q.get('fill') || 0.45) }); const tw = v._tween; v._tween = null; v.camera.position.copy(tw.p1); v.controls.target.copy(tw.t1); v.controls.update(); }
 let tris = 0; built.group.traverse(o => { if (o.isMesh) tris += o.geometry.attributes.position.count / 3; });
 setTimeout(() => { v.render(); window.__result = { tris, buildMs: Math.round(t1 - t0) }; }, 800);

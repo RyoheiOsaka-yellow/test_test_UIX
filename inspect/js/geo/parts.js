@@ -20,31 +20,31 @@ export const C = {
 
 // ---------- 三角形バッファ ----------
 // UV モード: null = 面の向きで平面投影 / { cyl: [cx, cz] } = 円筒（u = 周長, v = 高さ: 旋削目）/ { polar: [cx, cz] } = 極座標（u = 周長, v = 半径: 端面の正面削り目）
-class Tris { constructor() { this.pos = []; this.uvm = []; this.mode = null; }
+export class Tris { constructor() { this.pos = []; this.uvm = []; this.mode = null; }
   tri(a, b, c, want = null) { if (want) { const n = V3().subVectors(b, a).cross(V3().subVectors(c, a)); if (n.dot(want) < 0) { const t = b; b = c; c = t; } } this.pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z); this.uvm.push(this.mode, this.mode, this.mode); } quad(a, b, c, d, want = null) { this.tri(a, b, c, want); this.tri(a, c, d, want); }
   geometry() { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3)); g.userData.uvm = this.uvm; return g; } }
 const circCenter = c => { const b = c.base || c; return b.kind === 'circ' ? [b.cx, -b.cp] : null; };
 
 // 平面輪郭の側壁: y0（オフセット d0）→ y1（オフセット d1）。CCW 外形なら外向き、穴（CW）なら穴側向きの法線
-function wall(T, contour, y0, y1, d0 = 0, d1 = 0, skip = null) {
+export function wall(T, contour, y0, y1, d0 = 0, d1 = 0, skip = null) {
   const A = contour.pts(d0), B = contour.pts(d1); const n = A.length; const cc = circCenter(contour); T.mode = cc ? { cyl: cc } : null;
   for (let i = 0; i < n; i++) { const j = (i + 1) % n; if (skip && skip(A[i], A[j])) continue; const a = W(A[i][0], A[i][1], y0), b = W(A[j][0], A[j][1], y0), c = W(B[j][0], B[j][1], y1), d = W(B[i][0], B[i][1], y1); T.tri(a, b, c); T.tri(a, c, d); }
 }
 // キャップ: outer [contour, d]、holes [[contour, d], ...]。up=true なら +Y 向き
-function cap(T, y, up, outer, holes = []) {
+export function cap(T, y, up, outer, holes = []) {
   const cc = circCenter(outer[0]); T.mode = cc ? { polar: cc } : null;
   const O = outer[0].pts(outer[1]).map(p => new THREE.Vector2(p[0], p[1])); const H = holes.map(([c, d]) => c.pts(d).map(p => new THREE.Vector2(p[0], p[1])));
   const tris = THREE.ShapeUtils.triangulateShape(O, H); const all = O.concat(...H); const want = V3(0, up ? 1 : -1, 0);
   for (const [a, b, c] of tris) T.tri(W(all[a].x, all[a].y, y), W(all[b].x, all[b].y, y), W(all[c].x, all[c].y, y), want);
 }
 // 層: y0..y1、外形 + 穴、面取り cb（下）/ct（上）は数値 or { outer, holes:[...] }
-function layer(T, { y0, y1, outer, holes = [], cb = 0, ct = 0, skip = null }) {
+export function layer(T, { y0, y1, outer, holes = [], cb = 0, ct = 0, skip = null }) {
   const cOf = (c, i) => typeof c === 'number' ? c : (i < 0 ? (c.outer || 0) : ((c.holes || [])[i] ?? c.def ?? 0));
   const one = (contour, i, sk) => { const b = cOf(cb, i), t = cOf(ct, i); if (b > 0) wall(T, contour, y0, y0 + b, -b, 0, sk); wall(T, contour, y0 + b, y1 - t, 0, 0, sk); if (t > 0) wall(T, contour, y1 - t, y1, 0, -t, sk); };
   one(outer, -1, skip); holes.forEach((hc, i) => one(hc, i, null));
 }
 // 穴底のドリル先端（118°）
-function drillPoint(T, cx, cp, r, yTop, { angle = 118 } = {}) { const h = r / Math.tan(angle / 2 * Math.PI / 180); const n = 48; T.mode = { polar: [cx, -cp] }; const apex = W(cx, cp, yTop - h); for (let i = 0; i < n; i++) { const a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2; T.tri(apex, W(cx + r * Math.cos(a0), cp + r * Math.sin(a0), yTop), W(cx + r * Math.cos(a1), cp + r * Math.sin(a1), yTop), V3(0, 1, 0)); } }
+export function drillPoint(T, cx, cp, r, yTop, { angle = 118 } = {}) { const h = r / Math.tan(angle / 2 * Math.PI / 180); const n = 48; T.mode = { polar: [cx, -cp] }; const apex = W(cx, cp, yTop - h); for (let i = 0; i < n; i++) { const a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2; T.tri(apex, W(cx + r * Math.cos(a0), cp + r * Math.sin(a0), yTop), W(cx + r * Math.cos(a1), cp + r * Math.sin(a1), yTop), V3(0, 1, 0)); } }
 
 // ---------- 折れ角しきい値付きの法線（円筒は滑らかに、面取り・段差はシャープに） ----------
 export function creaseNormals(geo, creaseDeg = 30) {
@@ -58,13 +58,13 @@ export function creaseNormals(geo, creaseDeg = 30) {
   geo.setAttribute('normal', new THREE.BufferAttribute(fn, 3)); return geo;
 }
 // 押出し形状の UV（mm 単位の三面投影）: 材質テクスチャ用
-function boxUV(geo) { const p = geo.attributes.position, nrm = geo.attributes.normal; const uvm = geo.userData.uvm; const uv = new Float32Array(p.count * 2); for (let i = 0; i < p.count; i++) { const m = uvm?.[i]; let u, v; if (m?.cyl || m?.polar) { const [cx, cz] = m.cyl || m.polar; const dx = p.getX(i) - cx, dz = p.getZ(i) - cz; const r = Math.hypot(dx, dz); u = Math.atan2(dz, dx) * r; v = m.cyl ? p.getY(i) : r; } else { const nx = Math.abs(nrm.getX(i)), ny = Math.abs(nrm.getY(i)), nz = Math.abs(nrm.getZ(i)); if (ny >= nx && ny >= nz) { u = p.getX(i); v = p.getZ(i); } else if (nx >= nz) { u = p.getZ(i); v = p.getY(i); } else { u = p.getX(i); v = p.getY(i); } } uv[i * 2] = u; uv[i * 2 + 1] = v; } geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return geo; }
+export function boxUV(geo) { const p = geo.attributes.position, nrm = geo.attributes.normal; const uvm = geo.userData.uvm; const uv = new Float32Array(p.count * 2); for (let i = 0; i < p.count; i++) { const m = uvm?.[i]; let u, v; if (m?.cyl || m?.polar) { const [cx, cz] = m.cyl || m.polar; const dx = p.getX(i) - cx, dz = p.getZ(i) - cz; const r = Math.hypot(dx, dz); u = Math.atan2(dz, dx) * r; v = m.cyl ? p.getY(i) : r; } else { const nx = Math.abs(nrm.getX(i)), ny = Math.abs(nrm.getY(i)), nz = Math.abs(nrm.getZ(i)); if (ny >= nx && ny >= nz) { u = p.getX(i); v = p.getZ(i); } else if (nx >= nz) { u = p.getZ(i); v = p.getY(i); } else { u = p.getX(i); v = p.getY(i); } } uv[i * 2] = u; uv[i * 2 + 1] = v; } geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return geo; }
 // 水密メッシュの体積（符号付き四面体の和）[mm3] と質量 [g]
-export function volumeOf(root) { let vol = 0; const a = V3(), b = V3(), c = V3(); root.updateWorldMatrix(true, true); root.traverse(o => { if (!o.isMesh) return; const g = o.geometry; const pos = g.attributes.position; const idx = g.index; const n = idx ? idx.count : pos.count; const at = (k, v) => { const i = idx ? idx.getX(k) : k; v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); }; for (let i = 0; i < n; i += 3) { at(i, a); at(i + 1, b); at(i + 2, c); vol += a.dot(b.clone().cross(c)) / 6; } }); return Math.abs(vol); }
-export const DENSITY = { 'A6061-T6': 2.70, S45C: 7.85, SPCC: 7.85, SUS304: 7.93 };
+export function volumeOf(root) { let vol = 0; const a = V3(), b = V3(), c = V3(); root.updateWorldMatrix(true, true); root.traverse(o => { if (!o.isMesh || o.userData.noVolume) return; const g = o.geometry; const pos = g.attributes.position; const idx = g.index; const n = idx ? idx.count : pos.count; const at = (k, v) => { const i = idx ? idx.getX(k) : k; v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); }; for (let i = 0; i < n; i += 3) { at(i, a); at(i + 1, b); at(i + 2, c); vol += a.dot(b.clone().cross(c)) / 6; } }); return Math.abs(vol); }
+export const DENSITY = { 'A6061-T6': 2.70, A5052: 2.68, 'A2017-T4': 2.79, S45C: 7.85, SPCC: 7.85, SUS304: 7.93 };
 // 回転体の UV（u = 円周方向の長さ mm、v = 軸方向 mm）
-function cylUV(geo) { const p = geo.attributes.position, nrm = geo.attributes.normal; const uv = new Float32Array(p.count * 2); for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); const r = Math.hypot(x, z); const face = nrm && Math.abs(nrm.getY(i)) > 0.7; uv[i * 2] = Math.atan2(z, x) * r; uv[i * 2 + 1] = face ? r : p.getY(i); } geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return geo; }
-function finish(T, material, name) { const g = boxUV(creaseNormals(T.geometry(), 32)); const m = new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.name = name; return m; }
+export function cylUV(geo) { const p = geo.attributes.position, nrm = geo.attributes.normal; const uv = new Float32Array(p.count * 2); for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); const r = Math.hypot(x, z); const face = nrm && Math.abs(nrm.getY(i)) > 0.7; uv[i * 2] = Math.atan2(z, x) * r; uv[i * 2 + 1] = face ? r : p.getY(i); } geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return geo; }
+export function finish(T, material, name) { const g = boxUV(creaseNormals(T.geometry(), 32)); const m = new THREE.Mesh(g, material); m.castShadow = m.receiveShadow = true; m.name = name; return m; }
 
 // ======================================================================
 // 1) ベアリングハウジング（A6061-T6 切削）
@@ -109,7 +109,7 @@ export function buildHousing(P) {
   layer(Tr, { y0: yThr, y1: H, outer: boss, holes: [seat, ...hTM], ct: { outer: c, holes: [seatC, c, c, c, c] } });
   cap(Tr, H, true, [boss, -c], [[seat, -seatC], ...hTM.map(h => [h, -c])]);
   const mesh = finish(Tr, finishMaterial('AL'), 'housing'); const g = new THREE.Group(); g.add(mesh); g.name = 'ベアリングハウジング';
-  for (const [x, p] of taps) { const tm = new THREE.Mesh(threadMesh({ rMaj: tapM / 2, rMin: tapDrill / 2, L: H - c - yThr, pitch: tapPitch, seg: 36, y0: yThr, internal: true, cx: x, cz: -p, runoutStart: 0.6, runoutEnd: 0.6 }), finishMaterial('THREAD')); tm.castShadow = tm.receiveShadow = true; tm.name = 'tap-thread'; g.add(tm); }
+  for (const [x, p] of taps) { const tm = new THREE.Mesh(threadMesh({ rMaj: tapM / 2, rMin: tapDrill / 2, L: H - c - yThr, pitch: tapPitch, seg: 36, y0: yThr, internal: true, cx: x, cz: -p, runoutStart: 0.6, runoutEnd: 0.6 }), finishMaterial('THREAD')); tm.castShadow = tm.receiveShadow = true; tm.name = 'tap-thread'; tm.userData.noVolume = true; g.add(tm); }
   g.userData.volume = volumeOf(g); g.userData.mass = g.userData.volume * (P.density ?? DENSITY['A6061-T6']) / 1000;
   // 特徴（検査項目の 3D アンカー）
   const F = {};

@@ -6,9 +6,12 @@ export function evaluate(item, v) {
   if (item.kind === 'thread' || item.kind === 'visual') { const s = String(v).toUpperCase(); const ok = s === 'GO' || s === 'OK' || s === '良' || s === '合格'; return { status: ok ? 'ok' : 'ng', dev: null, ratio: ok ? 0 : 1, text: ok ? (item.kind === 'thread' ? 'GO 通り / NOGO 止まり' : '良') : (item.kind === 'thread' ? 'ゲージ不合格' : '不良あり') }; }
   const x = +v; if (Number.isNaN(x)) return { status: 'na', dev: null, ratio: null, text: '数値でない' };
   const dev = x - (+item.nominal); const [up, lo] = item.tol || [Infinity, -Infinity];
-  if (dev > up + 1e-9 || dev < lo - 1e-9) return { status: 'ng', dev, ratio: dev > 0 ? (up > 0 ? dev / up : Infinity) : (lo < 0 ? dev / lo : Infinity), text: dev > 0 ? `上限超過 ${(dev - up).toFixed(3)}` : `下限割れ ${(lo - dev).toFixed(3)}` };
-  let ratio = 0; if (dev > 0) ratio = up > 0 ? dev / up : 1; else if (dev < 0) ratio = lo < 0 ? dev / lo : 1; else ratio = 0;
-  return { status: ratio >= WARN_RATIO ? 'warn' : 'ok', dev, ratio, text: ratio >= WARN_RATIO ? `公差の ${Math.round(ratio * 100)}% を使用` : '公差内' };
+  // pos: 公差帯の中での位置（−1 = 下限、0 = 中央、+1 = 上限）。片側規格（幾何公差・粗さ・「以下」）は 0 = 理想、1 = 上限
+  const oneSided = item.kind === 'gdt' || item.kind === 'ra' || item.max; const mid = (up + lo) / 2, half = (up - lo) / 2;
+  const pos = oneSided ? (item.max ? x / (+item.nominal) : dev / up) : (half > 0 ? (dev - mid) / half : 0);
+  if (dev > up + 1e-9 || dev < lo - 1e-9) return { status: 'ng', dev, pos, ratio: Math.abs(pos), text: dev > up ? `上限超過 ${(dev - up).toFixed(3)}` : `下限割れ ${(lo - dev).toFixed(3)}` };
+  const ratio = Math.abs(pos);
+  return { status: ratio >= WARN_RATIO ? 'warn' : 'ok', dev, pos, ratio, text: ratio >= WARN_RATIO ? (oneSided ? `規格値の ${Math.round(ratio * 100)}%` : `公差帯の${pos > 0 ? '上限' : '下限'}寄り（中央から ${Math.round(ratio * 100)}%）`) : '公差内' };
 }
 export const RANK = { ng: 3, warn: 2, na: 1, ok: 0 };
 export function worst(statuses) { return statuses.reduce((a, b) => (RANK[b] > RANK[a] ? b : a), 'ok'); }
@@ -52,17 +55,19 @@ const CAUSES = {
 const ACTIONS = {
   ng_crit: ['当該個体は不合格として分離（赤札）', '別計測器で再測定し測定不確かさを除外（例: 三次元 → シリンダゲージ）', '工場へ是正要求（CAR）: 原因・対策・再発防止の回答を依頼', '顧客へ納期影響を連絡（手直し可否の判断）'],
   ng: ['当該個体を分離し、特採（顧客承認）または選別出荷を検討', '工場へ注意喚起（次ロットの管理項目に追加）'],
-  warn: ['量産移行時の工程能力（Cp/Cpk）要確認: 公差の 80% 以上を消費', '工場へ中心値の調整を依頼（補正値の見直し）'],
+  warn: ['量産移行時の工程能力（Cp/Cpk）要確認: 公差帯の端（中央から 80% 以上）に寄っている', '工場へ中心値の調整を依頼（補正値の見直し）'],
 };
 export function aiFinding(part, item, summary) {
   const { status, results } = summary; if (status === 'ok' || status === 'na') return null;
-  const devs = results.map(r => r.dev).filter(v => v != null); const mean = devs.length ? devs.reduce((a, b) => a + b, 0) / devs.length : null; const allSame = devs.length > 1 && devs.every(d => Math.sign(d) === Math.sign(devs[0]));
-  let key; const over = mean != null ? mean > 0 : true; const f = item.key || '';
+  const oneSided = item.kind === 'gdt' || item.kind === 'ra' || item.max; const ps = results.map(r => r.pos).filter(v => v != null && !Number.isNaN(v)); const mean = ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : null;
+  const allSame = !oneSided && ps.length > 1 && ps.every(d => Math.sign(d) === Math.sign(ps[0])) && Math.abs(mean) > 0.35; const worstR = results.filter(r => r.pos != null).sort((a, b) => Math.abs(b.pos) - Math.abs(a.pos))[0];
+  let key; const over = worstR ? worstR.pos > 0 : true; const f = item.key || '';
   if (item.kind === 'gdt') key = item.gdt; else if (item.kind === 'thread') key = 'thread'; else if (item.kind === 'ra') key = 'ra'; else if (item.kind === 'visual') key = 'visual'; else if (item.kind === 'angle') key = 'angle';
-  else if (item.kind === 'dia') { const inner = /seat|through|groove|mount|cbore|dowel|hole|slot|tap/i.test(f) && !/j1|j2|mid|end|boss|relief/.test(f); key = `dia_${inner ? 'in' : 'out'}_${over ? 'over' : 'under'}`; }
+  else if (item.kind === 'dia') { const inner = item.inner ?? (/seat|through|groove|mount|cbore|dowel|hole|slot|tap|bore/i.test(f) && !/j1|j2|mid|end|boss|relief/.test(f)); key = `dia_${inner ? 'in' : 'out'}_${over ? 'over' : 'under'}`; }
   else if (/pitch|Pos|Y$|X$/.test(f) && item.kind === 'len') key = 'pitch'; else if (/groove|key/.test(f) && item.kind === 'len') key = over ? 'width_over' : 'width_under'; else key = 'len';
   const causes = CAUSES[key] || CAUSES.len; const acts = status === 'ng' ? (item.critical ? ACTIONS.ng_crit : ACTIONS.ng) : ACTIONS.warn;
-  const trend = allSame ? `全個体が同方向（平均 ${mean > 0 ? '+' : ''}${mean.toFixed(3)}）に偏っており、ばらつきではなく工程の中心ずれ（系統誤差）の可能性が高い。` : devs.length > 1 ? '個体ごとにばらついており、段取り・計測のばらつき要因が疑われる。' : '';
+  const spread = ps.length > 1 ? Math.max(...ps) - Math.min(...ps) : 0;
+  const trend = oneSided ? '' : allSame ? `全個体が公差帯の${mean > 0 ? '上限' : '下限'}側に寄っており（平均で中央から ${Math.round(Math.abs(mean) * 100)}%）、ばらつきではなく工程の中心ずれ（系統誤差）の可能性が高い。` : spread > 0.9 ? `個体間のばらつきが公差幅の ${Math.round(spread * 50)}% あり、段取り・計測のばらつき要因が疑われる。` : ps.length > 1 ? '中心は公差帯の中央付近だが、一部の個体だけが外れている。当該個体の加工条件・測定を個別に確認。' : '';
   return { key, causes, actions: acts, trend, confidence: status === 'ng' ? 0.72 : 0.55 };
 }
 // 工数試算（ヒアリングに基づく仮定値。実測で更新）
