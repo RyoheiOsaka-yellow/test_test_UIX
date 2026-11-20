@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Download, Search, X } from 'lucide-react';
 import {
   TODAY,
+  daysBetween,
   PARTS,
   STATUSES,
   fmtDate,
@@ -36,6 +37,32 @@ export default function Records() {
   const st = params.get('st') ?? '';
   const year = params.get('year') ?? '';
   const kind = params.get('kind') ?? '';
+  // ダッシュボードから渡される絞り込み
+  const due = params.get('due') ?? '';
+  const stale = Number(params.get('stale') ?? 0);
+  const inside = params.get('inside') === '1';
+  const staff = params.get('staff') ?? '';
+  const branch = params.get('branch') ?? '';
+  const thisMonth = TODAY.slice(0, 7);
+  const inScope = (pid: string) => {
+    const p = propertyById.get(pid)!;
+    return (!staff || p.staff === staff) && (!branch || p.branch === branch);
+  };
+  const dueOk = (d: string | null) => {
+    if (!due) return true;
+    if (!d) return false;
+    if (due === '期限超過') return d < thisMonth;
+    if (/^\d{4}$/.test(due)) return d.startsWith(due) && d >= thisMonth;
+    const m = due.match(/^(\d{4})以降$/);
+    return m ? Number(d.slice(0, 4)) >= Number(m[1]) : true;
+  };
+  const extra = [
+    staff && `担当: ${staff}`,
+    branch && `支店: ${branch}`,
+    due && `推奨時期: ${due === '期限超過' ? '期限超過' : /^\d{4}$/.test(due) ? `${due}年` : due}`,
+    stale && `同じ状況のまま${stale}日以上`,
+    inside && '社内で止まっているもの(未対応・見積中)',
+  ].filter(Boolean) as string[];
 
   const set = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -54,10 +81,14 @@ export default function Records() {
           if (part && f.part !== part) return false;
           if (sev && f.severity !== sev) return false;
           if (st && f.status !== st) return false;
+          if (!inScope(f.propertyId) || !dueOk(f.dueBy)) return false;
+          if (due && f.status === '完了') return false;
+          if (stale && (f.status === '完了' || daysBetween(f.statusDate, TODAY) < stale)) return false;
+          if (inside && f.status !== '未対応' && f.status !== '見積中') return false;
           return true;
         })
         .sort((a, b) => ((a.dueBy ?? '9') < (b.dueBy ?? '9') ? -1 : 1)),
-    [findings, q, part, sev, st],
+    [findings, q, part, sev, st, due, stale, inside, staff, branch],
   );
 
   const rRows = useMemo(
@@ -204,6 +235,14 @@ export default function Records() {
           <button className="btn ghost" onClick={() => setParams(tab === 'findings' ? {} : { tab }, { replace: true })}>
             条件をクリア
           </button>
+        )}
+        {extra.length > 0 && (
+          <p className="rec-extra">
+            ダッシュボードからの絞り込み:
+            {extra.map((x) => (
+              <span key={x}>{x}</span>
+            ))}
+          </p>
         )}
       </section>
 
