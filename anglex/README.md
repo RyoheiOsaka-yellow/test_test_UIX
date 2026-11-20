@@ -15,6 +15,7 @@
 - 本文は `tools/manual_content.py`（やりたいこと → 手順 → 写真の番号）。写真は実際の画面を撮ったもの。
 - 撮り直し: `node dev/manual-shots.mjs v1 <撮影フォルダ>`（v2・v3 も同じ）。写真と、番号の位置（`<版>_marks.json`）ができる。
 - 作り直し: `python3 tools/build_manuals.py --shots <撮影フォルダ>` → `node dev/render-docs.mjs manual_v1.html manual_v2.html manual_v3.html`。撮影フォルダを省くと `docs/spec/img/manual/` の前回の写真を使う。
+- 写真だけほしいとき: `python3 tools/export_manual_images.py <出力フォルダ> [--shots <撮影フォルダ>]` で、番号の丸と説明を焼き込んだ PNG を版ごとのフォルダと ZIP に書き出す。
 - 操作ガイドは写真を中に埋め込んだ 1 ファイル。左で「やりたいこと」を選び、← → キーか「次へ」で手順を送る。いま見るところが黄色い枠と番号で光る。スマートフォンの幅でも読める。
 
 ## 配布ファイル（v1 / v2）
