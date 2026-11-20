@@ -5,6 +5,7 @@ import { CalendarClock, CheckCircle2, ChevronRight, CircleAlert, Clock3, Hourgla
 import {
   STATUSES,
   TODAY,
+  addDays,
   addMonths,
   checkPlan,
   daysBetween,
@@ -19,7 +20,7 @@ import {
   type Finding,
   type Property,
 } from '../data';
-import { CheckBadge, Empty, LEGEND, StatusBadge, useStore } from '../ui';
+import { CheckBadge, Empty, LEGEND, useStore } from '../ui';
 
 const ME = '青木 涼';
 const MY_BRANCH = '東京西支店';
@@ -27,6 +28,9 @@ type Scope = 'mine' | 'branch' | 'all';
 const SCOPE_LABEL: Record<Scope, string> = { mine: '自分の担当', branch: '支店', all: '全社' };
 
 const STALE_DAYS = 30;
+const LANES: AgendaKindT[] = ['アフターサービス点検', '継続審査', '建物定期点検', '修繕期限'];
+const LANE_SHORT: Record<AgendaKindT, string> = { アフターサービス点検: 'アフター', 継続審査: '継続審査', 建物定期点検: '定期点検', 修繕期限: '修繕期限' };
+type AgendaKindT = CheckKind | '修繕期限';
 const THIS_MONTH = TODAY.slice(0, 7);
 
 interface Action {
@@ -188,9 +192,19 @@ export default function Dashboard() {
   const overdueChecks = d.plans.filter((c) => c.next < TODAY).length;
   const soonChecks = d.plans.filter((c) => c.next >= TODAY && daysBetween(TODAY, c.next) <= 90).length;
   const todoTotal = d.actions.reduce((s, a) => s + a.items.length, 0);
+  const actNow = d.actions.filter((a) => a.items.length > 0);
+  const actNone = d.actions.filter((a) => a.items.length === 0);
+  const topAction = [...actNow].sort((a, b) => b.items.length - a.items.length)[0];
+  const urgentNew = d.urgent.filter((f) => f.status === '未対応').length;
+  const proposed = d.open.filter((f) => f.status === '提案済');
+  const proposedStale = proposed.filter((f) => daysBetween(f.statusDate, TODAY) >= STALE_DAYS).length;
+  const cost3y = d.within3y.reduce((s, f) => s + f.estCost, 0);
+  const cost3yUrgent = d.within3y.filter((f) => f.severity === 'urgent').reduce((s, f) => s + f.estCost, 0);
+  const urgentBy = new Map<string, number>();
+  for (const f of d.urgent) urgentBy.set(f.propertyId, (urgentBy.get(f.propertyId) ?? 0) + 1);
 
   // 予定を月ごとにまとめる(期限超過は先頭)
-  const agendaShown = agendaAll ? d.agenda : d.agenda.slice(0, 10);
+  const agendaShown = agendaAll ? d.agenda : d.agenda.slice(0, 5);
   const groups: { label: string; items: AgendaItem[] }[] = [];
   for (const a of agendaShown) {
     const label = a.date < TODAY ? '期限超過' : `${Number(a.date.slice(0, 4))}年${Number(a.date.slice(5, 7))}月`;
@@ -218,6 +232,21 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <p className="db-lead">
+        {todoTotal === 0 ? (
+          '今日、対応が必要な案件はありません。'
+        ) : (
+          <>
+            今日動く案件は <b>{todoTotal}件</b> です。
+            {topAction && (
+              <>
+                最も多いのは「{topAction.title}」の <b>{topAction.items.length}件</b>。
+              </>
+            )}
+          </>
+        )}
+      </p>
+
       {/* ---------- 主要指標 ---------- */}
       <div className="kpis">
         <Link to={`/records?tab=findings&sev=urgent${d.scopeQs}`} className="kpi">
@@ -229,7 +258,12 @@ export default function Dashboard() {
             {d.urgent.length}
             <em>件</em>
           </b>
-          <span className="foot">うち未着手 {d.urgent.filter((f) => f.status === '未対応').length}件</span>
+          <Meter
+            parts={[
+              { label: '未着手', v: urgentNew, color: '#d92d20' },
+              { label: '対応中', v: d.urgent.length - urgentNew, color: '#f1b5ae' },
+            ]}
+          />
         </Link>
         <Link to={`/records?tab=findings&st=${encodeURIComponent('提案済')}${d.scopeQs}`} className="kpi">
           <span className="ico blue">
@@ -237,23 +271,33 @@ export default function Dashboard() {
           </span>
           <small>オーナー様の回答待ち</small>
           <b>
-            {d.open.filter((f) => f.status === '提案済').length}
+            {proposed.length}
             <em>件</em>
           </b>
-          <span className="foot">
-            承認済・工事中 {d.open.filter((f) => f.status === '承認済' || f.status === '工事中').length}件
-          </span>
+          <Meter
+            parts={[
+              { label: `${STALE_DAYS}日以上`, v: proposedStale, color: '#2a62d6' },
+              { label: `${STALE_DAYS}日未満`, v: proposed.length - proposedStale, color: '#bccff4' },
+            ]}
+          />
         </Link>
         <Link to="/properties?sort=nextInspection" className="kpi">
           <span className="ico teal">
             <CalendarClock size={18} />
           </span>
-          <small>点検・審査(3種別)</small>
-          <b className={overdueChecks > 0 ? 'danger' : ''}>
-            {overdueChecks}
-            <em>件 期限超過</em>
+          <small>90日以内の点検・審査</small>
+          <b>
+            {soonChecks + overdueChecks}
+            <em>件</em>
+            {overdueChecks > 0 && <em className="danger">うち超過 {overdueChecks}</em>}
           </b>
-          <span className="foot">90日以内の予定 {soonChecks}件</span>
+          <Meter
+            parts={LANES.slice(0, 3).map((k, i) => ({
+              label: LANE_SHORT[k],
+              v: d.plans.filter((c) => c.kind === k && daysBetween(TODAY, c.next) <= 90).length,
+              color: ['#2a78d6', '#d99a00', '#1baf7a'][i],
+            }))}
+          />
         </Link>
         <Link to={`/records?tab=findings${d.scopeQs}`} className="kpi">
           <span className="ico green">
@@ -261,10 +305,16 @@ export default function Dashboard() {
           </span>
           <small>今後3年の修繕推奨額(概算)</small>
           <b>
-            {Math.round(d.within3y.reduce((s, f) => s + f.estCost, 0) / 10000).toLocaleString()}
+            {Math.round(cost3y / 10000).toLocaleString()}
             <em>万円</em>
           </b>
-          <span className="foot">{d.within3y.length}件の指摘が対象</span>
+          <Meter
+            unit="万円"
+            parts={[
+              { label: '早急', v: Math.round(cost3yUrgent / 10000), color: '#d92d20' },
+              { label: '経過観察', v: Math.round((cost3y - cost3yUrgent) / 10000), color: '#f5a524' },
+            ]}
+          />
         </Link>
       </div>
 
@@ -276,26 +326,24 @@ export default function Dashboard() {
           </h2>
           <span className="hint">止まっている案件と、近づいている期限</span>
         </header>
-        <div className="db-actions">
-          {d.actions.map((a) => {
-            const Icon = a.icon;
-            return (
-              <div key={a.key} className={`db-action tone-${a.tone} ${a.items.length === 0 ? 'empty' : ''}`}>
-                <div className="db-action-head">
-                  <span className="ico">
-                    <Icon size={17} />
-                  </span>
-                  <div>
-                    <b>{a.title}</b>
-                    <small>{a.todo}</small>
+        {actNow.length === 0 ? (
+          <Empty>今日、対応が必要な案件はありません</Empty>
+        ) : (
+          <div className="db-actions">
+            {actNow.map((a) => {
+              const Icon = a.icon;
+              return (
+                <div key={a.key} className={`db-action tone-${a.tone}`}>
+                  <div className="db-action-head">
+                    <span className="ico">
+                      <Icon size={17} />
+                    </span>
+                    <div>
+                      <b>{a.title}</b>
+                      <small>{a.todo}</small>
+                    </div>
+                    <strong>{a.items.length}</strong>
                   </div>
-                  <strong className={a.items.length === 0 ? 'zero' : ''}>{a.items.length}</strong>
-                </div>
-                {a.items.length === 0 ? (
-                  <p className="db-none">
-                    <CheckCircle2 size={15} /> 対応が必要なものはありません
-                  </p>
-                ) : (
                   <ul>
                     {a.items.slice(0, 3).map((it) => (
                       <li key={it.id}>
@@ -309,15 +357,61 @@ export default function Dashboard() {
                       </li>
                     ))}
                   </ul>
-                )}
-                {a.items.length > 0 && (
                   <Link className="db-more" to={a.more}>
                     {a.items.length > 3 ? `ほか${a.items.length - 3}件も見る` : '一覧で見る'} <ChevronRight size={14} />
                   </Link>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {actNone.length > 0 && (
+          <p className="db-clear">
+            {actNone.map((a) => (
+              <span key={a.key}>
+                <CheckCircle2 size={14} /> {a.title}: なし
+              </span>
+            ))}
+          </p>
+        )}
+      </section>
+
+      {/* ---------- 対応の流れ ---------- */}
+      <section className="card db-flow">
+        <header>
+          <h2>対応の流れ</h2>
+          <span className="hint">指摘がどの段階に何件あるか。「停滞」は同じ段階のまま{STALE_DAYS}日以上</span>
+        </header>
+        <div className="flow">
+          <div className="flow-groups" aria-hidden>
+            <span style={{ gridColumn: 'span 2' }}>社内で対応</span>
+            <span>オーナー様の判断</span>
+            <span style={{ gridColumn: 'span 2' }}>工事</span>
+          </div>
+          <div className="flow-steps">
+            {d.pipeline.map((p) => (
+              <Link key={p.status} to={`/records?tab=findings&st=${encodeURIComponent(p.status)}${d.scopeQs}`} className={`flow-step ${p.count === 0 ? 'zero' : ''}`}>
+                <span className="flow-name">{p.status}</span>
+                <b>
+                  {p.count}
+                  <em>件</em>
+                </b>
+                <small>{fmtMan(p.cost)}</small>
+                <span className="flow-bar">
+                  <i style={{ width: `${(p.count / maxPipe) * 100}%` }} />
+                </span>
+                <span className={`db-stale ${p.stale > 0 ? 'on' : ''}`}>
+                  {p.stale > 0 ? (
+                    <>
+                      <Clock3 size={12} /> {p.stale}件 停滞
+                    </>
+                  ) : (
+                    '停滞なし'
+                  )}
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -328,7 +422,7 @@ export default function Dashboard() {
             <h2>修繕推奨額の見通し</h2>
             <span className="hint">未完了の指摘を推奨時期で集計(万円)。棒を押すと一覧へ</span>
           </header>
-          <div style={{ height: 260 }}>
+          <div style={{ height: 300 }}>
             <ResponsiveContainer>
               <BarChart data={d.byYear} margin={{ top: 22, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#e7ebf2" vertical={false} />
@@ -375,40 +469,6 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* ---------- 対応の進み具合 ---------- */}
-        <section className="card">
-          <header>
-            <h2>対応の進み具合</h2>
-            <span className="hint">指摘が「誰のボールで止まっているか」</span>
-          </header>
-          <div className="pipe">
-            {d.pipeline.map((p) => (
-              <Link key={p.status} to={`/records?tab=findings&st=${encodeURIComponent(p.status)}${d.scopeQs}`} className="pipe-row db-pipe">
-                <StatusBadge status={p.status} />
-                <span className="pipe-track">
-                  <span className={`pipe-fill st-${p.status}`} style={{ width: `${(p.count / maxPipe) * 100}%` }} />
-                </span>
-                <b className="num">{p.count}件</b>
-                <span className="num muted">{fmtMan(p.cost)}</span>
-                <span className={`db-stale ${p.stale > 0 ? 'on' : ''}`}>
-                  {p.stale > 0 ? (
-                    <>
-                      <Clock3 size={12} /> {p.stale}件 停滞
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </span>
-              </Link>
-            ))}
-          </div>
-          <p className="note">
-            「未対応」「見積中」は社内、「提案済」はオーナー様の判断待ちです。「停滞」は同じ状況のまま{STALE_DAYS}日以上のものです。
-          </p>
-        </section>
-      </div>
-
-      <div className="db-grid">
         {/* ---------- 今後90日の予定 ---------- */}
         <section className="card">
           <header>
@@ -419,6 +479,40 @@ export default function Dashboard() {
             <Empty>90日以内の予定はありません</Empty>
           ) : (
             <div className="agenda">
+              <div className="lanes" role="img" aria-label="今後90日の予定を種別ごとに時間軸で示した図">
+                {LANES.map((k) => (
+                  <div className="lane" key={k}>
+                    <span className="lane-name">{LANE_SHORT[k]}</span>
+                    <span className="lane-track">
+                      {d.agenda
+                        .filter((a) => a.kind === k)
+                        .map((a) => {
+                          const n = daysBetween(TODAY, a.date);
+                          return (
+                            <Link
+                              key={a.key}
+                              to={a.to}
+                              className={`lane-dot lk-${LANES.indexOf(k)} ${n < 0 ? 'over' : ''}`}
+                              style={{ left: `${Math.max(0, Math.min(100, (n / 90) * 100))}%` }}
+                              title={`${a.p.name} ${a.text}(${n < 0 ? `${-n}日超過` : `あと${n}日`})`}
+                              aria-label={`${a.p.name} ${a.text}`}
+                            />
+                          );
+                        })}
+                    </span>
+                  </div>
+                ))}
+                <div className="lane lane-axis">
+                  <span className="lane-name" />
+                  <span className="lane-track">
+                    {[0, 30, 60, 90].map((n) => (
+                      <i key={n} style={{ left: `${(n / 90) * 100}%` }}>
+                        {n === 0 ? '今日' : `${Number(addDays(TODAY, n).slice(5, 7))}/${Number(addDays(TODAY, n).slice(8, 10))}`}
+                      </i>
+                    ))}
+                  </span>
+                </div>
+              </div>
               {groups.map((g) => (
                 <div key={g.label} className={g.label === '期限超過' ? 'over' : ''}>
                   <h3>
@@ -441,13 +535,48 @@ export default function Dashboard() {
                   </ul>
                 </div>
               ))}
-              {d.agenda.length > 10 && (
+              {d.agenda.length > 5 && (
                 <button className="more-link" onClick={() => setAgendaAll(!agendaAll)}>
-                  {agendaAll ? '閉じる' : `残り${d.agenda.length - 10}件を表示`}
+                  {agendaAll ? '閉じる' : `残り${d.agenda.length - 5}件を表示`}
                 </button>
               )}
             </div>
           )}
+        </section>
+
+      </div>
+
+      <div className="db-grid">
+        {/* ---------- 物件の状態マップ ---------- */}
+        <section className="card">
+          <header>
+            <h2>物件の状態マップ</h2>
+            <span className="hint">1マスが1棟。評価の低い順。押すと物件詳細へ</span>
+          </header>
+          <div className={`pmap ${d.props.length <= 12 ? 'named' : ''}`}>
+            {[...d.props]
+              .sort((a, b) => a.overall - b.overall)
+              .map((p) => {
+                const u = urgentBy.get(p.id) ?? 0;
+                return (
+                  <Link key={p.id} to={`/properties/${p.id}`} className={`pmap-tile j-${ratingLabel(p.overall)}`} title={`${p.name}(${ratingLabel(p.overall)}${u ? `・早急 ${u}件` : ''})`} aria-label={`${p.name} 総合評価${p.overall.toFixed(1)}`}>
+                    <b>{p.overall.toFixed(1)}</b>
+                    <span>{p.name}</span>
+                    {u > 0 && <i>{u}</i>}
+                  </Link>
+                );
+              })}
+          </div>
+          <div className="pmap-legend">
+            {(['要改善', '注意', '良好', '優良'] as const).map((j) => (
+              <span key={j}>
+                <i className={`j-${j}`} /> {j} {d.props.filter((p) => ratingLabel(p.overall) === j).length}棟
+              </span>
+            ))}
+            <span>
+              <i className="dot" /> 早急対応の指摘あり(数字は件数)
+            </span>
+          </div>
         </section>
 
         {/* ---------- 評価が下がった物件 ---------- */}
@@ -488,6 +617,27 @@ export default function Dashboard() {
         </section>
       </div>
     </>
+  );
+}
+
+/** 指標タイルの内訳バー。色に頼らないよう、内訳を文字でも示す */
+function Meter({ parts, unit = '' }: { parts: { label: string; v: number; color: string }[]; unit?: string }) {
+  const total = parts.reduce((s, p) => s + p.v, 0);
+  return (
+    <span className="meter">
+      <span className="meter-bar" aria-hidden>
+        {total === 0 ? <i className="none" style={{ flex: 1 }} /> : parts.filter((p) => p.v > 0).map((p) => <i key={p.label} style={{ flex: p.v, background: p.color }} />)}
+      </span>
+      <span className="meter-cap">
+        {parts.map((p) => (
+          <span key={p.label}>
+            <i style={{ background: p.color }} />
+            {p.label} {p.v.toLocaleString()}
+            {unit}
+          </span>
+        ))}
+      </span>
+    </span>
   );
 }
 

@@ -1071,3 +1071,81 @@ img.shot.user-photo { width: 100%; object-fit: cover; aspect-ratio: 4 / 3; displ
   .b1-parts { grid-column: 1 / -1; }
   .b3 .mp-seg button { font-size: 0.82em; padding: 5px 4px; }
 }
+
+/* ---------- ダッシュボード 第2版 ---------- */
+.db-lead { font-size: 17px; line-height: 1.6; margin: -4px 0 14px; color: var(--text); }
+.db-lead b { font-size: 1.25em; font-variant-numeric: tabular-nums; }
+.kpi b em.danger { color: var(--red); margin-left: 8px; }
+.meter { display: grid; gap: 5px; margin-top: 6px; }
+.meter-bar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; }
+.meter-bar i { display: block; border-radius: 2px; min-width: 4px; }
+.meter-bar i.none { background: #e9edf4; }
+.meter-cap { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; color: var(--muted); }
+.meter-cap span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.meter-cap i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.db-actions { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); align-items: stretch; }
+.db-clear { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 0; font-size: 13px; color: var(--green); font-weight: 700; }
+.db-clear span { display: inline-flex; align-items: center; gap: 5px; }
+.db-flow { margin-bottom: 16px; }
+.flow-groups { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 22px; margin-bottom: 6px; }
+.flow-groups span { font-size: 12px; font-weight: 700; color: var(--muted); border-bottom: 2px solid #cfd6e2; padding-bottom: 3px; }
+.flow-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 22px; }
+.flow-step { position: relative; display: grid; gap: 2px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; min-width: 0; }
+.flow-step:hover { background: #f7f9fc; }
+.flow-step:not(:last-child)::after { content: ''; position: absolute; right: -16px; top: 50%; width: 8px; height: 8px; border-top: 2px solid #98a2b3; border-right: 2px solid #98a2b3; transform: translateY(-50%) rotate(45deg); }
+.flow-name { font-size: 13px; font-weight: 700; color: var(--muted); }
+.flow-step b { font-size: 26px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.flow-step b em { font-style: normal; font-size: 13px; margin-left: 2px; }
+.flow-step small { color: var(--muted); font-size: 12.5px; }
+.flow-step.zero b { color: #b0b8c6; }
+.flow-bar { height: 6px; background: #e9edf4; border-radius: 3px; overflow: hidden; margin: 4px 0; }
+.flow-bar i { display: block; height: 100%; background: var(--navy); border-radius: 3px; }
+.flow-step .db-stale { justify-content: flex-start; text-align: left; }
+@media (max-width: 760px) {
+  .flow-groups { display: none; }
+  .flow-steps { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .flow-step { grid-template-columns: 56px 64px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; }
+  .flow-step::after { display: none; }
+  .flow-step b { font-size: 18px; }
+  .flow-step small { display: none; }
+  .flow-bar { margin: 0; }
+}
+/* 90日の予定(時間軸) */
+.lanes { margin-bottom: 12px; }
+.lane { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; align-items: center; height: 24px; }
+.lane-name { font-size: 12px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.lane-track { position: relative; height: 100%; margin: 0 8px; background: linear-gradient(#e7ebf2, #e7ebf2) center / 100% 2px no-repeat; }
+.lane-dot { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #00000014; }
+.lane-dot::after { content: ''; position: absolute; inset: -12px; }
+.lane-dot.lk-0 { background: #2a78d6; }
+.lane-dot.lk-1 { background: #d99a00; }
+.lane-dot.lk-2 { background: #1baf7a; }
+.lane-dot.lk-3 { background: #b23a14; border-radius: 3px; }
+.lane-dot.over { box-shadow: 0 0 0 2px var(--red); }
+.lane-dot:hover { transform: scale(1.25); }
+.lane-axis { height: 18px; }
+.lane-axis .lane-track { background: none; }
+.lane-axis i { position: absolute; top: 0; transform: translateX(-50%); font-style: normal; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.lane-axis i::before { content: ''; position: absolute; left: 50%; top: -100px; height: 98px; border-left: 1px dashed #dfe4ee; pointer-events: none; }
+.lanes { position: relative; overflow: hidden; padding-top: 2px; }
+/* 物件の状態マップ */
+.pmap { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.pmap-tile { position: relative; aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px; font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: #1c2433; min-height: 44px; }
+.pmap-tile:hover { outline: 2px solid var(--navy); outline-offset: 1px; }
+.pmap-tile.j-要改善, .pmap-legend i.j-要改善 { background: #f3a79f; }
+.pmap-tile.j-注意, .pmap-legend i.j-注意 { background: #f9d48a; }
+.pmap-tile.j-良好, .pmap-legend i.j-良好 { background: #bfe5cf; }
+.pmap-tile.j-優良, .pmap-legend i.j-優良 { background: #6fc79b; }
+.pmap-tile i { position: absolute; right: -4px; top: -4px; min-width: 17px; height: 17px; border-radius: 9px; background: #d92d20; color: #fff; font-style: normal; font-size: 10.5px; display: grid; place-items: center; border: 2px solid #fff; }
+.pmap-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.pmap-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.pmap-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.pmap-legend i.dot { background: #d92d20; border-radius: 50%; }
+
+.lane-track { margin: 0 20px 0 8px; }
+.pmap-tile span { display: none; }
+.pmap-tile b { font-weight: 700; }
+.pmap.named { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.pmap.named .pmap-tile { aspect-ratio: auto; grid-template-columns: auto minmax(0, 1fr); justify-items: start; gap: 8px; padding: 8px 10px; }
+.pmap.named .pmap-tile b { font-size: 16px; }
+.pmap.named .pmap-tile span { display: block; font-size: 12px; font-weight: 500; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
