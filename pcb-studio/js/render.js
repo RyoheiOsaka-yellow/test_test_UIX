@@ -206,6 +206,11 @@ export function draw(ctx, S) {
       used.push([p.x, y]); ctx.fillStyle = r.color; ctx.fillText(r.label, p.x + 4, y);
     }
   }
+  if (S.issues && S.issues.length && !S.regions) { // 問題箇所のマーカー
+    ctx.strokeStyle = '#f07272'; ctx.lineWidth = 2; ctx.beginPath();
+    for (const q of S.issues) { if ((q.side === 'B') !== back) continue; const p = toScreen(S, q.x, q.y); ctx.moveTo(p.x + 9, p.y); ctx.arc(p.x, p.y, 9, 0, 6.2832); }
+    ctx.stroke();
+  }
   if (S.marquee) { const m = S.marquee; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.strokeRect(m.x0, m.y0, m.x1 - m.x0, m.y1 - m.y0); ctx.setLineDash([]); }
   if (back) { ctx.fillStyle = '#6f9bff'; ctx.font = '600 12px "IBM Plex Sans JP", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('裏面から見た表示', 12, 32); }
 }

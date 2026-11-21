@@ -45,7 +45,7 @@ export class Router {
     this.closed = new Uint32Array(n);
     this.pen = new Uint8Array(this.plane);      // 他ネットのパッド周辺を避けるためのコスト
     this.penOwner = new Int32Array(this.plane);
-    this.gen = 0;
+    this.gen = 0; this.viaCost = VIA_COST;
     this.rebuild();
   }
   cell(l, ix, iy) { return (l * this.ny + iy) * this.nx + ix; }
@@ -155,7 +155,7 @@ export class Router {
       for (let m = 0; m < NL && ok; m++) { const pc = pass(m * plane + r); if (pc < 0) ok = false; else extra += pc; }
       if (ok) for (let m = 0; m < NL; m++) {
         if (m === l) continue;
-        const k = m * plane + r, ng = gc + VIA_COST + extra;
+        const k = m * plane + r, ng = gc + this.viaCost + extra;
         if (stamp[k] !== gen || ng < g[k]) { stamp[k] = gen; g[k] = ng; par[k] = cur; heap.push(ng + hfun(ix, iy), k); }
       }
     }
@@ -235,43 +235,52 @@ export class Router {
     for (const n of this.board.nets.values()) { const k = Router.matchKey(n); if (k) { if (!g.has(k)) g.set(k, []); g.get(k).push(n); } }
     return g;
   }
-  // 直線区間にコの字の蛇行（ミアンダ）を挿入して target まで配線長を伸ばす
+  // 直線・斜めの区間にコの字の蛇行（ミアンダ）を挿入して target まで配線長を伸ばす
   lengthen(net, target) {
-    const { occ, nx } = this, r = net.route, W = 2;
-    for (let guard = 0; guard < 60; guard++) {
-      const need = Math.floor(target - r.len + 0.25);
-      if (need < 1) break;
+    const { occ, nx } = this, r = net.route, W = 2, id = net.id;
+    const free = (l, x, y) => this.inGrid(x, y) && occ[this.cell(l, x, y)] === 0;
+    const mine = (l, x, y) => { if (!this.inGrid(x, y)) return false; const o = occ[this.cell(l, x, y)]; return o === 0 || o === id; };
+    // (x,y) から (dx,dy) へ 1 歩進めるか。斜めは両脇に他ネットがないこと。
+    const step = (l, x, y, dx, dy) => free(l, x + dx, y + dy) && (!dx || !dy || (mine(l, x + dx, y) && mine(l, x, y + dy)));
+    for (let guard = 0; guard < 80; guard++) {
+      const rem = target - r.len;
+      if (rem < 0.6) break;
       let best = null;
       for (const seg of r.segs) {
-        const p = seg.pts;
+        const p = seg.pts, l = seg.l;
         for (let i = 0; i + 3 < p.length; i += 2) {
           const ax = Math.round(p[i] / G), ay = Math.round(p[i + 1] / G), bx = Math.round(p[i + 2] / G), by = Math.round(p[i + 3] / G);
-          if ((ax !== bx) === (ay !== by)) continue;               // 斜め・長さ 0 は対象外
-          const n = Math.abs(bx - ax) + Math.abs(by - ay); if (n < W + 2) continue;
-          const ux = Math.sign(bx - ax), uy = Math.sign(by - ay);
+          const ddx = bx - ax, ddy = by - ay;
+          if (ddx && ddy && Math.abs(ddx) !== Math.abs(ddy)) continue;
+          const n = Math.max(Math.abs(ddx), Math.abs(ddy)); if (n < W + 2) continue;
+          const ux = Math.sign(ddx), uy = Math.sign(ddy), sl = G * Math.hypot(ux, uy);
+          const cap = Math.min(10, Math.floor((rem + 0.25) / (2 * sl))); if (cap < 1) continue;
           for (const sd of [1, -1]) {
             const vx = -uy * sd, vy = ux * sd;
             for (let s2 = 1; s2 + W <= n - 1; s2++) {
               let h = 0;
-              for (; h < Math.min(need, 10); h++) {
+              for (; h < cap; h++) {
                 const k = h + 1; let ok = true;
-                for (const t of [s2, s2 + W]) { const x = ax + ux * t + vx * k, y = ay + uy * t + vy * k; if (!this.inGrid(x, y) || occ[this.cell(seg.l, x, y)] !== 0) ok = false; }
-                for (let t = s2; t <= s2 + W && ok; t++) { const x = ax + ux * t + vx * k, y = ay + uy * t + vy * k; if (occ[this.cell(seg.l, x, y)] !== 0) ok = false; }
+                for (const t of [s2, s2 + W]) { const x = ax + ux * t + vx * h, y = ay + uy * t + vy * h; if (!step(l, x, y, vx, vy)) ok = false; }
+                for (let t = s2; t < s2 + W && ok; t++) { // 折り返し部分（高さ k の行）
+                  const x = ax + ux * t + vx * k, y = ay + uy * t + vy * k;
+                  if (t > s2 && !free(l, x, y)) ok = false;
+                  if (ux && uy && !(mine(l, x + ux, y) && mine(l, x, y + uy))) ok = false;
+                }
                 if (!ok) break;
               }
-              if (h > 0 && (!best || h > best.h)) best = { seg, i, ax, ay, ux, uy, vx, vy, s: s2, h };
-              if (best && best.h >= Math.min(need, 10)) break;
+              if (h > 0 && (!best || h * sl > best.h * best.sl)) best = { seg, i, ax, ay, ux, uy, vx, vy, s: s2, h, sl };
             }
           }
         }
       }
       if (!best) break;
-      const { seg, i, ax, ay, ux, uy, vx, vy, s: s0, h } = best;
+      const { seg, i, ax, ay, ux, uy, vx, vy, s: s0, h, sl } = best;
       const pt = (t, k) => [(ax + ux * t + vx * k) * G, (ay + uy * t + vy * k) * G];
       seg.pts.splice(i + 2, 0, ...pt(s0, 0), ...pt(s0, h), ...pt(s0 + W, h), ...pt(s0 + W, 0));
-      for (let k = 1; k <= h; k++) for (const t of [s0, s0 + W]) { const c = this.cell(seg.l, ax + ux * t + vx * k, ay + uy * t + vy * k); occ[c] = net.id; r.cells.push(c); }
-      for (let t = s0; t <= s0 + W; t++) { const c = this.cell(seg.l, ax + ux * t + vx * h, ay + uy * t + vy * h); occ[c] = net.id; r.cells.push(c); }
-      r.len += 2 * h * G; r.tuned = (r.tuned || 0) + 1;
+      for (let k = 1; k <= h; k++) for (const t of [s0, s0 + W]) { const c = this.cell(seg.l, ax + ux * t + vx * k, ay + uy * t + vy * k); occ[c] = id; r.cells.push(c); }
+      for (let t = s0; t <= s0 + W; t++) { const c = this.cell(seg.l, ax + ux * t + vx * h, ay + uy * t + vy * h); occ[c] = id; r.cells.push(c); }
+      r.len += 2 * h * sl; r.tuned = (r.tuned || 0) + 1;
     }
   }
   tuneGroup(nets) {
@@ -322,10 +331,28 @@ export class Router {
         for (const r of this.order([...ripped])) { this.routeNet(r); yield { phase: 'reroute', i, total, net: r }; const k = Router.matchKey(r); if (k) touched.add(k); }
       }
     }
-    // 引き剥がしでミアンダが消えたグループも含めて等長化（短い配線を最長に合わせる）
-    for (const k of touched) {
-      for (const n of groups.get(k)) if (n.route && n.route.tuned) this.routeNet(n);
-      this.tuneGroup(groups.get(k));
+    // 等長化（短い配線を最長に合わせる）。合わせきれないグループは、遠回りしている配線を
+    // 引き剥がし優先で引き直してから、もう一度だけ試す。
+    const queue = [...touched], fixed2 = new Set();
+    const spread = k => { const L = groups.get(k).filter(n => n.route && !n.route.fails.length && n.route.segs.length).map(n => n.route.len); return L.length > 1 ? Math.max(...L) - Math.min(...L) : 0; };
+    const retune = k => { for (const n of groups.get(k)) if (n.route && n.route.tuned) this.routeNet(n); this.tuneGroup(groups.get(k)); };
+    while (queue.length) {
+      const k = queue.shift();
+      retune(k);
+      if (spread(k) > 1 && !fixed2.has(k)) {
+        fixed2.add(k);
+        for (const n of groups.get(k)) if (n.route && n.route.tuned) this.routeNet(n);
+        const L = groups.get(k).map(n => n.route.len).sort((a, b) => a - b), med = L[L.length >> 1];
+        for (const o of groups.get(k).filter(n => n.route.len > med * 1.3 + 1.5)) {
+          this.viaCost = 2;                       // 迂回よりビアを選ばせる
+          const rip = this.routeNet(o, true); this.viaCost = VIA_COST;
+          for (const r of this.order([...rip])) {
+            this.routeNet(r);
+            const k2 = Router.matchKey(r); if (k2 && k2 !== k && !queue.includes(k2)) queue.push(k2);
+          }
+        }
+        this.tuneGroup(groups.get(k));
+      }
       yield { phase: 'tune', i, total, net: groups.get(k)[0], key: k };
     }
   }

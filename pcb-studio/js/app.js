@@ -1,8 +1,8 @@
-import { LAYERS, snap, padWorld, compBox, ratsnest, convexHull, serialize, deserialize, sameSide } from './core.js';
+import { LAYERS, snap, padWorld, compBox, boxOverlap, ratsnest, serialize, deserialize, sameSide } from './core.js';
 import { PARTS, PART, CATS, alternatives } from './library.js';
 import { PRESETS, generateGPU, emptyBoard } from './templates.js';
 import { Router } from './router.js';
-import { scatterTargets, anneal, overlapPairs, planRegions } from './placer.js';
+import { planLayout, anneal } from './placer.js';
 import { draw, toWorld, flipOf } from './render.js';
 import { exportKicad, importKicad, packPart, unpackPart } from './kicad.js';
 import { View3D } from './view3d.js';
@@ -15,10 +15,11 @@ const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
   show: { rats: true, zones: true, far: true, labels: true },
-  rats: [], zones: [], regions: null, ghost: null, wire: null, marquee: null, hoverPad: null,
+  rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
 let v3 = null, v3on = false, ioKind = 'json';
+let redo = [];
 let undo = [], run = null, playing = false, speed = 1, t0 = 0, elapsed = 0;
 
 // ───────── 基板の入れ替え・再計算 ─────────
@@ -29,7 +30,7 @@ function setBoard(b, route = true) {
   fit(); refreshAll();
 }
 function refresh() { S.rats = S.show.rats ? ratsnest(S.board) : []; S.zones = zones(); dirty = true; }
-function refreshAll() { refresh(); renderInspector(); renderStats(); renderLegend(); renderBom(); if (v3on) v3.setBoard(S.board); }
+function refreshAll() { refresh(); renderInspector(); renderStats(); renderNets(); renderLegend(); renderBom(); if (v3on) v3.setBoard(S.board); }
 function zones() {
   const b = S.board, out = [];
   const gpu = b.comps.find(c => c.part.family === 'gpu');
@@ -66,13 +67,16 @@ function fit() {
   S.view.z = Math.max(0.5, Math.min((S.cw - 24) / (b.w + 10), (S.ch - 90) / (b.gridH + 12)));
   S.view.x = b.w / 2 - 1; S.view.y = b.gridH / 2 + 3; dirty = true;
 }
-function pushUndo() { undo.push(JSON.stringify(serialize(S.board))); if (undo.length > 30) undo.shift(); }
-function doUndo() {
+function pushUndo(keepRedo) { undo.push(JSON.stringify(serialize(S.board))); if (undo.length > 30) undo.shift(); if (!keepRedo) redo = []; }
+function restore(from, to, msg) {
   if (run) return;
-  const s = undo.pop(); if (!s) return toast('これ以上戻せません');
+  const snap2 = from.pop(); if (!snap2) return toast(from === undo ? 'これ以上戻せません' : 'やり直す操作がありません');
+  to.push(JSON.stringify(serialize(S.board)));
   const v = { ...S.view };
-  setBoard(deserialize(JSON.parse(s), PART)); S.view = v; toast('元に戻しました');
+  setBoard(deserialize(JSON.parse(snap2), PART)); S.view = v; toast(msg);
 }
+const doUndo = () => restore(undo, redo, '元に戻しました');
+const doRedo = () => restore(redo, undo, 'やり直しました');
 // 変更を確定：グリッドを作り直し、影響を受けたネットを再配線する
 function commit(nets = []) {
   const R = S.router, b = S.board, set = new Set(nets);
@@ -282,7 +286,7 @@ function setTool(t) {
 }
 
 // ───────── 自動レイアウトの再生 ─────────
-const STAGES = [['scatter', '散布'], ['anneal', '焼きなまし'], ['route', '配線'], ['flip', '裏面確認'], ['top', '表面へ']];
+const STAGES = [['scatter', '計画・整列'], ['anneal', '焼きなまし'], ['route', '配線'], ['flip', '裏面確認'], ['top', '表面へ']];
 function stage(id, text) {
   for (const el of document.querySelectorAll('#stages li')) {
     const i = STAGES.findIndex(s => s[0] === el.dataset.s), k = STAGES.findIndex(s => s[0] === id);
@@ -323,16 +327,20 @@ function* flipStage() {
 function* autoLayout(seed) {
   const b = S.board;
   S.router.ripAll(); S.sel.clear(); S.hiNet = pinNet = null;
-  S.regions = [...planRegions(b)].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
-  const tg = scatterTargets(b, seed), from = new Map([...tg.keys()].map(c => [c, { x: c.x, y: c.y }]));
-  stage('scatter', S.regions.length ? `scatter: 電源の流れ（12V 入力 → VRM → GPU）でグループ領域を割り当て、その中へ散布 (seed ${seed})` : `scatter: 各グループの部品を、配線が望む位置の周りへ散布 (seed ${seed})`);
-  for (let t = 0; t < 1; t += 0.02 * speed) {
+  const plan = planLayout(b, seed), tg = plan.targets;
+  S.regions = [...plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
+  const from = new Map([...tg.keys()].map(c => [c, { x: c.x, y: c.y }]));
+  const pi = plan.info;
+  stage('scatter', pi.blocks + pi.facing ? `plan: 電源の流れで領域を割り当て → 相ブロック ${pi.blocks} 個を列に整列・${pi.facing} ブロックを GPU のボール正面へ・裏面コンデンサ ${pi.grid} 個を格子に (seed ${seed})`
+    : `scatter: 各ブロックを、配線が望む位置の周りへ散布 (seed ${seed})`);
+  for (let t = 0; t < 1; t += 0.014 * speed) {
     const e = t * t * (3 - 2 * t);
-    for (const [c, p] of tg) { const o = from.get(c); c.x = o.x + (p.x - o.x) * e; c.y = o.y + (p.y - o.y) * e; }
+    for (const [c, p] of tg) { const o = from.get(c); c.x = o.x + (p.x - o.x) * e; c.y = o.y + (p.y - o.y) * e; if (t > 0.5) c.rot = p.rot; }
     $('prog').value = t; refresh(); yield;
   }
-  for (const [c, p] of tg) { c.x = p.x; c.y = p.y; }
-  const an = anneal(b, seed, 140);
+  for (const [c, p] of tg) { c.x = p.x; c.y = p.y; c.rot = p.rot; }
+  refresh(); for (let t = 0; t < 1; t += 0.03 * speed) yield;
+  const an = anneal(b, seed, 60, plan);
   for (let done = false; !done;) {
     let ev = null;
     for (let i = 0; i < Math.max(1, Math.round(speed)); i++) { const r = an.next(); if (r.done) { done = true; break; } ev = r.value; }
@@ -457,9 +465,19 @@ function renderInspector() {
   el.innerHTML = h;
 }
 function renderStats() {
-  const b = S.board, st = S.router.stats(), ov = overlapPairs(b);
-  let off = 0;
-  for (const c of b.comps) { const B = compBox(c); if (c.part.family !== 'pcie' && (B.x0 < 0 || B.y0 < 0 || B.x1 > b.w || B.y1 > b.h)) off++; }
+  const b = S.board, st = S.router.stats(), issues = [];
+  let off = 0, ov = 0;
+  for (let i = 0; i < b.comps.length; i++) {
+    const c = b.comps[i], B = compBox(c), A = compBox(c, -0.05);
+    if (c.part.family !== 'pcie' && (B.x0 < 0 || B.y0 < 0 || B.x1 > b.w || B.y1 > b.h)) { off++; issues.push({ t: `基板外: ${c.ref}`, x: c.x, y: c.y, side: c.side }); }
+    for (let j = i + 1; j < b.comps.length; j++) { const o = b.comps[j]; if (sameSide(c, o) && boxOverlap(A, compBox(o, -0.05)) > 0) { ov++; issues.push({ t: `重なり: ${c.ref} と ${o.ref}`, x: (c.x + o.x) / 2, y: (c.y + o.y) / 2, side: c.side }); } }
+  }
+  for (const n of b.nets.values()) {
+    if (n.cls === 'plane' || n.pins.length < 2) continue;
+    const bad = n.route ? n.route.fails : n.pins.map((_, i) => i).slice(1);
+    for (const i of bad) { const p = n.pins[i], q = padWorld(p.c, p.c.part.padMap[p.p]); issues.push({ t: `未接続: ${n.name}（${p.c.ref}）`, x: q.x, y: q.y, side: p.c.side }); }
+  }
+  S.issues = issues;
   const pads = b.comps.reduce((s, c) => s + c.part.pads.length, 0);
   const fam = f => b.comps.filter(c => c.part.family === f);
   const gpu = fam('gpu')[0], dm = fam('drmos').filter(c => c.group === 'grp_vcore');
@@ -484,7 +502,22 @@ function renderStats() {
     row('VRAM', `${fam('vram').length} 枚 = ${gb} GB`);
     for (const c of fam('ctl')) { const n = Object.keys(c.padNet).filter(k => k.startsWith('PWM')).length; if (n > c.part.val) row('コントローラ', `${esc(c.part.pn)} は最大 ${c.part.val} 相（${n} 相接続）${pill(false, '位相ダブラ要')}`); }
   }
-  $('stats').innerHTML = `<table>${rows.join('')}</table>`;
+  $('stats').innerHTML = `<table>${rows.join('')}</table>` + (issues.length
+    ? `<div class="sub">問題 ${issues.length} 件（クリックでその場所へ）</div><div class="pins">${issues.slice(0, 30).map((q, i) => `<button class="pin bad" data-issue="${i}">${esc(q.t)}</button>`).join('')}</div>`
+    : '<div class="sub ok">配置・接続の問題は見つかりません</div>');
+}
+function focusAt(x, y, z) { S.view.x = x; S.view.y = y; if (z) S.view.z = z; dirty = true; }
+function renderNets() {
+  const q = $('netq').value.trim().toLowerCase();
+  const all = [...S.board.nets.values()].filter(n => n.cls !== 'plane' && n.pins.length > 1);
+  const list = all.filter(n => !q || n.name.toLowerCase().includes(q))
+    .sort((a, b2) => ((b2.route ? b2.route.fails.length : 9) - (a.route ? a.route.fails.length : 9)) || ((b2.route ? b2.route.len : 0) - (a.route ? a.route.len : 0)));
+  const cls = { signal: '信号', diff: '差動', power: '電源' };
+  $('nets').innerHTML = `<table>${list.slice(0, 50).map(n => {
+    const r = n.route, bad = !r || r.fails.length;
+    return `<tr><td><button class="pin${bad ? ' bad' : ''}" data-netfocus="${esc(n.name)}">${esc(n.name)}</button></td><td class="dim">${cls[n.cls] || ''}</td><td class="num">${r ? r.len.toFixed(1) : '-'}</td><td class="dim">${bad ? '未完了' : r.tuned ? '等長' : r.vias.length ? 'ビア' + r.vias.length : ''}</td></tr>`;
+  }).join('')}</table>`;
+  $('netN').textContent = `${list.length} / ${all.length} 本${list.length > 50 ? '（上位 50 本を表示）' : ''}`;
 }
 function renderLegend() {
   const b = S.board, cnt = {};
@@ -511,11 +544,20 @@ document.addEventListener('click', e => {
   if (d.tool) setTool(d.tool);
   else if (d.place) { if (!run) startPlace(PART[d.place]); }
   else if (d.net) { pinNet = S.board.nets.get(d.net) || null; S.hiNet = pinNet; dirty = true; }
+  else if (d.netfocus) {
+    const n = S.board.nets.get(d.netfocus); if (!n) return;
+    pinNet = S.hiNet = n;
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const p of n.pins) { const q = padWorld(p.c, p.c.part.padMap[p.p]); x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
+    focusAt((x0 + x1) / 2, (y0 + y1) / 2, Math.max(2.5, Math.min(26, (S.cw - 60) / (x1 - x0 + 16), (S.ch - 160) / (y1 - y0 + 16))));
+  }
+  else if (d.issue) { const q = S.issues[+d.issue]; if (q) { if ((q.side === 'B') !== (S.view.flip < 0)) $('btnBack').click(); focusAt(q.x, q.y, Math.max(S.view.z, 9)); } }
   else if (d.g) { pinGroup = pinGroup === d.g ? null : d.g; S.hiGroup = pinGroup; renderLegend(); dirty = true; }
   else if (d.tab) { for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', b === t); $('tabLib').hidden = d.tab !== 'lib'; $('tabGen').hidden = d.tab !== 'gen'; }
   else if (d.act === 'rot') rotateSel(); else if (d.act === 'flip') flipSel(); else if (d.act === 'del') deleteSel();
   else if (d.act === 'lock') { for (const c of S.sel) c.fixed = !c.fixed; renderInspector(); }
   else if (t.id === 'btnUndo') doUndo();
+  else if (t.id === 'btnRedo') doRedo();
   else if (t.id === 'btnRoute') { if (!run) { play(routeOnly()); } }
   else if (t.id === 'btnUnroute') { if (!run) { pushUndo(); S.router.ripAll(); refreshAll(); toast('配線をすべて消去しました'); } }
   else if (t.id === 'btnBack') { if (!run) { S.view.flip = S.view.flip < 0 ? 1 : -1; S.sel.clear(); renderInspector(); t.setAttribute('aria-pressed', S.view.flip < 0); dirty = true; } }
@@ -544,11 +586,13 @@ document.addEventListener('change', e => {
   else if (t.id === 'ioFile' && t.files[0]) { const fr = new FileReader(); fr.onload = () => { try { loadText(String(fr.result)); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } t.value = ''; }; fr.readAsText(t.files[0]); }
 });
 $('libq').addEventListener('input', renderLibrary);
+$('netq').addEventListener('input', renderNets);
 $('explode').addEventListener('input', e => { if (v3) { v3.explode = parseFloat(e.target.value); v3.sync(); } });
 document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
   const k = e.key.toLowerCase();
-  if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); }
+  if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); doRedo(); }
+  else if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); }
   else if (k === 'r') rotateSel(); else if (k === 'f') flipSel();
   else if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); }
   else if (k === 'v') setTool('select'); else if (k === 'w') setTool('wire');
@@ -587,6 +631,6 @@ $('gPreset').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value=
 $('gPreset').value = 'highend';
 fillGen(); renderLibrary(); renderLayers(); resize();
 setBoard(generateGPU(PRESETS.highend));
-stage('', 'リファレンス配置を表示中。「自動レイアウトを再生」で 散布 → 焼きなまし → 配線 → 裏面確認 を実行します。');
+stage('', 'リファレンス配置を表示中。「自動レイアウトを再生」で 計画・整列 → 焼きなまし → 配線 → 裏面確認 を実行します。');
 requestAnimationFrame(frame);
 window.__pcb = { S, play, autoLayout, get v3() { return v3; } };
