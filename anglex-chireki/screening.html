@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ANGLEX 地歴スクリーニング</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Yuji+Syuku&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* Layout: 左＝地点・地図（年代切替）・判読・推移・周辺一覧、右＝追従する判定パネル。ANGLEXの紙×墨×真鍮を継承し、地図系の色は水色系を補助色に */
+:root{
+  --bg:#f5f3ec;--surface:#fbfaf5;--sunk:#ebe8dc;--ink:#1a1a17;--ink2:#3a3a36;--mute:#6f6f68;--faint:#9a948a;
+  --line:#d9d4c0;--line2:#e6e2d4;--accent:#b34a2a;--accent-deep:#8a3419;--accent-soft:#f3d7c8;--brass:#B8A67A;--brass-ink:#7d6c3e;
+  --ok:#3e6b4a;--ok-soft:#d7e6db;--warn:#9a6a12;--warn-soft:#f5e7c8;--bad:#b3261e;--bad-soft:#f6d9d5;
+  --water:#3f6fa3;--water-soft:#d7e3f0;
+  --panel:#13130f;--onpanel:#f5f3ec;--onpanel-mute:#9a948a;
+  --f-body:'IBM Plex Sans JP','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','SF Mono',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#13130f;--surface:#1b1b16;--sunk:#24241e;--ink:#ece9df;--ink2:#cfcbbf;--mute:#9e988c;--faint:#6f6a60;
+  --line:#36362c;--line2:#2b2b23;--accent:#d8714e;--accent-deep:#e58a68;--accent-soft:#3a2219;--brass:#B8A67A;--brass-ink:#cdbb8c;
+  --ok:#86bf95;--ok-soft:#1f2e23;--warn:#dcae4a;--warn-soft:#33290f;--bad:#ec7b72;--bad-soft:#3a1d1a;
+  --water:#7fa6d4;--water-soft:#1c2733;
+  --panel:#0b0b08;--onpanel:#ece9df;--onpanel-mute:#8a857a;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#13130f;--surface:#1b1b16;--sunk:#24241e;--ink:#ece9df;--ink2:#cfcbbf;--mute:#9e988c;--faint:#6f6a60;
+  --line:#36362c;--line2:#2b2b23;--accent:#d8714e;--accent-deep:#e58a68;--accent-soft:#3a2219;--brass:#B8A67A;--brass-ink:#cdbb8c;
+  --ok:#86bf95;--ok-soft:#1f2e23;--warn:#dcae4a;--warn-soft:#33290f;--bad:#ec7b72;--bad-soft:#3a1d1a;
+  --water:#7fa6d4;--water-soft:#1c2733;
+  --panel:#0b0b08;--onpanel:#ece9df;--onpanel-mute:#8a857a;color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--panel)}
+img{max-width:100%}[hidden]{display:none!important}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:var(--water)}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--panel);color:var(--onpanel);border-bottom:1px solid #2a2a22}
+.top-in{max-width:1360px;margin:0 auto;display:flex;align-items:center;gap:22px;min-height:56px;flex-wrap:wrap;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:6px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font-size:22px;font-weight:600;letter-spacing:.04em}
+.brand b i{font-style:normal;color:var(--brass)}
+.brand span{font-family:var(--f-mono);font-size:10px;letter-spacing:.24em;color:var(--onpanel-mute)}
+.tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.tab{background:transparent;border:1px solid transparent;color:var(--onpanel-mute);padding:7px 14px;border-radius:980px;cursor:pointer;font-size:12.5px}
+.tab:hover{color:var(--onpanel);border-color:#3a3a30}
+.tab.on{background:var(--onpanel);color:#13130f;font-weight:600}
+
+.wrap{max-width:1360px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 60px}
+.est{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:22px;align-items:start}
+@media(max-width:1020px){.est{grid-template-columns:1fr}}
+.est>*,.lgrid>*{min-width:0}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.intro{display:flex;gap:14px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.intro h1,.pagehead h1{font-size:21px;margin:0;font-weight:600;text-wrap:balance}
+.intro p,.pagehead p{margin:4px 0 0;color:var(--mute);font-size:12.5px;max-width:66ch}
+.pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.samples{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:980px;padding:6px 12px;font-size:12px;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.sec{background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:16px 18px;min-width:0}
+.sec-h{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.sec-h .k{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--accent);text-transform:uppercase}
+.sec-h h2{font-size:14.5px;margin:0;font-weight:600}
+.sec-h .aside{margin-left:auto;font-size:11.5px;color:var(--mute)}
+.grid{display:grid;gap:10px 12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.f label{font-size:11px;color:var(--mute)}
+.f input,.f select,.f textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--brass);outline:none}
+.f.wide{grid-column:span 2}
+@media(max-width:480px){.f.wide{grid-column:1/-1}}
+.addr{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.addr .f{flex:1 1 260px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:980px;padding:9px 16px;font-size:12.5px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.pri:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.btn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.full{width:100%}
+.btn.mini{padding:5px 11px;font-size:11.5px}
+.derived{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);font-size:12px;color:var(--mute)}
+.derived b{color:var(--ink);font-family:var(--f-mono);font-weight:600}
+.note{font-size:11.5px;color:var(--mute);line-height:1.6;margin-top:10px}
+.note.warn{color:var(--warn)}.note.bad{color:var(--bad)}.note.ok{color:var(--ok)}
+
+/* map */
+.eras{display:flex;gap:4px;flex-wrap:wrap}
+.eras button{border:1px solid var(--line);background:var(--bg);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;line-height:1.2;text-align:left}
+.eras button small{display:block;font-size:9.5px;color:var(--mute);font-family:var(--f-mono)}
+.eras button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.eras button.on small{color:var(--brass)}
+.eras button.flag{box-shadow:inset 0 -3px 0 var(--accent)}
+.mapbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.mapbar label{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}
+.mapbar input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px}
+.mapbar input[type=range]{width:110px;accent-color:var(--accent)}
+#map{height:480px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);z-index:0}
+#map.pick{cursor:crosshair}
+@media(max-width:640px){#map{height:380px}}
+.leaflet-container{font-family:var(--f-body);font-size:12px}
+.leaflet-popup-content-wrapper{border-radius:8px;background:var(--surface);color:var(--ink)}
+.leaflet-popup-tip{background:var(--surface)}
+.leaflet-control-attribution{font-size:9px!important}
+.maplegend{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:11px;color:var(--mute)}
+.maplegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.maplegend i.sq{border-radius:2px}
+.mapmsg{font-family:var(--f-mono);font-size:10.5px;color:var(--mute);margin-top:6px;min-height:14px}
+
+/* photo reading */
+.read{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.read label{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;cursor:pointer;background:var(--bg)}
+.read label.on{border-color:var(--accent);background:var(--accent-soft)}
+.read label b{font-family:var(--f-mono);font-size:12px;font-weight:600}
+.read label span{font-size:11px;color:var(--mute)}
+.read input{accent-color:var(--accent)}
+
+/* landuse strip */
+.lu{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px}
+.lu div{border-radius:5px;padding:7px 4px;text-align:center;font-size:10.5px;line-height:1.3;color:#fff;min-width:0}
+.lu div b{display:block;font-family:var(--f-mono);font-size:10px;opacity:.85}
+@media(max-width:640px){.lu{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.lulegend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:10.5px;color:var(--mute)}
+.lulegend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px}
+
+/* tables */
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+.gt th,.gt td{padding:7px 8px;border-bottom:1px solid var(--line2);font-size:12px;white-space:nowrap;text-align:left;vertical-align:top}
+.gt th{font-family:var(--f-mono);font-size:9.5px;color:var(--mute);border-bottom:1.5px solid var(--ink);font-weight:500}
+.gt .r{text-align:right}
+.gt td.wrap{white-space:normal;min-width:180px}
+.gt tr.near td{background:var(--bad-soft)}
+.gt tr.in td{background:var(--accent-soft)}
+.pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:980px;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.info{background:var(--water-soft);color:var(--water)}.pill.gray{background:var(--sunk);color:var(--mute)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+
+/* aside */
+.res{position:sticky;top:calc(env(safe-area-inset-top,0px) + 72px);display:flex;flex-direction:column;gap:12px;min-width:0;scroll-margin-top:calc(env(safe-area-inset-top,0px) + 72px)}
+@media(max-width:1020px){.res{position:static}}
+.hero{background:var(--panel);color:var(--onpanel);border-radius:14px;padding:18px 20px}
+.hero .lab{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--brass)}
+.hero .score{display:flex;align-items:baseline;gap:12px;margin-top:6px}
+.hero .score b{font-family:var(--f-mono);font-size:44px;font-weight:600;line-height:1}
+.hero .score small{font-size:12px;color:var(--onpanel-mute)}
+.lvl{display:inline-block;font-size:12px;font-weight:600;padding:4px 12px;border-radius:980px}
+.lvl.low{background:#2e4a36;color:#bfe3c9}.lvl.mid{background:#4a3a12;color:#f0cf7a}.lvl.high{background:#4a1a15;color:#f3a69c}
+.hero .reco{font-size:12.5px;margin-top:11px;line-height:1.6}
+.gauge{height:7px;border-radius:4px;background:linear-gradient(90deg,#86bf95 0 15%,#dcae4a 15% 40%,#ec7b72 40%);position:relative;margin-top:12px;opacity:.9}
+.gauge i{position:absolute;top:-4px;width:3px;height:15px;background:#fff;border-radius:2px;transform:translateX(-50%)}
+.chain{display:flex;flex-wrap:wrap;gap:5px;margin-top:13px;padding-top:12px;border-top:1px solid #2e2e26}
+.chain span{font-family:var(--f-mono);font-size:10.5px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,.07);color:var(--onpanel)}
+.chain span em{font-style:normal;color:var(--onpanel-mute);margin-right:4px}
+.chain span.hot{background:rgba(216,113,78,.28)}
+.chain span.zero{opacity:.45}
+.card{background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:14px 16px}
+.card h3{margin:0 0 10px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h3 .x{margin-left:auto;font-weight:400;font-size:10.5px;color:var(--mute);font-family:var(--f-mono)}
+.rule{display:grid;grid-template-columns:1fr auto;gap:6px 10px;font-size:12px;align-items:start}
+.rule .t{color:var(--ink2)}
+.rule .t small{display:block;color:var(--mute);font-size:10.5px}
+.ck{display:flex;flex-direction:column;gap:5px}
+.ck div{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line2)}
+.ck div:last-child{border-bottom:0}
+.ck small{display:block;color:var(--mute);font-size:10.5px}
+.ck-sum{display:flex;gap:14px;margin-top:10px;font-size:11.5px;color:var(--mute);flex-wrap:wrap}
+.ck-sum b{font-family:var(--f-mono);color:var(--ink)}
+.srcs{font-size:11px;color:var(--mute);line-height:1.7}
+
+/* sources page */
+.lgrid{display:grid;grid-template-columns:1fr;gap:14px}
+.st td.wrap{white-space:normal;min-width:200px;max-width:380px}
+.st td.wrap small{display:block;color:var(--mute);font-size:10.5px;margin-top:2px}
+
+/* import */
+.drop{display:block;cursor:pointer;border:1.5px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--mute);background:var(--bg);font-size:12.5px}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop input{display:none}
+.prog{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden;margin-top:10px}
+.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+
+/* mobile bar */
+.mbar{display:none}
+@media(max-width:1020px){
+  .mbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:25;align-items:center;gap:12px;background:var(--panel);color:var(--onpanel);border-top:1px solid #2a2a22;
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:9px;padding-bottom:calc(9px + env(safe-area-inset-bottom,0px))}
+  .mbar .t{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.14em;color:var(--brass)}
+  .mbar .v{font-family:var(--f-mono);font-size:20px;font-weight:600;line-height:1.15;display:flex;gap:8px;align-items:center}
+  .mbar .btn{margin-left:auto;border-color:#3a3a30;color:var(--onpanel);background:transparent;padding:7px 13px;font-size:12px}
+  .wrap{padding-bottom:96px}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))!important}
+}
+@media(max-width:640px){
+  .sec{padding:14px 14px}
+  .hero .score b{font-size:38px}
+}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,140%);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:980px;font-size:12.5px;transition:transform .3s;z-index:50;max-width:calc(100% - 32px)}
+.toast.show{transform:translate(-50%,0)}
+/* ── 閉鎖謄本 ── */
+.tou-top{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
+@media(max-width:640px){.tou-top{grid-template-columns:1fr}}
+.sheet{background:#ebe2c9;background-image:radial-gradient(rgba(110,80,30,.10) 1px,transparent 1px);background-size:7px 7px;border:1px solid #b9a67a;border-radius:4px;padding:14px 16px;overflow-x:auto;position:relative;color:#2b2217;box-shadow:inset 0 0 40px rgba(90,60,20,.12)}
+.sheet-in{writing-mode:vertical-rl;text-orientation:mixed;height:430px;font-family:'Yuji Syuku','Hiragino Mincho ProN',serif;font-size:15px;line-height:1.7;display:flex;flex-direction:column;gap:0;width:max-content;margin-left:auto}
+.sheet .ku{border-right:1.5px solid #6b5a3a;padding:0 6px;display:flex;flex-direction:column}
+.sheet .ku:last-child{border-right:0}
+.sheet .kh{background:#d9ccab;color:#3a2d18;padding:8px 5px;font-size:16px;letter-spacing:.2em;border-left:1.5px solid #6b5a3a;margin-left:2px;flex:none}
+.sheet .en{border-left:1px solid #9c8a62;padding:4px 6px;position:relative;cursor:pointer;height:100%;max-width:none}
+.sheet .en .no{font-size:13px;color:#7a2a1a;margin-bottom:6px;display:block}
+.sheet .en.struck{text-decoration:line-through;text-decoration-color:rgba(192,57,43,.85);text-decoration-thickness:2px}
+.sheet .en.hl{background:rgba(179,74,42,.18);outline:2px solid #b34a2a}
+.sheet .en .u{border-bottom:2px dotted #b34a2a}
+.stamp{position:absolute;right:26px;top:18px;writing-mode:horizontal-tb;border:2.5px solid rgba(192,57,43,.8);color:rgba(192,57,43,.85);font-family:'Yuji Syuku',serif;font-size:15px;padding:4px 9px;transform:rotate(-7deg);letter-spacing:.12em;line-height:1.4;text-align:center;background:rgba(255,255,255,.15);pointer-events:none}
+.sheet img{max-height:540px;width:auto;max-width:100%;display:block;margin:0 auto}
+.sheet-cap{font-family:var(--f-mono);font-size:10.5px;color:var(--mute);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+.conf{display:inline-block;width:46px;height:6px;border-radius:3px;background:var(--sunk);vertical-align:middle;margin-right:5px;overflow:hidden}
+.conf i{display:block;height:100%}
+.tt td{white-space:normal;min-width:0}
+.tt td.nw{white-space:nowrap}
+.tt td.struck{text-decoration:line-through;text-decoration-color:var(--bad);color:var(--mute)}
+@media(max-width:640px){
+  .tt thead{display:none}
+  .tt,.tt tbody{display:block}
+  .tt tr{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;padding:9px 8px;border-bottom:1px solid var(--line2)}
+  .tt td{display:block;padding:0;border:0;text-align:left}
+  .tt td.r{text-align:left}
+  .tt td::before{content:attr(data-label);display:block;font-family:var(--f-mono);font-size:9px;color:var(--mute);margin-bottom:1px}
+  .tt td.full{grid-column:1/-1}
+  .tt tr.ind td{box-shadow:none}.tt tr.ind{box-shadow:inset 3px 0 0 var(--accent)}
+  .sheet-in{height:400px;font-size:14px}
+  .sheet img{max-height:400px}
+}
+.tt tr.unc td{background:var(--warn-soft)}
+.tt tr.ind td{box-shadow:inset 3px 0 0 var(--accent)}
+.tl{margin-top:4px}
+.tl svg{width:100%;height:auto;display:block}
+.kw{display:flex;flex-direction:column;gap:6px}
+.kw div{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line2)}
+.kw div:last-child{border-bottom:0}
+.kw .k{font-family:var(--f-mono);font-size:11px;background:var(--sunk);padding:2px 7px;border-radius:5px}
+.kw small{display:block;color:var(--mute);font-size:10.5px}
+.ai{display:grid;gap:10px 12px;grid-template-columns:1fr 160px;align-items:end}
+@media(max-width:640px){.ai{grid-template-columns:1fr}}
+.hero .sub{display:flex;gap:16px;flex-wrap:wrap;margin-top:9px;font-size:11.5px;color:var(--onpanel-mute)}
+.hero .sub b{color:var(--onpanel);font-family:var(--f-mono);font-weight:500}
+.hero .big{font-family:var(--f-mono);font-size:30px;font-weight:600;line-height:1.1;margin-top:6px}
+.hero .big small{font-size:12px;color:var(--onpanel-mute);font-weight:400;margin-left:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* ── 報告書 ── */
+.rule.kv{grid-template-columns:max-content 1fr}.rule.kv>span{min-width:0;overflow-wrap:anywhere}.rule.kv .t{max-width:9em}
+.sub-h{font-size:12px;font-weight:600;margin:14px 0 6px;color:var(--ink2)}
+.chks{display:flex;flex-direction:column;gap:6px}
+.chk{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;font-size:12px;padding:8px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--line2);line-height:1.5}
+.chk.bad{box-shadow:inset 3px 0 0 var(--bad)}.chk.warn{box-shadow:inset 3px 0 0 var(--warn)}.chk.ok{box-shadow:inset 3px 0 0 var(--ok)}.chk.info{box-shadow:inset 3px 0 0 var(--water)}
+.chk .pill{margin-top:2px}
+.chk .pg{font-family:var(--f-mono);font-size:10.5px;border:1px solid var(--line);background:var(--surface);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--water)}
+.chk .pg:hover{border-color:var(--water)}
+.pagebox{background:var(--sunk);border:1px solid var(--line);border-radius:8px;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pagebox canvas{max-width:100%;display:block;background:#fff}
+.doc{margin-top:14px;overflow-x:auto;background:#fff;color:#161616;font-family:'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;font-size:12.5px;line-height:1.8;padding:40px 44px;border:1px solid var(--line);border-radius:4px;max-width:820px;box-shadow:0 1px 0 rgba(0,0,0,.04),0 12px 30px -18px rgba(0,0,0,.35)}
+.doc:focus{outline:2px solid var(--brass)}
+.doc .cover{text-align:center;padding:60px 0 50px;border-bottom:1px solid #ddd;margin-bottom:28px}
+.doc .ct{font-size:20px;letter-spacing:.08em}.doc .ct2{font-size:18px;margin-top:40px;letter-spacing:.3em}.doc .cd{margin-top:50px}.doc .co{margin-top:28px;font-size:14px}
+.doc .draft{display:inline-block;margin-top:22px;font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;color:#8a3419;border:1px solid #c98f7a;padding:3px 10px;border-radius:3px}
+.doc h2{font-size:15px;margin:26px 0 8px;font-weight:600}.doc h3{font-size:13px;margin:16px 0 6px;font-weight:600}
+.doc p{margin:4px 0 8px}.doc p.cap{font-size:11px;color:#555}
+.doc table{border-collapse:collapse;width:100%;margin:6px 0 10px;font-size:11.5px}
+.doc th,.doc td{border:1px solid #777;padding:5px 7px;text-align:left;vertical-align:top}.doc th{background:#eee;font-weight:500;white-space:nowrap}
+.doc .shoken{border:1.5px solid #333;margin:8px 0}.doc .sh{background:#ddd;text-align:center;padding:4px;letter-spacing:.4em}.doc .shh{text-align:center;font-weight:700;padding:10px;border-bottom:1px solid #333}.doc .sht{padding:10px 12px}
+#rep-printarea{display:none}
+@media(max-width:640px){.doc{padding:22px 16px}.chk{grid-template-columns:auto 1fr}.chk .pg{grid-column:2}}
+@media print{
+  body.print-rep .top,body.print-rep .wrap,body.print-rep .mbar,body.print-rep .toast{display:none!important}
+  body.print-rep #rep-printarea{display:block;background:#fff;color:#161616;font-family:'Noto Serif JP','Hiragino Mincho ProN',serif;font-size:11.5pt;line-height:1.8}
+  body.print-rep #rep-printarea .cover{page-break-after:always;text-align:center;padding-top:120pt}
+  body.print-rep #rep-printarea table{border-collapse:collapse;width:100%}body.print-rep #rep-printarea th,body.print-rep #rep-printarea td{border:1px solid #777;padding:4pt 6pt;text-align:left}
+  body.print-rep #rep-printarea .shoken{border:1.5px solid #333}body.print-rep #rep-printarea .sh{background:#ddd;text-align:center}body.print-rep #rep-printarea .shh{text-align:center;font-weight:700;padding:8pt}body.print-rep #rep-printarea .sht{padding:8pt}
+}
+
+@media print{body:not(.print-rep) .top,body:not(.print-rep) .mbar,.toast,.samples,.mapbar,.addr .btn{display:none!important}.est{grid-template-columns:1fr}.res{position:static}.hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <div class="brand"><b>ANGLEX<i>.</i></b><span>地歴スクリーニング</span></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab on" data-v="site">調査</button>
+    <button class="tab" data-v="tou">閉鎖謄本</button>
+    <button class="tab" data-v="src">データソース</button>
+    <button class="tab" data-v="imp">取込</button>
+    <button class="tab" data-v="rep">報告書</button>
+  </nav>
+</div></header>
+
+<main class="wrap">
+<!-- ═════════ 調査 ═════════ -->
+<section class="view" id="v-site">
+  <div class="est">
+    <div class="col">
+      <div class="intro">
+        <div><h1 id="t-name">—</h1>
+          <p>住所を入れると、地歴調査（Phase 1）で集める公開資料を1画面に集約します。年代別の空中写真・地形・法指定区域・有害物質取扱事業場・土地利用の推移を重ね、着手前の当たりを付けます。</p></div>
+        <div class="samples" id="samples"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Site</span><h2>対象地</h2><span class="aside" id="s-geo"></span></div>
+        <div class="addr">
+          <div class="f"><label for="i-addr">住所（町丁目まで）</label><input id="i-addr" placeholder="例：東京都大田区下丸子三丁目"></div>
+          <button class="btn pri" id="b-geo" type="button">住所を検索</button>
+          <button class="btn" id="b-pick" type="button">地図上で地点を指定</button>
+        </div>
+        <div class="grid" style="margin-top:12px">
+          <div class="f"><label for="i-area">敷地面積 (m²)</label><input id="i-area" type="number" min="1"></div>
+          <div class="f wide"><label for="i-youto">用途地域（不動産情報ライブラリ XKT002 相当・手入力可）</label><select id="i-youto"></select></div>
+          <div class="f"><label for="i-deal">案件種別</label><select id="i-deal"><option>仕入（購入）</option><option>販売（売却）</option><option>開発（形質変更あり）</option><option>賃貸・運用</option></select></div>
+          <div class="f"><label for="i-radius">周辺検索半径 (m)</label><select id="i-radius"><option>250</option><option selected>500</option><option>1000</option></select></div>
+        </div>
+        <div class="derived" id="d-site"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Aerial</span><h2>年代別空中写真と地形</h2><span class="aside">地理院タイル（国土地理院）をそのまま重ねています</span></div>
+        <div class="eras" id="eras"></div>
+        <div class="mapbar">
+          <label>写真の透過 <input type="range" id="i-op" min="20" max="100" value="100"></label>
+          <label><input type="checkbox" id="ov-swale"> 明治期の低湿地</label>
+          <label><input type="checkbox" id="ov-lcm"> 土地条件図</label>
+          <label><input type="checkbox" id="ov-buf" checked> 100 / 250 / 500m</label>
+          <label><input type="checkbox" id="ov-zone" checked> 法指定区域</label>
+          <label><input type="checkbox" id="ov-fac" checked> 事業場</label>
+        </div>
+        <div id="map"></div>
+        <div class="mapmsg" id="mapmsg"></div>
+        <div class="maplegend"><span><i style="background:#b34a2a"></i>対象地</span><span><i class="sq" style="background:#b3261e;opacity:.7"></i>要措置区域</span><span><i class="sq" style="background:#d9881f;opacity:.8"></i>形質変更時要届出区域</span><span><i style="background:#8e2fa8"></i>水濁法・有害物質使用</span><span><i style="background:#3f6fa3"></i>PRTR届出事業所</span><span><i style="background:#6f6f68"></i>水濁法（有害物質なし）</span></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Reading</span><h2>写真判読メモ</h2><span class="aside">工場・作業場・資材置場・タンク等を確認した年代に印を付けます</span></div>
+        <div class="read" id="read"></div>
+        <div class="grid" style="margin-top:10px"><div class="f wide" style="grid-column:1/-1"><label for="i-rnote">判読の所見</label><textarea id="i-rnote" rows="2"></textarea></div></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Land use</span><h2>土地利用の推移</h2><span class="aside">国土数値情報 土地利用細分メッシュ（100m）対象地の属するメッシュ</span></div>
+        <div class="lu" id="lu"></div>
+        <div class="lulegend" id="lulegend"></div>
+        <div class="note" id="lu-note"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Designated</span><h2>法指定区域（土壌汚染対策法）</h2><span class="aside" id="z-x"></span></div>
+        <div class="tblwrap"><table class="gt"><thead><tr><th>区域</th><th>指定番号</th><th>所在地</th><th class="r">距離</th><th class="r">面積 m²</th><th>基準不適合物質</th><th>指定</th></tr></thead><tbody id="ztb"></tbody></table></div>
+        <div class="note" id="z-note"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Facilities</span><h2>周辺の有害物質取扱事業場</h2><span class="aside" id="f-x"></span></div>
+        <div class="tblwrap"><table class="gt"><thead><tr><th>事業場</th><th>区分</th><th class="r">距離</th><th>方位</th><th>取扱物質・業種</th><th>出典</th></tr></thead><tbody id="ftb"></tbody></table></div>
+        <div class="note">距離は対象地中心からの直線距離です。地下水の流向（概ね低地側）に対象地が位置する事業場は影響を受けやすいため、方位も併記しています。</div>
+      </div>
+    </div>
+
+    <aside class="res">
+      <div class="hero">
+        <div class="lab">地歴リスク指標（スクリーニング）</div>
+        <div class="score"><b id="r-score">—</b><small>/ 100</small><span class="lvl low" id="r-lvl">—</span></div>
+        <div class="gauge"><i id="r-pin" style="left:0"></i></div>
+        <div class="reco" id="r-reco"></div>
+        <div class="chain" id="r-chain"></div>
+      </div>
+      <div class="card">
+        <h3>届出・調査義務の当たり<span class="x" id="r-rulex">土対法</span></h3>
+        <div class="rule" id="r-rule"></div>
+      </div>
+      <div class="card">
+        <h3>資料収集チェックリスト<span class="x" id="ck-x"></span></h3>
+        <div class="ck" id="ck"></div>
+        <div class="ck-sum" id="ck-sum"></div>
+      </div>
+      <div class="card">
+        <h3>出典</h3>
+        <div class="srcs">国土地理院 地理院タイル（年代別空中写真・淡色地図・明治期の低湿地・土地条件図）／国土交通省 国土数値情報 土地利用細分メッシュ／都道府県・政令市 要措置区域等台帳／東京都環境局 水質汚濁防止法届出事業場リスト／環境省 PRTR届出データ。<b>法指定区域・事業場の点はデモ用サンプルです。</b>実データは「取込」からCSVで差し替えます。</div>
+      </div>
+      <button class="btn pri full" id="b-print" type="button">調査メモを印刷（PDF保存）</button>
+    </aside>
+  </div>
+</section>
+
+<!-- ═════════ 閉鎖謄本 ═════════ -->
+<section class="view" id="v-tou" hidden>
+  <div class="est">
+    <div class="col">
+      <div class="intro">
+        <div><h1>閉鎖登記簿謄本の読み取り</h1>
+          <p>手書き・縦書きの閉鎖謄本から、表題部（地目・地積の変遷）と甲区（所有者の変遷）、乙区（担保）を構造化します。所有者名から事業用途を推定し、「調査」タブのリスク指標に反映します。読み取りの自信が低い箇所は要確認として人の目に回します。</p></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Source</span><h2>謄本の画像</h2><span class="aside" id="tou-src">サンプル（手書き謄本の再現）</span></div>
+        <div class="tou-top">
+          <label class="drop" id="tou-drop">謄本のスキャン画像（JPG/PNG）またはPDFをここにドロップ<br><small>縦書き・旧字体・朱抹消を含む閉鎖謄本を想定。長辺1,600px程度に縮小して送ります</small><input type="file" id="tou-file" accept="image/*,application/pdf"></label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="tou-sample" type="button">サンプル謄本を読む</button></div>
+        </div>
+        <div class="ai" style="margin-top:12px">
+          <div class="f"><label for="tou-key">Claude APIキー（AIで実物を読む場合のみ。ブラウザ内でしか使いません）</label><input id="tou-key" type="password" placeholder="sk-ant-…" autocomplete="off"></div>
+          <div class="f"><label for="tou-model">モデル</label><select id="tou-model"><option>claude-sonnet-5-5</option><option>claude-opus-5-5</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center"><button class="btn pri" id="tou-ai" type="button">AIで読み取る</button><span class="note" id="tou-msg" style="margin:0"></span></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Scan</span><h2 id="tou-title">謄本</h2><span class="aside">行をクリックすると該当箇所を示します（サンプルのみ）</span></div>
+        <div style="position:relative"><div class="sheet" id="sheet"></div><div class="stamp" id="stamp" hidden></div></div>
+        <div class="sheet-cap" id="sheet-cap"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">表題部</span><h2>所在・地目・地積の変遷</h2><span class="aside" id="hy-x"></span></div>
+        <div class="tblwrap"><table class="gt tt"><thead><tr><th>番号</th><th>年月日</th><th>原因</th><th>地目</th><th>地積（原文）</th><th class="r">㎡換算</th><th>信頼度</th></tr></thead><tbody id="hytb"></tbody></table></div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><span class="k">甲区</span><h2>所有権の変遷</h2><span class="aside">左の赤い帯＝事業用途の疑いがある所有者</span></div>
+        <div class="tblwrap"><table class="gt tt"><thead><tr><th>順位</th><th>受付</th><th>原因</th><th>所有者</th><th>住所</th><th>用途推定</th><th>信頼度</th></tr></thead><tbody id="kotb"></tbody></table></div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><span class="k">乙区</span><h2>担保権など</h2><span class="aside">抹消済みは取り消し線。債務者名も事業用途の手がかりになります</span></div>
+        <div class="tblwrap"><table class="gt tt"><thead><tr><th>順位</th><th>受付</th><th>権利</th><th>債権額</th><th>債務者</th><th>状態</th><th>信頼度</th></tr></thead><tbody id="ottb"></tbody></table></div>
+      </div>
+    </div>
+
+    <aside class="res">
+      <div class="hero">
+        <div class="lab">登記簿からの所見</div>
+        <div class="big" id="tou-years">—<small>事業用途の所有期間</small></div>
+        <div class="sub" id="tou-sub"></div>
+        <div class="reco" id="tou-reco"></div>
+        <div class="chain" id="tou-chain"></div>
+      </div>
+      <div class="card">
+        <h3>所有者の推移<span class="x" id="tl-x"></span></h3>
+        <div class="tl" id="tl"></div>
+      </div>
+      <div class="card">
+        <h3>用途推定の根拠<span class="x">所有者・債務者名の語句</span></h3>
+        <div class="kw" id="kw"></div>
+      </div>
+      <div class="card">
+        <h3>要確認<span class="x" id="unc-x"></span></h3>
+        <div class="ck" id="unc"></div>
+      </div>
+      <button class="btn pri full" id="tou-apply" type="button">調査タブのリスク指標に反映</button>
+    </aside>
+  </div>
+</section>
+
+<!-- ═════════ データソース ═════════ -->
+<section class="view" id="v-src" hidden>
+  <div class="pagehead"><div><h1>使える公開データと、その扱い</h1><p>地歴調査で集める資料のうち、公開データとして機械的に集められるものと、窓口・有料・ヒアリングが残るものを分けています。「自動」は本プロトタイプで既に表示しているか、取込で対応できるものです。</p></div></div>
+  <div class="sec tblwrap"><table class="gt st"><thead><tr><th>資料</th><th>提供元</th><th>形式</th><th>範囲・粒度</th><th>利用条件</th><th>自動化</th><th>本プロトでの扱い</th></tr></thead><tbody id="stb"></tbody></table></div>
+  <div class="lgrid" style="margin-top:14px">
+    <div class="sec"><div class="sec-h"><span class="k">Gap</span><h2>自動化で埋まらないもの</h2></div>
+      <p class="note" style="margin-top:0">登記事項証明書と閉鎖登記簿（所有者・地目の変遷）、旧版地形図の謄本、住宅地図の旧版、所有者・近隣へのヒアリング、現地踏査は、公開データでは置き換えられません。本プロトはこれらの「取りに行く前の当たり付け」と「取った資料を1枚にまとめる台紙」を担当します。</p>
+      <p class="note">東京都の要措置区域等はExcelで公開されていますが所在地は町丁目＋「地内」止まりのため、区画の特定には台帳の閲覧（窓口）が必要です。静岡県はCC BYのxlsxで公開しており、同じ列構成（区域の別・指定番号・指定年月日・所在地・面積・不適合項目）なので取込の雛形にしています。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ 取込 ═════════ -->
+<section class="view" id="v-imp" hidden>
+  <div class="pagehead"><div><h1>台帳・リストの取込</h1><p>都道府県が公開する要措置区域等の一覧（CSV）や、水濁法届出事業場リスト・PRTR届出データ（住所付き）を読み込み、住所から概略座標を付けて地図に重ねます。座標は国土地理院の住所検索APIで町丁目代表点を取るため、区画の位置は概略です。</p></div></div>
+  <div class="est">
+    <div class="col">
+      <div class="sec">
+        <div class="sec-h"><span class="k">Import</span><h2>CSVを読み込む</h2><span class="aside">UTF-8 / Shift_JIS 自動判別</span></div>
+        <div class="grid" style="margin-bottom:10px">
+          <div class="f wide"><label for="i-kind">データの種類</label><select id="i-kind"><option value="zone">要措置区域・形質変更時要届出区域の一覧</option><option value="fac">水濁法 届出事業場リスト（有害物質使用の有無）</option><option value="prtr">PRTR 届出事業所（本紙.txt）</option></select></div>
+          <div class="f"><label for="i-max">ジオコーディング上限（件）</label><input id="i-max" type="number" value="40" min="1" max="300"></div>
+        </div>
+        <label class="drop" id="drop">CSVをここにドロップ、またはクリックして選択<br><small>列名から「所在地／住所」「指定番号」「面積」「不適合項目／有害物質」「区域の別」を自動で見つけます</small><input type="file" id="i-file" accept=".csv,.txt,text/csv,text/plain"></label>
+        <div class="prog"><i id="prog"></i></div>
+        <div class="note" id="imp-msg"></div>
+        <button class="btn" id="b-demo" type="button" style="margin-top:10px">静岡県形式のサンプルCSVで試す</button>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><span class="k">Preview</span><h2>読み込んだ行</h2><span class="aside" id="imp-x"></span></div>
+        <div class="tblwrap"><table class="gt"><thead><tr><th>#</th><th>種類</th><th>名称・番号</th><th>所在地</th><th>物質・備考</th><th>座標</th><th>状態</th></tr></thead><tbody id="itb"></tbody></table></div>
+      </div>
+    </div>
+    <aside class="res">
+      <div class="card"><h3>列の対応づけ</h3><div class="rule" id="imp-map"><span class="t" style="color:var(--mute)">CSVを読み込むとここに表示</span></div></div>
+      <div class="card"><h3>実運用での置き換え</h3>
+        <div class="note" style="margin-top:0">本番では、ブラウザからの住所検索ではなく、サーバー側で（1）都道府県の一覧を定期取得、（2）住所正規化とジオコーディング、（3）不動産情報ライブラリAPIの用途地域・大規模盛土・液状化傾向をタイル単位でキャッシュ、の3つをバッチ化します。不動産情報ライブラリAPIはブラウザからの直接呼び出しが禁止されているため、この画面では手入力にしています。</div></div>
+    </aside>
+  </div>
+</section>
+</main>
+
+<!-- ═════════ 報告書 ═════════ -->
+<section class="view" id="v-rep" hidden>
+  <div class="pagehead"><div><h1>報告書の読み取り・照合・下書き</h1><p>既往の地歴調査報告書（PDF）を章ごとに構造化して読み込み、記載どうしの整合と、法令・都道府県条例レジストリとの照合を行います。調査タブの状態からは同じ章立ての報告書を下書きします。</p></div>
+    <div class="samples" id="rep-samples"></div></div>
+  <div class="est">
+    <div class="col">
+      <div class="sec">
+        <div class="sec-h"><span class="k">Source</span><h2>既往報告書を読み込む</h2><span class="aside" id="rep-src">—</span></div>
+        <label class="drop" id="rep-drop">地歴調査報告書のPDFをここにドロップ、またはクリックして選択<br><small>スキャンPDF可（46頁・4.5MB程度まで確認済）。読み取りは章立て（調査概要／登記簿／地図・空中写真／ヒアリング／法規制／所見）に沿ってJSON化します</small><input type="file" id="rep-file" accept="application/pdf,image/*"></label>
+        <div class="ai" style="margin-top:10px">
+          <div class="f"><label for="rep-key">Claude APIキー（実物を読む場合のみ。閉鎖謄本タブのキーも使えます）</label><input id="rep-key" type="password" placeholder="sk-ant-…" autocomplete="off"></div>
+          <div class="f"><label for="rep-model">モデル</label><select id="rep-model"><option>claude-opus-5-5</option><option>claude-sonnet-5-5</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center"><button class="btn pri" id="rep-ai" type="button">AIで読み取る</button><span class="note" id="rep-msg" style="margin:0">上の2つは実物の報告書を読み取り済みのサンプルです。PDFを入れると、同じ形式で構造化します</span></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Verify</span><h2>記載の整合性チェック</h2><span class="aside">p.番号を押すと右にページを表示（PDF読み込み時）</span></div>
+        <div class="chks" id="rep-chk"><div class="note" style="margin:0">報告書を読み込むとここに表示します</div></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Extracted</span><h2 id="rep-title">読み取り内容</h2></div>
+        <div class="rule kv" id="rep-ov"></div>
+        <h4 class="sub-h">調査対象地の筆及び一覧表</h4>
+        <div class="tblwrap"><table class="gt"><thead><tr><th>#</th><th>所在</th><th>地番</th><th>地目</th><th class="r">地積 m²</th><th>所有者</th></tr></thead><tbody id="rep-par"></tbody></table></div>
+        <h4 class="sub-h">登記簿謄本による対象地の地歴</h4>
+        <div class="tblwrap"><table class="gt tt"><thead><tr><th>登記年月日</th><th>原因</th><th>登記名義人等</th><th>地目</th><th class="r">地積</th></tr></thead><tbody id="rep-tk"></tbody></table></div>
+        <h4 class="sub-h">地形図・住宅地図・空中写真による利用履歴</h4>
+        <div class="tblwrap"><table class="gt tt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody id="rep-mp"></tbody></table></div>
+        <div class="note" id="rep-mpn"></div>
+        <h4 class="sub-h">ヒアリング調査及び現地踏査</h4>
+        <div class="rule kv" id="rep-hr"></div>
+        <h4 class="sub-h">法規制調査</h4>
+        <div class="tblwrap"><table class="gt"><thead><tr><th>確認項目</th><th>結果</th><th>照会先・根拠</th></tr></thead><tbody id="rep-rg"></tbody></table></div>
+        <h4 class="sub-h">所見</h4>
+        <div class="note" id="rep-rs" style="margin-top:0;color:var(--ink)"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Ordinance</span><h2>法・条例との照合</h2><span class="aside" id="rep-ordx"></span></div>
+        <div class="tblwrap"><table class="gt"><thead><tr><th>区分</th><th>根拠</th><th>判定</th><th>報告書の記載</th><th>登録状態</th></tr></thead><tbody id="rep-ord"></tbody></table></div>
+        <div class="note" id="rep-ordnote"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="k">Draft</span><h2>報告書の下書きを作る</h2><span class="aside" id="rep-docx">調査タブの状態・閉鎖謄本・読み込んだ報告書から生成</span></div>
+        <div class="grid">
+          <div class="f"><label for="rep-org">調査機関</label><input id="rep-org" placeholder="株式会社○○（指定番号）"></div>
+          <div class="f"><label for="rep-by">担当者</label><input id="rep-by"></div>
+          <div class="f"><label for="rep-period">調査期間</label><input id="rep-period" placeholder="令和7年10月1日〜令和7年10月20日"></div>
+          <div class="f"><label for="rep-level">所見（空欄＝指標から自動）</label><select id="rep-level"><option value="">自動</option><option value="低">低</option><option value="中">中</option><option value="高">高</option></select></div>
+          <div class="f wide" style="grid-column:1/-1"><label for="rep-hear">ヒアリング：土地の主な利用履歴</label><textarea id="rep-hear" rows="2"></textarea></div>
+          <div class="f wide" style="grid-column:1/-1"><label for="rep-site">現地踏査による土地使用状況</label><textarea id="rep-site" rows="2"></textarea></div>
+          <div class="f wide" style="grid-column:1/-1"><label for="rep-op">所見本文（空欄なら判定結果から下書き）</label><textarea id="rep-op" rows="4"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
+          <button class="btn pri" id="rep-build" type="button">下書きを生成</button>
+          <button class="btn" id="rep-draft" type="button">所見を判定結果から書き直す</button>
+          <button class="btn" id="rep-polish" type="button">AIで所見を整文</button>
+          <button class="btn" id="rep-print" type="button">印刷（PDF保存）</button>
+          <button class="btn" id="rep-json" type="button">JSONで保存</button>
+          <span class="note" id="rep-msg2" style="margin:0"></span>
+        </div>
+        <div class="doc" id="rep-doc" contenteditable="true" spellcheck="false" hidden></div>
+      </div>
+    </div>
+
+    <aside class="res">
+      <div class="hero">
+        <div class="lab">報告書の整合性</div>
+        <div class="score"><b id="rep-nbad">—</b><small>件 要修正</small><span class="lvl low" id="rep-lvl">—</span></div>
+        <div class="sub"><span>要確認 <b id="rep-nwarn">—</b></span><span>整合・参考 <b id="rep-nok">—</b></span></div>
+        <div class="reco" id="rep-reco">報告書を読み込むと、地積・地番・年次・用途と所見・法規制の網羅・条例・法令の版・日付・添付資料を突き合わせます。</div>
+        <div class="chain" id="rep-chain"></div>
+      </div>
+      <div class="card">
+        <h3>該当ページ<span class="x" id="rep-pgmsg">PDF未読込</span></h3>
+        <div class="pagebox"><canvas id="rep-page" width="10" height="10"></canvas></div>
+        <div style="display:flex;gap:6px;margin-top:8px"><button class="btn mini" id="rep-prev" type="button">前</button><button class="btn mini" id="rep-next" type="button">次</button></div>
+      </div>
+      <div class="card">
+        <h3>条例レジストリ<span class="x">JSONで差し替え可</span></h3>
+        <div class="ck" id="ord-list"></div>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center"><label class="btn mini" for="ord-file" style="cursor:pointer">JSONを読み込む<input id="ord-file" type="file" accept="application/json" hidden></label><button class="btn mini" id="ord-dl" type="button">現在のJSONを保存</button><span class="note" id="ord-msg" style="margin:0"></span></div>
+        <div class="note">「確認済」は条文・閾値を確認した項目。「要確認」「下書き」は法務確認前です。</div>
+      </div>
+      <button class="btn pri full" id="rep-apply" type="button" disabled>読み取った報告書を調査タブに反映</button>
+    </aside>
+  </div>
+</section>
+<div id="rep-printarea"></div>
+
+<div class="mbar" id="mbar">
+  <div><div class="t">地歴リスク指標</div><div class="v"><span id="mb-score">—</span><span class="lvl low" id="mb-lvl" style="font-size:10.5px;padding:2px 9px">—</span></div></div>
+  <button class="btn" id="mb-go" type="button">判定を見る</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3600);}
+
+/* ── 定数 ── */
+const ERAS=[
+ {id:'1936',label:'1936頃',tile:'ort_riku10',ext:'png',min:13,max:18,note:'東京23区・大阪周辺のみ'},
+ {id:'1945',label:'1945–50',tile:'ort_USA10',ext:'png',min:10,max:17},
+ {id:'1961',label:'1961–69',tile:'ort_old10',ext:'png',min:10,max:17},
+ {id:'1974',label:'1974–78',tile:'gazo1',ext:'jpg',min:10,max:17},
+ {id:'1979',label:'1979–83',tile:'gazo2',ext:'jpg',min:10,max:17},
+ {id:'1984',label:'1984–86',tile:'gazo3',ext:'jpg',min:10,max:17},
+ {id:'1987',label:'1987–90',tile:'gazo4',ext:'jpg',min:10,max:17},
+ {id:'now',label:'最新',tile:'seamlessphoto',ext:'jpg',min:14,max:18},
+];
+const LU_YEARS=[1976,1987,1991,1997,2006,2009,2014,2016,2021];
+const LU_COL={'田':'#7fb27a','その他の農用地':'#a8c66c','森林':'#3f7a4a','荒地':'#b9a37a','建物用地':'#c9705a','道路':'#8a8a84','鉄道':'#5f5f5a','その他の用地':'#d9a02f','河川地及び湖沼':'#6aa5d8','海浜':'#d9c98a','海水域':'#4f7fbf','ゴルフ場':'#9ccc65'};
+const YOUTO=[['第一種低層住居専用地域',0],['第二種低層住居専用地域',0],['第一種中高層住居専用地域',0],['第二種中高層住居専用地域',0],['第一種住居地域',0],['第二種住居地域',2],['準住居地域',2],['田園住居地域',0],['近隣商業地域',3],['商業地域',3],['準工業地域',8],['工業地域',12],['工業専用地域',15],['市街化調整区域（用途地域なし）',0],['不明・未取得',0]];
+const FCOL={haz:'#8e2fa8',prtr:'#3f6fa3',plain:'#6f6f68'};
+function off(lat,lng,dN,dE){return [lat+dN/111000,lng+dE/(111000*Math.cos(lat*Math.PI/180))];}
+
+/* ── サンプル地点（法区域・事業場の点はデモ用） ── */
+const SITES=[
+ {k:'大田区 工場跡地',name:'大田区下丸子 工場跡地（サンプル）',addr:'東京都大田区下丸子三丁目',lat:35.5712,lng:139.6855,area:4200,youto:10,deal:2,
+  landcond:'低地（氾濫平野・多摩川沿い）',swale:false,morido:false,liq:'液状化の可能性が高い地形',
+  photo:{'1936':false,'1945':true,'1961':true,'1974':true,'1979':true,'1984':true,'1987':false,'now':false},
+  rnote:'1945〜1984年の写真で鋸屋根の工場建屋と屋外タンク様の構造物を確認。1987年以降は更地→集合住宅。',
+  lu:['建物用地','建物用地','建物用地','建物用地','建物用地','その他の用地','建物用地','建物用地','建物用地'],
+  zones:[
+   {type:'形質変更時要届出区域',no:'サンプル 大田-07',addr:'大田区下丸子三丁目 地内',d:[-140,120],area:1850,subs:'鉛、ふっ素',date:'2019-03'},
+   {type:'要措置区域',no:'サンプル 大田-02',addr:'大田区下丸子二丁目 地内',d:[380,-260],area:620,subs:'六価クロム',date:'2016-11'},
+  ],
+  fac:[
+   {name:'（サンプル）表面処理工業所',cat:'haz',d:[90,-70],subs:'六価クロム・シアン化合物（めっき）',src:'東京都 水濁法届出事業場リスト'},
+   {name:'（サンプル）精密部品 工場',cat:'prtr',d:[-210,160],subs:'トルエン・キシレン（塗装）',src:'環境省 PRTR R06'},
+   {name:'（サンプル）クリーニング店',cat:'haz',d:[310,230],subs:'テトラクロロエチレン',src:'東京都 水濁法届出事業場リスト'},
+   {name:'（サンプル）食品製造',cat:'plain',d:[-420,-90],subs:'有害物質の使用なし',src:'東京都 水濁法届出事業場リスト'},
+   {name:'（サンプル）自動車整備',cat:'prtr',d:[460,-380],subs:'キシレン・エチルベンゼン',src:'環境省 PRTR R06'},
+  ]},
+ {k:'江東区 埋立地',name:'江東区豊洲 埋立地（サンプル）',addr:'東京都江東区豊洲六丁目',lat:35.6505,lng:139.7945,area:12800,youto:10,deal:2,
+  landcond:'埋立地',swale:false,morido:false,liq:'液状化の可能性が高い地形',
+  photo:{'1936':true,'1945':true,'1961':true,'1974':true,'1979':true,'1984':true,'1987':true,'now':false},
+  rnote:'1936年は造成中の埋立地。1945〜1987年に大規模な工場・貯蔵施設と岸壁を確認。',
+  lu:['その他の用地','その他の用地','建物用地','建物用地','建物用地','その他の用地','建物用地','建物用地','建物用地'],
+  zones:[
+   {type:'要措置区域',no:'サンプル 江東-11',addr:'江東区豊洲六丁目 地内',d:[60,40],area:9400,subs:'ベンゼン、シアン化合物、ヒ素、鉛、水銀',date:'2017-09'},
+   {type:'形質変更時要届出区域',no:'サンプル 江東-14',addr:'江東区豊洲五丁目 地内',d:[-350,-420],area:3100,subs:'ふっ素、鉛',date:'2021-02'},
+  ],
+  fac:[
+   {name:'（サンプル）ガス製造 跡地管理',cat:'prtr',d:[120,-160],subs:'ベンゼン',src:'環境省 PRTR R06'},
+   {name:'（サンプル）鋼材加工',cat:'haz',d:[-260,310],subs:'六価クロム（研磨・めっき）',src:'東京都 水濁法届出事業場リスト'},
+   {name:'（サンプル）冷蔵倉庫',cat:'plain',d:[400,220],subs:'有害物質の使用なし',src:'東京都 水濁法届出事業場リスト'},
+  ]},
+ {k:'世田谷区 住宅地',name:'世田谷区成城 住宅地（サンプル）',addr:'東京都世田谷区成城四丁目',lat:35.6410,lng:139.5995,area:680,youto:0,deal:0,
+  landcond:'台地（武蔵野面）',swale:false,morido:false,liq:'液状化の可能性が低い地形',
+  photo:{'1936':false,'1945':false,'1961':false,'1974':false,'1979':false,'1984':false,'1987':false,'now':false},
+  rnote:'1945年は畑と疎らな住宅、1961年以降は一貫して低層住宅地。工場・作業場の形跡なし。',
+  lu:['建物用地','建物用地','建物用地','建物用地','建物用地','建物用地','建物用地','建物用地','建物用地'],
+  zones:[],
+  fac:[
+   {name:'（サンプル）クリーニング店',cat:'haz',d:[-300,120],subs:'テトラクロロエチレン',src:'東京都 水濁法届出事業場リスト'},
+  ]},
+];
+
+const SOURCES=[
+ ['年代別空中写真（1936頃〜最新）','国土地理院 地理院タイル','画像タイル (XYZ)','全国（1936頃は東京23区・大阪周辺）、ズーム10〜18','出典明記で利用可','自動','表示中'],
+ ['明治期の低湿地・土地条件図','国土地理院 地理院タイル','画像タイル (XYZ)','主要都市域、ズーム12〜16','出典明記で利用可','自動','表示中'],
+ ['要措置区域・形質変更時要届出区域の一覧','都道府県・政令市（土対法）','Excel／PDF（静岡県はCC BY xlsx、東京都はExcel）','所在地は町丁目＋「地内」が多い','自治体ごとに異なる','半自動','取込（住所→概略座標）'],
+ ['水質汚濁防止法 届出事業場リスト','東京都環境局（23区）ほか','PDF（約40頁・有害物質使用の有無●）','23区（政令市除く）、年1回','公開資料','半自動','PDF表抽出→取込'],
+ ['PRTR 届出データ（事業所別）','環境省','年次ZIP（本紙・別紙・他業種 txt）','全国、事業所の住所あり・座標なし','公開データ','半自動','取込（住所→概略座標）'],
+ ['土地利用細分メッシュ（1976〜2021）','国土交通省 国土数値情報','GML／Shapefile（100m）','全国9時期','国土数値情報 利用約款','自動','事前変換して表示'],
+ ['用途地域・防火地域・大規模盛土造成地・液状化傾向・浸水想定','国土交通省 不動産情報ライブラリ API','GeoJSON／PBF（APIキー・ブラウザ直接呼出し不可）','全国（整備済み自治体）','利用約款','自動（サーバー経由）','手入力（用途地域）'],
+ ['住所→座標','国土地理院 住所検索API','JSON','町丁目代表点','出典明記','自動','検索に使用'],
+ ['登記事項証明書・閉鎖登記簿','法務局（登記情報提供サービス・窓口）','PDF／紙（有料）。閉鎖謄本は手書き縦書き','筆単位','有料・非公開データ','半自動','取得は手動、読み取りは「閉鎖謄本」タブでAI構造化'],
+ ['旧版地形図（謄本交付）','国土地理院','紙／PDF（有料）','1/25,000・1/10,000 各年次','有料','手動','チェックリストで管理'],
+ ['住宅地図 旧版','ゼンリン・図書館','紙','建物名・居住者単位','有料','手動','チェックリストで管理'],
+ ['既往の地歴調査報告書','調査会社（紙・PDF）','PDF（スキャン含む）','案件単位・章立てはほぼ共通','私的資料','半自動','報告書タブでAI構造化→整合性・条例照合'],
+ ['都道府県・政令市の条例（土壌汚染関連）','各自治体','条文（Web）','東京都116・117条、大阪府81条の4・5 など','公開','半自動','条例レジストリ（JSON）で保持。法務確認済の項目のみ「確認済」'],
+ ['地盤・ボーリング柱状図','国土地盤情報DB／東京都 地盤GIS','Web閲覧・XML','地点単位','一部公開','半自動','将来対応'],
+];
+
+/* ── 状態 ── */
+let S={};let map,baseLayer,photoLayer,swaleLayer,lcmLayer,siteLayer,bufLayer,zoneLayer,facLayer,pickMode=false,curEra='1961';
+let IMPORTED={zone:[],fac:[]};
+let TOUHON=null;      // 読み取り結果（反映済み）
+let TOU_RAW=null;     // 読み取り結果（表示中）
+
+const dist=(a,b,c,d)=>{const R=6371000,p=Math.PI/180;const dl=(c-a)*p,dn=(d-b)*p;const h=Math.sin(dl/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h));};
+const bearing=(a,b,c,d)=>{const p=Math.PI/180;const y=Math.sin((d-b)*p)*Math.cos(c*p),x=Math.cos(a*p)*Math.sin(c*p)-Math.sin(a*p)*Math.cos(c*p)*Math.cos((d-b)*p);const deg=(Math.atan2(y,x)*180/Math.PI+360)%360;return ['北','北東','東','南東','南','南西','西','北西'][Math.round(deg/45)%8];};
+
+function loadSite(i){
+  const s=SITES[i];
+  S={si:i,name:s.name,addr:s.addr,lat:s.lat,lng:s.lng,area:s.area,youto:s.youto,deal:s.deal,radius:500,landcond:s.landcond,swale:s.swale,morido:s.morido,liq:s.liq,
+     photo:{...s.photo},rnote:s.rnote,lu:[...s.lu],
+     zones:s.zones.map(z=>{const [lat,lng]=off(s.lat,s.lng,z.d[0],z.d[1]);return {...z,lat,lng,sample:true};}),
+     fac:s.fac.map(f=>{const [lat,lng]=off(s.lat,s.lng,f.d[0],f.d[1]);return {...f,lat,lng,sample:true};})};
+  renderForm();calc();if(map)map.setView([S.lat,S.lng],16);
+}
+
+/* ── フォーム ── */
+function renderForm(){
+  $('samples').innerHTML=SITES.map((s,i)=>`<button class="chip${S.si===i?' on':''}" data-s="${i}" type="button">${s.k}</button>`).join('');
+  $('samples').querySelectorAll('.chip').forEach(b=>b.onclick=()=>loadSite(+b.dataset.s));
+  $('t-name').textContent=S.name;$('i-addr').value=S.addr;$('i-area').value=S.area;
+  $('i-youto').innerHTML=YOUTO.map((y,i)=>`<option value="${i}">${y[0]}</option>`).join('');$('i-youto').value=S.youto;
+  $('i-deal').selectedIndex=S.deal;$('i-radius').value=S.radius;$('i-rnote').value=S.rnote;
+  $('read').innerHTML=ERAS.map(e=>`<label class="${S.photo[e.id]?'on':''}"><span style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="rd-${e.id}" ${S.photo[e.id]?'checked':''}><b>${e.label}</b></span><span>${S.photo[e.id]?'工場・作業場等あり':'形跡なし／未確認'}</span></label>`).join('');
+  ERAS.forEach(e=>{$('rd-'+e.id).onchange=ev=>{S.photo[e.id]=ev.target.checked;const l=ev.target.closest('label');l.classList.toggle('on',S.photo[e.id]);l.querySelector('span:last-child').textContent=S.photo[e.id]?'工場・作業場等あり':'形跡なし／未確認';renderEras();calc();};});
+  renderEras();
+}
+function renderEras(){
+  $('eras').innerHTML=ERAS.map(e=>`<button type="button" data-e="${e.id}" class="${curEra===e.id?'on':''}${S.photo[e.id]?' flag':''}">${e.label}<small>${e.tile}</small></button>`).join('');
+  $('eras').querySelectorAll('button').forEach(b=>b.onclick=()=>setEra(b.dataset.e));
+}
+[['i-area','area',true],['i-youto','youto',true],['i-deal','deal',true],['i-radius','radius',true],['i-rnote','rnote',false]].forEach(([id,k,num])=>{
+  $(id).oninput=$(id).onchange=e=>{let v=num?+e.target.value:e.target.value;if(id==='i-deal')v=e.target.selectedIndex;if(k==='area')v=Math.max(1,v||1);S[k]=v;calc();};
+});
+$('i-addr').oninput=e=>{S.addr=e.target.value;};
+
+/* ── 住所検索（国土地理院） ── */
+async function geocode(q){
+  const r=await fetch('https://msearch.gsi.go.jp/address-search/AddressSearch?q='+encodeURIComponent(q));
+  if(!r.ok)throw new Error('http '+r.status);
+  const j=await r.json();if(!j.length)return null;
+  const g=j[0];return {lat:g.geometry.coordinates[1],lng:g.geometry.coordinates[0],title:g.properties.title};
+}
+$('b-geo').onclick=async()=>{
+  const q=$('i-addr').value.trim();if(!q){toast('住所を入力してください');return;}
+  $('s-geo').textContent='検索中…';
+  try{const g=await geocode(q);if(!g){$('s-geo').textContent='該当なし';toast('該当する地名が見つかりません。町丁目までで入力してください');return;}
+    S.lat=g.lat;S.lng=g.lng;S.name=g.title;$('t-name').textContent=g.title;S.si=-1;
+    S.zones=S.zones.filter(z=>!z.sample);S.fac=S.fac.filter(f=>!f.sample);
+    S.photo=Object.fromEntries(ERAS.map(e=>[e.id,false]));S.rnote='';$('i-rnote').value='';S.lu=['—','—','—','—','—','—','—','—','—'];S.landcond='未取得（土地条件図を重ねて確認）';
+    renderForm();calc();if(map)map.setView([S.lat,S.lng],16);
+    toast(`${g.title} に移動しました（町丁目代表点）。サンプルの法区域・事業場は外しています`);}
+  catch(e){$('s-geo').textContent='接続不可';toast('住所検索APIに接続できません。「地図上で地点を指定」で位置を決めてください');}
+};
+$('b-pick').onclick=()=>{pickMode=!pickMode;$('b-pick').classList.toggle('on',pickMode);$('map').classList.toggle('pick',pickMode);if(pickMode)toast('地図をクリックすると対象地を移動します');};
+
+/* ── 地図 ── */
+function gsi(tile,ext,min,max,opt){return L.tileLayer(`https://cyberjapandata.gsi.go.jp/xyz/${tile}/{z}/{x}/{y}.${ext}`,Object.assign({minNativeZoom:min,maxNativeZoom:max,maxZoom:19,attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>'},opt||{}));}
+function initMap(){
+  map=L.map('map',{zoomControl:true,maxZoom:19}).setView([S.lat,S.lng],16);
+  baseLayer=gsi('pale','png',5,18).addTo(map);
+  swaleLayer=gsi('swale','png',12,16,{opacity:.6});
+  lcmLayer=gsi('lcm25k_2012','png',10,16,{opacity:.5});
+  bufLayer=L.layerGroup().addTo(map);zoneLayer=L.layerGroup().addTo(map);facLayer=L.layerGroup().addTo(map);siteLayer=L.layerGroup().addTo(map);
+  setEra(curEra);
+  map.on('click',e=>{if(!pickMode)return;S.lat=e.latlng.lat;S.lng=e.latlng.lng;pickMode=false;$('b-pick').classList.remove('on');$('map').classList.remove('pick');calc();toast('対象地を移動しました');});
+  $('i-op').oninput=e=>{if(photoLayer)photoLayer.setOpacity(e.target.value/100);};
+  $('ov-swale').onchange=e=>e.target.checked?swaleLayer.addTo(map):map.removeLayer(swaleLayer);
+  $('ov-lcm').onchange=e=>e.target.checked?lcmLayer.addTo(map):map.removeLayer(lcmLayer);
+  $('ov-buf').onchange=e=>e.target.checked?bufLayer.addTo(map):map.removeLayer(bufLayer);
+  $('ov-zone').onchange=e=>e.target.checked?zoneLayer.addTo(map):map.removeLayer(zoneLayer);
+  $('ov-fac').onchange=e=>e.target.checked?facLayer.addTo(map):map.removeLayer(facLayer);
+}
+function setEra(id){
+  curEra=id;const e=ERAS.find(x=>x.id===id);
+  if(photoLayer)map.removeLayer(photoLayer);
+  photoLayer=gsi(e.tile,e.ext,e.min,e.max,{opacity:$('i-op').value/100});
+  let errs=0;photoLayer.on('tileerror',()=>{errs++;if(errs===4)$('mapmsg').textContent=`${e.label} の写真はこの範囲では提供されていないか、タイルを取得できません（${e.note||'地理院タイル'}）`;});
+  photoLayer.on('load',()=>{if(!errs)$('mapmsg').textContent=`${e.label}：地理院タイル ${e.tile}（ズーム ${e.min}〜${e.max}）`;});
+  photoLayer.addTo(map);photoLayer.bringToFront();
+  [swaleLayer,lcmLayer].forEach(l=>{if(map.hasLayer(l))l.bringToFront();});
+  $('mapmsg').textContent=`${e.label} を読み込み中…`;
+  renderEras();
+}
+function drawMap(){
+  if(!map)return;
+  siteLayer.clearLayers();bufLayer.clearLayers();zoneLayer.clearLayers();facLayer.clearLayers();
+  L.circleMarker([S.lat,S.lng],{radius:8,color:'#fff',weight:2,fillColor:'#b34a2a',fillOpacity:1}).bindPopup(`<b>${S.name}</b><br>${S.lat.toFixed(5)}, ${S.lng.toFixed(5)}`).addTo(siteLayer);
+  [100,250,500].forEach(r=>{L.circle([S.lat,S.lng],{radius:r,color:'#fff',weight:3,fill:false,opacity:.5}).addTo(bufLayer);L.circle([S.lat,S.lng],{radius:r,color:'#b34a2a',weight:1.5,dashArray:'5 5',fill:false,opacity:.9}).addTo(bufLayer);});
+  allZones().forEach(z=>{const h=Math.sqrt(z.area||900)/2;const c1=off(z.lat,z.lng,-h,-h),c2=off(z.lat,z.lng,h,h);
+    L.rectangle([c1,c2],{color:z.type.startsWith('要措置')?'#b3261e':'#d9881f',weight:2,fillOpacity:.35}).bindPopup(`<b>${z.type}</b><br>${z.no}<br>${z.addr}<br>${z.subs||''}`).addTo(zoneLayer);});
+  allFac().forEach(f=>L.circleMarker([f.lat,f.lng],{radius:6,color:'#fff',weight:1.5,fillColor:FCOL[f.cat],fillOpacity:.95}).bindPopup(`<b>${f.name}</b><br>${f.subs||''}<br><small>${f.src||''}</small>`).addTo(facLayer));
+}
+const allZones=()=>S.zones.concat(IMPORTED.zone);
+const allFac=()=>S.fac.concat(IMPORTED.fac);
+
+/* ── 判定 ── */
+function calc(){
+  const R={factors:[]};
+  const yName=YOUTO[S.youto][0],yPts=YOUTO[S.youto][1];
+  // A 写真判読
+  const flagged=ERAS.filter(e=>S.photo[e.id]);
+  const a=flagged.length>=2?30:flagged.length===1?18:0;
+  R.factors.push({k:'写真判読',pts:a,txt:flagged.length?`${flagged.length}年代で工場等を確認`:'形跡なし'});
+  // A2 登記簿（閉鎖謄本タブから反映）
+  const tA=TOUHON&&TOUHON.analysis;
+  const tPts=!tA?0:Math.min(30,(tA.indYears>=20?22:tA.indYears>=5?14:tA.indYears>0?8:0)+(tA.maxLevel===3?8:tA.maxLevel===2?3:0));
+  R.factors.push({k:'登記簿',pts:tPts,txt:!tA?'未読取':tA.indYears>0?`事業用途 ${tA.indYears}年（${tA.topLabel}）`:'事業用途の所有なし'});
+  // A3 既往報告書（報告書タブから反映）
+  if(S.report){const V=S.report.verify||verifyReport(S.report);const rp=V.maxLv>=3?15:V.maxLv===2?6:0;R.factors.push({k:'既往報告書',pts:rp,txt:`所見「${S.report.result.level||'—'}」${V.n.bad?'・矛盾'+V.n.bad+'件':''}`});}
+  // B 法指定区域
+  const zs=allZones().map(z=>({...z,dist:dist(S.lat,S.lng,z.lat,z.lng)})).sort((x,y)=>x.dist-y.dist);
+  const zIn=zs.filter(z=>z.dist<=Math.sqrt(z.area||900)/2+15);
+  const zmin=zs.length?zs[0].dist:Infinity;
+  const b=zIn.length?40:zmin<100?22:zmin<250?12:zmin<500?6:0;
+  R.factors.push({k:'法指定区域',pts:b,txt:zIn.length?'対象地が区域内':zs.length&&zmin<=S.radius?`最寄 ${Math.round(zmin)}m`:'半径内になし'});
+  // C 事業場
+  const fs=allFac().map(f=>({...f,dist:dist(S.lat,S.lng,f.lat,f.lng),dir:bearing(S.lat,S.lng,f.lat,f.lng)})).filter(f=>f.dist<=S.radius).sort((x,y)=>x.dist-y.dist);
+  let c=0;fs.forEach(f=>{const w=f.cat==='haz'?1:f.cat==='prtr'?.6:.15;c+=w*(f.dist<100?12:f.dist<250?6:f.dist<500?3:1);});c=Math.min(25,Math.round(c));
+  R.factors.push({k:'周辺事業場',pts:c,txt:fs.length?`${fs.length}件（有害物質 ${fs.filter(f=>f.cat==='haz').length}）`:'半径内になし'});
+  // D 用途地域
+  R.factors.push({k:'用途地域',pts:yPts,txt:yName.replace('地域','')});
+  // E 地形
+  const lc=S.landcond||'';const e=/埋立/.test(lc)?10:/低地|氾濫|後背|旧河道|干拓/.test(lc)?5:0;const e2=S.swale?4:0;
+  R.factors.push({k:'地形・旧水域',pts:e+e2,txt:lc.replace(/（.*$/,'')||'未取得'});
+  // F 土地利用推移
+  const luChg=S.lu.some(v=>v==='その他の用地'||v==='荒地'||v==='海水域'||v==='河川地及び湖沼');
+  R.factors.push({k:'土地利用推移',pts:luChg?4:0,txt:luChg?'造成・更地の時期あり':'変化なし'});
+  R.factors.push({k:'盛土造成地',pts:S.morido?5:0,txt:S.morido?'該当':'該当なし'});
+  R.score=Math.min(100,R.factors.reduce((s,f)=>s+f.pts,0));
+  R.level=R.score<15?'low':R.score<40?'mid':'high';
+  R.zs=zs;R.fs=fs;R.zIn=zIn;S._R=R;render(R);
+}
+
+function render(R){
+  // site derived
+  $('d-site').innerHTML=`<span>座標 <b>${S.lat.toFixed(5)}, ${S.lng.toFixed(5)}</b></span><span>土地条件 <b>${S.landcond}</b></span><span>液状化傾向 <b>${S.liq||'未取得'}</b></span>`;
+  $('s-geo').textContent=S.si>=0?'サンプル地点':'住所検索（町丁目代表点）';
+  drawMap();
+  // landuse
+  $('lu').innerHTML=S.lu.map((v,i)=>`<div style="background:${LU_COL[v]||'var(--sunk)'};color:${LU_COL[v]?'#fff':'var(--mute)'}"><b>${LU_YEARS[i]}</b>${v}</div>`).join('');
+  $('lulegend').innerHTML=Object.entries(LU_COL).map(([k,c])=>`<span><i style="background:${c}"></i>${k}</span>`).join('');
+  const chg=S.lu.map((v,i)=>i&&v!==S.lu[i-1]?`${LU_YEARS[i-1]}→${LU_YEARS[i]}：${S.lu[i-1]}→${v}`:null).filter(Boolean);
+  $('lu-note').textContent=S.lu[0]==='—'?'住所検索した地点はメッシュ未取得です（実運用ではサーバー側で該当メッシュを引きます）。':chg.length?'変化：'+chg.join('、')+'。「その他の用地」は更地・造成中・資材置場などを含むため、前後の写真で裏取りします。':'9時期とも同じ区分です。';
+  // zones table
+  const zr=R.zs.filter(z=>z.dist<=S.radius);
+  $('z-x').textContent=`半径 ${S.radius}m 内 ${zr.length}件`;
+  $('ztb').innerHTML=zr.length?zr.map(z=>{const inn=R.zIn.includes(z)||R.zIn.some(x=>x.no===z.no);return `<tr class="${inn?'in':z.dist<100?'near':''}"><td><span class="pill ${z.type.startsWith('要措置')?'bad':'warn'}">${z.type}</span></td><td class="num">${z.no}${z.sample?' <span class="pill gray">サンプル</span>':''}</td><td>${z.addr}</td><td class="r num">${inn?'区域内':Math.round(z.dist)+' m'}</td><td class="r num">${z.area?z.area.toLocaleString():'—'}</td><td class="wrap">${z.subs||'—'}</td><td class="num">${z.date||'—'}</td></tr>`;}).join(''):`<tr><td colspan="7" style="color:var(--mute)">半径 ${S.radius}m 内に指定区域はありません（取込済みデータ ${IMPORTED.zone.length}件を含む）</td></tr>`;
+  $('z-note').textContent=R.zIn.length?'対象地が指定区域に含まれます。形質変更には届出（形質変更時要届出区域）または措置（要措置区域）が必要で、売買条件に直接影響します。':zr.length?'指定区域は「汚染が見つかった土地」の記録です。周辺にあること自体より、同じ事業者・同じ地下水系かどうかを台帳で確認します。':'指定区域の有無は「調査されて汚染が見つかった土地」の記録に過ぎず、未調査の土地の安全を示すものではありません。';
+  // facilities table
+  $('f-x').textContent=`半径 ${S.radius}m 内 ${R.fs.length}件`;
+  const catLabel={haz:'水濁法・有害物質使用',prtr:'PRTR届出',plain:'水濁法（有害物質なし）'};
+  $('ftb').innerHTML=R.fs.length?R.fs.map(f=>`<tr class="${f.dist<100&&f.cat==='haz'?'near':''}"><td><span class="dot" style="background:${FCOL[f.cat]}"></span>${f.name}${f.sample?' <span class="pill gray">サンプル</span>':''}</td><td>${catLabel[f.cat]}</td><td class="r num">${Math.round(f.dist)} m</td><td>${f.dir}</td><td class="wrap">${f.subs||'—'}</td><td class="wrap" style="color:var(--mute);min-width:140px">${f.src||'—'}</td></tr>`).join(''):`<tr><td colspan="6" style="color:var(--mute)">半径 ${S.radius}m 内に該当なし</td></tr>`;
+  // hero
+  $('r-score').textContent=R.score;
+  const L_={low:['低','low'],mid:['中','mid'],high:['高','high']}[R.level];
+  const lv=$('r-lvl');lv.textContent=L_[0];lv.className='lvl '+L_[1];
+  $('r-pin').style.left=R.score+'%';
+  const reco={low:'公開資料の範囲では汚染の手がかりはありません。登記簿で地目・所有者の変遷を確認し、工場・事業所利用の記録がなければ、地歴調査の報告書は簡易版で足りる見込みです。',
+    mid:'手がかりが複数あります。Phase 1 地歴調査（閉鎖登記簿・旧版地図・住宅地図・ヒアリング）を省略せず、所見によっては概況調査（Phase 2）の見積を前提に売買条件を組みます。',
+    high:'工場利用の履歴または指定区域との重なりがあり、汚染の存在を前提に進めるべき地点です。Phase 1 と並行して概況調査（表層土壌・土壌ガス）の見積を取り、調査費と対策費の負担を契約条件に織り込みます。'}[R.level];
+  $('r-reco').textContent=reco;
+  $('r-chain').innerHTML=R.factors.map(f=>`<span class="${f.pts>=10?'hot':f.pts===0?'zero':''}"><em>${f.k}</em>+${f.pts} ${f.txt}</span>`).join('');
+  $('mb-score').textContent=R.score;const ml=$('mb-lvl');ml.textContent=L_[0];ml.className='lvl '+L_[1];
+  // rules
+  const dev=S.deal===2;const hazHist=R.factors[0].pts>0||R.fs.some(f=>f.cat==='haz'&&f.dist<30)||(TOUHON&&TOUHON.analysis.maxLevel>=3);
+  const pref=prefOf(S.addr),city=cityOf(S.addr);const ctx={area:S.area,hazHist,zIn:R.zIn.length,dev};
+  const rules=lawRules(ctx).concat(ordRules(pref,city,ctx)).map(x=>[`${x.law} ${x.art}：${x.title}`,stPill(x.st)+(x.conf&&x.conf!=='high'?' '+CONF_LABEL[x.conf]:''),x.sub]);
+  const ords=ordFor(pref,city);$('r-rulex').textContent='土対法'+(ords.length?'・'+ords.map(o=>o.name.replace(/（.*?）/g,'')).join('・'):pref?'（'+pref+'の条例は未登録）':'');
+  $('r-rule').innerHTML=rules.map(r=>`<span class="t">${r[0]}<small>${r[2]}</small></span><span>${r[1]}</span>`).join('');
+  // checklist
+  const ck=[
+   ['年代別空中写真（1936頃〜最新）','地理院タイル','auto'],
+   ['土地条件図・明治期の低湿地','地理院タイル','auto'],
+   ['土地利用細分メッシュ 9時期','国土数値情報','auto'],
+   ['要措置区域等の一覧','都道府県','semi'],
+   ['水濁法 届出事業場リスト','東京都環境局','semi'],
+   ['PRTR 届出データ','環境省','semi'],
+   ['用途地域・大規模盛土・液状化傾向','不動産情報ライブラリ API','semi'],
+   ['登記事項証明書・閉鎖登記簿','法務局 → 閉鎖謄本タブで読取',TOUHON?'auto':'manual'],
+   ['旧版地形図 謄本','国土地理院','manual'],
+   ['住宅地図 旧版','ゼンリン・図書館','manual'],
+   ['指定区域台帳の閲覧（区画の特定）','都道府県 窓口',R.zs.some(z=>z.dist<=S.radius)?'manual':'skip'],
+   ['都道府県条例の台帳・届出の確認',ordFor(prefOf(S.addr),cityOf(S.addr)).map(o=>o.name.replace(/（.*?）/g,'')).join('・')||'条例未登録',ordFor(prefOf(S.addr),cityOf(S.addr)).length?'semi':'manual'],
+   ['既往の地歴調査報告書','報告書タブで読取・照合',S.report?'auto':'manual'],
+   ['所有者・近隣ヒアリング','—',R.level==='low'?'skip':'manual'],
+   ['現地踏査（配管・井戸・埋設タンク）','—',R.level==='low'?'skip':'manual'],
+  ];
+  const lab={auto:'<span class="pill ok">自動取得</span>',semi:'<span class="pill info">取込で自動</span>',manual:'<span class="pill warn">要取得</span>',skip:'<span class="pill gray">省略可</span>'};
+  $('ck').innerHTML=ck.map(c=>`<div><span>${c[0]}<small>${c[1]}</small></span>${lab[c[2]]}</div>`).join('');
+  const n=t=>ck.filter(c=>c[2]===t).length;
+  $('ck-x').textContent=`${ck.length}項目`;
+  $('ck-sum').innerHTML=`<span>自動 <b>${n('auto')+n('semi')}</b></span><span>要取得 <b>${n('manual')}</b></span><span>省略可 <b>${n('skip')}</b></span><span>資料収集の目安 <b>${R.level==='low'?'2〜3h':R.level==='mid'?'4〜6h':'6〜8h'}</b>（手作業のみ 8〜12h）</span>`;
+}
+$('b-print').onclick=()=>window.print();
+
+/* ── データソース ── */
+$('stb').innerHTML=SOURCES.map(s=>`<tr><td class="wrap"><b>${s[0]}</b></td><td>${s[1]}</td><td class="wrap">${s[2]}</td><td class="wrap">${s[3]}</td><td class="wrap">${s[4]}</td><td>${{'自動':'<span class="pill ok">自動</span>','半自動':'<span class="pill info">半自動</span>','手動':'<span class="pill warn">手動</span>','自動（サーバー経由）':'<span class="pill info">自動（サーバー）</span>'}[s[5]]}</td><td>${s[6]}</td></tr>`).join('');
+
+/* ── 取込 ── */
+function parseCSV(text){
+  const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else if(ch==='"')q=true;else if(ch===','||ch==='\t'){row.push(cur);cur='';}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cur);rows.push(row);row=[];cur='';}
+    else cur+=ch;}
+  if(cur||row.length){row.push(cur);rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()));
+}
+function decodeBuf(buf){let t=new TextDecoder('utf-8',{fatal:false}).decode(buf);if((t.match(/�/g)||[]).length>2){try{t=new TextDecoder('shift_jis').decode(buf);}catch(e){}}return t.replace(/^﻿/,'');}
+const findCol=(h,pats)=>h.findIndex(c=>pats.some(p=>c.replace(/\s/g,'').includes(p)));
+async function importRows(rows,kind){
+  const h=rows[0].map(c=>c.trim());
+  const ci={addr:findCol(h,['所在地','住所','所在']),no:findCol(h,['指定番号','番号','事業所名','事業場名','名称']),area:findCol(h,['面積']),subs:findCol(h,['不適合','物質','有害','化学']),type:findCol(h,['区域の別','区域','種別','有無']),date:findCol(h,['指定年月日','年月日','日付'])};
+  $('imp-map').innerHTML=Object.entries({addr:'所在地',no:'名称・番号',area:'面積',subs:'物質',type:'種別',date:'日付'}).map(([k,l])=>`<span class="t">${l}</span><span class="num">${ci[k]>=0?'列 '+(ci[k]+1)+'「'+h[ci[k]]+'」':'<span style="color:var(--faint)">なし</span>'}</span>`).join('');
+  if(ci.addr<0){$('imp-msg').textContent='所在地／住所の列が見つかりません。1行目が列名になっているか確認してください。';return;}
+  const max=Math.min(+$('i-max').value||40,rows.length-1);const out=[];
+  $('itb').innerHTML='';$('imp-msg').textContent=`${rows.length-1}行を読み込みました。先頭 ${max} 行をジオコーディングします（国土地理院API・0.3秒間隔）`;
+  for(let i=1;i<=max;i++){const r=rows[i];const addr=(r[ci.addr]||'').trim();
+    const rec={kind,addr,no:ci.no>=0?r[ci.no]:'',area:ci.area>=0?parseFloat(String(r[ci.area]).replace(/[^\d.]/g,''))||0:0,subs:ci.subs>=0?r[ci.subs]:'',type:ci.type>=0?r[ci.type]:'',date:ci.date>=0?r[ci.date]:'',status:'…'};
+    out.push(rec);renderImp(out);
+    try{const g=await geocode(addr.replace(/地内|地先|ほか.*$|他.*$/g,''));if(g){rec.lat=g.lat;rec.lng=g.lng;rec.status='ok';}else rec.status='該当なし';}
+    catch(e){rec.status='接続不可';}
+    renderImp(out);$('prog').style.width=(i/max*100)+'%';
+    if(rec.status==='接続不可'){$('imp-msg').textContent='住所検索APIに接続できないため、座標なしで取り込みました（地図には出ません）。';break;}
+    await new Promise(r=>setTimeout(r,300));
+  }
+  const okRows=out.filter(r=>r.lat);
+  if(kind==='zone')IMPORTED.zone=IMPORTED.zone.concat(okRows.map(r=>({type:/要措置/.test(r.type)&&!/形質/.test(r.type)?'要措置区域':'形質変更時要届出区域',no:r.no,addr:r.addr,lat:r.lat,lng:r.lng,area:r.area,subs:r.subs,date:r.date})));
+  else IMPORTED.fac=IMPORTED.fac.concat(okRows.map(r=>({name:r.no||r.addr,cat:kind==='prtr'?'prtr':(/●|有|あり/.test(r.type)?'haz':'plain'),lat:r.lat,lng:r.lng,subs:r.subs,src:kind==='prtr'?'PRTR届出データ（取込）':'水濁法届出事業場リスト（取込）'})));
+  $('imp-x').textContent=`${out.length}行 / 座標付与 ${okRows.length}`;
+  calc();toast(`${okRows.length}件を地図に追加しました。「調査」で半径内の件数を確認してください`);
+}
+function renderImp(out){
+  $('itb').innerHTML=out.map((r,i)=>`<tr><td class="num">${i+1}</td><td>${r.type||r.kind}</td><td>${r.no||'—'}</td><td class="wrap">${r.addr}</td><td class="wrap">${r.subs||'—'}</td><td class="num">${r.lat?r.lat.toFixed(4)+', '+r.lng.toFixed(4):'—'}</td><td>${r.status==='ok'?'<span class="pill ok">OK</span>':r.status==='…'?'<span class="pill gray">検索中</span>':'<span class="pill warn">'+r.status+'</span>'}</td></tr>`).join('');
+}
+const drop=$('drop');
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');const f=e.dataTransfer.files[0];if(f)readFile(f);});
+$('i-file').onchange=e=>{const f=e.target.files[0];if(f)readFile(f);};
+function readFile(f){const fr=new FileReader();fr.onload=()=>{const rows=parseCSV(decodeBuf(fr.result));if(rows.length<2){$('imp-msg').textContent='データ行がありません';return;}$('prog').style.width='0';importRows(rows,$('i-kind').value);};fr.readAsArrayBuffer(f);}
+$('b-demo').onclick=()=>{
+  const csv=`要措置区域・形質変更時要届出区域の別,指定番号,指定年月日,所在地,面積(m2),不適合項目
+形質変更時要届出区域,サンプル-01,2020-06-12,東京都大田区下丸子四丁目,1230,鉛及びその化合物
+要措置区域,サンプル-02,2018-02-28,東京都大田区千鳥三丁目,540,六価クロム化合物、ふっ素及びその化合物
+形質変更時要届出区域,サンプル-03,2022-11-04,東京都大田区矢口二丁目,2890,ふっ素及びその化合物
+形質変更時要届出区域,サンプル-04,2015-09-18,東京都江東区豊洲四丁目,4100,ベンゼン、シアン化合物
+形質変更時要届出区域,サンプル-05,2023-03-30,東京都世田谷区祖師谷三丁目,310,テトラクロロエチレン`;
+  $('i-kind').value='zone';$('prog').style.width='0';importRows(parseCSV(csv),'zone');
+};
+
+/* ══════════ 閉鎖謄本 ══════════ */
+const KANJI={'〇':0,'零':0,'一':1,'壱':1,'壹':1,'二':2,'弐':2,'貳':2,'三':3,'参':3,'參':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+function kanjiNum(s){
+  s=String(s).trim();if(/^\d+$/.test(s))return +s;
+  let total=0,cur=0,sect=0;
+  for(const ch of s){
+    if(ch in KANJI){cur=cur*10+KANJI[ch];}
+    else if(ch==='十'||ch==='拾'){sect+=(cur||1)*10;cur=0;}
+    else if(ch==='百'){sect+=(cur||1)*100;cur=0;}
+    else if(ch==='千'){sect+=(cur||1)*1000;cur=0;}
+    else if(ch==='万'){total+=(sect+cur)*10000;sect=0;cur=0;}
+    else return NaN;
+  }
+  return total+sect+cur;
+}
+function waToYear(s){ // 和暦→西暦（年のみ）。「元年」対応
+  if(!s)return null;const m=String(s).match(/(明治|大正|昭和|平成|令和)\s*(元|[〇零一壱壹二弐貳三参參四五六七八九十拾百\d]+)\s*年/);
+  if(m){const base={明治:1867,大正:1911,昭和:1925,平成:1988,令和:2018}[m[1]];const n=m[2]==='元'?1:kanjiNum(m[2]);return isNaN(n)?null:base+n;}
+  const w=String(s).match(/(1[89]\d\d|20\d\d)/);return w?+w[1]:null;
+}
+function tsuboToM2(s){ // 「九百九十坪」「三二七二.七二平方米」→ m²
+  if(!s)return null;const t=String(s);
+  if(/坪/.test(t)){const m=t.match(/([〇零一壱壹二弐貳三参參四五六七八九十拾百千万\d]+)\s*坪(?:\s*([〇零一壱壹二弐貳三参參四五六七八九十拾\d]+)\s*合)?/);if(!m)return null;const tsubo=kanjiNum(m[1])+(m[2]?kanjiNum(m[2])/10:0);return isNaN(tsubo)?null:tsubo*3.305785;}
+  const z=t.replace(/[〇零一二三四五六七八九]/g,c=>String(KANJI[c])).replace(/[^\d.]/g,'');return z?parseFloat(z):null;
+}
+const KW=[ // [語句, 業種ラベル, レベル(1低/2中/3高), 想定物質]
+  [/鍍金|メッキ|めっき|電鍍/,'めっき',3,'六価クロム・シアン・ニッケル'],
+  [/化学|化成|薬品|製薬|化工/,'化学・薬品',3,'揮発性有機化合物・重金属'],
+  [/染色|染工|捺染|染料/,'染色',3,'六価クロム・重金属'],
+  [/クリーニング|洗濯/,'クリーニング',3,'テトラクロロエチレン'],
+  [/石油|ガス|燃料|給油|油脂/,'石油・ガス',3,'ベンゼン・鉛'],
+  [/電池|蓄電/,'電池',3,'鉛・カドミウム'],
+  [/塗料|塗装|印刷|インキ/,'塗料・印刷',2,'トルエン・キシレン・鉛'],
+  [/金属|鉄工|製鋼|製作所|精機|機械|工業|製造|工場|鋳造|鍛造|伸銅/,'金属・機械',2,'切削油・溶剤・重金属'],
+  [/電機|電気|電子|半導体/,'電機・電子',2,'トリクロロエチレン・フッ素'],
+  [/皮革|製革|なめし/,'皮革',2,'六価クロム'],
+  [/紡績|製糸|織物/,'繊維',1,'—'],
+  [/運輸|倉庫|物流|自動車|整備/,'運輸・整備',1,'油類'],
+];
+function classifyHolder(name){
+  for(const [re,label,level,subs] of KW){if(re.test(name||''))return {label,level,subs,hit:(name.match(re)||[''])[0]};}
+  if(/株式会社|有限会社|合名|合資|商店|組合/.test(name||''))return {label:'法人（業種不明）',level:0,subs:'—',hit:''};
+  return {label:'個人',level:0,subs:'—',hit:''};
+}
+
+const SAMPLE_TOUHON={
+  shozai:'東京都大田区下丸子三丁目',chiban:'一二三番一',closed:'昭和六十三年十二月一日 閉鎖（コンピュータ化に伴う移記）',
+  hyodai:[
+    {no:'一',date:'大正九年三月二日',cause:'',chimoku:'畑',chiseki:'九百九十坪',conf:.93},
+    {no:'二',date:'昭和十三年五月一日',cause:'地目変更',chimoku:'宅地',chiseki:'九百九十坪',conf:.86},
+    {no:'三',date:'昭和四十一年十月三日',cause:'㎡換算（登記簿の改製）',chimoku:'宅地',chiseki:'三二七二.七二平方米',conf:.9},
+  ],
+  kouku:[
+    {no:'一',date:'大正九年三月二日',uke:'第四五六号',cause:'所有権保存',holder:'（個人・氏名略）',addr:'荏原郡矢口村',conf:.9,struck:false},
+    {no:'二',date:'昭和十三年四月五日',uke:'第一二三四号',cause:'売買',holder:'甲陽鍍金工業株式会社',addr:'東京市大森区下丸子町',conf:.72,struck:false,note:'「鍍」の判読'},
+    {no:'三',date:'昭和四十二年八月十日',uke:'第七八九〇号',cause:'合併',holder:'甲陽金属株式会社',addr:'東京都大田区下丸子三丁目',conf:.86,struck:false},
+    {no:'四',date:'昭和六十二年二月十七日',uke:'第五六七号',cause:'売買',holder:'城南不動産株式会社',addr:'東京都品川区',conf:.91,struck:false},
+  ],
+  otsuku:[
+    {no:'一',date:'昭和三十八年六月一日',uke:'第二三四五号',right:'抵当権設定',amount:'金五百万円',holder:'（金融機関）',debtor:'甲陽鍍金工業株式会社',conf:.8,struck:true,struckDate:'昭和五十年三月一日 抹消'},
+    {no:'二',date:'昭和六十二年二月十七日',uke:'第五六八号',right:'抵当権設定',amount:'金三億円',holder:'（金融機関）',debtor:'城南不動産株式会社',conf:.84,struck:false},
+  ],
+  uncertain:[
+    {where:'甲区二 所有者',text:'甲陽鍍金工業株式会社',reason:'旧字体「鍍」。「鍍金」＝めっき業の可能性'},
+    {where:'表題部二 原因',text:'地目変更',reason:'かすれ。畑→宅地の時期が工場取得と一致するか要確認'},
+  ],
+  sample:true
+};
+
+function renderSheet(t,img){
+  const sh=$('sheet');
+  $('stamp').hidden=true;
+  if(img){sh.innerHTML=`<img src="${img}" alt="謄本画像">`;$('sheet-cap').innerHTML='<span>アップロード画像</span>';return;}
+  if(!t){sh.innerHTML='<div class="note" style="margin:0;padding:30px 10px;text-align:center">「サンプル謄本を読む」または画像をドロップしてください</div>';$('sheet-cap').innerHTML='';return;}
+  const en=(id,cls,html)=>`<div class="en ${cls}" data-id="${id}">${html}</div>`;
+  const hy=t.hyodai.map((e,i)=>en('hy'+i,'',`<span class="no">${e.no}</span>${e.date}${e.cause?' '+e.cause:''}<br>地目 ${e.chimoku}<br>地積 ${e.chiseki}`)).join('');
+  const ko=t.kouku.map((e,i)=>en('ko'+i,e.struck?'struck':'',`<span class="no">${e.no}</span>${e.date}受付<br>${e.uke}<br>${e.cause}<br>所有者 ${e.addr||''}<br>${e.conf<.8?'<span class="u">'+e.holder+'</span>':e.holder}`)).join('');
+  const ot=t.otsuku.map((e,i)=>en('ot'+i,e.struck?'struck':'',`<span class="no">${e.no}</span>${e.date}受付<br>${e.uke}<br>${e.right}<br>債権額 ${e.amount||''}<br>債務者 ${e.debtor||''}${e.struck?'<br>'+e.struckDate:''}`)).join('');
+  sh.innerHTML=`<div class="sheet-in">
+    <div class="ku"><div class="kh">表題部</div>${hy}<div class="en" data-id="shozai"><span class="no">所在</span>${t.shozai}<br>地番 ${t.chiban}</div></div>
+    <div class="ku"><div class="kh">甲区（所有権）</div>${ko}</div>
+    <div class="ku"><div class="kh">乙区（所有権以外）</div>${ot}</div>
+  </div>`;
+  $('stamp').innerHTML=`閉鎖<br><span style="font-size:11px">${(t.closed||'').split(' ')[0]}</span>`;$('stamp').hidden=false;
+  sh.scrollLeft=sh.scrollWidth;
+  $('sheet-cap').innerHTML=`<span>${t.sample?'手書き謄本の再現（サンプル・記載内容は架空）':'読み取り結果の再構成'}</span><span>朱の取り消し線＝抹消</span><span>点線＝判読に注意</span>`;
+  sh.querySelectorAll('.en').forEach(el=>el.onclick=()=>hl(el.dataset.id));
+}
+function hl(id){document.querySelectorAll('#sheet .en').forEach(e=>e.classList.toggle('hl',e.dataset.id===id));document.querySelectorAll('.tt tr[data-id]').forEach(e=>e.style.outline=e.dataset.id===id?'2px solid var(--accent)':'');}
+
+function analyze(t){
+  const closedY=waToYear(t.closed)||new Date().getFullYear();
+  const owners=t.kouku.filter(e=>!e.struck).map(e=>({...e,y:waToYear(e.date),cls:classifyHolder(e.holder)}));
+  owners.forEach((o,i)=>{o.end=owners[i+1]?owners[i+1].y:closedY;o.years=o.y&&o.end?Math.max(0,o.end-o.y):0;});
+  const debt=t.otsuku.map(e=>({...e,cls:classifyHolder(e.debtor)}));
+  let indYears=0,maxLevel=0,top=null;
+  owners.forEach(o=>{if(o.cls.level>=2){indYears+=o.years;}if(o.cls.level>maxLevel){maxLevel=o.cls.level;top=o;}});
+  debt.forEach(d=>{if(d.cls.level>maxLevel){maxLevel=d.cls.level;top=d;}});
+  const hits=[];[...owners.map(o=>[o.holder,o.cls,'甲区'+o.no+' 所有者']),...debt.map(d=>[d.debtor,d.cls,'乙区'+d.no+' 債務者'])].forEach(([n,c,w])=>{if(c.level>0&&!hits.some(h=>h.name===n))hits.push({name:n,where:w,...c});});
+  const chimokuChg=t.hyodai.map((e,i)=>i&&e.chimoku!==t.hyodai[i-1].chimoku?`${waToYear(e.date)||'?'}年 ${t.hyodai[i-1].chimoku}→${e.chimoku}`:null).filter(Boolean);
+  const confs=[...t.hyodai,...t.kouku,...t.otsuku].map(e=>e.conf||0);const avg=confs.length?confs.reduce((a,b)=>a+b,0)/confs.length:0;
+  return {owners,debt,indYears,maxLevel,top,topLabel:top?top.cls.label:'',hits,chimokuChg,avg,closedY,unc:(t.uncertain||[]).length,firstY:owners[0]?owners[0].y:null};
+}
+
+function renderTouhon(t){
+  TOU_RAW=t;const A=analyze(t);t.analysis=A;
+  $('tou-title').textContent=`${t.shozai} ${t.chiban}`;
+  const confBar=c=>`<span class="conf"><i style="width:${Math.round((c||0)*100)}%;background:${c>=.85?'var(--ok)':c>=.7?'var(--warn)':'var(--bad)'}"></i></span><span class="num">${Math.round((c||0)*100)}%</span>`;
+  $('hy-x').textContent=`${t.hyodai.length}件`;
+  $('hytb').innerHTML=t.hyodai.map((e,i)=>{const m2=tsuboToM2(e.chiseki);return `<tr data-id="hy${i}" class="${e.conf<.8?'unc':''}"><td data-label="番号">${e.no}</td><td data-label="年月日" class="nw">${e.date}<span class="num" style="color:var(--mute)"> ${waToYear(e.date)||''}</span></td><td data-label="原因">${e.cause||'—'}</td><td data-label="地目">${e.chimoku}</td><td data-label="地積（原文）">${e.chiseki}</td><td data-label="㎡換算" class="r num">${m2?m2.toFixed(2):'—'}</td><td data-label="信頼度">${confBar(e.conf)}</td></tr>`;}).join('');
+  $('kotb').innerHTML=A.owners.concat(t.kouku.filter(e=>e.struck)).map((e,i)=>{const c=e.cls||classifyHolder(e.holder);const idx=t.kouku.indexOf(t.kouku.find(k=>k.no===e.no));return `<tr data-id="ko${idx}" class="${c.level>=2?'ind':''} ${e.conf<.8?'unc':''}"><td data-label="順位">${e.no}</td><td data-label="受付" class="nw">${e.date}<span class="num" style="color:var(--mute)"> ${e.y||waToYear(e.date)||''}</span><br><small style="color:var(--mute)">${e.uke||''}</small></td><td data-label="原因">${e.cause}</td><td data-label="所有者" class="full ${e.struck?'struck':''}"><b>${e.holder}</b>${e.note?'<br><small style="color:var(--warn)">'+e.note+'</small>':''}</td><td data-label="住所" class="wrap">${e.addr||'—'}</td><td data-label="用途推定">${c.level>0?`<span class="pill ${c.level>=3?'bad':c.level===2?'warn':'gray'}">${c.label}</span>`:'<span class="pill gray">'+c.label+'</span>'}${e.years?`<br><small class="num" style="color:var(--mute)">${e.y}–${e.end}（${e.years}年）</small>`:''}</td><td data-label="信頼度">${confBar(e.conf)}</td></tr>`;}).join('');
+  $('ottb').innerHTML=A.debt.map((e,i)=>`<tr data-id="ot${i}" class="${e.cls.level>=2?'ind':''}"><td data-label="順位">${e.no}</td><td data-label="受付" class="nw">${e.date}<span class="num" style="color:var(--mute)"> ${waToYear(e.date)||''}</span></td><td data-label="権利">${e.right}</td><td data-label="債権額">${e.amount||'—'}</td><td data-label="債務者" class="full ${e.struck?'struck':''}">${e.debtor||'—'}${e.cls.level>0?` <span class="pill ${e.cls.level>=3?'bad':'warn'}">${e.cls.label}</span>`:''}</td><td data-label="状態">${e.struck?'<span class="pill gray">抹消 '+(e.struckDate||'')+'</span>':'<span class="pill info">存続（閉鎖時）</span>'}</td><td data-label="信頼度">${confBar(e.conf)}</td></tr>`).join('');
+  document.querySelectorAll('.tt tr[data-id]').forEach(tr=>tr.onclick=()=>hl(tr.dataset.id));
+  // hero
+  $('tou-years').innerHTML=`${A.indYears}年<small>事業用途の所有期間</small>`;
+  $('tou-sub').innerHTML=`<span>所有者 <b>${A.owners.length}者</b></span><span>最初の登記 <b>${A.firstY||'—'}</b></span><span>閉鎖 <b>${A.closedY}</b></span><span>平均信頼度 <b>${Math.round(A.avg*100)}%</b></span>`;
+  $('tou-reco').textContent=A.maxLevel>=3?`${A.top.holder||A.top.debtor}（${A.topLabel}）が${A.indYears}年にわたり所有しています。${A.top.cls.subs}の使用が想定される業種のため、有害物質使用特定施設の設置・廃止届（水濁法）を自治体で確認し、写真判読の年代と突き合わせてください。`
+    :A.maxLevel===2?`製造業系の法人が所有していた期間があります。業種を会社名以外（商業登記・住宅地図）で特定し、使用物質の見当を付けます。`
+    :`所有者はいずれも個人または非製造業で、登記簿からは事業用途の手がかりはありません。地目の変遷と写真判読で裏取りします。`;
+  $('tou-chain').innerHTML=[['地目変遷',A.chimokuChg.length?A.chimokuChg.join(' / '):'変化なし',A.chimokuChg.length?'hot':'zero'],['事業用途',A.topLabel||'なし',A.maxLevel>=2?'hot':'zero'],['担保',t.otsuku.length+'件（抹消 '+t.otsuku.filter(e=>e.struck).length+'）',''],['要確認',A.unc+'件',A.unc?'hot':'zero']].map(c=>`<span class="${c[2]}"><em>${c[0]}</em>${c[1]}</span>`).join('');
+  // timeline
+  renderTL(A);
+  $('kw').innerHTML=A.hits.length?A.hits.map(h=>`<div><span class="k">${h.hit||'法人'}</span><span>${h.name}<small>${h.where} → ${h.label}／想定物質：${h.subs}</small></span><span class="pill ${h.level>=3?'bad':h.level===2?'warn':'gray'}">${['—','低','中','高'][h.level]}</span></div>`).join(''):'<div class="note" style="margin:0">事業用途を示す語句はありません</div>';
+  $('unc-x').textContent=`${A.unc}件`;
+  $('unc').innerHTML=(t.uncertain||[]).length?(t.uncertain||[]).map((u,i)=>`<div><span><b>${u.where}</b>「${u.text}」<small>${u.reason}</small></span><button class="btn mini" type="button" data-u="${i}">確認済み</button></div>`).join(''):'<div class="note" style="margin:0">要確認の箇所はありません</div>';
+  $('unc').querySelectorAll('button').forEach(b=>b.onclick=()=>{t.uncertain.splice(+b.dataset.u,1);renderTouhon(t);toast('確認済みにしました');});
+}
+function renderTL(A){
+  const y0=Math.min(A.firstY||1900,1900),y1=Math.max(A.closedY,2000);const W=360,H=60,pl=8,pr=8;const x=y=>pl+(y-y0)/(y1-y0)*(W-pl-pr);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="所有者の推移">`;
+  for(let y=Math.ceil(y0/20)*20;y<=y1;y+=20)s+=`<line x1="${x(y)}" x2="${x(y)}" y1="6" y2="34" stroke="var(--line2)"/><text x="${x(y)}" y="46" text-anchor="middle" font-size="9" fill="var(--mute)" font-family="JetBrains Mono,monospace">${y}</text>`;
+  A.owners.forEach(o=>{if(!o.y)return;const col=o.cls.level>=3?'var(--bad)':o.cls.level===2?'var(--warn)':o.cls.level===1?'var(--brass)':'var(--line)';s+=`<rect x="${x(o.y)}" y="10" width="${Math.max(2,x(o.end)-x(o.y))}" height="20" fill="${col}" rx="2"><title>${o.holder} ${o.y}–${o.end}</title></rect>`;});
+  s+=`<line x1="${x(A.closedY)}" x2="${x(A.closedY)}" y1="4" y2="36" stroke="var(--ink)" stroke-width="1.5"/><text x="${x(A.closedY)}" y="58" text-anchor="end" font-size="9" fill="var(--ink)" font-family="JetBrains Mono,monospace">閉鎖</text></svg>`;
+  s+=`<div class="lulegend" style="margin-top:4px"><span><i style="background:var(--bad)"></i>高</span><span><i style="background:var(--warn)"></i>中</span><span><i style="background:var(--brass)"></i>低</span><span><i style="background:var(--line)"></i>個人・非製造</span></div>`;
+  $('tl').innerHTML=s;$('tl-x').textContent=`${y0}–${y1}`;
+}
+$('tou-sample').onclick=()=>{const t=JSON.parse(JSON.stringify(SAMPLE_TOUHON));$('tou-src').textContent='サンプル（手書き謄本の再現）';renderSheet(t);renderTouhon(t);$('tou-msg').textContent='';};
+$('tou-apply').onclick=()=>{if(!TOU_RAW){toast('先に謄本を読み取ってください');return;}TOUHON=TOU_RAW;calc();toast(`登記簿の所見をリスク指標に反映しました（事業用途 ${TOUHON.analysis.indYears}年）`);document.querySelector('.tab[data-v=site]').click();};
+
+/* AI読み取り（Claude API・ブラウザ直接） */
+const TOU_PROMPT=`これは日本の閉鎖登記簿謄本（手書き・縦書き・旧字体や朱線の抹消を含む）の画像です。記載を丁寧に読み取り、次のJSONだけを出力してください（説明文やコードフェンスは不要）。
+{"shozai":"所在","chiban":"地番","closed":"閉鎖の年月日と事由（和暦のまま）",
+ "hyodai":[{"no":"番号","date":"和暦年月日","cause":"原因（地目変更・分筆など）","chimoku":"地目","chiseki":"地積（原文のまま。坪・合・平方米）","conf":0.0}],
+ "kouku":[{"no":"順位番号","date":"受付年月日（和暦）","uke":"受付番号","cause":"登記原因（売買・相続・合併など）","holder":"所有者名（法人名は正確に）","addr":"所有者住所","struck":false,"conf":0.0,"note":"判読上の注意"}],
+ "otsuku":[{"no":"順位番号","date":"受付年月日","uke":"受付番号","right":"権利の種類","amount":"債権額","holder":"権利者","debtor":"債務者","struck":false,"struckDate":"抹消の年月日","conf":0.0}],
+ "uncertain":[{"where":"甲区2 所有者 など","text":"読み取った文字列","reason":"旧字体・かすれ・朱線など"}]}
+ルール：朱線で抹消された事項は struck を true にし、文字は読み取ったまま残す。旧字体は原文のまま。confは0〜1の読み取り自信。判読できない文字は「□」で置く。個人名はそのまま読み取る。`;
+async function fileToBase64(file){
+  if(file.type==='application/pdf'){const buf=await file.arrayBuffer();let s='';new Uint8Array(buf).forEach(b=>s+=String.fromCharCode(b));return {data:btoa(s),media:'application/pdf',url:null};}
+  const url=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(file);});
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+  const sc=Math.min(1,1600/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);const out=c.toDataURL('image/jpeg',.9);
+  return {data:out.split(',')[1],media:'image/jpeg',url:out};
+}
+let TOU_FILE=null;
+function setTouFile(f){TOU_FILE=f;$('tou-src').textContent=`${f.name}（${Math.round(f.size/1024)}KB）`;$('tou-msg').textContent='画像を受け取りました。「AIで読み取る」を押してください';
+  if(f.type.startsWith('image/')){fileToBase64(f).then(r=>renderSheet(null,r.url));}else renderSheet(null);}
+const td=$('tou-drop');
+td.addEventListener('dragover',e=>{e.preventDefault();td.classList.add('over');});td.addEventListener('dragleave',()=>td.classList.remove('over'));
+td.addEventListener('drop',e=>{e.preventDefault();td.classList.remove('over');const f=e.dataTransfer.files[0];if(f)setTouFile(f);});
+$('tou-file').onchange=e=>{const f=e.target.files[0];if(f)setTouFile(f);};
+$('tou-ai').onclick=async()=>{
+  const key=$('tou-key').value.trim();
+  if(!TOU_FILE){toast('先に謄本の画像かPDFを入れてください');return;}
+  if(!key){toast('APIキーを入力してください（ブラウザ内でのみ使用）');return;}
+  $('tou-msg').textContent='読み取り中…（30秒前後）';$('tou-ai').disabled=true;
+  try{
+    const b=await fileToBase64(TOU_FILE);
+    const content=[b.media==='application/pdf'?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b.data}}:{type:'image',source:{type:'base64',media_type:b.media,data:b.data}},{type:'text',text:TOU_PROMPT}];
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:$('tou-model').value,max_tokens:6000,messages:[{role:'user',content}]})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error?j.error.message:'http '+r.status);
+    const text=j.content.map(c=>c.text||'').join('');const m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('JSONが返りませんでした');
+    const t=JSON.parse(m[0]);['hyodai','kouku','otsuku','uncertain'].forEach(k=>{if(!Array.isArray(t[k]))t[k]=[];});t.sample=false;
+    renderTouhon(t);$('tou-msg').textContent=`読み取り完了：表題部 ${t.hyodai.length}・甲区 ${t.kouku.length}・乙区 ${t.otsuku.length}（入力 ${j.usage?j.usage.input_tokens:'?'} tok）`;
+    toast('読み取りました。要確認の箇所を見てから「反映」してください');
+  }catch(e){$('tou-msg').textContent='読み取りに失敗：'+e.message;}
+  finally{$('tou-ai').disabled=false;}
+};
+renderSheet(null);
+
+/* ══════════ 条例レジストリ（都道府県・政令市） ══════════
+   conf: high=条文・閾値を確認済 / mid=条文番号は要確認 / low=下書き（法務確認前）
+   取込タブからJSONで差し替え可能。trigger: area=面積要件 / facility=有害物質取扱施設の廃止等 / ledger=台帳・指定区域の確認 */
+const LATEST_LAWS={'土壌汚染対策法':'令和4年6月17日法律第68号','土壌汚染対策法施行令':'平成30年9月28日政令第283号','土壌汚染対策法施行規則':'令和4年12月16日環境省令第26号'};
+let ORD=[
+ {pref:'東京都',name:'都民の健康と安全を確保する環境に関する条例（環境確保条例）',desk:'東京都環境局',rules:[
+  {art:'第116条',trigger:'facility',title:'有害物質取扱事業者の工場・指定作業場の廃止・除却',duty:'土壌汚染状況調査を行い知事に報告',note:'法より広い物質・規模（取扱量を問わない）',conf:'high'},
+  {art:'第117条',trigger:'area',th:3000,title:'3,000m²以上の土地の改変',duty:'土地利用の履歴等調査届出書を着手前に提出。汚染のおそれがあれば調査',conf:'high'},
+  {art:'第118条の2',trigger:'ledger',title:'汚染状況等の台帳',duty:'台帳の閲覧で過去の調査・届出の有無を確認',conf:'high'}]},
+ {pref:'大阪府',name:'大阪府生活環境の保全等に関する条例',desk:'大阪府環境農林水産部（大阪市・堺市など政令市は市が窓口）',rules:[
+  {art:'第81条の4',trigger:'facility',title:'有害物質使用特定施設等の使用の廃止',duty:'土壌汚染状況の調査・報告',conf:'mid'},
+  {art:'第81条の5',trigger:'area',th:3000,title:'3,000m²以上の土地の形質の変更',duty:'着手前に届出。土壌汚染のおそれの有無を把握（地歴調査）し、おそれがあれば調査',conf:'mid'},
+  {art:'第81条の6〜',trigger:'ledger',title:'条例に基づく管理区域等の台帳',duty:'府（市）の台帳で条例指定区域の有無を確認',conf:'mid'}]},
+ {pref:'神奈川県',name:'神奈川県生活環境の保全等に関する条例',desk:'神奈川県環境農政局（横浜・川崎・相模原市は市条例）',rules:[
+  {art:'第59〜60条',trigger:'facility',title:'特定有害物質等取扱事業所の廃止',duty:'土壌・地下水の汚染状況調査と報告',conf:'mid'},
+  {art:'第61条',trigger:'area',th:3000,title:'3,000m²以上の土地の形質の変更',duty:'届出と土壌汚染のおそれの調査',conf:'low'}]},
+ {pref:'神奈川県',city:'横浜市',name:'横浜市生活環境の保全等に関する条例',desk:'横浜市環境創造局',rules:[
+  {art:'第60条〜',trigger:'facility',title:'特定有害物質等取扱事業所の廃止',duty:'土壌汚染状況の調査・報告',conf:'low'},
+  {art:'第61条',trigger:'area',th:3000,title:'3,000m²以上の土地の形質の変更',duty:'届出と汚染のおそれの調査',conf:'low'}]},
+ {pref:'神奈川県',city:'川崎市',name:'川崎市公害防止等生活環境の保全に関する条例',desk:'川崎市環境局',rules:[
+  {art:'第78条',trigger:'facility',title:'特定有害物質取扱事業者の廃止',duty:'土壌汚染状況の調査・報告',conf:'low'},
+  {art:'第79条',trigger:'area',th:3000,title:'3,000m²以上の土地の改変',duty:'地歴調査等の結果を届出',conf:'low'}]},
+ {pref:'埼玉県',name:'埼玉県生活環境保全条例',desk:'埼玉県環境部',rules:[
+  {art:'第77〜79条',trigger:'facility',title:'特定有害物質等取扱事業者の廃止',duty:'土壌汚染状況の調査・報告',conf:'mid'},
+  {art:'第80条',trigger:'area',th:3000,title:'3,000m²以上の土地の改変',duty:'届出（汚染のおそれの調査）',conf:'low'}]},
+ {pref:'愛知県',name:'県民の生活環境の保全等に関する条例',desk:'愛知県環境局（名古屋市は市条例）',rules:[
+  {art:'第38条',trigger:'facility',title:'有害物質使用特定施設等の廃止',duty:'土壌汚染状況の調査・報告',conf:'mid'},
+  {art:'第39条',trigger:'area',th:3000,title:'3,000m²以上の土地の形質の変更',duty:'届出と土壌汚染のおそれの調査',conf:'low'}]},
+ {pref:'愛知県',city:'名古屋市',name:'市民の健康と安全を確保する環境の保全に関する条例',desk:'名古屋市環境局',rules:[
+  {art:'第45条〜',trigger:'facility',title:'有害物質使用特定施設等の廃止',duty:'土壌汚染状況の調査・報告',conf:'low'},
+  {art:'第46条',trigger:'area',th:3000,title:'3,000m²以上の土地の形質の変更',duty:'届出と汚染のおそれの調査',conf:'low'}]},
+ {pref:'兵庫県',name:'環境の保全と創造に関する条例',desk:'兵庫県環境部',rules:[
+  {art:'第61条〜',trigger:'facility',title:'特定有害物質使用施設の廃止',duty:'土壌汚染状況の調査・報告',conf:'mid'},
+  {art:'第63条',trigger:'area',th:3000,title:'3,000m²以上の土地の形質の変更',duty:'土壌汚染のおそれの調査と届出',conf:'low'}]},
+ {pref:'京都府',name:'京都府環境を守り育てる条例',desk:'京都府環境部',rules:[
+  {art:'第74条〜',trigger:'facility',title:'有害物質使用施設の廃止',duty:'土壌汚染状況の調査・報告',conf:'low'},
+  {art:'（要確認）',trigger:'area',th:3000,title:'3,000m²以上の土地の形質の変更',duty:'土壌汚染のおそれの調査',conf:'low'}]},
+ {pref:'三重県',name:'三重県生活環境の保全に関する条例',desk:'三重県環境生活部',rules:[
+  {art:'第72条の2〜',trigger:'facility',title:'特定有害物質取扱事業者の廃止',duty:'土壌汚染状況の調査・報告',conf:'low'},
+  {art:'（要確認）',trigger:'area',th:3000,title:'3,000m²以上の土地の形質の変更',duty:'土壌汚染のおそれの調査',conf:'low'}]},
+ {pref:'千葉県',name:'千葉県（県条例に土壌汚染の調査規定は未確認。千葉市など市条例を確認）',desk:'千葉県環境生活部',rules:[]},
+];
+const CONF_LABEL={high:'<span class="pill ok">確認済</span>',mid:'<span class="pill warn">要確認</span>',low:'<span class="pill gray">下書き</span>'};
+function prefOf(addr){const m=String(addr||'').match(/^(東京都|北海道|京都府|大阪府|[^\s\d]{2,3}県)/);return m?m[1]:'';}
+function cityOf(addr){const m=String(addr||'').replace(/^(東京都|北海道|京都府|大阪府|[^\s\d]{2,3}県)/,'').match(/^(.+?市|.+?区|.+?郡.+?[町村])/);return m?m[1]:'';}
+function ordFor(pref,city){return ORD.filter(o=>o.pref===pref&&(!o.city||(city&&city.startsWith(o.city))));}
+/* 条例＋法のルール評価。ctx={area,hazHist,zIn,dev} */
+function lawRules(ctx){
+  return [
+   {law:'土壌汚染対策法',art:'第3条',title:'有害物質使用特定施設の廃止',sub:'廃止時に調査義務（猶予あり）',st:ctx.hazHist?['warn','廃止履歴を要確認']:['ok','手がかりなし']},
+   {law:'土壌汚染対策法',art:'第4条',title:'3,000m²以上の形質変更',sub:'敷地 '+ctx.area.toLocaleString()+' m²',st:ctx.area>=3000?(ctx.dev?['bad','届出要（着手30日前）']:['warn','形質変更時は届出要']):['ok','面積要件に該当せず']},
+   {law:'土壌汚染対策法',art:'第4条',title:'有害物質使用特定施設跡地は900m²以上',sub:'写真判読・事業場・登記簿から推定',st:ctx.area>=900&&ctx.hazHist?['warn','該当の可能性']:['ok','該当の手がかりなし']},
+   {law:'土壌汚染対策法',art:'第6・11条',title:'指定区域内での形質変更',sub:'要措置区域は原則禁止',st:ctx.zIn?['bad','届出または措置が必要']:['ok','区域外']},
+  ];
+}
+function ordRules(pref,city,ctx){
+  const out=[];ordFor(pref,city).forEach(o=>o.rules.forEach(r=>{
+    let st;
+    if(r.trigger==='area')st=ctx.area>=r.th?['warn',`${r.th.toLocaleString()}m²以上：届出対象`]:['ok','面積要件に該当せず'];
+    else if(r.trigger==='facility')st=ctx.hazHist?['warn','要確認']:['ok','手がかりなし'];
+    else st=['info','台帳を閲覧'];
+    out.push({law:o.name,art:r.art,title:r.title,sub:r.duty,conf:r.conf,st});
+  }));return out;
+}
+const stPill=st=>`<span class="pill ${st[0]}">${st[1]}</span>`;
+
+/* ══════════ 既往報告書（実物2通を読み取り済みのサンプルとして保持） ══════════ */
+const REPORTS=[
+ {id:'osaka',k:'大阪市東住吉区駒川（2023）',file:'大阪府大阪市東住吉区駒川一丁目 地歴調査 報告書.pdf',pages:46,scan:true,
+  meta:{title:'大阪府大阪市東住吉区駒川一丁目 地歴調査 報告書',date:'2023年(令和5年) 11月',org:'株式会社エコ・テック',orgNo:'2016-3-1006',orgAddr:'大阪市北区菅原町11-10 オーキッド中之島501',period:'令和5年11月2日〜令和5年11月23日',purpose:'大阪府大阪市東住吉区駒川一丁目地内（以下「対象地」と称す）における土壌汚染のおそれの可能性について判断すること'},
+  site:{pref:'大阪府',city:'大阪市東住吉区',jusho:'大阪府大阪市東住吉区駒川一丁目11街区の一部',chiban:'大阪府大阪市東住吉区駒川一丁目108番1',area:469.98,areaNote:'公簿面積による推定',
+    parcels:[{shozai:'大阪市東住吉区駒川一丁目',chiban:'108番1',chimoku:'宅地',chiseki:469.98,owner:'株式会社ジオプランニング'}],
+    station:'近畿日本鉄道南大阪線北田辺駅の南約120m',landform:'低地の谷底平野及び氾濫原',geology:'未固結堆積物の泥',gw:'北東から南西（大阪湾寄り）と推定。南側3kmに一級河川大和川'},
+  laws:[{name:'土壌汚染対策法',ver:'平成14年5月29日法律第53号（改正：平成29年6月2日法律第45号）'},{name:'土壌汚染対策法施行令',ver:'平成14年11月13日政令第336号（改正：平成30年9月28日政令第283号）'},{name:'土壌汚染対策法施行規則',ver:'平成14年12月26日環境省令第29号（改正：令和4年3月24日環境省令第6号）'},{name:'土壌汚染対策法に基づく調査及び措置に関するガイドライン（改訂第3.1版）',ver:'令和4年8月31日 環境省'}],
+  regs:{suidaku:{v:'なし',src:'大阪市環境局環境管理部環境管理課',date:'令和5年10月30日'},gesui:{v:'なし',src:'同上'},art6:'なし',art11_jin:'なし',art11_shizen:'なし',art11_umetate:'なし',haiki:'なし',jorei:null,zoneSrc:'大阪市ホームページ（土壌汚染対策法に基づく区域の指定について：2023年10月27日更新）'},
+  touki:[
+   {date:'大正11年7月5日',cause:'分割による登記（住所：北田辺町8番3、地目：田）',holder:'藤岡林之助',chimoku:'田',chiseki:313},
+   {date:'昭和2年2月25日',cause:'売買（昭和2年2月25日）',holder:'井上鎌次郎'},
+   {date:'昭和25年6月8日',cause:'家督相続（昭和9年12月20日）・相続（昭和25年1月14日）',holder:'井上鎌次郎ほか井上家7名'},
+   {date:'昭和28年8月5日',cause:'土地区画整理（従前の土地：北田辺町11番、田 → 駒川町二丁目108番、宅地）',holder:'同上',chimoku:'宅地'},
+   {date:'昭和30年1月20日',cause:'108番2に分筆（地番：108番→108番1）',holder:'同上'},
+   {date:'昭和30年1月21日',cause:'売買（昭和27年2月21日）',holder:'中村イワ・中村喜照・中村弘・中村和子'},
+   {date:'昭和31年10月30日',cause:'売買（昭和31年10月30日）',holder:'村田武一'},
+   {date:'昭和55年7月2日',cause:'相続（昭和52年5月2日）',holder:'村田雄二'},
+   {date:'昭和55年11月1日',cause:'町名変更（駒川町二丁目→駒川一丁目）',holder:'同上'},
+   {date:'令和4年6月9日',cause:'売買（令和4年6月9日）',holder:'積水ハウス不動産関西株式会社'},
+   {date:'令和4年9月28日',cause:'108番11に分筆',holder:'同上',chiseki:476.58},
+   {date:'令和5年1月30日',cause:'売買（令和5年1月30日）',holder:'株式会社ジオプランニング'},
+   {date:'令和5年5月30日',cause:'108番12に分筆',holder:'同上',chiseki:469.98}],
+  maps:[
+   {y:1921,w:'大正10年',use:'田',around:'田',src:'地形図①'},{y:1932,w:'昭和7年',use:'田',around:'田、鉄道、周辺道路整備される。',src:'地形図②'},
+   {y:1947,w:'昭和22年',use:'市街地',around:'市街地、鉄道',src:'地形図③'},{y:1948,w:'昭和23年',use:'建物',around:'同上',src:'空中写真①'},
+   {y:1960,w:'昭和35年',use:'村田医院',around:'居宅、店舗、空地',src:'住宅地図④'},{y:1971,w:'昭和46年',use:'同上',around:'居宅、店舗、空地（資材置場）',src:'住宅地図⑤'},
+   {y:1975,w:'昭和50年',use:'建物',around:'市街地',src:'空中写真②'},{y:1980,w:'昭和55年',use:'駐車場',around:'居宅、店舗、事業所',src:'住宅地図⑥'},
+   {y:1985,w:'昭和60年',use:'同上',around:'市街地',src:'空中写真③'},{y:1990,w:'平成2年',use:'同上',around:'居宅、店舗、事業所',src:'住宅地図⑦'},
+   {y:2001,w:'平成13年',use:'同上',around:'店舗、居宅',src:'住宅地図⑧'},{y:2007,w:'平成19年',use:'同上',around:'市街地',src:'空中写真④'},
+   {y:2011,w:'平成23年',use:'同上',around:'居宅、店舗',src:'住宅地図⑨'},{y:2017,w:'平成29年',use:'同上',around:'市街地',src:'空中写真⑤'},
+   {y:2023,w:'令和5年',use:'同上',around:'居宅、店舗',src:'住宅地図⑩'}],
+  mapNotes:['空中写真及び地図による調査の結果、調査対象地は昭和23年の空中写真で建物が確認される以前は田であった。昭和35年の住宅地図では村田医院の記載があり、その後、昭和55年の住宅地図より村田医院の記載がなくなり、駐車場となり現在に至る。',
+   '調査対象地の土地利用履歴は、過去に病院敷地であり、有害物質を取扱う可能性が考えられる事業場等の土地利用が確認された。',
+   '隣接地は、主として居宅・店舗等の土地利用であるが、平成2年に対象地の南側に三洋洋傘工業㈱が確認出来るため、有害物質を取扱う可能性が考えられる事業場等の土地利用が確認された。'],
+  hearing:{date:'令和5年11月15日',by:'株式会社エコ・テック 仁宇 力也',mainUse:'昭和46年頃より製薬会社として施設（工場・作業所）が設置され、製造作業に使用されていたと推定される。',corp:[],siteCheck:'既に解体により更地になっていることから、当時の状況（漏洩の痕跡や、変色、臭気等）については確認されなかった。'},
+  natural:'調査対象地及びその周辺では自然由来及び公有水面埋立地に関する「形質変更時要届出区域」の指定の情報は存在せず、対象地上においても自然由来で汚染されている地層及び公有水面埋立地、盛土または水面埋立てに用いられた土砂等による埋立て等の記録は確認されなかった。',
+  result:{level:'低',headline:'土壌汚染の可能性は低いと判断する。',text:'対象地における製造事業等の利用履歴及び「土壌汚染対策法」に規定する特定有害物質の使用等に関する履歴事項は無かったが、過去に病院敷地が確認された。しかしながら、個人の診療所であり、臨床試験や研究等はなされなかったと思われることから、土壌汚染の可能性は低いものと判断する。'},
+  attachments:{general:['登記簿謄本','公図','地形図・住宅地図','空中写真'],public:[],private:['現地踏査写真']},
+  pageRef:{overview:1,laws:2,location:3,geo:4,touki:5,maps:6,hearing:7,regs:8,result:8,attach:'9–46'},conf:1},
+ {id:'tokyo',k:'渋谷区西原（2024）',file:'東京都渋谷区西原二丁目 地歴調査 報告書.pdf',pages:11,scan:false,
+  meta:{title:'東京都渋谷区西原二丁目 地歴調査 報告書',date:'令和6年6月',org:'株式会社エコ・テック',orgNo:'2016-3-1006',orgAddr:'大阪市北区菅原町11-10 オーキッド中之島501',period:'令和6年6月20日〜令和6年6月30日',purpose:'東京都渋谷区西原二丁目地内（以下「調査対象地」と称す）における土壌汚染のおそれの可能性について判断すること'},
+  site:{pref:'東京都',city:'渋谷区',jusho:'',chiban:'東京都渋谷区西原二丁目15番28',area:474.62,areaNote:'公簿面積による推定',
+    parcels:[{shozai:'渋谷区西原二丁目',chiban:'15番28',chimoku:'宅地',chiseki:474.62,owner:'柴田良平（持分2分の1）、柴田庄平（持分2分の1）'}],
+    station:'小田急線代々木上原駅より北へ約400m',landform:'台地・段丘',geology:'未固結堆積物の砂（下末吉層）',gw:'低地に向かう概ね南向きの流向が推定'},
+  laws:[{name:'土壌汚染対策法',ver:'平成14年5月29日法律第53号（改正：令和4年6月17日法律第68号）'},{name:'土壌汚染対策法施行令',ver:'平成14年11月13日政令第336号（改正：平成30年9月28日政令第283号）'},{name:'土壌汚染対策法施行規則',ver:'平成14年12月26日環境省令第29号（改正：令和4年12月16日環境省令第26号）'},{name:'土壌汚染対策法に基づく調査及び措置に関するガイドライン（改訂第3.1版）',ver:'令和4年8月31日 環境省'}],
+  regs:{suidaku:{v:'なし',src:'東京都環境局自然環境部水環境課',date:'令和6年6月26日'},gesui:{v:'なし',src:'東京都下水道局施設管理部排水設備課'},art6:'なし',art11_jin:'なし',art11_shizen:'なし',art11_umetate:'なし',haiki:'なし',jorei:{v:'なし',name:'都民の健康と安全を確保する環境に関する条例第118条の2の規定に基づく台帳'},zoneSrc:'東京都環境局ホームページ（令和6年6月21日更新）、半径1.0km圏内'},
+  touki:[{date:'昭和43年8月10日',cause:'合併による所有権登記',holder:'柴田貞三',chimoku:'宅地'},{date:'昭和59年7月2日',cause:'15番2から分筆',holder:'同上'},{date:'平成23年7月1日',cause:'15番28、15番37、15番38に分筆',holder:'同上',chiseki:474.62},{date:'令和1年5月22日',cause:'相続による所有権移転登記',holder:'柴田良平（持分2分の1）、柴田庄平（持分2分の1）'}],
+  maps:[
+   {y:1909,w:'明治42年',use:'山林',around:'山林・道路',src:'地形図①'},{y:1925,w:'大正14年',use:'同上',around:'同上',src:'地形図②'},
+   {y:1936,w:'昭和11年',use:'建物',around:'住宅・道路',src:'空中写真①'},{y:1938,w:'昭和13年',use:'同上',around:'同上',src:'地形図③'},
+   {y:1944,w:'昭和19年',use:'同上',around:'同上',src:'空中写真②'},{y:1945,w:'昭和20年',use:'同上',around:'同上',src:'地形図④'},
+   {y:1963,w:'昭和38年',use:'同上',around:'同上',src:'空中写真③'},{y:1973,w:'昭和48年',use:'同上',around:'同上',src:'住宅地図①'},
+   {y:1979,w:'昭和54年',use:'同上',around:'同上',src:'空中写真④'},{y:1983,w:'昭和58年',use:'同上',around:'同上',src:'住宅地図②'},
+   {y:1984,w:'昭和59年',use:'同上',around:'同上',src:'空中写真⑤'},{y:1992,w:'平成4年',use:'同上',around:'住宅・事務所・道路',src:'住宅地図③'},
+   {y:1992,w:'平成4年',use:'同上',around:'同上',src:'空中写真⑥'},{y:1999,w:'平成11年',use:'同上',around:'同上',src:'住宅地図④'},
+   {y:2002,w:'平成14年',use:'駐車場',around:'住宅・駐車場・道路',src:'住宅地図⑤'},{y:2009,w:'平成21年',use:'同上',around:'同上',src:'空中写真⑦'},
+   {y:2024,w:'令和6年',use:'同上',around:'同上',src:'住宅地図⑥'}],
+  mapNotes:['空中写真及び地図による調査の結果、調査対象地は昭和11年の空中写真で建物が確認される以前は山林であった。昭和38年の住宅地図では個人宅の記載が確認でき、平成11年の住宅地図では同名個人宅に法人名義併記の記載が確認できる。平成14年には建物の記載がなくなり、駐車場の記載となる。その後、大きな変化はなく、現在に至る。',
+   '調査対象地の土地利用履歴は、山林・住宅・事務所・駐車場であり、有害物質を取扱う可能性が考えられる事業場等の土地利用は確認されなかった。',
+   '隣接地は、主として山林・道路・住宅・事務所・駐車場の土地利用である。有害物質を取り扱う可能性が考えられる事業場等の土地利用は確認されなかった。'],
+  hearing:{date:'令和6年6月20日',by:'株式会社エコ・テック 久我 亮介',mainUse:'昭和10年頃より住宅街として利用され、住宅が立ち並んでいた。住宅地図より会社の事務所が設置されている時期があったため、法人登記を確認した。',
+    corp:[{name:'有限会社ヴィジョン',addr:'東京都渋谷区西原二丁目15番地17号',est:'平成3年3月5日',purpose:'造園建築における企画、デザイン及び施工管理に関する業務／商品の開発、請負'},
+          {name:'株式会社メンテック',addr:'東京都渋谷区西原二丁目15番10号',est:'平成1年2月22日',purpose:'工作機械の開発、設計、製作、販売及び保守に関する業務／機械設備の診断及びコンサルティング／清掃用器具及び工事／不動産の賃貸及び管理／生命保険の募集・損害保険代理業'}],
+    corpNote:'会社の目的から考えるに特定有害物質使用の可能性は低く、土壌汚染の可能性は低いと考えられる。',
+    siteCheck:'既に建物は解体され、駐車場になっていることから、当時の状況（漏洩の痕跡や、変色、臭気等）については確認されなかった。'},
+  natural:'調査対象地及びその周辺では自然由来及び公有水面埋立地に関する「形質変更時要届出区域」の指定の情報は存在せず、対象地上においても自然由来で汚染されている地層及び公有水面埋立地、盛土または水面埋立てに用いられた土砂等による埋立て等の記録は確認されなかった。',
+  result:{level:'低',headline:'土壌汚染の可能性は低いと判断する。',text:'対象地における製造事業等の利用履歴及び「土壌汚染対策法」に規定する特定有害物質の使用等は確認されなかった。よって、土壌汚染の可能性は低いものと判断する。'},
+  attachments:{general:['登記簿謄本','公図','地形図・住宅地図','空中写真'],public:[],private:['現地踏査写真']},
+  pageRef:{overview:1,laws:2,location:3,geo:4,touki:5,maps:6,hearing:7,regs:8,result:9},conf:1},
+];
+const KW2=KW.concat([[/医院|病院|診療所|クリニック/,'医療',2,'水銀・消毒薬・検査薬'],[/洋傘|傘/,'軽工業（加工）',1,'溶剤']]);
+const kwHits=t=>KW2.filter(k=>k[0].test(t||''));
+const resolveSame=maps=>{let p='';return maps.map(m=>{const u=/^同上$/.test(m.use||'')?p:(m.use||'');p=u;return {...m,useR:u};});};
+function waDate(s){
+  if(!s)return null;let m=String(s).match(/(明治|大正|昭和|平成|令和)\s*(元|\d+)\s*年\s*(\d+)\s*月(?:\s*(\d+)\s*日)?/);
+  if(m){const y=({明治:1867,大正:1911,昭和:1925,平成:1988,令和:2018})[m[1]]+(m[2]==='元'?1:+m[2]);return new Date(y,+m[3]-1,m[4]?+m[4]:1);}
+  m=String(s).match(/(1[89]\d\d|20\d\d)\s*年[^\d]*?(\d{1,2})\s*月/);return m?new Date(+m[1],+m[2]-1,1):null;
+}
+const fmtD=d=>d?`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`:'—';
+
+/* ── 整合性チェック：報告書の中身どうし、法令・条例レジストリとの突合 ── */
+function verifyReport(r){
+  const C=[];const add=(sev,k,msg,page)=>C.push({sev,k,msg,page});
+  const P=r.pageRef||{};
+  // 地積
+  const sum=(r.site.parcels||[]).reduce((a,p)=>a+(+p.chiseki||0),0);
+  if(r.site.parcels&&r.site.parcels.length){if(Math.abs(sum-r.site.area)>0.01)add('bad','地積',`筆一覧の合計 ${sum.toFixed(2)} m² と敷地面積 ${r.site.area} m² が一致しない`,P.overview);else add('ok','地積',`筆一覧の合計と敷地面積が一致（${r.site.area} m²）`,P.overview);}
+  const lastT=[...(r.touki||[])].reverse().find(t=>t.chiseki);
+  if(lastT){if(Math.abs(lastT.chiseki-r.site.area)>0.01)add('warn','地積',`登記簿の最終地積 ${lastT.chiseki} m²（${lastT.date}）と敷地面積 ${r.site.area} m² が一致しない`,P.touki);else add('ok','地積',`登記簿の最終地積（${lastT.date}）と敷地面積が一致`,P.touki);}
+  // 地番
+  const pc=(r.site.parcels||[]).map(p=>p.chiban);
+  if(pc.length){if(pc.every(c=>(r.site.chiban||'').includes(c)))add('ok','地番',`地番表示「${r.site.chiban}」と筆一覧（${pc.join('、')}）が一致`,P.overview);else add('bad','地番',`地番表示「${r.site.chiban}」に筆一覧の地番（${pc.join('、')}）が含まれない`,P.overview);}
+  if(!r.site.jusho)add('info','住居表示','住居表示が空欄。住居表示未実施の地域か、記載漏れかを確認',P.overview);
+  // 年次
+  const maps=resolveSame(r.maps||[]);let bad=0,wa=0;
+  maps.forEach((m,i)=>{if(i&&m.y<maps[i-1].y)bad++;const wy=waToYear(m.w);if(wy&&wy!==m.y)wa++;});
+  if(bad)add('bad','年次',`地図年次が${bad}箇所で昇順になっていない`,P.maps);
+  if(wa)add('bad','年次',`和暦と西暦が${wa}箇所で食い違う`,P.maps);
+  if(!bad&&!wa&&maps.length)add('ok','年次',`地図・空中写真 ${maps.length}時点（${maps[0].y}〜${maps[maps.length-1].y}）の年次と和暦が整合`,P.maps);
+  // 用途キーワード
+  const mapKW=[];maps.forEach(m=>kwHits(m.useR).forEach(k=>mapKW.push({y:m.y,use:m.useR,label:k[1],lv:k[2],subs:k[3]})));
+  const hearKW=kwHits(r.hearing&&r.hearing.mainUse);
+  const corpKW=((r.hearing&&r.hearing.corp)||[]).flatMap(c=>kwHits(c.purpose).map(k=>({name:c.name,label:k[1],lv:k[2],subs:k[3]})));
+  const noteAdj=((r.mapNotes||[]).join('').match(/[^\s、。（）「」]*(工業|製作所|工場|化学|製薬|染色|鍍金|メッキ)[^\s、。（）「」]*/g)||[]).filter(s=>s.length<24);
+  const maxLv=Math.max(0,...mapKW.map(x=>x.lv),...hearKW.map(k=>k[2]),...corpKW.map(x=>x.lv));
+  if(hearKW.length&&!hearKW.some(k=>mapKW.some(x=>x.label===k[1])))add('bad','整合',`ヒアリングに「${hearKW.map(k=>k[1]).join('・')}」を示す記載（${(r.hearing.mainUse||'').slice(0,34)}…）があるが、地図・空中写真の利用履歴（${[...new Set(maps.map(m=>m.useR))].join('→')}）に同じ業種の記載がない${mapKW.length?'（地図は'+[...new Set(mapKW.map(x=>x.label))].join('・')+'）':''}。別案件の記述の混入や年代の取り違えを疑い、原資料で確認`,P.hearing);
+  else if(hearKW.length)add('warn','整合',`ヒアリングと地図の双方に事業場の記載。年代（${mapKW.map(x=>x.y).join('、')}）が対応しているか確認`,P.hearing);
+  if(mapKW.length)add(maxLv>=3?'warn':'info','利用履歴',`地図上の用途に業種キーワード：${[...new Set(mapKW.map(x=>`${x.y}年「${x.use}」→${x.label}`))].join('、')}`,P.maps);
+  if(corpKW.length)add('warn','法人',`法人登記の目的に「${[...new Set(corpKW.map(x=>x.label))].join('・')}」：${[...new Set(corpKW.map(x=>x.name))].join('、')}。対象地で製作・取扱が行われたか（事務所のみか）の根拠が本文にあるか確認`,P.hearing);
+  if(maxLv>=3&&r.result.level==='低')add('bad','所見',`レベル高の業種（${[...new Set([...mapKW,...corpKW].filter(x=>x.lv>=3).map(x=>x.label).concat(hearKW.filter(k=>k[2]>=3).map(k=>k[1])))].join('・')}）が本文にあるのに所見は「低い」。所見の根拠（取扱なし・事務所のみ等）を明記するか、所見を見直す`,P.result);
+  else if(maxLv===2&&r.result.level==='低')add('warn','所見',`レベル中の用途（${[...new Set([...mapKW,...corpKW].filter(x=>x.lv===2).map(x=>x.label))].join('・')}）があり所見は「低い」。本文の理由付け（${(r.result.text||'').slice(0,40)}…）が妥当か確認`,P.result);
+  else if(r.result.level)add('ok','所見',`所見「${r.result.level}」と本文の用途記載が整合`,P.result);
+  if(noteAdj.length)add('info','周辺',`隣接地に事業場の記載：${[...new Set(noteAdj)].join('、')}。周辺事業場リスト（調査タブ）への追加候補`,P.maps);
+  // 法規制の網羅
+  const g=r.regs||{};
+  const req=[['水濁法 特定施設',g.suidaku&&g.suidaku.v],['下水道法 特定施設',g.gesui&&g.gesui.v],['土対法6条 要措置区域',g.art6],['土対法11条 人為等由来',g.art11_jin],['土対法11条 自然由来',g.art11_shizen],['土対法11条 水面埋立て',g.art11_umetate],['廃掃法 指定区域',g.haiki]];
+  const miss=req.filter(x=>!x[1]);
+  if(miss.length)add('warn','法規制',`確認結果の記載がない項目：${miss.map(x=>x[0]).join('、')}`,P.regs);else add('ok','法規制',`法に基づく${req.length}項目すべてに確認結果（${req.map(x=>x[1]).every(v=>v==='なし')?'すべて「なし」':req.map(x=>x[0]+'：'+x[1]).join('、')}）`,P.regs);
+  // 条例
+  const ords=ordFor(r.site.pref,r.site.city);
+  if(!ords.length)add('info','条例',`${r.site.pref||'都道府県不明'}の条例はレジストリ未登録。法のみで照合した`,P.regs);
+  ords.forEach(o=>{if(!o.rules.length){add('info','条例',o.name,P.regs);return;}
+    if(g.jorei&&g.jorei.v)add('ok','条例',`${o.name}に基づく確認あり（${g.jorei.name||''}：${g.jorei.v}）`,P.regs);
+    else add('warn','条例',`${o.name}（${o.rules.map(x=>x.art).join('・')}）の確認が報告書に記載されていない。${r.site.pref}では法と別に条例の台帳・届出の確認が要る`,P.regs);
+    o.rules.filter(x=>x.trigger==='area').forEach(x=>add(r.site.area>=x.th?'warn':'ok','条例',`${o.name} ${x.art}：${x.th.toLocaleString()}m²以上の${x.title.replace(/^[\d,]+m²以上の/,'')} → 敷地 ${r.site.area} m² は${r.site.area>=x.th?'該当（'+x.duty+'）':'非該当'}`,P.overview));
+  });
+  add(r.site.area>=3000?'warn':'ok','法',`土対法4条 3,000m²要件：敷地 ${r.site.area} m² は${r.site.area>=3000?'該当':'非該当'}。900m²要件（有害物質使用特定施設跡地）は${r.site.area>=900&&maxLv>=3?'該当の可能性':'手がかりなし'}`,P.overview);
+  // 法令の版
+  let old=0;(r.laws||[]).forEach(l=>{const key=Object.keys(LATEST_LAWS).find(k=>l.name===k);if(key&&!(l.ver||'').includes(LATEST_LAWS[key])){old++;add('warn','法令',`引用「${l.name}」の改正が古い：${l.ver.replace(/^.*改正：/,'').replace(/）$/,'')} → レジストリの最新 ${LATEST_LAWS[key]}`,P.laws);}});
+  if(!old&&(r.laws||[]).length)add('ok','法令',`関連法規 ${r.laws.length}件の引用はレジストリの最新改正と一致`,P.laws);
+  // 日付
+  const pr=(r.meta.period||'').split(/[〜~～]/);const p0=waDate(pr[0]),p1=waDate(pr[1]),hd=waDate(r.hearing&&r.hearing.date),rd=waDate(r.meta.date),cd=waDate(g.suidaku&&g.suidaku.date);
+  if(p0&&p1&&hd){if(hd<p0||hd>p1)add('warn','日付',`ヒアリング日 ${fmtD(hd)} が調査期間 ${fmtD(p0)}〜${fmtD(p1)} の外`,P.hearing);else add('ok','日付',`ヒアリング日 ${fmtD(hd)} は調査期間内`,P.hearing);}
+  if(cd&&p0&&cd<p0)add('info','日付',`行政照会日 ${fmtD(cd)} は調査期間開始前（事前照会）`,P.regs);
+  if(rd&&p1&&rd<new Date(p1.getFullYear(),p1.getMonth(),1))add('bad','日付',`報告書の日付 ${fmtD(rd)} が調査期間の終了より前`,P.overview);
+  // 添付と根拠資料
+  const used=[...new Set(maps.map(m=>(m.src||'').replace(/[①-⑳\d]+$/,'')))].filter(Boolean);
+  const att=((r.attachments||{}).general||[]).join('');
+  const noAtt=used.filter(u=>!att.includes(u.replace('地図','')));
+  if(noAtt.length)add('warn','添付',`根拠資料「${noAtt.join('、')}」が添付資料一覧にない`,P.maps);else if(used.length)add('ok','添付',`根拠資料（${used.join('・')}）はすべて添付資料に含まれる`,P.maps);
+  // 所有者と地図名の照合
+  (r.touki||[]).forEach(t=>{const h=(t.holder||'').replace(/同上|株式会社|有限会社|\s/g,'');if(h.length>=2){const sn=h.slice(0,2);const hit=maps.find(m=>m.useR.includes(sn)&&m.useR!==sn);if(hit&&!C.some(c=>c.k==='名義'))add('ok','名義',`登記名義人「${t.holder}」（${t.date}）と住宅地図「${hit.useR}」（${hit.y}年）が対応。個人開業・自宅兼用の裏付け`,P.touki);}});
+  const order={bad:0,warn:1,info:2,ok:3};C.sort((a,b)=>order[a.sev]-order[b.sev]);
+  return {checks:C,maxLv,mapKW,corpKW,hearKW,n:{bad:C.filter(c=>c.sev==='bad').length,warn:C.filter(c=>c.sev==='warn').length,info:C.filter(c=>c.sev==='info').length,ok:C.filter(c=>c.sev==='ok').length}};
+}
+
+/* ── 報告書タブの描画 ── */
+let REP=null,REP_FILE=null,PDFDOC=null,PDFPAGE=1;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SEV={bad:['bad','要修正'],warn:['warn','要確認'],info:['info','参考'],ok:['ok','整合']};
+function renderReport(r){
+  REP=r;const V=verifyReport(r);r.verify=V;
+  $('rep-title').textContent=r.meta.title;
+  $('rep-src').textContent=r.file?`${r.file}（${r.pages||'?'}頁${r.scan?'・スキャン':''}${r.conf===1?'・読み取り確認済':r.ai?'・AI読み取り':''}）`:'—';
+  // 概要
+  const s=r.site,m=r.meta,g=r.regs||{};
+  $('rep-ov').innerHTML=[['調査件名',m.title],['住居表示',s.jusho||'<span style="color:var(--mute)">（空欄）</span>'],['地番表示',s.chiban],['敷地面積',`${s.area} m²${s.areaNote?'（'+s.areaNote+'）':''}`],['調査期間',m.period],['調査機関',`${m.org}${m.orgNo?'（指定調査機関 '+m.orgNo+'）':''}`],['地形・地質',`${s.landform||'—'}／${s.geology||'—'}`],['地下水流向',s.gw||'—'],['最寄駅',s.station||'—']].map(([k,v])=>`<span class="t">${k}</span><span>${v}</span>`).join('');
+  $('rep-par').innerHTML=(s.parcels||[]).map((p,i)=>`<tr><td class="num">${i+1}</td><td>${esc(p.shozai)}</td><td class="num">${esc(p.chiban)}</td><td>${esc(p.chimoku)}</td><td class="r num">${p.chiseki}</td><td class="wrap">${esc(p.owner)}</td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--mute)">筆一覧なし</td></tr>';
+  $('rep-tk').innerHTML=(r.touki||[]).map(t=>{const c=classifyHolder(t.holder);return `<tr class="${c.level>=2?'ind':''}"><td class="nw">${esc(t.date)}<span class="num" style="color:var(--mute)"> ${waToYear(t.date)||''}</span></td><td class="wrap">${esc(t.cause)}</td><td class="wrap"><b>${esc(t.holder)}</b>${c.level>0?' <span class="pill '+(c.level>=3?'bad':c.level===2?'warn':'gray')+'">'+c.label+'</span>':''}</td><td>${esc(t.chimoku||'')}</td><td class="r num">${t.chiseki||''}</td></tr>`;}).join('')||'<tr><td colspan="5" style="color:var(--mute)">登記履歴なし</td></tr>';
+  const maps=resolveSame(r.maps||[]);
+  $('rep-mp').innerHTML=maps.map(x=>{const k=kwHits(x.useR);return `<tr class="${k.some(z=>z[2]>=2)?'ind':''}"><td class="num">${x.y}<span style="color:var(--mute)"> ${esc(x.w)}</span></td><td>${esc(x.use)}${x.use!==x.useR?'<span style="color:var(--mute)">（'+esc(x.useR)+'）</span>':''}${k.length?' <span class="pill '+(k[0][2]>=3?'bad':k[0][2]===2?'warn':'gray')+'">'+k[0][1]+'</span>':''}</td><td class="wrap">${esc(x.around)}</td><td class="num">${esc(x.src)}</td></tr>`;}).join('');
+  $('rep-mpn').innerHTML=(r.mapNotes||[]).map((n,i)=>`<div>${i+1}）${esc(n)}</div>`).join('');
+  const h=r.hearing||{};
+  $('rep-hr').innerHTML=`<span class="t">実施</span><span>${esc(h.date||'—')}／${esc(h.by||'—')}</span><span class="t">土地の主な利用履歴</span><span>${esc(h.mainUse||'—')}${kwHits(h.mainUse).map(k=>' <span class="pill '+(k[2]>=3?'bad':'warn')+'">'+k[1]+'</span>').join('')}</span>`+
+    (h.corp||[]).map(c=>`<span class="t">法人登記</span><span><b>${esc(c.name)}</b>（${esc(c.addr||'')}、設立 ${esc(c.est||'—')}）<br><small style="color:var(--mute)">${esc(c.purpose||'')}</small>${kwHits(c.purpose).map(k=>' <span class="pill '+(k[2]>=3?'bad':'warn')+'">'+k[1]+'</span>').join('')}</span>`).join('')+
+    (h.corpNote?`<span class="t">法人の評価</span><span>${esc(h.corpNote)}</span>`:'')+`<span class="t">踏査</span><span>${esc(h.siteCheck||'—')}</span>`;
+  const rg=[['水濁法 特定施設（有害物質使用）',g.suidaku&&g.suidaku.v,g.suidaku&&(g.suidaku.src+(g.suidaku.date?'・'+g.suidaku.date:''))],['下水道法 特定施設（有害物質使用）',g.gesui&&g.gesui.v,g.gesui&&g.gesui.src],['土対法6条 要措置区域',g.art6,g.zoneSrc],['土対法11条 形質変更時要届出区域（人為等由来）',g.art11_jin,''],['同（自然由来）',g.art11_shizen,''],['同（水面埋立て土砂由来）',g.art11_umetate,''],['廃掃法 指定区域',g.haiki,''],[g.jorei&&g.jorei.name||`${s.pref}条例に基づく台帳`,g.jorei&&g.jorei.v,'']];
+  $('rep-rg').innerHTML=rg.map(x=>`<tr><td class="wrap">${esc(x[0])}</td><td>${x[1]?'<span class="pill '+(x[1]==='なし'?'ok':'bad')+'">'+esc(x[1])+'</span>':'<span class="pill warn">記載なし</span>'}</td><td class="wrap" style="color:var(--mute)">${esc(x[2]||'')}</td></tr>`).join('');
+  $('rep-rs').innerHTML=`<span class="lvl ${r.result.level==='低'?'low':r.result.level==='中'?'mid':'high'}">${esc(r.result.level||'—')}</span> <b>${esc(r.result.headline||'')}</b><div style="margin-top:6px">${esc(r.result.text||'')}</div>`;
+  // 検証
+  $('rep-chk').innerHTML=V.checks.map((c,i)=>`<div class="chk ${c.sev}"><span class="pill ${SEV[c.sev][0]}">${SEV[c.sev][1]}</span><span><b>${c.k}</b> ${c.msg}</span>${c.page?`<button class="pg" type="button" data-p="${c.page}" title="該当ページ">p.${c.page}</button>`:'<span></span>'}</div>`).join('');
+  $('rep-chk').querySelectorAll('.pg').forEach(b=>b.onclick=()=>showPage(parseInt(b.dataset.p,10)));
+  $('rep-nbad').textContent=V.n.bad;$('rep-nwarn').textContent=V.n.warn;$('rep-nok').textContent=V.n.ok+V.n.info;
+  const lv=$('rep-lvl');lv.textContent=V.n.bad?'要修正':V.n.warn?'要確認':'整合';lv.className='lvl '+(V.n.bad?'high':V.n.warn?'mid':'low');
+  $('rep-reco').textContent=V.n.bad?`所見の根拠に関わる矛盾が${V.n.bad}件あります。このまま売買条件の根拠にはできません。該当ページを原資料と突き合わせ、所見本文を補強するか判定を見直してください。`:V.n.warn?`記載どうしは整合していますが、条例や法令の版など確認を要する点が${V.n.warn}件あります。`:'記載どうし、法令・条例レジストリとの照合に問題はありません。';
+  $('rep-chain').innerHTML=[['用途レベル',['なし','低','中','高'][V.maxLv],V.maxLv>=2?'hot':'zero'],['所見',r.result.level||'—',''],['条例',ordFor(s.pref,s.city).length?(g.jorei&&g.jorei.v?'確認済':'記載なし'):'未登録',g.jorei&&g.jorei.v?'':'hot'],['頁',r.pages||'?','']].map(c=>`<span class="${c[2]}"><em>${c[0]}</em>${c[1]}</span>`).join('');
+  renderOrd(s.pref,s.city,{area:s.area,hazHist:V.maxLv>=3,zIn:/あり|有/.test(g.art6||'')||/あり|有/.test(g.art11_jin||''),dev:false},r);
+  $('rep-apply').disabled=false;
+}
+function renderOrd(pref,city,ctx,r){
+  const ords=ordFor(pref,city);
+  $('rep-ordx').textContent=pref?`${pref}${city?' '+city:''}：${ords.length}条例`:'都道府県未判定';
+  const g=(r&&r.regs)||{};
+  const rows=lawRules(ctx).map(x=>({...x,src:'法',rep:r?(x.art==='第6・11条'?(g.art6?'区域確認 '+g.art6:'—'):x.art==='第3条'?(g.suidaku?'特定施設 '+g.suidaku.v:'—'):'面積 '+r.site.area+' m²'):'—'}))
+    .concat(ordRules(pref,city,ctx).map(x=>({...x,src:'条例',rep:r?(g.jorei&&g.jorei.v?'台帳確認 '+g.jorei.v:'<span style="color:var(--warn)">記載なし</span>'):'—'})));
+  $('rep-ord').innerHTML=rows.length?rows.map(x=>`<tr><td><span class="pill ${x.src==='法'?'info':'gray'}">${x.src}</span></td><td class="wrap"><b>${esc(x.law)} ${esc(x.art)}</b><br><small style="color:var(--mute)">${esc(x.title)}／${esc(x.sub)}</small></td><td>${stPill(x.st)}</td><td class="wrap">${x.rep}</td><td>${x.conf?CONF_LABEL[x.conf]:'<span class="pill ok">法</span>'}</td></tr>`).join(''):'<tr><td colspan="5" style="color:var(--mute)">都道府県が判定できません</td></tr>';
+  $('rep-ordnote').textContent=ords.length?`${ords.map(o=>o.name+(o.desk?'（窓口：'+o.desk+'）':'')).join('／')}。条番号・閾値は法務確認前の下書きを含みます（「確認済」以外）。`:`${pref||'この地域'}の条例はレジストリに未登録です。法（土対法）のみで照合しています。`;
+}
+/* PDFページ表示（pdf.js） */
+async function openPdf(file){
+  if(typeof pdfjsLib==='undefined'){$('rep-pgmsg').textContent='PDF表示ライブラリを読み込めませんでした（ネットワーク）';return;}
+  try{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    PDFDOC=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;$('rep-pgmsg').textContent=`${PDFDOC.numPages}頁`;showPage(1);}
+  catch(e){$('rep-pgmsg').textContent='PDFを開けません：'+e.message;}
+}
+async function showPage(n){
+  if(!PDFDOC){$('rep-pgmsg').textContent=`p.${n}（PDFをドロップすると該当ページを表示します）`;return;}
+  PDFPAGE=Math.max(1,Math.min(PDFDOC.numPages,n));const page=await PDFDOC.getPage(PDFPAGE);
+  const c=$('rep-page');const box=c.parentElement.clientWidth-4;const v0=page.getViewport({scale:1});const sc=box/v0.width;const vp=page.getViewport({scale:sc*2});
+  c.width=vp.width;c.height=vp.height;c.style.width=Math.round(vp.width/2)+'px';c.style.height=Math.round(vp.height/2)+'px';
+  await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;$('rep-pgmsg').textContent=`p.${PDFPAGE} / ${PDFDOC.numPages}`;
+}
+$('rep-prev').onclick=()=>showPage(PDFPAGE-1);$('rep-next').onclick=()=>showPage(PDFPAGE+1);
+
+/* 読み込み元 */
+$('rep-samples').innerHTML=REPORTS.map((r,i)=>`<button class="chip" data-r="${i}" type="button">${r.k}</button>`).join('');
+$('rep-samples').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{$('rep-samples').querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===b));const r=JSON.parse(JSON.stringify(REPORTS[+b.dataset.r]));renderReport(r);$('rep-msg').textContent='';toast('読み取り済みのサンプル報告書を表示しました');});
+const rd=$('rep-drop');
+rd.addEventListener('dragover',e=>{e.preventDefault();rd.classList.add('over');});rd.addEventListener('dragleave',()=>rd.classList.remove('over'));
+rd.addEventListener('drop',e=>{e.preventDefault();rd.classList.remove('over');const f=e.dataTransfer.files[0];if(f)setRepFile(f);});
+$('rep-file').onchange=e=>{const f=e.target.files[0];if(f)setRepFile(f);};
+function setRepFile(f){REP_FILE=f;$('rep-src').textContent=`${f.name}（${(f.size/1048576).toFixed(1)}MB）`;$('rep-msg').textContent='PDFを受け取りました。「AIで読み取る」で構造化します。ページ表示は右の欄で確認できます';if(f.type==='application/pdf')openPdf(f);}
+const REP_PROMPT=`これは日本の「地歴調査報告書」（土壌汚染対策法に基づく土地の利用履歴調査。スキャン画像を含むことがある）のPDFです。本文の記載を正確に読み取り、次のJSONだけを出力してください（説明文やコードフェンスは不要）。推測で埋めず、記載がない項目は null または空配列にします。数値は半角、和暦は原文のまま、各章の開始ページ番号を pageRef に入れます。
+{"meta":{"title":"表紙の題名","date":"表紙の年月","org":"調査機関名","orgNo":"指定調査機関指定番号","orgAddr":"所在地","period":"調査期間（原文）","purpose":"調査目的"},
+ "site":{"pref":"都道府県","city":"市区町村（政令市は区まで）","jusho":"住居表示","chiban":"地番表示","area":0.0,"areaNote":"面積の注記","parcels":[{"shozai":"所在","chiban":"地番","chimoku":"地目","chiseki":0.0,"owner":"所有者"}],"station":"最寄駅と距離","landform":"地形分類","geology":"表層地質","gw":"推定地下水流向"},
+ "laws":[{"name":"法令名（土壌汚染対策法 など正式名）","ver":"公布・改正の記載（原文）"}],
+ "regs":{"suidaku":{"v":"なし/あり","src":"照会先","date":"照会日"},"gesui":{"v":"なし/あり","src":"照会先"},"art6":"なし/あり","art11_jin":"なし/あり","art11_shizen":"なし/あり","art11_umetate":"なし/あり","haiki":"なし/あり","jorei":{"v":"なし/あり","name":"条例・台帳の名称"},"zoneSrc":"指定区域の確認先と更新日"},
+ "touki":[{"date":"登記年月日","cause":"原因","holder":"登記名義人等","chimoku":"地目","chiseki":0.0}],
+ "maps":[{"y":1921,"w":"大正10年","use":"対象地用途（同上は同上のまま）","around":"周辺地の土地利用","src":"根拠資料（地形図①など）"}],
+ "mapNotes":["地図・空中写真の所見 1）2）3）の本文"],
+ "hearing":{"date":"実施日","by":"実施者","mainUse":"土地の主な利用履歴の本文","corp":[{"name":"法人名","addr":"本店","est":"成立年月日","purpose":"目的"}],"corpNote":"法人に関する評価","siteCheck":"踏査による土地使用状況確認の本文"},
+ "natural":"自然由来・公有水面に関する情報の本文",
+ "result":{"level":"低/中/高（所見の判断）","headline":"所見の見出し文","text":"所見の本文"},
+ "attachments":{"general":["一般公表資料の名称"],"public":["公的資料"],"private":["私的資料"]},
+ "pageRef":{"overview":1,"laws":2,"location":3,"geo":4,"touki":5,"maps":6,"hearing":7,"regs":8,"result":9},
+ "uncertain":[{"where":"章・項目","text":"読み取った文字列","reason":"かすれ・判読不能など"}]}`;
+async function callClaude(content,maxTokens){
+  const key=($('rep-key').value||$('tou-key').value||'').trim();if(!key)throw new Error('APIキーを入力してください（ブラウザ内でのみ使用）');
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-beta':'server-side-fallback-2026-07-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:$('rep-model').value,max_tokens:maxTokens,fallbacks:'default',messages:[{role:'user',content}]})});
+  const j=await r.json();if(!r.ok)throw new Error(j.error?j.error.message:'http '+r.status);
+  if(j.stop_reason==='refusal')throw new Error('モデルが応答を拒否しました'+(j.stop_details&&j.stop_details.category?'（'+j.stop_details.category+'）':''));
+  if(j.stop_reason==='max_tokens')throw new Error('出力が長すぎて途中で切れました。ページを分けて読み込んでください');
+  return {text:j.content.map(c=>c.text||'').join(''),usage:j.usage||{}};
+}
+$('rep-ai').onclick=async()=>{
+  if(!REP_FILE){toast('先に報告書のPDFを入れてください');return;}
+  $('rep-msg').textContent='読み取り中…（スキャンPDFは1〜3分）';$('rep-ai').disabled=true;
+  try{const b=await fileToBase64(REP_FILE);
+    const content=[b.media==='application/pdf'?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b.data}}:{type:'image',source:{type:'base64',media_type:b.media,data:b.data}},{type:'text',text:REP_PROMPT}];
+    const {text,usage}=await callClaude(content,16000);const m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('JSONが返りませんでした');
+    const r=JSON.parse(m[0]);r.file=REP_FILE.name;r.pages=PDFDOC?PDFDOC.numPages:null;r.ai=true;r.conf=0;
+    ['laws','touki','maps','mapNotes','uncertain'].forEach(k=>{if(!Array.isArray(r[k]))r[k]=[];});r.site=r.site||{};r.site.parcels=r.site.parcels||[];r.meta=r.meta||{};r.regs=r.regs||{};r.hearing=r.hearing||{};r.result=r.result||{};r.pageRef=r.pageRef||{};
+    if(!r.site.pref)r.site.pref=prefOf(r.site.chiban||r.meta.title);if(!r.site.city)r.site.city=cityOf(r.site.chiban||r.meta.title);
+    $('rep-samples').querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));renderReport(r);
+    $('rep-msg').textContent=`読み取り完了：登記 ${r.touki.length}・地図 ${r.maps.length}時点・要確認 ${r.uncertain.length}（入力 ${usage.input_tokens||'?'} tok）`;toast('読み取りました。検証結果と該当ページを突き合わせてください');}
+  catch(e){$('rep-msg').textContent='読み取りに失敗：'+e.message;}
+  finally{$('rep-ai').disabled=false;}
+};
+
+/* 調査タブへ反映 */
+const ERA_RANGE={'1936':[1930,1944],'1945':[1945,1955],'1961':[1956,1972],'1974':[1973,1978],'1979':[1979,1983],'1984':[1984,1986],'1987':[1987,1999],'now':[2000,2100]};
+$('rep-apply').onclick=async()=>{
+  if(!REP){toast('先に報告書を読み込んでください');return;}const r=REP;const s=r.site;
+  const addr=(s.chiban||s.jusho||'').replace(/\d+番.*$/,'').replace(/\d+街区.*$/,'').trim()||(s.pref+s.city);
+  S.si=-1;S.name=r.meta.title.replace(/\s*地歴調査.*$/,'');S.addr=addr;S.youto=YOUTO.length-1;S.area=s.area||S.area;S.landcond=s.landform||S.landcond;S.liq=S.liq||'未取得';
+  S.zones=S.zones.filter(z=>!z.sample);S.fac=S.fac.filter(f=>!f.sample);S.lu=['—','—','—','—','—','—','—','—','—'];
+  const maps=resolveSame(r.maps||[]);S.photo=Object.fromEntries(ERAS.map(e=>[e.id,maps.some(m=>m.y>=ERA_RANGE[e.id][0]&&m.y<=ERA_RANGE[e.id][1]&&kwHits(m.useR).some(k=>k[2]>=2))]));
+  S.rnote=(r.mapNotes||[]).join('\n');S.report=r;
+  if(/低地|氾濫|埋立|台地|段丘/.test(S.landcond)===false)S.landcond=s.landform||'未取得';
+  renderForm();calc();document.querySelector('.tab[data-v=site]').click();
+  try{const g=await geocode(addr);if(g){S.lat=g.lat;S.lng=g.lng;calc();if(map)map.setView([S.lat,S.lng],16);toast(`${g.title} に移動しました。報告書の利用履歴を写真判読と法規制パネルに反映しました`);}else toast('住所検索で該当なし。地図上で地点を指定してください');}
+  catch(e){toast('住所検索APIに接続できません。地図上で地点を指定してください');}
+};
+
+/* ══════════ 報告書の下書き（同じ章立てで自動作成） ══════════ */
+const todayWa=()=>{const d=new Date();const y=d.getFullYear();const w=y>=2019?`令和${y-2018}年`:`平成${y-1988}年`;return `${y}年（${w}）${d.getMonth()+1}月`;};
+function draftOpinion(){
+  const R=S._R||{factors:[],level:'low'};const r=S.report;const parts=[];
+  const fl=ERAS.filter(e=>S.photo[e.id]).map(e=>e.label);
+  parts.push(fl.length?`空中写真・住宅地図の判読では${fl.join('、')}に工場・作業場等の利用が確認された。`:'空中写真・住宅地図の判読では、対象地に工場・作業場等の利用は確認されなかった。');
+  if(TOUHON&&TOUHON.analysis){const A=TOUHON.analysis;parts.push(A.indYears>0?`登記簿では${(A.top.holder||A.top.debtor)}（${A.topLabel}）が${A.indYears}年にわたり所有しており、${A.top.cls.subs}の使用が想定される。`:'登記簿上の所有者はいずれも個人または非製造業であり、事業用途の手がかりはない。');}
+  else if(r&&r.touki&&r.touki.length){const ind=r.touki.map(t=>classifyHolder(t.holder)).filter(c=>c.level>=2);parts.push(ind.length?`登記名義人に${[...new Set(ind.map(c=>c.label))].join('・')}系の法人が含まれる。`:'登記名義人はいずれも個人または非製造業であり、登記簿からは事業用途の手がかりはない。');}
+  if(r){const V=r.verify||verifyReport(r);parts.push(`既往の地歴調査報告書（${r.meta.org}、${r.meta.date}）は「${r.result.headline}」としている${V.n.bad?'が、記載間に'+V.n.bad+'件の矛盾があり所見の根拠は再確認を要する':''}。`);}
+  parts.push(R.zIn&&R.zIn.length?'対象地は土壌汚染対策法の指定区域に含まれる。':(R.zs&&R.zs.length&&R.zs[0].dist<=S.radius)?`半径${S.radius}m内に指定区域が${R.zs.filter(z=>z.dist<=S.radius).length}件ある（最寄 ${Math.round(R.zs[0].dist)}m）。`:`半径${S.radius}m内に土壌汚染対策法の指定区域はない。`);
+  if(R.fs&&R.fs.length)parts.push(`周辺の届出事業場は${R.fs.length}件（うち有害物質使用 ${R.fs.filter(f=>f.cat==='haz').length}件）である。`);
+  const pref=prefOf(S.addr),ords=ordFor(pref,cityOf(S.addr));
+  if(ords.length){const a=ords.flatMap(o=>o.rules.filter(x=>x.trigger==='area'&&S.area>=x.th).map(x=>`${o.name}${x.art}`));parts.push(a.length?`敷地面積 ${S.area.toLocaleString()} m² は${a.join('、')}の面積要件に該当し、形質変更時の届出が必要である。`:`敷地面積 ${S.area.toLocaleString()} m² は${ords[0].name}の面積要件（${ords.flatMap(o=>o.rules.filter(x=>x.th).map(x=>x.th.toLocaleString()))[0]||'—'}m²）に該当しない。`);}
+  parts.push({low:'以上から、土壌汚染の可能性は低いと判断する。',mid:'以上から、土壌汚染のおそれを否定できず、閉鎖登記簿・旧版地図・ヒアリングを含むPhase 1調査の完了と、所見によっては概況調査（Phase 2）の実施が望ましいと判断する。',high:'以上から、土壌汚染の可能性は高いと判断する。概況調査（表層土壌・土壌ガス）を前提に、調査費・対策費の負担を契約条件に織り込む必要がある。'}[R.level]);
+  return parts.join('');
+}
+function buildReport(){
+  const R=S._R||{factors:[],level:'low',zs:[],fs:[]};const r=S.report;const pref=prefOf(S.addr),city=cityOf(S.addr);const ords=ordFor(pref,city);
+  const org=$('rep-org').value||'（調査機関名）',by=$('rep-by').value||'（担当者）',period=$('rep-period').value||'（調査期間）';
+  const hear=$('rep-hear').value||(r&&r.hearing&&r.hearing.mainUse)||'（ヒアリング結果を記入）';const sitec=$('rep-site').value||(r&&r.hearing&&r.hearing.siteCheck)||'（現地踏査の確認事項を記入）';
+  const lvSel=$('rep-level').value;const level=lvSel||{low:'低',mid:'中',high:'高'}[R.level];
+  const op=$('rep-op').value||draftOpinion();
+  const hazHist=R.factors[0]&&R.factors[0].pts>0||(TOUHON&&TOUHON.analysis.maxLevel>=3)||(r&&r.verify&&r.verify.maxLv>=3);
+  const ctx={area:S.area,hazHist,zIn:R.zIn&&R.zIn.length,dev:S.deal===2};
+  const T=(rows)=>`<table>${rows.map(x=>`<tr>${x.map((c,i)=>`<t${i===0&&x.length>1?'h':'d'}>${c}</t${i===0&&x.length>1?'h':'d'}>`).join('')}</tr>`).join('')}</table>`;
+  const parcels=(r&&r.site.parcels&&r.site.parcels.length)?r.site.parcels:(TOUHON?[{shozai:TOUHON.shozai,chiban:TOUHON.chiban,chimoku:(TOUHON.hyodai.slice(-1)[0]||{}).chimoku||'',chiseki:S.area,owner:(TOUHON.analysis.owners.slice(-1)[0]||{}).holder||''}]:[{shozai:S.addr,chiban:'（地番）',chimoku:'',chiseki:S.area,owner:''}]);
+  const zr=(R.zs||[]).filter(z=>z.dist<=S.radius);const fs=R.fs||[];
+  const maps=r?resolveSame(r.maps):[];
+  const eraRows=ERAS.map(e=>[e.label,S.photo[e.id]?'工場・作業場等あり':'形跡なし／未確認','地理院タイル '+e.tile]);
+  const lawRows=Object.entries(LATEST_LAWS).map(([k,v])=>`・${k}（改正：${v}）`).concat(['・土壌汚染対策法に基づく調査及び措置に関するガイドライン（改訂第3.1版）（令和4年8月31日 環境省）']).concat(ords.map(o=>`・${o.name}`));
+  const regRows=lawRules(ctx).concat(ordRules(pref,city,ctx)).map(x=>[`${x.law} ${x.art}`,x.title,x.st[1]]);
+  const touRows=TOUHON?TOUHON.analysis.owners.map(o=>[o.date,o.cause,o.holder+(o.cls.level>=2?'（'+o.cls.label+'）':'')]):(r?r.touki.map(t=>[t.date,t.cause,t.holder]):[['—','閉鎖謄本タブで読み取ると反映されます','']]);
+  const html=`
+  <div class="cover"><div class="ct">${esc(S.name||S.addr)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${todayWa()}</div><div class="co">${esc(org)}</div><div class="draft">下書き（ANGLEX 自動生成）</div></div>
+  <h2>1. 調査概要</h2>
+  <h3>1.1 調査件名</h3><p>${esc(S.addr)}地内 地歴調査</p>
+  ${T([['住居表示',esc(r&&r.site.jusho||S.addr)],['地番表示',esc(r&&r.site.chiban||parcels.map(p=>p.shozai+p.chiban).join('、'))],['特定施設の有無','水質汚濁防止法に基づく有害物質使用の特定施設：'+(r&&r.regs.suidaku?r.regs.suidaku.v:'（照会中）')+'<br>下水道法に基づく有害物質使用の特定施設：'+(r&&r.regs.gesui?r.regs.gesui.v:'（照会中）')],['指定区域の有無','土壌汚染対策法 要措置区域：'+(R.zIn&&R.zIn.some(z=>z.type.startsWith('要措置'))?'あり':'なし')+'<br>形質変更時要届出区域：'+(R.zIn&&R.zIn.some(z=>!z.type.startsWith('要措置'))?'あり':'なし')+'<br>'+(ords.length?ords[0].name+'に基づく区域：'+(r&&r.regs.jorei?r.regs.jorei.v:'（台帳照会）'):'条例：該当する登録なし')]])}
+  <p class="cap">調査対象地の筆及び一覧表</p>${T([['所在','地番','地目','地積','所有者']].concat(parcels.map(p=>[esc(p.shozai),esc(p.chiban),esc(p.chimoku),(p.chiseki||'')+' m²',esc(p.owner)])).concat([['合計','','',S.area.toLocaleString()+' m²','']]))}
+  <h3>1.2 調査目的</h3><p>本調査は、${esc(S.addr)}地内（以下「対象地」と称す）における土壌汚染のおそれの可能性について判断することを目的とした。</p>
+  <h3>1.3 敷地面積</h3><p>${S.area.toLocaleString()} m²（${r&&r.site.areaNote||'公簿面積による推定'}）</p>
+  <h3>1.4 関連法規</h3><p>${lawRows.map(esc).join('<br>')}</p>
+  <h3>1.5 調査期間</h3><p>${esc(period)}</p>
+  <h3>1.6 調査機関</h3><p>${esc(org)}　担当：${esc(by)}</p>
+  <h3>1.7 調査場所</h3><p>${esc(S.addr)}（座標 ${S.lat.toFixed(5)}, ${S.lng.toFixed(5)}）。位置図・公図は添付資料を参照。</p>
+  <h2>2. 履歴調査</h2>
+  <h3>2.1 地形・地質及び地下水概要</h3><p>対象地の土地条件は「${esc(S.landcond)}」、液状化傾向は「${esc(S.liq||'未取得')}」に分類される。${r&&r.site.geology?'表層地質は'+esc(r.site.geology)+'。':''}${r&&r.site.gw?'地下水流向は'+esc(r.site.gw)+'。':'地下水流向は地形の傾斜から推定し、隣接地の地下構造物の影響に注意を要する。'}</p>
+  <h3>2.2 登記簿謄本による履歴調査</h3>${T([['登記年月日','原因','登記名義人等']].concat(touRows.map(x=>x.map(esc))))}
+  <h3>2.3 地形図・住宅地図・空中写真による履歴調査</h3>
+  ${maps.length?T([['地図年次','対象地用途','周辺地の土地利用','根拠資料']].concat(maps.map(m=>[m.y+'年（'+esc(m.w)+'）',esc(m.use),esc(m.around),esc(m.src)]))):T([['年代','判読','資料']].concat(eraRows))}
+  <p>${esc(S.rnote||'（写真判読の所見を記入）').replace(/\n/g,'<br>')}</p>
+  <p class="cap">国土数値情報 土地利用細分メッシュ：${S.lu.filter(v=>v!=='—').length?S.lu.map((v,i)=>LU_YEARS[i]+' '+v).join('、'):'未取得'}</p>
+  <h3>2.4 ヒアリング調査及び現地踏査</h3><p>【土地の主な利用履歴】<br>${esc(hear)}</p><p>【踏査による土地使用状況確認】<br>${esc(sitec)}</p>
+  <h3>2.5 法規制調査</h3>
+  ${T([['法令・条例','内容','判定']].concat(regRows.map(x=>x.map(esc))))}
+  <p class="cap">周辺の指定区域（半径${S.radius}m）：${zr.length?zr.map(z=>esc(z.type)+' '+esc(z.no)+'（'+Math.round(z.dist)+'m、'+esc(z.subs||'')+'）').join('、'):'なし'}</p>
+  <p class="cap">周辺の届出事業場（半径${S.radius}m）：${fs.length?fs.map(f=>esc(f.name)+'（'+Math.round(f.dist)+'m '+f.dir+'、'+esc(f.subs||'')+'）').join('、'):'なし'}</p>
+  <h3>2.6 履歴調査結果</h3>
+  <div class="shoken"><div class="sh">所　見</div><div class="shh">土壌汚染の可能性は${esc(level)}いと判断する。</div><div class="sht">${esc(op)}</div></div>
+  <p class="cap">地歴リスク指標 ${R.score}/100（${R.factors.map(f=>f.k+' +'+f.pts).join('、')}）</p>
+  <h2>添付資料</h2>${T([['一般公表資料','A) 登記簿謄本／B) 公図／C) 地形図・住宅地図／D) 空中写真'],['公的資料','—'],['私的資料','A) 現地踏査写真']])}`;
+  $('rep-doc').innerHTML=html;$('rep-doc').hidden=false;$('rep-docx').textContent='生成 '+new Date().toLocaleTimeString('ja-JP');
+}
+$('rep-build').onclick=()=>{if(!$('rep-op').value)$('rep-op').value=draftOpinion();buildReport();toast('調査タブの状態から報告書を下書きしました。本文は直接編集できます');};
+$('rep-draft').onclick=()=>{$('rep-op').value=draftOpinion();buildReport();};
+$('rep-polish').onclick=async()=>{
+  const facts=$('rep-op').value||draftOpinion();$('rep-msg2').textContent='整文中…';$('rep-polish').disabled=true;
+  try{const {text}=await callClaude([{type:'text',text:`次は土壌汚染の地歴調査報告書の「所見」の下書きです。事実関係は一切変えず、指定調査機関の報告書の文体（である調・簡潔）で3〜5文に整えてください。本文だけを出力してください。\n\n${facts}`}],1500);$('rep-op').value=text.trim();buildReport();$('rep-msg2').textContent='整文しました';}
+  catch(e){$('rep-msg2').textContent='整文に失敗：'+e.message;}finally{$('rep-polish').disabled=false;}
+};
+$('rep-print').onclick=()=>{if($('rep-doc').hidden)buildReport();$('rep-printarea').innerHTML=$('rep-doc').innerHTML;document.body.classList.add('print-rep');window.print();setTimeout(()=>document.body.classList.remove('print-rep'),500);};
+$('rep-json').onclick=()=>{const data={site:S,touhon:TOUHON,report:REP,generatedAt:new Date().toISOString()};const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,(k,v)=>k==='_R'?undefined:v,1));a.download='chireki-'+(S.addr||'site')+'.json';a.click();};
+/* 条例レジストリのJSON差し替え */
+$('ord-file').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{try{const j=JSON.parse(fr.result);if(!Array.isArray(j))throw new Error('配列ではありません');ORD=j;$('ord-msg').textContent=`${j.length}件の条例を読み込みました`;calc();if(REP)renderReport(REP);}catch(err){$('ord-msg').textContent='読み込めません：'+err.message;}};fr.readAsText(f);};
+$('ord-dl').onclick=()=>{const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(ORD,null,1));a.download='ordinances.json';a.click();};
+$('ord-list').innerHTML=ORD.map(o=>`<div><span>${esc(o.pref)}${o.city?' '+esc(o.city):''}<small>${esc(o.name)}</small></span><span>${o.rules.length?o.rules.map(x=>CONF_LABEL[x.conf]).join(' '):'<span class="pill gray">規定なし</span>'}</span></div>`).join('');
+renderOrd('','',{area:0,hazHist:false,zIn:false,dev:false},null);
+
+/* ── タブ・モバイル ── */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+  ['site','tou','src','imp','rep'].forEach(v=>$('v-'+v).hidden=v!==t.dataset.v);$('mbar').hidden=t.dataset.v!=='site';window.scrollTo(0,0);if(t.dataset.v==='site'&&map)setTimeout(()=>map.invalidateSize(),50);});
+$('mb-go').onclick=()=>document.querySelector('#v-site .res').scrollIntoView({behavior:'smooth',block:'start'});
+
+/* ── 起動 ── */
+S={si:0,lat:SITES[0].lat,lng:SITES[0].lng,photo:{}};
+if(typeof L==='undefined'){$('map').innerHTML='<div style="padding:24px;color:var(--mute);font-size:12.5px">地図ライブラリ（Leaflet）を読み込めませんでした。ネットワーク接続を確認してください。</div>';}
+else initMap();
+loadSite(0);
+})();
+</script>
+</body>
+</html>

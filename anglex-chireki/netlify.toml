@@ -1,0 +1,5 @@
+[build]
+  publish = "."
+  command = "python3 build.py"
+[functions]
+  directory = "netlify/functions"

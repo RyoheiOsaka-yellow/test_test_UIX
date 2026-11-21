@@ -1,0 +1,1126 @@
+[
+ {
+  "pref": "愛知県",
+  "city": null,
+  "name": "県民の生活環境の保全等に関する条例",
+  "origName": "県民の生活環境の保全等に関する条例",
+  "number": "平成15年愛知県条例第7号",
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "愛知県 環境局 環境政策部 水大気環境課 水・土壌規制グループ（電話 052-954-6225）。窓口は各県民事務所等の環境保全課、名古屋市・豊橋市・岡崎市・一宮市・春日井市・豊田市は各市（県パンフレット末尾の窓口一覧）",
+  "rules": [
+   {
+    "art": "第39条の2",
+    "heading": "土地の形質の変更をしようとする者の義務等",
+    "trigger": "area",
+    "threshold": 3000,
+    "thresholdBasis": "形質変更の部分の面積（敷地面積ではない）。水質汚濁防止法の特定施設で特定有害物質を使用している事業場等の敷地は900㎡以上。盛土のみは対象外（一部でも掘削を伴えば全体が対象）",
+    "areaBasis": "change",
+    "summary": "一定規模以上の土地の形質変更を行う者は、過去の特定有害物質等取扱事業所の設置状況等を事前に調査（地歴調査）し、結果を知事に報告。法第4条第1項届出と両方の手続が必要。",
+    "duty": "報告義務。書類：過去の特定有害物質等取扱事業所設置状況等調査結果報告書（様式第32）＋地歴調査結果。期限：着手する日までに報告（法4条届出は30日前まで）。義務者：形質変更の施行計画の内容を決定する者",
+    "quote": "「土地の形質の変更」は、掘削、盛土、切土の別を問わず、形質の変更の部分の面積が3,000平方メートル以上(水質汚濁防止法に規定される特定施設で特定有害物質を使用している事業場等の敷地においては900平方メートル以上)となる場合です。",
+    "url": "https://www.pref.aichi.jp/soshiki/kankyo/dojyoutikasui.html",
+    "verified": true
+   },
+   {
+    "art": "第39条",
+    "heading": "特定有害物質等取扱事業所における調査義務等",
+    "trigger": "facility",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "特定有害物質等取扱事業所（水質汚濁防止法の特定施設を設置する事業所〔法で調査される土地を除く〕、地下タンクでガソリンを貯蔵・取り扱う事業所）の全部又は一部を廃止しようとするときは、指針に従い土壌汚染等調査を行い知事に報告。平成22年9月30日以前に取扱いをやめた場合は対象外。設置者の調査努力義務、知事の調査・報告要求（事業者／土地所有者等）も同条。",
+    "duty": "廃止時の土壌汚染等調査＋知事への報告義務（様式名・期限は県解説ページに記載なし＝未確認）",
+    "quote": "特定有害物質等取扱事業所（注）の全部又は一部を廃止しようとするときは、指針に従って土壌汚染等調査を行い、その結果を知事に報告しなければならない。",
+    "url": "https://www.pref.aichi.jp/soshiki/kankyo/dojyoutikasui.html",
+    "verified": true
+   },
+   {
+    "art": "第40条",
+    "heading": "土壌・地下水汚染が判明した場合の汚染の拡散防止のための措置等",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "法・条例の調査で土壌汚染等対策基準不適合が判明したときは、直ちに応急措置を行い届出。拡散防止措置を講じ、完了時に知事へ届出（要措置区域に指定された場合を除く）。",
+    "duty": "応急措置・届出、拡散防止措置、完了届出",
+    "quote": "指針に従って汚染の拡散を確実に防止するために必要な措置（以下「拡散防止措置」という。）を講ずるとともに、措置が完了したときは知事に届け出なければならない",
+    "url": "https://www.pref.aichi.jp/soshiki/kankyo/dojyoutikasui.html",
+    "verified": true
+   },
+   {
+    "art": "第42条",
+    "heading": "汚染の状況等の公表",
+    "trigger": "ledger",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "条例独自の区域指定・台帳制度は設けず、報告・届出があった場合に知事が必要に応じ汚染の状況を公表する仕組み。",
+    "duty": "（知事による公表）",
+    "quote": "知事は、土壌または地下水の汚染に関する報告又は届出があった場合において、人の健康又は生活環境に係る被害防止のため必要と認めるときは、汚染の状況について公表する。",
+    "url": "https://www.pref.aichi.jp/soshiki/kankyo/dojyoutikasui.html",
+    "verified": true
+   },
+   {
+    "art": "第45条",
+    "heading": "自主調査に係る報告等",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "法・条例によらず指針に従い自主的に土壌汚染等調査を行い汚染が判明した場合、知事に報告するよう努める（努力義務）。",
+    "duty": "報告の努力義務",
+    "quote": "指針に従って土壌汚染等調査を行った者は、土壌・地下水汚染が判明した場合は、知事に報告するよう努めなければならない。",
+    "url": "https://www.pref.aichi.jp/soshiki/kankyo/dojyoutikasui.html",
+    "verified": true
+   }
+  ],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "1，土壌及び地下水の汚染の防止に関する規制等 - 愛知県",
+    "url": "https://www.pref.aichi.jp/soshiki/kankyo/dojyoutikasui.html",
+    "what": "条例（土壌・地下水）各条の公式解説、法4条と条例39条の2の比較表"
+   },
+   {
+    "title": "土壌汚染対策法に関する情報 - 愛知県",
+    "url": "https://www.pref.aichi.jp/soshiki/mizutaiki/0000049585.html",
+    "what": "土対法の案内・様式・汚染公表一覧"
+   },
+   {
+    "title": "土壌汚染対策法に基づく要措置区域・形質変更時要届出区域の指定状況 - 愛知県",
+    "url": "https://www.pref.aichi.jp/soshiki/mizutaiki/0000047550.html",
+    "what": "土対法の区域指定公表ページ（県所管分）"
+   },
+   {
+    "title": "土壌・地下水汚染を防止するために ―県民の生活環境の保全等に関する条例を改正しましたー（PDF）",
+    "url": "https://www.pref.aichi.jp/uploaded/attachment/276454.pdf",
+    "what": "条例パンフレット（フロー図・法との比較・窓口）"
+   }
+  ],
+  "appliesNote": "名古屋市内は第45条及び第45条の2を除き適用除外で、名古屋市条例が適用（県パンフレット：「名古屋市内については、第４５条及び第４５条の２の規定を除き適用除外となり、」）。適用除外地（第44条）：農用地、要措置区域内の土地、一般廃棄物処理施設等の存する土地。",
+  "basis": null,
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": false
+ },
+ {
+  "pref": "愛知県",
+  "city": "名古屋市",
+  "name": "市民の健康と安全を確保する環境の保全に関する条例（名古屋市環境保全条例）",
+  "origName": "市民の健康と安全を確保する環境の保全に関する条例（名古屋市環境保全条例）",
+  "number": "平成15年名古屋市条例第15号",
+  "lastAmended": "令和7年3月31日公布・令和7年6月1日施行（拘禁刑創設に伴う改正。市ページの表記は「条例第129条、第130条」）。土壌規制部分に係る直近改正は条文PDF冒頭の改正履歴上「令和3年名古屋市条例第39号」",
+  "lastAmendedShort": "令和7年3月31日公布・令和7年6月1日施行",
+  "desk": "名古屋市 環境局 地域環境対策部 地域環境対策課 有害化学物質対策担当（電話 052-972-2677）",
+  "rules": [
+   {
+    "art": "第57条",
+    "heading": "大規模な土地の形質の改変時の調査",
+    "trigger": "area",
+    "threshold": 3000,
+    "thresholdBasis": "土地の形質の変更の対象となる土地の面積（施行細則第51条：3,000㎡。現に有害物質使用特定施設が設置されている工場・事業場の敷地又は使用が廃止された同施設に係る工場・事業場の敷地は900㎡）",
+    "areaBasis": "change",
+    "summary": "規模以上の土地の形質変更をしようとする者は、過去の特定有害物質等取扱工場等の設置状況等（土地利用履歴）を調査し市長に報告。",
+    "duty": "報告義務。書類：特定有害物質等取扱工場等設置状況等調査結果報告書（第16号様式の3、細則第51条の2）。期限：形質変更に着手する日の30日前まで",
+    "quote": "その対象となる土地の面積が規則で定める規模以上のものをしようとする者は、当該土地の形質の変更に着手する日の30日前までに、規則で定めるところにより、当該土地における過去の特定有害物質等を取り扱っていた工場等の設置の状況その他の規則で定める事項を調査し、その結果を市長に報告しなければならない",
+    "url": "https://www.city.nagoya.jp/_res/projects/default_project/_page_/001/008/790/kankyouhozennjyourei.pdf",
+    "verified": true
+   },
+   {
+    "art": "第55条",
+    "heading": "土地の形質の変更時の調査",
+    "trigger": "area",
+    "threshold": 500,
+    "thresholdBasis": "特定有害物質等取扱工場等の敷地における形質変更の対象となる土地の面積（施行細則第49条：500㎡以上3,000㎡未満）。市案内：「特定有害物質等取扱工場等における500平方メートル以上3,000平方メートル未満の土地の形質の変更のうち、土壌汚染対策法の届出対象になるものは環境保全条例の対象外となります。」（https://www.city.nagoya.jp/kankyo/page/0000116349.html）",
+    "areaBasis": "change",
+    "summary": "特定有害物質等取扱事業者が自らの特定有害物質等取扱工場等の敷地で規模該当の形質変更をするとき、指定調査機関に土壌・地下水の汚染状況を調査させ市長に報告。調査せず土地を譲渡した場合は譲受人が義務を負う（第2項）。",
+    "duty": "調査・報告義務。書類：土壌汚染等調査結果報告書（第16号様式、細則第49条の2）。期限：形質変更に着手する日まで。事前に調査計画書届出（第56条、第16号様式の2）",
+    "quote": "当該土地の形質の変更に着手する日までに、規則で定めるところにより、当該土地の形質の変更（盛土を除く。）に係る土地の土壌及び土地にある地下水の特定有害物質による汚染の状況について、指定調査機関に土壌汚染等対策指針で定める方法により調査させて、その結果を市長に報告しなければならない。",
+    "url": "https://www.city.nagoya.jp/_res/projects/default_project/_page_/001/008/790/kankyouhozennjyourei.pdf",
+    "verified": true
+   },
+   {
+    "art": "第54条",
+    "heading": "汚染状況の調査等",
+    "trigger": "facility",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "特定有害物質等取扱事業者の汚染状況把握の努力義務（第1項）と、汚染のおそれがある場合の市長による調査・報告命令（第2項）。施設・工場の「廃止」を契機とする調査義務の条は、第52条〜第60条の5の条見出しを通覧した範囲では確認できなかった。",
+    "duty": "努力義務／命令に基づく調査・報告",
+    "quote": "当該特定有害物質等取扱工場等の敷地である土地の土壌及び土地にある地下水の特定有害物質による汚染の状況を把握するよう努めなければならない。",
+    "url": "https://www.city.nagoya.jp/_res/projects/default_project/_page_/001/008/790/kankyouhozennjyourei.pdf",
+    "verified": true
+   },
+   {
+    "art": "第58条・第58条の4・第58条の8",
+    "heading": "措置管理区域の指定等／拡散防止管理区域の指定等／形質変更時届出管理区域の指定等",
+    "trigger": "zone",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "土壌汚染等調査の結果、土壌汚染等処理基準に適合しない土地を条例独自の3区域のいずれかに指定。拡散防止管理区域・形質変更時届出管理区域内の形質変更は市長へ計画の届出（第58条の7、第58条の9）。措置管理区域は形質変更原則禁止（第58条の3）。",
+    "duty": "区域内の形質変更時の届出等",
+    "quote": "土壌汚染等調査の結果、土壌の汚染状態が土壌汚染等処理基準に適合しない土地については、措置管理区域、拡散防止管理区域または形質変更時届出管理区域のいずれかに指定します。",
+    "url": "https://www.city.nagoya.jp/shisei/keikaku/1008387/1008424/1008838/1008841/1008843.html",
+    "verified": true
+   },
+   {
+    "art": "第59条",
+    "heading": "管理区域等台帳",
+    "trigger": "ledger",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "市長は措置管理区域・拡散防止管理区域・形質変更時届出管理区域の台帳、指定解除された区域の台帳等（管理区域等台帳）を調製・保管し、閲覧に供する。",
+    "duty": "（市長の台帳調製・閲覧）",
+    "quote": "市長は、措置管理区域の台帳、拡散防止管理区域の台帳、形質変更時届出管理区域の台帳",
+    "url": "https://www.city.nagoya.jp/_res/projects/default_project/_page_/001/008/790/kankyouhozennjyourei.pdf",
+    "verified": true
+   },
+   {
+    "art": "第57条の2",
+    "heading": "自主調査に係る報告等",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "条例・法の調査以外の自主調査で土壌汚染等処理基準不適合が判明したときの報告に関する規定（詳細な義務の範囲は未精読）。",
+    "duty": "自主調査結果の報告（様式：自主調査結果報告書）",
+    "quote": null,
+    "url": "https://www.city.nagoya.jp/_res/projects/default_project/_page_/001/008/790/kankyouhozennjyourei.pdf",
+    "verified": false
+   }
+  ],
+  "extraSubstances": [],
+  "zones": [
+   {
+    "name": "措置管理区域",
+    "art": "第58条"
+   },
+   {
+    "name": "拡散防止管理区域",
+    "art": "第58条の4"
+   },
+   {
+    "name": "形質変更時届出管理区域",
+    "art": "第58条の8"
+   },
+   {
+    "name": "除去済み特例区域（管理区域に指定しない特例）",
+    "art": "第58条ただし書、第58条の4ただし書、第58条の8ただし書"
+   },
+   {
+    "name": "管理区域等台帳",
+    "art": "第59条"
+   }
+  ],
+  "pages": [
+   {
+    "title": "土壌汚染対策｜名古屋市公式ウェブサイト",
+    "url": "https://www.city.nagoya.jp/shisei/keikaku/1008387/1008424/1008777/1008787.html",
+    "what": "土壌汚染対策トップ（法・条例の案内、窓口）"
+   },
+   {
+    "title": "名古屋市環境保全条例に基づく区域の指定｜名古屋市公式ウェブサイト",
+    "url": "https://www.city.nagoya.jp/shisei/keikaku/1008387/1008424/1008838/1008841/1008843.html",
+    "what": "条例に基づく区域の解説と一覧"
+   },
+   {
+    "title": "水質汚濁防止法・下水道法に基づく特定事業場一覧、土壌汚染に係る区域指定一覧",
+    "url": "https://www.city.nagoya.jp/shisei/keikaku/1008387/1008424/1008777/1008783.html",
+    "what": "土対法・条例の区域指定一覧（リンク先本文は未取得）"
+   },
+   {
+    "title": "市民の健康と安全を確保する環境の保全に関する条例（環境保全条例）｜名古屋市公式ウェブサイト",
+    "url": "https://www.city.nagoya.jp/shisei/keikaku/1008387/1008424/1008789/1008790.html",
+    "what": "条例・施行細則PDFと改正履歴"
+   }
+  ],
+  "appliesNote": "名古屋市内に適用。平成25年3月31日までに旧条例に基づき汚染報告をした土地で除去未完了のものは形質変更時届出管理区域とみなされる（条例附則第6条第2項、市ページ記載）。",
+  "basis": null,
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": false
+ },
+ {
+  "pref": "三重県",
+  "city": null,
+  "name": "三重県生活環境の保全に関する条例",
+  "origName": "三重県生活環境の保全に関する条例",
+  "number": "平成13年3月27日三重県条例第7号",
+  "lastAmended": "平成31年3月18日三重県条例第25号（例規集本文末尾の最後の附則。確認日時点の例規集表示）",
+  "lastAmendedShort": "平成31年3月18日三重県条例第25号",
+  "desk": "三重県 環境生活部 環境共生局 大気・水環境課 水環境班（電話 059-224-2382）。窓口は各地域防災総合事務所等の環境室（所管区域表は県概要ページ）",
+  "rules": [
+   {
+    "art": "第72条の2",
+    "heading": "土地の形質変更時の調査等",
+    "trigger": "area",
+    "threshold": 3000,
+    "thresholdBasis": "形質変更を行おうとする土地の面積（規則第83条の2：3千㎡。現に有害物質使用特定施設が設置されている工場等の敷地又は同施設が廃止された工場等の敷地〔法3条1項本文の報告済みを除く〕は900㎡）",
+    "areaBasis": "change",
+    "summary": "土地の所有者等は、規模以上の形質変更を行おうとするとき、過去の特定有害物質取扱工場等の設置状況等（地歴）を調査し記録。工場等の立地が認められた場合は土壌・地下水の汚染状況を調査し記録（第2項）。",
+    "duty": "調査・記録義務（知事への届出義務ではない）。県は法4条届出時に地歴調査結果書（県様式）の提出を求める運用。違反時は知事の勧告（第72条の4第3項）",
+    "quote": "当該土地における過去の特定有害物質（土壌汚染対策法（平成十四年法律第五十三号）第二条第一項に規定する特定有害物質をいう。以下同じ。）の製造、使用その他の取扱いを行っていた工場等の設置の状況その他の規則で定める事項を調査し、その結果を記録しなければならない。",
+    "url": "https://en3-jg.d1-law.com/mie-ken/d1w_reiki/H413901010007/H413901010007_j.html",
+    "verified": true
+   },
+   {
+    "art": "第72条の3",
+    "heading": "有害物質使用特定施設における調査等",
+    "trigger": "facility",
+    "threshold": 300,
+    "thresholdBasis": "第2項：特定工場等の敷地内で300㎡以上の形質変更（規則第83条の7）。第1項：稼働中施設の定期調査（1年を超えない期間に1回以上、規則第83条の5）",
+    "areaBasis": "change",
+    "summary": "有害物質使用特定施設を設置する工場等の土地所有者等は、土壌又は地下水の汚染状況を定期に調査・記録（第1項）。当該土地で300㎡以上の形質変更を行うときは土壌を調査・記録（第2項）。※施設「廃止」時の調査は条例ではなく法第3条による。",
+    "duty": "調査・記録義務",
+    "quote": "特定工場等所有者等は、当該土地において規則で定める面積以上の形質変更を行おうとするときは、知事が別に定める方法により、当該土地の土壌の特定有害物質による汚染の状況について調査し、その結果を記録しなければならない。",
+    "url": "https://en3-jg.d1-law.com/mie-ken/d1w_reiki/H413901010007/H413901010007_j.html",
+    "verified": true
+   },
+   {
+    "art": "第72条の4",
+    "heading": "土壌又は地下水の特定有害物質による汚染発見時の届出等",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "土地の所有者等は、基準を超える土壌・地下水汚染を発見したとき、速やかに応急措置を講じ、汚染状況・措置を知事に届出。知事は関係市町長に通知し必要に応じ公表。",
+    "duty": "届出義務。書類：土壌・地下水汚染発見に係る届出書（第24号様式の2、規則第83条の9）。期限：速やかに",
+    "quote": "汚染を発見したときは、速やかに当該汚染の拡散を防止するための応急の措置を講ずるとともに、当該汚染の状況及び講じた措置について、規則で定めるところにより、知事に届け出なければならない。",
+    "url": "https://en3-jg.d1-law.com/mie-ken/d1w_reiki/H413901010007/H413901010007_j.html",
+    "verified": true
+   },
+   {
+    "art": "第72条の8",
+    "heading": "（県外からの汚染土壌の県内搬入に係る届出）",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "県外から特定有害物質で汚染された土壌を県内で処分するため搬入しようとする土地の所有者等は事前に知事へ届出（県概要ページの説明。条見出しの原文は未確認）。",
+    "duty": "事前届出",
+    "quote": "県外から、特定有害物質で汚染された土地の土壌を県内で処分するために搬入しようとする土地の所有者等は、事前に知事に届け出ることが必要です。",
+    "url": "https://www.pref.mie.lg.jp/eco/earth/12325014760.htm",
+    "verified": true
+   }
+  ],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "三重県｜土壌・地下水：土壌汚染対策法及び三重県生活環境の保全に関する条例（関係分）の概要",
+    "url": "https://www.pref.mie.lg.jp/eco/earth/12325014760.htm",
+    "what": "法・条例の概要、様式、窓口一覧"
+   },
+   {
+    "title": "三重県生活環境の保全に関する条例について（土壌及び地下水汚染に関する規制）（PDF）",
+    "url": "https://www.pref.mie.lg.jp/common/content/000827587.pdf",
+    "what": "条例・規則の条文抜粋付き概要"
+   },
+   {
+    "title": "三重県生活環境の保全に関する条例（三重県例規集）",
+    "url": "https://en3-jg.d1-law.com/mie-ken/d1w_reiki/H413901010007/H413901010007_j.html",
+    "what": "条例全文（例規集）"
+   }
+  ],
+  "appliesNote": "土対法の区域指定公表ページURLは未特定（概要ページに区域指定の説明あり）。",
+  "basis": null,
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": false
+ },
+ {
+  "pref": "滋賀県",
+  "city": null,
+  "name": "滋賀県公害防止条例",
+  "origName": "滋賀県公害防止条例",
+  "number": "昭和47年12月21日滋賀県条例第57号",
+  "lastAmended": "令和7年条例第5号（例規集の付則一覧の最後。公布日は未確認）",
+  "lastAmendedShort": "令和7年条例第5号",
+  "desk": "滋賀県 琵琶湖環境部 環境政策課 環境管理係／各環境事務所（大津市内は大津市環境政策課）",
+  "rules": [
+   {
+    "art": "第49条",
+    "heading": "指定有害物質使用特定施設の使用の廃止時の調査",
+    "trigger": "facility",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "使用が廃止された指定有害物質使用特定施設（水質汚濁防止法の特定施設であるものを除く＝条例独自の特定施設）に係る工場等の敷地であった土地の所有者等は、指定調査機関に調査させ知事に報告。利用方法からみて健康被害のおそれがない旨の知事の確認を受けた場合は猶予。",
+    "duty": "調査・報告義務。書類：土壌の汚染の状況についての調査結果報告書（別記様式第15号）※様式名は検索要約のみで原文未確認。期限：廃止日（通知を受けた者は通知日）から120日以内（規則第29条の2）",
+    "quote": "に規則で定める方法により調査させて、その結果を知事に報告しなければならない。ただし、規則で定めるところにより、当該土地について予定されている利用の方法からみて土壌の指定有害物質による汚染により人の健康に係る被害が生ずるおそれがない旨の知事の確認を受けた場合は、この限りでない。",
+    "url": "https://www.pref.shiga.lg.jp/site/jourei/reiki_int/reiki_honbun/k001RG00001104.html",
+    "verified": true
+   },
+   {
+    "art": "第50条",
+    "heading": "土地の形質変更時の調査",
+    "trigger": "zone",
+    "threshold": null,
+    "thresholdBasis": "面積要件なし（条文上）。対象地＝「指定有害物質使用地」（土対法施行前に廃止された水濁法特定施設、又は平成19年条例第53号施行前に廃止された特定施設で指定有害物質を製造・使用・処理していたものが設置されていた工場等の敷地であった土地）",
+    "areaBasis": "change",
+    "summary": "指定有害物質使用地で土壌の採取その他の土地の形質の変更をしようとする者は、あらかじめ指定調査機関に調査させ知事に報告。調査前に知事へ届出（第3項）。知事は土壌基準適合の確認結果を7日以内に通知（第4項）。通常の管理行為等は除外（第2項）。",
+    "duty": "事前の調査・報告義務＋調査実施の事前届出",
+    "quote": "において、土壌の採取その他の土地の形質の変更をしようとする者は、あらかじめ、規則で定めるところにより、当該指定有害物質使用地の土壌の指定有害物質による汚染の状況について、指定調査機関に規則で定める方法により調査させ、その結果を知事に報告しなければならない。",
+    "url": "https://www.pref.shiga.lg.jp/site/jourei/reiki_int/reiki_honbun/k001RG00001104.html",
+    "verified": true
+   },
+   {
+    "art": "第50条の2",
+    "heading": "土地の形質変更の届出等",
+    "trigger": "zone",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "土壌調査で土壌基準不適合とされた指定有害物質使用地内で形質変更をしようとする者は、あらかじめ形質変更の種類・場所・施行方法・着手予定日等を知事に届出。",
+    "duty": "事前届出義務",
+    "quote": "土壌調査において土壌の指定有害物質による汚染状態が土壌基準に適合しない指定有害物質使用地内で土地の形質の変更をしようとする者は、あらかじめ、規則で定めるところにより、当該土地の形質の変更の種類、場所、施行方法および着手予定日その他規則で定める事項を知事に届け出なければならない。",
+    "url": "https://www.pref.shiga.lg.jp/site/jourei/reiki_int/reiki_honbun/k001RG00001104.html",
+    "verified": true
+   },
+   {
+    "art": "第50条の4",
+    "heading": "指定有害物質使用地台帳",
+    "trigger": "ledger",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "知事は指定有害物質使用地の台帳を調製・保管し、閲覧を求められた場合は正当な理由なく拒めない。",
+    "duty": "（知事の台帳調製・閲覧）",
+    "quote": "知事は、指定有害物質使用地の台帳(以下この条において「指定有害物質使用地台帳」という。)を調製し、これを保管するものとする",
+    "url": "https://www.pref.shiga.lg.jp/site/jourei/reiki_int/reiki_honbun/k001RG00001104.html",
+    "verified": true
+   },
+   {
+    "art": "第50条の5",
+    "heading": "土壌汚染改善管理計画",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "土壌調査の結果、土壌基準不適合の場合の土壌汚染改善管理計画に関する規定（作成・提出義務者等の詳細は未精読）。",
+    "duty": "計画の作成・提出等",
+    "quote": null,
+    "url": "https://www.pref.shiga.lg.jp/site/jourei/reiki_int/reiki_honbun/k001RG00001104.html",
+    "verified": false
+   }
+  ],
+  "extraSubstances": [],
+  "zones": [
+   {
+    "name": "指定有害物質使用地",
+    "art": "第50条"
+   },
+   {
+    "name": "指定有害物質使用地台帳",
+    "art": "第50条の4"
+   }
+  ],
+  "pages": [
+   {
+    "title": "滋賀県公害防止条例（滋賀県例規集）",
+    "url": "https://www.pref.shiga.lg.jp/site/jourei/reiki_int/reiki_honbun/k001RG00001104.html",
+    "what": "条例全文"
+   },
+   {
+    "title": "滋賀県公害防止条例施行規則（滋賀県例規集）",
+    "url": "https://www.pref.shiga.lg.jp/site/jourei/reiki_int/reiki_honbun/k001RG00001105.html",
+    "what": "規則（報告期限・様式）"
+   },
+   {
+    "title": "滋賀県公害防止条例等の改正について（H19～H21改正分）｜滋賀県",
+    "url": "https://www.pref.shiga.lg.jp/ippan/kankyoshizen/kankyou/13826.html",
+    "what": "条例の土壌規定の解説・台帳閲覧案内（リダイレクト先 https://www.pref.shiga.lg.jp/de00/2860.html）"
+   },
+   {
+    "title": "土壌汚染対策法に基づく区域の指定について｜滋賀県",
+    "url": "https://www.pref.shiga.lg.jp/ippan/kankyoshizen/kankyou/13058.html",
+    "what": "土対法の区域指定公表ページ（リダイレクト先 https://www.pref.shiga.lg.jp/de00/2853.html）"
+   }
+  ],
+  "appliesNote": "面積要件型（一定規模以上の形質変更時の調査・届出）の規定は第3章（第49条〜第50条の7）の見出し上なし。大津市内の法区域は大津市所管。",
+  "basis": null,
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": false
+ },
+ {
+  "pref": "京都府",
+  "city": null,
+  "name": "京都府：独自の調査義務を定める条例なし",
+  "origName": "京都府環境を守り育てる条例（平成7年12月25日京都府条例第33号）",
+  "number": "平成7年12月25日京都府条例第33号",
+  "lastAmended": "令和6年条例第84号（例規集の附則一覧の最後）",
+  "lastAmendedShort": "令和6年条例第84号",
+  "desk": "京都府 環境管理課 水質担当（電話 075-414-4711、検索要約ベース）。届出窓口は各保健所、京都市内は京都市",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "京都府環境を守り育てる条例（京都府例規集）",
+    "url": "https://www.pref.kyoto.jp/reiki/reiki_honbun/a300RG00000484.html",
+    "what": "条例全文"
+   }
+  ],
+  "appliesNote": "土対法の区域指定公表ページ（府環境管理課）のURLは未特定。",
+  "basis": "条例全文（府例規集）を取得し「土壌」を全文検索：定義規定のほか第35条（汚水の地下浸透禁止・防止対策）のみで、調査・届出義務の規定なし。環境省一覧も⑧のみ。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "京都府",
+  "city": "京都市",
+  "name": "京都府京都市：独自の調査義務を定める条例なし",
+  "origName": "（調査・届出義務を定める条例なし。京都市汚染土壌処理業の許可に係る手続等に関する要綱のみ）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "京都市 環境政策局 環境企画部 環境保全創造課（電話 075-222-3955）",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "京都市：土壌汚染対策法に係る手続について",
+    "url": "https://www.city.kyoto.lg.jp/kankyo/page/0000088964.html",
+    "what": "法手続・手引・窓口"
+   },
+   {
+    "title": "京都市：京都市内の土壌汚染対策法に係る要措置区域等について",
+    "url": "https://www.city.kyoto.lg.jp/kankyo/page/0000088963.html",
+    "what": "土対法の区域指定公表ページ"
+   }
+  ],
+  "appliesNote": "独自の調査・届出義務なし（土対法のみ）。",
+  "basis": "環境省一覧（令和5年度末）で京都市は処理業許可手続の要綱（⑥）のみ。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "兵庫県",
+  "city": null,
+  "name": "兵庫県：独自の調査義務を定める条例なし",
+  "origName": "環境の保全と創造に関する条例（訓示的条項のみ）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "兵庫県 環境部 水大気課 水質班（電話 078-362-9094）。神戸市・姫路市・尼崎市・西宮市・加古川市・明石市・宝塚市は各市",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "ひょうごの環境 :: 一定規模以上の土地の形質変更を行う場合の手続き(法第４条)",
+    "url": "https://www.kankyo.pref.hyogo.lg.jp/jp/mizu_dojo/leg_250/leg_346",
+    "what": "法4条届出の案内・窓口"
+   },
+   {
+    "title": "ひょうごの環境 :: 要措置区域・形質変更時要届出区域情報",
+    "url": "https://www.kankyo.pref.hyogo.lg.jp/jp/mizu_dojo/leg_250/20535",
+    "what": "土対法の区域指定公表ページ（県所管分）"
+   }
+  ],
+  "appliesNote": "独自の調査・届出義務なし（土対法のみ）。尼崎市は別途「工場跡地に関する取扱要綱」④等あり（環境省一覧）・未調査。",
+  "basis": "環境省一覧（令和5年度末）で兵庫県は同条例⑧（訓示的条項）のみ、①独自の調査契機の分類なし。条例本文は未取得。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "兵庫県",
+  "city": "神戸市",
+  "name": "兵庫県神戸市：独自の調査義務を定める条例なし",
+  "origName": "（土壌汚染に関する独自条例・要綱の掲載なし）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "神戸市 環境局 環境保全課",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "神戸市：土壌汚染対策法の概要",
+    "url": "https://www.city.kobe.lg.jp/a66958/kurashi/recycle/kankyohozen/cleanup/dojo1.html",
+    "what": "法の概要・窓口"
+   },
+   {
+    "title": "神戸市：要措置区域等の指定情報",
+    "url": "https://www.city.kobe.lg.jp/a66958/kurashi/recycle/kankyohozen/cleanup/dojo4.html",
+    "what": "土対法の区域指定公表ページ"
+   }
+  ],
+  "appliesNote": "自主調査結果の市への報告は任意（市ページ）。",
+  "basis": "環境省一覧（令和5年度末、条例・要綱・指針等を制定する115自治体）に神戸市の掲載なし。市公式ページも土対法の手続のみを案内。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "広島県",
+  "city": null,
+  "name": "広島県生活環境の保全等に関する条例",
+  "origName": "広島県生活環境の保全等に関する条例",
+  "number": "平成十五年十月七日条例第三十五号",
+  "lastAmended": "令和5年改正（宅地造成及び特定盛土等規制法への改正に伴う一部改正、令和5年5月26日施行）※改正条例番号は未確認",
+  "lastAmendedShort": "令和5年改正",
+  "desk": "広島県 環境保全課 大気環境・化学物質対策グループ（電話 082-513-2920）。報告窓口は県厚生環境事務所（支所）、広島市・呉市・福山市は各市",
+  "rules": [
+   {
+    "art": "第40条第1項",
+    "heading": "土地の改変時における改変者の義務",
+    "trigger": "area",
+    "threshold": 1000,
+    "thresholdBasis": "都市計画法第29条第1項・第2項の許可、又は宅地造成及び特定盛土等規制法第12条第1項の許可を要する行為で「行為に係る面積」が1,000㎡以上のもの（許可対象行為の面積基準。法4条届出等を行った土地は適用除外）",
+    "areaBasis": "change",
+    "summary": "土地改変者は、あらかじめ過去の土壌関係特定事業場（汚水等関係特定事業場〔特定有害物質取扱歴あり〕、ガソリンスタンド、射撃場）の設置状況等の土地履歴調査を実施し知事に報告。",
+    "duty": "報告義務。書類：土地履歴調査結果報告書（条例第40条第1項）。期限：あらかじめ（改変前）",
+    "quote": "の設置状況等についての調査（以下「土地履歴調査」という。）を実施し、その結果を知事に報告しなければならない。",
+    "url": "https://www.pref.hiroshima.lg.jp/uploaded/attachment/532643.pdf",
+    "verified": true
+   },
+   {
+    "art": "第40条第2項",
+    "heading": "土地の改変時における改変者の義務",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "土地履歴調査で過去に土壌関係特定事業場が設置されていた事実が判明したとき、取り扱っていた物質ごとに汚染のおそれが最も大きい地点で土壌汚染確認調査を実施し知事に届出。",
+    "duty": "調査・届出義務。書類：土壌汚染確認調査結果届出書（別記様式第十号、規則第30条第6項）",
+    "quote": "汚染の確認のための調査（以下「土壌汚染確認調査」という。）を実施し、その結果を知事に届け出なければならない。",
+    "url": "https://www.pref.hiroshima.lg.jp/uploaded/attachment/532643.pdf",
+    "verified": true
+   },
+   {
+    "art": "第40条第3項",
+    "heading": "土地の改変時における改変者の義務",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "土壌汚染確認調査で基準不適合が判明したとき、改変着手の14日前までに汚染拡散防止計画書を作成し知事に提出。",
+    "duty": "計画書提出義務。書類：汚染拡散防止計画書（別記様式第十一号、規則第32条）。期限：土地の改変に着手する日の14日前まで",
+    "quote": "地の改変に着手する日の十四日前までに、規則で定めるところにより、当該土地の汚染土壌の拡散を防止するための計画書（以下「汚染拡散防止計画書」という。）を作成し、知事に提出しなければならない。",
+    "url": "https://www.pref.hiroshima.lg.jp/uploaded/attachment/532643.pdf",
+    "verified": true
+   }
+  ],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "広島県生活環境の保全等に関する条例に基づく土地改変者の義務について - ecoひろしま～環境情報サイト～ | 広島県",
+    "url": "https://www.pref.hiroshima.lg.jp/site/eco/e-e5-dojojourei-index.html",
+    "what": "条例第40条の解説・様式・窓口"
+   },
+   {
+    "title": "土地の形質の変更（改変）時の手続きについて（土壌環境法令の適用関係） - ecoひろしま",
+    "url": "https://www.pref.hiroshima.lg.jp/site/eco/e-e5-dojo-index-4jo40jo.html",
+    "what": "法4条と条例40条の適用関係"
+   },
+   {
+    "title": "土壌汚染対策法に基づく区域の指定状況 - ecoひろしま～環境情報サイト～ | 広島県",
+    "url": "https://www.pref.hiroshima.lg.jp/site/eco/e-e5-siteikuiki-yousotikuiki.html",
+    "what": "土対法の区域指定公表ページ"
+   },
+   {
+    "title": "条例・条例施行規則（関係部分）（PDF）〔広島県生活環境の保全等に関する条例（抄）／同施行規則（抄）〕",
+    "url": "https://www.pref.hiroshima.lg.jp/uploaded/attachment/532643.pdf",
+    "what": "条文・規則抜粋"
+   }
+  ],
+  "appliesNote": "県条例だが広島市・呉市・福山市の区域でも適用され、報告先が各市となる（県ページ：「県（広島市、呉市及び福山市については、各市）に報告することを義務付けています。」）。少なくとも昭和46年まで遡る履歴調査との記載は検索要約のみで原文未確認。",
+  "basis": null,
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": false
+ },
+ {
+  "pref": "広島県",
+  "city": "広島市",
+  "name": "広島県広島市：独自の調査義務を定める条例なし",
+  "origName": "（市独自条例なし。広島県生活環境の保全等に関する条例第40条が市域に適用され、市へ報告）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "広島市 環境局 環境保全課 水質係",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "土壌汚染対策法｜広島市公式ウェブサイト",
+    "url": "https://www.city.hiroshima.lg.jp/business/gomi-kankyo/1006007/1026640/1011837.html",
+    "what": "法・県条例の手続、てびき、窓口"
+   },
+   {
+    "title": "土壌汚染対策法に基づく要措置区域等の指定状況｜広島市公式ウェブサイト",
+    "url": "https://www.city.hiroshima.lg.jp/site/kankyohozen/13347.html",
+    "what": "土対法の区域指定公表ページ（リダイレクト先 .../1026640/1003154.html）"
+   },
+   {
+    "title": "【自己チェック用】土地の形質の変更に伴う土壌汚染対策法等の適用の有無の確認｜広島市公式ウェブサイト",
+    "url": "https://www.city.hiroshima.lg.jp/site/kankyohozen/388443.html",
+    "what": "法・県条例の適用チェック"
+   }
+  ],
+  "appliesNote": "重要：広島市内の土地でも県条例第40条（1,000㎡以上の開発許可・宅造等許可に係る土地改変時の土地履歴調査報告）が適用される。プロダクト上は「広島県」エントリのルールを広島市にも適用すること。",
+  "basis": "環境省一覧（令和5年度末）に広島市の掲載なし。市公式ページは県条例に基づく土地履歴調査結果報告書の提出を案内。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "岡山県",
+  "city": null,
+  "name": "岡山県環境への負荷の低減に関する条例",
+  "origName": "岡山県環境への負荷の低減に関する条例",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "岡山県 環境管理課。窓口は各県民局環境課（県ページの問い合わせ先は「岡山県内（岡山市及び倉敷市を除く。）」として県民局を列挙）",
+  "rules": [
+   {
+    "art": "第65条",
+    "heading": "（汚染の発見時の届出・公表）※条見出し原文は未確認",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "有害物質を取り扱い、又は取り扱っていた事業所の設置者は、敷地内で土壌・地下水の汚染（土壌汚染基準・地下水汚染基準超過）を発見したとき、速やかに知事に届出（応急措置を含む）。届出内容は公表。面積要件・施設廃止を契機とする調査義務ではない。",
+    "duty": "届出義務（発見時、速やかに）",
+    "quote": "有害物質を取り扱い、又は取り扱っていた事業所の設置者は、当該事業所の敷地内で土壌又は地下水の汚染を発見したときは、速やかに知事に届け出なければなりません。",
+    "url": "https://www.pref.okayama.jp/page/614185.html",
+    "verified": true
+   },
+   {
+    "art": "第67条",
+    "heading": "（浄化対策計画の策定・実施・報告）※条見出し原文は未確認",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "事業活動に起因して汚染が生じている場合、設置者は浄化対策計画を策定・実施し知事等に報告、完了時も報告。",
+    "duty": "報告義務。書類：浄化対策計画報告書（様式第26号）、浄化対策完了報告書（様式第27号）",
+    "quote": "その設置者は浄化対策計画を策定し、これを実施するとともに、知事等にその結果を報告しなければなりません。",
+    "url": "https://www.pref.okayama.jp/page/614185.html",
+    "verified": true
+   },
+   {
+    "art": "第64条・第66条・第68条・第69条",
+    "heading": "（適正管理・汚染防止の努力義務／知事による汚染原因等の調査／助言及び指導／地下水の水質の浄化のための措置命令）",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "フロー図に示された関連条。法3条・4条・5条の報告等があった土地には第65条〜第68条を適用しない（二重適用の解消）。",
+    "duty": "—",
+    "quote": "有害物質取扱事業所の敷地内で、土壌汚染・地下水汚染を発見した際の届出義務を課しており、汚染原因者である場合は、浄化対策計画を作成し、これに基づいた浄化対策を義務付けるもの。",
+    "url": "https://www.pref.okayama.jp/uploaded/life/946616_9083154_misc.pdf",
+    "verified": true
+   }
+  ],
+  "extraSubstances": [
+   "アンモニア、アンモニウム化合物、亜硝酸化合物及び硝酸化合物（条例の地下水基準・地下水浄化基準のみ）",
+   "1,4-ジオキサン（条例の地下水基準・地下水浄化基準のみ）"
+  ],
+  "zones": [],
+  "pages": [
+   {
+    "title": "岡山県環境への負荷の低減に関する条例（土壌・地下水関係）について - 岡山県ホームページ（環境管理課）",
+    "url": "https://www.pref.okayama.jp/page/614185.html",
+    "what": "条例（土壌・地下水）の解説・様式・窓口"
+   },
+   {
+    "title": "条例の概要（PDF）〔岡山県環境への負荷の低減に関する条例に係る土壌・地下水汚染に関する規制について〕",
+    "url": "https://www.pref.okayama.jp/uploaded/life/946616_9083154_misc.pdf",
+    "what": "条番号入りフロー図・適用除外"
+   },
+   {
+    "title": "土壌汚染対策法について - 岡山県ホームページ（環境管理課）",
+    "url": "https://www.pref.okayama.jp/page/614102.html",
+    "what": "土対法の案内"
+   },
+   {
+    "title": "土壌・地下水汚染の情報について - 岡山県ホームページ（環境管理課）",
+    "url": "https://www.pref.okayama.jp/page/614099.html",
+    "what": "汚染発見届出状況等（本文未取得。区域指定一覧の所在は未確認）"
+   }
+  ],
+  "appliesNote": "岡山市・倉敷市域の取扱い（条例の届出先）は未精査。pref.okayama.jp は pref.okayama.lg.jp へリダイレクトされる。",
+  "basis": null,
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": false
+ },
+ {
+  "pref": "新潟県",
+  "city": null,
+  "name": "新潟県生活環境の保全等に関する条例",
+  "origName": "新潟県生活環境の保全等に関する条例",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "新潟県 環境局 環境対策課（電話 025-280-5157）。届出は各地域振興局、新潟市・長岡市・上越市は各市",
+  "rules": [
+   {
+    "art": "第74条",
+    "heading": "（有害物質を使用する事業者等に関する規定）※条見出し原文は未確認",
+    "trigger": "facility",
+    "threshold": null,
+    "thresholdBasis": "「有害物質等使用事業場の土地の形状の大規模な変更」時（面積の数値基準は県ページに記載なし＝未確認）",
+    "areaBasis": "change",
+    "summary": "有害物質使用事業者等は土壌の汚染状況を監視。測定は5年に1回以上、かつ事業場の土地の形状の大規模な変更を行う場合に実施。地下水は年1回以上。測定結果は土壌20年・地下水3年保存。汚染確認時は速やかに県へ報告し必要な措置。施設「廃止」を契機とする規定は県ページに記載なし。",
+    "duty": "測定・記録保存義務、汚染確認時の報告義務。書類：土壌（地下水）汚染状況報告書（届出書）",
+    "quote": "測定は、5年に1回以上行い、かつ、有害物質等使用事業場の土地の形状の大規模な変更を行う場合に行うこと。",
+    "url": "https://www.pref.niigata.lg.jp/sec/kankyotaisaku/1206291694569.html",
+    "verified": true
+   },
+   {
+    "art": "第75条",
+    "heading": "（有害物質を使用する事業者以外に関する規定）※条見出し原文は未確認",
+    "trigger": "other",
+    "threshold": null,
+    "thresholdBasis": "",
+    "areaBasis": "change",
+    "summary": "有害物質使用事業者以外の者が自主的に実施した土壌調査で汚染が判明した場合の県への届出を規定。",
+    "duty": "届出。書類：土壌（地下水）汚染状況報告書（届出書）",
+    "quote": "有害物質を使用する事業者以外に関する規定（条例第75条） 自主的に実施した土壌調査で汚染が判明した場合の県への届出を規定",
+    "url": "https://www.pref.niigata.lg.jp/sec/kankyotaisaku/1206291694569.html",
+    "verified": true
+   }
+  ],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "県条例における土壌・地下水汚染対策について - 新潟県ホームページ",
+    "url": "https://www.pref.niigata.lg.jp/sec/kankyotaisaku/1206291694569.html",
+    "what": "条例第74条・第75条の概要、窓口"
+   },
+   {
+    "title": "土壌汚染対策法による指定区域 - 新潟県ホームページ",
+    "url": "https://www.pref.niigata.lg.jp/sec/kankyotaisaku/1274738582577.html",
+    "what": "土対法の区域指定公表ページ"
+   },
+   {
+    "title": "土壌・地下水汚染対策 - 新潟県ホームページ",
+    "url": "https://www.pref.niigata.lg.jp/sec/kankyotaisaku/1204650952452.html",
+    "what": "トップ（未取得、リンクのみ確認）"
+   }
+  ],
+  "appliesNote": "一般の土地の一定面積以上の形質変更を契機とする独自の調査・届出規定は県ページに記載なし（対象は有害物質等使用事業場）。新潟市、長岡市及び上越市内の土壌汚染に関する届出等は、各市役所にお問い合わせください。",
+  "basis": null,
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": false
+ },
+ {
+  "pref": "福岡県",
+  "city": null,
+  "name": "福岡県：独自の調査義務を定める条例なし",
+  "origName": "福岡県公害防止等生活環境の保全に関する条例（訓示的条項のみ）／福岡県土壌汚染対策指導要綱",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "福岡県 水・大気環境課 土壌係（電話 092-643-3361）。北九州市・福岡市・久留米市は各市",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "土壌汚染対策について - 福岡県庁ホームページ",
+    "url": "https://www.pref.fukuoka.lg.jp/contents/dojo-main.html",
+    "what": "法の案内・要綱PDF・窓口"
+   },
+   {
+    "title": "要措置区域及び形質変更時要届出区域の指定状況 - 福岡県庁ホームページ",
+    "url": "https://www.pref.fukuoka.lg.jp/contents/dojo-kuiki.html",
+    "what": "土対法の区域指定公表ページ"
+   },
+   {
+    "title": "福岡県土壌汚染対策指導要綱（PDF）",
+    "url": "https://www.pref.fukuoka.lg.jp/uploaded/attachment/167691.pdf",
+    "what": "要綱本文（未取得・未精読）"
+   }
+  ],
+  "appliesNote": "要綱は法の円滑施行のための届出添付書類・報告等を定める行政指導で、独自の調査契機ではない（要綱本文は未精読）。",
+  "basis": "環境省一覧（令和5年度末）で条例は⑧のみ、要綱は④（法に規定されていない届出様式等）。①独自の調査契機なし。条例本文は未取得。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "福岡県",
+  "city": "北九州市",
+  "name": "福岡県北九州市：独自の調査義務を定める条例なし",
+  "origName": "（条例なし）北九州市土壌汚染対策指導要領",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "北九州市 環境局 環境監視部 環境監視課（電話 093-582-2290）",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "土壌汚染対策法の届出等について - 北九州市",
+    "url": "https://www.city.kitakyushu.lg.jp/contents/924_10589.html",
+    "what": "法手続・台帳閲覧・窓口"
+   },
+   {
+    "title": "要措置区域、形質変更時要届出区域の指定状況 - 北九州市",
+    "url": "https://www.city.kitakyushu.lg.jp/contents/00600022.html",
+    "what": "土対法の区域指定公表ページ"
+   }
+  ],
+  "appliesNote": "指導要領（行政指導）の具体的内容（独自基準・報告対象）は未確認。",
+  "basis": "環境省一覧（令和5年度末）で北九州市は指導要領（②独自基準・③情報管理／自主調査結果報告）のみ、条例の掲載なし・①なし。要領本文は市サイトで所在を確認できず未取得。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "福岡県",
+  "city": "福岡市",
+  "name": "福岡県福岡市：独自の調査義務を定める条例なし",
+  "origName": "（土壌汚染に関する独自条例・要綱の掲載なし）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "福岡市 環境局 環境共生部 環境保全課（電話 092-733-5386）※県ページでは「環境局環境監理部環境保全課」と表記",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "福岡市 土壌汚染対策法について",
+    "url": "https://www.city.fukuoka.lg.jp/kankyo/k-hozen/life/kankyohozen/index.html",
+    "what": "法の案内・区域指定状況一覧（土対法の区域指定公表ページ）"
+   }
+  ],
+  "appliesNote": "独自の調査・届出義務なし（土対法のみ）。",
+  "basis": "環境省一覧（令和5年度末）に福岡市の掲載なし。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "宮城県",
+  "city": null,
+  "name": "宮城県：独自の調査義務を定める条例なし",
+  "origName": "（調査・届出義務を定める条例なし。汚染土壌処理施設の設置等に関する指導要綱のみ）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "宮城県 環境対策課 水環境班（電話 022-211-2666）。仙台市内は仙台市",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "土壌汚染対策法 - 宮城県公式ウェブサイト",
+    "url": "https://www.pref.miyagi.jp/soshiki/kankyo-t/index-dojo.html",
+    "what": "法の案内・窓口"
+   },
+   {
+    "title": "土壌汚染対策法-要措置区域等指定状況 - 宮城県公式ウェブサイト",
+    "url": "https://www.pref.miyagi.jp/soshiki/kankyo-t/sitei.html",
+    "what": "土対法の区域指定公表ページ"
+   }
+  ],
+  "appliesNote": "独自の調査・届出義務なし（土対法のみ）。宮城県公害防止条例の土壌関係規定の有無は条文未確認（環境省一覧に掲載なし）。",
+  "basis": "環境省一覧（令和5年度末）で宮城県は処理施設の指導要綱（⑥）のみ。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "宮城県",
+  "city": "仙台市",
+  "name": "宮城県仙台市：独自の調査義務を定める条例なし",
+  "origName": "（土壌汚染に関する独自条例・要綱の掲載なし）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "仙台市 環境局 環境対策課（電話 022-214-8223）",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "土壌汚染対策に係る届出｜仙台市",
+    "url": "https://www.city.sendai.jp/suishitsu/download/bunyabetsu/kankyo/kankyohozen/osentaisaku.html",
+    "what": "法の届出様式・窓口"
+   },
+   {
+    "title": "土壌汚染対策法に基づく要措置区域等｜仙台市",
+    "url": "https://www.city.sendai.jp/suishitsu/kurashi/machi/kankyohozen/kogai/osentaisaku/sochikuiki.html",
+    "what": "土対法の区域指定公表ページ"
+   }
+  ],
+  "appliesNote": "独自の調査・届出義務なし（土対法のみ）。仙台市公害防止条例の条文は未確認。",
+  "basis": "環境省一覧（令和5年度末）に仙台市の掲載なし。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "北海道",
+  "city": null,
+  "name": "北海道：独自の調査義務を定める条例なし",
+  "origName": "北海道公害防止条例（訓示的条項のみ）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "北海道 環境生活部 環境保全局 循環型社会推進課 水環境係（電話 011-204-5193）。札幌市・函館市・旭川市は各市",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "北海道の土壌汚染対策について - 環境生活部環境保全局循環型社会推進課",
+    "url": "https://www.pref.hokkaido.lg.jp/ks/jss/dojo_osen_taisaku.html",
+    "what": "法の案内・区域指定状況PDFへのリンク（土対法の区域指定公表ページ）・窓口"
+   }
+  ],
+  "appliesNote": "独自の調査・届出義務なし（土対法のみ）。",
+  "basis": "環境省一覧（令和5年度末）で北海道は同条例⑧のみ。条例本文は未取得。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "北海道",
+  "city": "札幌市",
+  "name": "北海道札幌市：独自の調査義務を定める条例なし",
+  "origName": "札幌市生活環境の確保に関する条例（訓示的条項のみ）／札幌市における自然由来ヒ素の判定方法について",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "札幌市 環境局 環境都市推進部 環境対策課（電話 011-211-2882）",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "土壌汚染対策法について／札幌市",
+    "url": "https://www.city.sapporo.jp/kankyo/dojo_osen/overview.html",
+    "what": "法の概要・窓口"
+   },
+   {
+    "title": "土壌汚染／札幌市",
+    "url": "https://www.city.sapporo.jp/kankyo/kokuji/dojo_osen/index.html",
+    "what": "土対法の区域指定公表ページ（告示）"
+   },
+   {
+    "title": "土壌汚染関係の届出／札幌市",
+    "url": "https://www.city.sapporo.jp/kankyo/todokede/dojo/index.html",
+    "what": "届出様式（本文未取得）"
+   }
+  ],
+  "appliesNote": "独自の調査・届出義務なし。ただし自然由来ヒ素の判定方法（市独自運用）が地歴調査の評価に影響しうる・内容未調査。",
+  "basis": "環境省一覧（令和5年度末）で札幌市は条例⑧、判定方法④（自然由来砒素の判定方法）のみ。①なし。条例本文は未取得。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "静岡県",
+  "city": null,
+  "name": "静岡県：独自の調査義務を定める条例なし",
+  "origName": "（調査・届出義務を定める条例なし。静岡県生活環境の保全等に関する条例は訓示的条項のみ／静岡県汚染土壌適正処理指導要綱）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "静岡県 くらし・環境部 環境局 生活環境課（電話 054-221-2253）。静岡市・浜松市・沼津市・富士市は各市",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "土壌汚染対策法｜静岡県公式ホームページ",
+    "url": "https://www.pref.shizuoka.jp/kurashikankyo/kankyo/taikisuishitsu/1002637/1017882.html",
+    "what": "法の案内・窓口・区域指定の案内"
+   },
+   {
+    "title": "区域指定の状況（土壌汚染対策法） - 静岡県オープンデータ",
+    "url": "https://opendata.pref.shizuoka.jp/dataset/11291.html",
+    "what": "土対法の区域指定一覧（本文未取得、検索結果で所在確認のみ）"
+   }
+  ],
+  "appliesNote": "浜松市は「浜松市土壌・地下水汚染対策に関する要綱」（環境省一覧で①②③④⑦⑧）あり・未調査。静岡県盛土等による環境の汚染の防止に関する条例（盛土規制）は別制度・未調査。",
+  "basis": "県公式ページが「そのほか条例等は設けていません」と明記。環境省一覧も条例⑧・要綱⑥のみ。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "岐阜県",
+  "city": null,
+  "name": "岐阜県：独自の調査義務を定める条例なし",
+  "origName": "（条例なし）岐阜県地下水の適正管理及び汚染対策に関する要綱",
+  "number": "要綱（平成13年4月制定）",
+  "lastAmended": "令和8年4月1日（県ページ記載の最終改正）",
+  "lastAmendedShort": "令和8年4月1日",
+  "desk": "岐阜県 環境管理課 土壌環境係（電話 058-272-8272）。報告先は各県事務所（岐阜地域環境事務所を含む）",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "地下水調査、土壌調査を自主的に実施した方へ - 岐阜県公式ホームページ（環境管理課）",
+    "url": "https://www.pref.gifu.lg.jp/page/14948.html",
+    "what": "要綱の概要・報告先一覧"
+   },
+   {
+    "title": "地下水要綱に基づく報告事案の一覧 - 岐阜県公式ホームページ（環境管理課）",
+    "url": "https://www.pref.gifu.lg.jp/page/22851.html",
+    "what": "公表事案（本文未取得）"
+   }
+  ],
+  "appliesNote": "岐阜市は別途「岐阜市地下水保全条例」（環境省一覧で②⑦⑧）あり・未調査。土対法の区域指定公表ページURLは未特定。",
+  "basis": "環境省一覧（令和5年度末）で岐阜県は要綱2件のみ（条例の掲載なし）。県公式ページでも要綱に基づく自主調査結果の報告制度として案内。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ },
+ {
+  "pref": "熊本県",
+  "city": null,
+  "name": "熊本県：独自の調査義務を定める条例なし",
+  "origName": "熊本県地下水保全条例（土壌汚染の調査・届出義務の規定なし）",
+  "number": null,
+  "lastAmended": null,
+  "lastAmendedShort": "",
+  "desk": "熊本県 環境保全課 水質保全班（電話 096-333-2271）。熊本市内は熊本市水保全課",
+  "rules": [],
+  "extraSubstances": [],
+  "zones": [],
+  "pages": [
+   {
+    "title": "土壌汚染対策法について - 熊本県ホームページ",
+    "url": "https://www.pref.kumamoto.jp/soshiki/51/51594.html",
+    "what": "法の案内・窓口"
+   },
+   {
+    "title": "熊本県域（熊本市域を除く。）における要措置区域及び形質変更時要届出区域の指定状況について - 熊本県ホームページ",
+    "url": "https://www.pref.kumamoto.jp/soshiki/51/103177.html",
+    "what": "土対法の区域指定公表ページ"
+   }
+  ],
+  "appliesNote": "対象事業場の使用管理計画届出・排出水等測定など地下水質保全の規制はあるが、土壌調査契機ではない。熊本市は別途要綱（④⑧）あり・未調査。",
+  "basis": "県サイト掲載の条例全文PDFを取得し「土壌」を全文検索：該当0件。環境省一覧の分類も⑦⑧（①なし）。※取得PDFの最後の附則は平成24年条例第18号で、最新版でない可能性あり。",
+  "excludeCities": [],
+  "checkedOn": "2026-11-21",
+  "noneVerified": true
+ }
+]
