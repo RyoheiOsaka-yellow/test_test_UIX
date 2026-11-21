@@ -10,6 +10,7 @@ function ev(c,ref,ids){
   (ids||[]).forEach(id=>{const d=docOf(c,id);if(d)parts.push(`<span class="ev att" data-p="${String(d.pages||'').split('–')[0]||1}" data-doc="${d.pages?'':esc(d.id)}" title="${esc(d.name||'')}">${clsLabel(d)} ${esc(d.kind)}${d.pages?' p.'+d.pages:''}</span>`);});
   return parts.length?`<span class="evs" contenteditable="false">${parts.join('')}</span>`:'';
 }
+const evK=(c,ref,re)=>ev(c,ref,(c.docs||[]).filter(d=>d.cls!=='本文'&&re.test(d.kind)&&!(ref&&ref.doc===d.id)).map(d=>d.id));
 const E=(path,html,tag)=>`<${tag||'span'} data-path="${path}" contenteditable="true" spellcheck="false">${html}</${tag||'span'}>`;
 const P=(path,text)=>`<p data-path="${path}" contenteditable="true" spellcheck="false">${esc(text||'').replace(/\n/g,'<br>')}</p>`;
 
@@ -88,7 +89,7 @@ function renderReport(c){
   let html=`
   <section class="cover" id="sec-cover"><div class="ct">${esc(c.title)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${E('reportDate',esc(c.reportDate||toWareki(new Date())))}</div><div class="co">${esc(c.org.name)}</div></section>
   <section class="toc"><h2 class="tc">目　次</h2>${tocOf(c).map(t=>`<a href="#${t[0]}" class="l${t[2]}" data-go="${t[0]}"><span>${t[1]}</span></a>`).join('')}
-   <table class="att"><thead><tr><th>一般公表資料</th><th>公的資料</th><th>私的資料</th></tr></thead><tbody>${[0,1,2,3].map(i=>{const gen=(c.docs||[]).filter(d=>d.cls==='一般公表資料')[i],pub=(c.docs||[]).filter(d=>d.cls==='公的資料')[i],pri=(c.docs||[]).filter(d=>d.cls==='私的資料')[i];return `<tr><td>${gen?'ABCD'[i]+'）'+esc(gen.kind):'―'}</td><td>${pub?'ABCD'[i]+'）'+esc(pub.kind):'―'}</td><td>${pri?'ABCD'[i]+'）'+esc(pri.kind):'―'}</td></tr>`;}).join('')}</tbody></table></section>
+   <table class="att"><thead><tr><th>一般公表資料</th><th>公的資料</th><th>私的資料</th></tr></thead><tbody>${Array.from({length:Math.max(4,...['一般公表資料','公的資料','私的資料'].map(k=>(c.docs||[]).filter(d=>d.cls===k).length))},(_,i)=>i).map(i=>{const gen=(c.docs||[]).filter(d=>d.cls==='一般公表資料')[i],pub=(c.docs||[]).filter(d=>d.cls==='公的資料')[i],pri=(c.docs||[]).filter(d=>d.cls==='私的資料')[i];return `<tr><td>${gen?'ABCDEFGHIJ'[i]+'）'+esc(gen.kind):'―'}</td><td>${pub?'ABCDEFGHIJ'[i]+'）'+esc(pub.kind):'―'}</td><td>${pri?'ABCDEFGHIJ'[i]+'）'+esc(pri.kind):'―'}</td></tr>`;}).join('')}</tbody></table></section>
 
   <h2 id="sec-1">１．調査概要</h2>
   <h3 id="sec-11">1.1 調査件名 ${ev(c,c.source&&c.source.overviewP?{p:c.source.overviewP}:null)}</h3><p>${esc(c.title)}　地歴調査</p>
@@ -116,18 +117,18 @@ function renderReport(c){
   ${s.lat?tileFig(s.lat,s.lng,'lcmfc2','png',16,{dir:s.gwDir,r:11}):''}
   <p class="cap fc">図 2.1 地形地質概要及び推定地下水流向${s.gwDir?'（推定流向：'+esc(s.gwDir)+'向き）':''}　国土交通省国土地理院 電子国土web（治水地形分類図）より引用し、編集・加工のうえ掲載。${fn('治水地形分類図・地理院タイル')}</p>
 
-  <h3 id="sec-22">2.2 登記簿謄本による履歴調査 ${ev(c,(c.land&&c.land[0]&&c.land[0].ref)||null,['A','B'])}</h3>
+  <h3 id="sec-22">2.2 登記簿謄本による履歴調査 ${evK(c,(c.land&&c.land[0]&&c.land[0].ref)||null,/登記|公図/)}</h3>
   <p>対象地について、現状の登記簿謄本から旧土地台帳までの遡及調査を行った調査結果の要約を「登記簿謄本による対象地の履歴」に示す。</p>
   <h4>【土地】登記簿謄本による調査対象地の地歴</h4>${landTable(c)||'<p class="todo">登記簿謄本を共有すると、地番ごとの履歴表をここに作成します。</p>'}
   ${(c.lineage||[]).length?'<h4>〈参考〉地番の変遷</h4>'+lineageSvg(c):''}
   ${bldTable(c)}${corpBlock(c)}
 
-  <h3 id="sec-23">2.3 地形図・住宅地図・空中写真による履歴調査 ${ev(c,c.mapsRef,['C','D'])}</h3>
+  <h3 id="sec-23">2.3 地形図・住宅地図・空中写真による履歴調査 ${evK(c,c.mapsRef,/地図|地形図|空中写真/)}</h3>
   <p>地形図・住宅地図・空中写真によって、${maps.length?esc(maps[0].w):'―'}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>
   ${maps.length?`<table class="reg mapt"><caption>地形図・住宅地図・空中写真による対象地の利用履歴</caption><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="nw yr">${m.y}年（${esc(m.w)}）</td><td class="c">${E(`maps.${i}.use`,esc(m.use))}</td><td class="c">${E(`maps.${i}.around`,esc(m.around))}</td><td class="c">${esc(m.src)}</td></tr>`).join('')}</tbody></table>`:'<p class="todo">住宅地図・地形図・空中写真を共有すると、年次ごとの利用履歴表をここに作成します。</p>'}
   ${(c.mapNotes||[]).map((n,i)=>`<div class="num"><span>${i+1}）</span>${P('mapNotes.'+i,n)}</div>`).join('')}
 
-  <h3 id="sec-24">2.4 ヒアリング調査及び現地踏査 ${ev(c,(h[0]&&h[0].ref)||null,['PA'])}</h3>
+  <h3 id="sec-24">2.4 ヒアリング調査及び現地踏査 ${evK(c,(h[0]&&h[0].ref)||null,/踏査|聴取|ヒアリング/)}</h3>
   <h4>2.4.1 ヒアリング調査</h4><p>【土地の主な利用履歴確認】</p>
   ${h.length?h.map((x,i)=>`<div class="hear"><p>実施日：${esc(x.date)}<br>実施者：${esc(x.by)}${x.target?'<br>聴取先：'+esc(x.target):''}</p>${P(`hearing.${i}.text`,x.text)}</div>`).join(''):'<p class="todo">ヒアリングの記録（メモ・聴取調査票）を共有すると、ここに整理します。</p>'}
   <h4>2.4.2 現地踏査</h4><p>【踏査による土地使用状況確認】</p>
@@ -172,7 +173,7 @@ function renderReport(c){
   }
   html+=`
   <h2 id="sec-att">添付資料</h2>
-  <table class="reg" contenteditable="false"><thead><tr><th>区分</th><th>資料</th><th>ページ</th></tr></thead><tbody>${(c.docs||[]).filter(d=>d.cls!=='本文').map(d=>`<tr><td>${esc(d.cls)}</td><td>${d.id.replace('P','')}）${esc(d.kind)}${d.name?'　'+esc(d.name):''}</td><td class="c">${d.pages?'p.'+esc(d.pages):'—'}</td></tr>`).join('')||'<tr><td colspan="3" class="c">添付資料は未登録</td></tr>'}</tbody></table>
+  <table class="reg" contenteditable="false"><thead><tr><th>区分</th><th>資料</th><th>ページ</th></tr></thead><tbody>${(c.docs||[]).filter(d=>d.cls!=='本文').map(d=>`<tr><td>${esc(d.cls)}</td><td>${d.id.replace(/^[PKX]/,'')}）${esc(d.kind)}${d.name?'　'+esc(d.name):''}</td><td class="c">${d.pages?'p.'+esc(d.pages):'—'}</td></tr>`).join('')||'<tr><td colspan="3" class="c">添付資料は未登録</td></tr>'}</tbody></table>
   <h2 id="sec-src">出典一覧</h2>
   <div class="srcs" contenteditable="false">${S.map(x=>`<div class="src"><span class="n">[${x.n}]</span><div><b>${esc(x.title)}</b><span class="k">${esc(x.kind)}</span>${x.verified?(x.url?'<span class="ok">公式出典で確認</span>':''):x.own?'<span class="ng">社内の既往報告書</span>':'<span class="ng">出典未確認</span>'}<br>${esc(x.detail||'')}${x.url?`<br><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url)}</a>`:''}${x.checkedOn&&x.url?`<span class="d">（${esc(x.checkedOn)} 確認）</span>`:''}</div></div>`).join('')}</div>`;
   return html;

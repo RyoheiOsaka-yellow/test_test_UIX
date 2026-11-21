@@ -91,7 +91,7 @@ const path = require('path');
   ok('F8 印刷前に図を読込', f8.called === 1 && f8.imgs > 0 && f8.complete === f8.imgs, JSON.stringify(f8));
 
   // ── F9: 古いサンプルの差し替え ──
-  await p.evaluate(() => { const cs = JSON.parse(localStorage.getItem('anglex.cases')); cs.forEach(c => { if (c.id === 's-kanamachi') c.title = '古いサンプル'; }); cs.push({ id: 'c-mine', sample: false, title: '自分の案件', site: { pref: '東京都', city: '港区', town: '', parcels: [], area: 0 }, org: { name: 'x', no: '', addr: '', tel: '' }, request: { purpose: 'sale' }, regs: { ord: [] }, updated: '2026-11-21' }); localStorage.setItem('anglex.cases', JSON.stringify(cs)); localStorage.setItem('anglex.samplesVer', '1'); });
+  await p.evaluate(() => { const cs = JSON.parse(localStorage.getItem('chireki.cases')); cs.forEach(c => { if (c.id === 's-kanamachi') c.title = '古いサンプル'; }); cs.push({ id: 'c-mine', sample: false, title: '自分の案件', site: { pref: '東京都', city: '港区', town: '', parcels: [], area: 0 }, org: { name: 'x', no: '', addr: '', tel: '' }, request: { purpose: 'sale' }, regs: { ord: [] }, updated: '2026-11-21' }); localStorage.setItem('chireki.cases', JSON.stringify(cs)); localStorage.setItem('chireki.samplesVer', '1'); });
   await p.reload();
   await p.waitForTimeout(800);
   const f9 = await p.$$eval('.crow .ct b', els => els.map(e => e.textContent));

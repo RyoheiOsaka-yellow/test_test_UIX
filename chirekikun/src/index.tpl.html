@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ANGLEX 地歴調査</title>
+<title>ちれきくん</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
 <body>
 <header class="top" id="top" hidden>
   <div class="top-in">
-    <button class="brand" id="logo" type="button"><b>ANGLEX<i>.</i></b><span>地歴調査</span></button>
+    <button class="brand" id="logo" type="button"><b>ちれきくん</b><span>地歴調査レポート</span></button>
     <nav class="nav" aria-label="メニュー">
       <button data-r="cases" type="button">案件</button>
       <button data-r="laws" type="button">法令・条例</button>
@@ -29,6 +29,7 @@
 <main id="view"></main>
 <div class="pv" id="pv" hidden><div class="pv-bar"><button class="btn mini" id="pv-prev" type="button">前</button><span id="pv-n"></span><button class="btn mini" id="pv-next" type="button">次</button><button class="btn mini" id="pv-close" type="button">閉じる</button></div><canvas id="pv-canvas"></canvas></div>
 <div id="printarea"></div>
+<div class="demobar" id="demobar" hidden role="status"><div class="dh"><span class="dl">デモ再生中</span><span class="num" id="demo-step"></span><button class="btn mini" id="demo-stop" type="button">停止</button></div><p id="demo-cap"></p></div>
 <div class="toast" id="toast" role="status"></div>
 <script>
 'use strict';

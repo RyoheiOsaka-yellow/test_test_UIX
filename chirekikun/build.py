@@ -28,7 +28,7 @@ def registry_js():
     return '\n'.join(out)
 
 
-js = '\n'.join((src / f).read_text(encoding='utf-8') for f in ['data.js', 'samples.js', 'engine.js', 'report.js', 'ai.js'])
+js = '\n'.join((src / f).read_text(encoding='utf-8') for f in ['data.js', 'samples.js', 'engine.js', 'report.js', 'ai.js', 'demo.js'])
 js += '\n/* ── registry（公式出典の調査結果） ── */\n' + registry_js() + '\n'
 js += (src / 'ui.js').read_text(encoding='utf-8')
 html = (src / 'index.tpl.html').read_text(encoding='utf-8')

@@ -1,6 +1,6 @@
 /* ══════════ 画面 ══════════ */
 const $=id=>document.getElementById(id);
-const store={get(k){try{const v=localStorage.getItem('anglex.'+k);return v==null?null:JSON.parse(v);}catch(e){return null;}},set(k,v){try{localStorage.setItem('anglex.'+k,JSON.stringify(v));}catch(e){}},del(k){try{localStorage.removeItem('anglex.'+k);}catch(e){}}};
+const store={get(k){try{const v=localStorage.getItem('chireki.'+k);return v==null?null:JSON.parse(v);}catch(e){return null;}},set(k,v){try{localStorage.setItem('chireki.'+k,JSON.stringify(v));}catch(e){}},del(k){try{localStorage.removeItem('chireki.'+k);}catch(e){}}};
 let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3800);}
 const today=()=>new Date().toISOString().slice(0,10);
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -27,7 +27,7 @@ function render(){
 /* ── ログイン ── */
 function viewLogin(v){
   v.innerHTML=`<div class="login"><div class="login-brand"><div class="lb-in">
-    <div class="brand big"><b>ANGLEX<i>.</i></b><span>地歴調査</span></div>
+    <div class="brand big"><b>ちれきくん</b><span>地歴調査レポート</span></div>
     <h1>資料を渡すだけで、<br>報告書の下書きまで。</h1>
     <ul><li><b>登記簿・地図・聴取記録を共有</b>すると、地番ごとの履歴表と所見まで組み上げます。</li><li>本文のすべての記載に、<b>根拠の資料名とページ番号</b>が付きます。</li><li>法令・条例は<b>公式の出典だけ</b>を使い、地域ごとの条例も照合します。</li></ul>
     <div class="lb-foot">指定調査機関向け　地歴調査レポート作成</div></div></div>
@@ -38,34 +38,37 @@ function viewLogin(v){
     <div class="err" id="l-err" role="alert"></div>
     <button class="btn pri full lg" type="submit">ログイン</button>
     <button class="btn full" type="button" id="l-demo">デモ用アカウントで入る</button>
+    <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモを再生する</button>
     <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。</p>
    </form></div></div>`;
   const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('user',ST.user);store.set('lastMail',mail);loadCases();aiDetect().then(()=>go('cases'));};
   $('lf').onsubmit=e=>{e.preventDefault();const m=$('l-mail').value.trim(),p=$('l-pass').value;
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){$('l-err').textContent='メールアドレスの形式を確認してください。';$('l-mail').focus();return;}
     if(!p){$('l-err').textContent='パスワードを入力してください。';$('l-pass').focus();return;}login(m);};
-  $('l-demo').onclick=()=>login('demo@eco-tec.example');
+  $('l-demo').onclick=()=>login('demo@chirekikun.example');
+  $('l-play').onclick=()=>runDemo();
 }
 
 /* ── 案件一覧 ── */
 function viewCases(v){
   const rows=ST.cases.map(c=>{const R=reviewItems(c).filter(r=>!r.done&&r.sev!=='info');const ords=ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.length);const lv=c.verdict?c.verdict.level:'—';
-    return `<button class="crow" data-id="${c.id}" type="button"><span class="ct"><b>${esc(c.title)}</b><small>${fmtArea(c.site.area)}㎡・${(c.site.parcels||[]).length}筆${c.sample?'・<i>サンプル（既往報告書から再構成）</i>':''}</small></span>
+    return `<button class="crow" data-id="${c.id}" type="button"><span class="ct"><b>${esc(c.title)}</b><small>${fmtArea(c.site.area)}㎡・${(c.site.parcels||[]).length}筆${c.sample?'・<i>サンプル（既往報告書から再構成）</i>':c.demo?'・<i>デモで作成</i>':''}</small></span>
      <span class="cj"><em>${esc(c.site.pref||'—')}${c.site.city?' '+esc(c.site.city.replace(/^(.+?市).+区$/,'$1')):''}</em>${ords.map(o=>`<small>${esc(o.name.replace(/（.*?）/g,''))}</small>`).join('')||'<small class="mute">条例の登録なし</small>'}</span>
      <span><span class="lvl ${lv==='低い'?'low':lv==='否定できない'?'high':'none'}">${esc(lv)}</span></span>
      <span class="cn ${R.length?'':'zero'}">${R.length?`確認 <b>${R.length}</b> 件`:'確認済み'}</span><span class="cd num">${esc(c.updated||'')}</span></button>`;}).join('');
-  v.innerHTML=`<div class="wrap"><div class="pagehead"><div><h1>案件</h1><p>資料を共有した案件ごとに、報告書の下書きと確認が必要な点をまとめています。</p></div><button class="btn pri lg" id="b-new" type="button">新しい調査を始める</button></div>
+  v.innerHTML=`<div class="wrap"><div class="pagehead"><div><h1>案件</h1><p>資料を共有した案件ごとに、報告書の下書きと確認が必要な点をまとめています。</p></div><div class="hbtns"><button class="btn lg" id="b-demo" type="button">デモを再生する</button><button class="btn pri lg" id="b-new" type="button">新しい調査を始める</button></div></div>
    <div class="clist"><div class="chead"><span>案件</span><span>自治体・照合する条例</span><span>所見</span><span>確認が必要な点</span><span>更新</span></div>${rows||'<div class="empty">案件はまだありません。「新しい調査を始める」から作成します。</div>'}</div>
    <p class="note">サンプルの4件は、共有いただいた既往報告書PDFを読み取り、同じ章立てで再構成したものです。原本との違い（誤記・転記ミスの疑い）は各案件の「確認」に出ます。</p></div>`;
   $('b-new').onclick=()=>{ST.files=[];ST.draft=null;go('new');};
+  $('b-demo').onclick=()=>runDemo();
   v.querySelectorAll('.crow').forEach(b=>b.onclick=()=>{ST.tab='review';go('case',b.dataset.id);});
 }
 
 /* ── 新しい調査 ── */
-function kindByName(n){if(/報告書/.test(n))return ['既往報告書','本文'];if(/閉鎖|謄本|登記/.test(n))return ['登記簿謄本','一般公表資料'];if(/公図/.test(n))return ['公図','一般公表資料'];if(/住宅地図|地形図|地図/.test(n))return ['地形図・住宅地図','一般公表資料'];if(/空中|航空/.test(n))return ['空中写真','一般公表資料'];if(/踏査/.test(n))return ['現地踏査写真','私的資料'];if(/ヒアリング|聴取/.test(n))return ['聴取調査票','私的資料'];return ['その他の資料','一般公表資料'];}
+function kindByName(n){if(/報告書/.test(n))return ['既往報告書','本文'];if(/行政|回答|照会/.test(n))return ['行政回答','公的資料'];if(/閉鎖|謄本|登記/.test(n))return ['登記簿謄本','一般公表資料'];if(/公図/.test(n))return ['公図','一般公表資料'];if(/住宅地図|地形図|地図/.test(n))return ['地形図・住宅地図','一般公表資料'];if(/空中|航空/.test(n))return ['空中写真','一般公表資料'];if(/踏査/.test(n))return ['現地踏査写真','私的資料'];if(/ヒアリング|聴取/.test(n))return ['聴取調査票','私的資料'];return ['その他の資料','一般公表資料'];}
 function viewNew(v){
   const d=ST.draft||(ST.draft={addr:'',chiban:'',area:'',purpose:'sale',changeArea:'',note:'',period:'',lat:null,lng:null,geoTitle:''});
-  v.innerHTML=`<div class="wrap narrow"><div class="pagehead"><div><h1>新しい調査を始める</h1><p>対象地と目的を入れ、手元の資料を共有してください。種類の判別と読み取り、条例の照合までを自動で行います。</p></div><button class="btn" id="n-back" type="button">案件に戻る</button></div>
+  v.innerHTML=`<div class="wrap narrow"><div class="pagehead"><div><h1>新しい調査を始める</h1><p>対象地と目的を入れ、手元の資料を共有してください。種類の判別と読み取り、条例の照合までを自動で行います。</p></div><div class="hbtns"><button class="btn" id="n-fill" type="button">入力例を入れる</button><button class="btn" id="n-back" type="button">案件に戻る</button></div></div>
   <div class="step"><div class="sn">1</div><div class="sb"><h2>対象地</h2>
     <div class="addr"><div class="f"><label for="n-addr">所在（町丁目まで）</label><input id="n-addr" placeholder="例：東京都葛飾区金町六丁目" value="${esc(d.addr)}"></div><button class="btn" id="n-geo" type="button">位置を確認</button></div>
     <div class="grid2"><div class="f"><label for="n-chiban">地番（複数は「、」区切り・後から追加可）</label><input id="n-chiban" placeholder="例：1702番1、1702番2" value="${esc(d.chiban)}"></div><div class="f"><label for="n-area">敷地面積（㎡・不明なら空欄）</label><input id="n-area" type="number" min="0" step="0.01" value="${esc(d.area)}"></div></div>
@@ -86,6 +89,7 @@ function viewNew(v){
     $('n-juris').innerHTML=!pref?'':`<span class="jl">照合する法令・条例</span><span class="chip2">土壌汚染対策法</span>${os.filter(o=>o.rules&&o.rules.length).map(o=>`<span class="chip2 ord">${esc(o.name.replace(/（.*?）/g,''))}${ordVerified(o)?'':'<i>出典確認中</i>'}</span>`).join('')||`<span class="chip2 mute">${esc(pref)}${city?esc(city):''}：独自の調査義務を定める条例の登録なし</span>`}`;};
   $('n-addr').oninput=juris;juris();
   $('n-back').onclick=()=>go('cases');
+  $('n-fill').onclick=()=>{Object.assign(d,DEMO_INPUT);ST.files=demoFiles();go('new');toast('入力例と資料9点を入れました。「レポートを作成する」を押すと、そのまま作成します');};
   v.querySelectorAll('input[name=purpose]').forEach(r=>r.onchange=()=>{d.purpose=r.value;v.querySelectorAll('.pcard').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));$('n-chg').hidden=d.purpose!=='develop';});
   let map,marker;
   const showMap=(lat,lng)=>{d.lat=lat;d.lng=lng;$('n-mapwrap').hidden=false;$('n-ll').textContent=` ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -103,11 +107,11 @@ function viewNew(v){
   if(d.lat)showMap(d.lat,d.lng);
   const drawFiles=()=>{$('n-files').innerHTML=ST.files.map((f,i)=>{const k=kindByName(f.name);return `<div class="file"><span class="fk">${k[0]}</span><span class="fn">${esc(f.name)}</span><span class="fs num">${(f.size/1048576).toFixed(1)}MB</span><button type="button" class="x" data-i="${i}" aria-label="削除">×</button></div>`;}).join('');
     $('n-files').querySelectorAll('.x').forEach(b=>b.onclick=()=>{ST.files.splice(+b.dataset.i,1);drawFiles();});
-    $('n-ai').innerHTML=ST.files.length?(AI.mode==='none'?`<b>AI読み取りが未接続です。</b>このまま作成すると、資料は添付資料として登録し、本文は章立てと法令判定のみになります。<button class="btn mini" type="button" id="n-set">接続を設定</button> <button class="btn mini" type="button" id="n-ex">読み取り済みの例を見る</button>`:`AI読み取り：接続済み（${AI.mode==='proxy'?'サーバー経由':'登録済みAPIキー'}）。${ST.files.length}点を順に読み取ります。`):'';
+    $('n-ai').innerHTML=ST.files.length&&ST.files.every(f=>f.demo)?'デモ用の資料です。読み取り結果には記録済みのデータを使い、結合・判定・所見の組み立ては本番と同じ処理で行います。':ST.files.length?(AI.mode==='none'?`<b>AI読み取りが未接続です。</b>このまま作成すると、資料は添付資料として登録し、本文は章立てと法令判定のみになります。<button class="btn mini" type="button" id="n-set">接続を設定</button> <button class="btn mini" type="button" id="n-ex">読み取り済みの例を見る</button>`:`AI読み取り：接続済み（${AI.mode==='proxy'?'サーバー経由':'登録済みAPIキー'}）。${ST.files.length}点を順に読み取ります。`):'';
     if($('n-set'))$('n-set').onclick=()=>go('settings');if($('n-ex'))$('n-ex').onclick=()=>{ST.tab='review';go('case','s-kanamachi');};};
   const addFiles=fl=>{[...fl].forEach(f=>ST.files.push(f));drawFiles();};
   const dz=$('n-drop');dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');addFiles(e.dataTransfer.files);});
-  $('n-file').onchange=e=>{addFiles(e.target.files);e.target.value='';};drawFiles();
+  $('n-file').onchange=e=>{addFiles(e.target.files);e.target.value='';};drawFiles();ST.newApi={addFiles,showMap};
   $('n-run').onclick=()=>{sync();if(!d.addr&&!ST.files.length){$('n-msg').textContent='所在を入力するか、資料を1点以上共有してください。';$('n-msg').classList.add('bad');$('n-addr').focus();return;}runCreate(d);};
 }
 function blankCase(d){
@@ -119,7 +123,7 @@ function blankCase(d){
     regs:{ord:[],natural:''},verdict:null});
 }
 async function runCreate(d){
-  const c=blankCase(d);const files=ST.files.slice();const useAI=AI.mode!=='none'&&files.length>0;
+  const c=blankCase(d);const files=ST.files.slice();const canRead=f=>!!f.demo||AI.mode!=='none';const useAI=files.some(canRead);const allDemo=files.length>0&&files.every(f=>f.demo);
   const steps=[['docs','資料の種類を判別',files.length?`${files.length}点`:'資料なし'],['read','資料を読み取り',useAI?`0 / ${files.length}`:files.length?'未接続のため添付として登録':'—'],['land','地番ごとの履歴を整理',''],['law','法令・条例を照合',''],['gw','地下水流向を推定',''],['draft','所見の下書き','']];
   $('view').innerHTML=`<div class="wrap narrow"><div class="proc"><h1>レポートを作成しています</h1><p class="sub">${esc(c.title)}</p><div class="psteps">${steps.map(s=>`<div class="ps" id="ps-${s[0]}"><i></i><b>${s[1]}</b><span>${s[2]}</span></div>`).join('')}</div><div class="err" id="p-err"></div></div></div>`;
   const mark=(id,state,txt)=>{const e=$('ps-'+id);if(!e)return;e.className='ps '+state;if(txt!=null)e.querySelector('span').textContent=txt;};
@@ -130,7 +134,8 @@ async function runCreate(d){
     await tick(250);mark('docs','ok');
     mark('read','run');
     if(useAI){for(let i=0;i<files.length;i++){mark('read','run',`${i+1} / ${files.length}　${files[i].name}`);
-        try{const part=await aiExtractFile(files[i]);const doc=c.docs.find(x=>x.id===ids[i]);if(doc&&part.kind)doc.kind=part.kind.replace(/（.*$/,'');if(part.kind==='既往報告書'){c.source={file:files[i].name,pages:null,bodyOffset:0,overviewP:(part.site&&+part.site.p)||null,lawsP:(part.meta&&+part.meta.lawsP)||null};}mergePart(c,part,ids[i]);}
+        if(!canRead(files[i]))continue;
+        try{const part=files[i].demo?(await tick(520),clone(files[i].part)):await aiExtractFile(files[i]);const doc=c.docs.find(x=>x.id===ids[i]);if(doc&&part.kind)doc.kind=part.kind.replace(/（.*$/,'');if(part.kind==='既往報告書'){c.source={file:files[i].name,pages:null,bodyOffset:0,overviewP:(part.site&&+part.site.p)||null,lawsP:(part.meta&&+part.meta.lawsP)||null};}mergePart(c,part,ids[i]);}
         catch(e){c.diffs.push({sev:'bad',text:`「${files[i].name}」を読み取れませんでした：${e.message}`});}}
       mark('read','ok',`${files.length}点`);}
     else{await tick(200);mark('read',files.length?'skip':'ok');}
@@ -143,6 +148,7 @@ async function runCreate(d){
           :`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高差は${Math.max(0,g.drop).toFixed(1)}mとほぼ平坦である。地形からは流向を特定できないため、周辺の河川・海域の位置関係から判断する必要がある。`;mark('gw','ok',g.dir?`${g.dir}向き（標高差 ${g.drop.toFixed(1)}m）`:'平坦のため特定できず');}else mark('gw','skip','標高を取得できず');}catch(e){mark('gw','skip','標高APIに接続できず');}}
     else mark('gw',c.site.gwText?'ok':'skip',c.site.gwText?'資料の記載を採用':'位置が未設定');
     mark('draft','run');await tick(250);mark('draft','ok',c.verdict?`所見：${c.verdict.level}`:'');
+    if(allDemo){c.demo=true;ST.cases=ST.cases.filter(x=>!x.demo);}
     ST.cases.unshift(c);saveCases();ST.files=[];ST.draft=null;await tick(350);ST.tab='review';go('case',c.id);toast('レポートを作成しました。右の「確認」に、人の目が必要な点だけを出しています');
   }catch(e){$('p-err').innerHTML=`作成に失敗しました：${esc(e.message)}　<button class="btn mini" type="button" onclick="go('new')">入力に戻る</button>`;}
 }
@@ -247,6 +253,7 @@ async function openPage(c,p,doc){
   const d=doc?(c.docs||[]).find(x=>x.id===doc):null;const key=d?c.id+':'+doc:c.id;const f=ST.pdf[key];
   const name=d?(d.name||d.kind):(c.source?c.source.file:'資料');
   if(!f){toast(`${name} の p.${p}。「資料」タブでこのPDFを入れると、ここでページを表示します`);return;}
+  if(f.demo){toast(`${name} の p.${p}。デモ用の資料のため、原本のページ表示はありません`);return;}
   if(!/pdf$/i.test(f.name)){toast(`${name} は画像のため、ページ表示の対象外です`);return;}
   if(typeof pdfjsLib==='undefined'){toast('PDF表示の部品を読み込めませんでした（ネットワーク）');return;}
   try{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -294,5 +301,7 @@ function viewSettings(v){
 /* ── 起動 ── */
 document.querySelectorAll('#top .nav button').forEach(b=>b.onclick=()=>go(b.dataset.r));
 $('logo').onclick=()=>go('cases');
+$('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
 if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
 render();
+if(location.hash==='#demo')setTimeout(runDemo,500);

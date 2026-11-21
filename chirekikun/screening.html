@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ANGLEX 地歴スクリーニング</title>
+<title>ちれきくん 地歴スクリーニング</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Yuji+Syuku&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-/* Layout: 左＝地点・地図（年代切替）・判読・推移・周辺一覧、右＝追従する判定パネル。ANGLEXの紙×墨×真鍮を継承し、地図系の色は水色系を補助色に */
+/* Layout: 左＝地点・地図（年代切替）・判読・推移・周辺一覧、右＝追従する判定パネル。紙×墨×真鍮の配色で、地図系の色は水色系を補助色に */
 :root{
   --bg:#f5f3ec;--surface:#fbfaf5;--sunk:#ebe8dc;--ink:#1a1a17;--ink2:#3a3a36;--mute:#6f6f68;--faint:#9a948a;
   --line:#d9d4c0;--line2:#e6e2d4;--accent:#b34a2a;--accent-deep:#8a3419;--accent-soft:#f3d7c8;--brass:#B8A67A;--brass-ink:#7d6c3e;
@@ -293,7 +293,7 @@ table{border-collapse:collapse;width:100%}
 </head>
 <body>
 <header class="top"><div class="top-in">
-  <div class="brand"><b>ANGLEX<i>.</i></b><span>地歴スクリーニング</span></div>
+  <div class="brand"><b>ちれきくん</b><span>地歴スクリーニング</span></div>
   <nav class="tabs" role="tablist">
     <button class="tab on" data-v="site">調査</button>
     <button class="tab" data-v="tou">閉鎖謄本</button>
@@ -1454,7 +1454,7 @@ function buildReport(){
   const regRows=lawRules(ctx).concat(ordRules(pref,city,ctx)).map(x=>[`${x.law} ${x.art}`,x.title,x.st[1]]);
   const touRows=TOUHON?TOUHON.analysis.owners.map(o=>[o.date,o.cause,o.holder+(o.cls.level>=2?'（'+o.cls.label+'）':'')]):(r?r.touki.map(t=>[t.date,t.cause,t.holder]):[['—','閉鎖謄本タブで読み取ると反映されます','']]);
   const html=`
-  <div class="cover"><div class="ct">${esc(S.name||S.addr)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${todayWa()}</div><div class="co">${esc(org)}</div><div class="draft">下書き（ANGLEX 自動生成）</div></div>
+  <div class="cover"><div class="ct">${esc(S.name||S.addr)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${todayWa()}</div><div class="co">${esc(org)}</div><div class="draft">下書き（ちれきくん 自動生成）</div></div>
   <h2>1. 調査概要</h2>
   <h3>1.1 調査件名</h3><p>${esc(S.addr)}地内 地歴調査</p>
   ${T([['住居表示',esc(r&&r.site.jusho||S.addr)],['地番表示',esc(r&&r.site.chiban||parcels.map(p=>p.shozai+p.chiban).join('、'))],['特定施設の有無','水質汚濁防止法に基づく有害物質使用の特定施設：'+(r&&r.regs.suidaku?r.regs.suidaku.v:'（照会中）')+'<br>下水道法に基づく有害物質使用の特定施設：'+(r&&r.regs.gesui?r.regs.gesui.v:'（照会中）')],['指定区域の有無','土壌汚染対策法 要措置区域：'+(R.zIn&&R.zIn.some(z=>z.type.startsWith('要措置'))?'あり':'なし')+'<br>形質変更時要届出区域：'+(R.zIn&&R.zIn.some(z=>!z.type.startsWith('要措置'))?'あり':'なし')+'<br>'+(ords.length?ords[0].name+'に基づく区域：'+(r&&r.regs.jorei?r.regs.jorei.v:'（台帳照会）'):'条例：該当する登録なし')]])}

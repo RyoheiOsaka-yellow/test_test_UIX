@@ -1,4 +1,4 @@
-/* Layout: ログイン＝左に墨のブランド面・右に入力。案件＝一覧。レポート＝目次｜紙面｜確認パネルの3列。ANGLEXの紙×墨×真鍮を継承 */
+/* Layout: ログイン＝左に墨のブランド面・右に入力。案件＝一覧。レポート＝目次｜紙面｜確認パネルの3列。紙×墨×真鍮の配色 */
 :root{
   --bg:#f5f3ec;--surface:#fbfaf5;--sunk:#ebe8dc;--ink:#1a1a17;--ink2:#3a3a36;--mute:#6f6f68;--faint:#9a948a;
   --line:#d9d4c0;--line2:#e6e2d4;--accent:#b34a2a;--accent-deep:#8a3419;--accent-soft:#f3d7c8;--brass:#B8A67A;--brass-ink:#7d6c3e;
@@ -191,6 +191,13 @@ h1,h2,h3{text-wrap:balance}
 .st{font-size:12.5px;margin:0 0 12px}
 
 /* page viewer */
+/* demo */
+.demobar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:80;width:min(760px,calc(100% - 24px));background:var(--panel);color:var(--onpanel);border:1px solid #3a3a30;border-radius:14px;padding:12px 16px 14px;box-shadow:0 18px 44px -18px rgba(0,0,0,.6)}
+.demobar .dh{display:flex;align-items:center;gap:10px}.demobar .dl{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--brass)}.demobar .num{font-size:11px;color:var(--onpanel-mute)}
+.demobar .btn{margin-left:auto;background:transparent;border-color:#4a4a3e;color:var(--onpanel)}.demobar p{margin:6px 0 0;font-size:14px;line-height:1.65;min-height:1.65em}
+.demo-spot{outline:3px solid var(--accent)!important;outline-offset:4px;border-radius:8px;transition:outline-color .2s}
+.demo-on .toast{bottom:calc(132px + env(safe-area-inset-bottom,0px))}.demo-on .wrap,.demo-on .ws{padding-bottom:170px}
+.hbtns{display:flex;gap:8px;flex-wrap:wrap}.login-form .or{font-size:11px;color:var(--mute);text-align:center;margin:16px 0 2px}
 .pv{position:fixed;inset:0;z-index:70;background:rgba(10,10,8,.72);display:flex;flex-direction:column;align-items:center;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 16px;overflow:auto}
 .pv-bar{display:flex;gap:10px;align-items:center;color:#f5f3ec;margin-bottom:10px;font-family:var(--f-mono);font-size:12px}.pv-bar .btn{background:#2a2a22;border-color:#44443a;color:#f5f3ec}
 .pv canvas{background:#fff;max-width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5)}
