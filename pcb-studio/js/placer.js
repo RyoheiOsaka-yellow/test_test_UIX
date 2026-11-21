@@ -224,8 +224,9 @@ function modBox(mod) {
 
 // 配置計画：領域 → 構成的配置（相ブロックの整列、負荷 IC のボール正面への配置、裏面コンデンサの格子）→ 残りは散布
 // 基板は変更せず、各部品の目標姿勢を返す。
-export function planLayout(board, seed, packAll = true) {
+export function planLayout(board, seed, packAll = true, useRegions = true) {
   const rnd = mulberry32(seed), P = prep(board), core = P.core;
+  if (!useRegions) P.regions = new Map();
   const orig = board.comps.map(c => [c, c.x, c.y, c.rot]);
   const mods = buildModules(board, P, packAll), pinned = new Set(), soft = new Set();
   const kind = id => (board.group(id) || {}).kind;
@@ -333,10 +334,15 @@ export function planLayout(board, seed, packAll = true) {
 }
 
 // 焼きなまし：整列済み以外のブロックを剛体のまま動かす。chunk 手ごとに進捗を yield。
-export function* anneal(board, seed, chunk, plan) {
+// 途中で手で動かした結果を、ブロックの現在位置として取り込む
+export function resyncPlan(plan) {
+  for (const mod of plan.mods) { const r = mod.root; mod.x = r.x; mod.y = r.y; mod.k = 0; for (const m of mod.mem) { m.dx = m.c.x - r.x; m.dy = m.c.y - r.y; m.rot = m.c.rot; } }
+}
+export function* anneal(board, seed, chunk, plan, effort = 1) {
   const rnd = mulberry32(seed + 77), P = prep(board);
+  P.regions = plan.regions;
   const units = plan.mods.filter(m => !plan.pinned.has(m) && !plan.soft.has(m));
-  const total = units.length ? Math.min(40000, Math.max(3000, units.length * 420)) : 0;
+  const total = units.length ? Math.round(Math.min(40000, Math.max(3000, units.length * 420)) * effort) : 0;
   const T0 = 5, T1 = 0.03;
   const cost = (u, kOv) => { let s = 0; for (const m of u.mem) s += localCost(board, P, m.c, kOv); return s; };
   for (let m = 0; m < total; m++) {

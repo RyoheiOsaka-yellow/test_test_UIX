@@ -213,6 +213,10 @@ export function generateGPU(prm) {
   pl(xt, 'GND', 'GND'); pl(xt, 'GND2', 'GND');
   attach('top', ['X1', 'X2'].map(n => ({ c: xt, pad: n, pos: wp(xt, n), net: 'XTAL_' + n })), 'signal');
 
+  // ── 取り付け穴（空いている角） ──
+  put('hole_m3', 4.5, H - 4.5, 'grp_pcie', { fixed: true });
+  put('hole_m3', W - 13, H - 4.5, 'grp_pcie', { fixed: true });
+
   // ── GPU の電源ボールと裏面デカップリング ──
   for (const p of gpuP.pads) {
     if (gpu.padNet[p.n]) continue;

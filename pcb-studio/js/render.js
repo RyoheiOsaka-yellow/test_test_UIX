@@ -265,34 +265,53 @@ export function draw(ctx, S) {
 }
 
 // 3D 表示用のテクスチャ。kind: 'top' | 'bottom' | 1 | 2（内層）。sc = px/mm
-export function drawLayerTexture(ctx, b, kind, sc) {
+// 表裏は「緑のレジスト → 配線が進むと銅色のベタ」に見せ、部品の外形枠（コートヤード）とパッドを描く。
+export function drawLayerTexture(ctx, b, kind, sc, opt = {}) {
   const l = kind === 'top' ? 0 : kind === 'bottom' ? 3 : kind, outer = kind === 'top' || kind === 'bottom';
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.setTransform(sc, 0, 0, sc, 0, 0); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const routed = [...b.nets.values()].filter(n => n.route && (n.route.segs.length || n.route.vias.length));
+  const path = cls => { ctx.beginPath(); for (const n of routed) { if (cls && n.cls !== cls) continue; for (const s of n.route.segs) { if (s.l !== l) continue; const p = s.pts; ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); } } };
   boardPath(ctx, b);
-  if (outer) { ctx.fillStyle = C.board; ctx.fill(); ctx.lineWidth = 0.3; ctx.strokeStyle = C.edge; ctx.stroke(); }
-  else { ctx.fillStyle = LAYERS[l].color; ctx.globalAlpha = 0.12; ctx.fill(); ctx.globalAlpha = 0.8; ctx.lineWidth = 0.25; ctx.strokeStyle = LAYERS[l].color; ctx.stroke(); ctx.globalAlpha = 1; }
-  const nets = [...b.nets.values()].filter(n => n.route && (n.route.segs.length || n.route.vias.length));
-  ctx.strokeStyle = LAYERS[l].color;
-  for (const cls of ['signal', 'diff', 'power']) {
-    ctx.beginPath();
-    for (const n of nets) { if (n.cls !== cls) continue; for (const s of n.route.segs) { if (s.l !== l) continue; const p = s.pts; ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); } }
-    ctx.lineWidth = Math.max(NET_WIDTH[cls], (outer ? 1.6 : 2.4) / sc); ctx.stroke();
+  if (!outer) {
+    ctx.fillStyle = LAYERS[l].color; ctx.globalAlpha = 0.12; ctx.fill(); ctx.globalAlpha = 0.8; ctx.lineWidth = 0.25; ctx.strokeStyle = LAYERS[l].color; ctx.stroke(); ctx.globalAlpha = 1;
+    path(); ctx.strokeStyle = LAYERS[l].color; ctx.lineWidth = Math.max(NET_WIDTH.signal, 2.4 / sc); ctx.stroke();
+    ctx.fillStyle = C.via; ctx.beginPath();
+    for (const n of routed) { if (n.route.plane) continue; for (const q of n.route.vias) { ctx.moveTo(q.x + VIA.d / 2, q.y); ctx.arc(q.x, q.y, VIA.d / 2, 0, 6.2832); } }
+    ctx.fill();
+    return;
   }
-  ctx.fillStyle = C.via; ctx.beginPath();
-  for (const n of nets) for (const q of n.route.vias) { if (n.route.plane) continue; ctx.moveTo(q.x + VIA.d / 2, q.y); ctx.arc(q.x, q.y, VIA.d / 2, 0, 6.2832); }
+  const pour = Math.max(0, Math.min(1, opt.pour || 0)), side = kind === 'top' ? 'T' : 'B';
+  ctx.fillStyle = '#1e4632'; ctx.fill();
+  if (pour > 0) { ctx.globalAlpha = pour; ctx.fillStyle = '#7d5546'; ctx.fill(); ctx.globalAlpha = 1; }
+  ctx.save(); boardPath(ctx, b); ctx.clip();
+  // 配線：周囲を暗く抜いて（クリアランス）、明るい銅色で引く
+  path(); ctx.strokeStyle = pour > 0.05 ? '#4a3128' : '#17382a'; ctx.lineWidth = Math.max(0.6, 5 / sc); ctx.stroke();
+  ctx.strokeStyle = '#ff7a52'; ctx.lineWidth = Math.max(NET_WIDTH.signal, 1.8 / sc); ctx.stroke();
+  // 部品の外形枠
+  ctx.strokeStyle = 'rgba(226,240,232,0.55)'; ctx.lineWidth = Math.max(0.12, 1 / sc);
+  for (const c of b.comps) {
+    if (c.side !== side && !c.part.th) continue;
+    const B = compBox(c, 0.25);
+    if (c.part.family === 'hole') { ctx.strokeRect(c.x - 3.2, c.y - 3.2, 6.4, 6.4); continue; }
+    ctx.strokeRect(B.x0, B.y0, B.x1 - B.x0, B.y1 - B.y0);
+  }
+  // パッドとビア
+  ctx.fillStyle = '#d9dde2'; ctx.beginPath();
+  for (const n of routed) { if (n.route.plane) continue; for (const q of n.route.vias) { ctx.moveTo(q.x + VIA.d / 2, q.y); ctx.arc(q.x, q.y, VIA.d / 2, 0, 6.2832); } }
   ctx.fill();
-  if (!outer) return;
-  const side = kind === 'top' ? 'T' : 'B';
-  for (const [key, col] of [['gnd', C.padGnd], ['pwr', C.padPwr], ['sig', C.padSig]]) {
+  for (const [key, col] of [['gnd', '#b79a55'], ['pwr', '#e0a85a'], ['sig', '#f1d27a'], ['hole', '#060708']]) {
     ctx.fillStyle = col; ctx.beginPath();
     for (const c of b.comps) for (const pad of c.part.pads) {
       if (c.side !== side && !pad.th) continue;
       const nm = c.padNet[pad.n], n = nm && b.nets.get(nm);
-      const k = nm === 'GND' || !n ? 'gnd' : n.cls === 'plane' ? 'pwr' : 'sig';
+      const k = c.part.family === 'hole' ? 'hole' : nm === 'GND' || !n ? 'gnd' : n.cls === 'plane' ? 'pwr' : 'sig';
       if (k !== key) continue;
-      const p = padWorld(c, pad); ctx.rect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+      const p = padWorld(c, pad);
+      if (p.round || pad.th) { ctx.moveTo(p.x + p.w / 2, p.y); ctx.arc(p.x, p.y, p.w / 2, 0, 6.2832); } else ctx.rect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
     }
     ctx.fill();
   }
+  ctx.restore();
+  boardPath(ctx, b); ctx.lineWidth = 0.35; ctx.strokeStyle = '#b9d2c4'; ctx.stroke();
 }

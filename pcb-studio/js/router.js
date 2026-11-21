@@ -120,6 +120,7 @@ export class Router {
     for (const k of net.route.cells) if (occ[k] === net.id && !fixed[k]) occ[k] = 0;
     for (const v of net.route.vias) { const r = Math.round(v.y / G) * nx + Math.round(v.x / G); if (viaNet[r] === net.id) viaNet[r] = 0; }
     net.route = null;
+    if (this.log) this.log.push(net, null);
   }
   // ビアを打てるか（位置の条件）：他ネットのパッド・ビアから 0.2mm 以上離れ、角をかすめる斜め配線もないこと
   viaNear(id, r) {
@@ -145,7 +146,7 @@ export class Router {
       if (net.cls !== 'plane') continue;
       this.ripNet(net);
       const route = { cells: [], segs: [], vias: [], fails: [], len: 0, plane: true, smd: 0 };
-      net.route = route;
+      net.route = route; if (this.log) this.log.push(net, route);
       const id = net.id;
       const drop = r => { viaNet[r] = id; route.vias.push({ x: (r % nx) * G, y: ((r / nx) | 0) * G }); for (let m = 0; m < NL; m++) { occ[m * plane + r] = id; route.cells.push(m * plane + r); } };
       const par = new Map();
@@ -254,7 +255,7 @@ export class Router {
     this.ripNet(net);
     const { occ, fixed, plane, nx } = this, id = net.id;
     const route = { cells: [], segs: [], vias: [], fails: [], len: 0 };
-    net.route = route;
+    net.route = route; if (this.log) this.log.push(net, route);
     const ripped = new Set();
     if (net.cls === 'plane' || net.pins.length < 2) return ripped;
     const pc = net.pins.map(p => this.pinCells(p));
@@ -420,7 +421,7 @@ export class Router {
     }
     // 等長化（短い配線を最長に合わせる）。合わせきれないグループは、遠回りしている配線を
     // 引き剥がし優先で引き直してから、もう一度だけ試す。
-    const queue = [...touched], fixed2 = new Set();
+    const queue = this.tune === false ? [] : [...touched], fixed2 = new Set();
     const spread = k => { const L = groups.get(k).filter(n => n.route && !n.route.fails.length && n.route.segs.length).map(n => n.route.len); return L.length > 1 ? Math.max(...L) - Math.min(...L) : 0; };
     const retune = k => { for (const n of groups.get(k)) if (n.route && n.route.tuned) this.routeNet(n); this.tuneGroup(groups.get(k)); };
     while (queue.length) {

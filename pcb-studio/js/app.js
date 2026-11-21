@@ -2,7 +2,7 @@ import { LAYERS, snap, padWorld, compBox, boxOverlap, ratsnest, serialize, deser
 import { PARTS, PART, CATS, alternatives } from './library.js';
 import { PRESETS, generateGPU, emptyBoard } from './templates.js';
 import { Router } from './router.js';
-import { planLayout, anneal } from './placer.js';
+import { planLayout, anneal, resyncPlan } from './placer.js';
 import { draw, toWorld, flipOf } from './render.js';
 import { exportKicad, importKicad, kicadProject, packPart, unpackPart } from './kicad.js';
 import { planePlan } from './planes.js';
@@ -22,17 +22,24 @@ const S = {
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
 let v3 = null, v3on = false, ioKind = 'json';
 let redo = [];
+// 自動レイアウトの記録（巻き戻し用）と、段階ごとの一時停止
+let stageProg = 0;
+let rec = null, recPos = 0, replay = false, stepWait = false, stepGo = false, phase = '', curStage = '', userCam = false;
+const opts = { regions: true, pack: true, tune: true, step: false, effort: 1 };
 let undo = [], run = null, playing = false, speed = 1, t0 = 0, elapsed = 0;
 
 // ───────── 基板の入れ替え・再計算 ─────────
 function setBoard(b, route = true) {
-  S.board = b; S.sel.clear(); S.hiNet = pinNet = null; S.hiGroup = pinGroup = null; S.ghost = null; S.wire = null;
+  dropRec(); S.board = b; S.sel.clear(); S.hiNet = pinNet = null; S.hiGroup = pinGroup = null; S.ghost = null; S.wire = null;
   S.router = new Router(b);
   if (route) S.router.routeAllSync();
   fit(); refreshAll();
 }
-function refresh() { S.rats = S.show.rats ? ratsnest(S.board) : []; S.zones = zones(); dirty = true; }
-function refreshAll() { refresh(); renderInspector(); renderStats(); renderNets(); renderLegend(); renderBom(); if (v3on) v3.setBoard(S.board); }
+function refresh() {
+  S.rats = S.show.rats ? ratsnest(S.board) : []; S.zones = v3on ? [] : zones(); dirty = true;
+  if (v3on) { let t = 0, r = 0; for (const n of S.board.nets.values()) if (n.cls !== 'plane' && n.pins.length > 1) { t++; if (n.route && n.route.segs.length) r++; } v3.pour = t ? r / t : 0; }
+}
+function refreshAll() { refresh(); renderInspector(); renderStats(); renderNets(); renderLegend(); renderBom(); renderGuide(); if (v3on) v3.setBoard(S.board, S); }
 function zones() {
   const b = S.board, out = [];
   const gpu = b.comps.find(c => c.part.family === 'gpu');
@@ -74,13 +81,13 @@ function zones() {
   return out;
 }
 function fit() {
-  const b = S.board;
+  const b = S.board; if (v3on) v3.frameAll();
   S.view.z = Math.max(0.5, Math.min((S.cw - 24) / (b.w + 10), (S.ch - 90) / (b.gridH + 12)));
   S.view.x = b.w / 2 - 1; S.view.y = b.gridH / 2 + 3; dirty = true;
 }
 function pushUndo(keepRedo) { undo.push(JSON.stringify(serialize(S.board))); if (undo.length > 30) undo.shift(); if (!keepRedo) redo = []; }
 function restore(from, to, msg) {
-  if (run) return;
+  if (run || blocked()) return;
   const snap2 = from.pop(); if (!snap2) return toast(from === undo ? 'これ以上戻せません' : 'やり直す操作がありません');
   to.push(JSON.stringify(serialize(S.board)));
   const v = { ...S.view };
@@ -90,6 +97,8 @@ const doUndo = () => restore(undo, redo, '元に戻しました');
 const doRedo = () => restore(redo, undo, 'やり直しました');
 // 変更を確定：グリッドを作り直し、影響を受けたネットを再配線する
 function commit(nets = []) {
+  if (run && phase !== 'routed') { for (const c of S.board.comps) { c.x = snap(c.x); c.y = snap(c.y); } refresh(); renderInspector(); if (v3on) v3.paint(S, true); return; }   // 配線前の段階では位置だけ反映
+  if (!run) dropRec();
   const R = S.router, b = S.board, set = new Set(nets);
   for (const n of set) R.ripNet(n);
   for (const n of R.rebuild()) { R.ripNet(n); set.add(n); }
@@ -106,12 +115,13 @@ function commit(nets = []) {
 const netsOfSel = () => { const s = new Set(); for (const c of S.sel) for (const n of S.board.netsOf(c)) if (n.cls !== 'plane') s.add(n); return s; };
 
 // ───────── ヒットテスト ─────────
-const nearSide = () => (S.view.flip < 0 ? 'B' : 'T');
-function compAt(w) {
+const nearSide = () => (v3on ? v3.side() : S.view.flip < 0 ? 'B' : 'T');
+function compAt(w, sx, sy) {
+  if (v3on && sx != null) { const c = v3.pick(sx, sy); if (c) return c; }
   let best = null, ba = 1e18;
   for (const c of S.board.comps) {
     const near = c.side === nearSide() || c.part.th;
-    if (!near && !S.show.far) continue;
+    if (!near && (v3on || !S.show.far)) continue;
     const B = compBox(c, 0.2);
     if (w.x < B.x0 || w.x > B.x1 || w.y < B.y0 || w.y > B.y1) continue;
     const a = c.part.w * c.part.h * (near ? 1 : 1e6);
@@ -134,53 +144,69 @@ function padAt(w) {
 function netAt(w) {
   const hit = padAt(w);
   if (hit) { const nm = hit.c.padNet[hit.pad.n]; return { net: nm ? S.board.nets.get(nm) : null, hit }; }
-  const order = (S.view.flip < 0 ? [3, 2, 1, 0] : [0, 1, 2, 3]).filter(l => S.layerVis[l]);
+  const order = (nearSide() === 'B' ? [3, 2, 1, 0] : [0, 1, 2, 3]).filter(l => S.layerVis[l]);
   return { net: S.router.netAt(w.x, w.y, order), hit: null };
 }
 
-// ───────── ポインタ操作 ─────────
-const ptrs = new Map();
-let drag = null, pinch = null;
-const evPos = e => { const r = cv.getBoundingClientRect(); return { sx: e.clientX - r.left, sy: e.clientY - r.top }; };
-cv.addEventListener('pointerdown', e => {
-  cv.setPointerCapture(e.pointerId);
+// ───────── ポインタ操作（2D・3D 共通）─────────
+const ptrs = new Map(), cv3 = $('cv3');
+let drag = null, pinch = null, lastPaint = 0;
+const evPos = e => { const r = cv.parentElement.getBoundingClientRect(); return { sx: e.clientX - r.left, sy: e.clientY - r.top }; };
+const toW = (sx, sy) => (v3on ? v3.point(sx, sy) : toWorld(S, sx, sy)) || { x: -9999, y: -9999 };
+const editable = () => !run || stepWait;
+// 再生位置が途中のあいだは編集できない
+function blocked(quiet) {
+  if (run || !rec || recPos >= rec.frames.length - 1) return false;
+  if (!quiet) toast('再生位置が途中です。シークバーを右端まで進めると編集できます');
+  return true;
+}
+function onDown(e) {
+  e.currentTarget.setPointerCapture(e.pointerId);
   const { sx, sy } = evPos(e); ptrs.set(e.pointerId, { sx, sy });
   if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.sx - b.sx, a.sy - b.sy), z: S.view.z }; drag = null; return; }
-  const w = toWorld(S, sx, sy);
-  if (e.button === 1 || e.button === 2 || run) { drag = { kind: 'pan', sx, sy, vx: S.view.x, vy: S.view.y }; return; }
+  const w = toW(sx, sy), alt = e.button === 1 || e.button === 2;
+  const nav = () => { drag = v3on ? { kind: alt || e.shiftKey ? 'pan3' : 'orbit', sx, sy, lx: sx, ly: sy, click: !alt } : { kind: 'pan', sx, sy, vx: S.view.x, vy: S.view.y, click: !alt }; };
+  if (alt || !editable() || blocked(true)) { nav(); return; }
   if (S.ghost) { placeGhost(e.shiftKey); return; }
   if (tool === 'wire') { wireClick(w, e.altKey); return; }
-  const c = compAt(w);
+  const c = compAt(w, sx, sy);
   if (c) {
     if (e.shiftKey) { S.sel.has(c) ? S.sel.delete(c) : S.sel.add(c); }
     else if (!S.sel.has(c)) { S.sel.clear(); S.sel.add(c); }
     drag = { kind: 'move', w0: w, orig: new Map([...S.sel].map(k => [k, { x: k.x, y: k.y }])), moved: false };
     renderInspector(); dirty = true; return;
   }
-  if (e.shiftKey) { drag = { kind: 'marquee', sx, sy }; return; }
-  drag = { kind: 'pan', sx, sy, vx: S.view.x, vy: S.view.y, click: true };
-});
-cv.addEventListener('pointermove', e => {
+  if (e.shiftKey && !v3on) { drag = { kind: 'marquee', sx, sy }; return; }
+  nav();
+}
+function onMove(e) {
   const { sx, sy } = evPos(e);
   if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, { sx, sy });
   if (pinch && ptrs.size === 2) {
-    const [a, b] = [...ptrs.values()];
-    S.view.z = Math.max(0.5, Math.min(60, pinch.z * Math.hypot(a.sx - b.sx, a.sy - b.sy) / pinch.d)); dirty = true; return;
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a.sx - b.sx, a.sy - b.sy);
+    if (v3on) { v3.zoom(pinch.d / d); pinch.d = d; } else S.view.z = Math.max(0.5, Math.min(60, pinch.z * d / pinch.d));
+    dirty = true; return;
   }
-  const w = toWorld(S, sx, sy);
+  const w = toW(sx, sy);
   if (S.ghost) { S.ghost.x = snap(w.x); S.ghost.y = snap(w.y); dirty = true; }
   if (S.wire) { S.wire.to = w; dirty = true; }
   if (!drag) { hover(w, sx, sy); return; }
-  if (drag.kind === 'pan') {
-    if (Math.hypot(sx - drag.sx, sy - drag.sy) > 3) drag.click = false;
+  if (Math.hypot(sx - drag.sx, sy - drag.sy) > 3) drag.click = false;
+  if (drag.kind === 'orbit' || drag.kind === 'pan3') {
+    v3[drag.kind === 'orbit' ? 'orbit' : 'pan'](sx - drag.lx, sy - drag.ly); drag.lx = sx; drag.ly = sy; userCam = true;
+  } else if (drag.kind === 'pan') {
     S.view.x = drag.vx - (sx - drag.sx) / S.view.z / flipOf(S); S.view.y = drag.vy - (sy - drag.sy) / S.view.z; dirty = true;
   } else if (drag.kind === 'move') {
     const dx = snap(w.x - drag.w0.x), dy = snap(w.y - drag.w0.y);
     if (!drag.moved && (dx || dy)) { drag.moved = true; pushUndo(); drag.nets = netsOfSel(); for (const n of drag.nets) S.router.ripNet(n); }
-    if (drag.moved) { for (const [c, o] of drag.orig) { c.x = o.x + dx; c.y = o.y + dy; } refresh(); }
+    if (drag.moved) {
+      for (const [c, o] of drag.orig) { c.x = o.x + dx; c.y = o.y + dy; }
+      refresh();
+      if (v3on && performance.now() - lastPaint > 140) { v3.paint(S, true); lastPaint = performance.now(); }
+    }
   } else if (drag.kind === 'marquee') { S.marquee = { x0: drag.sx, y0: drag.sy, x1: sx, y1: sy }; dirty = true; }
-});
-const endPtr = e => {
+}
+function endPtr(e) {
   ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
   if (!drag) return;
   const d = drag; drag = null;
@@ -191,27 +217,32 @@ const endPtr = e => {
     S.sel.clear();
     for (const c of S.board.comps) if ((c.side === nearSide() || c.part.th) && c.x >= x0 && c.x <= x1 && c.y >= y0 && c.y <= y1) S.sel.add(c);
     S.marquee = null; renderInspector(); dirty = true;
-  } else if (d.kind === 'pan' && d.click && !run) {
-    const { net } = netAt(toWorld(S, d.sx, d.sy));
+  } else if (d.click && d.kind !== 'move' && editable()) {
+    const { net } = netAt(toW(d.sx, d.sy));
     pinNet = net && net.cls !== 'plane' ? net : null; S.hiNet = pinNet;
     if (S.sel.size) { S.sel.clear(); renderInspector(); }
     dirty = true;
   }
-};
-cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
-cv.addEventListener('contextmenu', e => e.preventDefault());
-cv.addEventListener('wheel', e => {
+}
+function onWheel(e) {
   e.preventDefault();
+  if (v3on) { v3.zoom(Math.exp(e.deltaY * 0.0012)); userCam = true; return; }
   const { sx, sy } = evPos(e), w = toWorld(S, sx, sy);
   S.view.z = Math.max(0.5, Math.min(60, S.view.z * Math.exp(-e.deltaY * 0.0015)));
   const w2 = toWorld(S, sx, sy);
   S.view.x += (w.x - w2.x) * flipOf(S); S.view.y += w.y - w2.y; dirty = true;
-}, { passive: false });
-cv.addEventListener('pointerleave', () => { $('tip').hidden = true; if (!pinNet && S.hiNet) { S.hiNet = null; dirty = true; } });
+}
+for (const el of [cv, cv3]) {
+  el.addEventListener('pointerdown', onDown); el.addEventListener('pointermove', onMove);
+  el.addEventListener('pointerup', endPtr); el.addEventListener('pointercancel', endPtr);
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  el.addEventListener('wheel', onWheel, { passive: false });
+  el.addEventListener('pointerleave', () => { $('tip').hidden = true; if (!pinNet && S.hiNet) { S.hiNet = null; dirty = true; } });
+}
 
 function hover(w, sx, sy) {
   const tip = $('tip');
-  if (run) { tip.hidden = true; return; }
+  if (!editable()) { tip.hidden = true; return; }
   const { net, hit } = netAt(w);
   const hp = tool === 'wire' && hit ? hit.p : null;
   if (hp !== S.hoverPad) { S.hoverPad = hp; dirty = true; }
@@ -223,7 +254,7 @@ function hover(w, sx, sy) {
   else if (net) html = `<b>${esc(net.name)}</b>`;
   if (net && net.cls !== 'plane' && net.route) html += `<br>${net.pins.length} ピン・${net.route.len.toFixed(1)} mm・ビア ${net.route.vias.length}${net.route.tuned ? '・等長調整済' : ''}${net.cls === 'diff' ? '<br>差動ペア' : ''}`;
   else if (net && net.cls === 'plane') html += '<br>電源プレーン（内層ベタ）';
-  if (!html) { const c = compAt(w); if (c) html = `<b>${esc(c.ref)}</b> ${esc(c.part.pn)}<br>${esc(c.part.name)}`; }
+  if (!html || (v3on && !hit)) { const c = compAt(w, sx, sy); if (c) html = `<b>${esc(c.ref)}</b> ${esc(c.part.pn)}<br>${esc(c.part.name)}`; }
   tip.hidden = !html;
   if (html) { tip.innerHTML = html; tip.style.left = Math.min(S.cw - 190, sx + 14) + 'px'; tip.style.top = Math.max(4, sy - 8) + 'px'; }
 }
@@ -231,22 +262,23 @@ function hover(w, sx, sy) {
 // ───────── 編集操作 ─────────
 function rotateSel() {
   if (S.ghost) { S.ghost.rot = (S.ghost.rot + 90) % 360; dirty = true; return; }
-  if (!S.sel.size || run) return;
+  if (!S.sel.size || !editable() || blocked()) return;
   pushUndo(); const nets = netsOfSel(); for (const c of S.sel) c.rot = (c.rot + 90) % 360; commit(nets);
 }
 function flipSel() {
-  if (!S.sel.size || run) return;
+  if (!S.sel.size || !editable() || blocked()) return;
   pushUndo(); const nets = netsOfSel();
   for (const c of S.sel) if (!c.part.th) c.side = c.side === 'T' ? 'B' : 'T';
   commit(nets);
 }
 function deleteSel() {
-  if (!S.sel.size || run) return;
+  if (!S.sel.size || run || blocked()) return;
   pushUndo(); const nets = netsOfSel(); for (const n of nets) S.router.ripNet(n);
   for (const c of S.sel) S.board.remove(c);
   S.sel.clear(); commit(nets);
 }
 function startPlace(part) {
+  if (blocked()) return;
   setTool('select'); S.sel.clear();
   S.ghost = { part, x: snap(S.view.x), y: snap(S.view.y), rot: 0, side: nearSide(), padNet: {} };
   toast(`${part.pn} を配置：基板上をクリック（R で回転、Esc で中止）`); dirty = true; renderInspector();
@@ -281,7 +313,7 @@ function wireClick(w, alt) {
   commit([b.nets.get(target)]);
 }
 function swapPart(newPart, all) {
-  const b = S.board, base = [...S.sel][0]; if (!base || run) return;
+  const b = S.board, base = [...S.sel][0]; if (!base || run || blocked()) return;
   pushUndo();
   const targets = all ? b.comps.filter(c => c.part === base.part) : [...S.sel].filter(c => c.part.family === newPart.family);
   const nets = new Set();
@@ -305,42 +337,51 @@ function stage(id, text) {
     const i = STAGES.findIndex(s => s[0] === el.dataset.s), k = STAGES.findIndex(s => s[0] === id);
     el.className = i < k ? 'done' : i === k ? 'on' : '';
   }
+  curStage = id;
   if (text != null) $('status').textContent = text;
+}
+// 段階の合間で止めて、手直しを受け付ける
+function* gate(next) {
+  if (!opts.step) return;
+  stepWait = true; stepGo = false; document.body.classList.add('waiting');
+  $('status').textContent = `一時停止中：部品をつかんで手直しできます。「次の段階へ」で ${next} に進みます。`;
+  while (!stepGo) yield;
+  stepWait = false; document.body.classList.remove('waiting');
 }
 function* routeStage(nets) {
   const R = S.router;
-  R.ripAll(); R.rebuild(); refresh();
+  R.tune = opts.tune; R.ripAll(); R.rebuild(); refresh();
   let k = 0;
   for (const ev of R.routeMany(nets || [...S.board.nets.values()])) {
     const what = ev.phase === 'route' ? 'route' : ev.phase === 'ripup' ? '引き剥がし再配線' : ev.phase === 'tune' ? '等長化（ミアンダ挿入）' : '再配線';
     stage('route', `route | ${ev.i}/${ev.total} ${what} ${ev.key || ev.net.name}`);
-    $('prog').value = ev.i / ev.total;
+    stageProg = ev.i / ev.total;
     if (++k % Math.max(1, Math.round(speed)) === 0) { refresh(); yield; if (speed < 1) yield; }
   }
-  refresh();
+  phase = 'routed'; refresh(); if (v3on) v3.paint(S);
 }
 function* flipStage() {
   const ease = t => (1 - Math.cos(Math.PI * t)) / 2;
   stage('flip', '基板を裏返して裏面の部品と配線を確認');
   if (v3on) {
     const e0 = v3.el;
-    for (let t = 0; t < 1; t += 0.014 * speed) { v3.el = e0 - 2 * Math.abs(e0) * ease(t); v3.dirty = true; $('prog').value = t; yield; }
+    for (let t = 0; t < 1; t += 0.014 * speed) { v3.el = e0 - 2 * Math.abs(e0) * ease(t); v3.dirty = true; stageProg = t; yield; }
     for (let t = 0; t < 1; t += 0.012 * speed) yield;
     stage('top', '表面に戻る');
-    for (let t = 0; t < 1; t += 0.014 * speed) { v3.el = e0 - 2 * Math.abs(e0) * (1 - ease(t)); v3.dirty = true; $('prog').value = t; yield; }
+    for (let t = 0; t < 1; t += 0.014 * speed) { v3.el = e0 - 2 * Math.abs(e0) * (1 - ease(t)); v3.dirty = true; stageProg = t; yield; }
     v3.el = e0; v3.dirty = true; return;
   }
-  for (let t = 0; t < 1; t += 0.014 * speed) { S.view.flip = 1 - 2 * ease(t); $('prog').value = t; dirty = true; yield; }
+  for (let t = 0; t < 1; t += 0.014 * speed) { S.view.flip = 1 - 2 * ease(t); stageProg = t; dirty = true; yield; }
   S.view.flip = -1; dirty = true;
   for (let t = 0; t < 1; t += 0.012 * speed) yield;
   stage('top', '表面に戻る');
-  for (let t = 0; t < 1; t += 0.014 * speed) { S.view.flip = -1 + 2 * ease(t); $('prog').value = t; dirty = true; yield; }
+  for (let t = 0; t < 1; t += 0.014 * speed) { S.view.flip = -1 + 2 * ease(t); stageProg = t; dirty = true; yield; }
   S.view.flip = 1; dirty = true;
 }
 function* autoLayout(seed) {
   const b = S.board;
   S.router.ripAll(); S.sel.clear(); S.hiNet = pinNet = null;
-  const plan = planLayout(b, seed), tg = plan.targets;
+  const plan = planLayout(b, seed, opts.pack, opts.regions), tg = plan.targets;
   S.regions = [...plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
   const from = new Map([...tg.keys()].map(c => [c, { x: c.x, y: c.y }]));
   const pi = plan.info;
@@ -349,52 +390,89 @@ function* autoLayout(seed) {
   for (let t = 0; t < 1; t += 0.014 * speed) {
     const e = t * t * (3 - 2 * t);
     for (const [c, p] of tg) { const o = from.get(c); c.x = o.x + (p.x - o.x) * e; c.y = o.y + (p.y - o.y) * e; if (t > 0.5) c.rot = p.rot; }
-    $('prog').value = t; refresh(); yield;
+    stageProg = t; refresh(); yield;
   }
   for (const [c, p] of tg) { c.x = p.x; c.y = p.y; c.rot = p.rot; }
   refresh(); for (let t = 0; t < 1; t += 0.03 * speed) yield;
-  const an = anneal(b, seed, 60, plan);
+  yield* gate('焼きなまし');
+  resyncPlan(plan);
+  const an = anneal(b, seed, 60, plan, opts.effort);
   for (let done = false; !done;) {
     let ev = null;
     for (let i = 0; i < Math.max(1, Math.round(speed)); i++) { const r = an.next(); if (r.done) { done = true; break; } ev = r.value; }
     if (ev) {
       stage('anneal', ev.legal ? `legalize: 重なり解消 ${ev.legal} 回目 | overlap ${ev.overlap.toFixed(2)} mm²`
         : `anneal: move ${ev.move}/${ev.total} | T ${ev.T.toFixed(3)} | cost ${Math.round(ev.cost)} | overlap ${ev.overlap.toFixed(2)} mm²`);
-      $('prog').value = ev.move / ev.total;
+      stageProg = ev.move / ev.total;
     }
     refresh(); yield;
   }
+  yield* gate('配線');
   S.regions = null;
   yield* routeStage();
+  yield* gate('裏面確認');
   yield* flipStage();
 }
 function* routeOnly() { yield* routeStage(); }
 function play(gen) {
-  if (run) return;
-  pushUndo(); S.ghost = null; setTool('select');
-  run = gen; playing = true; t0 = performance.now(); elapsed = 0;
+  if (run || blocked()) return;
+  pushUndo(); S.ghost = null; setTool('select'); dropRec(); startRec(); phase = 'place'; userCam = false; replay = false;
+  run = gen; playing = true; elapsed = 0;
   document.body.classList.add('running'); $('btnPause').textContent = '一時停止';
 }
 function finish(msg) {
-  run = null; playing = false; S.regions = null; document.body.classList.remove('running');
+  run = null; playing = false; stepWait = false; phase = ''; S.regions = null; document.body.classList.remove('running', 'waiting');
   S.view.flip = S.view.flip < 0 ? -1 : 1;
   for (const c of S.board.comps) { c.x = snap(c.x); c.y = snap(c.y); }
   for (const n of S.router.rebuild()) S.router.ripNet(n);
   stage('', msg); for (const el of document.querySelectorAll('#stages li')) el.className = msg.startsWith('完了') ? 'done' : '';
-  $('prog').value = 1; refreshAll();
+  refreshAll();
+  if (rec) { // 記録を閉じて、シークバーで巻き戻せるようにする
+    S.router.log = null; recFrame(); rec.applied = rec.log.length / 2; recPos = rec.frames.length - 1;
+    const sk = $('seek'); sk.max = recPos; sk.value = recPos; sk.disabled = false; document.body.classList.add('hasrec');
+  }
 }
+function startRec() {
+  rec = { comps: S.board.comps.filter(c => !c.fixed), frames: [], log: [], base: new Map([...S.board.nets.values()].map(n => [n, n.route])), applied: 0 };
+  S.router.log = rec.log; recPos = 0; $('seek').disabled = true; $('seek').value = 0; $('seek').max = 1000;
+}
+function dropRec() { if (!rec) return; rec = null; replay = false; if (S.router) S.router.log = null; document.body.classList.remove('hasrec'); $('seek').disabled = true; }
+function recFrame() {
+  const pos = new Float32Array(rec.comps.length * 3);
+  rec.comps.forEach((c, i) => { pos[3 * i] = c.x; pos[3 * i + 1] = c.y; pos[3 * i + 2] = c.rot; });
+  rec.frames.push({ st: curStage, text: $('status').textContent, pos, log: rec.log.length / 2, el: v3 ? v3.el : 0, flip: S.view.flip, reg: S.regions, t: elapsed });
+}
+// 記録した時点の状態を表示する（配置と、その時点までに引かれた配線）
+function showFrame(i) {
+  const f = rec.frames[i]; recPos = i;
+  rec.comps.forEach((c, j) => { c.x = f.pos[3 * j]; c.y = f.pos[3 * j + 1]; c.rot = f.pos[3 * j + 2]; });
+  if (f.log < rec.applied) { for (const n of S.board.nets.values()) n.route = rec.base.get(n) || null; rec.applied = 0; }
+  for (let k = rec.applied; k < f.log; k++) rec.log[2 * k].route = rec.log[2 * k + 1];
+  rec.applied = f.log;
+  stage(f.st, f.text); S.regions = f.reg; S.sel.clear();
+  if (i === rec.frames.length - 1) for (const el of document.querySelectorAll('#stages li')) el.className = 'done';
+  if (v3on) v3.el = f.el; else S.view.flip = f.flip;
+  $('seek').value = i; clock(f.t);
+  refresh();
+  if (v3on && (performance.now() - lastPaint > 90 || i === rec.frames.length - 1)) { v3.paint(S); lastPaint = performance.now(); }
+}
+function clock(ms) { const s2 = Math.floor(ms / 1000); $('clock').textContent = `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, '0')}`; }
 
 // ───────── 3D 表示・保存読込 ─────────
-function toggle3d() {
-  if (!v3) v3 = new View3D($('cv3'));
-  if (!v3.ok) return toast('3D ライブラリを読み込めませんでした（ネットワークを確認してください）');
+function toggle3d(quiet) {
+  if (!v3) v3 = new View3D(cv3);
+  if (!v3.ok) { if (!quiet) toast('3D ライブラリを読み込めませんでした（ネットワークを確認してください）'); return; }
   v3on = !v3on;
-  $('cv3').hidden = !v3on; $('explodeWrap').hidden = !v3on; $('btn3d').setAttribute('aria-pressed', v3on); $('tip').hidden = true;
-  if (v3on) { v3.style = S.style; v3.resize(S.cw, S.ch, S.dpr); v3.setBoard(S.board); toast('3D 表示：ドラッグで回転、Shift+ドラッグで移動、ホイールで拡大。編集は 2D に戻って行います'); }
+  cv3.hidden = !v3on; $('explodeWrap').hidden = !v3on; $('btn3d').setAttribute('aria-pressed', v3on); $('tip').hidden = true; S.sel.clear();
+  if (v3on) v3.style = S.style, v3.resize(S.cw, S.ch, S.dpr);
+  if (!S.board) return;
+  refresh(); if (v3on) v3.setBoard(S.board, S);
+  renderInspector();
 }
 const saveData = () => ({ ...serialize(S.board), custom: [...new Set(S.board.comps.map(c => c.part))].filter(p => p.cat === 'kicad').map(packPart) });
 function loadText(text) {
   const t = text.trim();
+  if (blocked()) return;
   let b;
   if (t.startsWith('(kicad_pcb')) b = importKicad(t, p => { PART[p.id] = p; });
   else { const d = JSON.parse(t); for (const p of d.custom || []) PART[p.id] = unpackPart(p); b = deserialize(d, PART); }
@@ -443,7 +521,7 @@ function fillGen() {
   $('gNVram').value = p.nVram; $('gVcore').value = p.vcore; $('gVmem').value = p.vmem; $('gNConn').value = p.nConn;
 }
 function genFromForm() {
-  if (run) return;
+  if (run || blocked()) return;
   const p = PRESETS[$('gPreset').value], num = (id, lo, hi) => Math.max(lo, Math.min(hi, parseInt($(id).value, 10) || lo));
   pushUndo();
   setBoard(generateGPU({ ...p, gpu: $('gGpu').value, vram: $('gVram').value, drmos: $('gDrmos').value, ind: $('gInd').value, ctl: $('gCtl').value, conn: $('gConn').value,
@@ -529,7 +607,8 @@ function renderStats() {
     ? `<div class="sub">問題 ${issues.length} 件（クリックでその場所へ）</div><div class="pins">${issues.slice(0, 30).map((q, i) => `<button class="pin bad" data-issue="${i}">${esc(q.t)}</button>`).join('')}</div>`
     : '<div class="sub ok">配置・接続の問題は見つかりません</div>');
 }
-function focusAt(x, y, z) { S.view.x = x; S.view.y = y; if (z) S.view.z = z; dirty = true; }
+function focusAt(x, y, z) { S.view.x = x; S.view.y = y; if (z) S.view.z = z; if (v3on) v3.focus(x, y, Math.max(60, Math.min(v3.dist, 2600 / (z || 9)))); dirty = true; }
+function showTab(k) { for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', b.dataset.tab === k); $('tabGuide').hidden = k !== 'guide'; $('tabLib').hidden = k !== 'lib'; $('tabGen').hidden = k !== 'gen'; }
 function renderNets() {
   const q = $('netq').value.trim().toLowerCase();
   const all = [...S.board.nets.values()].filter(n => n.cls !== 'plane' && n.pins.length > 1);
@@ -545,7 +624,23 @@ function renderNets() {
 function renderLegend() {
   const b = S.board, cnt = {};
   for (const c of b.comps) cnt[c.group] = (cnt[c.group] || 0) + 1;
-  $('legend').innerHTML = b.groups.filter(g => cnt[g.id]).map(g => `<button data-g="${g.id}" aria-pressed="${pinGroup === g.id}"><i style="background:${g.color}"></i>${esc(g.label)} <span>(${g.kind}) ${cnt[g.id]}</span></button>`).join('');
+  $('legend').innerHTML = b.groups.filter(g => cnt[g.id]).map(g => `<button data-g="${g.id}" aria-pressed="${pinGroup === g.id}" title="${esc(g.label)}・${cnt[g.id]} 部品"><i style="background:${g.color}"></i>${esc(g.id)} (${g.kind})</button>`).join('')
+    + '<button disabled><i style="background:#b4bac0"></i>fixed</button>';
+}
+// 「作り方」ガイド：いまの状態から各ステップの進み具合を示す
+function renderGuide() {
+  const b = S.board, st = S.router.stats(), iss = S.issues || [];
+  const ov = iss.filter(q => /^(重なり|基板外)/.test(q.t)).length, un = iss.length - ov;
+  const kind = b.meta && b.meta.kind === 'gpu' ? (PRESETS[$('gPreset').value] || {}).label || 'GPU 基板' : b.meta && b.meta.kind === 'kicad' ? 'KiCad から取り込み' : '空の基板';
+  const steps = [
+    ['構成を決める', `${kind}・${b.comps.length} 部品・${b.w}×${b.h} mm`, b.comps.length > 0, [['構成を選んで生成', 'tab:gen']]],
+    ['部品を選ぶ', '基板上の部品をクリックすると、右のパネルで代替部品にまとめて置換できます。', b.comps.length > 0, [['ライブラリから追加', 'tab:lib']]],
+    ['配置する', ov ? `重なり・基板外 ${ov} 件` : '重なりなし。部品はつかんで動かせます（R で回転、F で表裏）', b.comps.length > 0 && !ov, [['自動レイアウト', 'btnPlay'], ['段階ごとに止めて進める', 'step']]],
+    ['配線する', st.total ? `${st.routed} / ${st.total} 本・プレーン接続 ${st.pPins - st.pFail} / ${st.pPins}` : '結線ツールでパッド同士をつなぐとネットができます', st.total > 0 && st.routed === st.total, [['自動配線', 'btnRoute']]],
+    ['検査する', un + ov ? `問題 ${un + ov} 件` : '問題は見つかりません', b.comps.length > 0 && !(un + ov), un + ov ? [['最初の問題へ', 'issue']] : []],
+    ['書き出す', 'KiCad (.kicad_pcb と設計ルール) または JSON', null, [['保存・読込', 'btnIO']]],
+  ];
+  $('guide').innerHTML = steps.map(([t, d, ok, acts], i) => `<li class="${ok === true ? 'ok' : ok === false ? 'todo' : ''}"><div class="gh"><b>${i + 1}</b>${t}${ok === true ? '<span class="pill good">済</span>' : ok === false ? '<span class="pill bad">未</span>' : ''}</div><div class="dim">${esc(d)}</div><div class="row">${acts.map(([l, go]) => `<button class="mini" data-go="${go}">${l}</button>`).join('')}</div></li>`).join('');
 }
 function renderBom() {
   const m = new Map();
@@ -575,19 +670,32 @@ document.addEventListener('click', e => {
     for (const p of n.pins) { const q = padWorld(p.c, p.c.part.padMap[p.p]); x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
     focusAt((x0 + x1) / 2, (y0 + y1) / 2, Math.max(2.5, Math.min(26, (S.cw - 60) / (x1 - x0 + 16), (S.ch - 160) / (y1 - y0 + 16))));
   }
-  else if (d.issue) { const q = S.issues[+d.issue]; if (q) { if ((q.side === 'B') !== (S.view.flip < 0)) $('btnBack').click(); focusAt(q.x, q.y, Math.max(S.view.z, 9)); } }
+  else if (d.issue) { const q = S.issues[+d.issue]; if (q) { if ((q.side === 'B') !== (nearSide() === 'B')) $('btnBack').click(); focusAt(q.x, q.y, Math.max(S.view.z, 9)); } }
   else if (d.g) { pinGroup = pinGroup === d.g ? null : d.g; S.hiGroup = pinGroup; renderLegend(); dirty = true; }
-  else if (d.tab) { for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', b === t); $('tabLib').hidden = d.tab !== 'lib'; $('tabGen').hidden = d.tab !== 'gen'; }
+  else if (d.tab) showTab(d.tab);
+  else if (d.go) {
+    if (d.go.startsWith('tab:')) showTab(d.go.slice(4));
+    else if (d.go === 'step') { opts.step = true; $('oStep').checked = true; $('btnPlay').click(); }
+    else if (d.go === 'issue') { const q = document.querySelector('[data-issue]'); if (q) q.click(); }
+    else $(d.go).click();
+  }
+  else if (t.id === 'btnNext') stepGo = true;
+  else if (t.id === 'btnReplay') {
+    if (!rec || run) return;
+    replay = !replay; if (replay && recPos >= rec.frames.length - 1) showFrame(0);
+    t.textContent = replay ? '⏸' : '▶';
+  }
   else if (d.act === 'rot') rotateSel(); else if (d.act === 'flip') flipSel(); else if (d.act === 'del') deleteSel();
   else if (d.act === 'lock') { for (const c of S.sel) c.fixed = !c.fixed; renderInspector(); }
   else if (t.id === 'btnUndo') doUndo();
   else if (t.id === 'btnRedo') doRedo();
   else if (t.id === 'btnRoute') { if (!run) { play(routeOnly()); } }
   else if (t.id === 'btnUnroute') { if (!run) { pushUndo(); S.router.ripAll(); refreshAll(); toast('配線をすべて消去しました'); } }
+  else if (t.id === 'btnBack' && v3on) { v3.el = -v3.el; v3.dirty = true; S.sel.clear(); renderInspector(); dirty = true; }
   else if (t.id === 'btnBack') { if (!run) { S.view.flip = S.view.flip < 0 ? 1 : -1; S.sel.clear(); renderInspector(); t.setAttribute('aria-pressed', S.view.flip < 0); dirty = true; } }
   else if (t.id === 'btnFit') { if (v3on) v3.frameAll(); else fit(); }
   else if (t.id === 'btnPlay') play(autoLayout(parseInt($('seed').value, 10) || 1));
-  else if (t.id === 'btnPause') { if (run) { playing = !playing; t.textContent = playing ? '一時停止' : '再開'; if (playing) t0 = performance.now() - elapsed; } }
+  else if (t.id === 'btnPause') { if (run) { playing = !playing; t.textContent = playing ? '一時停止' : '再開';  } }
   else if (t.id === 'btnStop') { if (run) finish('中止しました。ここから手動で調整できます。'); }
   else if (t.id === 'btnGen') genFromForm();
   else if (t.id === 'btnEmpty') { if (!run) { pushUndo(); setBoard(emptyBoard()); toast('空の基板を作成しました。ライブラリから部品を配置してください'); } }
@@ -609,10 +717,13 @@ document.addEventListener('change', e => {
   else if (t.id === 'gPreset') fillGen();
   else if (t.id === 'speed') speed = parseFloat(t.value);
   else if (t.id === 'live') liveRoute = t.checked;
+  else if (t.id === 'oRegions') opts.regions = t.checked; else if (t.id === 'oPack') opts.pack = t.checked; else if (t.id === 'oTune') opts.tune = t.checked; else if (t.id === 'oStep') opts.step = t.checked;
+  else if (t.id === 'oEffort') opts.effort = parseFloat(t.value);
   else if (t.id === 'ioFile' && t.files[0]) { const fr = new FileReader(); fr.onload = () => { try { loadText(String(fr.result)); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } t.value = ''; }; fr.readAsText(t.files[0]); }
 });
 $('libq').addEventListener('input', renderLibrary);
 $('netq').addEventListener('input', renderNets);
+$('seek').addEventListener('input', e => { if (rec && !run) { replay = false; $('btnReplay').textContent = '▶'; showFrame(+e.target.value); } });
 $('explode').addEventListener('input', e => { if (v3) { v3.explode = parseFloat(e.target.value); v3.sync(); } });
 document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
@@ -624,6 +735,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'v') setTool('select'); else if (k === 'w') setTool('wire');
   else if (k === 'b') $('btnBack').click();
   else if (k === '3') toggle3d();
+  else if (k === ' ' && run) { e.preventDefault(); $('btnPause').click(); }
   else if (k === 'escape') { S.ghost = null; S.wire = null; S.sel.clear(); pinNet = S.hiNet = null; renderInspector(); dirty = true; }
 });
 
@@ -636,19 +748,26 @@ function resize() {
 new ResizeObserver(() => { const first = !S.cw; resize(); if (first && S.board) fit(); }).observe(cv.parentElement);
 
 let frameNo = 0;
+const CAM = { scatter: -0.55, anneal: -0.15, route: 0.4, flip: 0.4, top: -0.3 };
 function frame(now) {
   if (run && playing) {
-    elapsed = now - t0;
-    const s = Math.floor(elapsed / 1000); $('clock').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    if (!stepWait) { elapsed += 1000 / 60; clock(elapsed); }
     let r;
     try { r = run.next(); } catch (err) { console.error(err); r = { done: true }; }
-    if (r.done) finish('完了。部品をドラッグして調整できます。');
+    if (r.done) finish('完了。部品をつかんで調整できます。シークバーで作成の過程を巻き戻せます。');
+    else if (rec && !stepWait) { recFrame(); $('seek').value = (Math.max(0, STAGES.findIndex(q => q[0] === curStage)) + Math.min(1, stageProg)) * 200; }
+    if (v3on && !userCam && run && CAM[curStage] != null) { v3.az += (CAM[curStage] - v3.az) * 0.025; v3.dirty = true; }   // 段階ごとに見る角度を変える
     dirty = true;
+  } else if (replay && rec) {
+    const n = Math.min(rec.frames.length - 1, recPos + Math.max(1, Math.round(speed)));
+    showFrame(n);
+    if (n >= rec.frames.length - 1) { replay = false; $('btnReplay').textContent = '▶'; refreshAll(); }
   }
   S.time = now / 1000;
   if (S.show.flow && S.show.zones && !v3on && !document.hidden && (frameNo++ & 1)) dirty = true;
   if (v3on) {
-    if (run && playing) { v3.sync(); if (now - v3.texAt > 600) v3.paint(); }
+    if (dirty) { dirty = false; v3.sync(S); }
+    if (run && playing && now - v3.texAt > 450) v3.paint(S);
     if (v3.dirty) v3.render();
   } else if (dirty) { dirty = false; draw(ctx, S); }
   requestAnimationFrame(frame);
@@ -659,7 +778,8 @@ $('stages').innerHTML = STAGES.map(([id, t]) => `<li data-s="${id}">${t}</li>`).
 $('gPreset').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join('');
 $('gPreset').value = 'highend';
 fillGen(); renderLibrary(); renderLayers(); resize();
+toggle3d(true);
 setBoard(generateGPU(PRESETS.highend));
-stage('', 'リファレンス配置を表示中。「自動レイアウトを再生」で 計画・整列 → 焼きなまし → 配線 → 裏面確認 を実行します。');
+stage('', 'リファレンス配置を表示中。部品はつかんで動かせます。「自動レイアウト」で 計画・整列 → 焼きなまし → 配線 → 裏面確認 を実行します。');
 requestAnimationFrame(frame);
 window.__pcb = { S, play, autoLayout, get v3() { return v3; } };

@@ -138,6 +138,7 @@ const RAW = [
   { id: 'l_aux', cat: 'misc', family: 'indaux', ref: 'L', name: '補助レール用インダクタ', mfr: '汎用', pn: '4×4 1µH', pkg: '4×4mm', w: 4, h: 4, spec: '1µH', seen: '補助レール', ok: false },
   { id: 'x_27m', cat: 'misc', family: 'xtal', ref: 'Y', name: '水晶振動子 27MHz', mfr: '汎用', pn: '27.000MHz 3225', pkg: '3.2×2.5 4 パッド', w: 3.5, h: 3, spec: '27MHz', seen: '（未確認）', ok: false },
   { id: 'j_fan', cat: 'misc', family: 'fan', ref: 'J', name: 'ファンヘッダ 4 ピン', mfr: '汎用', pn: '4P 2.0mm', pkg: '2.0mm ピッチ', w: 9, h: 4, spec: 'PWM ファン', seen: '全カード', ok: false },
+  { id: 'hole_m3', cat: 'misc', family: 'hole', ref: 'H', name: '取り付け穴 M3', mfr: '機構', pn: 'M3 取り付け穴', pkg: 'φ3.2 穴', w: 6, h: 6, spec: 'φ3.2', seen: '全カード', ok: false },
   { id: 'r_0402', cat: 'misc', family: 'res', ref: 'R', name: '抵抗 0402', mfr: '汎用', pn: '0402 1%', pkg: '0402', w: 1.5, h: 0.6, spec: '汎用', seen: '全カード', ok: false },
 ];
 
@@ -169,6 +170,7 @@ function build(p) {
   else if (f === 'mcu') { p.w = 6.5; p.h = 6.5; p.pads = fpQFN(8, MCU_NAMES); }
   else if (f === 'buck') { p.w = 4; p.h = 4; p.pads = fpQFN(3, ['VIN', 'EN', 'PG', 'SW', 'SW2', 'GND', 'FB', 'VCC']); }
   else if (f === 'xtal') p.pads = fpGrid(2, 2, 2, ['X1', 'GND', 'GND2', 'X2'], 0.9, 0.8);
+  else if (f === 'hole') { p.th = true; p.pads = [P('H', 0, 0, 3.2, 3.2, TH)]; }
   else if (f === 'fan') { p.th = true; p.pads = fpRow(4, 2, ['GND', 'V12', 'TACH', 'PWM'], 1, 1, TH); }
   p.ref = p.ref || 'U';
   p.padMap = Object.fromEntries(p.pads.map(q => [q.n, q]));
