@@ -225,6 +225,72 @@ export class Router {
     return ripped;
   }
 
+  // 等長グループ：メモリ 1 枚ぶんの信号、映像出力 1 ポートぶんのレーン
+  static matchKey(net) {
+    const m = /^(MEM\d+)_/.exec(net.name) || /^(DP\d+|HDMI)_ML/.exec(net.name);
+    return m ? m[1] : null;
+  }
+  matchGroups() {
+    const g = new Map();
+    for (const n of this.board.nets.values()) { const k = Router.matchKey(n); if (k) { if (!g.has(k)) g.set(k, []); g.get(k).push(n); } }
+    return g;
+  }
+  // 直線区間にコの字の蛇行（ミアンダ）を挿入して target まで配線長を伸ばす
+  lengthen(net, target) {
+    const { occ, nx } = this, r = net.route, W = 2;
+    for (let guard = 0; guard < 60; guard++) {
+      const need = Math.floor(target - r.len + 0.25);
+      if (need < 1) break;
+      let best = null;
+      for (const seg of r.segs) {
+        const p = seg.pts;
+        for (let i = 0; i + 3 < p.length; i += 2) {
+          const ax = Math.round(p[i] / G), ay = Math.round(p[i + 1] / G), bx = Math.round(p[i + 2] / G), by = Math.round(p[i + 3] / G);
+          if ((ax !== bx) === (ay !== by)) continue;               // 斜め・長さ 0 は対象外
+          const n = Math.abs(bx - ax) + Math.abs(by - ay); if (n < W + 2) continue;
+          const ux = Math.sign(bx - ax), uy = Math.sign(by - ay);
+          for (const sd of [1, -1]) {
+            const vx = -uy * sd, vy = ux * sd;
+            for (let s2 = 1; s2 + W <= n - 1; s2++) {
+              let h = 0;
+              for (; h < Math.min(need, 10); h++) {
+                const k = h + 1; let ok = true;
+                for (const t of [s2, s2 + W]) { const x = ax + ux * t + vx * k, y = ay + uy * t + vy * k; if (!this.inGrid(x, y) || occ[this.cell(seg.l, x, y)] !== 0) ok = false; }
+                for (let t = s2; t <= s2 + W && ok; t++) { const x = ax + ux * t + vx * k, y = ay + uy * t + vy * k; if (occ[this.cell(seg.l, x, y)] !== 0) ok = false; }
+                if (!ok) break;
+              }
+              if (h > 0 && (!best || h > best.h)) best = { seg, i, ax, ay, ux, uy, vx, vy, s: s2, h };
+              if (best && best.h >= Math.min(need, 10)) break;
+            }
+          }
+        }
+      }
+      if (!best) break;
+      const { seg, i, ax, ay, ux, uy, vx, vy, s: s0, h } = best;
+      const pt = (t, k) => [(ax + ux * t + vx * k) * G, (ay + uy * t + vy * k) * G];
+      seg.pts.splice(i + 2, 0, ...pt(s0, 0), ...pt(s0, h), ...pt(s0 + W, h), ...pt(s0 + W, 0));
+      for (let k = 1; k <= h; k++) for (const t of [s0, s0 + W]) { const c = this.cell(seg.l, ax + ux * t + vx * k, ay + uy * t + vy * k); occ[c] = net.id; r.cells.push(c); }
+      for (let t = s0; t <= s0 + W; t++) { const c = this.cell(seg.l, ax + ux * t + vx * h, ay + uy * t + vy * h); occ[c] = net.id; r.cells.push(c); }
+      r.len += 2 * h * G; r.tuned = (r.tuned || 0) + 1;
+    }
+  }
+  tuneGroup(nets) {
+    const ok = nets.filter(n => n.route && !n.route.fails.length && n.route.segs.length);
+    if (ok.length < 2) return;
+    const target = Math.max(...ok.map(n => n.route.len));
+    for (const n of ok) if (n.route.len < target - 0.5) this.lengthen(n, target);
+  }
+  matchStats() {
+    let groups = 0, good = 0, worst = 0;
+    for (const nets of this.matchGroups().values()) {
+      const ok = nets.filter(n => n.route && !n.route.fails.length && n.route.segs.length);
+      if (ok.length < 2) continue;
+      const L = ok.map(n => n.route.len), d = Math.max(...L) - Math.min(...L);
+      groups++; if (d <= 1.0 && ok.length === nets.length) good++; worst = Math.max(worst, d);
+    }
+    return { groups, good, worst };
+  }
+
   order(nets) {
     const pr = { power: 0, diff: 1, signal: 2 };
     const span = n => {
@@ -238,7 +304,10 @@ export class Router {
 
   // 配線ジェネレータ：1 ネットごとに進捗を yield する（アニメーション用）
   *routeMany(nets) {
-    const list = this.order(nets), total = list.length;
+    // 等長グループの一員を配線し直すときは、グループ全体をやり直す
+    const groups = this.matchGroups(), touched = new Set(), all = new Set(nets);
+    for (const n of nets) { const k = Router.matchKey(n); if (k) { touched.add(k); for (const m of groups.get(k)) all.add(m); } }
+    const list = this.order([...all]), total = list.length;
     let i = 0;
     for (const n of list) { this.routeNet(n); yield { phase: 'route', i: ++i, total, net: n }; }
     // 失敗したネットは、邪魔な配線を引き剥がして再挑戦
@@ -250,8 +319,14 @@ export class Router {
         tried.add(n);
         const ripped = this.routeNet(n, true);
         yield { phase: 'ripup', i, total, net: n };
-        for (const r of this.order([...ripped])) { this.routeNet(r); yield { phase: 'reroute', i, total, net: r }; }
+        for (const r of this.order([...ripped])) { this.routeNet(r); yield { phase: 'reroute', i, total, net: r }; const k = Router.matchKey(r); if (k) touched.add(k); }
       }
+    }
+    // 引き剥がしでミアンダが消えたグループも含めて等長化（短い配線を最長に合わせる）
+    for (const k of touched) {
+      for (const n of groups.get(k)) if (n.route && n.route.tuned) this.routeNet(n);
+      this.tuneGroup(groups.get(k));
+      yield { phase: 'tune', i, total, net: groups.get(k)[0], key: k };
     }
   }
   routeAllSync(nets) { for (const _ of this.routeMany(nets || [...this.board.nets.values()])); }

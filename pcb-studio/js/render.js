@@ -5,7 +5,7 @@ const C = {
   bg: '#0d1216', board: '#171d22', edge: '#c9a25a', bracket: '#56606b', via: '#d9dde2', hole: '#0d1216',
   padSig: '#f1d27a', padGnd: '#7f8a96', padPwr: '#e8955a', padNc: '#4d5661', padFar: '#3d4955', hi: '#ffffff', rats: '#e9eef5',
 };
-const ZONE_COL = { VCORE: '#f26d6d', VMEM: '#d98cf0', '+12V': '#f0d264' };
+const ZONE_COL = { VCORE: '#f26d6d', VMEM: '#d98cf0', '+12V': '#f0d264', '+12V_IN': '#f0a04a', '+1V8': '#a3d977', '+PEX': '#7fe0c3' };
 
 export function flipOf(S) { const f = S.view.flip; return Math.abs(f) < 0.03 ? (f < 0 ? -0.03 : 0.03) : f; }
 export function toWorld(S, sx, sy) {
@@ -46,14 +46,25 @@ export function draw(ctx, S) {
   const comps = b.comps.filter(vis);
   const gcol = c => (b.group(c.group) || {}).color || '#9aa3ad';
 
-  // 電源プレーンのゾーン
-  if (S.show.zones) for (const z of S.zones) {
-    if (z.pts.length < 3) continue;
-    ctx.beginPath(); z.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath();
-    const col = ZONE_COL[z.name] || '#888';
-    ctx.globalAlpha = hi && hi.name === z.name ? 0.3 : 0.085; ctx.fillStyle = col; ctx.fill();
-    ctx.globalAlpha = 0.4; ctx.strokeStyle = col; ctx.lineWidth = px; ctx.setLineDash([4 * px, 4 * px]); ctx.stroke(); ctx.setLineDash([]);
-    ctx.globalAlpha = 1;
+  // 電源プレーン：供給経路（最小全域木）に沿った帯状のベタ。幅は想定電流に比例。
+  if (S.show.zones && S.zones.length) {
+    ctx.save(); boardPath(ctx, b); ctx.clip();
+    for (const z of S.zones) {
+      const col = ZONE_COL[z.name] || '#888', on = hi && hi.name === z.name;
+      ctx.beginPath();
+      for (const n of z.nodes) { ctx.moveTo(n.x, n.y); ctx.lineTo(n.x, n.y + 0.01); }
+      for (const [i, j] of z.edges) { ctx.moveTo(z.nodes[i].x, z.nodes[i].y); ctx.lineTo(z.nodes[j].x, z.nodes[j].y); }
+      ctx.lineWidth = z.w; ctx.strokeStyle = col; ctx.globalAlpha = 0.5; ctx.stroke();
+      ctx.lineWidth = Math.max(0.1, z.w - 2 * px); ctx.strokeStyle = C.board; ctx.globalAlpha = 1; ctx.stroke();
+      ctx.strokeStyle = col; ctx.globalAlpha = on ? 0.3 : 0.1; ctx.stroke();
+    }
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+  // 自動配置の領域制約
+  if (S.regions) {
+    ctx.lineWidth = 1.5 * px; ctx.setLineDash([6 * px, 4 * px]);
+    for (const r of S.regions) { ctx.strokeStyle = r.color; ctx.globalAlpha = 0.9; ctx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.globalAlpha = 0.05; ctx.fillStyle = r.color; ctx.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); }
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
   }
 
   // 奥側の部品外形
@@ -81,7 +92,11 @@ export function draw(ctx, S) {
         if (n.cls !== cls) continue;
         for (const s of n.route.segs) { if (s.l !== l) continue; const p = s.pts; ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); }
       }
-      ctx.lineWidth = Math.max(NET_WIDTH[cls], px); ctx.stroke();
+      if (cls === 'diff' && v.z > 3.5) { // 差動ペアは 2 本線として描く
+        ctx.lineWidth = 0.34; ctx.stroke();
+        const ga = ctx.globalAlpha; ctx.globalAlpha = 1; ctx.strokeStyle = C.board; ctx.lineWidth = 0.12; ctx.stroke();
+        ctx.globalAlpha = ga; ctx.strokeStyle = LAYERS[l].color;
+      } else { ctx.lineWidth = Math.max(NET_WIDTH[cls], px); ctx.stroke(); }
     }
   }
   ctx.globalAlpha = 1;
@@ -182,6 +197,48 @@ export function draw(ctx, S) {
     }
     ctx.globalAlpha = 1;
   }
+  if (S.regions) {
+    ctx.font = '600 11px "IBM Plex Sans JP", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    const used = [];
+    for (const r of S.regions) {
+      const p = toScreen(S, f < 0 ? r.x1 : r.x0, r.y0); let y = p.y + 3;
+      while (used.some(u => Math.abs(u[0] - p.x) < 60 && Math.abs(u[1] - y) < 13)) y += 13;
+      used.push([p.x, y]); ctx.fillStyle = r.color; ctx.fillText(r.label, p.x + 4, y);
+    }
+  }
   if (S.marquee) { const m = S.marquee; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.strokeRect(m.x0, m.y0, m.x1 - m.x0, m.y1 - m.y0); ctx.setLineDash([]); }
   if (back) { ctx.fillStyle = '#6f9bff'; ctx.font = '600 12px "IBM Plex Sans JP", system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText('裏面から見た表示', 12, 32); }
+}
+
+// 3D 表示用のテクスチャ。kind: 'top' | 'bottom' | 1 | 2（内層）。sc = px/mm
+export function drawLayerTexture(ctx, b, kind, sc) {
+  const l = kind === 'top' ? 0 : kind === 'bottom' ? 3 : kind, outer = kind === 'top' || kind === 'bottom';
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.setTransform(sc, 0, 0, sc, 0, 0); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  boardPath(ctx, b);
+  if (outer) { ctx.fillStyle = C.board; ctx.fill(); ctx.lineWidth = 0.3; ctx.strokeStyle = C.edge; ctx.stroke(); }
+  else { ctx.fillStyle = LAYERS[l].color; ctx.globalAlpha = 0.12; ctx.fill(); ctx.globalAlpha = 0.8; ctx.lineWidth = 0.25; ctx.strokeStyle = LAYERS[l].color; ctx.stroke(); ctx.globalAlpha = 1; }
+  const nets = [...b.nets.values()].filter(n => n.route && n.route.segs.length);
+  ctx.strokeStyle = LAYERS[l].color;
+  for (const cls of ['signal', 'diff', 'power']) {
+    ctx.beginPath();
+    for (const n of nets) { if (n.cls !== cls) continue; for (const s of n.route.segs) { if (s.l !== l) continue; const p = s.pts; ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); } }
+    ctx.lineWidth = Math.max(NET_WIDTH[cls], (outer ? 1.6 : 2.4) / sc); ctx.stroke();
+  }
+  ctx.fillStyle = C.via; ctx.beginPath();
+  for (const n of nets) for (const q of n.route.vias) { ctx.moveTo(q.x + 0.3, q.y); ctx.arc(q.x, q.y, 0.3, 0, 6.2832); }
+  ctx.fill();
+  if (!outer) return;
+  const side = kind === 'top' ? 'T' : 'B';
+  for (const [key, col] of [['gnd', C.padGnd], ['pwr', C.padPwr], ['sig', C.padSig]]) {
+    ctx.fillStyle = col; ctx.beginPath();
+    for (const c of b.comps) for (const pad of c.part.pads) {
+      if (c.side !== side && !pad.th) continue;
+      const nm = c.padNet[pad.n], n = nm && b.nets.get(nm);
+      const k = nm === 'GND' || !n ? 'gnd' : n.cls === 'plane' ? 'pwr' : 'sig';
+      if (k !== key) continue;
+      const p = padWorld(c, pad); ctx.rect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
+    }
+    ctx.fill();
+  }
 }

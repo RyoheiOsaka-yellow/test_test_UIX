@@ -2,8 +2,10 @@ import { LAYERS, snap, padWorld, compBox, ratsnest, convexHull, serialize, deser
 import { PARTS, PART, CATS, alternatives } from './library.js';
 import { PRESETS, generateGPU, emptyBoard } from './templates.js';
 import { Router } from './router.js';
-import { scatterTargets, anneal, overlapPairs } from './placer.js';
+import { scatterTargets, anneal, overlapPairs, planRegions } from './placer.js';
 import { draw, toWorld, flipOf } from './render.js';
+import { exportKicad, importKicad, packPart, unpackPart } from './kicad.js';
+import { View3D } from './view3d.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -13,9 +15,10 @@ const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
   show: { rats: true, zones: true, far: true, labels: true },
-  rats: [], zones: [], ghost: null, wire: null, marquee: null, hoverPad: null,
+  rats: [], zones: [], regions: null, ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
+let v3 = null, v3on = false, ioKind = 'json';
 let undo = [], run = null, playing = false, speed = 1, t0 = 0, elapsed = 0;
 
 // ───────── 基板の入れ替え・再計算 ─────────
@@ -26,22 +29,35 @@ function setBoard(b, route = true) {
   fit(); refreshAll();
 }
 function refresh() { S.rats = S.show.rats ? ratsnest(S.board) : []; S.zones = zones(); dirty = true; }
-function refreshAll() { refresh(); renderInspector(); renderStats(); renderLegend(); renderBom(); }
+function refreshAll() { refresh(); renderInspector(); renderStats(); renderLegend(); renderBom(); if (v3on) v3.setBoard(S.board); }
 function zones() {
   const b = S.board, out = [];
-  for (const name of ['VCORE', 'VMEM', '+12V']) {
+  const gpu = b.comps.find(c => c.part.family === 'gpu');
+  const width = { VCORE: Math.max(8, Math.min(18, (gpu ? gpu.part.val : 300) / 40)), VMEM: 6, '+12V': 6, '+12V_IN': 7, '+1V8': 3.5, '+PEX': 3.5 };
+  for (const name of Object.keys(width)) {
     const n = b.nets.get(name); if (!n) continue;
-    const pts = [], seen = new Set();
+    const w = width[name], nodes = [], seen = new Set();
     for (const p of n.pins) {
-      const c = p.c;
-      if (name === '+12V' && c.group !== 'grp_pin' && c.group !== 'grp_vcore') continue;
-      if (c.part.pads.length > 60) {
-        if (seen.has(c)) continue; seen.add(c);
-        const B = compBox(c, -Math.min(6, c.part.w / 4));
-        pts.push({ x: B.x0, y: B.y0 }, { x: B.x1, y: B.y0 }, { x: B.x1, y: B.y1 }, { x: B.x0, y: B.y1 });
-      } else { const q = padWorld(c, c.part.padMap[p.p]); pts.push({ x: q.x, y: q.y }); }
+      const c = p.c; if (seen.has(c)) continue; seen.add(c);
+      if (c.part.pads.length > 60) { // 大型 BGA は面で受ける
+        const B = compBox(c, -Math.min(w / 2, c.part.w / 4));
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) nodes.push({ x: B.x0 + (B.x1 - B.x0) * i / 2, y: B.y0 + (B.y1 - B.y0) * j / 2 });
+      } else nodes.push({ x: c.x, y: c.y });
     }
-    out.push({ name, pts: convexHull(pts) });
+    if (nodes.length < 2) continue;
+    const edges = [], d = new Float64Array(nodes.length).fill(1e18), from = new Int32Array(nodes.length), inT = new Uint8Array(nodes.length);
+    let cur = 0; inT[0] = 1;
+    for (let k = 1; k < nodes.length; k++) {
+      let bi = -1;
+      for (let i = 0; i < nodes.length; i++) {
+        if (inT[i]) continue;
+        const q = (nodes[i].x - nodes[cur].x) ** 2 + (nodes[i].y - nodes[cur].y) ** 2;
+        if (q < d[i]) { d[i] = q; from[i] = cur; }
+        if (bi < 0 || d[i] < d[bi]) bi = i;
+      }
+      inT[bi] = 1; edges.push([from[bi], bi]); cur = bi;
+    }
+    out.push({ name, w, nodes, edges });
   }
   return out;
 }
@@ -188,7 +204,7 @@ function hover(w, sx, sy) {
   let html = '';
   if (hit) html = `<b>${esc(hit.c.ref)}</b> ピン ${esc(hit.pad.n)}<br>${net ? esc(net.name) : '未接続'}`;
   else if (net) html = `<b>${esc(net.name)}</b>`;
-  if (net && net.cls !== 'plane' && net.route) html += `<br>${net.pins.length} ピン・${net.route.len.toFixed(1)} mm・ビア ${net.route.vias.length}`;
+  if (net && net.cls !== 'plane' && net.route) html += `<br>${net.pins.length} ピン・${net.route.len.toFixed(1)} mm・ビア ${net.route.vias.length}${net.route.tuned ? '・等長調整済' : ''}${net.cls === 'diff' ? '<br>差動ペア' : ''}`;
   else if (net && net.cls === 'plane') html += '<br>電源プレーン（内層ベタ）';
   if (!html) { const c = compAt(w); if (c) html = `<b>${esc(c.ref)}</b> ${esc(c.part.pn)}<br>${esc(c.part.name)}`; }
   tip.hidden = !html;
@@ -279,8 +295,8 @@ function* routeStage(nets) {
   R.ripAll(); R.rebuild(); refresh();
   let k = 0;
   for (const ev of R.routeMany(nets || [...S.board.nets.values()])) {
-    const what = ev.phase === 'route' ? 'route' : ev.phase === 'ripup' ? '引き剥がし再配線' : '再配線';
-    stage('route', `route | ${ev.i}/${ev.total} ${what} ${ev.net.name}`);
+    const what = ev.phase === 'route' ? 'route' : ev.phase === 'ripup' ? '引き剥がし再配線' : ev.phase === 'tune' ? '等長化（ミアンダ挿入）' : '再配線';
+    stage('route', `route | ${ev.i}/${ev.total} ${what} ${ev.key || ev.net.name}`);
     $('prog').value = ev.i / ev.total;
     if (++k % Math.max(1, Math.round(speed)) === 0) { refresh(); yield; if (speed < 1) yield; }
   }
@@ -289,6 +305,14 @@ function* routeStage(nets) {
 function* flipStage() {
   const ease = t => (1 - Math.cos(Math.PI * t)) / 2;
   stage('flip', '基板を裏返して裏面の部品と配線を確認');
+  if (v3on) {
+    const e0 = v3.el;
+    for (let t = 0; t < 1; t += 0.014 * speed) { v3.el = e0 - 2 * Math.abs(e0) * ease(t); v3.dirty = true; $('prog').value = t; yield; }
+    for (let t = 0; t < 1; t += 0.012 * speed) yield;
+    stage('top', '表面に戻る');
+    for (let t = 0; t < 1; t += 0.014 * speed) { v3.el = e0 - 2 * Math.abs(e0) * (1 - ease(t)); v3.dirty = true; $('prog').value = t; yield; }
+    v3.el = e0; v3.dirty = true; return;
+  }
   for (let t = 0; t < 1; t += 0.014 * speed) { S.view.flip = 1 - 2 * ease(t); $('prog').value = t; dirty = true; yield; }
   S.view.flip = -1; dirty = true;
   for (let t = 0; t < 1; t += 0.012 * speed) yield;
@@ -299,8 +323,9 @@ function* flipStage() {
 function* autoLayout(seed) {
   const b = S.board;
   S.router.ripAll(); S.sel.clear(); S.hiNet = pinNet = null;
+  S.regions = [...planRegions(b)].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
   const tg = scatterTargets(b, seed), from = new Map([...tg.keys()].map(c => [c, { x: c.x, y: c.y }]));
-  stage('scatter', `scatter: 各グループの部品を、配線が望む位置の周りへ散布 (seed ${seed})`);
+  stage('scatter', S.regions.length ? `scatter: 電源の流れ（12V 入力 → VRM → GPU）でグループ領域を割り当て、その中へ散布 (seed ${seed})` : `scatter: 各グループの部品を、配線が望む位置の周りへ散布 (seed ${seed})`);
   for (let t = 0; t < 1; t += 0.02 * speed) {
     const e = t * t * (3 - 2 * t);
     for (const [c, p] of tg) { const o = from.get(c); c.x = o.x + (p.x - o.x) * e; c.y = o.y + (p.y - o.y) * e; }
@@ -318,6 +343,7 @@ function* autoLayout(seed) {
     }
     refresh(); yield;
   }
+  S.regions = null;
   yield* routeStage();
   yield* flipStage();
 }
@@ -329,12 +355,44 @@ function play(gen) {
   document.body.classList.add('running'); $('btnPause').textContent = '一時停止';
 }
 function finish(msg) {
-  run = null; playing = false; document.body.classList.remove('running');
+  run = null; playing = false; S.regions = null; document.body.classList.remove('running');
   S.view.flip = S.view.flip < 0 ? -1 : 1;
   for (const c of S.board.comps) { c.x = snap(c.x); c.y = snap(c.y); }
   for (const n of S.router.rebuild()) S.router.ripNet(n);
   stage('', msg); for (const el of document.querySelectorAll('#stages li')) el.className = msg.startsWith('完了') ? 'done' : '';
   $('prog').value = 1; refreshAll();
+}
+
+// ───────── 3D 表示・保存読込 ─────────
+function toggle3d() {
+  if (!v3) v3 = new View3D($('cv3'));
+  if (!v3.ok) return toast('3D ライブラリを読み込めませんでした（ネットワークを確認してください）');
+  v3on = !v3on;
+  $('cv3').hidden = !v3on; $('explodeWrap').hidden = !v3on; $('btn3d').setAttribute('aria-pressed', v3on); $('tip').hidden = true;
+  if (v3on) { v3.resize(S.cw, S.ch, S.dpr); v3.setBoard(S.board); toast('3D 表示：ドラッグで回転、Shift+ドラッグで移動、ホイールで拡大。編集は 2D に戻って行います'); }
+}
+const saveData = () => ({ ...serialize(S.board), custom: [...new Set(S.board.comps.map(c => c.part))].filter(p => p.cat === 'kicad').map(packPart) });
+function loadText(text) {
+  const t = text.trim();
+  let b;
+  if (t.startsWith('(kicad_pcb')) b = importKicad(t, p => { PART[p.id] = p; });
+  else { const d = JSON.parse(t); for (const p of d.custom || []) PART[p.id] = unpackPart(p); b = deserialize(d, PART); }
+  pushUndo(); setBoard(b);
+  const st = S.router.stats();
+  toast(`読み込みました：${b.comps.length} 部品・配線 ${st.routed}/${st.total}`);
+  stage('', t.startsWith('(kicad_pcb') ? 'KiCad 基板を取り込み、このツールのグリッドで再配線しました（元の配線は使いません）。' : '読み込みました。');
+}
+async function saveFile() {
+  const kicad = ioKind === 'kicad', text = $('ioText').value, msg = $('ioMsg');
+  const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+  if (dl) {
+    try { await dl.save({ filename: kicad ? 'gpu-board.kicad_pcb.txt' : 'gpu-board.json', data: text }); msg.textContent = kicad ? '保存しました。ファイル名末尾の .txt を外すと KiCad で開けます。' : '保存しました。'; }
+    catch (err) { msg.textContent = err && err.code === 'declined' ? '保存を取り消しました。' : 'この画面では保存できません。「コピー」を使ってください。'; }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = kicad ? 'gpu-board.kicad_pcb' : 'gpu-board.json';
+  document.body.appendChild(a); a.click(); a.remove(); msg.textContent = '保存を開始しました。始まらない場合は「コピー」を使ってください。';
 }
 
 // ───────── パネル描画 ─────────
@@ -414,6 +472,8 @@ function renderStats() {
   row('配線ネット', `${st.routed} / ${st.total} ${pill(st.routed === st.total, st.total ? Math.round(st.routed / st.total * 100) + '%' : '-')}`);
   row('未接続', `${st.fails} 箇所 ${pill(!st.fails, st.fails ? '要対応' : 'OK')}`);
   row('配線長 / ビア', `${Math.round(st.len).toLocaleString()} mm / ${st.vias}`);
+  const ms = S.router.matchStats();
+  if (ms.groups) row('等長グループ', `${ms.good} / ${ms.groups} 組が ±1mm 以内 ${pill(ms.good === ms.groups, ms.good === ms.groups ? 'OK' : `最大差 ${ms.worst.toFixed(1)}mm`)}`);
   row('部品の重なり', `${ov} 組 ${pill(!ov, ov ? '要対応' : 'OK')}`);
   row('基板外', `${off} 個 ${pill(!off, off ? '要対応' : 'OK')}`);
   if (gpu) {
@@ -459,15 +519,18 @@ document.addEventListener('click', e => {
   else if (t.id === 'btnRoute') { if (!run) { play(routeOnly()); } }
   else if (t.id === 'btnUnroute') { if (!run) { pushUndo(); S.router.ripAll(); refreshAll(); toast('配線をすべて消去しました'); } }
   else if (t.id === 'btnBack') { if (!run) { S.view.flip = S.view.flip < 0 ? 1 : -1; S.sel.clear(); renderInspector(); t.setAttribute('aria-pressed', S.view.flip < 0); dirty = true; } }
-  else if (t.id === 'btnFit') fit();
+  else if (t.id === 'btnFit') { if (v3on) v3.frameAll(); else fit(); }
   else if (t.id === 'btnPlay') play(autoLayout(parseInt($('seed').value, 10) || 1));
   else if (t.id === 'btnPause') { if (run) { playing = !playing; t.textContent = playing ? '一時停止' : '再開'; if (playing) t0 = performance.now() - elapsed; } }
   else if (t.id === 'btnStop') { if (run) finish('中止しました。ここから手動で調整できます。'); }
   else if (t.id === 'btnGen') genFromForm();
   else if (t.id === 'btnEmpty') { if (!run) { pushUndo(); setBoard(emptyBoard()); toast('空の基板を作成しました。ライブラリから部品を配置してください'); } }
-  else if (t.id === 'btnIO') { $('ioText').value = JSON.stringify(serialize(S.board)); $('ioMsg').textContent = ''; $('io').showModal(); }
+  else if (t.id === 'btn3d') toggle3d();
+  else if (t.id === 'btnIO' || t.id === 'ioJson') { ioKind = 'json'; $('ioText').value = JSON.stringify(saveData()); $('ioMsg').textContent = 'JSON を表示中'; if (!$('io').open) $('io').showModal(); }
+  else if (t.id === 'ioKicad') { ioKind = 'kicad'; $('ioText').value = exportKicad(S.board); $('ioMsg').textContent = `KiCad 形式を表示中（${Math.round($('ioText').value.length / 1024)} KB）`; }
+  else if (t.id === 'ioSave') saveFile();
   else if (t.id === 'ioCopy') { navigator.clipboard.writeText($('ioText').value).then(() => { $('ioMsg').textContent = 'コピーしました'; }, () => { $('ioText').select(); $('ioMsg').textContent = '選択しました。Ctrl+C でコピーしてください'; }); }
-  else if (t.id === 'ioLoad') { try { const b = deserialize(JSON.parse($('ioText').value), PART); pushUndo(); setBoard(b); $('io').close(); toast('読み込みました'); } catch (err) { $('ioMsg').textContent = 'JSON を読み取れません: ' + err.message; } }
+  else if (t.id === 'ioLoad') { if (run) return; try { loadText($('ioText').value); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } }
   else if (t.id === 'ioClose') $('io').close();
 });
 document.addEventListener('change', e => {
@@ -478,8 +541,10 @@ document.addEventListener('change', e => {
   else if (t.id === 'gPreset') fillGen();
   else if (t.id === 'speed') speed = parseFloat(t.value);
   else if (t.id === 'live') liveRoute = t.checked;
+  else if (t.id === 'ioFile' && t.files[0]) { const fr = new FileReader(); fr.onload = () => { try { loadText(String(fr.result)); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } t.value = ''; }; fr.readAsText(t.files[0]); }
 });
 $('libq').addEventListener('input', renderLibrary);
+$('explode').addEventListener('input', e => { if (v3) { v3.explode = parseFloat(e.target.value); v3.sync(); } });
 document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
   const k = e.key.toLowerCase();
@@ -488,6 +553,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); }
   else if (k === 'v') setTool('select'); else if (k === 'w') setTool('wire');
   else if (k === 'b') $('btnBack').click();
+  else if (k === '3') toggle3d();
   else if (k === 'escape') { S.ghost = null; S.wire = null; S.sel.clear(); pinNet = S.hiNet = null; renderInspector(); dirty = true; }
 });
 
@@ -495,6 +561,7 @@ function resize() {
   const r = cv.parentElement.getBoundingClientRect();
   S.dpr = Math.min(2, window.devicePixelRatio || 1); S.cw = Math.max(50, r.width); S.ch = Math.max(50, r.height);
   cv.width = Math.round(S.cw * S.dpr); cv.height = Math.round(S.ch * S.dpr); dirty = true;
+  if (v3on) v3.resize(S.cw, S.ch, S.dpr);
 }
 new ResizeObserver(() => { const first = !S.cw; resize(); if (first && S.board) fit(); }).observe(cv.parentElement);
 
@@ -507,7 +574,10 @@ function frame(now) {
     if (r.done) finish('完了。部品をドラッグして調整できます。');
     dirty = true;
   }
-  if (dirty) { dirty = false; draw(ctx, S); }
+  if (v3on) {
+    if (run && playing) { v3.sync(); if (now - v3.texAt > 600) v3.paint(); }
+    if (v3.dirty) v3.render();
+  } else if (dirty) { dirty = false; draw(ctx, S); }
   requestAnimationFrame(frame);
 }
 
@@ -519,4 +589,4 @@ fillGen(); renderLibrary(); renderLayers(); resize();
 setBoard(generateGPU(PRESETS.highend));
 stage('', 'リファレンス配置を表示中。「自動レイアウトを再生」で 散布 → 焼きなまし → 配線 → 裏面確認 を実行します。');
 requestAnimationFrame(frame);
-window.__pcb = { S, play, autoLayout };
+window.__pcb = { S, play, autoLayout, get v3() { return v3; } };
