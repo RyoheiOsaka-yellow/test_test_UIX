@@ -338,14 +338,15 @@ export function planLayout(board, seed, packAll = true, useRegions = true) {
 export function resyncPlan(plan) {
   for (const mod of plan.mods) { const r = mod.root; mod.x = r.x; mod.y = r.y; mod.k = 0; for (const m of mod.mem) { m.dx = m.c.x - r.x; m.dy = m.c.y - r.y; m.rot = m.c.rot; } }
 }
-export function* anneal(board, seed, chunk, plan, effort = 1) {
+// start: 途中から再開するときの進み具合（0〜1）
+export function* anneal(board, seed, chunk, plan, effort = 1, start = 0) {
   const rnd = mulberry32(seed + 77), P = prep(board);
   P.regions = plan.regions;
   const units = plan.mods.filter(m => !plan.pinned.has(m) && !plan.soft.has(m));
   const total = units.length ? Math.round(Math.min(40000, Math.max(3000, units.length * 420)) * effort) : 0;
   const T0 = 5, T1 = 0.03;
   const cost = (u, kOv) => { let s = 0; for (const m of u.mem) s += localCost(board, P, m.c, kOv); return s; };
-  for (let m = 0; m < total; m++) {
+  for (let m = Math.floor(total * Math.min(0.98, start)); m < total; m++) {
     const f = m / total, T = T0 * Math.pow(T1 / T0, f), kOv = 2 + 28 * f;
     const u = units[(rnd() * units.length) | 0];
     const ox = u.x, oy = u.y, ok = u.k, b0 = cost(u, kOv);

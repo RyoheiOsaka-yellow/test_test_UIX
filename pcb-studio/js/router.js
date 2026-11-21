@@ -185,7 +185,8 @@ export class Router {
     }
   }
 
-  ripAll() { for (const n of this.board.nets.values()) this.ripNet(n); }
+  // keepManual: 手で引いた配線は残す
+  ripAll(keepManual) { for (const n of this.board.nets.values()) if (!(keepManual && n.route && n.route.manual)) this.ripNet(n); }
 
   pinCells(pin) {
     const c = pin.c, pad = c.part.padMap[pin.p], p = padWorld(c, pad);
@@ -198,7 +199,8 @@ export class Router {
   }
 
   // sources(複数) から targets のいずれかまで探索。rip=true なら他ネットの配線を高コストで横切れる。
-  search(id, sources, targets, rip) {
+  // noVia: 層を替えない（手配線用）。limit: 探索の打ち切り
+  search(id, sources, targets, rip, noVia, limit) {
     const { occ, fixed, g, par, stamp, closed, nx, ny, plane, pen, penOwner } = this;
     const gen = ++this.gen;
     const tset = new Set(targets);
@@ -209,9 +211,10 @@ export class Router {
       stamp[s] = gen; g[s] = 0; par[s] = -1;
       const r = s % plane; heap.push(hfun(r % nx, (r / nx) | 0), s);
     }
-    const pass = k => { const o = occ[k]; if (o === 0 || o === id) return 0; if (rip && o > 0 && !fixed[k]) return RIP_COST; return -1; };
+    const byId = this.board.netById;
+    const pass = k => { const o = occ[k]; if (o === 0 || o === id) return 0; if (rip && o > 0 && !fixed[k] && !(byId[o] && byId[o].route && byId[o].route.manual)) return RIP_COST; return -1; };
     let found = -1, pops = 0;
-    const LIMIT = rip ? 900000 : 600000;
+    const LIMIT = limit || (rip ? 900000 : 600000);
     while (heap.size) {
       const cur = heap.pop();
       if (closed[cur] === gen) continue;
@@ -236,7 +239,7 @@ export class Router {
         if (stamp[k] !== gen || ng < g[k]) { stamp[k] = gen; g[k] = ng; par[k] = cur; heap.push(ng + hfun(jx, jy), k); }
       }
       // 貫通ビア：全層で通行可能なときだけ層を替えられる
-      let ok = this.viaNear(id, r), extra = 0;
+      let ok = !noVia && this.viaNear(id, r), extra = 0;
       for (let m = 0; m < NL && ok; m++) { const pc = pass(m * plane + r); if (pc < 0) ok = false; else extra += pc; }
       if (ok) for (let m = 0; m < NL; m++) {
         if (m === l) continue;
@@ -404,7 +407,7 @@ export class Router {
     const groups = this.matchGroups(), touched = new Set(), all = new Set(nets);
     for (const n of nets) { const k = Router.matchKey(n); if (k) { touched.add(k); for (const m of groups.get(k)) all.add(m); } }
     for (const n of this.board.nets.values()) if (n.cls === 'plane') this.ripNet(n);
-    const list = this.order([...all]), total = list.length;
+    const list = this.order([...all].filter(n => !(n.route && n.route.manual))), total = list.length;   // 手配線は引き直さない
     let i = 0;
     for (const n of list) { this.routeNet(n); yield { phase: 'route', i: ++i, total, net: n }; }
     // 失敗したネットは、邪魔な配線を引き剥がして再挑戦
@@ -446,6 +449,74 @@ export class Router {
     this.connectPlanes();
     yield { phase: 'plane', i, total, net: list[0] || { name: '' }, key: '電源・GND ピンをプレーンへ接続' };
   }
+  // ───── 手配線 ─────
+  // ネットの導通を調べ、つながっていないピンを route.fails に入れる
+  connectivity(net) {
+    const { occ, fixed, viaNet, thAt, nx, ny, plane } = this, id = net.id, r = net.route;
+    if (!r) return;
+    const own = new Set(r.cells), seen = new Set(), stack = [];
+    const ok = k => own.has(k) || (fixed[k] === 1 && occ[k] === id);
+    const pc = net.pins.map(p => this.pinCells(p));
+    for (const k of pc[0] || []) { seen.add(k); stack.push(k); }
+    while (stack.length) {
+      const k = stack.pop(), l = (k / plane) | 0, q = k - l * plane, x = q % nx, y = (q / nx) | 0;
+      for (let d = 0; d < 8; d++) { const jx = x + DX[d], jy = y + DY[d]; if (jx < 0 || jy < 0 || jx >= nx || jy >= ny) continue; const kk = k + DX[d] + DY[d] * nx; if (!seen.has(kk) && ok(kk)) { seen.add(kk); stack.push(kk); } }
+      if (viaNet[q] === id || (thAt[q] && occ[k] === id)) for (let m = 0; m < NL; m++) { const kk = m * plane + q; if (!seen.has(kk)) { seen.add(kk); stack.push(kk); } }
+    }
+    r.fails = []; pc.forEach((cs, i) => { if (i && !cs.some(k => seen.has(k))) r.fails.push(i); });
+  }
+  // 手配線を始める：既存の自動配線は消し、手配線の入れ物を用意する
+  manualBegin(net) {
+    if (!net.route || !net.route.manual) { this.ripNet(net); net.route = { cells: [], segs: [], vias: [], fails: [], len: 0, manual: true }; if (this.log) this.log.push(net, net.route); }
+    this.connectivity(net);
+    return net.route;
+  }
+  // 現在の層だけで (ax,ay) から (bx,by) への経路（格子座標）。なければ null
+  manualPath(net, l, ax, ay, bx, by, limit = 60000) {
+    if (!this.inGrid(ax, ay) || !this.inGrid(bx, by)) return null;
+    const path = this.search(net.id, [this.cell(l, ax, ay)], [this.cell(l, bx, by)], false, true, limit);
+    return path ? path.reverse() : null;
+  }
+  manualAdd(net, path) {
+    const { occ, plane, nx } = this, r = net.route, l = (path[0] / plane) | 0, pts = [];
+    for (const k of path) {
+      const q = k - l * plane, x = (q % nx) * G, y = ((q / nx) | 0) * G, n = pts.length;
+      occ[k] = net.id; r.cells.push(k);
+      if (n >= 2) r.len += Math.hypot(x - pts[n - 2], y - pts[n - 1]);
+      if (n >= 4) { const ax = pts[n - 2] - pts[n - 4], ay = pts[n - 1] - pts[n - 3], bx = x - pts[n - 2], by = y - pts[n - 1]; if (Math.abs(ax * by - ay * bx) < 1e-9 && ax * bx + ay * by > 0) { pts[n - 2] = x; pts[n - 1] = y; continue; } }
+      pts.push(x, y);
+    }
+    if (pts.length >= 4) r.segs.push({ l, pts });
+    this.connectivity(net);
+  }
+  manualVia(net, ix, iy) {
+    const q = iy * this.nx + ix;
+    if (this.viaNet[q] === net.id) return true;
+    if (!this.viaOk(net.id, q)) return false;
+    this.viaNet[q] = net.id; net.route.vias.push({ x: ix * G, y: iy * G });
+    for (let m = 0; m < NL; m++) { this.occ[m * this.plane + q] = net.id; net.route.cells.push(m * this.plane + q); }
+    return true;
+  }
+  // 保存しておいた手配線を戻す
+  restoreManual(list) {
+    for (const d of list || []) {
+      const net = this.board.nets.get(d.net); if (!net) continue;
+      const r = { cells: [], segs: d.segs.map(q => ({ l: q.l, pts: [...q.pts] })), vias: d.vias.map(v => ({ ...v })), fails: [], len: 0, manual: true };
+      let clash = false;
+      const put = k => { if (this.occ[k] !== 0 && this.occ[k] !== net.id) clash = true; r.cells.push(k); };
+      for (const q of r.segs) for (let i = 0; i + 3 < q.pts.length; i += 2) {
+        let x = Math.round(q.pts[i] / G), y = Math.round(q.pts[i + 1] / G); const bx = Math.round(q.pts[i + 2] / G), by = Math.round(q.pts[i + 3] / G);
+        r.len += Math.hypot(q.pts[i + 2] - q.pts[i], q.pts[i + 3] - q.pts[i + 1]);
+        for (let g = 0; g < 4000; g++) { if (this.inGrid(x, y)) put(this.cell(q.l, x, y)); if (x === bx && y === by) break; x += Math.sign(bx - x); y += Math.sign(by - y); }
+      }
+      for (const v of r.vias) { const q = Math.round(v.y / G) * this.nx + Math.round(v.x / G); for (let m = 0; m < NL; m++) put(m * this.plane + q); }
+      if (clash) continue;                                   // 部品が動いて通れなくなった手配線は捨てる
+      for (const k of r.cells) this.occ[k] = net.id;
+      for (const v of r.vias) this.viaNet[Math.round(v.y / G) * this.nx + Math.round(v.x / G)] = net.id;
+      net.route = r; this.connectivity(net);
+    }
+  }
+
   routeAllSync(nets) { for (const _ of this.routeMany(nets || [...this.board.nets.values()])); }
 
   // 画面上の点にある配線のネット（表示中の層のうち手前優先）

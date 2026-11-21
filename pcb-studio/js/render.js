@@ -225,6 +225,7 @@ export function draw(ctx, S) {
     for (const pad of g.part.pads) { const p = padWorld(g, pad); ctx.rect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h); }
     ctx.fill(); ctx.globalAlpha = 1;
   }
+  if (S.manPrev) { ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(0.15, 1.5 * px); ctx.setLineDash([2 * px, 2 * px]); ctx.beginPath(); S.manPrev.pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke(); ctx.setLineDash([]); }
   if (S.wire) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5 * px; ctx.setLineDash([2 * px, 3 * px]); ctx.beginPath(); ctx.moveTo(S.wire.from.x, S.wire.from.y); ctx.lineTo(S.wire.to.x, S.wire.to.y); ctx.stroke(); ctx.setLineDash([]); }
   if (S.hoverPad) { const p = S.hoverPad; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5 * px; ctx.strokeRect(p.x - p.w / 2 - 0.15, p.y - p.h / 2 - 0.15, p.w + 0.3, p.h + 0.3); }
 

@@ -107,7 +107,8 @@ tr + tr th, tr + tr td { border-top: 1px solid var(--line); }
 #seek { flex: 1 1 120px; min-width: 80px; accent-color: #fff; height: 18px; }
 #seek:disabled { opacity: .55; }
 #btnReplay { font-size: 15px; padding: 2px 10px; }
-.waitOnly, .recOnly { display: none; } body.waiting .waitOnly { display: inline-block; } body.hasrec:not(.running) .recOnly { display: inline-block; }
+.waitOnly, .recOnly, .midOnly, .resumeOnly { display: none; } body.mid.hasrec:not(.running) .midOnly { display: inline-block; } body.resume:not(.running) .resumeOnly { display: inline-block; }
+ body.waiting .waitOnly { display: inline-block; } body.hasrec:not(.running) .recOnly { display: inline-block; }
 body.waiting #btnPause { display: none; }
 #guide { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 #guide li { border-left: 2px solid var(--line); padding: 1px 0 1px 9px; } #guide li.ok { border-color: var(--good); } #guide li.todo { border-color: var(--bad); }
@@ -141,6 +142,7 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
     <div class="grp">
       <button data-tool="select" aria-pressed="true">選択・移動<kbd>V</kbd></button>
       <button data-tool="wire" aria-pressed="false" title="パッド→パッドの順にクリックして接続。Alt+クリックで切り離し">結線<kbd>W</kbd></button>
+      <button data-tool="route" aria-pressed="false" title="パッドから経路を自分で引きます。クリックで確定、1〜4 キーで層替え、Esc で終了。強調中の配線は Delete で消せます">手配線<kbd>X</kbd></button>
     </div>
     <div class="grp">
       <button data-act="rot">回転<kbd>R</kbd></button>
@@ -217,7 +219,9 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
         <button id="btnPause" class="runOnly">一時停止</button>
         <button id="btnNext" class="primary waitOnly">次の段階へ ▶</button>
         <button id="btnStop" class="runOnly">中止</button>
+        <button id="btnResume" class="primary resumeOnly">続きを実行 ▶</button>
         <button id="btnReplay" class="recOnly" title="記録した作成過程を再生">▶</button>
+        <button id="btnAdopt" class="midOnly" title="シークバーの位置を今の状態にして、そこから編集・再開します">この時点から作り直す</button>
         <input type="range" id="seek" min="0" max="1000" value="0" disabled aria-label="作成過程のシークバー">
         <span id="clock">0:00</span>
         <select id="speed" aria-label="再生速度"><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option><option value="4">4x</option><option value="12">12x</option></select>

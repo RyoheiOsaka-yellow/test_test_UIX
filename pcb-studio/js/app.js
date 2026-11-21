@@ -1,4 +1,4 @@
-import { LAYERS, snap, padWorld, compBox, boxOverlap, ratsnest, serialize, deserialize, sameSide } from './core.js';
+import { G, LAYERS, snap, padWorld, compBox, boxOverlap, ratsnest, serialize, deserialize, sameSide } from './core.js';
 import { PARTS, PART, CATS, alternatives } from './library.js';
 import { PRESETS, generateGPU, emptyBoard } from './templates.js';
 import { Router } from './router.js';
@@ -25,13 +25,15 @@ let redo = [];
 // 自動レイアウトの記録（巻き戻し用）と、段階ごとの一時停止
 let stageProg = 0;
 let rec = null, recPos = 0, replay = false, stepWait = false, stepGo = false, phase = '', curStage = '', userCam = false;
+let man = null, resume = null, manT = 0;   // 手配線の途中状態 / 途中の時点からの作り直し
 const opts = { regions: true, pack: true, tune: true, step: false, effort: 1 };
 let undo = [], run = null, playing = false, speed = 1, t0 = 0, elapsed = 0;
 
 // ───────── 基板の入れ替え・再計算 ─────────
 function setBoard(b, route = true) {
   dropRec(); S.board = b; S.sel.clear(); S.hiNet = pinNet = null; S.hiGroup = pinGroup = null; S.ghost = null; S.wire = null;
-  S.router = new Router(b);
+  S.router = new Router(b); S.router.restoreManual(b.manual);
+  man = null; resume = null; document.body.classList.remove('resume', 'mid');
   if (route) S.router.routeAllSync();
   fit(); refreshAll();
 }
@@ -97,7 +99,7 @@ const doUndo = () => restore(undo, redo, '元に戻しました');
 const doRedo = () => restore(redo, undo, 'やり直しました');
 // 変更を確定：グリッドを作り直し、影響を受けたネットを再配線する
 function commit(nets = []) {
-  if (run && phase !== 'routed') { for (const c of S.board.comps) { c.x = snap(c.x); c.y = snap(c.y); } refresh(); renderInspector(); if (v3on) v3.paint(S, true); return; }   // 配線前の段階では位置だけ反映
+  if ((run || resume) && phase !== 'routed') { for (const c of S.board.comps) { c.x = snap(c.x); c.y = snap(c.y); } refresh(); renderInspector(); if (v3on) v3.paint(S, true); return; }   // 配線前の段階では位置だけ反映
   if (!run) dropRec();
   const R = S.router, b = S.board, set = new Set(nets);
   for (const n of set) R.ripNet(n);
@@ -169,6 +171,7 @@ function onDown(e) {
   if (alt || !editable() || blocked(true)) { nav(); return; }
   if (S.ghost) { placeGhost(e.shiftKey); return; }
   if (tool === 'wire') { wireClick(w, e.altKey); return; }
+  if (tool === 'route') { routeClick(w); return; }
   const c = compAt(w, sx, sy);
   if (c) {
     if (e.shiftKey) { S.sel.has(c) ? S.sel.delete(c) : S.sel.add(c); }
@@ -190,6 +193,11 @@ function onMove(e) {
   const w = toW(sx, sy);
   if (S.ghost) { S.ghost.x = snap(w.x); S.ghost.y = snap(w.y); dirty = true; }
   if (S.wire) { S.wire.to = w; dirty = true; }
+  if (man && !drag && performance.now() - manT > 45) { // 手配線の経路プレビュー
+    manT = performance.now();
+    const path = S.router.manualPath(man.net, man.l, man.ix, man.iy, Math.round(w.x / G), Math.round(w.y / G), 25000), R = S.router;
+    S.manPrev = path ? { l: man.l, pts: path.map(k => { const q = k % R.plane; return [(q % R.nx) * G, ((q / R.nx) | 0) * G]; }) } : null; dirty = true;
+  }
   if (!drag) { hover(w, sx, sy); return; }
   if (Math.hypot(sx - drag.sx, sy - drag.sy) > 3) drag.click = false;
   if (drag.kind === 'orbit' || drag.kind === 'pan3') {
@@ -244,7 +252,7 @@ function hover(w, sx, sy) {
   const tip = $('tip');
   if (!editable()) { tip.hidden = true; return; }
   const { net, hit } = netAt(w);
-  const hp = tool === 'wire' && hit ? hit.p : null;
+  const hp = (tool === 'wire' || tool === 'route') && hit ? hit.p : null;
   if (hp !== S.hoverPad) { S.hoverPad = hp; dirty = true; }
   const h = net && net.cls !== 'plane' ? net : null;
   const want = h || pinNet;
@@ -252,7 +260,7 @@ function hover(w, sx, sy) {
   let html = '';
   if (hit) html = `<b>${esc(hit.c.ref)}</b> ピン ${esc(hit.pad.n)}<br>${net ? esc(net.name) : '未接続'}`;
   else if (net) html = `<b>${esc(net.name)}</b>`;
-  if (net && net.cls !== 'plane' && net.route) html += `<br>${net.pins.length} ピン・${net.route.len.toFixed(1)} mm・ビア ${net.route.vias.length}${net.route.tuned ? '・等長調整済' : ''}${net.cls === 'diff' ? '<br>差動ペア' : ''}`;
+  if (net && net.cls !== 'plane' && net.route) html += `<br>${net.pins.length} ピン・${net.route.len.toFixed(1)} mm・ビア ${net.route.vias.length}${net.route.tuned ? '・等長調整済' : ''}${net.route.manual ? '・手配線' : ''}${net.cls === 'diff' ? '<br>差動ペア' : ''}`;
   else if (net && net.cls === 'plane') html += '<br>電源プレーン（内層ベタ）';
   if (!html || (v3on && !hit)) { const c = compAt(w, sx, sy); if (c) html = `<b>${esc(c.ref)}</b> ${esc(c.part.pn)}<br>${esc(c.part.name)}`; }
   tip.hidden = !html;
@@ -312,6 +320,42 @@ function wireClick(w, alt) {
   b.connect(A.c, A.pad, target, cls); b.connect(hit.c, hit.pad.n, target, cls);
   commit([b.nets.get(target)]);
 }
+// ───────── 手配線 ─────────
+// パッドから始め、クリックした点まで今の層で経路を引く。1〜4 キーで層を替える（その場にビア）。
+const LNAME = ['L1 表層', '内層（横）', '内層（縦）', '裏層'];
+function manStatus() { $('status').textContent = man ? `手配線 ${man.net.name}｜${LNAME[man.l]}｜クリックで経路を確定、同じネットのパッドで接続、1〜4 で層替え（ビア）、Esc で終了` : '手配線：始点にするパッドをクリックしてください。'; }
+function afterMan() { refresh(); renderStats(); renderNets(); renderGuide(); if (v3on) v3.paint(S); dirty = true; }
+function endMan() { S.man = man = null; S.manPrev = null; dirty = true; if (tool === 'route') manStatus(); }
+function routeClick(w) {
+  const R = S.router, hit = padAt(w);
+  if (!man) {
+    if (!hit) return toast('始点にするパッドをクリックしてください');
+    const nm = hit.c.padNet[hit.pad.n], net = nm && S.board.nets.get(nm);
+    if (!net) return toast('このパッドはどこにもつながっていません。先に「結線」でつないでください');
+    if (net.cls === 'plane') return toast('電源・GND は内層プレーンで接続するため、手配線の対象外です');
+    pushUndo(); dropRec(); R.manualBegin(net);
+    S.man = man = { net, l: hit.p.th ? (nearSide() === 'B' ? 3 : 0) : hit.c.side === 'B' ? 3 : 0, ix: Math.round(hit.p.x / G), iy: Math.round(hit.p.y / G) };
+    pinNet = S.hiNet = net; manStatus(); afterMan(); return;
+  }
+  let ix = Math.round(w.x / G), iy = Math.round(w.y / G), endPad = false;
+  if (hit && hit.c.padNet[hit.pad.n] === man.net.name) { ix = Math.round(hit.p.x / G); iy = Math.round(hit.p.y / G); endPad = !(ix === man.ix && iy === man.iy); }
+  if (ix === man.ix && iy === man.iy) return;
+  const path = R.manualPath(man.net, man.l, man.ix, man.iy, ix, iy);
+  if (!path) return toast('この層ではそこへ通れません（他の配線・パッドとの間隔が足りません）。1〜4 キーで層を替えられます');
+  R.manualAdd(man.net, path); man.ix = ix; man.iy = iy; S.manPrev = null;
+  if (endPad) { const left = man.net.route.fails.length; toast(left ? `接続しました（このネットは残り ${left} ピン）` : `${man.net.name} を接続しました（${man.net.route.len.toFixed(1)} mm）`); endMan(); }
+  afterMan();
+}
+function manLayer(l) {
+  if (!man || l === man.l) return;
+  if (!S.router.manualVia(man.net, man.ix, man.iy)) return toast('ここにはビアを打てません（パッドや他のビアが近すぎます）。少し先まで引いてから層を替えてください');
+  man.l = l; S.manPrev = null; manStatus(); afterMan();
+}
+function ripPinned() {
+  if (!pinNet || !pinNet.route || run || blocked()) return;
+  pushUndo(); dropRec(); const n = pinNet; S.router.ripNet(n); endMan(); refreshAll(); toast(`${n.name} の配線を消しました（「自動配線」で引き直せます）`);
+}
+
 function swapPart(newPart, all) {
   const b = S.board, base = [...S.sel][0]; if (!base || run || blocked()) return;
   pushUndo();
@@ -325,9 +369,10 @@ function swapPart(newPart, all) {
   commit(nets); toast(`${targets.length} 個を ${newPart.pn} に置換`);
 }
 function setTool(t) {
-  tool = t; S.wire = null; S.hoverPad = null;
+  tool = t; S.wire = null; S.hoverPad = null; if (man) endMan(); S.manPrev = null;
+  if (t === 'route') manStatus();
   for (const b of document.querySelectorAll('[data-tool]')) b.setAttribute('aria-pressed', b.dataset.tool === t);
-  cv.style.cursor = t === 'wire' ? 'crosshair' : 'default'; dirty = true;
+  cv.style.cursor = cv3.style.cursor = t === 'select' ? 'default' : 'crosshair'; dirty = true;
 }
 
 // ───────── 自動レイアウトの再生 ─────────
@@ -348,9 +393,13 @@ function* gate(next) {
   while (!stepGo) yield;
   stepWait = false; document.body.classList.remove('waiting');
 }
-function* routeStage(nets) {
+// rest=true なら、すでに引けている配線は残して未完了のネットだけを引く
+function* routeStage(nets, rest) {
   const R = S.router;
-  R.tune = opts.tune; R.ripAll(); R.rebuild(); refresh();
+  R.tune = opts.tune;
+  if (rest) { for (const n of R.rebuild()) R.ripNet(n); nets = [...S.board.nets.values()].filter(n => n.cls !== 'plane' && (!n.route || n.route.fails.length || (!n.route.segs.length && !n.route.vias.length && n.pins.length > 1))); }
+  else { R.ripAll(true); for (const n of R.rebuild()) R.ripNet(n); }
+  refresh();
   let k = 0;
   for (const ev of R.routeMany(nets || [...S.board.nets.values()])) {
     const what = ev.phase === 'route' ? 'route' : ev.phase === 'ripup' ? '引き剥がし再配線' : ev.phase === 'tune' ? '等長化（ミアンダ挿入）' : '再配線';
@@ -378,10 +427,54 @@ function* flipStage() {
   for (let t = 0; t < 1; t += 0.014 * speed) { S.view.flip = -1 + 2 * ease(t); stageProg = t; dirty = true; yield; }
   S.view.flip = 1; dirty = true;
 }
+function* annealStage(an) {
+  for (let done = false; !done;) {
+    let ev = null;
+    for (let i = 0; i < Math.max(1, Math.round(speed)); i++) { const r = an.next(); if (r.done) { done = true; break; } ev = r.value; }
+    if (ev) {
+      stage('anneal', ev.legal ? `legalize: 重なり解消 ${ev.legal} 回目 | overlap ${ev.overlap.toFixed(2)} mm²`
+        : `anneal: move ${ev.move}/${ev.total} | T ${ev.T.toFixed(3)} | cost ${Math.round(ev.cost)} | overlap ${ev.overlap.toFixed(2)} mm²`);
+      stageProg = ev.move / ev.total;
+    }
+    refresh(); yield;
+  }
+}
+// 巻き戻した時点から続きを実行する
+function* continueRun(info) {
+  const b = S.board;
+  if (info.st === 'scatter' || info.st === 'anneal') {
+    phase = 'place';
+    if (info.plan) {
+      resyncPlan(info.plan);
+      S.regions = [...info.plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
+      yield* annealStage(anneal(b, info.seed, 60, info.plan, opts.effort, info.st === 'anneal' ? info.frac : 0));
+    }
+    yield* gate('配線');
+    S.regions = null;
+    yield* routeStage();
+  } else { phase = 'routed'; yield* routeStage(null, true); }
+  yield* gate('裏面確認');
+  yield* flipStage();
+}
+// シークバーで戻した時点を「今の状態」にして、そこから編集・再開できるようにする
+function adopt() {
+  if (!rec || run || recPos >= rec.frames.length - 1) return;
+  const i = recPos, f = rec.frames[i], info = { st: f.st, frac: f.p || 0, plan: rec.plan, seed: rec.seed };
+  showFrame(rec.frames.length - 1); pushUndo(); showFrame(i);
+  rec = null; replay = false; S.router.log = null; document.body.classList.remove('hasrec', 'mid'); $('seek').disabled = true;
+  const R = S.router, placing = info.st === 'scatter' || info.st === 'anneal' || info.st === '';
+  for (const c of S.board.comps) { c.x = snap(c.x); c.y = snap(c.y); }
+  if (placing) { for (const n of S.board.nets.values()) n.route = null; R.rebuild(); phase = 'place'; }
+  else { for (const n of R.rebuild()) R.ripNet(n); for (const n of S.board.nets.values()) if (n.cls !== 'plane' && n.route) R.connectivity(n); phase = 'routed'; }
+  resume = info; document.body.classList.add('resume');
+  refreshAll();
+  $('status').textContent = placing ? 'この時点から作り直し中：部品を動かして「続きを実行」を押すと、ここから焼きなまし → 配線を行います。' : 'この時点から作り直し中：配線は途中までです。手直しして「続きを実行」を押すと、残りを配線します。';
+}
 function* autoLayout(seed) {
   const b = S.board;
   S.router.ripAll(); S.sel.clear(); S.hiNet = pinNet = null;
   const plan = planLayout(b, seed, opts.pack, opts.regions), tg = plan.targets;
+  if (rec) { rec.plan = plan; rec.seed = seed; }
   S.regions = [...plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
   const from = new Map([...tg.keys()].map(c => [c, { x: c.x, y: c.y }]));
   const pi = plan.info;
@@ -396,17 +489,7 @@ function* autoLayout(seed) {
   refresh(); for (let t = 0; t < 1; t += 0.03 * speed) yield;
   yield* gate('焼きなまし');
   resyncPlan(plan);
-  const an = anneal(b, seed, 60, plan, opts.effort);
-  for (let done = false; !done;) {
-    let ev = null;
-    for (let i = 0; i < Math.max(1, Math.round(speed)); i++) { const r = an.next(); if (r.done) { done = true; break; } ev = r.value; }
-    if (ev) {
-      stage('anneal', ev.legal ? `legalize: 重なり解消 ${ev.legal} 回目 | overlap ${ev.overlap.toFixed(2)} mm²`
-        : `anneal: move ${ev.move}/${ev.total} | T ${ev.T.toFixed(3)} | cost ${Math.round(ev.cost)} | overlap ${ev.overlap.toFixed(2)} mm²`);
-      stageProg = ev.move / ev.total;
-    }
-    refresh(); yield;
-  }
+  yield* annealStage(anneal(b, seed, 60, plan, opts.effort));
   yield* gate('配線');
   S.regions = null;
   yield* routeStage();
@@ -416,12 +499,12 @@ function* autoLayout(seed) {
 function* routeOnly() { yield* routeStage(); }
 function play(gen) {
   if (run || blocked()) return;
-  pushUndo(); S.ghost = null; setTool('select'); dropRec(); startRec(); phase = 'place'; userCam = false; replay = false;
+  pushUndo(); S.ghost = null; setTool('select'); dropRec(); startRec(); resume = null; document.body.classList.remove('resume', 'mid'); phase = 'place'; userCam = false; replay = false;
   run = gen; playing = true; elapsed = 0;
   document.body.classList.add('running'); $('btnPause').textContent = '一時停止';
 }
 function finish(msg) {
-  run = null; playing = false; stepWait = false; phase = ''; S.regions = null; document.body.classList.remove('running', 'waiting');
+  run = null; playing = false; stepWait = false; phase = ''; resume = null; S.regions = null; document.body.classList.remove('running', 'waiting');
   S.view.flip = S.view.flip < 0 ? -1 : 1;
   for (const c of S.board.comps) { c.x = snap(c.x); c.y = snap(c.y); }
   for (const n of S.router.rebuild()) S.router.ripNet(n);
@@ -436,11 +519,11 @@ function startRec() {
   rec = { comps: S.board.comps.filter(c => !c.fixed), frames: [], log: [], base: new Map([...S.board.nets.values()].map(n => [n, n.route])), applied: 0 };
   S.router.log = rec.log; recPos = 0; $('seek').disabled = true; $('seek').value = 0; $('seek').max = 1000;
 }
-function dropRec() { if (!rec) return; rec = null; replay = false; if (S.router) S.router.log = null; document.body.classList.remove('hasrec'); $('seek').disabled = true; }
+function dropRec() { if (!rec) return; document.body.classList.remove('mid'); rec = null; replay = false; if (S.router) S.router.log = null; document.body.classList.remove('hasrec'); $('seek').disabled = true; }
 function recFrame() {
   const pos = new Float32Array(rec.comps.length * 3);
   rec.comps.forEach((c, i) => { pos[3 * i] = c.x; pos[3 * i + 1] = c.y; pos[3 * i + 2] = c.rot; });
-  rec.frames.push({ st: curStage, text: $('status').textContent, pos, log: rec.log.length / 2, el: v3 ? v3.el : 0, flip: S.view.flip, reg: S.regions, t: elapsed });
+  rec.frames.push({ st: curStage, text: $('status').textContent, pos, log: rec.log.length / 2, el: v3 ? v3.el : 0, flip: S.view.flip, reg: S.regions, t: elapsed, p: stageProg });
 }
 // 記録した時点の状態を表示する（配置と、その時点までに引かれた配線）
 function showFrame(i) {
@@ -452,7 +535,7 @@ function showFrame(i) {
   stage(f.st, f.text); S.regions = f.reg; S.sel.clear();
   if (i === rec.frames.length - 1) for (const el of document.querySelectorAll('#stages li')) el.className = 'done';
   if (v3on) v3.el = f.el; else S.view.flip = f.flip;
-  $('seek').value = i; clock(f.t);
+  $('seek').value = i; clock(f.t); document.body.classList.toggle('mid', i < rec.frames.length - 1);
   refresh();
   if (v3on && (performance.now() - lastPaint > 90 || i === rec.frames.length - 1)) { v3.paint(S); lastPaint = performance.now(); }
 }
@@ -680,6 +763,8 @@ document.addEventListener('click', e => {
     else $(d.go).click();
   }
   else if (t.id === 'btnNext') stepGo = true;
+  else if (t.id === 'btnAdopt') adopt();
+  else if (t.id === 'btnResume') { if (resume && !run) { const info = resume; play(continueRun(info)); } }
   else if (t.id === 'btnReplay') {
     if (!rec || run) return;
     replay = !replay; if (replay && recPos >= rec.frames.length - 1) showFrame(0);
@@ -728,14 +813,18 @@ $('explode').addEventListener('input', e => { if (v3) { v3.explode = parseFloat(
 document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
   const k = e.key.toLowerCase();
+  if (man && /^[1-4]$/.test(k)) { manLayer(+k - 1); return; }
   if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); doRedo(); }
   else if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); }
   else if (k === 'r') rotateSel(); else if (k === 'f') flipSel();
-  else if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); }
+  else if (k === 'delete' || k === 'backspace') { e.preventDefault(); if (!S.sel.size && pinNet) ripPinned(); else deleteSel(); }
+  else if (k === 'x') setTool('route');
+  else if (k === 'enter' && man) endMan();
   else if (k === 'v') setTool('select'); else if (k === 'w') setTool('wire');
   else if (k === 'b') $('btnBack').click();
   else if (k === '3') toggle3d();
   else if (k === ' ' && run) { e.preventDefault(); $('btnPause').click(); }
+  else if (k === 'escape' && man) endMan();
   else if (k === 'escape') { S.ghost = null; S.wire = null; S.sel.clear(); pinNet = S.hiNet = null; renderInspector(); dirty = true; }
 });
 

@@ -1,6 +1,6 @@
 // 3D 表示（three.js）。床と影の上に基板を置き、グループ色の立体部品・接続線・銅箔面を描く。
 // つかんで動かすための当たり判定（pick / point）もここで行う。
-import { compBox, padWorld } from './core.js';
+import { compBox, padWorld, G } from './core.js';
 import { drawLayerTexture, realColor } from './render.js';
 
 const T = 0.8; // 基板厚の半分 (mm)
@@ -109,8 +109,15 @@ export class View3D {
     this.mGlass = mk(box, new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.5, depthWrite: false }), true);
     this.mCan = mk(cyl, new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0.2 }), true);
     this.mCap = mk(cyl, new THREE.MeshStandardMaterial({ roughness: 0.6, color: 0xffffff }), false);
+    // 端子・足（金属）、面取りした角柱（インダクタ）、コンデンサ天面の極性マーク
+    const many = geo2 => { const mesh = new THREE.InstancedMesh(geo2, new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.75, color: 0xffffff }), n * 6); mesh.frustumCulled = false; this.root.add(mesh); return { mesh, map: [] }; };
+    this.mLeg = many(box);
+    const oct = new THREE.CylinderGeometry(0.5412, 0.5412, 1, 8); oct.rotateY(Math.PI / 8);
+    this.mOct = mk(oct, new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.15 }), true);
+    this.mSec = mk(new THREE.CylinderGeometry(0.5, 0.5, 1, 24, 1, false, 0.4, 2.1), new THREE.MeshStandardMaterial({ roughness: 0.6 }), false);
     this.mGlass.mesh.renderOrder = 3;
-    this.meshes = [this.mBox, this.mGlass, this.mCan];
+    this.meshes = [this.mBox, this.mGlass, this.mCan, this.mOct];
+    this.all = [this.mBox, this.mGlass, this.mCan, this.mCap, this.mLeg, this.mOct, this.mSec];
     // 線：接続線、強調ネット、選択枠、領域
     const line = (max, color, opacity, vc) => {
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(max * 6), 3));
@@ -150,8 +157,9 @@ export class View3D {
     this.slabMat.opacity = (1 - this.explode * 0.9) * 0.96; this.slabMat.depthWrite = this.explode < 0.05;
     if (this.bracket) this.bracket.visible = this.explode < 0.03;
     const sel = S ? S.sel : new Set(), hg = S && S.hiGroup;
-    for (const m of [this.mBox, this.mGlass, this.mCan, this.mCap]) { m.k = 0; m.map.length = 0; }
-    const put = (m, c, x, z, sw, sh, hgt, base, sign, color) => { M.makeScale(sw, hgt, sh); M.setPosition(x, base + sign * hgt / 2, z); m.mesh.setMatrixAt(m.k, M); m.mesh.setColorAt(m.k, color); m.map[m.k] = c; m.k++; };
+    for (const m of this.all) { m.k = 0; m.map.length = 0; }
+    const metal = new THREE.Color(0xc9ced4).convertSRGBToLinear(), tmp = new THREE.Color();
+    const put = (m, c, x, z, sw, sh, hgt, base, sign, color) => { if (m.k >= m.mesh.instanceMatrix.count) return; M.makeScale(sw, hgt, sh); M.setPosition(x, base + sign * hgt / 2, z); m.mesh.setMatrixAt(m.k, M); m.mesh.setColorAt(m.k, color); m.map[m.k] = c; m.k++; };
     for (const L of [this.lRats, this.lHi, this.lSel, this.lReg]) L.n = 0;
     for (const c of b.comps) {
       const f = c.part.family; if (f === 'pcie' || f === 'hole') continue;
@@ -163,15 +171,34 @@ export class View3D {
       else col.set(g ? g.color : '#9aa3ad').convertSRGBToLinear().lerp(dark, 0.12);
       if (hg && hg !== c.group) col.lerp(dark, 0.75);
       if (sel.has(c)) { col.lerp(white, 0.45); this.wireBox(this.lSel, compBox(c, 0.3), base, base + sg * (hgt + 0.3)); }
-      if (f === 'bulkin') {
-        const r = Math.min(w, d);
+      const pads = c.part.pads, dimmed = hg && hg !== c.group;
+      if (dimmed) tmp.copy(metal).lerp(dark, 0.75); else tmp.copy(metal);
+      if (f === 'bulkin') {                                    // 電解コンデンサ：台座＋円筒＋白い天面＋極性マーク
+        const r = Math.min(w, d) * 0.94;
+        put(this.mBox, c, c.x, c.y, w, d, 0.9, base, sg, tmp.copy(col).lerp(dark, 0.55));
         put(this.mCan, c, c.x, c.y, r, r, hgt, base, sg, col);
-        col.set(0xf2f2f2); put(this.mCap, c, c.x, c.y, r * 0.98, r * 0.98, 0.15, base + sg * hgt, sg, col);
-      } else put(glassy ? this.mGlass : this.mBox, c, c.x, c.y, w, d, hgt, base, sg, col);
+        put(this.mCap, c, c.x, c.y, r * 0.97, r * 0.97, 0.12, base + sg * hgt, sg, tmp.set(0xf4f4f4));
+        put(this.mSec, c, c.x, c.y, r * 0.97, r * 0.97, 0.14, base + sg * hgt, sg, tmp.copy(col).lerp(dark, 0.25));
+      } else if (f === 'ind' || f === 'indin' || f === 'indaux') { // インダクタ：角を落とした角柱＋天面のくぼみ
+        put(this.mOct, c, c.x, c.y, w, d, hgt, base, sg, col);
+        put(this.mOct, c, c.x, c.y, w * 0.62, d * 0.62, 0.25, base + sg * hgt, sg, tmp.copy(col).lerp(dark, 0.4));
+        for (const pad of pads) { const p = padWorld(c, pad); put(this.mLeg, null, p.x, p.y, p.w, p.h, 0.5, base, sg, dimmed ? tmp.copy(metal).lerp(dark, 0.75) : metal); }
+      } else if (pads.length === 2 && !c.part.th && !glassy) {  // チップ部品：本体＋両端の電極
+        const horiz = w >= d, e = (horiz ? w : d) * 0.22;
+        put(this.mBox, c, c.x, c.y, horiz ? w - 2 * e : w, horiz ? d : d - 2 * e, hgt, base, sg, col);
+        for (const s2 of [-1, 1]) put(this.mLeg, null, horiz ? c.x + s2 * (w - e) / 2 : c.x, horiz ? c.y : c.y + s2 * (d - e) / 2, horiz ? e : w, horiz ? d : e, hgt * 1.02, base, sg, tmp);
+      } else if (!glassy && !c.part.th && pads.length > 2 && pads.length <= 60 && f !== 'drmos') { // IC：本体を少し小さくして足を見せる
+        put(this.mBox, c, c.x, c.y, w * 0.84, d * 0.84, hgt, base, sg, col);
+        for (const pad of pads) { const p = padWorld(c, pad); put(this.mLeg, null, p.x, p.y, Math.max(0.25, p.w), Math.max(0.25, p.h), 0.3, base, sg, tmp); }
+        put(this.mCap, null, c.x - w * 0.3, c.y - d * 0.3, 0.5, 0.5, 0.05, base + sg * hgt, sg, tmp.copy(col).lerp(white, 0.5));   // 1 番ピンの印
+      } else {
+        put(glassy ? this.mGlass : this.mBox, c, c.x, c.y, w, d, hgt, base, sg, col);
+        if (c.part.th && f !== 'hole') for (const pad of pads) { const p = padWorld(c, pad), ph = f === 'fan' ? hgt * 0.85 : Math.min(3.5, hgt * 0.5); put(this.mLeg, null, p.x, p.y, Math.min(0.8, p.w * 0.5), Math.min(0.8, p.h * 0.5), ph, base, sg, tmp); }  // コネクタのピン
+      }
       if (f === 'gpu') { col.set(this.style === 'real' ? 0xc3c9cf : 0x8f979f); put(this.mBox, c, c.x, c.y, w * 0.46, d * 0.46, 0.8, base + sg * hgt, sg, col); }
-      else if ((f === 'ind' || f === 'indin') && this.style !== 'real') { col.lerp(dark, 0.35); put(this.mBox, c, c.x, c.y, w * 0.7, d * 0.7, 0.4, base + sg * hgt, sg, col); }
+      else if (f === 'drmos') put(this.mCap, null, c.x - w * 0.3, c.y - d * 0.3, 0.6, 0.6, 0.05, base + sg * hgt, sg, tmp.copy(col).lerp(white, 0.5));
     }
-    for (const m of [this.mBox, this.mGlass, this.mCan, this.mCap]) { m.mesh.count = m.k; m.mesh.instanceMatrix.needsUpdate = true; if (m.mesh.instanceColor) m.mesh.instanceColor.needsUpdate = true; }
+    for (const m of this.all) { m.mesh.count = m.k; m.mesh.instanceMatrix.needsUpdate = true; if (m.mesh.instanceColor) m.mesh.instanceColor.needsUpdate = true; }
     if (S) {
       const yT = this.layerY(0) + 0.3, yB = this.layerY(3) - 0.3, hi = S.hiNet;
       const sideY = q => (q.side === 'B' ? yB : yT);
@@ -181,6 +208,8 @@ export class View3D {
         if (!hi.route.plane) for (const v of hi.route.vias) this.seg(this.lHi, v.x, this.layerY(0) + 0.06, v.y, v.x, this.layerY(3) - 0.06, v.y);
       }
       if (hi) for (const r of S.rats) if (r.net === hi) this.seg(this.lHi, r.a.x, yT, r.a.y, r.b.x, yT, r.b.y);
+      if (S.manPrev) { const y = this.layerY(S.manPrev.l) + (S.manPrev.l < 2 ? 0.12 : -0.12), q = S.manPrev.pts; for (let i = 0; i + 1 < q.length; i++) this.seg(this.lSel, q[i][0], y, q[i][1], q[i + 1][0], y, q[i + 1][1]); }
+      if (S.man) { const m = S.man, y = this.layerY(m.l); this.wireBox(this.lSel, { x0: m.ix * G - 0.3, y0: m.iy * G - 0.3, x1: m.ix * G + 0.3, y1: m.iy * G + 0.3 }, y - 0.3, y + 0.3); }
       if (S.wire) this.seg(this.lHi, S.wire.from.x, yT, S.wire.from.y, S.wire.to.x, yT, S.wire.to.y);
       if (S.ghost) { const g = S.ghost, y = sideY(g); this.wireBox(this.lSel, compBox(g), y, y + (g.side === 'B' ? -1 : 1) * heightOf(g.part)); }
       if (S.hoverPad) { const p = S.hoverPad; this.wireBox(this.lSel, { x0: p.x - p.w / 2 - 0.2, y0: p.y - p.h / 2 - 0.2, x1: p.x + p.w / 2 + 0.2, y1: p.y + p.h / 2 + 0.2 }, yT - 0.25, yT); }

@@ -195,6 +195,8 @@ export function serialize(board) {
       group: c.group, fixed: c.fixed, near: c.near, nearR: c.nearR, padNet: c.padNet,
     })),
     nets: [...board.nets.values()].map(n => [n.name, n.cls]),
+    // 手で引いた配線は保存する（自動配線ぶんは読み込み時に引き直す）
+    manual: [...board.nets.values()].filter(n => n.route && n.route.manual).map(n => ({ net: n.name, segs: n.route.segs.map(q => ({ l: q.l, pts: [...q.pts] })), vias: n.route.vias.map(v => ({ x: v.x, y: v.y })) })),
   };
 }
 export function deserialize(data, partsById) {
@@ -209,5 +211,6 @@ export function deserialize(data, partsById) {
     c.id = d.id; b.idSeq = Math.max(b.idSeq, d.id + 1);
     for (const [p, nm] of Object.entries(d.padNet || {})) if (part.padMap[p]) b.connect(c, p, nm, cls.get(nm) || 'signal');
   }
+  b.manual = data.manual || [];
   return b;
 }
