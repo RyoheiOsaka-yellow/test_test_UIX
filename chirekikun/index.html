@@ -6,7 +6,7 @@
 <title>ちれきくん</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@400;700&family=BIZ+UDGothic:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -17,7 +17,7 @@
   --line:#d9d4c0;--line2:#e6e2d4;--accent:#b34a2a;--accent-deep:#8a3419;--accent-soft:#f3d7c8;--brass:#B8A67A;--brass-ink:#7d6c3e;
   --ok:#3e6b4a;--ok-soft:#d7e6db;--warn:#9a6a12;--warn-soft:#f5e7c8;--bad:#b3261e;--bad-soft:#f6d9d5;--water:#3f6fa3;--water-soft:#d7e3f0;
   --panel:#13130f;--onpanel:#f5f3ec;--onpanel-mute:#9a948a;--paper:#ffffff;--paper-ink:#161616;
-  --f-body:'IBM Plex Sans JP','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;--f-mono:'JetBrains Mono','SF Mono',Menlo,monospace;--f-doc:'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;
+  --f-body:'IBM Plex Sans JP','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;--f-mono:'JetBrains Mono','SF Mono',Menlo,monospace;--f-doc:'Noto Serif JP','Hiragino Mincho ProN','Yu Mincho',serif;--f-rep:'BIZ UDGothic','MS Gothic','ＭＳ ゴシック','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;--f-pno:'Century','Times New Roman',serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#13130f;--surface:#1b1b16;--sunk:#24241e;--ink:#ece9df;--ink2:#cfcbbf;--mute:#9e988c;--faint:#6f6a60;--line:#36362c;--line2:#2b2b23;--accent:#d8714e;--accent-deep:#e58a68;--accent-soft:#3a2219;--brass-ink:#cdbb8c;
@@ -131,7 +131,7 @@ h1,h2,h3{text-wrap:balance}
 .ws-head{position:sticky;top:calc(env(safe-area-inset-top,0px) + 54px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
 .wh-in{max-width:1480px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
 .wt{display:flex;gap:10px;align-items:center;min-width:0;flex:1 1 240px;flex-wrap:wrap}.wt h1{font-size:16px;margin:0;font-weight:600}.wa{display:flex;gap:8px}
-.ws{max-width:1480px;margin:0 auto;display:grid;grid-template-columns:200px minmax(0,1fr) 380px;gap:22px;align-items:start;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
+.ws{max-width:1480px;margin:0 auto;display:grid;grid-template-columns:176px minmax(0,1fr) 360px;gap:20px;align-items:start;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
 .ws>*{min-width:0}
 .ws-toc,.ws-side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 124px);max-height:calc(100vh - 140px);overflow:auto}
 .ws-toc{display:flex;flex-direction:column;gap:1px;font-size:12px}.ws-toc .tl{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;color:var(--accent);margin-bottom:6px}
@@ -159,39 +159,65 @@ h1,h2,h3{text-wrap:balance}
 .so small{display:block;color:var(--mute);font-size:11px;line-height:1.55;margin:2px 0}.so a{display:block;font-size:11px;word-break:break-all;margin:2px 0 4px}.so q{display:block;font-family:var(--f-doc);font-size:11.5px;color:var(--ink2);margin:4px 0;padding-left:8px;border-left:2px solid var(--brass);quotes:none}
 .dc{grid-template-columns:auto minmax(0,1fr);margin-bottom:6px}.dc small{display:block;color:var(--mute);font-size:11px;word-break:break-all}
 
-/* paper */
-.paper{background:var(--paper);color:var(--paper-ink);font-family:var(--f-doc);font-size:12.5px;line-height:1.85;padding:56px 60px 64px;border:1px solid var(--line);border-radius:3px;max-width:860px;margin:0 auto;box-shadow:0 14px 34px -22px rgba(0,0,0,.4);overflow-wrap:anywhere}
+/* paper：エコ・テック様の報告書の紙面（A4、ゴシック、右下にページ番号、ページ下に脚注）。寸法は原本の実測 */
+.ws-paper{min-width:0}
+.paper{width:210mm;margin:0 auto;color:#000;font-family:var(--f-rep);overflow-wrap:anywhere;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.paper .sheet{box-sizing:border-box;width:210mm;min-height:297mm;background:#fff;padding:17mm 20mm 13mm 30mm;margin:0 0 16px;border:1px solid var(--line);box-shadow:0 14px 34px -24px rgba(0,0,0,.45);display:flex;flex-direction:column;font-size:10.5pt;line-height:1.7}
+.paper .sbody{flex:1 1 auto;min-width:0}
+.paper .pno{flex:none;text-align:right;font-family:var(--f-pno);font-size:10.5pt;line-height:1;margin-top:9px;height:5mm}
+.paper .fnotes{flex:none;position:relative;margin-top:14px;padding-top:5px;font-size:8pt;line-height:1.55}.paper .fnotes::before{content:'';position:absolute;left:0;top:0;width:34%;border-top:1px solid #000}
+.paper .fnotes>div{display:grid;grid-template-columns:1.5em minmax(0,1fr)}.paper .fnotes sup{font-size:6pt;line-height:1.6}
+.paper sup.fnr{font-size:6.5pt;line-height:0;vertical-align:super;margin-left:1px}
 .paper [contenteditable=true]:hover{background:#fbf6dc}.paper [contenteditable=true]:focus{background:#fff7c9;outline:1px solid #c9b25a}
-.paper .cover{text-align:center;padding:70px 0 80px;border-bottom:1px solid #ddd;margin-bottom:26px}.paper .ct{font-size:20px;letter-spacing:.06em}.paper .ct2{font-size:19px;margin-top:70px;letter-spacing:.3em}.paper .cd{margin-top:90px;font-size:15px}.paper .co{margin-top:60px;font-size:17px}
-.paper .toc{margin-bottom:36px;padding-bottom:24px;border-bottom:1px solid #ddd}.paper .tc{text-align:center;font-size:14px;letter-spacing:.6em;margin:0 0 14px}
-.paper .toc a{display:block;color:#161616;text-decoration:none;border-bottom:1px dotted #999;line-height:1.9}.paper .toc a.l0{font-weight:700;margin-top:6px}.paper .toc a.l1{padding-left:1.4em}.paper .toc a.l2{padding-left:2.8em}
-.paper h2{font-size:15px;margin:34px 0 10px;font-weight:700;scroll-margin-top:130px}.paper h3{font-size:13px;margin:20px 0 8px;font-weight:700;scroll-margin-top:130px}.paper h4{font-size:12.5px;margin:16px 0 6px;font-weight:700;scroll-margin-top:130px}
-.paper p{margin:4px 0 9px;text-indent:0}.paper p.cap{font-size:11px;color:#555}.paper p.tcap{text-align:center;font-weight:700;margin-top:14px}
-.paper p.todo{font-family:var(--f-body);font-size:12px;color:#8a5a00;background:#fbf1d6;border:1px dashed #d8b860;border-radius:6px;padding:9px 12px}
-.paper table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:11.5px}
-.paper th,.paper td{border:1px solid #666;padding:4px 7px;text-align:left;vertical-align:middle;line-height:1.55}
-.paper th{background:#d9d9d9;font-weight:500;text-align:center;font-size:11px}.paper caption{text-align:left;font-weight:700;padding:4px 0;caption-side:top}
-.paper td.c{text-align:center}.paper td.r{text-align:right;white-space:nowrap}.paper td.cz{min-width:5.5em}.paper td.cb{text-align:left;font-size:11px;min-width:92px}.paper td small{font-size:10px;color:#555}
-.paper table.kv th{width:9.5em;text-align:center;letter-spacing:.2em}.paper table.reg tr.unc td{background:#fff6dc}.paper .mapt td.yr{background:#d9d9d9}
-.paper table.yn td{border:0;border-bottom:1px dotted #777;padding:5px 4px}.paper table.yn td:last-child{width:6em;white-space:nowrap}
-.paper table.std{font-size:10px}.paper table.std td{padding:2px 5px}.paper table.std tr.sel td{background:#fff3c4;font-weight:700}.paper .vk{writing-mode:vertical-rl;text-align:center;letter-spacing:.15em;white-space:nowrap;width:22px;padding:4px 2px}
-.paper table.att{margin-top:26px}.paper table.jt{font-family:var(--f-body);font-size:11px}.paper table.jt th{background:#ece8dc}.paper table.jt td:nth-child(2){min-width:10em}.paper table.jt td:nth-child(3){min-width:11em}.paper table.jt td:nth-child(4){min-width:6.5em}
-.paper tr.j-yes td{background:#fbe4e0}.paper tr.j-maybe td,.paper tr.j-todo td{background:#fdf3d7}
-.paper .pos,.paper .why{font-family:var(--f-body);border:1px solid #cfc7ae;background:#faf8f0;border-radius:6px;padding:11px 14px;margin:10px 0 14px;font-size:12px}
-.paper .pos p,.paper .why p{margin:5px 0}.paper .why small{color:#666}
-.paper .unv{font-family:var(--f-body);font-size:9.5px;color:#9a6a12;border:1px solid #d8b860;border-radius:3px;padding:0 4px;margin-left:5px;white-space:nowrap}
-.paper .law{margin:3px 0 7px}.paper .law span{padding-left:1em}
-.paper .num{display:grid;grid-template-columns:2em minmax(0,1fr);font-family:var(--f-doc)}.paper .num p{margin-top:0}
-.paper .hear{margin:8px 0 14px;padding-left:10px;border-left:2px solid #bbb}.paper .corp{margin:12px 0}.paper .corp .ch{font-weight:700}
-.paper .cls{padding-left:1.5em}.paper .fig{margin:10px 0}.paper .figbox{border:1px dashed #999;padding:26px 14px;text-align:center;font-size:11.5px;color:#555;font-family:var(--f-body)}
-.paper .tfig{margin:10px 0 4px;overflow-x:auto}.paper .tview{position:relative;overflow:hidden;margin:0 auto;border:1px solid #333;background:#eee}.paper .tview img{border:0}.paper p.fc{text-align:center}
-.paper .shoken{border:1.5px solid #222;margin:10px 0}.paper .sh{background:#cfcfcf;text-align:center;padding:4px;letter-spacing:.5em;border-bottom:1px solid #222}.paper .shh{text-align:center;font-weight:700;padding:11px;border-bottom:1px solid #222}.paper .sht{padding:12px 14px}
-.paper svg.lineage{width:100%;height:auto;display:block;margin:6px 0;border:1px solid #ccc;background:#fff}
-.paper .evs{display:inline-flex;gap:4px;flex-wrap:wrap;vertical-align:middle;margin-left:6px}
-.paper .ev{font-family:var(--f-mono);font-size:9.5px;font-weight:500;color:#2f5f93;border:1px solid #a9c1dc;background:#eef4fb;border-radius:4px;padding:1px 6px;cursor:pointer;white-space:nowrap;letter-spacing:0}.paper .ev.att{color:#5d5330;border-color:#cfc39a;background:#f7f2df}
-.paper sup.fn{font-family:var(--f-mono);font-size:9px;color:#2f5f93}
-.paper .srcs{font-family:var(--f-body);font-size:11.5px}.paper .src{display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:6px;padding:7px 0;border-bottom:1px dotted #aaa}.paper .src .n{font-family:var(--f-mono);color:#555}
-.paper .src .k{font-size:10px;color:#666;margin-left:8px}.paper .src .ok,.paper .src .ng{font-size:9.5px;border-radius:3px;padding:0 5px;margin-left:8px}.paper .src .ok{color:#2e5a3a;border:1px solid #9cc0a6}.paper .src .ng{color:#9a6a12;border:1px solid #d8b860}.paper .src a{color:#2f5f93;word-break:break-all}.paper .src .d{color:#666;margin-left:6px}
+/* 見出しと本文：太字にせず、字下げで階層を示す */
+.paper h2,.paper h3,.paper h4{font-weight:400;scroll-margin-top:130px;line-height:1.7}
+.paper h2{font-size:11.5pt;margin:2.4em 0 0}.paper h3{font-size:10.5pt;margin:2.6em 0 0;padding-left:.7em}.paper h4{font-size:10.5pt;margin:1.5em 0 0;padding-left:.7em}
+.paper .sbody>:first-child{margin-top:0}.paper h2+h3,.paper h3+h4{margin-top:.1em}
+.paper p{margin:0}.paper .in1{padding-left:1em}.paper .in2,.paper .in3{padding-left:3.2em}.paper .ti{text-indent:1em}.paper .sp{margin-top:.9em}.paper .sm{font-size:8pt}
+.paper .hang{padding-left:4.2em;text-indent:-1em;margin-top:.5em}.paper .law{padding-left:3.2em;text-indent:1em}
+.paper .lb{margin:.9em 0 .25em}.paper .lb.in2{padding-left:2em}.paper .hb{margin:1.5em 0 0}.paper .tt{font-size:9.5pt;margin:1.3em 0 .2em}.paper .tt.b{font-weight:700}.paper .tcap{text-align:center;font-size:9.5pt;margin:1em 0 .2em}
+.paper p.fc{text-align:center;font-size:9.5pt;margin:7px 0 26px}.paper p.fc.l{margin-bottom:0}.paper p.tnote{font-size:7.5pt;line-height:1.5;margin-top:3px}
+.paper .num{display:grid;grid-template-columns:2.1em minmax(0,1fr);padding-left:.3em;margin-top:.15em}.paper .num:first-of-type{margin-top:1.2em}
+.paper u{text-underline-offset:2px}
+/* 表：8pt、黒の罫線、見出しは灰色 */
+.paper table{border-collapse:collapse;width:100%;margin:8px 0 12px;font-size:8pt;line-height:1.5}
+.paper th,.paper td{border:1px solid #000;padding:3px 6px;text-align:left;vertical-align:middle;font-weight:400}
+.paper th{background:#d9d9d9;text-align:center}
+.paper td.c{text-align:center}.paper td.nw{white-space:nowrap}.paper td.cb{text-align:left}
+.paper .diag{background:linear-gradient(to top right,transparent calc(50% - .6px),#000 calc(50% - .6px),#000 calc(50% + .6px),transparent calc(50% + .6px))}
+.paper table.t11{border:1.5px solid #000;margin:22px 0 20px}.paper .t11 th,.paper .t11 td{border:0;padding:2.5px 6px}.paper .t11 th{width:7.6em;border-right:1px solid #000;letter-spacing:.12em;white-space:nowrap}.paper .t11 tr.g>*{border-top:1px solid #000}.paper .t11 tr:first-child>*{border-top:0}.paper .t11 td.v{width:4.5em;text-align:center;white-space:nowrap}
+.paper table.tpar{border:1.5px solid #000;margin:0 0 30px}.paper .tpar th.band{text-align:left}.paper .tpar td.no{width:1.6em;text-align:center;padding:3px 2px}.paper .tpar td{padding:4px 6px}
+.paper table.reg{table-layout:fixed}.paper table.land{margin:0}.paper table.land+table.land{margin-top:-1px}.paper table.land+.lb,.paper table.bld+.lb{margin-top:1.4em}
+.paper .land th:nth-child(1){width:15%}.paper .land th:nth-child(2){width:8%}.paper .land th:nth-child(3){width:12%}.paper .land th:nth-child(4){width:19%}.paper .land th:nth-child(5){width:14%}
+.paper .bld th:nth-child(1){width:14%}.paper .bld th:nth-child(2){width:10%}.paper .bld th:nth-child(3){width:19%}.paper .bld th:nth-child(4){width:19%}.paper .bld th:nth-child(5){width:11%}
+.paper table.reg td.nw{white-space:normal}
+.paper table.mapt{width:auto;min-width:78%;max-width:100%;margin:0 0 4px;border:1.5px solid #000}.paper .mapt th{font-size:9pt;padding:5px 10px}.paper .mapt td{text-align:center;padding:4.5px 8px;border-top:1px dotted #000;border-bottom:1px dotted #000}.paper .mapt td.yr{background:#d9d9d9;text-align:left;white-space:nowrap}
+.paper table.yn{width:calc(100% - 3.2em);margin:14px 0 20px 1.6em}.paper .yn td{border:0;border-top:1px solid #000;padding:2.5px 6px}.paper .yn tr:last-child td{border-bottom:1.5px solid #000}.paper .yn td:first-child{width:2.4em;white-space:nowrap}.paper .yn td:last-child{width:6.5em;white-space:nowrap}
+.paper table.std{font-size:7.5pt;margin-top:3px;border:1.5px solid #000}.paper .std th{padding:3px 3px;line-height:1.35}.paper .std td{padding:1.5px 5px;border-top:1px dashed #000;border-bottom:1px dashed #000}.paper .std tr.g td{border-top:1px solid #000}.paper .std td.mk{font-size:9pt;line-height:1}.paper .std td.nm{white-space:nowrap}.paper .std th:nth-child(3){width:3.2em}.paper .std th:nth-child(5){width:5.4em}
+.paper .vk{writing-mode:vertical-rl;text-align:center;letter-spacing:.12em;white-space:nowrap;width:20px;padding:4px 2px!important;border-bottom:1px solid #000!important}
+.paper table.touki{width:92%;margin:4px 0 8px 1em}.paper .touki th{width:9.5em;background:#eee}
+.paper table.att{margin-top:4px}.paper .att td,.paper .att th{padding:2px 6px}.paper .atl{margin-top:2.2em}
+.paper .corp{margin:1.2em 0 0}.paper .corp .ch{padding-left:1em}.paper .corp>p[data-path]{padding-left:1em;text-indent:1em}
+/* 所見 */
+.paper .shoken{border:1.5px solid #000;margin:2px 0 0}.paper .sh{background:#bfbfbf;text-align:center;font-weight:700;letter-spacing:.6em;padding:1px 0;border-bottom:1px solid #000}.paper .shh{text-align:center;font-weight:700;padding:9px 8px;border-bottom:1px solid #000}.paper .sht{padding:7px 9px 9px;font-size:9.5pt;line-height:1.5;text-indent:1em}
+/* 図 */
+.paper .tfig{margin:0}.paper .tview{position:relative;overflow:hidden;margin:0 auto;border:1px solid #000;background:#eee}.paper .tview img{border:0}
+.paper .figbox{box-sizing:border-box;width:520px;max-width:100%;height:330px;margin:0 auto;border:1px solid #000;display:flex;align-items:center;justify-content:center;text-align:center;font-size:8.5pt;color:#777;line-height:1.7}.paper .figbox.tall{height:400px;margin-top:14px}
+.paper svg.lineage{width:100%;height:auto;display:block;margin:4px 0}
+/* 表紙・目次・添付資料 */
+.paper .sheet.cover .sbody{text-align:center;font-size:16pt;letter-spacing:.06em}.paper .sheet.cover .ct{margin-top:31mm}.paper .ct2{margin-top:66mm;letter-spacing:.14em}.paper .cd{margin-top:45mm}.paper .co{margin-top:45mm;letter-spacing:.1em}
+.paper .tc{text-align:center;font-size:10.5pt;margin:5mm 0 4mm;letter-spacing:.3em}
+.paper .toc{margin:0 3mm 0 5mm}.paper .toc a{display:flex;align-items:baseline;color:#000;text-decoration:none;font-size:9.5pt;line-height:1.72}.paper .toc a i{flex:1 1 auto;border-bottom:1.5px dotted #000;margin:0 4px 0 5px;transform:translateY(-.34em)}.paper .toc a b{font-weight:400;min-width:1.1em;text-align:right}
+.paper .toc a.l0{font-size:10.5pt;margin-top:.34em}.paper .toc a.l1{padding-left:1.1em}.paper .toc a.l2{padding-left:1.1em}.paper .toc a:hover span{text-decoration:underline}
+.paper .sheet.attp .atth{text-align:center;font-size:14pt;margin:78mm 0 12mm}.paper table.attl{width:52%;margin:0 auto}.paper .attl th{text-align:left}
+/* 付録（原本にない部分）と、画面でだけ見せる札 */
+.paper .sheet.app .sbody{font-size:9.5pt}.paper .pos,.paper .why,.paper .srcs{margin:.6em 0 0}.paper .why p{margin-top:.8em}.paper table.jt{font-size:7.5pt;margin-top:10px}.paper .jt th:nth-child(1){width:6%}.paper .jt th:nth-child(2){width:17%}.paper .jt th:nth-child(3){width:21%}.paper .jt th:nth-child(4){width:11%}.paper .jt td.b{font-weight:700}
+.paper .unv{font-family:var(--f-body);font-size:9px;color:#9a6a12;border:1px solid #d8b860;border-radius:3px;padding:0 4px;margin-left:5px;white-space:nowrap}
+.paper .srcs{font-size:8pt;line-height:1.55}.paper .src{display:grid;grid-template-columns:2.4em minmax(0,1fr);gap:4px;padding:5px 0;border-bottom:1px dotted #000}.paper .src a{color:#000;word-break:break-all}
+.paper .src .k{margin-left:6px}.paper .src .ok,.paper .src .ng{font-size:7pt;border:1px solid #000;padding:0 4px;margin-left:8px;white-space:nowrap}
+.paper .evs{display:inline;margin-left:8px}
+.paper .ev{display:inline-block;font-family:var(--f-mono);font-size:9px;font-weight:400;line-height:1.5;color:#51688a;border:1px solid #c5d0de;background:#f6f9fc;border-radius:3px;padding:0 5px;margin-left:5px;cursor:pointer;white-space:nowrap;letter-spacing:0;text-indent:0;vertical-align:middle}.paper .ev.att{color:#6b6146;border-color:#d6cfb8;background:#faf8f0}.paper .ev:hover{border-color:#51688a;color:#1f3f6e}
+.paper p.todo{font-family:var(--f-body);font-size:11.5px;line-height:1.6;color:#8a5a00;background:#fbf1d6;border:1px dashed #d8b860;border-radius:6px;padding:8px 11px;margin:8px 0}
 .paper .flash,.flash{animation:fl 1.6s ease}@keyframes fl{0%,60%{background:#ffe9a8}100%{background:transparent}}
 
 /* laws */
@@ -217,22 +243,16 @@ h1,h2,h3{text-wrap:balance}
 #printarea{display:none}
 
 @media(max-width:1180px){.ws{grid-template-columns:minmax(0,1fr) 340px}.ws-toc{display:none}}
-@media(max-width:860px){.ws{grid-template-columns:1fr}.ws-side{position:static;max-height:none;order:-1}.paper{padding:26px 18px 34px;font-size:12px}.paper table{display:block;overflow-x:auto}.ws-head{position:static}}
+@media screen and (max-width:860px){.ws{grid-template-columns:1fr}.ws-side{position:static;max-height:none;order:-1}.paper{width:auto}.paper .sheet{width:auto;min-height:0;padding:26px 16px 22px;font-size:12px}.paper .sheet.cover{min-height:0;padding-bottom:60px}.paper .sheet.cover .sbody{font-size:17px}.paper .sheet.cover .ct{margin-top:40px}.paper .ct2,.paper .cd,.paper .co{margin-top:64px}.paper .sheet.attp .atth{margin-top:30px}.paper table.attl{width:auto!important;display:table}.paper table.yn{margin-left:0}.paper table{display:block;overflow-x:auto;width:auto!important;max-width:100%}.paper .tfig{overflow-x:auto}.paper .in2,.paper .in3,.paper .law{padding-left:1.2em}.paper .hang{padding-left:2.2em}.ws-head{position:static}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
-  @page{size:A4;margin:20mm 18mm}
-  body{background:#fff}body>*:not(#printarea){display:none!important}
-  #printarea{display:block;font-family:var(--f-doc);font-size:10.5pt;line-height:1.75;color:#000}
-  #printarea .cover{text-align:center;page-break-after:always;padding-top:70mm}#printarea .ct{font-size:18pt}#printarea .ct2{font-size:17pt;margin-top:30mm;letter-spacing:.3em}#printarea .cd{margin-top:40mm;font-size:13pt}#printarea .co{margin-top:26mm;font-size:15pt}
-  #printarea .toc{page-break-after:always}#printarea .toc a{display:block;color:#000;text-decoration:none;border-bottom:1px dotted #999}#printarea .toc a.l1{padding-left:1.4em}#printarea .toc a.l2{padding-left:2.8em}#printarea .tc{text-align:center;letter-spacing:.6em}
-  #printarea h2{font-size:13pt;margin:18pt 0 6pt;page-break-after:avoid}#printarea h3{font-size:11pt;margin:12pt 0 4pt;page-break-after:avoid}#printarea h4{font-size:10.5pt;margin:9pt 0 3pt;page-break-after:avoid}
-  #printarea table{border-collapse:collapse;width:100%;margin:4pt 0 8pt;font-size:9pt}#printarea th,#printarea td{border:1px solid #555;padding:2.5pt 5pt;vertical-align:middle}#printarea th{background:#d9d9d9;text-align:center}#printarea tr{page-break-inside:avoid}
-  #printarea td.c{text-align:center}#printarea td.r{text-align:right}#printarea table.yn td{border:0;border-bottom:1px dotted #777}#printarea table.std{font-size:7.5pt}#printarea .vk{writing-mode:vertical-rl}#printarea tr.sel td{font-weight:700;background:#eee}
-  #printarea .shoken{border:1.5pt solid #000;page-break-inside:avoid}#printarea .sh{background:#ccc;text-align:center;letter-spacing:.5em;border-bottom:1px solid #000}#printarea .shh{text-align:center;font-weight:700;padding:7pt;border-bottom:1px solid #000}#printarea .sht{padding:8pt}
-  #printarea .evs,#printarea .unv,#printarea .todo{display:none}#printarea .pos,#printarea .why{border:1px solid #999;padding:6pt 8pt;font-size:9pt;page-break-inside:avoid}#printarea .figbox{border:1px dashed #999;padding:20pt;text-align:center;font-size:9pt}
-  #printarea svg.lineage{width:100%;height:auto}#printarea .num{display:grid;grid-template-columns:2em 1fr}#printarea .cls{padding-left:1.5em}#printarea .src{display:grid;grid-template-columns:2.6em 1fr;font-size:8.5pt;border-bottom:1px dotted #aaa;padding:3pt 0}#printarea .src a{color:#000;word-break:break-all}
-  #printarea .tview{position:relative;overflow:hidden;margin:6pt auto;border:1px solid #333;page-break-inside:avoid}#printarea p.fc{text-align:center}
-  #printarea p.cap{font-size:8.5pt;color:#333}#printarea .law span{padding-left:1em}
+  @page{size:A4;margin:0}
+  html,body{background:#fff;margin:0;padding:0}body>*:not(#printarea){display:none!important}
+  #printarea{display:block;width:210mm;margin:0}
+  #printarea .sheet{margin:0;border:0;box-shadow:none;min-height:0;height:296.6mm;overflow:visible;break-after:page;page-break-after:always}
+  #printarea .sheet:last-child{break-after:auto;page-break-after:auto}
+  #printarea .ev,#printarea .evs,#printarea .unv,#printarea .todo{display:none!important}
+  #printarea tr,#printarea .shoken,#printarea .tview{break-inside:avoid;page-break-inside:avoid}
 }
 
 </style>
@@ -251,7 +271,7 @@ h1,h2,h3{text-wrap:balance}
 </header>
 <main id="view"></main>
 <div class="pv" id="pv" hidden><div class="pv-bar"><button class="btn mini" id="pv-prev" type="button">前</button><span id="pv-n"></span><button class="btn mini" id="pv-next" type="button">次</button><button class="btn mini" id="pv-close" type="button">閉じる</button></div><canvas id="pv-canvas"></canvas></div>
-<div id="printarea"></div>
+<div id="printarea" class="paper"></div>
 <div class="demobar" id="demobar" hidden role="status"><div class="dh"><span class="dl">デモ再生中</span><span class="num" id="demo-step"></span><button class="btn mini" id="demo-stop" type="button">停止</button></div><p id="demo-cap"></p></div>
 <div class="toast" id="toast" role="status"></div>
 <script>
@@ -671,7 +691,7 @@ function reviewItems(c){
   const open=openConcerns(c);
   (c.concerns||[]).filter(x=>x.pending).forEach(x=>{const i=INDBY[x.industry]||{};add('warn','利用履歴',`「${x.use}」（${i.label||''}）：${i.why||''}「判断」で、汚染のおそれとして扱うかを決める。`,'sec-23',x.ref);});
   const hInd=[...new Set((c.hearing||[]).flatMap(h=>matchInd(h.text).filter(i=>!i.soft&&!(c.concerns||[]).some(x=>x.industry===i.id)).map(i=>i.label)))];
-  judge(c).filter(r=>r.st[0]==='maybe').forEach(r=>add('warn','適用条項',`${r.law.replace(/（.*?）/g,'')} ${r.art}（${r.title}）：${r.st[1]}。`,'sec-12'));
+  judge(c).filter(r=>r.st[0]==='maybe').forEach(r=>add('warn','適用条項',`${r.law.replace(/（.*?）/g,'')} ${r.art}（${r.title}）：${r.st[1]}。`,'sec-app1'));
   if(hInd.length&&!(c.concerns||[]).length)add('info','ヒアリング',`聴取内容に「${hInd.join('」「')}」に関わる語がある。利用の有無を読み、該当するなら「判断」で懸念を追加する。`,'sec-24');
   if(open.length&&!(c.hearing||[]).length)add('warn','ヒアリング','事業場としての利用履歴があるが、ヒアリングの記録がない。','sec-24');
   if(c.verdict&&c.verdict.level==='低い'&&open.length)add('bad','所見',`未解消の懸念（${open.map(x=>x.use).join('、')}）があるのに所見が「低い」。`,'sec-3');
@@ -703,185 +723,250 @@ function sourcesOf(c){
   return S;
 }
 
-/* ══════════ レポート描画（エコ・テック様 地歴調査報告書の章立て） ══════════ */
+/* ══════════ レポート描画 ══════════
+   エコ・テック様の地歴調査報告書（Drive「エコテック地歴調査報告書」）の紙面に合わせる。
+   ・A4のページ単位（.sheet）。右下にページ番号、ページ下に脚注
+   ・本文は原本の章立てと言い回しのまま。原本にない要素（適用条項の判定、選定の根拠、出典一覧）は付録に置く
+   ・原本・添付資料のページを開く札（.ev）は画面でだけ見せ、印刷・Wordには出さない */
 const CIRC='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
 function docOf(c,id){return (c.docs||[]).find(d=>d.id===id);}
-/* 根拠チップ：どの資料の何ページか */
-function ev(c,ref,ids){
-  const parts=[];const clsLabel=d=>(d.cls==='私的資料'?'添付(私的)':d.cls==='公的資料'?'添付(公的)':'添付(一般)')+String(d.id).replace(/^[PKX]/,'');
-  if(ref&&ref.p){const d=ref.doc&&ref.doc!=='R'?docOf(c,ref.doc):null;
-    parts.push(`<span class="ev${d?' att':''}" data-p="${ref.p}" data-doc="${d?esc(d.id):''}" title="${esc(d?(d.name||d.kind):(c.source?c.source.file:''))}">${d?clsLabel(d)+' '+esc(d.kind):(c.source?'原本':'資料')} p.${ref.p}</span>`);}
-  /* 添付資料：原本PDFの中のページ範囲が分かっていれば原本を、別ファイルで共有された資料はその資料を開く */
-  (ids||[]).forEach(id=>{const d=docOf(c,id);if(d)parts.push(`<span class="ev att" data-p="${String(d.pages||'').split('–')[0]||1}" data-doc="${d.pages?'':esc(d.id)}" title="${esc(d.name||'')}">${clsLabel(d)} ${esc(d.kind)}${d.pages?' p.'+d.pages:''}</span>`);});
-  return parts.length?`<span class="evs" contenteditable="false">${parts.join('')}</span>`:'';
+const attLabel=d=>`添付資料(${d.cls==='私的資料'?'私的':d.cls==='公的資料'?'公的':'一般'})${String(d.id).replace(/^[PKX]/,'')}「${d.kind}」`;
+const attShort=d=>(d.cls==='私的資料'?'添付(私的)':d.cls==='公的資料'?'添付(公的)':'添付(一般)')+String(d.id).replace(/^[PKX]/,'');
+/* 根拠の札：どの資料の何ページか（画面のみ） */
+function ev(c,ref){
+  if(!(ref&&ref.p))return '';const d=ref.doc&&ref.doc!=='R'?docOf(c,ref.doc):null;
+  return `<span class="evs" contenteditable="false"><span class="ev${d?' att':''}" data-p="${ref.p}" data-doc="${d?esc(d.id):''}" title="${esc(d?(d.name||d.kind):(c.source?c.source.file:''))}">${d?attShort(d)+' '+esc(d.kind):(c.source?'原本':'資料')} p.${ref.p}</span></span>`;
 }
-const evK=(c,ref,re)=>ev(c,ref,(c.docs||[]).filter(d=>d.cls!=='本文'&&re.test(d.kind)&&!(ref&&ref.doc===d.id)).map(d=>d.id));
+/* 添付資料への脚注（原本の書き方）。ページが分かる資料には、開くための札を付ける */
+function attNote(c,re){
+  const ds=(c.docs||[]).filter(d=>d.cls!=='本文'&&re.test(d.kind));if(!ds.length)return '';
+  return ds.map(d=>esc(attLabel(d))+`<span class="ev att" contenteditable="false" data-p="${String(d.pages||'').split('–')[0]||1}" data-doc="${d.pages?'':esc(d.id)}" title="${esc(d.name||'')}">${d.pages?'p.'+esc(d.pages):'開く'}</span>`).join('、')+'を参照。';
+}
 const E=(path,html,tag)=>`<${tag||'span'} data-path="${path}" contenteditable="true" spellcheck="false">${html}</${tag||'span'}>`;
-const P=(path,text)=>`<p data-path="${path}" contenteditable="true" spellcheck="false">${esc(text||'').replace(/\n/g,'<br>')}</p>`;
+const P=(path,text,cls)=>`<p${cls?' class="'+cls+'"':''} data-path="${path}" contenteditable="true" spellcheck="false">${esc(text||'').replace(/\n/g,'<br>')}</p>`;
 
-/* 地理院タイルを3×3枚並べ、対象地を中央に置いた図。印刷・PDFでもそのまま出る */
+/* 地理院タイルを並べ、対象地を中央に置いた図。印刷・PDFでもそのまま出る */
 const DIRV={'北':[0,-1],'北東':[1,-1],'東':[1,0],'南東':[1,1],'南':[0,1],'南西':[-1,1],'西':[-1,0],'北西':[-1,-1]};
 function tileFig(lat,lng,layer,ext,z,opt){
   if(!lat||!lng)return '';opt=opt||{};
   const n=Math.pow(2,z),x=(lng+180)/360*n,rad=lat*Math.PI/180,y=(1-Math.asinh(Math.tan(rad))/Math.PI)/2*n;
-  const tx=Math.floor(x),ty=Math.floor(y),mx=512+(x-tx)*256,my=256+(y-ty)*256,W=600,H=380;
+  const tx=Math.floor(x),ty=Math.floor(y),mx=512+(x-tx)*256,my=256+(y-ty)*256,W=opt.w||520,H=opt.h||330;
   let imgs='';for(let j=-1;j<=1;j++)for(let i=-2;i<=2;i++)imgs+=`<img alt="" src="https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}" style="position:absolute;left:${(i+2)*256}px;top:${(j+1)*256}px;width:256px;height:256px;max-width:none">`;
   const d=DIRV[opt.dir];const k=d?1/Math.hypot(d[0],d[1]):0;const ax=d?d[0]*k:0,ay=d?d[1]*k:0;
-  const arrow=d?`<line x1="${W/2+ax*26}" y1="${H/2+ay*26}" x2="${W/2+ax*104}" y2="${H/2+ay*104}" stroke="#1f6fd6" stroke-width="7"/><polygon points="${W/2+ax*128},${H/2+ay*128} ${W/2+ax*100-ay*13},${H/2+ay*100+ax*13} ${W/2+ax*100+ay*13},${H/2+ay*100-ax*13}" fill="#1f6fd6"/><rect x="${W/2+ax*150-42}" y="${H/2+ay*150-11}" width="84" height="22" fill="#fff" stroke="#1f6fd6"/><text x="${W/2+ax*150}" y="${H/2+ay*150+4.5}" text-anchor="middle" font-size="12" font-weight="700" fill="#1f6fd6">地下水流向</text>`:'';
+  const arrow=d?`<line x1="${W/2+ax*24}" y1="${H/2+ay*24}" x2="${W/2+ax*92}" y2="${H/2+ay*92}" stroke="#1f6fd6" stroke-width="7"/><polygon points="${W/2+ax*114},${H/2+ay*114} ${W/2+ax*88-ay*12},${H/2+ay*88+ax*12} ${W/2+ax*88+ay*12},${H/2+ay*88-ax*12}" fill="#1f6fd6"/><rect x="${W/2+ax*134-40}" y="${H/2+ay*134-10}" width="80" height="20" fill="#fff" stroke="#1f6fd6" stroke-width="1.5"/><text x="${W/2+ax*134}" y="${H/2+ay*134+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#1f6fd6">地下水流向</text>`:'';
   return `<div class="tfig" contenteditable="false"><div class="tview" style="width:${W}px;height:${H}px"><div style="position:absolute;left:${W/2-mx}px;top:${H/2-my}px;width:1280px;height:768px">${imgs}</div>
-   <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="position:absolute;left:0;top:0">${arrow}<circle cx="${W/2}" cy="${H/2}" r="${opt.r||15}" fill="none" stroke="#e02020" stroke-width="3"/><rect x="${W/2-118}" y="${H/2-52}" width="86" height="22" fill="#fff" stroke="#e02020"/><text x="${W/2-75}" y="${H/2-36.5}" text-anchor="middle" font-size="12" font-weight="700" fill="#e02020">調査対象地</text><line x1="${W/2-40}" y1="${H/2-30}" x2="${W/2-11}" y2="${H/2-10}" stroke="#e02020" stroke-width="1.5"/></svg></div></div>`;
-}
-function tocOf(c){
-  const neg=c.verdict&&c.verdict.level==='否定できない';
-  const t=[['sec-1','１．調査概要',0],['sec-11','1.1 調査件名',1],['sec-12','1.2 調査目的',1],['sec-13','1.3 敷地面積',1],['sec-14','1.4 関連法規',1],['sec-15','1.5 調査期間',1],['sec-16','1.6 調査機関',1],['sec-17','1.7 調査場所',1],
-   ['sec-2','２．履歴調査',0],['sec-21','2.1 地形・地質及び地下水概要',1],['sec-22','2.2 登記簿謄本による履歴調査',1],['sec-23','2.3 地形図・住宅地図・空中写真による履歴調査',1],['sec-24','2.4 ヒアリング調査及び現地踏査',1],['sec-243','2.4.3 公的機関の環境情報',2],
-   ['sec-3','３．結果まとめ',0]];
-  if(neg)t.push(['sec-4','４．試料採取等対象物質の選定',0],['sec-5','５．汚染のおそれの由来に応じた区分',0],['sec-6','６．土壌汚染のおそれの区分の分類',0]);
-  t.push(['sec-att','添付資料',0],['sec-src','出典一覧',0]);return t;
+   <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="position:absolute;left:0;top:0">${arrow}<circle cx="${W/2}" cy="${H/2}" r="${opt.r||14}" fill="none" stroke="#e60012" stroke-width="2.5"/><rect x="${W/2-150}" y="${H/2-74}" width="104" height="26" fill="#fff" stroke="#e60012" stroke-width="2"/><text x="${W/2-98}" y="${H/2-55.5}" text-anchor="middle" font-size="14" font-weight="700" fill="#e60012">調査対象地</text><line x1="${W/2-58}" y1="${H/2-48}" x2="${W/2-12}" y2="${H/2-10}" stroke="#e60012" stroke-width="1.3"/><polygon points="${W/2-10},${H/2-9} ${W/2-19},${H/2-12} ${W/2-14},${H/2-18}" fill="#e60012"/></svg></div></div>`;
 }
 
+/* 目次（原本の並び）。[id, 表記, 階層] */
+function tocOf(c){
+  const neg=c.verdict&&c.verdict.level==='否定できない';
+  const t=[['sec-1','１．調査概要',0],['sec-11','1.1　調査件名',1],['sec-12','1.2　調査目的',1],['sec-13','1.3　敷地面積',1],['sec-14','1.4　関連法規',1],['sec-15','1.5　調査期間',1],['sec-16','1.6　調査機関',1],['sec-17','1.7　調査場所',1],['sec-171','1.7.1　調査対象地位置図',2],['sec-172','1.7.2　調査対象地地番図',2],
+   ['sec-2','２．履歴調査',0],['sec-21','2.1　地形・地質及び地下水概要',1],['sec-211','2.1.1　地形・地質概要',2],['sec-212','2.1.2　地下水概要',2],['sec-22','2.2　登記簿謄本による履歴調査',1],['sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',1],['sec-24','2.4　ヒアリング調査及び現地踏査',1],['sec-241','2.4.1　ヒアリング調査',2],['sec-242','2.4.2　現地踏査',2],['sec-243','2.4.3　公的機関の環境情報',2],
+   ['sec-3','３．結果まとめ',0]];
+  if(neg)t.push(['sec-4','４．試料採取等対象物質の選定',0],['sec-5','５．汚染のおそれの由来に応じた区分',0],['sec-51','5.1　基本的な考え方',1],['sec-52','5.2　汚染のおそれの由来の判断',1],['sec-6','６．土壌汚染のおそれの区分の分類',0],['sec-61','6.1　基本的な考え方',1],['sec-62','6.2　汚染のおそれが生じた場所の位置',1],['sec-63','6.3　土壌汚染のおそれの区分の分類',1]);
+  t.push(['sec-app1','付録１　適用条項の判定',0]);if(neg)t.push(['sec-app2','付録２　対象物質の選定根拠',0]);t.push(['sec-src',`付録${neg?'３':'２'}　出典一覧`,0]);
+  return t;
+}
+
+/* 2.2【土地】：地積は値が変わる行まで結合、「◯番→◯番に分筆」の行は原因と名義人を結合（原本の表組み） */
 function landTable(c){
-  return (c.land||[]).map((l,li)=>{const n=l.rows.length;
-    return `<table class="reg"><thead><tr><th>現状地番</th><th>地目</th><th>地積</th><th>登記年月日</th><th>原因</th><th>登記名義人等の変更等</th></tr></thead><tbody>`+
-    l.rows.map((r,ri)=>`<tr${r.unclear?' class="unc"':''}>${ri===0?`<td rowspan="${n}" class="cb">${esc(l.chiban).replace(/ /,'<br>').replace(/ → /,'<br>→ ')}${l.note?'<br><small>※'+esc(l.note)+'</small>':''}</td><td rowspan="${n}" class="c">${esc(l.chimoku||'')}</td>`:''}
-      <td class="r">${E(`land.${li}.rows.${ri}.chiseki`,esc(r.chiseki||''))}</td><td class="nw">${E(`land.${li}.rows.${ri}.date`,esc(r.date))}</td><td>${E(`land.${li}.rows.${ri}.cause`,esc(r.cause))}</td>
-      <td>${r.unclear?'※':''}${E(`land.${li}.rows.${ri}.holder`,esc(r.holder))}${r.unclear?'（不明瞭）':''}</td></tr>`).join('')+`</tbody></table>`;}).join('');
+  return (c.land||[]).map((l,li)=>{
+    const rows=l.rows,n=rows.length;const span=(st,i)=>{const k=st.indexOf(i);return k<0?0:(k+1<st.length?st[k+1]:n)-i;};
+    const cs=[],ms=[];rows.forEach((r,i)=>{if(i===0||r.chiseki)cs.push(i);if(i===0||r.chimoku)ms.push(i);});
+    const parts=String(l.chiban).split(' → ');let bs=[0],labels=[parts[0]];
+    if(parts.length>1){const k=rows.findIndex((r,i)=>i>0&&cs.includes(i)&&/分筆|合筆|換地|区画整理/.test(r.cause||''));
+      if(k>0){bs=[0,k];labels=[parts[0],/[\s　]/.test(parts[1])?parts[1]:parts[0].replace(/[^\s　]+$/,'')+parts[1]];}else labels=[parts.join(' → ')];}
+    const lab=t=>esc(t).replace(/[\s　]+(?=[^\s　]+$)/,'<br>');
+    return `<table class="reg land"><thead><tr><th>現状地番</th><th>地目</th><th>地積</th><th>登記年月日</th><th>原因</th><th>登記名義人等の変更等</th></tr></thead><tbody>`+
+    rows.map((r,i)=>{const b=bs.indexOf(i);const merged=!r.holder&&/→|分筆|合筆/.test(r.cause||'');
+      return `<tr>${b>=0?`<td rowspan="${span(bs,i)}" class="cb">${lab(labels[b])}${l.note&&b===bs.length-1?'<br>※'+esc(l.note):''}</td>`:''}${ms.includes(i)?`<td rowspan="${span(ms,i)}" class="c">${esc(r.chimoku||l.chimoku||'')}</td>`:''}${cs.includes(i)?`<td rowspan="${span(cs,i)}" class="c nw">${E(`land.${li}.rows.${i}.chiseki`,esc(r.chiseki||(i===0?'－':'')))}</td>`:''}
+      <td class="nw">${E(`land.${li}.rows.${i}.date`,esc(r.date))}</td>${merged?`<td colspan="2">${E(`land.${li}.rows.${i}.cause`,esc(r.cause))}</td>`:`<td class="c cz">${E(`land.${li}.rows.${i}.cause`,esc(r.cause))}</td><td>${r.unclear?'※':''}${E(`land.${li}.rows.${i}.holder`,esc(r.holder))}${r.unclear?'（不明瞭）':''}</td>`}</tr>`;}).join('')+`</tbody></table>`;}).join('');
 }
 function lineageSvg(c){
-  const ev=c.lineage||[];if(!ev.length)return '';
+  const evs=c.lineage||[];if(!evs.length)return '';
   const target=new Set((c.site.parcels||[]).map(p=>p.chiban));
-  const rowH=30,bw=62,gap=8,padL=6;let y=8;const rows=ev.map(e=>{const h=Math.max(e.from.length,Math.ceil(e.to.length/4))*rowH;const r={e,y,h};y+=h+10;return r;});
-  const W=720,H=y+4;const midX=250;
-  const box=(x,yy,t)=>`<rect x="${x}" y="${yy}" width="${bw}" height="20" rx="2" fill="${target.has(t)?'#ffe94d':'#fff'}" stroke="#333" stroke-width="1"/><text x="${x+bw/2}" y="${yy+14}" text-anchor="middle" font-size="10" fill="#111">${esc(t)}</text>`;
+  const rowH=28,bw=60,gap=8,padL=4;let y=8;const rows=evs.map(e=>{const h=Math.max(Math.ceil(e.from.length/3),Math.ceil(e.to.length/4))*rowH;const r={e,y,h};y+=h+8;return r;});
+  const W=640,H=y+2;const midX=222;
+  const box=(x,yy,t)=>`<rect x="${x}" y="${yy}" width="${bw}" height="19" fill="${target.has(t)?'#ffff00':'#fff'}" stroke="#000" stroke-width="1"/><text x="${x+bw/2}" y="${yy+13.5}" text-anchor="middle" font-size="10" fill="#000">${esc(t)}</text>`;
   let s=`<svg viewBox="0 0 ${W} ${H}" class="lineage" role="img" aria-label="地番の変遷">`;
-  rows.forEach(({e,y,h})=>{
-    e.from.forEach((f,i)=>{s+=box(padL+ (i%3)*(bw+gap),y+Math.floor(i/3)*rowH,f);});
-    const cy=y+10;s+=`<line x1="${padL+Math.min(e.from.length,3)*(bw+gap)}" y1="${cy}" x2="${midX+150}" y2="${cy}" stroke="#333" stroke-width="1"/><polygon points="${midX+150},${cy-4} ${midX+158},${cy} ${midX+150},${cy+4}" fill="#333"/>`;
-    s+=`<rect x="${midX-18}" y="${cy-9}" width="150" height="18" fill="${e.type==='分筆'?'#c8eccf':e.type==='合筆'?'#cfe0f5':'#f3c9ee'}"/><text x="${midX+57}" y="${cy+4}" text-anchor="middle" font-size="10" fill="#111">${esc(e.date)} ${esc(e.type)}</text>`;
-    e.to.forEach((t,i)=>{s+=box(midX+166+(i%4)*(bw+gap),y+Math.floor(i/4)*rowH,t);});
+  rows.forEach(({e,y})=>{
+    e.from.forEach((f,i)=>{s+=box(padL+(i%3)*(bw+gap),y+Math.floor(i/3)*rowH,f);});
+    const cy=y+9.5;s+=`<line x1="${padL+Math.min(e.from.length,3)*(bw+gap)-gap}" y1="${cy}" x2="${midX+142}" y2="${cy}" stroke="#000" stroke-width="1"/><polygon points="${midX+142},${cy-4} ${midX+150},${cy} ${midX+142},${cy+4}" fill="#000"/>`;
+    s+=`<rect x="${midX-10}" y="${cy-9}" width="140" height="18" fill="${e.type==='分筆'?'#c6efce':e.type==='合筆'?'#cfe0f5':'#f4c7f0'}"/><text x="${midX+60}" y="${cy+3.5}" text-anchor="middle" font-size="9.5" fill="#000">${esc(e.date)} ${esc(e.type)}</text>`;
+    e.to.forEach((t,i)=>{s+=box(midX+156+(i%4)*(bw+gap),y+Math.floor(i/4)*rowH,t);});
   });
-  return s+'</svg><p class="cap">黄色＝調査対象地の筆。登記簿謄本の分筆・合筆・換地の記録から作図。</p>';
+  return s+'</svg>';
 }
 function bldTable(c){
-  if(!(c.buildings||[]).length)return '';
-  return `<h4>【建物】</h4><table class="reg"><thead><tr><th>家屋番号</th><th>種類</th><th>構造</th><th>登記年月日</th><th>原因</th><th>登記名義人等の変更等</th></tr></thead><tbody>`+
-   c.buildings.map((b,bi)=>b.rows.map((r,ri)=>`<tr>${ri===0?`<td rowspan="${b.rows.length}" class="cb">${esc(b.kaoku)}${b.note?'<br><small>※'+esc(b.note)+'</small>':''}</td><td rowspan="${b.rows.length}" class="c">${esc(b.kind)}</td><td rowspan="${b.rows.length}">${esc(b.structure)}</td>`:''}<td class="nw">${E(`buildings.${bi}.rows.${ri}.date`,esc(r.date))}</td><td class="cz">${E(`buildings.${bi}.rows.${ri}.cause`,esc(r.cause))}</td><td>${E(`buildings.${bi}.rows.${ri}.holder`,esc(r.holder))}</td></tr>`).join('')).join('')+`</tbody></table>`;
+  return `<table class="reg bld"><thead><tr><th>家屋番号</th><th>種類</th><th>構造</th><th>登記年月日</th><th>原因</th><th>登記名義人等の変更等</th></tr></thead><tbody>`+
+   c.buildings.map((b,bi)=>b.rows.map((r,ri)=>`<tr>${ri===0?`<td rowspan="${b.rows.length}" class="cb">${esc(b.kaoku).replace(/[\s　]+(?=[^\s　]+$)/,'<br>')}${b.note?'<br>※'+esc(b.note):''}</td><td rowspan="${b.rows.length}" class="c">${esc(b.kind).replace(/・/g,'<br>')}</td><td rowspan="${b.rows.length}">${esc(b.structure)}</td>`:''}<td class="nw">${E(`buildings.${bi}.rows.${ri}.date`,esc(r.date))}</td><td class="c cz">${E(`buildings.${bi}.rows.${ri}.cause`,esc(r.cause))}</td><td>${E(`buildings.${bi}.rows.${ri}.holder`,esc(r.holder))}</td></tr>`).join('')).join('')+`</tbody></table>`;
 }
 function corpBlock(c){
-  const cs=c.corps||[];if(!cs.length)return '';
-  return `<h4>【法人】</h4><p>対象地と関連する法人が${cs.length}社発見された。以下、その法人について登記簿謄本からの調査結果を示す。</p>`+
-   cs.map((x,i)=>`<div class="corp"><p class="ch">${CIRC[i]||i+1} ${esc(x.name)}${x.got?' 法人登記簿（一部抜粋）':'（法人登記の謄本を取得できず）'} ${ev(c,x.ref)}</p>`+
-    (x.purpose?`<table class="kv"><tr><th>商号</th><td>${esc(x.name)}</td></tr>${x.addr?`<tr><th>本店</th><td>${esc(x.addr)}</td></tr>`:''}${x.est?`<tr><th>会社成立の年月日</th><td>${esc(x.est)}</td></tr>`:''}<tr><th>目的</th><td>${x.purpose.map((p,j)=>`${j+1}．${esc(p)}`).join('<br>')}</td></tr>${x.closed?`<tr><th>解散等</th><td>${esc(x.closed)}</td></tr>`:''}</table>`:'')+
+  return (c.corps||[]).map((x,i)=>`<div class="corp"><p class="ch">${CIRC[i]||i+1}　${esc(x.name)}${x.got&&x.purpose?'　法人登記簿（一部抜粋）':''} ${ev(c,x.ref)}</p>`+
+    (x.purpose?`<table class="touki"><tr><th>商　号</th><td>${esc(x.name)}</td></tr>${x.addr?`<tr><th>本　店</th><td>${esc(x.addr)}</td></tr>`:''}${x.est?`<tr><th>会社成立の年月日</th><td>${esc(x.est)}</td></tr>`:''}<tr><th>目　的</th><td>${x.purpose.map((p,j)=>`${j+1}．${esc(p)}`).join('<br>')}</td></tr>${x.closed?`<tr><th>解散等</th><td>${esc(x.closed)}</td></tr>`:''}</table>`:'')+
     P(`corps.${i}.comment`,x.comment)+`</div>`).join('');
 }
 function stdTable(c){
   const sel=new Set(c.substances||[]);let prev=0;
-  return `<table class="std"><thead><tr><th>分類</th><th>調査対象<br>物質</th><th>特定有害物質の種類</th><th>土壌溶出量基準<br>(mg/L)</th><th>土壌含有量基準<br>(mg/kg)</th><th>地下水基準<br>(mg/L)</th><th>第二溶出量基準<br>(mg/L)</th></tr></thead><tbody>`+
-   SUB.map(s=>{const first=s.k!==prev;prev=s.k;const n=SUB.filter(x=>x.k===s.k).length;return `<tr class="${sel.has(s.id)?'sel':''}">${first?`<td rowspan="${n}" class="vk">${KIND[s.k]}</td>`:''}<td class="c">${sel.has(s.id)?'○':''}</td><td>${s.name}</td><td class="c">${s.sol}</td><td class="c">${s.con||''}</td><td class="c">${s.gw}</td><td class="c">${s.sol2}</td></tr>`;}).join('')+
-   `</tbody></table><p class="cap">※「検出されないこと」とは、定められた測定方法により測定した場合において、その結果が当該方法の定量下限値を下回ることをいう。</p>`;
+  return `<table class="std"><thead><tr><th>分類</th><th>特定有害物質の種類</th><th>調査対象<br>物質</th><th>土壌溶出量基準<br>(mg/L)</th><th>土壌含有量基準<br>(mg/kg)</th><th>地下水基準<br>(mg/L)</th><th>第二溶出量基準<br>(mg/L)</th></tr></thead><tbody>`+
+   SUB.map(s=>{const first=s.k!==prev;prev=s.k;const n=SUB.filter(x=>x.k===s.k).length;return `<tr${first?' class="g"':''}>${first?`<td rowspan="${n}" class="vk">${KIND[s.k]}</td>`:''}<td class="nm">${s.name}</td><td class="c mk">${sel.has(s.id)?'○':''}</td><td class="c">${s.sol}</td><td class="c${s.con?'':' diag'}">${s.con||''}</td><td class="c">${s.gw}</td><td class="c">${s.sol2}</td></tr>`;}).join('')+
+   `</tbody></table><p class="tnote">※「検出されないこと」とは、定められた測定方法により測定した場合において、その結果が当該方法の定量下限値を下回ることをいう。</p>`;
 }
-function subNames(c,k){return (c.substances||[]).map(id=>SUBBY[id]).filter(s=>s&&s.k===k).map(s=>s.name);}
+function subNames(c,k){return (c.substances||[]).map(id=>SUBBY[id]).filter(s=>s&&s.k===k).map(s=>s.name.replace(/及びその化合物|化合物/,''));}
+const fmtA2=n=>{const v=Number(n);return v?v.toLocaleString('ja-JP',Number.isInteger(v)?{}:{minimumFractionDigits:2,maximumFractionDigits:2}):'—';};
+const uList=a=>a.map(x=>`<u>${esc(x)}</u>`).join('　');
 
 function renderReport(c){
   const s=c.site,g=c.regs||{},v=c.verdict||verdictOf(c),neg=v.level==='否定できない';
   const ords=ordFor(s.pref,s.city);const S=sourcesOf(c);const J=judge(c);
-  const fn=t=>{const x=S.find(q=>q.title===t);return x?`<sup class="fn" contenteditable="false">[${x.n}]</sup>`:'';};
   const addr=`${s.pref}${s.city}${s.town}`;const chibans=(s.parcels||[]).map(p=>p.chiban).join('、');
   const maps=c.maps||[];const h=c.hearing||[];
-  const lawsHtml=LAWS.items.map(l=>`<div class="law">・${esc(l.name)}${fn(l.name)}<br><span>（${esc(l.number)}）${l.lastAmended?'（改正：'+esc(l.lastAmended)+'）':''}</span></div>`).join('')+
-    ords.filter(o=>o.rules&&o.rules.length).map(o=>`<div class="law">・${esc(o.name)}${fn(o.name)}<br><span>${(o.numberShort||o.number)?'（'+esc(o.numberShort||o.number)+'）':''}${(o.lastAmendedShort||o.lastAmended)?'（改正：'+esc(o.lastAmendedShort||o.lastAmended)+'）':''}</span></div>`).join('');
-  const stLabel={yes:'該当',maybe:'要確認',no:'非該当',info:'参考',done:'確認済',todo:'未確認'};
-  let html=`
-  <section class="cover" id="sec-cover"><div class="ct">${esc(c.title)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${E('reportDate',esc(c.reportDate||toWareki(new Date())))}</div><div class="co">${esc(c.org.name)}</div></section>
-  <section class="toc"><h2 class="tc">目　次</h2>${tocOf(c).map(t=>`<a href="#${t[0]}" class="l${t[2]}" data-go="${t[0]}"><span>${t[1]}</span></a>`).join('')}
-   <table class="att"><thead><tr><th>一般公表資料</th><th>公的資料</th><th>私的資料</th></tr></thead><tbody>${Array.from({length:Math.max(4,...['一般公表資料','公的資料','私的資料'].map(k=>(c.docs||[]).filter(d=>d.cls===k).length))},(_,i)=>i).map(i=>{const gen=(c.docs||[]).filter(d=>d.cls==='一般公表資料')[i],pub=(c.docs||[]).filter(d=>d.cls==='公的資料')[i],pri=(c.docs||[]).filter(d=>d.cls==='私的資料')[i];return `<tr><td>${gen?'ABCDEFGHIJ'[i]+'）'+esc(gen.kind):'―'}</td><td>${pub?'ABCDEFGHIJ'[i]+'）'+esc(pub.kind):'―'}</td><td>${pri?'ABCDEFGHIJ'[i]+'）'+esc(pri.kind):'―'}</td></tr>`;}).join('')}</tbody></table></section>
+  /* ── ページの組み立て ── */
+  const sheets=[];let cur=null,fnN=0,pageN=0;const pageOf={};
+  const sheet=(cls,numbered)=>{cur={cls:cls||'',body:'',notes:[],page:numbered===false?null:++pageN};sheets.push(cur);};
+  const add=hh=>{cur.body+=hh;};
+  const mark=id=>{if(cur.page&&pageOf[id]==null)pageOf[id]=cur.page;};
+  const H=(tag,id,text,extra)=>{mark(id);return `<${tag} id="${id}">${text}${extra||''}</${tag}>`;};
+  const note=t=>{if(!t)return '';fnN++;cur.notes.push([fnN,t]);return `<sup class="fnr" contenteditable="false">${fnN}</sup>`;};
 
-  <h2 id="sec-1">１．調査概要</h2>
-  <h3 id="sec-11">1.1 調査件名 ${ev(c,c.source&&c.source.overviewP?{p:c.source.overviewP}:null)}</h3><p>${esc(c.title)}　地歴調査</p>
-  <table class="kv">${s.jusho?`<tr><th>住居表示</th><td colspan="2">${E('site.jusho',esc(s.jusho))}</td></tr>`:''}<tr><th>地番表示</th><td colspan="2">${E('site.chibanLabel',esc(s.chibanLabel))}</td></tr>
-   <tr><th rowspan="2">特定施設の有無</th><td>水質汚濁防止法に基づく有害物質使用の特定施設</td><td class="c">${esc((g.suidaku&&g.suidaku.v)||'未確認')}</td></tr><tr><td>下水道法に基づく有害物質使用の特定施設</td><td class="c">${esc((g.gesui&&g.gesui.v)||'未確認')}</td></tr>
-   <tr><th rowspan="${4+(g.ord||[]).length}">指定区域の有無</th><td>調査対象地・周辺地等の土壌汚染対策法に基づく「人為等由来」の指定区域</td><td class="c">${esc(g.art11jin||'未確認')}</td></tr>
-   <tr><td>調査対象地・周辺地等の土壌汚染対策法に基づく「自然由来」の指定区域</td><td class="c">${esc(g.art11shizen||'未確認')}</td></tr><tr><td>調査対象地・周辺地等の土壌汚染対策法に基づく「水面埋立て土砂由来」の指定区域</td><td class="c">${esc(g.art11umetate||'未確認')}</td></tr>
-   <tr><td>調査対象地の廃棄物の処理及び清掃に関する法律の指定区域</td><td class="c">${esc(g.haiki||'未確認')}</td></tr>${(g.ord||[]).map(o=>`<tr><td>${esc(o.name)}に基づく${esc(o.item.replace(/^条例に基づく/,''))}</td><td class="c">${esc(o.v)}</td></tr>`).join('')}</table>
-  <table class="reg"><caption>＜調査対象地の筆及び一覧表＞</caption><thead><tr><th></th><th>所在</th><th>地番</th><th>地目</th><th>地積</th><th>所有者</th></tr></thead><tbody>${(s.parcels||[]).map((p,i)=>`<tr><td class="c">${i+1}</td><td>${E(`site.parcels.${i}.shozai`,esc(p.shozai))}</td><td>${E(`site.parcels.${i}.chiban`,esc(p.chiban))}</td><td class="c">${esc(p.chimoku)}</td><td class="r">${fmtArea(p.chiseki)} ㎡</td><td>${E(`site.parcels.${i}.owner`,esc(p.owner))}</td></tr>`).join('')}<tr><td colspan="4" class="r">合計</td><td class="r">${fmtArea(s.area)} ㎡</td><td></td></tr></tbody></table>
-  <h3 id="sec-12">1.2 調査目的</h3><p>本調査は、${esc(addr)}${chibans&&(s.parcels||[]).length===1?' '+esc(chibans):''}地内（以下「調査対象地」と称す）における土壌汚染のおそれの可能性について判断することを目的とした。</p>
-  <div class="pos" contenteditable="false"><b>調査の位置づけ（適用条項の判定）</b><p>${esc(positionText(c))}</p>
-   <table class="jt"><thead><tr><th>根拠</th><th>条項</th><th>内容</th><th>判定</th><th>判定の理由</th></tr></thead><tbody>${J.map(r=>`<tr class="j-${r.st[0]}"><td class="c">${r.src}</td><td>${esc(r.law.replace(/（.*?）/g,''))} ${esc(r.art)}${r.cite&&r.cite.verified?'':'<span class="unv">出典未確認</span>'}</td><td>${esc(r.title)}</td><td class="c"><b>${esc(r.st[1])}</b></td><td>${esc(r.why)}</td></tr>`).join('')}</tbody></table>${ords.filter(o=>(o.extraSubstances||[]).length).map(o=>`<p>※ ${esc(o.name.replace(/（.*?）/g,''))}は、法の特定有害物質26物質に加えて「${esc(o.extraSubstances.map(x=>x.replace(/（.*$/,'')).join('、'))}」を対象とする。</p>`).join('')}${ords.filter(o=>o.appliesNote&&o.rules.length).slice(0,1).map(o=>`<p class="cap">窓口：${esc((o.desk||'').slice(0,90))}</p>`).join('')}</div>
-  <h3 id="sec-13">1.3 敷地面積</h3><p>${fmtArea(s.area)} ㎡（${E('site.areaNote',esc(s.areaNote||'公簿面積による推定'))}）</p>
-  <h3 id="sec-14">1.4 関連法規 ${ev(c,c.source&&c.source.lawsP?{p:c.source.lawsP}:null)}</h3>${lawsHtml}
-  <h3 id="sec-15">1.5 調査期間</h3><p>${E('period',esc(c.period||'（調査期間）'))}</p>
-  <h3 id="sec-16">1.6 調査機関</h3><p>${esc(c.org.name)}（指定調査機関指定番号【 ${esc(c.org.no)} 】）<br>所 在 地：${esc(c.org.addr)}<br>電話番号：${esc(c.org.tel)}</p>
-  <h3 id="sec-17">1.7 調査場所</h3><p>${esc(s.pref)}${esc(s.city)}${esc(s.town)} ${esc(chibans)}（地番表示）</p>
-  ${s.lat?tileFig(s.lat,s.lng,'std','png',18)+`<p class="cap fc">図 1.7-1 調査対象地位置図${s.pinned?'':'（町丁目の概略位置。番地への位置合わせは未確定）'}　出典：地理院地図(電子国土web)${fn('治水地形分類図・地理院タイル')}</p>`:''}
-  <div class="fig" contenteditable="false"><div class="figbox">図 1.7-2 調査対象地地番図<br><small>添付資料(一般B)「公図」から作成して差し込み。</small></div></div>
+  /* 1 調査概要：1.1〜1.3 */
+  sheet();
+  add(H('h2','sec-1','１．調査概要'));
+  add(H('h3','sec-11','1.1　調査件名',' '+ev(c,c.source&&c.source.overviewP?{p:c.source.overviewP}:null)));
+  add(`<p class="in2">${esc(c.title)}　地歴調査</p>`);
+  const zr=[['調査対象地・周辺地等の土壌汚染対策法に基づく「人為等由来」の指定区域',g.art11jin],['調査対象地・周辺地等の土壌汚染対策法に基づく「自然由来」の指定区域',g.art11shizen],['調査対象地・周辺地等の土壌汚染対策法に基づく「水面埋立て土砂由来」の指定区域',g.art11umetate],['調査対象地の廃棄物の処理及び清掃に関する法律の指定区域',g.haiki]].concat((g.ord||[]).map(o=>[`${o.name}に基づく${o.item.replace(/^条例に基づく/,'')}`,o.v]));
+  add(`<table class="t11">${s.jusho?`<tr class="g"><th>住 居 表 示</th><td colspan="2">${E('site.jusho',esc(s.jusho))}</td></tr>`:''}<tr class="g"><th>地 番 表 示</th><td colspan="2">${E('site.chibanLabel',esc(s.chibanLabel))}</td></tr>
+   <tr class="g"><th rowspan="2">特定施設の有無</th><td>水質汚濁防止法に基づく有害物質使用の特定施設</td><td class="v">${esc((g.suidaku&&g.suidaku.v)||'未確認')}</td></tr><tr><td>下水道法に基づく有害物質使用の特定施設</td><td class="v">${esc((g.gesui&&g.gesui.v)||'未確認')}</td></tr>
+   ${zr.map((r,i)=>`<tr${i===0?' class="g"':''}>${i===0?`<th rowspan="${zr.length}">指定区域の有無</th>`:''}<td>${esc(r[0])}</td><td class="v">${esc(r[1]||'未確認')}</td></tr>`).join('')}</table>`);
+  add(`<table class="tpar"><tr><th colspan="6" class="band">＜調査対象地の筆及び一覧表＞</th></tr><tr class="hd"><td colspan="2">所　在</td><td>地番</td><td>地目</td><td>地積</td><td>所有者</td></tr>${(s.parcels||[]).map((p,i)=>`<tr><td class="no">${i+1}</td><td>${E(`site.parcels.${i}.shozai`,esc(p.shozai))}</td><td>${E(`site.parcels.${i}.chiban`,esc(p.chiban))}</td><td>${esc(p.chimoku)}</td><td>${+p.chiseki?fmtA2(p.chiseki)+' ㎡':''}</td><td>${E(`site.parcels.${i}.owner`,esc(p.owner))}</td></tr>`).join('')}<tr><td colspan="4">合計</td><td>${fmtA2(s.area)} ㎡</td><td class="diag"></td></tr></table>`);
+  add(H('h3','sec-12','1.2　調査目的'));
+  add(`<p class="in2 ti">本調査は、${esc(addr)}${chibans&&(s.parcels||[]).length===1?' '+esc(chibans):''}地内（以下「調査対象地」と称す）における土壌汚染のおそれの可能性について判断することを目的とした。</p>`);
+  add(H('h3','sec-13','1.3　敷地面積'));
+  add(`<p class="in2">${fmtA2(s.area)} ㎡（${E('site.areaNote',esc(s.areaNote||'公簿面積による推定'))}）</p>`);
 
-  <h2 id="sec-2">２．履歴調査</h2>
-  <h3 id="sec-21">2.1 地形・地質及び地下水概要 ${ev(c,s.ref)}</h3>
-  <h4>2.1.1 地形・地質概要</h4>${P('site.geoText',s.geoText||'（地形・地質の概要を記入。位置を確定すると治水地形分類図の区分を参照できます）')}
-  <h4>2.1.2 地下水概要</h4>${P('site.gwText',s.gwText||'（地下水流向の推定を記入）')}
-  ${s.lat?tileFig(s.lat,s.lng,'lcmfc2','png',16,{dir:s.gwDir,r:11}):''}
-  <p class="cap fc">図 2.1 地形地質概要及び推定地下水流向${s.gwDir?'（推定流向：'+esc(s.gwDir)+'向き）':''}　国土交通省国土地理院 電子国土web（治水地形分類図）より引用し、編集・加工のうえ掲載。${fn('治水地形分類図・地理院タイル')}</p>
+  /* 1.4〜1.7 */
+  sheet();
+  add(H('h3','sec-14','1.4　関連法規',' '+ev(c,c.source&&c.source.lawsP?{p:c.source.lawsP}:null)));
+  add(LAWS.items.map((l,i)=>`<p class="law">・${esc(l.name)}<br>（${esc(l.number)}）${l.lastAmended?'（改正：'+esc(l.lastAmended)+'）':''}${i===0?'以下、「法」という。':''}</p>`).join('')+
+    ords.filter(o=>o.rules&&o.rules.length).map(o=>`<p class="law">・${esc(o.name.replace(/（通称.*?）/,''))}<br>${(o.numberShort||o.number)?'（'+esc(o.numberShort||o.number)+'）':''}${(o.lastAmendedShort||o.lastAmended)?'（改正：'+esc(o.lastAmendedShort||o.lastAmended)+'）':''}</p>`).join(''));
+  add(H('h3','sec-15','1.5　調査期間'));add(`<p class="in2">${E('period',esc(c.period||'（調査期間）'))}</p>`);
+  add(H('h3','sec-16','1.6　調査機関'));add(`<p class="in2">${esc(c.org.name)}（指定調査機関指定番号【 ${esc(c.org.no)} 】）<br>所　在　地：${esc(c.org.addr)}<br>電 話 番 号：${esc(c.org.tel)}</p>`);
+  add(H('h3','sec-17','1.7　調査場所'));add(`<p class="in2">${esc(s.pref)}${esc(s.city)}${esc(s.town)} ${esc(chibans)}${chibans?'（地番表示）':''}</p>`);
 
-  <h3 id="sec-22">2.2 登記簿謄本による履歴調査 ${evK(c,(c.land&&c.land[0]&&c.land[0].ref)||null,/登記|公図/)}</h3>
-  <p>対象地について、現状の登記簿謄本から旧土地台帳までの遡及調査を行った調査結果の要約を「登記簿謄本による対象地の履歴」に示す。</p>
-  <h4>【土地】登記簿謄本による調査対象地の地歴</h4>${landTable(c)||'<p class="todo">登記簿謄本を共有すると、地番ごとの履歴表をここに作成します。</p>'}
-  ${(c.lineage||[]).length?'<h4>〈参考〉地番の変遷</h4>'+lineageSvg(c):''}
-  ${bldTable(c)}${corpBlock(c)}
+  /* 図 1.7-1・1.7-2 */
+  sheet('figs');
+  add(s.lat?tileFig(s.lat,s.lng,'std','png',18):`<div class="figbox" contenteditable="false">位置を確定すると、地理院地図から位置図を作成します。</div>`);
+  mark('sec-171');add(`<p class="fc" id="sec-171">図 1.7-1　調査対象地位置図${note('出典：地理院地図(電子国土web)')}</p>${s.lat&&!s.pinned?'<p class="todo" contenteditable="false">町丁目の代表点を表示しています。新規作成の地図でピンを動かすと、番地の位置に合わせられます。</p>':''}`);
+  add(`<div class="figbox" contenteditable="false">公図から作成した地番図を差し込み</div>`);
+  mark('sec-172');add(`<p class="fc" id="sec-172">図 1.7-2　調査対象地地番図${note(attNote(c,/公図/)||'添付資料(一般B)「公図」を参照。')}</p>`);
 
-  <h3 id="sec-23">2.3 地形図・住宅地図・空中写真による履歴調査 ${evK(c,c.mapsRef,/地図|地形図|空中写真/)}</h3>
-  <p>地形図・住宅地図・空中写真によって、${maps.length?esc(maps[0].w):'―'}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>
-  ${maps.length?`<table class="reg mapt"><caption>地形図・住宅地図・空中写真による対象地の利用履歴</caption><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="nw yr">${m.y}年（${esc(m.w)}）</td><td class="c">${E(`maps.${i}.use`,esc(m.use))}</td><td class="c">${E(`maps.${i}.around`,esc(m.around))}</td><td class="c">${esc(m.src)}</td></tr>`).join('')}</tbody></table>`:'<p class="todo">住宅地図・地形図・空中写真を共有すると、年次ごとの利用履歴表をここに作成します。</p>'}
-  ${(c.mapNotes||[]).map((n,i)=>`<div class="num"><span>${i+1}）</span>${P('mapNotes.'+i,n)}</div>`).join('')}
+  /* 2.1 */
+  sheet();
+  add(H('h2','sec-2','２．履歴調査'));
+  add(H('h3','sec-21','2.1　地形・地質及び地下水概要',' '+ev(c,s.ref)));
+  add(H('h4','sec-211','2.1.1　地形・地質概要'));add(P('site.geoText',s.geoText||'（地形・地質の概要を記入）','in2 ti'));
+  add(H('h4','sec-212','2.1.2　地下水概要'));add(P('site.gwText',s.gwText||'（地下水流向の推定を記入）','in2 ti'));
+  add(`<p class="fc">図 2.1　地形地質概要及び推定地下水流向${note('国土交通省国土地理院 電子国土web（治水地形分類図）より引用し、編集・加工のうえ掲載している。')}</p>`);
+  add(s.lat?tileFig(s.lat,s.lng,'lcmfc2','png',16,{dir:s.gwDir,r:10}):`<div class="figbox" contenteditable="false">位置を確定すると、治水地形分類図に推定地下水流向を重ねて作成します。</div>`);
 
-  <h3 id="sec-24">2.4 ヒアリング調査及び現地踏査 ${evK(c,(h[0]&&h[0].ref)||null,/踏査|聴取|ヒアリング/)}</h3>
-  <h4>2.4.1 ヒアリング調査</h4><p>【土地の主な利用履歴確認】</p>
-  ${h.length?h.map((x,i)=>`<div class="hear"><p>実施日：${esc(x.date)}<br>実施者：${esc(x.by)}${x.target?'<br>聴取先：'+esc(x.target):''}</p>${P(`hearing.${i}.text`,x.text)}</div>`).join(''):'<p class="todo">ヒアリングの記録（メモ・聴取調査票）を共有すると、ここに整理します。</p>'}
-  <h4>2.4.2 現地踏査</h4><p>【踏査による土地使用状況確認】</p>
-  ${c.siteVisit?`<p>実施日：${esc(c.siteVisit.date)}<br>実施者：${esc(c.siteVisit.by)}</p>${P('siteVisit.text',c.siteVisit.text)}`:'<p class="todo">現地踏査の記録を共有すると、ここに整理します。</p>'}
-  <h4 id="sec-243">2.4.3 公的機関の環境情報 ${ev(c,g.ref)}</h4>
-  <p>（1）調査対象地上の法・条例に基づく特定施設の有無</p>
-  <p>${g.suidaku&&g.suidaku.date?esc(g.suidaku.date)+'に':''}${esc((g.suidaku&&g.suidaku.src)||'（照会先）')}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'及び'+esc(g.gesui.src):''}へ特定有害物質の使用等（製造・使用・処理）に関する公的届出資料の有無を確認した。その回答は以下のとおりである。${fn('水質汚濁防止法・下水道法の特定施設の届出')}</p>
-  <table class="yn"><tr><td>１）水質汚濁防止法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${esc((g.suidaku&&g.suidaku.v)||'未確認')}</td></tr><tr><td>２）下水道法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${esc((g.gesui&&g.gesui.v)||'未確認')}</td></tr></table>
-  <p>（2）土壌・地下水汚染情報</p>
-  <p>調査対象地及び周辺${g.radius?'（調査対象地から'+esc(g.radius)+'）':''}における土壌汚染対策法第6条及び第11条${(g.ord||[]).length?'、並びに'+g.ord.map(o=>esc(o.name)).join('、'):''}に基づく指定区域の有無について、${esc(g.zoneSrc||'（確認先）')}で確認した。${fn('土壌汚染対策法に基づく区域の指定状況')}</p>
-  <table class="yn"><tr><td>１）土壌汚染対策法第6条に基づく要措置区域</td><td>：${esc(g.art6||'未確認')}</td></tr><tr><td>２）土壌汚染対策法第11条に基づく形質変更時要届出区域（人為等由来）</td><td>：${esc(g.art11jin||'未確認')}</td></tr><tr><td>３）土壌汚染対策法第11条に基づく形質変更時要届出区域（自然由来）</td><td>：${esc(g.art11shizen||'未確認')}</td></tr><tr><td>４）土壌汚染対策法第11条に基づく形質変更時要届出区域（水面埋立て土砂由来）</td><td>：${esc(g.art11umetate||'未確認')}</td></tr>${(g.ord||[]).map((o,i)=>`<tr><td>${'５６７８'[i]}）${esc(o.name)}${/条例に基づく/.test(o.item)?'':'に基づく'}${esc(o.item.replace(/^条例に基づく/,'に基づく'))}</td><td>：${esc(o.v)}</td></tr>`).join('')}</table>
-  <p>（3）自然由来または公有水面等に関しての情報</p>${P('regs.natural',g.natural||'（自然由来・公有水面埋立に関する情報を記入）')}
+  /* 2.2 土地 */
+  sheet();
+  add(H('h3','sec-22','2.2　登記簿謄本による履歴調査',note(attNote(c,/登記|公図/)||'添付資料(一般)A「登記簿謄本」、添付資料(一般)B「公図」を参照。')+' '+ev(c,(c.land&&c.land[0]&&c.land[0].ref)||null)));
+  add(`<p class="in2 ti">対象地について、現状の登記簿謄本から旧土地台帳までの遡及調査を行った調査結果の要約を「登記簿謄本による対象地の履歴」に示す。</p><p class="tt">登記簿謄本による調査対象地の地歴</p><p class="lb">【土地】</p>`);
+  add((c.land||[]).length?landTable(c):'<p class="todo" contenteditable="false">登記簿謄本を共有すると、地番ごとの履歴表をここに作成します。</p>');
+  if((c.lineage||[]).length)add(`<p class="lb">〈参考〉</p>${lineageSvg(c)}`);
+  if((c.buildings||[]).length){sheet();add(`<p class="lb">【建物】</p>${bldTable(c)}`);}
+  if((c.corps||[]).length){sheet();add(`<p class="lb">【法人】</p><p class="in1">対象地と関連する法人が${c.corps.length}社発見された。以下、その法人について登記簿謄本からの調査結果を示す。</p>${corpBlock(c)}`);}
 
-  <h2 id="sec-3">３．結果まとめ ${ev(c,v.ref)}</h2><p>各種資料による利用履歴の調査結果は以下のとおりである。</p>
-  <div class="shoken"><div class="sh">所　見</div><div class="shh">${E('verdict.headline',esc(v.headline))}</div><div class="sht" data-path="verdict.text" contenteditable="true" spellcheck="false">${esc(v.text)}</div></div>`;
+  /* 2.3 */
+  sheet();
+  add(H('h3','sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',note(attNote(c,/地図|地形図|空中写真/)||'添付資料(一般)C「地形図・住宅地図」、添付資料(一般)D「空中写真」を参照。')+' '+ev(c,c.mapsRef)));
+  add(`<p class="in1 ti">地形図・住宅地図・空中写真によって、${maps.length?esc(maps[0].w):'―'}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
+  add(maps.length?`<p class="tt b">地形図・住宅地図・空中写真による対象地の利用履歴</p><table class="mapt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="yr">${m.y} 年　(${esc(m.w)})</td><td>${E(`maps.${i}.use`,esc(m.use))}</td><td>${E(`maps.${i}.around`,esc(m.around))}</td><td>${esc(m.src)}</td></tr>`).join('')}</tbody></table>`:'<p class="todo" contenteditable="false">住宅地図・地形図・空中写真を共有すると、年次ごとの利用履歴表をここに作成します。</p>');
+  add((c.mapNotes||[]).map((n,i)=>`<div class="num"><span>${'１２３４５６７８９'[i]||i+1}）</span>${P('mapNotes.'+i,n)}</div>`).join(''));
+
+  /* 2.4.1・2.4.2 */
+  sheet();
+  add(H('h3','sec-24','2.4　ヒアリング調査及び現地踏査',' '+ev(c,(h[0]&&h[0].ref)||null)));
+  add(H('h4','sec-241','2.4.1　ヒアリング調査'));add('<p class="lb in2">【土地の主な利用履歴確認】</p>');
+  add(h.length?h.map((x,i)=>{const same=i>0&&h[i-1].date===x.date&&h[i-1].by===x.by;return `${same?'':`<p class="in3">実施日：${esc(x.date)}<br>実施者：${esc(x.by)}</p>`}${x.target?`<p class="hb">・${esc(x.target)}</p>`:''}${P(`hearing.${i}.text`,x.text,'in1 ti')}`;}).join(''):'<p class="todo" contenteditable="false">ヒアリングの記録（メモ・聴取調査票）を共有すると、ここに整理します。</p>');
+  add(H('h4','sec-242','2.4.2　現地踏査',note(attNote(c,/踏査/))));add('<p class="lb in2">【踏査による土地使用状況確認】</p>');
+  add(c.siteVisit?`<p class="in3">実施日：${esc(c.siteVisit.date)}<br>実施者：${esc(c.siteVisit.by)}</p>${P('siteVisit.text',c.siteVisit.text,'in1 ti')}`:'<p class="todo" contenteditable="false">現地踏査の記録を共有すると、ここに整理します。</p>');
+
+  /* 2.4.3・3 */
+  sheet();
+  add(H('h4','sec-243','2.4.3　公的機関の環境情報',' '+ev(c,g.ref)));
+  add(`<p class="in1">（1）調査対象地上の法・条例に基づく特定施設の有無</p><p class="in3 ti">${g.suidaku&&g.suidaku.date?esc(g.suidaku.date)+'に':''}${esc((g.suidaku&&g.suidaku.src)||'（照会先）')}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'及び'+esc(g.gesui.src):''}へ特定有害物質の使用等（製造・使用・処理）に関する公的届出資料の有無を確認した。その回答は以下のとおりである。</p>`);
+  add(`<table class="yn"><tr><td>１）</td><td>水質汚濁防止法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${esc((g.suidaku&&g.suidaku.v)||'未確認')}</td></tr><tr><td>２）</td><td>下水道法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${esc((g.gesui&&g.gesui.v)||'未確認')}</td></tr></table>`);
+  add(`<p class="in1">（2）土壌・地下水汚染情報</p><p class="in3 ti">調査対象地及び周辺${g.radius?'（調査対象地から'+esc(g.radius)+'）':''}における土壌汚染対策法第6条及び第11条${(g.ord||[]).length?'、並びに'+g.ord.map(o=>esc(o.name)).join('、'):''}に基づく指定区域の有無について、${esc(g.zoneSrc||'（確認先）')}で確認した。</p>`);
+  add(`<table class="yn">${[['土壌汚染対策法第6条に基づく要措置区域',g.art6],['土壌汚染対策法第11条に基づく形質変更時要届出区域（人為等由来）',g.art11jin],['土壌汚染対策法第11条に基づく形質変更時要届出区域（自然由来）',g.art11shizen],['土壌汚染対策法第11条に基づく形質変更時要届出区域（水面埋立て土砂由来）',g.art11umetate]].concat((g.ord||[]).map(o=>[`${o.name}${/条例に基づく/.test(o.item)?'':'に基づく'}${o.item.replace(/^条例に基づく/,'に基づく')}`,o.v])).map((r,i)=>`<tr><td>${'１２３４５６７８'[i]}）</td><td>${esc(r[0])}</td><td>：${esc(r[1]||'未確認')}</td></tr>`).join('')}</table>`);
+  add(`<p class="in1">（3）自然由来または公有水面等に関しての情報</p>${P('regs.natural',g.natural||'（自然由来・公有水面埋立に関する情報を記入）','in3 ti')}`);
+  add(H('h2','sec-3','３．結果まとめ',' '+ev(c,v.ref)));
+  add(`<p class="in1">各種資料による利用履歴の調査結果は以下のとおりである。</p><div class="shoken"><div class="sh">所　見</div><div class="shh">${E('verdict.headline',esc(v.headline))}</div><div class="sht" data-path="verdict.text" contenteditable="true" spellcheck="false">${esc(v.text).replace(/(土壌汚染の(?:可能性|おそれ)[^。、]*と判断(?:する|した|される)。)\s*$/,'<u>$1</u>')}</div></div>`);
+
   if(neg){
-    const k1=subNames(c,1),k2=subNames(c,2),k3=subNames(c,3);const cl=c.classification||{};
-    const lst=a=>a&&a.length?esc(a.join('、')):'該当なし';
-    const sec63=(n,k,names)=>names.length?`<h4>6.3.${n} ${KIND[k]}</h4><p>${esc(names.join('　'))}</p><p>【現況地表面】</p><div class="cls"><p>(1) 土壌汚染が存在するおそれがないと認められる土地<br>　⇒ ${lst(cl.none)}</p><p>(2) 土壌汚染が存在するおそれが少ないと認められる土地<br>　⇒ ${lst(cl.low)}</p><p>(3) 土壌汚染が存在するおそれが比較的多いと認められる土地<br>　⇒ ${lst(cl.high)}</p></div><p class="cap">図 6.3.${n} 土壌汚染のおそれの区分（${KIND[k]}）現況地表面。区画図は出力時に公図から作成。</p>`:'';
+    const k1=subNames(c,1),k2=subNames(c,2),k3=subNames(c,3);const cl=c.classification||{};const lst=a=>a&&a.length?esc(a.join('、')):'該当なし';
+    /* 4 */
+    sheet();
+    add(H('h2','sec-4','４．試料採取等対象物質の選定'));
+    add(`<p class="in1 ti">履歴調査の結果、対象地では、特定有害物質の使用及び保管の可能性が否定できなかったため、下記の特定有害物質を試料採取等対象物質とした。</p>`);
+    add(`${k1.length?`<p class="in2 sp">○第一種特定有害物質　${uList(k1)}</p>`:''}${k2.length?`<p class="in2 sp">○第二種特定有害物質　${uList(k2)}</p>`:''}${k3.length?`<p class="in2 sp">○第三種特定有害物質　${uList(k3)}</p>`:''}`);
+    if((c.extraSubstances||[]).length)add(`<p class="in2 sp">○${esc(c.extraSubstances.join('、'))}　（補足事項）<br>※「${esc(c.extraSubstances.join('、'))}」は、土壌汚染対策法には規定されていないが規定している都道府県がある事から、調査対象物質に反映している。</p>`);
+    if(!(k1.length+k2.length+k3.length))add('<p class="todo" contenteditable="false">物質が選定されていません。右の「判断」で懸念の業種を確認するか、物質を選んでください。</p>');
+    add(`<p class="in1 ti">法に定められる特定有害物質及び区域の指定に係る基準（以下「指定基準」という。）を表4に示す。</p><p class="tcap">表4　指定基準</p>${stdTable(c)}`);
+    /* 5 */
+    sheet();
+    add(H('h2','sec-5','５．汚染のおそれの由来に応じた区分'));add(H('h3','sec-51','5.1　基本的な考え方'));
+    add(`<p class="in2 ti">情報の入手・把握において収集した情報により、特定有害物質の種類ごとに、以下の汚染のおそれの由来に応じた区分ごとに定められた方法により、後の試料採取等を行う区画選定を行うものとし、次の三つの区分に分類するものとした。</p>
+     <p class="hang">①調査対象地における試料採取等対象物質がシアン化合物を除く第二種特定有害物質であり、かつ、汚染状態が自然に由来するおそれがあると認められる場合（自然由来盛土等に使用した土壌があると認められる場合を含む。）</p>
+     <p class="hang">②調査対象地が公有水面埋立法（大正10年法律第57号）による公有水面埋立て又は干拓事業により造成された土地であり、汚染状態が当該造成時の水面埋立てに用いられた土砂に由来するおそれがあると認められる場合</p>
+     <p class="hang">③調査対象地の汚染が自然又は水面埋立てに用いられた土砂以外（以下、「人為等」という。）に由来するおそれがあると認められる場合</p>
+     <p class="hang">「汚染のおそれの由来」とは上記の①は自然由来、②は水面埋立て土砂由来、③は人為等由来を示す。</p>`);
+    add(H('h3','sec-52','5.2　汚染のおそれの由来の判断'));
+    add(`<p class="in2 ti">調査対象地では、自然由来及び水面埋立て土砂由来に該当する情報が無く、人為等由来に該当する情報が確認された。</p>
+     <p class="in2 sp">①自然由来<br>　⇒該当無し</p><p class="in2 sp">②水面埋立て土砂由来<br>　⇒該当無し</p>
+     <p class="in2 sp">③人為等由来${k1.length?`<br>　⇒第一種特定有害物質　（全${k1.length}物質）<br>　　${uList(k1)}`:''}${k2.length?`<br>　⇒第二種特定有害物質　（全${k2.length}物質）<br>　　${uList(k2)}`:''}${k3.length?`<br>　⇒第三種特定有害物質　（全${k3.length}物質）<br>　　${uList(k3)}`:''}</p>`);
+    /* 6.1・6.2 */
+    sheet();
+    add(H('h2','sec-6','６．土壌汚染のおそれの区分の分類'));add(H('h3','sec-61','6.1　基本的な考え方'));
+    add(`<p class="in2 ti">情報の入手・把握において収集した情報により、調査対象地を土壌汚染のおそれがあると認められる特定有害物質の種類ごとに次の三つの区分に分類した。</p>
+     <p class="in2 sp">(1) 土壌汚染が存在するおそれがないと認められる土地</p><p class="in2 sp">(2) 土壌汚染が存在するおそれが少ないと認められる土地</p><p class="in2 sp">(3) 土壌汚染が存在するおそれが比較的多いと認められる土地</p>`);
+    add(H('h3','sec-62','6.2　汚染のおそれが生じた場所の位置'));
+    add(P('clsBasis',c.clsBasis||'調査対象地における汚染のおそれが生じた場所の位置は、過去に盛土による土地地盤高の改変の記録が存在しないこと、関連する情報及び資料等が存在しないことから、現状の地表面地盤面からと判断した。','in2 ti'));
+    /* 6.3 */
     let n=0;
-    html+=`
-  <h2 id="sec-4">４．試料採取等対象物質の選定</h2>
-  <p>履歴調査の結果、対象地では、特定有害物質の使用及び保管の可能性が否定できなかったため、下記の特定有害物質を試料採取等対象物質とした。</p>
-  ${k1.length?`<p>○第一種特定有害物質　${esc(k1.join('　'))}</p>`:''}${k2.length?`<p>○第二種特定有害物質　${esc(k2.join('　'))}</p>`:''}${k3.length?`<p>○第三種特定有害物質　${esc(k3.join('　'))}</p>`:''}
-  ${(c.extraSubstances||[]).length?`<p>○${esc(c.extraSubstances.join('、'))}（補足事項）<br>※「${esc(c.extraSubstances.join('、'))}」は、土壌汚染対策法には規定されていないが規定している都道府県がある事から、調査対象物質に反映している。</p>`:''}
-  ${!(k1.length+k2.length+k3.length)?'<p class="todo">物質が選定されていません。右の「判断」で懸念の業種を確認するか、物質を選んでください。</p>':''}
-  <div class="why" contenteditable="false"><b>選定の根拠</b>${openConcerns(c).map(x=>{const i=INDBY[x.industry];return i?`<p>${esc(x.use)} → ${esc(i.label)}：${esc(i.why)}<br><small>出典：${esc(i.src.type==='none'?'未登録（担当者の選定）':i.src.cite)}</small>${i.official?`<br><small>公式統計：${esc(i.official.text)}</small>`:''}</p>`:'';}).join('')}</div>
-  <p>法に定められる特定有害物質及び区域の指定に係る基準（以下「指定基準」という。）を表4に示す。${fn('土壌汚染対策法施行規則')}</p><p class="tcap">表4 指定基準</p>${stdTable(c)}
-  <h2 id="sec-5">５．汚染のおそれの由来に応じた区分</h2>
-  <h3>5.1 基本的な考え方</h3><p>情報の入手・把握において収集した情報により、特定有害物質の種類ごとに、以下の汚染のおそれの由来に応じた区分ごとに定められた方法により、後の試料採取等を行う区画選定を行うものとし、次の三つの区分に分類するものとした。</p>
-  <p>①調査対象地における試料採取等対象物質がシアン化合物を除く第二種特定有害物質であり、かつ、汚染状態が自然に由来するおそれがあると認められる場合（自然由来盛土等に使用した土壌があると認められる場合を含む。）</p>
-  <p>②調査対象地が公有水面埋立法（大正10年法律第57号）による公有水面埋立て又は干拓事業により造成された土地であり、汚染状態が当該造成時の水面埋立てに用いられた土砂に由来するおそれがあると認められる場合</p>
-  <p>③調査対象地の汚染が自然又は水面埋立てに用いられた土砂以外（以下、「人為等」という。）に由来するおそれがあると認められる場合</p>
-  <p>「汚染のおそれの由来」とは上記の①は自然由来、②は水面埋立て土砂由来、③は人為等由来を示す。</p>
-  <h3>5.2 汚染のおそれの由来の判断</h3><p>調査対象地では、自然由来及び水面埋立て土砂由来に該当する情報が無く、人為等由来に該当する情報が確認された。</p>
-  <div class="cls"><p>①自然由来　⇒ 該当無し</p><p>②水面埋立て土砂由来　⇒ 該当無し</p><p>③人為等由来${k1.length?`<br>　⇒ 第一種特定有害物質（全${k1.length}物質）　${esc(k1.join('　'))}`:''}${k2.length?`<br>　⇒ 第二種特定有害物質（全${k2.length}物質）　${esc(k2.join('　'))}`:''}${k3.length?`<br>　⇒ 第三種特定有害物質（全${k3.length}物質）　${esc(k3.join('　'))}`:''}</p></div>
-  <h2 id="sec-6">６．土壌汚染のおそれの区分の分類</h2>
-  <h3>6.1 基本的な考え方</h3><p>情報の入手・把握において収集した情報により、調査対象地を土壌汚染のおそれがあると認められる特定有害物質の種類ごとに次の三つの区分に分類した。</p>
-  <div class="cls"><p>(1) 土壌汚染が存在するおそれがないと認められる土地</p><p>(2) 土壌汚染が存在するおそれが少ないと認められる土地</p><p>(3) 土壌汚染が存在するおそれが比較的多いと認められる土地</p></div>
-  <h3>6.2 汚染のおそれが生じた場所の位置</h3>${P('clsBasis',c.clsBasis||'調査対象地における汚染のおそれが生じた場所の位置は、過去に盛土による土地地盤高の改変の記録が存在しないこと、関連する情報及び資料等が存在しないことから、現状の地表面地盤面からと判断した。')}
-  <h3>6.3 土壌汚染のおそれの区分の分類</h3>${[[1,k1],[2,k2],[3,k3]].filter(x=>x[1].length).map(x=>sec63(++n,x[0],x[1])).join('')}`;
+    [[1,k1],[2,k2],[3,k3]].filter(x=>x[1].length).forEach(x=>{n++;sheet();
+      if(n===1)add(H('h3','sec-63','6.3　土壌汚染のおそれの区分の分類'));
+      add(`<h4>6.3.${n}　${KIND[x[0]]}</h4><p class="in3">${uList(x[1])}</p><p class="lb">【現況地表面】</p>
+       <p class="in1 sp">(1)土壌汚染が存在するおそれがないと認められる土地<br>　⇒${lst(cl.none)}</p><p class="in1 sp">(2)土壌汚染が存在するおそれが少ないと認められる土地<br>　⇒${lst(cl.low)}</p><p class="in1 sp">(3)土壌汚染が存在するおそれが比較的多いと認められる土地<br>　⇒${lst(cl.high)}</p>
+       <div class="figbox tall" contenteditable="false">公図に区分を着色した図を差し込み<br>（緑：汚染の恐れが少ない土地／赤：汚染の恐れが多い土地）</div><p class="fc l">図 6.3.${n}　土壌汚染のおそれの区分（${KIND[x[0]]}）現況地表面</p>`);});
   }
-  html+=`
-  <h2 id="sec-att">添付資料</h2>
-  <table class="reg" contenteditable="false"><thead><tr><th>区分</th><th>資料</th><th>ページ</th></tr></thead><tbody>${(c.docs||[]).filter(d=>d.cls!=='本文').map(d=>`<tr><td>${esc(d.cls)}</td><td>${d.id.replace(/^[PKX]/,'')}）${esc(d.kind)}${d.name?'　'+esc(d.name):''}</td><td class="c">${d.pages?'p.'+esc(d.pages):'—'}</td></tr>`).join('')||'<tr><td colspan="3" class="c">添付資料は未登録</td></tr>'}</tbody></table>
-  <h2 id="sec-src">出典一覧</h2>
-  <div class="srcs" contenteditable="false">${S.map(x=>`<div class="src"><span class="n">[${x.n}]</span><div><b>${esc(x.title)}</b><span class="k">${esc(x.kind)}</span>${x.verified?(x.url?'<span class="ok">公式出典で確認</span>':''):x.own?'<span class="ng">社内の既往報告書</span>':'<span class="ng">出典未確認</span>'}<br>${esc(x.detail||'')}${x.url?`<br><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url)}</a>`:''}${x.checkedOn&&x.url?`<span class="d">（${esc(x.checkedOn)} 確認）</span>`:''}</div></div>`).join('')}</div>`;
-  return html;
+
+  /* 付録（原本にない、本システムの判定と出典） */
+  sheet('app');
+  add(H('h2','sec-app1','付録１　適用条項の判定'));
+  add(`<div class="pos" contenteditable="false"><p class="in1 ti">${esc(positionText(c))}</p>
+   <table class="reg jt"><thead><tr><th>根拠</th><th>条項</th><th>内容</th><th>判定</th><th>判定の理由</th></tr></thead><tbody>${J.map(r=>`<tr><td class="c">${r.src}</td><td>${esc(r.law.replace(/（.*?）/g,''))} ${esc(r.art)}${r.cite&&r.cite.verified?'':'<span class="unv">出典未確認</span>'}</td><td>${esc(r.title)}</td><td class="c nw${r.st[0]==='yes'||r.st[0]==='maybe'||r.st[0]==='todo'?' b':''}">${esc(r.st[1])}</td><td>${esc(r.why)}</td></tr>`).join('')}</tbody></table>
+   ${ords.filter(o=>(o.extraSubstances||[]).length).map(o=>`<p class="in1">※ ${esc(o.name.replace(/（.*?）/g,''))}は、法の特定有害物質26物質に加えて「${esc(o.extraSubstances.map(x=>x.replace(/（.*$/,'')).join('、'))}」を対象とする。</p>`).join('')}${ords.filter(o=>o.desk&&o.rules.length).slice(0,1).map(o=>`<p class="in1 sm">窓口：${esc((o.desk||'').slice(0,110))}</p>`).join('')}</div>`);
+  if(neg){add(H('h2','sec-app2','付録２　対象物質の選定根拠'));
+    add(`<div class="why" contenteditable="false">${openConcerns(c).map(x=>{const i=INDBY[x.industry];return i?`<p class="in1">・${esc(x.use)}（${esc(i.label)}）<br>${esc(i.why)}<br><span class="sm">根拠：${esc(i.src.type==='none'?'未登録（担当者の選定）':i.src.cite)}</span>${i.official?`<br><span class="sm">公式統計：${esc(i.official.text)}</span>`:''}</p>`:'';}).join('')||'<p class="in1">懸念として扱う利用履歴は登録されていません。</p>'}</div>`);}
+  sheet('app');
+  add(H('h2','sec-src',`付録${neg?'３':'２'}　出典一覧`));
+  add(`<div class="srcs" contenteditable="false">${S.map(x=>`<div class="src"><span class="n">${x.n}</span><div>${esc(x.title)}<span class="k">（${esc(x.kind)}）</span>${x.verified?(x.url?'<span class="ok">公式出典で確認</span>':''):x.own?'<span class="ng">社内の既往報告書</span>':'<span class="ng">出典未確認</span>'}<br>${esc(x.detail||'')}${x.url?`<br><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url)}</a>`:''}${x.checkedOn&&x.url?`　${esc(x.checkedOn)} 確認`:''}</div></div>`).join('')}</div>`);
+
+  /* 添付資料 */
+  sheet('attp',false);
+  const grp=k=>(c.docs||[]).filter(d=>d.cls===k);
+  add(`<h2 class="atth" id="sec-att">添　付　資　料</h2><table class="attl">${['一般公表資料','公的資料','私的資料'].map(k=>`<tr class="hd"><th>${k}</th></tr>${grp(k).length?grp(k).map((d,i)=>`<tr><td>${'ABCDEFGHIJ'[i]}）${esc(d.kind)}${d.pages?`<span class="ev att" contenteditable="false" data-p="${String(d.pages).split('–')[0]}" data-doc="">p.${esc(d.pages)}</span>`:''}</td></tr>`).join(''):'<tr><td>―</td></tr>'}`).join('')}</table>`);
+
+  /* ── 表紙・目次を前に付けて出力 ── */
+  const toc=tocOf(c).map(t=>`<a href="#${t[0]}" class="l${t[2]}" data-go="${t[0]}"><span>${t[1]}</span><i></i><b>${pageOf[t[0]]||''}</b></a>`).join('');
+  const rowsN=Math.max(4,...['一般公表資料','公的資料','私的資料'].map(k=>grp(k).length));
+  const cell=(k,i)=>{const d=grp(k)[i];return d?'ABCDEFGHIJ'[i]+'）'+esc(d.kind):'―';};
+  const front=`<section class="sheet cover" id="sec-cover"><div class="sbody"><div class="ct">${esc(c.title)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${E('reportDate',esc(c.reportDate||toWareki(new Date())))}</div><div class="co">${esc(c.org.name)}</div></div></section>
+   <section class="sheet tocp"><div class="sbody"><h2 class="tc">目　　　次</h2><div class="toc">${toc}</div><p class="lb atl">【添付資料】</p><table class="att"><thead><tr><th>一般公表資料</th><th>公的資料</th><th>私的資料</th></tr></thead><tbody>${Array.from({length:rowsN},(_,i)=>`<tr><td>${cell('一般公表資料',i)}</td><td class="c">${cell('公的資料',i)}</td><td>${cell('私的資料',i)}</td></tr>`).join('')}</tbody></table></div></section>`;
+  return front+sheets.map(sh=>`<section class="sheet ${sh.cls}"><div class="sbody">${sh.body}</div>${sh.notes.length?`<div class="fnotes">${sh.notes.map(nn=>`<div data-n="${nn[0]}"><sup>${nn[0]}</sup><span>${nn[1]}</span></div>`).join('')}</div>`:''}${sh.page?`<div class="pno">${sh.page}</div>`:''}</section>`).join('');
 }
 
 /* ══════════ 資料の読み取り（Claude API） ══════════
@@ -1074,12 +1159,13 @@ async function runDemo(){
     if(!await demoUntil(()=>ST.route==='case',60000))throw new Error('レポートの作成が終わりませんでした');
     /* 7 レポート */
     const sec=async(id,text,ms)=>{demoSay(7,N,text);const el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});demoSpot(el,false);}await demoSleep(ms||3600);};
-    demoSay(7,N,'レポートができました。章立ては既往の報告書と同じです。本文はその場で直せます。');await demoSleep(2600);
-    await sec('sec-12','1.2 何条に当たる調査かを、土壌汚染対策法と川崎市条例で判定しています。',4200);
-    await sec('sec-22','2.2 登記簿から、地番ごとの履歴表と地番の変遷図を作ります。見出しの札が、根拠の資料とページです。',4600);
+    demoSay(7,N,'レポートができました。表紙・目次から、既往の報告書と同じ体裁・章立てです。本文はその場で直せます。');await demoSleep(3200);
+    await sec('sec-11','1.1 調査件名、特定施設・指定区域の有無、筆の一覧です。ページ下の番号と脚注も原本の形です。',4000);
+    await sec('sec-22','2.2 登記簿から、地番ごとの履歴表と地番の変遷図を作ります。小さな札が、根拠の資料とページです。',4600);
     await sec('sec-23','2.3 地形図・住宅地図・空中写真の利用履歴を年次順に並べます。',3200);
     await sec('sec-3','3 所見です。オートバイ・自動車の修理の履歴から「否定できない」と判定しました。',3800);
     await sec('sec-4','4 対象物質の選定と指定基準の表、続く5・6章まで出します。',3800);
+    await sec('sec-app1','付録 何条に当たる調査かを、土壌汚染対策法と川崎市条例で判定しています。原本にない部分は付録に分けました。',4200);
     /* 8 確認・判断・出典 */
     const tab=async(t,text,ms)=>{demoSay(8,N,text);const b=document.querySelector('.tabs2 button[data-t="'+t+'"]');b.click();demoSpot(document.querySelector('.ws-side'),false);await demoSleep(ms||3400);};
     await tab('review','人が見るのは右の「確認」だけです。判読が怪しい箇所、資料どうしの食い違い、未記入だけが出ます。',4200);
@@ -1272,8 +1358,41 @@ function viewCase(v){
   v.querySelectorAll('.tabs2 button').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.t;v.querySelectorAll('.tabs2 button').forEach(x=>x.classList.toggle('on',x===b));drawSide();});
   drawPaper();drawSide();
 }
+/* 紙面をA4の高さで区切り直す。収まらないページは後ろの要素を次のページへ送り、脚注・ページ番号・目次を振り直す */
+function paginate(root){
+  const cover=root.querySelector('.sheet.cover');if(!cover)return;
+  const H=cover.offsetHeight;if(H<900||cover.offsetWidth<780)return;                       /* スマホ幅（流し込み表示）では区切らない */
+  const over=sh=>sh.offsetHeight>H+2;
+  const headish=el=>!!el&&(/^H[234]$/.test(el.tagName)||/(^|\s)(lb|tt|tcap|hb)(\s|$)/.test(el.className||''));
+  const notes={};root.querySelectorAll('.fnotes>div').forEach(d=>{notes[d.dataset.n]=d;});
+  const fix=sh=>{const ns=[...sh.querySelectorAll('.sbody sup.fnr')].map(x=>x.textContent);let f=sh.querySelector('.fnotes');
+    if(!ns.length){if(f)f.remove();return;}
+    if(!f){f=document.createElement('div');f.className='fnotes';sh.insertBefore(f,sh.querySelector('.pno'));}
+    ns.forEach(n=>{if(notes[n])f.appendChild(notes[n]);});};
+  /* 行の結合がない表は、行の途中で次のページへ分ける（見出し行は繰り返す） */
+  const splitRows=(tb,sh,nb)=>{const body=tb.tBodies[0];if(!body||body.rows.length<4||body.querySelector('[rowspan]'))return false;
+    const cl=tb.cloneNode(false);if(tb.tHead)cl.appendChild(tb.tHead.cloneNode(true));const cb=document.createElement('tbody');cl.appendChild(cb);nb.prepend(cl);
+    while(over(sh)&&body.rows.length)cb.prepend(body.rows[body.rows.length-1]);
+    if(!body.rows.length)tb.remove();return true;};
+  let sh=cover.nextElementSibling;
+  for(let guard=0;sh&&guard<300;guard++,sh=sh.nextElementSibling){
+    const body=sh.querySelector('.sbody');
+    if(!body||sh.classList.contains('tocp')||!over(sh)||body.children.length<2)continue;
+    const nx=sh.cloneNode(false);nx.innerHTML='<div class="sbody"></div>'+(sh.querySelector('.pno')?'<div class="pno"></div>':'');sh.after(nx);const nb=nx.firstChild;
+    while(over(sh)&&body.children.length>1){const last=body.lastElementChild;
+      if(!(last.tagName==='TABLE'&&splitRows(last,sh,nb)))nb.prepend(last);
+      fix(nx);fix(sh);}
+    while(body.children.length>1&&headish(body.lastElementChild))nb.prepend(body.lastElementChild);
+    fix(nx);fix(sh);
+  }
+  let n=0;root.querySelectorAll('.sheet>.pno').forEach(e=>{e.textContent=++n;});
+  root.querySelectorAll('.toc a').forEach(a=>{const t=root.querySelector('#'+a.dataset.go);const s=t&&t.closest('.sheet');const pn=s&&s.querySelector('.pno');const b=a.querySelector('b');if(b)b.textContent=pn?pn.textContent:'';});
+}
+/* 紙面の幅が欄に収まらないときは、縮小して全体を見せる */
+function fitPaper(){const p=$('paper');if(!p)return;p.style.zoom='';const w=p.parentElement.clientWidth,full=p.offsetWidth;if(window.innerWidth>860&&w<full)p.style.zoom=(w/full).toFixed(3);}
 function drawPaper(){
-  const c=curCase();const p=$('paper');p.innerHTML=renderReport(c);
+  const c=curCase();const p=$('paper');p.style.zoom='';p.innerHTML=renderReport(c);paginate(p);fitPaper();
+  if(!ST.fontOK&&document.fonts&&document.fonts.load){ST.fontOK=true;document.fonts.load('10.5pt "BIZ UDGothic"','地歴調査A1').then(()=>{if(ST.route==='case'&&$('paper')&&!$('paper').contains(document.activeElement))drawPaper();}).catch(()=>{});}
   $('c-toc').innerHTML=`<div class="tl">目次</div>`+tocOf(c).map(t=>`<a href="#${t[0]}" data-go="${t[0]}" class="l${t[2]}">${t[1]}</a>`).join('');
   document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();const el=document.getElementById(a.dataset.go);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
   p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
@@ -1342,8 +1461,8 @@ function drawSide(keep){
 }
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type+';charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportWord(c){
-  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.unv,.tfig').forEach(e=>e.remove());
-  const css='body{font-family:"MS Mincho","Yu Mincho",serif;font-size:10.5pt;line-height:1.7}h2{font-size:13pt;margin-top:18pt}h3{font-size:11pt}h4{font-size:10.5pt}table{border-collapse:collapse;width:100%}th,td{border:1px solid #555;padding:3pt 5pt;font-size:9.5pt;vertical-align:top}th{background:#ddd}.cover{text-align:center;page-break-after:always;padding-top:120pt}.ct{font-size:18pt}.ct2{font-size:16pt;margin-top:60pt}.cd{margin-top:80pt}.co{margin-top:40pt;font-size:13pt}.toc a{display:block;color:#000;text-decoration:none}.shoken{border:1.5pt solid #333}.sh{background:#ccc;text-align:center}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt}svg{display:none}';
+  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.todo,.pno,.toc i,.toc b').forEach(e=>e.remove());
+  const css='body{font-family:"ＭＳ ゴシック","MS Gothic","BIZ UDGothic",sans-serif;font-size:10.5pt;line-height:1.7}h2{font-size:11.5pt;font-weight:normal;margin:20pt 0 0}h3,h4{font-size:10.5pt;font-weight:normal;margin:16pt 0 0 7pt}p{margin:0}.in1{margin-left:10pt}.in2,.in3,.law{margin-left:33pt}.hang{margin-left:44pt;text-indent:-10pt}.ti{text-indent:10pt}.sp{margin-top:9pt}table{border-collapse:collapse;width:100%;margin:6pt 0 9pt}th,td{border:1px solid #000;padding:2pt 5pt;font-size:8pt;vertical-align:middle;font-weight:normal}th{background:#d9d9d9;text-align:center}td.c,td.v{text-align:center}.yn td{border:0;border-top:1px solid #000}.std td,.std th{font-size:7.5pt}.sheet{page-break-after:always}.cover{text-align:center;font-size:16pt}.ct{margin-top:90pt}.ct2{margin-top:180pt}.cd{margin-top:120pt}.co{margin-top:120pt}.tc,.fc,.tcap,.atth{text-align:center}.toc a{display:block;color:#000;text-decoration:none}.toc a.l1,.toc a.l2{margin-left:11pt;font-size:9.5pt}.shoken{border:1.5pt solid #000}.sh{background:#bfbfbf;text-align:center;font-weight:bold}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt;font-size:9.5pt}.fnotes{font-size:8pt;border-top:1px solid #000;margin-top:12pt;padding-top:3pt}.fnotes sup{font-size:6pt}sup.fnr{font-size:6.5pt}.figbox{border:1px solid #000;padding:60pt 10pt;text-align:center;font-size:8.5pt;color:#777}.srcs,.sm{font-size:8pt}svg{display:none}';
   download(`${c.title}_地歴調査報告書.doc`,`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>${css}</style></head><body>${body.innerHTML}</body></html>`,'application/msword');
   toast('Word形式で保存しました（体裁はWordで調整できます）');
 }
@@ -1404,6 +1523,7 @@ $('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
 if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
 render();
 if(location.hash==='#demo')setTimeout(runDemo,500);
+window.addEventListener('resize',fitPaper);
 
 </script>
 </body>

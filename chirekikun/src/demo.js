@@ -67,12 +67,13 @@ async function runDemo(){
     if(!await demoUntil(()=>ST.route==='case',60000))throw new Error('レポートの作成が終わりませんでした');
     /* 7 レポート */
     const sec=async(id,text,ms)=>{demoSay(7,N,text);const el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});demoSpot(el,false);}await demoSleep(ms||3600);};
-    demoSay(7,N,'レポートができました。章立ては既往の報告書と同じです。本文はその場で直せます。');await demoSleep(2600);
-    await sec('sec-12','1.2 何条に当たる調査かを、土壌汚染対策法と川崎市条例で判定しています。',4200);
-    await sec('sec-22','2.2 登記簿から、地番ごとの履歴表と地番の変遷図を作ります。見出しの札が、根拠の資料とページです。',4600);
+    demoSay(7,N,'レポートができました。表紙・目次から、既往の報告書と同じ体裁・章立てです。本文はその場で直せます。');await demoSleep(3200);
+    await sec('sec-11','1.1 調査件名、特定施設・指定区域の有無、筆の一覧です。ページ下の番号と脚注も原本の形です。',4000);
+    await sec('sec-22','2.2 登記簿から、地番ごとの履歴表と地番の変遷図を作ります。小さな札が、根拠の資料とページです。',4600);
     await sec('sec-23','2.3 地形図・住宅地図・空中写真の利用履歴を年次順に並べます。',3200);
     await sec('sec-3','3 所見です。オートバイ・自動車の修理の履歴から「否定できない」と判定しました。',3800);
     await sec('sec-4','4 対象物質の選定と指定基準の表、続く5・6章まで出します。',3800);
+    await sec('sec-app1','付録 何条に当たる調査かを、土壌汚染対策法と川崎市条例で判定しています。原本にない部分は付録に分けました。',4200);
     /* 8 確認・判断・出典 */
     const tab=async(t,text,ms)=>{demoSay(8,N,text);const b=document.querySelector('.tabs2 button[data-t="'+t+'"]');b.click();demoSpot(document.querySelector('.ws-side'),false);await demoSleep(ms||3400);};
     await tab('review','人が見るのは右の「確認」だけです。判読が怪しい箇所、資料どうしの食い違い、未記入だけが出ます。',4200);

@@ -173,8 +173,41 @@ function viewCase(v){
   v.querySelectorAll('.tabs2 button').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.t;v.querySelectorAll('.tabs2 button').forEach(x=>x.classList.toggle('on',x===b));drawSide();});
   drawPaper();drawSide();
 }
+/* 紙面をA4の高さで区切り直す。収まらないページは後ろの要素を次のページへ送り、脚注・ページ番号・目次を振り直す */
+function paginate(root){
+  const cover=root.querySelector('.sheet.cover');if(!cover)return;
+  const H=cover.offsetHeight;if(H<900||cover.offsetWidth<780)return;                       /* スマホ幅（流し込み表示）では区切らない */
+  const over=sh=>sh.offsetHeight>H+2;
+  const headish=el=>!!el&&(/^H[234]$/.test(el.tagName)||/(^|\s)(lb|tt|tcap|hb)(\s|$)/.test(el.className||''));
+  const notes={};root.querySelectorAll('.fnotes>div').forEach(d=>{notes[d.dataset.n]=d;});
+  const fix=sh=>{const ns=[...sh.querySelectorAll('.sbody sup.fnr')].map(x=>x.textContent);let f=sh.querySelector('.fnotes');
+    if(!ns.length){if(f)f.remove();return;}
+    if(!f){f=document.createElement('div');f.className='fnotes';sh.insertBefore(f,sh.querySelector('.pno'));}
+    ns.forEach(n=>{if(notes[n])f.appendChild(notes[n]);});};
+  /* 行の結合がない表は、行の途中で次のページへ分ける（見出し行は繰り返す） */
+  const splitRows=(tb,sh,nb)=>{const body=tb.tBodies[0];if(!body||body.rows.length<4||body.querySelector('[rowspan]'))return false;
+    const cl=tb.cloneNode(false);if(tb.tHead)cl.appendChild(tb.tHead.cloneNode(true));const cb=document.createElement('tbody');cl.appendChild(cb);nb.prepend(cl);
+    while(over(sh)&&body.rows.length)cb.prepend(body.rows[body.rows.length-1]);
+    if(!body.rows.length)tb.remove();return true;};
+  let sh=cover.nextElementSibling;
+  for(let guard=0;sh&&guard<300;guard++,sh=sh.nextElementSibling){
+    const body=sh.querySelector('.sbody');
+    if(!body||sh.classList.contains('tocp')||!over(sh)||body.children.length<2)continue;
+    const nx=sh.cloneNode(false);nx.innerHTML='<div class="sbody"></div>'+(sh.querySelector('.pno')?'<div class="pno"></div>':'');sh.after(nx);const nb=nx.firstChild;
+    while(over(sh)&&body.children.length>1){const last=body.lastElementChild;
+      if(!(last.tagName==='TABLE'&&splitRows(last,sh,nb)))nb.prepend(last);
+      fix(nx);fix(sh);}
+    while(body.children.length>1&&headish(body.lastElementChild))nb.prepend(body.lastElementChild);
+    fix(nx);fix(sh);
+  }
+  let n=0;root.querySelectorAll('.sheet>.pno').forEach(e=>{e.textContent=++n;});
+  root.querySelectorAll('.toc a').forEach(a=>{const t=root.querySelector('#'+a.dataset.go);const s=t&&t.closest('.sheet');const pn=s&&s.querySelector('.pno');const b=a.querySelector('b');if(b)b.textContent=pn?pn.textContent:'';});
+}
+/* 紙面の幅が欄に収まらないときは、縮小して全体を見せる */
+function fitPaper(){const p=$('paper');if(!p)return;p.style.zoom='';const w=p.parentElement.clientWidth,full=p.offsetWidth;if(window.innerWidth>860&&w<full)p.style.zoom=(w/full).toFixed(3);}
 function drawPaper(){
-  const c=curCase();const p=$('paper');p.innerHTML=renderReport(c);
+  const c=curCase();const p=$('paper');p.style.zoom='';p.innerHTML=renderReport(c);paginate(p);fitPaper();
+  if(!ST.fontOK&&document.fonts&&document.fonts.load){ST.fontOK=true;document.fonts.load('10.5pt "BIZ UDGothic"','地歴調査A1').then(()=>{if(ST.route==='case'&&$('paper')&&!$('paper').contains(document.activeElement))drawPaper();}).catch(()=>{});}
   $('c-toc').innerHTML=`<div class="tl">目次</div>`+tocOf(c).map(t=>`<a href="#${t[0]}" data-go="${t[0]}" class="l${t[2]}">${t[1]}</a>`).join('');
   document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();const el=document.getElementById(a.dataset.go);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
   p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
@@ -243,8 +276,8 @@ function drawSide(keep){
 }
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type+';charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportWord(c){
-  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.unv,.tfig').forEach(e=>e.remove());
-  const css='body{font-family:"MS Mincho","Yu Mincho",serif;font-size:10.5pt;line-height:1.7}h2{font-size:13pt;margin-top:18pt}h3{font-size:11pt}h4{font-size:10.5pt}table{border-collapse:collapse;width:100%}th,td{border:1px solid #555;padding:3pt 5pt;font-size:9.5pt;vertical-align:top}th{background:#ddd}.cover{text-align:center;page-break-after:always;padding-top:120pt}.ct{font-size:18pt}.ct2{font-size:16pt;margin-top:60pt}.cd{margin-top:80pt}.co{margin-top:40pt;font-size:13pt}.toc a{display:block;color:#000;text-decoration:none}.shoken{border:1.5pt solid #333}.sh{background:#ccc;text-align:center}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt}svg{display:none}';
+  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.todo,.pno,.toc i,.toc b').forEach(e=>e.remove());
+  const css='body{font-family:"ＭＳ ゴシック","MS Gothic","BIZ UDGothic",sans-serif;font-size:10.5pt;line-height:1.7}h2{font-size:11.5pt;font-weight:normal;margin:20pt 0 0}h3,h4{font-size:10.5pt;font-weight:normal;margin:16pt 0 0 7pt}p{margin:0}.in1{margin-left:10pt}.in2,.in3,.law{margin-left:33pt}.hang{margin-left:44pt;text-indent:-10pt}.ti{text-indent:10pt}.sp{margin-top:9pt}table{border-collapse:collapse;width:100%;margin:6pt 0 9pt}th,td{border:1px solid #000;padding:2pt 5pt;font-size:8pt;vertical-align:middle;font-weight:normal}th{background:#d9d9d9;text-align:center}td.c,td.v{text-align:center}.yn td{border:0;border-top:1px solid #000}.std td,.std th{font-size:7.5pt}.sheet{page-break-after:always}.cover{text-align:center;font-size:16pt}.ct{margin-top:90pt}.ct2{margin-top:180pt}.cd{margin-top:120pt}.co{margin-top:120pt}.tc,.fc,.tcap,.atth{text-align:center}.toc a{display:block;color:#000;text-decoration:none}.toc a.l1,.toc a.l2{margin-left:11pt;font-size:9.5pt}.shoken{border:1.5pt solid #000}.sh{background:#bfbfbf;text-align:center;font-weight:bold}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt;font-size:9.5pt}.fnotes{font-size:8pt;border-top:1px solid #000;margin-top:12pt;padding-top:3pt}.fnotes sup{font-size:6pt}sup.fnr{font-size:6.5pt}.figbox{border:1px solid #000;padding:60pt 10pt;text-align:center;font-size:8.5pt;color:#777}.srcs,.sm{font-size:8pt}svg{display:none}';
   download(`${c.title}_地歴調査報告書.doc`,`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>${css}</style></head><body>${body.innerHTML}</body></html>`,'application/msword');
   toast('Word形式で保存しました（体裁はWordで調整できます）');
 }
@@ -305,3 +338,4 @@ $('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
 if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
 render();
 if(location.hash==='#demo')setTimeout(runDemo,500);
+window.addEventListener('resize',fitPaper);

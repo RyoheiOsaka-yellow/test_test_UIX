@@ -110,7 +110,7 @@ function reviewItems(c){
   const open=openConcerns(c);
   (c.concerns||[]).filter(x=>x.pending).forEach(x=>{const i=INDBY[x.industry]||{};add('warn','利用履歴',`「${x.use}」（${i.label||''}）：${i.why||''}「判断」で、汚染のおそれとして扱うかを決める。`,'sec-23',x.ref);});
   const hInd=[...new Set((c.hearing||[]).flatMap(h=>matchInd(h.text).filter(i=>!i.soft&&!(c.concerns||[]).some(x=>x.industry===i.id)).map(i=>i.label)))];
-  judge(c).filter(r=>r.st[0]==='maybe').forEach(r=>add('warn','適用条項',`${r.law.replace(/（.*?）/g,'')} ${r.art}（${r.title}）：${r.st[1]}。`,'sec-12'));
+  judge(c).filter(r=>r.st[0]==='maybe').forEach(r=>add('warn','適用条項',`${r.law.replace(/（.*?）/g,'')} ${r.art}（${r.title}）：${r.st[1]}。`,'sec-app1'));
   if(hInd.length&&!(c.concerns||[]).length)add('info','ヒアリング',`聴取内容に「${hInd.join('」「')}」に関わる語がある。利用の有無を読み、該当するなら「判断」で懸念を追加する。`,'sec-24');
   if(open.length&&!(c.hearing||[]).length)add('warn','ヒアリング','事業場としての利用履歴があるが、ヒアリングの記録がない。','sec-24');
   if(c.verdict&&c.verdict.level==='低い'&&open.length)add('bad','所見',`未解消の懸念（${open.map(x=>x.use).join('、')}）があるのに所見が「低い」。`,'sec-3');
