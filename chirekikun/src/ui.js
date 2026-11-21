@@ -38,7 +38,7 @@ function viewLogin(v){
     <div class="err" id="l-err" role="alert"></div>
     <button class="btn pri full lg" type="submit">ログイン</button>
     <button class="btn full" type="button" id="l-demo">デモ用アカウントで入る</button>
-    <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモを再生する</button>
+    <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモ① 資料を共有してレポートを作る</button><button class="btn full" type="button" id="l-play2">デモ② 資料のない土地でレポートを作る</button>
     <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。</p>
    </form></div></div>`;
   const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('user',ST.user);store.set('lastMail',mail);loadCases();aiDetect().then(()=>go('cases'));};
@@ -46,7 +46,7 @@ function viewLogin(v){
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){$('l-err').textContent='メールアドレスの形式を確認してください。';$('l-mail').focus();return;}
     if(!p){$('l-err').textContent='パスワードを入力してください。';$('l-pass').focus();return;}login(m);};
   $('l-demo').onclick=()=>login('demo@chirekikun.example');
-  $('l-play').onclick=()=>runDemo();
+  $('l-play').onclick=()=>runDemo();$('l-play2').onclick=()=>runDemo('nofile');
 }
 
 /* ── 案件一覧 ── */
@@ -54,13 +54,13 @@ function viewCases(v){
   const rows=ST.cases.map(c=>{const R=reviewItems(c).filter(r=>!r.done&&r.sev!=='info');const ords=ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.length);const lv=c.verdict?c.verdict.level:'—';
     return `<button class="crow" data-id="${c.id}" type="button"><span class="ct"><b>${esc(c.title)}</b><small>${fmtArea(c.site.area)}㎡・${(c.site.parcels||[]).length}筆${c.sample?'・<i>サンプル（既往報告書から再構成）</i>':c.demo?'・<i>デモで作成</i>':''}</small></span>
      <span class="cj"><em>${esc(c.site.pref||'—')}${c.site.city?' '+esc(c.site.city.replace(/^(.+?市).+区$/,'$1')):''}</em>${ords.map(o=>`<small>${esc(o.name.replace(/（.*?）/g,''))}</small>`).join('')||'<small class="mute">条例の登録なし</small>'}</span>
-     <span><span class="lvl ${lv==='低い'?'low':lv==='否定できない'?'high':'none'}">${esc(lv)}</span></span>
+     <span><span class="lvl ${lvlCls(lv)}">${esc(lv)}</span></span>
      <span class="cn ${R.length?'':'zero'}">${R.length?`確認 <b>${R.length}</b> 件`:'確認済み'}</span><span class="cd num">${esc(c.updated||'')}</span></button>`;}).join('');
-  v.innerHTML=`<div class="wrap"><div class="pagehead"><div><h1>案件</h1><p>資料を共有した案件ごとに、報告書の下書きと確認が必要な点をまとめています。</p></div><div class="hbtns"><button class="btn lg" id="b-demo" type="button">デモを再生する</button><button class="btn pri lg" id="b-new" type="button">新しい調査を始める</button></div></div>
+  v.innerHTML=`<div class="wrap"><div class="pagehead"><div><h1>案件</h1><p>資料を共有した案件ごとに、報告書の下書きと確認が必要な点をまとめています。</p></div><div class="hbtns"><button class="btn lg" id="b-demo" type="button">デモ① 資料あり</button><button class="btn lg" id="b-demo2" type="button">デモ② 資料なし</button><button class="btn pri lg" id="b-new" type="button">新しい調査を始める</button></div></div>
    <div class="clist"><div class="chead"><span>案件</span><span>自治体・照合する条例</span><span>所見</span><span>確認が必要な点</span><span>更新</span></div>${rows||'<div class="empty">案件はまだありません。「新しい調査を始める」から作成します。</div>'}</div>
    <p class="note">サンプルの4件は、共有いただいた既往報告書PDFを読み取り、同じ章立てで再構成したものです。原本との違い（誤記・転記ミスの疑い）は各案件の「確認」に出ます。</p></div>`;
   $('b-new').onclick=()=>{ST.files=[];ST.draft=null;go('new');};
-  $('b-demo').onclick=()=>runDemo();
+  $('b-demo').onclick=()=>runDemo();$('b-demo2').onclick=()=>runDemo('nofile');
   v.querySelectorAll('.crow').forEach(b=>b.onclick=()=>{ST.tab='review';go('case',b.dataset.id);});
 }
 
@@ -83,7 +83,7 @@ function viewNew(v){
     <label class="drop" id="n-drop"><b>PDF・画像をここにドロップ</b>、またはクリックして選択<br><small>登記簿謄本・閉鎖謄本・公図・住宅地図・地形図・空中写真・聴取記録・過去の報告書など。種類は自動で判別します。まとめて入れて構いません。</small><input type="file" id="n-file" multiple accept="application/pdf,image/*"></label>
     <div class="files" id="n-files"></div>
     <div class="aistate" id="n-ai"></div></div></div>
-  <div class="cta"><button class="btn pri lg" id="n-run" type="button">レポートを作成する</button><span class="note" id="n-msg">資料がまだ無くても、章立てと法令・条例の判定までを作成できます。</span></div></div>`;
+  <div class="cta"><button class="btn pri lg" id="n-run" type="button">レポートを作成する</button><span class="note" id="n-msg">資料がまだ無くても、公開データで分かる範囲を作成し、未取得の箇所は赤枠で示します。</span></div></div>`;
   const sync=()=>{d.addr=$('n-addr').value.trim();d.chiban=$('n-chiban').value.trim();d.area=$('n-area').value;d.note=$('n-note').value;d.period=$('n-period').value;d.changeArea=$('n-change').value;};
   const juris=()=>{sync();const pref=prefOf(d.addr),city=cityOf(d.addr);const os=ordFor(pref,city);
     $('n-juris').innerHTML=!pref?'':`<span class="jl">照合する法令・条例</span><span class="chip2">土壌汚染対策法</span>${os.filter(o=>o.rules&&o.rules.length).map(o=>`<span class="chip2 ord">${esc(o.name.replace(/（.*?）/g,''))}${ordVerified(o)?'':'<i>出典確認中</i>'}</span>`).join('')||`<span class="chip2 mute">${esc(pref)}${city?esc(city):''}：独自の調査義務を定める条例の登録なし</span>`}`;};
@@ -148,7 +148,7 @@ async function runCreate(d){
           :`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高差は${Math.max(0,g.drop).toFixed(1)}mとほぼ平坦である。地形からは流向を特定できないため、周辺の河川・海域の位置関係から判断する必要がある。`;mark('gw','ok',g.dir?`${g.dir}向き（標高差 ${g.drop.toFixed(1)}m）`:'平坦のため特定できず');}else mark('gw','skip','標高を取得できず');}catch(e){mark('gw','skip','標高APIに接続できず');}}
     else mark('gw',c.site.gwText?'ok':'skip',c.site.gwText?'資料の記載を採用':'位置が未設定');
     mark('draft','run');await tick(250);mark('draft','ok',c.verdict?`所見：${c.verdict.level}`:'');
-    if(allDemo){c.demo=true;ST.cases=ST.cases.filter(x=>!x.demo);}
+    if(allDemo||(DEMO.on&&!files.length)){c.demo=true;c.demoKind=files.length?'files':'nofile';ST.cases=ST.cases.filter(x=>!x.demo||(x.demoKind||'files')!==c.demoKind);}
     ST.cases.unshift(c);saveCases();ST.files=[];ST.draft=null;await tick(350);ST.tab='review';go('case',c.id);toast('レポートを作成しました。右の「確認」に、人の目が必要な点だけを出しています');
   }catch(e){$('p-err').innerHTML=`作成に失敗しました：${esc(e.message)}　<button class="btn mini" type="button" onclick="go('new')">入力に戻る</button>`;}
 }
@@ -159,16 +159,16 @@ function viewCase(v){
   const c=curCase();if(!c){go('cases');return;}
   if(!c.verdict)c.verdict=verdictOf(c);
   const lv=c.verdict.level;
-  v.innerHTML=`<div class="ws-head"><div class="wh-in"><button class="btn mini" id="c-back" type="button">案件一覧</button><div class="wt"><h1>${esc(c.title)}</h1><span class="lvl ${lv==='低い'?'low':'high'}">${esc(lv)}</span>${c.sample?'<span class="tag">サンプル</span>':''}</div>
+  v.innerHTML=`<div class="ws-head"><div class="wh-in"><button class="btn mini" id="c-back" type="button">案件一覧</button><div class="wt"><h1>${esc(c.title)}</h1><span class="lvl ${lvlCls(lv)}">${esc(lv)}</span>${c.sample?'<span class="tag">サンプル</span>':''}</div>
     <div class="wa"><button class="btn" id="c-word" type="button">Wordで保存</button><button class="btn pri" id="c-pdf" type="button">PDFで出力</button></div></div></div>
-   <div class="ws"><nav class="ws-toc" id="c-toc" aria-label="目次"></nav><div class="ws-paper"><article class="paper" id="paper"></article></div>
+   <div class="ws"><nav class="ws-toc" id="c-toc" aria-label="目次"></nav><div class="ws-paper"><div class="gapbar" id="c-gaps" hidden></div><article class="paper" id="paper"></article></div>
     <aside class="ws-side"><div class="tabs2" role="tablist">${[['review','確認'],['judge','判断'],['src','出典'],['docs','資料']].map(t=>`<button type="button" role="tab" data-t="${t[0]}" class="${ST.tab===t[0]?'on':''}">${t[1]}<i id="tb-${t[0]}"></i></button>`).join('')}</div><div class="side-body" id="side"></div></aside></div>`;
   $('c-back').onclick=()=>go('cases');
   $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
     const imgs=[...$('printarea').querySelectorAll('img')].filter(i=>!i.complete);const b=$('c-pdf');
     if(!imgs.length){window.print();return;}
     b.disabled=true;b.textContent='図を読み込み中…';
-    Promise.race([Promise.all(imgs.map(i=>new Promise(r=>{i.onload=i.onerror=r;}))),new Promise(r=>setTimeout(r,6000))]).then(()=>{b.disabled=false;b.textContent='PDFで出力';window.print();});};
+    Promise.race([Promise.all(imgs.map(i=>new Promise(r=>{i.addEventListener('load',r);i.addEventListener('error',r);}))),new Promise(r=>setTimeout(r,6000))]).then(()=>{b.disabled=false;b.textContent='PDFで出力';window.print();});};
   $('c-word').onclick=()=>exportWord(c);
   v.querySelectorAll('.tabs2 button').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.t;v.querySelectorAll('.tabs2 button').forEach(x=>x.classList.toggle('on',x===b));drawSide();});
   drawPaper();drawSide();
@@ -209,8 +209,9 @@ function drawPaper(){
   const c=curCase();const p=$('paper');p.style.zoom='';p.innerHTML=renderReport(c);paginate(p);fitPaper();
   if(!ST.fontOK&&document.fonts&&document.fonts.load){ST.fontOK=true;document.fonts.load('10.5pt "BIZ UDGothic"','地歴調査A1').then(()=>{if(ST.route==='case'&&$('paper')&&!$('paper').contains(document.activeElement))drawPaper();}).catch(()=>{});}
   $('c-toc').innerHTML=`<div class="tl">目次</div>`+tocOf(c).map(t=>`<a href="#${t[0]}" data-go="${t[0]}" class="l${t[2]}">${t[1]}</a>`).join('');
+  const gs=gapsOf(c);$('c-gaps').hidden=!gs.length;$('c-gaps').innerHTML=gs.length?`<b>未取得の項目が${gs.length}件あります。</b>本文では赤枠で示し、取得先を添えています。資料を「資料」タブに入れると埋まります。<div>${gs.map(x=>`<a href="#${x.sec}" data-go="${x.sec}">${esc(x.label.replace(/（.*$/,''))}</a>`).join('')}</div>`:'';
   document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();const el=document.getElementById(a.dataset.go);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
-  p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
+  p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();if(el.dataset.ph!=null&&(!val||val===el.dataset.ph)){el.textContent=el.dataset.ph;return;}setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
   p.querySelectorAll('.ev').forEach(el=>el.onclick=()=>openPage(c,+el.dataset.p||1,el.dataset.doc));
 }
 function drawSide(keep){
@@ -232,7 +233,7 @@ function drawSide(keep){
      <div class="jg"><h3>懸念となる利用履歴</h3>${c.concerns.length?c.concerns.map((x,i)=>`<div class="cc ${x.resolved?'res':''}"><b>${esc(x.use)}</b><small>${esc(x.period||'')}　${esc(INDBY[x.industry]?INDBY[x.industry].label:'')}<br>根拠：${esc(x.basis||'')}</small>
         ${x.pending?'<small class="pend">確認待ち：規模・設備を確かめて、扱うかどうかを決めてください。</small>':''}<label class="ck"><input type="checkbox" data-ci="${i}" ${x.resolved?'':'checked'}> 汚染のおそれとして扱う</label>${x.resolved?`<input class="rn" data-cn="${i}" placeholder="扱わない理由（所見に入ります）" value="${esc(x.resolveNote||'')}">`:''}</div>`).join(''):'<p class="mute">事業場としての利用履歴は見つかっていません。</p>'}
       <div class="cadd"><select id="j-ind" aria-label="業種">${IND.map(i=>`<option value="${i.id}">${esc(i.label)}</option>`).join('')}</select><input id="j-use" class="rn" placeholder="利用の内容（例：○○鍍金工業所、昭和40年頃）"><button class="btn mini" type="button" id="j-add">懸念を追加</button></div></div>
-     <div class="jg"><h3>所見</h3><p class="vd"><span class="lvl ${c.verdict.level==='低い'?'low':'high'}">${esc(c.verdict.level)}</span> 懸念の扱いを変えると所見・4～6章を組み直します。</p><button class="btn mini" type="button" id="j-redo">所見の文章を判定から書き直す</button></div>
+     <div class="jg"><h3>所見</h3><p class="vd"><span class="lvl ${lvlCls(c.verdict.level)}">${esc(c.verdict.level)}</span> 懸念の扱いを変えると所見・4～6章を組み直します。</p><button class="btn mini" type="button" id="j-redo">所見の文章を判定から書き直す</button></div>
      ${c.verdict.level==='否定できない'?`<div class="jg"><h3>試料採取等対象物質</h3>${[1,2,3].map(k=>`<div class="sk"><small>${KIND[k]}</small>${SUB.filter(s=>s.k===k).map(s=>`<button type="button" class="sb2 ${sel.has(s.id)?'on':''}" data-s="${s.id}">${s.name.replace(/及びその化合物|化合物/,'')}</button>`).join('')}</div>`).join('')}</div>
      <div class="jg"><h3>おそれの区分（筆ごと）</h3>${(all.length?all:['敷地全域']).map(p=>{const cur=cl.high.includes(p)?'high':cl.none.includes(p)?'none':'low';return `<div class="cp"><span>${esc(p)}</span><select data-p="${esc(p)}"><option value="none" ${cur==='none'?'selected':''}>おそれがない</option><option value="low" ${cur==='low'?'selected':''}>おそれが少ない</option><option value="high" ${cur==='high'?'selected':''}>比較的多い</option></select></div>`;}).join('')}</div>`:''}
      <div class="jg"><h3>条例に基づく確認結果</h3>${ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.some(r=>r.trigger==='ledger'||r.trigger==='zone')).map(o=>{const rec=c.regs.ord.find(x=>x.name===o.name||o.name.indexOf(x.name)===0);const r=o.rules.find(r=>r.trigger==='ledger'||r.trigger==='zone');return `<div class="cp"><span>${esc(o.name.replace(/（.*?）/g,''))}<small>${esc(r.heading||r.art)}</small></span><select data-o="${esc(o.name)}" data-item="${esc(r.heading||'台帳・区域')}"><option value="">未確認</option><option ${rec&&rec.v==='なし'?'selected':''}>なし</option><option ${rec&&rec.v==='あり'?'selected':''}>あり</option></select></div>`;}).join('')||'<p class="mute">この地域に、台帳・区域の確認を要する条例の登録はありません。</p>'}</div>`;
@@ -243,7 +244,7 @@ function drawSide(keep){
         if(force||!c.substancesManual){const s=selectSubstances(c);c.substances=s.ids;c.extraSubstances=s.extra;c.substancesManual=false;}
         const cl=c.classification;if(c.verdict.level==='否定できない'&&!(cl.none.length+cl.low.length+cl.high.length)){cl.low=(c.site.parcels||[]).map(p=>p.chiban);if(!cl.low.length)cl.low=['敷地全域'];}}
       c.updated=today();saveCases();const y=window.scrollY;drawPaper();drawSide();window.scrollTo(0,y);
-      const lv=c.verdict.level;const h=document.querySelector('.ws-head .lvl');if(h){h.textContent=lv;h.className='lvl '+(lv==='低い'?'low':'high');}};
+      const lv=c.verdict.level;const h=document.querySelector('.ws-head .lvl');if(h){h.textContent=lv;h.className='lvl '+lvlCls(lv);}};
     $('j-purpose').onchange=e=>{rq.purpose=e.target.value;redo();};$('j-chg').onchange=e=>{rq.formChange=e.target.checked;redo();};if($('j-area'))$('j-area').onchange=e=>{rq.changeArea=+e.target.value||0;redo();};
     side.querySelectorAll('[data-ci]').forEach(b=>b.onchange=()=>{const x=c.concerns[+b.dataset.ci];x.resolved=!b.checked;x.pending=false;redo(true);});
     side.querySelectorAll('[data-cn]').forEach(b=>b.onchange=()=>{const x=c.concerns[+b.dataset.cn];x.resolveNote=b.value;x.pending=false;redo(true);});
@@ -276,8 +277,8 @@ function drawSide(keep){
 }
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type+';charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportWord(c){
-  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.todo,.pno,.toc i,.toc b').forEach(e=>e.remove());
-  const css='body{font-family:"ＭＳ ゴシック","MS Gothic","BIZ UDGothic",sans-serif;font-size:10.5pt;line-height:1.7}h2{font-size:11.5pt;font-weight:normal;margin:20pt 0 0}h3,h4{font-size:10.5pt;font-weight:normal;margin:16pt 0 0 7pt}p{margin:0}.in1{margin-left:10pt}.in2,.in3,.law{margin-left:33pt}.hang{margin-left:44pt;text-indent:-10pt}.ti{text-indent:10pt}.sp{margin-top:9pt}table{border-collapse:collapse;width:100%;margin:6pt 0 9pt}th,td{border:1px solid #000;padding:2pt 5pt;font-size:8pt;vertical-align:middle;font-weight:normal}th{background:#d9d9d9;text-align:center}td.c,td.v{text-align:center}.yn td{border:0;border-top:1px solid #000}.std td,.std th{font-size:7.5pt}.sheet{page-break-after:always}.cover{text-align:center;font-size:16pt}.ct{margin-top:90pt}.ct2{margin-top:180pt}.cd{margin-top:120pt}.co{margin-top:120pt}.tc,.fc,.tcap,.atth{text-align:center}.toc a{display:block;color:#000;text-decoration:none}.toc a.l1,.toc a.l2{margin-left:11pt;font-size:9.5pt}.shoken{border:1.5pt solid #000}.sh{background:#bfbfbf;text-align:center;font-weight:bold}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt;font-size:9.5pt}.fnotes{font-size:8pt;border-top:1px solid #000;margin-top:12pt;padding-top:3pt}.fnotes sup{font-size:6pt}sup.fnr{font-size:6.5pt}.figbox{border:1px solid #000;padding:60pt 10pt;text-align:center;font-size:8.5pt;color:#777}.srcs,.sm{font-size:8pt}svg{display:none}';
+  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.phg,.todo,.pno,.toc i,.toc b').forEach(e=>e.remove());
+  const css='body{font-family:"ＭＳ ゴシック","MS Gothic","BIZ UDGothic",sans-serif;font-size:10.5pt;line-height:1.7}h2{font-size:11.5pt;font-weight:normal;margin:20pt 0 0}h3,h4{font-size:10.5pt;font-weight:normal;margin:16pt 0 0 7pt}p{margin:0}.in1{margin-left:10pt}.in2,.in3,.law{margin-left:33pt}.hang{margin-left:44pt;text-indent:-10pt}.ti{text-indent:10pt}.sp{margin-top:9pt}table{border-collapse:collapse;width:100%;margin:6pt 0 9pt}th,td{border:1px solid #000;padding:2pt 5pt;font-size:8pt;vertical-align:middle;font-weight:normal}th{background:#d9d9d9;text-align:center}td.c,td.v{text-align:center}.yn td{border:0;border-top:1px solid #000}.std td,.std th{font-size:7.5pt}.sheet{page-break-after:always}.cover{text-align:center;font-size:16pt}.ct{margin-top:90pt}.ct2{margin-top:180pt}.cd{margin-top:120pt}.co{margin-top:120pt}.tc,.fc,.tcap,.atth{text-align:center}.toc a{display:block;color:#000;text-decoration:none}.toc a.l1,.toc a.l2{margin-left:11pt;font-size:9.5pt}.shoken{border:1.5pt solid #000}.sh{background:#bfbfbf;text-align:center;font-weight:bold}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt;font-size:9.5pt}.fnotes{font-size:8pt;border-top:1px solid #000;margin-top:12pt;padding-top:3pt}.fnotes sup{font-size:6pt}sup.fnr{font-size:6.5pt}.figbox{border:1px solid #000;padding:60pt 10pt;text-align:center;font-size:8.5pt;color:#777}.srcs,.sm{font-size:8pt}.miss{border:1.5pt solid #d0021b;color:#a30015;padding:6pt;font-size:8.5pt;margin:8pt 0}.miss b{background:#d0021b;color:#fff}.ngv,.ngp,.draft{color:#d0021b}svg{display:none}';
   download(`${c.title}_地歴調査報告書.doc`,`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>${css}</style></head><body>${body.innerHTML}</body></html>`,'application/msword');
   toast('Word形式で保存しました（体裁はWordで調整できます）');
 }
@@ -338,4 +339,5 @@ $('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
 if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
 render();
 if(location.hash==='#demo')setTimeout(runDemo,500);
+if(location.hash==='#demo2')setTimeout(()=>runDemo('nofile'),500);
 window.addEventListener('resize',fitPaper);

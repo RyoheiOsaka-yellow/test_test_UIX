@@ -162,7 +162,7 @@ h1,h2,h3{text-wrap:balance}
 /* paper：エコ・テック様の報告書の紙面（A4、ゴシック、右下にページ番号、ページ下に脚注）。寸法は原本の実測 */
 .ws-paper{min-width:0}
 .paper{width:210mm;margin:0 auto;color:#000;font-family:var(--f-rep);overflow-wrap:anywhere;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.paper .sheet{box-sizing:border-box;width:210mm;min-height:297mm;background:#fff;padding:17mm 20mm 13mm 30mm;margin:0 0 16px;border:1px solid var(--line);box-shadow:0 14px 34px -24px rgba(0,0,0,.45);display:flex;flex-direction:column;font-size:10.5pt;line-height:1.7}
+.paper .sheet{position:relative;box-sizing:border-box;width:210mm;min-height:297mm;background:#fff;padding:17mm 20mm 13mm 30mm;margin:0 0 16px;border:1px solid var(--line);box-shadow:0 14px 34px -24px rgba(0,0,0,.45);display:flex;flex-direction:column;font-size:10.5pt;line-height:1.7}
 .paper .sbody{flex:1 1 auto;min-width:0}
 .paper .pno{flex:none;text-align:right;font-family:var(--f-pno);font-size:10.5pt;line-height:1;margin-top:9px;height:5mm}
 .paper .fnotes{flex:none;position:relative;margin-top:14px;padding-top:5px;font-size:8pt;line-height:1.55}.paper .fnotes::before{content:'';position:absolute;left:0;top:0;width:34%;border-top:1px solid #000}
@@ -210,6 +210,19 @@ h1,h2,h3{text-wrap:balance}
 .paper .toc{margin:0 3mm 0 5mm}.paper .toc a{display:flex;align-items:baseline;color:#000;text-decoration:none;font-size:9.5pt;line-height:1.72}.paper .toc a i{flex:1 1 auto;border-bottom:1.5px dotted #000;margin:0 4px 0 5px;transform:translateY(-.34em)}.paper .toc a b{font-weight:400;min-width:1.1em;text-align:right}
 .paper .toc a.l0{font-size:10.5pt;margin-top:.34em}.paper .toc a.l1{padding-left:1.1em}.paper .toc a.l2{padding-left:1.1em}.paper .toc a:hover span{text-decoration:underline}
 .paper .sheet.attp .atth{text-align:center;font-size:14pt;margin:78mm 0 12mm}.paper table.attl{width:52%;margin:0 auto}.paper .attl th{text-align:left}
+/* 未取得の注記（赤枠）。下書きであることが分かるよう、印刷にも出す */
+.paper .miss{position:relative;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;font-size:8.5pt;line-height:1.6;padding:12px 12px 8px;margin:16px 0 12px;text-indent:0}
+.paper .miss>b{position:absolute;top:-9px;left:10px;background:#d0021b;color:#fff;font-weight:700;font-size:7.5pt;line-height:16px;padding:0 8px;letter-spacing:.12em}
+.paper .miss .mt{font-weight:700;font-size:9pt}.paper .miss p{padding-left:0}
+.paper .miss.fig{box-sizing:border-box;width:520px;max-width:100%;height:330px;margin:0 auto;padding:20px 44px;display:flex;flex-direction:column;justify-content:center}.paper .miss.fig.tall{height:400px;margin-top:22px}
+.paper .ngv{color:#d0021b;border:1px solid #d0021b;background:#fff7f7;padding:0 4px;white-space:nowrap;text-indent:0}.paper .ngp{color:#d0021b}
+.paper .shoken.pend{border-color:#d0021b}.paper .shoken.pend .sh{border-color:#d0021b}.paper .shoken.pend .shh{color:#d0021b;border-color:#d0021b}.paper .shoken.pend .sht{color:#a30015}
+.paper .draft{position:absolute;top:11mm;right:13mm;border:1.5px solid #d0021b;background:#fff7f7;color:#d0021b;font-size:9pt;line-height:1.5;padding:3px 10px}
+.paper .phg{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-top:6px}.paper .ph{margin:0;position:relative;text-align:center}.paper .ph figcaption{font-size:8.5pt;line-height:1.5;margin-top:3px}
+.paper .ph .nop{display:none;position:absolute;left:50%;top:0;transform:translateX(-50%);box-sizing:border-box;width:252px;height:170px;border:1.5px solid #d0021b;background:#fff7f7;color:#d0021b;font-size:8pt;align-items:center;justify-content:center}
+.paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
+.paper [id]{scroll-margin-top:130px}
+.gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
 /* 付録（原本にない部分）と、画面でだけ見せる札 */
 .paper .sheet.app .sbody{font-size:9.5pt}.paper .pos,.paper .why,.paper .srcs{margin:.6em 0 0}.paper .why p{margin-top:.8em}.paper table.jt{font-size:7.5pt;margin-top:10px}.paper .jt th:nth-child(1){width:6%}.paper .jt th:nth-child(2){width:17%}.paper .jt th:nth-child(3){width:21%}.paper .jt th:nth-child(4){width:11%}.paper .jt td.b{font-weight:700}
 .paper .unv{font-family:var(--f-body);font-size:9px;color:#9a6a12;border:1px solid #d8b860;border-radius:3px;padding:0 4px;margin-left:5px;white-space:nowrap}
@@ -243,7 +256,7 @@ h1,h2,h3{text-wrap:balance}
 #printarea{display:none}
 
 @media(max-width:1180px){.ws{grid-template-columns:minmax(0,1fr) 340px}.ws-toc{display:none}}
-@media screen and (max-width:860px){.ws{grid-template-columns:1fr}.ws-side{position:static;max-height:none;order:-1}.paper{width:auto}.paper .sheet{width:auto;min-height:0;padding:26px 16px 22px;font-size:12px}.paper .sheet.cover{min-height:0;padding-bottom:60px}.paper .sheet.cover .sbody{font-size:17px}.paper .sheet.cover .ct{margin-top:40px}.paper .ct2,.paper .cd,.paper .co{margin-top:64px}.paper .sheet.attp .atth{margin-top:30px}.paper table.attl{width:auto!important;display:table}.paper table.yn{margin-left:0}.paper table{display:block;overflow-x:auto;width:auto!important;max-width:100%}.paper .tfig{overflow-x:auto}.paper .in2,.paper .in3,.paper .law{padding-left:1.2em}.paper .hang{padding-left:2.2em}.ws-head{position:static}}
+@media screen and (max-width:860px){.ws{grid-template-columns:1fr}.ws-side{position:static;max-height:none;order:-1}.paper{width:auto}.paper .sheet{width:auto;min-height:0;padding:26px 16px 22px;font-size:12px}.paper .sheet.cover{min-height:0;padding-bottom:60px}.paper .sheet.cover .sbody{font-size:17px}.paper .sheet.cover .ct{margin-top:40px}.paper .ct2,.paper .cd,.paper .co{margin-top:64px}.paper .sheet.attp .atth{margin-top:30px}.paper table.attl{width:auto!important;display:table}.paper table.yn{margin-left:0}.paper .phg{grid-template-columns:1fr}.paper .miss.fig{height:auto;width:auto}.paper .draft{position:static;display:inline-block;margin-bottom:10px}.paper table{display:block;overflow-x:auto;width:auto!important;max-width:100%}.paper .tfig{overflow-x:auto}.paper .in2,.paper .in3,.paper .law{padding-left:1.2em}.paper .hang{padding-left:2.2em}.ws-head{position:static}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
   @page{size:A4;margin:0}
@@ -618,8 +631,31 @@ function selectSubstances(c){
   return {ids:SUB.filter(s=>ids.has(s.id)).map(s=>s.id),extra:[...extra]};
 }
 function openConcerns(c){return (c.concerns||[]).filter(x=>!x.resolved);}
+/* 年代別の空中写真（国土地理院 地理院タイル）。位置が分かれば、資料の共有なしで取得できる */
+const GSI_PHOTOS=[['ort_USA10','png','1945年～1950年','米軍撮影'],['ort_old10','png','1961年～1969年',''],['gazo1','jpg','1974年～1978年',''],['gazo2','jpg','1979年～1983年',''],['gazo3','jpg','1984年～1986年',''],['gazo4','jpg','1987年～1990年',''],['ort','jpg','2007年以降','オルソ画像'],['seamlessphoto','jpg','最新','全国最新写真']];
+/* 未取得の項目：何が無いか、どこで取得できるか、共有すると報告書のどこが埋まるか。本文では赤枠で示す */
+function gapsOf(c){
+  const s=c.site||{},g=c.regs||{},out=[];const has=re=>(c.docs||[]).some(d=>re.test(d.kind||''));
+  const desk=((ordFor(s.pref,s.city)||[]).filter(o=>o.desk).sort((a,b)=>(b.city?1:0)-(a.city?1:0))[0]||{}).desk||'';
+  const dk=desk?'窓口：'+desk.split('。')[0]:'窓口：所管の都道府県・政令市の環境部局';
+  const add=(k,sec,label,how,fill)=>out.push({k,sec,label,how,fill});
+  if(!(c.land||[]).length)add('land','sec-22','登記簿謄本（土地・建物・閉鎖登記簿、旧土地台帳）','法務局の窓口、または登記情報提供サービス（一般財団法人 民事法務協会）','2.2 の地番ごとの履歴表、地番の変遷、建物・法人の抽出、1.1 の地目・所有者');
+  if(!has(/公図/)&&!c.source)add('kozu','sec-172','公図','法務局の窓口、または登記情報提供サービス（一般財団法人 民事法務協会）','図1.7-2 調査対象地地番図、6.3 の区分図');
+  if(!s.geoText)add('geo','sec-211','地形・地質の記述','下の治水地形分類図（国土地理院）と、表層地質図（産業技術総合研究所 地質図Navi 等）を読んで記入','2.1.1 地形・地質概要');
+  if(!(c.maps||[]).length)add('maps','sec-23','住宅地図・旧版地形図','住宅地図は国立国会図書館・都道府県立図書館の所蔵または発行元、旧版地形図は国土地理院の謄本交付','2.3 の年次ごとの利用履歴表（対象地用途・周辺地の土地利用）と、利用履歴からの懸念の抽出');
+  if(!(c.hearing||[]).length)add('hearing','sec-241','ヒアリングの記録','土地所有者・管理者・近隣住民への聴取（聴取調査票）','2.4.1 の聴取内容、懸念のある利用履歴の確定・解消');
+  if(!c.siteVisit)add('visit','sec-242','現地踏査の記録','現地で土地の使用状況、漏洩の痕跡・変色・臭気を確認し、写真を記録','2.4.2 の踏査結果、添付資料（現地踏査写真）');
+  if(!(g.suidaku&&g.suidaku.v)||!(g.gesui&&g.gesui.v))add('fac','sec-243','特定施設の届出の有無（水質汚濁防止法・下水道法）','所管行政への照会（'+dk+'）。下水道法は下水道管理者','1.1 の特定施設の有無、2.4.3（1）、適用条項の判定（法第3条）');
+  if(!g.art6||!g.art11jin)add('zone','sec-243','指定区域の有無（法第6条・第11条、条例）','都道府県・政令市が公表する指定区域の台帳（'+dk+'）','1.1 の指定区域の有無、2.4.3（2）');
+  if(!g.natural)add('natural','sec-243','自然由来・公有水面埋立に関する情報','指定区域の台帳（自然由来特例区域・埋立地特例区域）と、公有水面埋立の免許・竣功の記録','2.4.3（3）、5章の由来の区分');
+  return out;
+}
+/* 履歴を判断できる資料が1点も無いときは、所見を出さずに保留にする */
+const hasHistory=c=>!!((c.land||[]).length||(c.maps||[]).length||(c.corps||[]).length||(c.concerns||[]).length);
+const lvlCls=lv=>lv==='低い'?'low':lv==='否定できない'?'high':'none';
 function verdictOf(c){
   const open=openConcerns(c);
+  if(!open.length&&!hasHistory(c))return {level:'保留',headline:'資料の取得後に判定する。',text:'登記簿謄本と住宅地図・地形図がいずれも未取得のため、土壌汚染の可能性は判定していない。資料を共有すると、利用履歴に基づいて所見を組み立てる。'};
   if(!open.length){const res=(c.concerns||[]).filter(x=>x.resolved&&(!x.pending||x.resolveNote));
     return {level:'低い',headline:'土壌汚染の可能性は低いと判断する。',text:'対象地における製造事業等の利用履歴及び「土壌汚染対策法」に規定する特定有害物質の使用等'+(res.length?`に関する履歴事項は無かったが、過去に${res.map(x=>x.use).join('、')}の利用が確認された。しかしながら、${res.map(x=>x.resolveNote||'有害物質の使用は確認されなかった').join('。また、')}ことから、土壌汚染の可能性は低いものと判断する。`:'は確認されなかった。よって、土壌汚染の可能性は低いものと判断する。')};}
   const parts=open.map(x=>`${x.period?x.period+'に':''}${x.use}としての利用履歴がある事が${x.basis}にて確認が取れた`);
@@ -743,6 +779,12 @@ function attNote(c,re){
   return ds.map(d=>esc(attLabel(d))+`<span class="ev att" contenteditable="false" data-p="${String(d.pages||'').split('–')[0]||1}" data-doc="${d.pages?'':esc(d.id)}" title="${esc(d.name||'')}">${d.pages?'p.'+esc(d.pages):'開く'}</span>`).join('、')+'を参照。';
 }
 const E=(path,html,tag)=>`<${tag||'span'} data-path="${path}" contenteditable="true" spellcheck="false">${html}</${tag||'span'}>`;
+/* 未取得の注記（赤枠）。印刷にも出す。fig を付けると図の枠の大きさで出す */
+function miss(g,mode){return g?`<div class="miss${mode?' '+mode:''}" contenteditable="false" data-gap="${g.k}"><b>未取得</b><p class="mt">${esc(g.label)}</p><p>取得先：${esc(g.how)}</p><p>共有すると：${esc(g.fill)}</p></div>`:'';}
+const ngv=v=>v?esc(v):'<span class="ngv">未確認</span>';
+/* 未記入の欄：赤字の仮の文言を出す。そのまま離れても、仮の文言は保存しない（data-ph） */
+const EP=(path,val,ph)=>val||!ph?E(path,esc(val||'')):`<span class="ngv"><span data-path="${path}" data-ph="${esc(ph)}" contenteditable="true" spellcheck="false">${esc(ph)}</span></span>`;
+const PP=(path,val,ph,cls)=>val?P(path,val,cls):`<p class="${cls||''} ngp" data-path="${path}" data-ph="${esc(ph)}" contenteditable="true" spellcheck="false">${esc(ph)}</p>`;
 const P=(path,text,cls)=>`<p${cls?' class="'+cls+'"':''} data-path="${path}" contenteditable="true" spellcheck="false">${esc(text||'').replace(/\n/g,'<br>')}</p>`;
 
 /* 地理院タイルを並べ、対象地を中央に置いた図。印刷・PDFでもそのまま出る */
@@ -750,12 +792,12 @@ const DIRV={'北':[0,-1],'北東':[1,-1],'東':[1,0],'南東':[1,1],'南':[0,1],
 function tileFig(lat,lng,layer,ext,z,opt){
   if(!lat||!lng)return '';opt=opt||{};
   const n=Math.pow(2,z),x=(lng+180)/360*n,rad=lat*Math.PI/180,y=(1-Math.asinh(Math.tan(rad))/Math.PI)/2*n;
-  const tx=Math.floor(x),ty=Math.floor(y),mx=512+(x-tx)*256,my=256+(y-ty)*256,W=opt.w||520,H=opt.h||330;
-  let imgs='';for(let j=-1;j<=1;j++)for(let i=-2;i<=2;i++)imgs+=`<img alt="" src="https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}" style="position:absolute;left:${(i+2)*256}px;top:${(j+1)*256}px;width:256px;height:256px;max-width:none">`;
+  const tx=Math.floor(x),ty=Math.floor(y),nx=opt.nx==null?2:opt.nx,ny=opt.ny==null?1:opt.ny,mx=nx*256+(x-tx)*256,my=ny*256+(y-ty)*256,W=opt.w||520,H=opt.h||330;
+  let imgs='';for(let j=-ny;j<=ny;j++)for(let i=-nx;i<=nx;i++)imgs+=`<img alt="" onerror="${i||j?"this.style.visibility='hidden'":"this.closest('.tfig').classList.add('none')"}" src="https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}" style="position:absolute;left:${(i+nx)*256}px;top:${(j+ny)*256}px;width:256px;height:256px;max-width:none">`;
   const d=DIRV[opt.dir];const k=d?1/Math.hypot(d[0],d[1]):0;const ax=d?d[0]*k:0,ay=d?d[1]*k:0;
   const arrow=d?`<line x1="${W/2+ax*24}" y1="${H/2+ay*24}" x2="${W/2+ax*92}" y2="${H/2+ay*92}" stroke="#1f6fd6" stroke-width="7"/><polygon points="${W/2+ax*114},${H/2+ay*114} ${W/2+ax*88-ay*12},${H/2+ay*88+ax*12} ${W/2+ax*88+ay*12},${H/2+ay*88-ax*12}" fill="#1f6fd6"/><rect x="${W/2+ax*134-40}" y="${H/2+ay*134-10}" width="80" height="20" fill="#fff" stroke="#1f6fd6" stroke-width="1.5"/><text x="${W/2+ax*134}" y="${H/2+ay*134+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#1f6fd6">地下水流向</text>`:'';
-  return `<div class="tfig" contenteditable="false"><div class="tview" style="width:${W}px;height:${H}px"><div style="position:absolute;left:${W/2-mx}px;top:${H/2-my}px;width:1280px;height:768px">${imgs}</div>
-   <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="position:absolute;left:0;top:0">${arrow}<circle cx="${W/2}" cy="${H/2}" r="${opt.r||14}" fill="none" stroke="#e60012" stroke-width="2.5"/><rect x="${W/2-150}" y="${H/2-74}" width="104" height="26" fill="#fff" stroke="#e60012" stroke-width="2"/><text x="${W/2-98}" y="${H/2-55.5}" text-anchor="middle" font-size="14" font-weight="700" fill="#e60012">調査対象地</text><line x1="${W/2-58}" y1="${H/2-48}" x2="${W/2-12}" y2="${H/2-10}" stroke="#e60012" stroke-width="1.3"/><polygon points="${W/2-10},${H/2-9} ${W/2-19},${H/2-12} ${W/2-14},${H/2-18}" fill="#e60012"/></svg></div></div>`;
+  return `<div class="tfig" contenteditable="false"><div class="tview" style="width:${W}px;height:${H}px"><div style="position:absolute;left:${W/2-mx}px;top:${H/2-my}px;width:${(2*nx+1)*256}px;height:${(2*ny+1)*256}px">${imgs}</div>
+   <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="position:absolute;left:0;top:0">${arrow}<circle cx="${W/2}" cy="${H/2}" r="${opt.r||14}" fill="none" stroke="#e60012" stroke-width="2.5"/>${opt.mini?'':`<rect x="${W/2-150}" y="${H/2-74}" width="104" height="26" fill="#fff" stroke="#e60012" stroke-width="2"/><text x="${W/2-98}" y="${H/2-55.5}" text-anchor="middle" font-size="14" font-weight="700" fill="#e60012">調査対象地</text><line x1="${W/2-58}" y1="${H/2-48}" x2="${W/2-12}" y2="${H/2-10}" stroke="#e60012" stroke-width="1.3"/><polygon points="${W/2-10},${H/2-9} ${W/2-19},${H/2-12} ${W/2-14},${H/2-18}" fill="#e60012"/>`}</svg></div></div>`;
 }
 
 /* 目次（原本の並び）。[id, 表記, 階層] */
@@ -822,6 +864,7 @@ function renderReport(c){
   const ords=ordFor(s.pref,s.city);const S=sourcesOf(c);const J=judge(c);
   const addr=`${s.pref}${s.city}${s.town}`;const chibans=(s.parcels||[]).map(p=>p.chiban).join('、');
   const maps=c.maps||[];const h=c.hearing||[];
+  const gaps=gapsOf(c);const G={};gaps.forEach(x=>{G[x.k]=x;});
   /* ── ページの組み立て ── */
   const sheets=[];let cur=null,fnN=0,pageN=0;const pageOf={};
   const sheet=(cls,numbered)=>{cur={cls:cls||'',body:'',notes:[],page:numbered===false?null:++pageN};sheets.push(cur);};
@@ -837,9 +880,9 @@ function renderReport(c){
   add(`<p class="in2">${esc(c.title)}　地歴調査</p>`);
   const zr=[['調査対象地・周辺地等の土壌汚染対策法に基づく「人為等由来」の指定区域',g.art11jin],['調査対象地・周辺地等の土壌汚染対策法に基づく「自然由来」の指定区域',g.art11shizen],['調査対象地・周辺地等の土壌汚染対策法に基づく「水面埋立て土砂由来」の指定区域',g.art11umetate],['調査対象地の廃棄物の処理及び清掃に関する法律の指定区域',g.haiki]].concat((g.ord||[]).map(o=>[`${o.name}に基づく${o.item.replace(/^条例に基づく/,'')}`,o.v]));
   add(`<table class="t11">${s.jusho?`<tr class="g"><th>住 居 表 示</th><td colspan="2">${E('site.jusho',esc(s.jusho))}</td></tr>`:''}<tr class="g"><th>地 番 表 示</th><td colspan="2">${E('site.chibanLabel',esc(s.chibanLabel))}</td></tr>
-   <tr class="g"><th rowspan="2">特定施設の有無</th><td>水質汚濁防止法に基づく有害物質使用の特定施設</td><td class="v">${esc((g.suidaku&&g.suidaku.v)||'未確認')}</td></tr><tr><td>下水道法に基づく有害物質使用の特定施設</td><td class="v">${esc((g.gesui&&g.gesui.v)||'未確認')}</td></tr>
-   ${zr.map((r,i)=>`<tr${i===0?' class="g"':''}>${i===0?`<th rowspan="${zr.length}">指定区域の有無</th>`:''}<td>${esc(r[0])}</td><td class="v">${esc(r[1]||'未確認')}</td></tr>`).join('')}</table>`);
-  add(`<table class="tpar"><tr><th colspan="6" class="band">＜調査対象地の筆及び一覧表＞</th></tr><tr class="hd"><td colspan="2">所　在</td><td>地番</td><td>地目</td><td>地積</td><td>所有者</td></tr>${(s.parcels||[]).map((p,i)=>`<tr><td class="no">${i+1}</td><td>${E(`site.parcels.${i}.shozai`,esc(p.shozai))}</td><td>${E(`site.parcels.${i}.chiban`,esc(p.chiban))}</td><td>${esc(p.chimoku)}</td><td>${+p.chiseki?fmtA2(p.chiseki)+' ㎡':''}</td><td>${E(`site.parcels.${i}.owner`,esc(p.owner))}</td></tr>`).join('')}<tr><td colspan="4">合計</td><td>${fmtA2(s.area)} ㎡</td><td class="diag"></td></tr></table>`);
+   <tr class="g"><th rowspan="2">特定施設の有無</th><td>水質汚濁防止法に基づく有害物質使用の特定施設</td><td class="v">${ngv(g.suidaku&&g.suidaku.v)}</td></tr><tr><td>下水道法に基づく有害物質使用の特定施設</td><td class="v">${ngv(g.gesui&&g.gesui.v)}</td></tr>
+   ${zr.map((r,i)=>`<tr${i===0?' class="g"':''}>${i===0?`<th rowspan="${zr.length}">指定区域の有無</th>`:''}<td>${esc(r[0])}</td><td class="v">${ngv(r[1])}</td></tr>`).join('')}</table>`);
+  add(`<table class="tpar"><tr><th colspan="6" class="band">＜調査対象地の筆及び一覧表＞</th></tr><tr class="hd"><td colspan="2">所　在</td><td>地番</td><td>地目</td><td>地積</td><td>所有者</td></tr>${(s.parcels||[]).map((p,i)=>`<tr><td class="no">${i+1}</td><td>${E(`site.parcels.${i}.shozai`,esc(p.shozai))}</td><td>${E(`site.parcels.${i}.chiban`,esc(p.chiban))}</td><td>${p.chimoku?esc(p.chimoku):G.land?'<span class="ngv">未取得</span>':''}</td><td>${+p.chiseki?fmtA2(p.chiseki)+' ㎡':''}</td><td>${EP(`site.parcels.${i}.owner`,p.owner,G.land?'未取得':'')}</td></tr>`).join('')}<tr><td colspan="4">合計</td><td>${fmtA2(s.area)} ㎡</td><td class="diag"></td></tr></table>`);
   add(H('h3','sec-12','1.2　調査目的'));
   add(`<p class="in2 ti">本調査は、${esc(addr)}${chibans&&(s.parcels||[]).length===1?' '+esc(chibans):''}地内（以下「調査対象地」と称す）における土壌汚染のおそれの可能性について判断することを目的とした。</p>`);
   add(H('h3','sec-13','1.3　敷地面積'));
@@ -850,7 +893,7 @@ function renderReport(c){
   add(H('h3','sec-14','1.4　関連法規',' '+ev(c,c.source&&c.source.lawsP?{p:c.source.lawsP}:null)));
   add(LAWS.items.map((l,i)=>`<p class="law">・${esc(l.name)}<br>（${esc(l.number)}）${l.lastAmended?'（改正：'+esc(l.lastAmended)+'）':''}${i===0?'以下、「法」という。':''}</p>`).join('')+
     ords.filter(o=>o.rules&&o.rules.length).map(o=>`<p class="law">・${esc(o.name.replace(/（通称.*?）/,''))}<br>${(o.numberShort||o.number)?'（'+esc(o.numberShort||o.number)+'）':''}${(o.lastAmendedShort||o.lastAmended)?'（改正：'+esc(o.lastAmendedShort||o.lastAmended)+'）':''}</p>`).join(''));
-  add(H('h3','sec-15','1.5　調査期間'));add(`<p class="in2">${E('period',esc(c.period||'（調査期間）'))}</p>`);
+  add(H('h3','sec-15','1.5　調査期間'));add(`<p class="in2">${EP('period',c.period,'調査期間を記入')}</p>`);
   add(H('h3','sec-16','1.6　調査機関'));add(`<p class="in2">${esc(c.org.name)}（指定調査機関指定番号【 ${esc(c.org.no)} 】）<br>所　在　地：${esc(c.org.addr)}<br>電 話 番 号：${esc(c.org.tel)}</p>`);
   add(H('h3','sec-17','1.7　調査場所'));add(`<p class="in2">${esc(s.pref)}${esc(s.city)}${esc(s.town)} ${esc(chibans)}${chibans?'（地番表示）':''}</p>`);
 
@@ -858,52 +901,54 @@ function renderReport(c){
   sheet('figs');
   add(s.lat?tileFig(s.lat,s.lng,'std','png',18):`<div class="figbox" contenteditable="false">位置を確定すると、地理院地図から位置図を作成します。</div>`);
   mark('sec-171');add(`<p class="fc" id="sec-171">図 1.7-1　調査対象地位置図${note('出典：地理院地図(電子国土web)')}</p>${s.lat&&!s.pinned?'<p class="todo" contenteditable="false">町丁目の代表点を表示しています。新規作成の地図でピンを動かすと、番地の位置に合わせられます。</p>':''}`);
-  add(`<div class="figbox" contenteditable="false">公図から作成した地番図を差し込み</div>`);
-  mark('sec-172');add(`<p class="fc" id="sec-172">図 1.7-2　調査対象地地番図${note(attNote(c,/公図/)||'添付資料(一般B)「公図」を参照。')}</p>`);
+  add(G.kozu?miss(G.kozu,'fig'):`<div class="figbox" contenteditable="false">公図から作成した地番図を差し込み</div>`);
+  mark('sec-172');add(`<p class="fc" id="sec-172">図 1.7-2　調査対象地地番図${note(G.kozu?'':attNote(c,/公図/)||'添付資料(一般B)「公図」を参照。')}</p>`);
 
   /* 2.1 */
   sheet();
   add(H('h2','sec-2','２．履歴調査'));
   add(H('h3','sec-21','2.1　地形・地質及び地下水概要',' '+ev(c,s.ref)));
-  add(H('h4','sec-211','2.1.1　地形・地質概要'));add(P('site.geoText',s.geoText||'（地形・地質の概要を記入）','in2 ti'));
-  add(H('h4','sec-212','2.1.2　地下水概要'));add(P('site.gwText',s.gwText||'（地下水流向の推定を記入）','in2 ti'));
+  add(H('h4','sec-211','2.1.1　地形・地質概要'));add(miss(G.geo)+PP('site.geoText',s.geoText,'（地形・地質の概要を記入）','in2 ti'));
+  add(H('h4','sec-212','2.1.2　地下水概要'));add(PP('site.gwText',s.gwText,'（地下水流向の推定を記入）','in2 ti'));
   add(`<p class="fc">図 2.1　地形地質概要及び推定地下水流向${note('国土交通省国土地理院 電子国土web（治水地形分類図）より引用し、編集・加工のうえ掲載している。')}</p>`);
   add(s.lat?tileFig(s.lat,s.lng,'lcmfc2','png',16,{dir:s.gwDir,r:10}):`<div class="figbox" contenteditable="false">位置を確定すると、治水地形分類図に推定地下水流向を重ねて作成します。</div>`);
 
   /* 2.2 土地 */
   sheet();
-  add(H('h3','sec-22','2.2　登記簿謄本による履歴調査',note(attNote(c,/登記|公図/)||'添付資料(一般)A「登記簿謄本」、添付資料(一般)B「公図」を参照。')+' '+ev(c,(c.land&&c.land[0]&&c.land[0].ref)||null)));
+  add(H('h3','sec-22','2.2　登記簿謄本による履歴調査',note(G.land?'':attNote(c,/登記|公図/)||'添付資料(一般)A「登記簿謄本」、添付資料(一般)B「公図」を参照。')+' '+ev(c,(c.land&&c.land[0]&&c.land[0].ref)||null)));
   add(`<p class="in2 ti">対象地について、現状の登記簿謄本から旧土地台帳までの遡及調査を行った調査結果の要約を「登記簿謄本による対象地の履歴」に示す。</p><p class="tt">登記簿謄本による調査対象地の地歴</p><p class="lb">【土地】</p>`);
-  add((c.land||[]).length?landTable(c):'<p class="todo" contenteditable="false">登記簿謄本を共有すると、地番ごとの履歴表をここに作成します。</p>');
+  add((c.land||[]).length?landTable(c):miss(G.land));
   if((c.lineage||[]).length)add(`<p class="lb">〈参考〉</p>${lineageSvg(c)}`);
   if((c.buildings||[]).length){sheet();add(`<p class="lb">【建物】</p>${bldTable(c)}`);}
   if((c.corps||[]).length){sheet();add(`<p class="lb">【法人】</p><p class="in1">対象地と関連する法人が${c.corps.length}社発見された。以下、その法人について登記簿謄本からの調査結果を示す。</p>${corpBlock(c)}`);}
 
   /* 2.3 */
   sheet();
-  add(H('h3','sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',note(attNote(c,/地図|地形図|空中写真/)||'添付資料(一般)C「地形図・住宅地図」、添付資料(一般)D「空中写真」を参照。')+' '+ev(c,c.mapsRef)));
-  add(`<p class="in1 ti">地形図・住宅地図・空中写真によって、${maps.length?esc(maps[0].w):'―'}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
-  add(maps.length?`<p class="tt b">地形図・住宅地図・空中写真による対象地の利用履歴</p><table class="mapt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="yr">${m.y} 年　(${esc(m.w)})</td><td>${E(`maps.${i}.use`,esc(m.use))}</td><td>${E(`maps.${i}.around`,esc(m.around))}</td><td>${esc(m.src)}</td></tr>`).join('')}</tbody></table>`:'<p class="todo" contenteditable="false">住宅地図・地形図・空中写真を共有すると、年次ごとの利用履歴表をここに作成します。</p>');
+  add(H('h3','sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',note(G.maps?'':attNote(c,/地図|地形図|空中写真/)||'添付資料(一般)C「地形図・住宅地図」、添付資料(一般)D「空中写真」を参照。')+' '+ev(c,c.mapsRef)));
+  if(maps.length)add(`<p class="in1 ti">地形図・住宅地図・空中写真によって、${esc(maps[0].w)}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
+  add(maps.length?`<p class="tt b">地形図・住宅地図・空中写真による対象地の利用履歴</p><table class="mapt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="yr">${m.y} 年　(${esc(m.w)})</td><td>${E(`maps.${i}.use`,esc(m.use))}</td><td>${E(`maps.${i}.around`,esc(m.around))}</td><td>${esc(m.src)}</td></tr>`).join('')}</tbody></table>`:miss(G.maps)+(s.lat?`<p class="tt b">国土地理院の空中写真（年代別）：取得済み・判読前</p><table class="mapt"><thead><tr><th>撮影年代</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${GSI_PHOTOS.map(p=>`<tr><td class="yr">${p[2]}</td><td><span class="ngv">判読前</span></td><td><span class="ngv">判読前</span></td><td>国土地理院 空中写真${p[3]?'（'+p[3]+'）':''}</td></tr>`).join('')}</tbody></table><p class="in1 sm">写真は次ページの図2.3に掲載。用途の判読は、住宅地図・地形図とあわせて担当者が行う。</p>`:''));
   add((c.mapNotes||[]).map((n,i)=>`<div class="num"><span>${'１２３４５６７８９'[i]||i+1}）</span>${P('mapNotes.'+i,n)}</div>`).join(''));
 
+  if(!maps.length&&s.lat){sheet('figs');mark('sec-23f');
+    add(`<p class="fc" id="sec-23f" style="margin-bottom:8px">図 2.3　年代別の空中写真（調査対象地とその周辺）${note('出典：国土地理院 地理院タイル（年代別の写真）。撮影年月日は、国土地理院「地図・空中写真閲覧サービス」で特定する。')}</p><div class="phg" contenteditable="false">${GSI_PHOTOS.map(p=>`<figure class="ph">${tileFig(s.lat,s.lng,p[0],p[1],17,{w:250,h:168,nx:1,ny:1,r:10,mini:true})}<span class="nop">この年代の写真は整備されていない</span><figcaption>${p[2]}${p[3]?'（'+p[3]+'）':''}</figcaption></figure>`).join('')}</div>`);}
   /* 2.4.1・2.4.2 */
   sheet();
   add(H('h3','sec-24','2.4　ヒアリング調査及び現地踏査',' '+ev(c,(h[0]&&h[0].ref)||null)));
   add(H('h4','sec-241','2.4.1　ヒアリング調査'));add('<p class="lb in2">【土地の主な利用履歴確認】</p>');
-  add(h.length?h.map((x,i)=>{const same=i>0&&h[i-1].date===x.date&&h[i-1].by===x.by;return `${same?'':`<p class="in3">実施日：${esc(x.date)}<br>実施者：${esc(x.by)}</p>`}${x.target?`<p class="hb">・${esc(x.target)}</p>`:''}${P(`hearing.${i}.text`,x.text,'in1 ti')}`;}).join(''):'<p class="todo" contenteditable="false">ヒアリングの記録（メモ・聴取調査票）を共有すると、ここに整理します。</p>');
+  add(h.length?h.map((x,i)=>{const same=i>0&&h[i-1].date===x.date&&h[i-1].by===x.by;return `${same?'':`<p class="in3">実施日：${esc(x.date)}<br>実施者：${esc(x.by)}</p>`}${x.target?`<p class="hb">・${esc(x.target)}</p>`:''}${P(`hearing.${i}.text`,x.text,'in1 ti')}`;}).join(''):miss(G.hearing));
   add(H('h4','sec-242','2.4.2　現地踏査',note(attNote(c,/踏査/))));add('<p class="lb in2">【踏査による土地使用状況確認】</p>');
-  add(c.siteVisit?`<p class="in3">実施日：${esc(c.siteVisit.date)}<br>実施者：${esc(c.siteVisit.by)}</p>${P('siteVisit.text',c.siteVisit.text,'in1 ti')}`:'<p class="todo" contenteditable="false">現地踏査の記録を共有すると、ここに整理します。</p>');
+  add(c.siteVisit?`<p class="in3">実施日：${esc(c.siteVisit.date)}<br>実施者：${esc(c.siteVisit.by)}</p>${P('siteVisit.text',c.siteVisit.text,'in1 ti')}`:miss(G.visit));
 
   /* 2.4.3・3 */
   sheet();
   add(H('h4','sec-243','2.4.3　公的機関の環境情報',' '+ev(c,g.ref)));
-  add(`<p class="in1">（1）調査対象地上の法・条例に基づく特定施設の有無</p><p class="in3 ti">${g.suidaku&&g.suidaku.date?esc(g.suidaku.date)+'に':''}${esc((g.suidaku&&g.suidaku.src)||'（照会先）')}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'及び'+esc(g.gesui.src):''}へ特定有害物質の使用等（製造・使用・処理）に関する公的届出資料の有無を確認した。その回答は以下のとおりである。</p>`);
-  add(`<table class="yn"><tr><td>１）</td><td>水質汚濁防止法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${esc((g.suidaku&&g.suidaku.v)||'未確認')}</td></tr><tr><td>２）</td><td>下水道法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${esc((g.gesui&&g.gesui.v)||'未確認')}</td></tr></table>`);
-  add(`<p class="in1">（2）土壌・地下水汚染情報</p><p class="in3 ti">調査対象地及び周辺${g.radius?'（調査対象地から'+esc(g.radius)+'）':''}における土壌汚染対策法第6条及び第11条${(g.ord||[]).length?'、並びに'+g.ord.map(o=>esc(o.name)).join('、'):''}に基づく指定区域の有無について、${esc(g.zoneSrc||'（確認先）')}で確認した。</p>`);
-  add(`<table class="yn">${[['土壌汚染対策法第6条に基づく要措置区域',g.art6],['土壌汚染対策法第11条に基づく形質変更時要届出区域（人為等由来）',g.art11jin],['土壌汚染対策法第11条に基づく形質変更時要届出区域（自然由来）',g.art11shizen],['土壌汚染対策法第11条に基づく形質変更時要届出区域（水面埋立て土砂由来）',g.art11umetate]].concat((g.ord||[]).map(o=>[`${o.name}${/条例に基づく/.test(o.item)?'':'に基づく'}${o.item.replace(/^条例に基づく/,'に基づく')}`,o.v])).map((r,i)=>`<tr><td>${'１２３４５６７８'[i]}）</td><td>${esc(r[0])}</td><td>：${esc(r[1]||'未確認')}</td></tr>`).join('')}</table>`);
-  add(`<p class="in1">（3）自然由来または公有水面等に関しての情報</p>${P('regs.natural',g.natural||'（自然由来・公有水面埋立に関する情報を記入）','in3 ti')}`);
+  add(`<p class="in1">（1）調査対象地上の法・条例に基づく特定施設の有無</p>${G.fac?miss(G.fac):`<p class="in3 ti">${g.suidaku&&g.suidaku.date?esc(g.suidaku.date)+'に':''}${esc((g.suidaku&&g.suidaku.src)||'（照会先）')}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'及び'+esc(g.gesui.src):''}へ特定有害物質の使用等（製造・使用・処理）に関する公的届出資料の有無を確認した。その回答は以下のとおりである。</p>`}`);
+  add(`<table class="yn"><tr><td>１）</td><td>水質汚濁防止法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${ngv(g.suidaku&&g.suidaku.v)}</td></tr><tr><td>２）</td><td>下水道法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${ngv(g.gesui&&g.gesui.v)}</td></tr></table>`);
+  add(`<p class="in1">（2）土壌・地下水汚染情報</p>${G.zone?miss(G.zone):`<p class="in3 ti">調査対象地及び周辺${g.radius?'（調査対象地から'+esc(g.radius)+'）':''}における土壌汚染対策法第6条及び第11条${(g.ord||[]).length?'、並びに'+g.ord.map(o=>esc(o.name)).join('、'):''}に基づく指定区域の有無について、${esc(g.zoneSrc||'（確認先）')}で確認した。</p>`}`);
+  add(`<table class="yn">${[['土壌汚染対策法第6条に基づく要措置区域',g.art6],['土壌汚染対策法第11条に基づく形質変更時要届出区域（人為等由来）',g.art11jin],['土壌汚染対策法第11条に基づく形質変更時要届出区域（自然由来）',g.art11shizen],['土壌汚染対策法第11条に基づく形質変更時要届出区域（水面埋立て土砂由来）',g.art11umetate]].concat((g.ord||[]).map(o=>[`${o.name}${/条例に基づく/.test(o.item)?'':'に基づく'}${o.item.replace(/^条例に基づく/,'に基づく')}`,o.v])).map((r,i)=>`<tr><td>${'１２３４５６７８'[i]}）</td><td>${esc(r[0])}</td><td>：${ngv(r[1])}</td></tr>`).join('')}</table>`);
+  add(`<p class="in1">（3）自然由来または公有水面等に関しての情報</p>${miss(G.natural)}${PP('regs.natural',g.natural,'（自然由来・公有水面埋立に関する情報を記入）','in3 ti')}`);
   add(H('h2','sec-3','３．結果まとめ',' '+ev(c,v.ref)));
-  add(`<p class="in1">各種資料による利用履歴の調査結果は以下のとおりである。</p><div class="shoken"><div class="sh">所　見</div><div class="shh">${E('verdict.headline',esc(v.headline))}</div><div class="sht" data-path="verdict.text" contenteditable="true" spellcheck="false">${esc(v.text).replace(/(土壌汚染の(?:可能性|おそれ)[^。、]*と判断(?:する|した|される)。)\s*$/,'<u>$1</u>')}</div></div>`);
+  add(`<p class="in1">各種資料による利用履歴の調査結果は以下のとおりである。</p><div class="shoken${v.level==='保留'?' pend':''}"><div class="sh">所　見</div><div class="shh">${E('verdict.headline',esc(v.headline))}</div><div class="sht" data-path="verdict.text" contenteditable="true" spellcheck="false">${esc(v.text).replace(/(土壌汚染の(?:可能性|おそれ)[^。、]*と判断(?:する|した|される)。)\s*$/,'<u>$1</u>')}</div></div>`);
 
   if(neg){
     const k1=subNames(c,1),k2=subNames(c,2),k3=subNames(c,3);const cl=c.classification||{};const lst=a=>a&&a.length?esc(a.join('、')):'該当なし';
@@ -940,7 +985,7 @@ function renderReport(c){
       if(n===1)add(H('h3','sec-63','6.3　土壌汚染のおそれの区分の分類'));
       add(`<h4>6.3.${n}　${KIND[x[0]]}</h4><p class="in3">${uList(x[1])}</p><p class="lb">【現況地表面】</p>
        <p class="in1 sp">(1)土壌汚染が存在するおそれがないと認められる土地<br>　⇒${lst(cl.none)}</p><p class="in1 sp">(2)土壌汚染が存在するおそれが少ないと認められる土地<br>　⇒${lst(cl.low)}</p><p class="in1 sp">(3)土壌汚染が存在するおそれが比較的多いと認められる土地<br>　⇒${lst(cl.high)}</p>
-       <div class="figbox tall" contenteditable="false">公図に区分を着色した図を差し込み<br>（緑：汚染の恐れが少ない土地／赤：汚染の恐れが多い土地）</div><p class="fc l">図 6.3.${n}　土壌汚染のおそれの区分（${KIND[x[0]]}）現況地表面</p>`);});
+       ${G.kozu?miss(G.kozu,'fig tall'):'<div class="figbox tall" contenteditable="false">公図に区分を着色した図を差し込み<br>（緑：汚染の恐れが少ない土地／赤：汚染の恐れが多い土地）</div>'}<p class="fc l">図 6.3.${n}　土壌汚染のおそれの区分（${KIND[x[0]]}）現況地表面</p>`);});
   }
 
   /* 付録（原本にない、本システムの判定と出典） */
@@ -964,7 +1009,7 @@ function renderReport(c){
   const toc=tocOf(c).map(t=>`<a href="#${t[0]}" class="l${t[2]}" data-go="${t[0]}"><span>${t[1]}</span><i></i><b>${pageOf[t[0]]||''}</b></a>`).join('');
   const rowsN=Math.max(4,...['一般公表資料','公的資料','私的資料'].map(k=>grp(k).length));
   const cell=(k,i)=>{const d=grp(k)[i];return d?'ABCDEFGHIJ'[i]+'）'+esc(d.kind):'―';};
-  const front=`<section class="sheet cover" id="sec-cover"><div class="sbody"><div class="ct">${esc(c.title)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${E('reportDate',esc(c.reportDate||toWareki(new Date())))}</div><div class="co">${esc(c.org.name)}</div></div></section>
+  const front=`<section class="sheet cover" id="sec-cover">${gaps.length?`<div class="draft" contenteditable="false">下書き　未取得の項目 ${gaps.length}件（本文の赤枠）</div>`:''}<div class="sbody"><div class="ct">${esc(c.title)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${E('reportDate',esc(c.reportDate||toWareki(new Date())))}</div><div class="co">${esc(c.org.name)}</div></div></section>
    <section class="sheet tocp"><div class="sbody"><h2 class="tc">目　　　次</h2><div class="toc">${toc}</div><p class="lb atl">【添付資料】</p><table class="att"><thead><tr><th>一般公表資料</th><th>公的資料</th><th>私的資料</th></tr></thead><tbody>${Array.from({length:rowsN},(_,i)=>`<tr><td>${cell('一般公表資料',i)}</td><td class="c">${cell('公的資料',i)}</td><td>${cell('私的資料',i)}</td></tr>`).join('')}</tbody></table></div></section>`;
   return front+sheets.map(sh=>`<section class="sheet ${sh.cls}"><div class="sbody">${sh.body}</div>${sh.notes.length?`<div class="fnotes">${sh.notes.map(nn=>`<div data-n="${nn[0]}"><sup>${nn[0]}</sup><span>${nn[1]}</span></div>`).join('')}</div>`:''}${sh.page?`<div class="pno">${sh.page}</div>`:''}</section>`).join('');
 }
@@ -1062,7 +1107,7 @@ function finalizeCase(c,keep){
     co.assess=hit.length?'concern':'low';co.comment=hit.length?`当法人は会社の目的に「${hit[0].label}」に関わる文言があることから、その過程において土壌汚染のおそれのある有害物質を使用していた可能性が否定できず、当時の有害物質の使用状況について、ヒアリング調査を実施する。`:'当法人は会社の目的から考えるに特定有害物質使用の可能性は低く、土壌汚染の可能性は低いと考えられる。';}});
   const v=verdictOf(c);const prev=c.verdict;
   if(!keep||!prev||prev.level!==v.level){
-    if(keep&&prev)pushDiff(c,{sev:'bad',text:`資料の追加で、所見が「${prev.level}」から「${v.level}」に変わった。追加で見つかった利用履歴（${fresh.map(x=>x.use).join('、')||'—'}）を「判断」で確認する。`});
+    if(keep&&prev&&prev.level!=='保留')pushDiff(c,{sev:'bad',text:`資料の追加で、所見が「${prev.level}」から「${v.level}」に変わった。追加で見つかった利用履歴（${fresh.map(x=>x.use).join('、')||'—'}）を「判断」で確認する。`});
     c.verdict=v;c.verdictEdited=false;}
   if(c.srcVerdict&&c.srcVerdict.level&&c.srcVerdict.level!==c.verdict.level)pushDiff(c,{sev:'bad',text:`共有された報告書の所見は「${c.srcVerdict.level}」、本システムの判定は「${c.verdict.level}」。根拠を見比べて確定してください。`,ref:c.srcVerdict.ref});
   if(!keep){const sel=selectSubstances(c);c.substances=sel.ids;c.extraSubstances=sel.extra;c.substancesManual=false;}
@@ -1092,12 +1137,19 @@ async function estimateGW(lat,lng){
 
 /* ══════════ デモ ══════════
    ①「入力例を入れる」：新規作成の画面に、対象地・要望・資料をまとめて入れる
-   ②「デモを再生する」：ログインからレポート出力の手前までを、入力なしで自動で進める
-   デモ用の資料は、川崎市川崎区貝塚一丁目の既往報告書を資料の種類ごとに分けたもの。
-   AIの読み取り結果に当たる部分は記録済みのデータを使い、結合〜判定〜所見〜描画は本番と同じ処理を通す。 */
+   ② デモ①（資料あり）：ログインからレポート出力の手前までを、入力なしで自動で進める
+      資料は、川崎市川崎区貝塚一丁目の既往報告書を資料の種類ごとに分けたもの。
+      AIの読み取り結果に当たる部分は記録済みのデータを使い、結合〜判定〜所見〜描画は本番と同じ処理を通す。
+   ③ デモ②（資料なし）：既往の報告書が無い土地を、資料を1点も入れずに作る。
+      公開データで取得できるもの（位置図、治水地形分類図、標高からの地下水流向、年代別の空中写真、適用する法令・条例）は
+      その場で取得し、取得できないものは本文に赤枠で「未取得」と取得先を出す。記録済みのデータは使わない。 */
 const DEMO_INPUT={addr:'神奈川県川崎市川崎区貝塚一丁目',chiban:'3番9',area:'121.86',purpose:'sale',changeArea:'',
   note:'建物を解体して更地にした土地。昭和30年代からオートバイ店だったと聞いている。購入者への説明資料として使いたい。',
   period:'令和6年12月23日～令和7年1月31日',lat:35.525227,lng:139.702011};
+/* デモ②の対象地。地番は実在の筆を指さないよう、仮のものにしている */
+const DEMO2_INPUT={addr:'愛知県名古屋市熱田区六番一丁目',chiban:'（仮）12番3',area:'3200',purpose:'develop',changeArea:'3200',
+  note:'工場跡地の再開発を検討している。登記簿や住宅地図はまだ取り寄せていない。まず、今わかる範囲のたたき台がほしい。',
+  period:'',lat:35.125168,lng:136.887512};
 function demoFiles(){
   const s=SAMPLES.find(x=>x.id==='s-kawasaki');const photo=x=>/空中写真/.test(x.src);
   const F=(name,mb,part)=>({name,size:mb*1048576,demo:true,part});
@@ -1121,9 +1173,9 @@ function demoSpot(el,scroll){document.querySelectorAll('.demo-spot').forEach(e=>
 function demoSay(step,total,text){$('demobar').hidden=false;document.body.classList.add('demo-on');$('demo-step').textContent=`${step} / ${total}`;$('demo-cap').textContent=text;}
 async function demoType(el,text,ms){el.focus();el.value='';for(let i=1;i<=text.length;i++){el.value=text.slice(0,i);el.dispatchEvent(new Event('input',{bubbles:true}));await demoSleep(ms||34);}el.value=text;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}
 function demoEnd(msg){DEMO.on=false;demoSpot(null);if(msg){$('demo-step').textContent='完了';$('demo-cap').textContent=msg;$('demo-stop').textContent='閉じる';DEMO.done=true;}else{$('demobar').hidden=true;document.body.classList.remove('demo-on');}}
-async function runDemo(){
+async function runDemo(kind){
   if(DEMO.on)return;DEMO.on=true;DEMO.abort=false;DEMO.done=false;$('demo-stop').textContent='停止';
-  const N=9;const D=DEMO_INPUT;
+  const N=9;const nofile=kind==='nofile';const D=nofile?DEMO2_INPUT:DEMO_INPUT;
   try{
     /* 1 ログイン */
     if(!ST.user){if(ST.route!=='login')go('login');
@@ -1133,7 +1185,7 @@ async function runDemo(){
       await demoUntil(()=>ST.route==='cases',5000);}
     else go('cases');
     /* 2 案件一覧 */
-    demoSay(2,N,'案件の一覧です。自治体ごとの条例、所見、人の確認が要る件数が並びます。新しい調査を始めます。');
+    demoSay(2,N,nofile?'案件の一覧です。今回は、過去の報告書も資料も無い土地で、新しい調査を始めます。':'案件の一覧です。自治体ごとの条例、所見、人の確認が要る件数が並びます。新しい調査を始めます。');
     await demoSleep(2200);demoSpot($('b-new'));await demoSleep(1100);$('b-new').click();await demoSleep(500);
     /* 3 対象地 */
     demoSay(3,N,'① 対象地を入れます。住所を入れた時点で、その地域で照合する条例が自動で選ばれます。');
@@ -1144,38 +1196,57 @@ async function runDemo(){
     if(!await demoUntil(()=>!$('n-mapwrap').hidden,4000)&&ST.newApi)ST.newApi.showMap(D.lat,D.lng);
     demoSpot($('n-map'));await demoSleep(2600);
     /* 4 目的と条件 */
-    demoSay(4,N,'② 目的を選び、要望や気になる点は自由に書きます。');
+    demoSay(4,N,nofile?'② 目的は開発・建替え。形質変更の面積と、要望を自由に書きます。':'② 目的を選び、要望や気になる点は自由に書きます。');
     const pc=document.querySelector('.pcard input[value="'+D.purpose+'"]');demoSpot(pc.closest('.pcard'));pc.click();await demoSleep(900);
-    demoSpot($('n-note'));await demoType($('n-note'),D.note,22);await demoType($('n-period'),D.period,22);await demoSleep(500);
+    if(D.changeArea){demoSpot($('n-change'));await demoType($('n-change'),D.changeArea,90);await demoSleep(400);}
+    demoSpot($('n-note'));await demoType($('n-note'),D.note,22);if(D.period)await demoType($('n-period'),D.period,22);await demoSleep(500);
     /* 5 資料 */
-    demoSay(5,N,'③ 手元の資料をまとめて入れます。登記簿・地図・聴取記録などの種類は自動で判別します。');
-    demoSpot($('n-drop'));await demoSleep(1000);
-    for(const f of demoFiles()){ST.newApi.addFiles([f]);await demoSleep(380);}
-    demoSpot($('n-files'));await demoSleep(1600);
+    if(nofile){demoSay(5,N,'③ 資料はまだ手元にありません。何も入れずに、このまま進めます。');demoSpot($('n-drop'));await demoSleep(3000);}
+    else{demoSay(5,N,'③ 手元の資料をまとめて入れます。登記簿・地図・聴取記録などの種類は自動で判別します。');
+      demoSpot($('n-drop'));await demoSleep(1000);
+      for(const f of demoFiles()){ST.newApi.addFiles([f]);await demoSleep(380);}
+      demoSpot($('n-files'));await demoSleep(1600);}
     /* 6 作成 */
     demoSay(6,N,'あとは「レポートを作成する」を押すだけです。');
     demoSpot($('n-run'));await demoSleep(1300);demoSpot(null);$('n-run').click();
-    demoSay(6,N,'資料を1点ずつ読み取り、地番ごとの履歴、法令・条例の照合、所見の下書きまでを組み立てます。（デモでは、読み取り結果に記録済みのデータを使っています）');
+    demoSay(6,N,nofile?'資料が無くても、位置図・治水地形分類図・標高からの地下水流向・年代別の空中写真・適用する法令と条例は、国土地理院などの公開データから組み立てます。'
+      :'資料を1点ずつ読み取り、地番ごとの履歴、法令・条例の照合、所見の下書きまでを組み立てます。（デモでは、読み取り結果に記録済みのデータを使っています）');
     if(!await demoUntil(()=>ST.route==='case',60000))throw new Error('レポートの作成が終わりませんでした');
-    /* 7 レポート */
-    const sec=async(id,text,ms)=>{demoSay(7,N,text);const el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});demoSpot(el,false);}await demoSleep(ms||3600);};
-    demoSay(7,N,'レポートができました。表紙・目次から、既往の報告書と同じ体裁・章立てです。本文はその場で直せます。');await demoSleep(3200);
-    await sec('sec-11','1.1 調査件名、特定施設・指定区域の有無、筆の一覧です。ページ下の番号と脚注も原本の形です。',4000);
-    await sec('sec-22','2.2 登記簿から、地番ごとの履歴表と地番の変遷図を作ります。小さな札が、根拠の資料とページです。',4600);
-    await sec('sec-23','2.3 地形図・住宅地図・空中写真の利用履歴を年次順に並べます。',3200);
-    await sec('sec-3','3 所見です。オートバイ・自動車の修理の履歴から「否定できない」と判定しました。',3800);
-    await sec('sec-4','4 対象物質の選定と指定基準の表、続く5・6章まで出します。',3800);
-    await sec('sec-app1','付録 何条に当たる調査かを、土壌汚染対策法と川崎市条例で判定しています。原本にない部分は付録に分けました。',4200);
-    /* 8 確認・判断・出典 */
+    if(nofile)await demoSleep(1800);
+    /* 7 レポート、8 確認など */
+    const sec=async(id,text,ms,block)=>{demoSay(7,N,text);const el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:block||'start'});demoSpot(el,false);}await demoSleep(ms||3600);};
     const tab=async(t,text,ms)=>{demoSay(8,N,text);const b=document.querySelector('.tabs2 button[data-t="'+t+'"]');b.click();demoSpot(document.querySelector('.ws-side'),false);await demoSleep(ms||3400);};
-    await tab('review','人が見るのは右の「確認」だけです。判読が怪しい箇所、資料どうしの食い違い、未記入だけが出ます。',4200);
-    await tab('judge','「判断」で懸念の扱い・対象物質・筆ごとの区分を切り替えると、所見と4〜6章を組み直します。',4000);
-    await tab('src','「出典」には、公式サイトで確認した法令・条例だけを、URLと確認日つきで並べます。',3800);
-    await tab('review','',300);
+    if(nofile){
+      demoSay(7,N,'レポートができました。体裁は既往の報告書と同じです。上の赤い帯と表紙の札が「下書き」の印で、未取得の項目を数えています。');demoSpot($('c-gaps'),false);await demoSleep(4600);
+      await sec('sec-11','1.1 特定施設・指定区域は行政への確認がまだなので、赤字の「未確認」です。地目と所有者は、登記簿が入ると埋まります。',4800);
+      await sec('sec-171','位置図は国土地理院の地図から自動で作りました。地番図は公図が必要なので、赤枠で「未取得」と取得先を出しています。',5000,'center');
+      await sec('sec-212','2.1 治水地形分類図と、標高から推定した地下水流向は自動で入ります。地形・地質の文章は、図を読んで人が書く欄です。',4800);
+      await sec('sec-22','2.2 登記簿は未取得です。赤枠に、どこで取得できるか、共有すると報告書のどこが埋まるかを書いています。',4800);
+      await sec('sec-23','2.3 住宅地図は未取得ですが、国土地理院の年代別の空中写真は自動で取得しました。用途の判読は人が行うので「判読前」です。',4600);
+      await sec('sec-23f','年代別の空中写真です。整備されていない年代は、その旨を赤枠で示します。',4800);
+      await sec('sec-243','2.4.3 行政への照会先は、名古屋市の担当窓口を、条例の登録情報から出しています。',4600);
+      await sec('sec-3','3 履歴を判断できる資料が無いので、所見は「保留」です。根拠が無いまま「低い」とは書きません。',4600);
+      await sec('sec-app1','付録 3,200㎡の形質変更なので、土壌汚染対策法第4条と名古屋市条例の対象になることは、今の時点で判定できます。',5000);
+      await tab('review','右の「確認」にも、未記入の項目と、確認が要る判定が並びます。',3800);
+      await tab('docs','資料が届いたら「資料」タブに入れるだけです。該当する赤枠が消え、表と所見が組み上がります。',4200);
+      await tab('review','',300);
+    }else{
+      demoSay(7,N,'レポートができました。表紙・目次から、既往の報告書と同じ体裁・章立てです。本文はその場で直せます。');await demoSleep(3200);
+      await sec('sec-11','1.1 調査件名、特定施設・指定区域の有無、筆の一覧です。ページ下の番号と脚注も原本の形です。',4000);
+      await sec('sec-22','2.2 登記簿から、地番ごとの履歴表と地番の変遷図を作ります。小さな札が、根拠の資料とページです。',4600);
+      await sec('sec-23','2.3 地形図・住宅地図・空中写真の利用履歴を年次順に並べます。',3200);
+      await sec('sec-3','3 所見です。オートバイ・自動車の修理の履歴から「否定できない」と判定しました。',3800);
+      await sec('sec-4','4 対象物質の選定と指定基準の表、続く5・6章まで出します。',3800);
+      await sec('sec-app1','付録 何条に当たる調査かを、土壌汚染対策法と川崎市条例で判定しています。原本にない部分は付録に分けました。',4200);
+      await tab('review','人が見るのは右の「確認」だけです。判読が怪しい箇所、資料どうしの食い違い、未記入だけが出ます。',4200);
+      await tab('judge','「判断」で懸念の扱い・対象物質・筆ごとの区分を切り替えると、所見と4〜6章を組み直します。',4000);
+      await tab('src','「出典」には、公式サイトで確認した法令・条例だけを、URLと確認日つきで並べます。',3800);
+      await tab('review','',300);
+    }
     /* 9 出力 */
     window.scrollTo({top:0,behavior:'smooth'});demoSpot(document.querySelector('.wa'),false);
-    demoSay(9,N,'「PDFで出力」「Wordで保存」で、提出用の形にできます。');await demoSleep(3200);
-    demoEnd('デモは以上です。このレポートはそのまま触れます。もう一度見るときは、案件一覧の「デモを再生する」から。');
+    demoSay(9,N,nofile?'この状態でも「PDFで出力」できます。赤枠ごと出るので、何が未取得かを依頼主と共有できます。':'「PDFで出力」「Wordで保存」で、提出用の形にできます。');await demoSleep(3600);
+    demoEnd(nofile?'デモ②は以上です。このレポートはそのまま触れます。資料ありの流れは、案件一覧の「デモ① 資料あり」から。':'デモ①は以上です。このレポートはそのまま触れます。資料の無い土地の流れは、案件一覧の「デモ② 資料なし」から。');
   }catch(e){if(e.message==='demo-stop')demoEnd();else{demoEnd('デモを中断しました：'+e.message);}}
 }
 
@@ -1223,7 +1294,7 @@ function viewLogin(v){
     <div class="err" id="l-err" role="alert"></div>
     <button class="btn pri full lg" type="submit">ログイン</button>
     <button class="btn full" type="button" id="l-demo">デモ用アカウントで入る</button>
-    <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモを再生する</button>
+    <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモ① 資料を共有してレポートを作る</button><button class="btn full" type="button" id="l-play2">デモ② 資料のない土地でレポートを作る</button>
     <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。</p>
    </form></div></div>`;
   const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('user',ST.user);store.set('lastMail',mail);loadCases();aiDetect().then(()=>go('cases'));};
@@ -1231,7 +1302,7 @@ function viewLogin(v){
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){$('l-err').textContent='メールアドレスの形式を確認してください。';$('l-mail').focus();return;}
     if(!p){$('l-err').textContent='パスワードを入力してください。';$('l-pass').focus();return;}login(m);};
   $('l-demo').onclick=()=>login('demo@chirekikun.example');
-  $('l-play').onclick=()=>runDemo();
+  $('l-play').onclick=()=>runDemo();$('l-play2').onclick=()=>runDemo('nofile');
 }
 
 /* ── 案件一覧 ── */
@@ -1239,13 +1310,13 @@ function viewCases(v){
   const rows=ST.cases.map(c=>{const R=reviewItems(c).filter(r=>!r.done&&r.sev!=='info');const ords=ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.length);const lv=c.verdict?c.verdict.level:'—';
     return `<button class="crow" data-id="${c.id}" type="button"><span class="ct"><b>${esc(c.title)}</b><small>${fmtArea(c.site.area)}㎡・${(c.site.parcels||[]).length}筆${c.sample?'・<i>サンプル（既往報告書から再構成）</i>':c.demo?'・<i>デモで作成</i>':''}</small></span>
      <span class="cj"><em>${esc(c.site.pref||'—')}${c.site.city?' '+esc(c.site.city.replace(/^(.+?市).+区$/,'$1')):''}</em>${ords.map(o=>`<small>${esc(o.name.replace(/（.*?）/g,''))}</small>`).join('')||'<small class="mute">条例の登録なし</small>'}</span>
-     <span><span class="lvl ${lv==='低い'?'low':lv==='否定できない'?'high':'none'}">${esc(lv)}</span></span>
+     <span><span class="lvl ${lvlCls(lv)}">${esc(lv)}</span></span>
      <span class="cn ${R.length?'':'zero'}">${R.length?`確認 <b>${R.length}</b> 件`:'確認済み'}</span><span class="cd num">${esc(c.updated||'')}</span></button>`;}).join('');
-  v.innerHTML=`<div class="wrap"><div class="pagehead"><div><h1>案件</h1><p>資料を共有した案件ごとに、報告書の下書きと確認が必要な点をまとめています。</p></div><div class="hbtns"><button class="btn lg" id="b-demo" type="button">デモを再生する</button><button class="btn pri lg" id="b-new" type="button">新しい調査を始める</button></div></div>
+  v.innerHTML=`<div class="wrap"><div class="pagehead"><div><h1>案件</h1><p>資料を共有した案件ごとに、報告書の下書きと確認が必要な点をまとめています。</p></div><div class="hbtns"><button class="btn lg" id="b-demo" type="button">デモ① 資料あり</button><button class="btn lg" id="b-demo2" type="button">デモ② 資料なし</button><button class="btn pri lg" id="b-new" type="button">新しい調査を始める</button></div></div>
    <div class="clist"><div class="chead"><span>案件</span><span>自治体・照合する条例</span><span>所見</span><span>確認が必要な点</span><span>更新</span></div>${rows||'<div class="empty">案件はまだありません。「新しい調査を始める」から作成します。</div>'}</div>
    <p class="note">サンプルの4件は、共有いただいた既往報告書PDFを読み取り、同じ章立てで再構成したものです。原本との違い（誤記・転記ミスの疑い）は各案件の「確認」に出ます。</p></div>`;
   $('b-new').onclick=()=>{ST.files=[];ST.draft=null;go('new');};
-  $('b-demo').onclick=()=>runDemo();
+  $('b-demo').onclick=()=>runDemo();$('b-demo2').onclick=()=>runDemo('nofile');
   v.querySelectorAll('.crow').forEach(b=>b.onclick=()=>{ST.tab='review';go('case',b.dataset.id);});
 }
 
@@ -1268,7 +1339,7 @@ function viewNew(v){
     <label class="drop" id="n-drop"><b>PDF・画像をここにドロップ</b>、またはクリックして選択<br><small>登記簿謄本・閉鎖謄本・公図・住宅地図・地形図・空中写真・聴取記録・過去の報告書など。種類は自動で判別します。まとめて入れて構いません。</small><input type="file" id="n-file" multiple accept="application/pdf,image/*"></label>
     <div class="files" id="n-files"></div>
     <div class="aistate" id="n-ai"></div></div></div>
-  <div class="cta"><button class="btn pri lg" id="n-run" type="button">レポートを作成する</button><span class="note" id="n-msg">資料がまだ無くても、章立てと法令・条例の判定までを作成できます。</span></div></div>`;
+  <div class="cta"><button class="btn pri lg" id="n-run" type="button">レポートを作成する</button><span class="note" id="n-msg">資料がまだ無くても、公開データで分かる範囲を作成し、未取得の箇所は赤枠で示します。</span></div></div>`;
   const sync=()=>{d.addr=$('n-addr').value.trim();d.chiban=$('n-chiban').value.trim();d.area=$('n-area').value;d.note=$('n-note').value;d.period=$('n-period').value;d.changeArea=$('n-change').value;};
   const juris=()=>{sync();const pref=prefOf(d.addr),city=cityOf(d.addr);const os=ordFor(pref,city);
     $('n-juris').innerHTML=!pref?'':`<span class="jl">照合する法令・条例</span><span class="chip2">土壌汚染対策法</span>${os.filter(o=>o.rules&&o.rules.length).map(o=>`<span class="chip2 ord">${esc(o.name.replace(/（.*?）/g,''))}${ordVerified(o)?'':'<i>出典確認中</i>'}</span>`).join('')||`<span class="chip2 mute">${esc(pref)}${city?esc(city):''}：独自の調査義務を定める条例の登録なし</span>`}`;};
@@ -1333,7 +1404,7 @@ async function runCreate(d){
           :`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高差は${Math.max(0,g.drop).toFixed(1)}mとほぼ平坦である。地形からは流向を特定できないため、周辺の河川・海域の位置関係から判断する必要がある。`;mark('gw','ok',g.dir?`${g.dir}向き（標高差 ${g.drop.toFixed(1)}m）`:'平坦のため特定できず');}else mark('gw','skip','標高を取得できず');}catch(e){mark('gw','skip','標高APIに接続できず');}}
     else mark('gw',c.site.gwText?'ok':'skip',c.site.gwText?'資料の記載を採用':'位置が未設定');
     mark('draft','run');await tick(250);mark('draft','ok',c.verdict?`所見：${c.verdict.level}`:'');
-    if(allDemo){c.demo=true;ST.cases=ST.cases.filter(x=>!x.demo);}
+    if(allDemo||(DEMO.on&&!files.length)){c.demo=true;c.demoKind=files.length?'files':'nofile';ST.cases=ST.cases.filter(x=>!x.demo||(x.demoKind||'files')!==c.demoKind);}
     ST.cases.unshift(c);saveCases();ST.files=[];ST.draft=null;await tick(350);ST.tab='review';go('case',c.id);toast('レポートを作成しました。右の「確認」に、人の目が必要な点だけを出しています');
   }catch(e){$('p-err').innerHTML=`作成に失敗しました：${esc(e.message)}　<button class="btn mini" type="button" onclick="go('new')">入力に戻る</button>`;}
 }
@@ -1344,16 +1415,16 @@ function viewCase(v){
   const c=curCase();if(!c){go('cases');return;}
   if(!c.verdict)c.verdict=verdictOf(c);
   const lv=c.verdict.level;
-  v.innerHTML=`<div class="ws-head"><div class="wh-in"><button class="btn mini" id="c-back" type="button">案件一覧</button><div class="wt"><h1>${esc(c.title)}</h1><span class="lvl ${lv==='低い'?'low':'high'}">${esc(lv)}</span>${c.sample?'<span class="tag">サンプル</span>':''}</div>
+  v.innerHTML=`<div class="ws-head"><div class="wh-in"><button class="btn mini" id="c-back" type="button">案件一覧</button><div class="wt"><h1>${esc(c.title)}</h1><span class="lvl ${lvlCls(lv)}">${esc(lv)}</span>${c.sample?'<span class="tag">サンプル</span>':''}</div>
     <div class="wa"><button class="btn" id="c-word" type="button">Wordで保存</button><button class="btn pri" id="c-pdf" type="button">PDFで出力</button></div></div></div>
-   <div class="ws"><nav class="ws-toc" id="c-toc" aria-label="目次"></nav><div class="ws-paper"><article class="paper" id="paper"></article></div>
+   <div class="ws"><nav class="ws-toc" id="c-toc" aria-label="目次"></nav><div class="ws-paper"><div class="gapbar" id="c-gaps" hidden></div><article class="paper" id="paper"></article></div>
     <aside class="ws-side"><div class="tabs2" role="tablist">${[['review','確認'],['judge','判断'],['src','出典'],['docs','資料']].map(t=>`<button type="button" role="tab" data-t="${t[0]}" class="${ST.tab===t[0]?'on':''}">${t[1]}<i id="tb-${t[0]}"></i></button>`).join('')}</div><div class="side-body" id="side"></div></aside></div>`;
   $('c-back').onclick=()=>go('cases');
   $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
     const imgs=[...$('printarea').querySelectorAll('img')].filter(i=>!i.complete);const b=$('c-pdf');
     if(!imgs.length){window.print();return;}
     b.disabled=true;b.textContent='図を読み込み中…';
-    Promise.race([Promise.all(imgs.map(i=>new Promise(r=>{i.onload=i.onerror=r;}))),new Promise(r=>setTimeout(r,6000))]).then(()=>{b.disabled=false;b.textContent='PDFで出力';window.print();});};
+    Promise.race([Promise.all(imgs.map(i=>new Promise(r=>{i.addEventListener('load',r);i.addEventListener('error',r);}))),new Promise(r=>setTimeout(r,6000))]).then(()=>{b.disabled=false;b.textContent='PDFで出力';window.print();});};
   $('c-word').onclick=()=>exportWord(c);
   v.querySelectorAll('.tabs2 button').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.t;v.querySelectorAll('.tabs2 button').forEach(x=>x.classList.toggle('on',x===b));drawSide();});
   drawPaper();drawSide();
@@ -1394,8 +1465,9 @@ function drawPaper(){
   const c=curCase();const p=$('paper');p.style.zoom='';p.innerHTML=renderReport(c);paginate(p);fitPaper();
   if(!ST.fontOK&&document.fonts&&document.fonts.load){ST.fontOK=true;document.fonts.load('10.5pt "BIZ UDGothic"','地歴調査A1').then(()=>{if(ST.route==='case'&&$('paper')&&!$('paper').contains(document.activeElement))drawPaper();}).catch(()=>{});}
   $('c-toc').innerHTML=`<div class="tl">目次</div>`+tocOf(c).map(t=>`<a href="#${t[0]}" data-go="${t[0]}" class="l${t[2]}">${t[1]}</a>`).join('');
+  const gs=gapsOf(c);$('c-gaps').hidden=!gs.length;$('c-gaps').innerHTML=gs.length?`<b>未取得の項目が${gs.length}件あります。</b>本文では赤枠で示し、取得先を添えています。資料を「資料」タブに入れると埋まります。<div>${gs.map(x=>`<a href="#${x.sec}" data-go="${x.sec}">${esc(x.label.replace(/（.*$/,''))}</a>`).join('')}</div>`:'';
   document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();const el=document.getElementById(a.dataset.go);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
-  p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
+  p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();if(el.dataset.ph!=null&&(!val||val===el.dataset.ph)){el.textContent=el.dataset.ph;return;}setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
   p.querySelectorAll('.ev').forEach(el=>el.onclick=()=>openPage(c,+el.dataset.p||1,el.dataset.doc));
 }
 function drawSide(keep){
@@ -1417,7 +1489,7 @@ function drawSide(keep){
      <div class="jg"><h3>懸念となる利用履歴</h3>${c.concerns.length?c.concerns.map((x,i)=>`<div class="cc ${x.resolved?'res':''}"><b>${esc(x.use)}</b><small>${esc(x.period||'')}　${esc(INDBY[x.industry]?INDBY[x.industry].label:'')}<br>根拠：${esc(x.basis||'')}</small>
         ${x.pending?'<small class="pend">確認待ち：規模・設備を確かめて、扱うかどうかを決めてください。</small>':''}<label class="ck"><input type="checkbox" data-ci="${i}" ${x.resolved?'':'checked'}> 汚染のおそれとして扱う</label>${x.resolved?`<input class="rn" data-cn="${i}" placeholder="扱わない理由（所見に入ります）" value="${esc(x.resolveNote||'')}">`:''}</div>`).join(''):'<p class="mute">事業場としての利用履歴は見つかっていません。</p>'}
       <div class="cadd"><select id="j-ind" aria-label="業種">${IND.map(i=>`<option value="${i.id}">${esc(i.label)}</option>`).join('')}</select><input id="j-use" class="rn" placeholder="利用の内容（例：○○鍍金工業所、昭和40年頃）"><button class="btn mini" type="button" id="j-add">懸念を追加</button></div></div>
-     <div class="jg"><h3>所見</h3><p class="vd"><span class="lvl ${c.verdict.level==='低い'?'low':'high'}">${esc(c.verdict.level)}</span> 懸念の扱いを変えると所見・4～6章を組み直します。</p><button class="btn mini" type="button" id="j-redo">所見の文章を判定から書き直す</button></div>
+     <div class="jg"><h3>所見</h3><p class="vd"><span class="lvl ${lvlCls(c.verdict.level)}">${esc(c.verdict.level)}</span> 懸念の扱いを変えると所見・4～6章を組み直します。</p><button class="btn mini" type="button" id="j-redo">所見の文章を判定から書き直す</button></div>
      ${c.verdict.level==='否定できない'?`<div class="jg"><h3>試料採取等対象物質</h3>${[1,2,3].map(k=>`<div class="sk"><small>${KIND[k]}</small>${SUB.filter(s=>s.k===k).map(s=>`<button type="button" class="sb2 ${sel.has(s.id)?'on':''}" data-s="${s.id}">${s.name.replace(/及びその化合物|化合物/,'')}</button>`).join('')}</div>`).join('')}</div>
      <div class="jg"><h3>おそれの区分（筆ごと）</h3>${(all.length?all:['敷地全域']).map(p=>{const cur=cl.high.includes(p)?'high':cl.none.includes(p)?'none':'low';return `<div class="cp"><span>${esc(p)}</span><select data-p="${esc(p)}"><option value="none" ${cur==='none'?'selected':''}>おそれがない</option><option value="low" ${cur==='low'?'selected':''}>おそれが少ない</option><option value="high" ${cur==='high'?'selected':''}>比較的多い</option></select></div>`;}).join('')}</div>`:''}
      <div class="jg"><h3>条例に基づく確認結果</h3>${ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.some(r=>r.trigger==='ledger'||r.trigger==='zone')).map(o=>{const rec=c.regs.ord.find(x=>x.name===o.name||o.name.indexOf(x.name)===0);const r=o.rules.find(r=>r.trigger==='ledger'||r.trigger==='zone');return `<div class="cp"><span>${esc(o.name.replace(/（.*?）/g,''))}<small>${esc(r.heading||r.art)}</small></span><select data-o="${esc(o.name)}" data-item="${esc(r.heading||'台帳・区域')}"><option value="">未確認</option><option ${rec&&rec.v==='なし'?'selected':''}>なし</option><option ${rec&&rec.v==='あり'?'selected':''}>あり</option></select></div>`;}).join('')||'<p class="mute">この地域に、台帳・区域の確認を要する条例の登録はありません。</p>'}</div>`;
@@ -1428,7 +1500,7 @@ function drawSide(keep){
         if(force||!c.substancesManual){const s=selectSubstances(c);c.substances=s.ids;c.extraSubstances=s.extra;c.substancesManual=false;}
         const cl=c.classification;if(c.verdict.level==='否定できない'&&!(cl.none.length+cl.low.length+cl.high.length)){cl.low=(c.site.parcels||[]).map(p=>p.chiban);if(!cl.low.length)cl.low=['敷地全域'];}}
       c.updated=today();saveCases();const y=window.scrollY;drawPaper();drawSide();window.scrollTo(0,y);
-      const lv=c.verdict.level;const h=document.querySelector('.ws-head .lvl');if(h){h.textContent=lv;h.className='lvl '+(lv==='低い'?'low':'high');}};
+      const lv=c.verdict.level;const h=document.querySelector('.ws-head .lvl');if(h){h.textContent=lv;h.className='lvl '+lvlCls(lv);}};
     $('j-purpose').onchange=e=>{rq.purpose=e.target.value;redo();};$('j-chg').onchange=e=>{rq.formChange=e.target.checked;redo();};if($('j-area'))$('j-area').onchange=e=>{rq.changeArea=+e.target.value||0;redo();};
     side.querySelectorAll('[data-ci]').forEach(b=>b.onchange=()=>{const x=c.concerns[+b.dataset.ci];x.resolved=!b.checked;x.pending=false;redo(true);});
     side.querySelectorAll('[data-cn]').forEach(b=>b.onchange=()=>{const x=c.concerns[+b.dataset.cn];x.resolveNote=b.value;x.pending=false;redo(true);});
@@ -1461,8 +1533,8 @@ function drawSide(keep){
 }
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type+';charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportWord(c){
-  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.todo,.pno,.toc i,.toc b').forEach(e=>e.remove());
-  const css='body{font-family:"ＭＳ ゴシック","MS Gothic","BIZ UDGothic",sans-serif;font-size:10.5pt;line-height:1.7}h2{font-size:11.5pt;font-weight:normal;margin:20pt 0 0}h3,h4{font-size:10.5pt;font-weight:normal;margin:16pt 0 0 7pt}p{margin:0}.in1{margin-left:10pt}.in2,.in3,.law{margin-left:33pt}.hang{margin-left:44pt;text-indent:-10pt}.ti{text-indent:10pt}.sp{margin-top:9pt}table{border-collapse:collapse;width:100%;margin:6pt 0 9pt}th,td{border:1px solid #000;padding:2pt 5pt;font-size:8pt;vertical-align:middle;font-weight:normal}th{background:#d9d9d9;text-align:center}td.c,td.v{text-align:center}.yn td{border:0;border-top:1px solid #000}.std td,.std th{font-size:7.5pt}.sheet{page-break-after:always}.cover{text-align:center;font-size:16pt}.ct{margin-top:90pt}.ct2{margin-top:180pt}.cd{margin-top:120pt}.co{margin-top:120pt}.tc,.fc,.tcap,.atth{text-align:center}.toc a{display:block;color:#000;text-decoration:none}.toc a.l1,.toc a.l2{margin-left:11pt;font-size:9.5pt}.shoken{border:1.5pt solid #000}.sh{background:#bfbfbf;text-align:center;font-weight:bold}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt;font-size:9.5pt}.fnotes{font-size:8pt;border-top:1px solid #000;margin-top:12pt;padding-top:3pt}.fnotes sup{font-size:6pt}sup.fnr{font-size:6.5pt}.figbox{border:1px solid #000;padding:60pt 10pt;text-align:center;font-size:8.5pt;color:#777}.srcs,.sm{font-size:8pt}svg{display:none}';
+  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.phg,.todo,.pno,.toc i,.toc b').forEach(e=>e.remove());
+  const css='body{font-family:"ＭＳ ゴシック","MS Gothic","BIZ UDGothic",sans-serif;font-size:10.5pt;line-height:1.7}h2{font-size:11.5pt;font-weight:normal;margin:20pt 0 0}h3,h4{font-size:10.5pt;font-weight:normal;margin:16pt 0 0 7pt}p{margin:0}.in1{margin-left:10pt}.in2,.in3,.law{margin-left:33pt}.hang{margin-left:44pt;text-indent:-10pt}.ti{text-indent:10pt}.sp{margin-top:9pt}table{border-collapse:collapse;width:100%;margin:6pt 0 9pt}th,td{border:1px solid #000;padding:2pt 5pt;font-size:8pt;vertical-align:middle;font-weight:normal}th{background:#d9d9d9;text-align:center}td.c,td.v{text-align:center}.yn td{border:0;border-top:1px solid #000}.std td,.std th{font-size:7.5pt}.sheet{page-break-after:always}.cover{text-align:center;font-size:16pt}.ct{margin-top:90pt}.ct2{margin-top:180pt}.cd{margin-top:120pt}.co{margin-top:120pt}.tc,.fc,.tcap,.atth{text-align:center}.toc a{display:block;color:#000;text-decoration:none}.toc a.l1,.toc a.l2{margin-left:11pt;font-size:9.5pt}.shoken{border:1.5pt solid #000}.sh{background:#bfbfbf;text-align:center;font-weight:bold}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt;font-size:9.5pt}.fnotes{font-size:8pt;border-top:1px solid #000;margin-top:12pt;padding-top:3pt}.fnotes sup{font-size:6pt}sup.fnr{font-size:6.5pt}.figbox{border:1px solid #000;padding:60pt 10pt;text-align:center;font-size:8.5pt;color:#777}.srcs,.sm{font-size:8pt}.miss{border:1.5pt solid #d0021b;color:#a30015;padding:6pt;font-size:8.5pt;margin:8pt 0}.miss b{background:#d0021b;color:#fff}.ngv,.ngp,.draft{color:#d0021b}svg{display:none}';
   download(`${c.title}_地歴調査報告書.doc`,`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>${css}</style></head><body>${body.innerHTML}</body></html>`,'application/msword');
   toast('Word形式で保存しました（体裁はWordで調整できます）');
 }
@@ -1523,6 +1595,7 @@ $('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
 if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
 render();
 if(location.hash==='#demo')setTimeout(runDemo,500);
+if(location.hash==='#demo2')setTimeout(()=>runDemo('nofile'),500);
 window.addEventListener('resize',fitPaper);
 
 </script>

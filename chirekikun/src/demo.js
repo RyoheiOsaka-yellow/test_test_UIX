@@ -1,11 +1,18 @@
 /* ══════════ デモ ══════════
    ①「入力例を入れる」：新規作成の画面に、対象地・要望・資料をまとめて入れる
-   ②「デモを再生する」：ログインからレポート出力の手前までを、入力なしで自動で進める
-   デモ用の資料は、川崎市川崎区貝塚一丁目の既往報告書を資料の種類ごとに分けたもの。
-   AIの読み取り結果に当たる部分は記録済みのデータを使い、結合〜判定〜所見〜描画は本番と同じ処理を通す。 */
+   ② デモ①（資料あり）：ログインからレポート出力の手前までを、入力なしで自動で進める
+      資料は、川崎市川崎区貝塚一丁目の既往報告書を資料の種類ごとに分けたもの。
+      AIの読み取り結果に当たる部分は記録済みのデータを使い、結合〜判定〜所見〜描画は本番と同じ処理を通す。
+   ③ デモ②（資料なし）：既往の報告書が無い土地を、資料を1点も入れずに作る。
+      公開データで取得できるもの（位置図、治水地形分類図、標高からの地下水流向、年代別の空中写真、適用する法令・条例）は
+      その場で取得し、取得できないものは本文に赤枠で「未取得」と取得先を出す。記録済みのデータは使わない。 */
 const DEMO_INPUT={addr:'神奈川県川崎市川崎区貝塚一丁目',chiban:'3番9',area:'121.86',purpose:'sale',changeArea:'',
   note:'建物を解体して更地にした土地。昭和30年代からオートバイ店だったと聞いている。購入者への説明資料として使いたい。',
   period:'令和6年12月23日～令和7年1月31日',lat:35.525227,lng:139.702011};
+/* デモ②の対象地。地番は実在の筆を指さないよう、仮のものにしている */
+const DEMO2_INPUT={addr:'愛知県名古屋市熱田区六番一丁目',chiban:'（仮）12番3',area:'3200',purpose:'develop',changeArea:'3200',
+  note:'工場跡地の再開発を検討している。登記簿や住宅地図はまだ取り寄せていない。まず、今わかる範囲のたたき台がほしい。',
+  period:'',lat:35.125168,lng:136.887512};
 function demoFiles(){
   const s=SAMPLES.find(x=>x.id==='s-kawasaki');const photo=x=>/空中写真/.test(x.src);
   const F=(name,mb,part)=>({name,size:mb*1048576,demo:true,part});
@@ -29,9 +36,9 @@ function demoSpot(el,scroll){document.querySelectorAll('.demo-spot').forEach(e=>
 function demoSay(step,total,text){$('demobar').hidden=false;document.body.classList.add('demo-on');$('demo-step').textContent=`${step} / ${total}`;$('demo-cap').textContent=text;}
 async function demoType(el,text,ms){el.focus();el.value='';for(let i=1;i<=text.length;i++){el.value=text.slice(0,i);el.dispatchEvent(new Event('input',{bubbles:true}));await demoSleep(ms||34);}el.value=text;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}
 function demoEnd(msg){DEMO.on=false;demoSpot(null);if(msg){$('demo-step').textContent='完了';$('demo-cap').textContent=msg;$('demo-stop').textContent='閉じる';DEMO.done=true;}else{$('demobar').hidden=true;document.body.classList.remove('demo-on');}}
-async function runDemo(){
+async function runDemo(kind){
   if(DEMO.on)return;DEMO.on=true;DEMO.abort=false;DEMO.done=false;$('demo-stop').textContent='停止';
-  const N=9;const D=DEMO_INPUT;
+  const N=9;const nofile=kind==='nofile';const D=nofile?DEMO2_INPUT:DEMO_INPUT;
   try{
     /* 1 ログイン */
     if(!ST.user){if(ST.route!=='login')go('login');
@@ -41,7 +48,7 @@ async function runDemo(){
       await demoUntil(()=>ST.route==='cases',5000);}
     else go('cases');
     /* 2 案件一覧 */
-    demoSay(2,N,'案件の一覧です。自治体ごとの条例、所見、人の確認が要る件数が並びます。新しい調査を始めます。');
+    demoSay(2,N,nofile?'案件の一覧です。今回は、過去の報告書も資料も無い土地で、新しい調査を始めます。':'案件の一覧です。自治体ごとの条例、所見、人の確認が要る件数が並びます。新しい調査を始めます。');
     await demoSleep(2200);demoSpot($('b-new'));await demoSleep(1100);$('b-new').click();await demoSleep(500);
     /* 3 対象地 */
     demoSay(3,N,'① 対象地を入れます。住所を入れた時点で、その地域で照合する条例が自動で選ばれます。');
@@ -52,37 +59,56 @@ async function runDemo(){
     if(!await demoUntil(()=>!$('n-mapwrap').hidden,4000)&&ST.newApi)ST.newApi.showMap(D.lat,D.lng);
     demoSpot($('n-map'));await demoSleep(2600);
     /* 4 目的と条件 */
-    demoSay(4,N,'② 目的を選び、要望や気になる点は自由に書きます。');
+    demoSay(4,N,nofile?'② 目的は開発・建替え。形質変更の面積と、要望を自由に書きます。':'② 目的を選び、要望や気になる点は自由に書きます。');
     const pc=document.querySelector('.pcard input[value="'+D.purpose+'"]');demoSpot(pc.closest('.pcard'));pc.click();await demoSleep(900);
-    demoSpot($('n-note'));await demoType($('n-note'),D.note,22);await demoType($('n-period'),D.period,22);await demoSleep(500);
+    if(D.changeArea){demoSpot($('n-change'));await demoType($('n-change'),D.changeArea,90);await demoSleep(400);}
+    demoSpot($('n-note'));await demoType($('n-note'),D.note,22);if(D.period)await demoType($('n-period'),D.period,22);await demoSleep(500);
     /* 5 資料 */
-    demoSay(5,N,'③ 手元の資料をまとめて入れます。登記簿・地図・聴取記録などの種類は自動で判別します。');
-    demoSpot($('n-drop'));await demoSleep(1000);
-    for(const f of demoFiles()){ST.newApi.addFiles([f]);await demoSleep(380);}
-    demoSpot($('n-files'));await demoSleep(1600);
+    if(nofile){demoSay(5,N,'③ 資料はまだ手元にありません。何も入れずに、このまま進めます。');demoSpot($('n-drop'));await demoSleep(3000);}
+    else{demoSay(5,N,'③ 手元の資料をまとめて入れます。登記簿・地図・聴取記録などの種類は自動で判別します。');
+      demoSpot($('n-drop'));await demoSleep(1000);
+      for(const f of demoFiles()){ST.newApi.addFiles([f]);await demoSleep(380);}
+      demoSpot($('n-files'));await demoSleep(1600);}
     /* 6 作成 */
     demoSay(6,N,'あとは「レポートを作成する」を押すだけです。');
     demoSpot($('n-run'));await demoSleep(1300);demoSpot(null);$('n-run').click();
-    demoSay(6,N,'資料を1点ずつ読み取り、地番ごとの履歴、法令・条例の照合、所見の下書きまでを組み立てます。（デモでは、読み取り結果に記録済みのデータを使っています）');
+    demoSay(6,N,nofile?'資料が無くても、位置図・治水地形分類図・標高からの地下水流向・年代別の空中写真・適用する法令と条例は、国土地理院などの公開データから組み立てます。'
+      :'資料を1点ずつ読み取り、地番ごとの履歴、法令・条例の照合、所見の下書きまでを組み立てます。（デモでは、読み取り結果に記録済みのデータを使っています）');
     if(!await demoUntil(()=>ST.route==='case',60000))throw new Error('レポートの作成が終わりませんでした');
-    /* 7 レポート */
-    const sec=async(id,text,ms)=>{demoSay(7,N,text);const el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});demoSpot(el,false);}await demoSleep(ms||3600);};
-    demoSay(7,N,'レポートができました。表紙・目次から、既往の報告書と同じ体裁・章立てです。本文はその場で直せます。');await demoSleep(3200);
-    await sec('sec-11','1.1 調査件名、特定施設・指定区域の有無、筆の一覧です。ページ下の番号と脚注も原本の形です。',4000);
-    await sec('sec-22','2.2 登記簿から、地番ごとの履歴表と地番の変遷図を作ります。小さな札が、根拠の資料とページです。',4600);
-    await sec('sec-23','2.3 地形図・住宅地図・空中写真の利用履歴を年次順に並べます。',3200);
-    await sec('sec-3','3 所見です。オートバイ・自動車の修理の履歴から「否定できない」と判定しました。',3800);
-    await sec('sec-4','4 対象物質の選定と指定基準の表、続く5・6章まで出します。',3800);
-    await sec('sec-app1','付録 何条に当たる調査かを、土壌汚染対策法と川崎市条例で判定しています。原本にない部分は付録に分けました。',4200);
-    /* 8 確認・判断・出典 */
+    if(nofile)await demoSleep(1800);
+    /* 7 レポート、8 確認など */
+    const sec=async(id,text,ms,block)=>{demoSay(7,N,text);const el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:block||'start'});demoSpot(el,false);}await demoSleep(ms||3600);};
     const tab=async(t,text,ms)=>{demoSay(8,N,text);const b=document.querySelector('.tabs2 button[data-t="'+t+'"]');b.click();demoSpot(document.querySelector('.ws-side'),false);await demoSleep(ms||3400);};
-    await tab('review','人が見るのは右の「確認」だけです。判読が怪しい箇所、資料どうしの食い違い、未記入だけが出ます。',4200);
-    await tab('judge','「判断」で懸念の扱い・対象物質・筆ごとの区分を切り替えると、所見と4〜6章を組み直します。',4000);
-    await tab('src','「出典」には、公式サイトで確認した法令・条例だけを、URLと確認日つきで並べます。',3800);
-    await tab('review','',300);
+    if(nofile){
+      demoSay(7,N,'レポートができました。体裁は既往の報告書と同じです。上の赤い帯と表紙の札が「下書き」の印で、未取得の項目を数えています。');demoSpot($('c-gaps'),false);await demoSleep(4600);
+      await sec('sec-11','1.1 特定施設・指定区域は行政への確認がまだなので、赤字の「未確認」です。地目と所有者は、登記簿が入ると埋まります。',4800);
+      await sec('sec-171','位置図は国土地理院の地図から自動で作りました。地番図は公図が必要なので、赤枠で「未取得」と取得先を出しています。',5000,'center');
+      await sec('sec-212','2.1 治水地形分類図と、標高から推定した地下水流向は自動で入ります。地形・地質の文章は、図を読んで人が書く欄です。',4800);
+      await sec('sec-22','2.2 登記簿は未取得です。赤枠に、どこで取得できるか、共有すると報告書のどこが埋まるかを書いています。',4800);
+      await sec('sec-23','2.3 住宅地図は未取得ですが、国土地理院の年代別の空中写真は自動で取得しました。用途の判読は人が行うので「判読前」です。',4600);
+      await sec('sec-23f','年代別の空中写真です。整備されていない年代は、その旨を赤枠で示します。',4800);
+      await sec('sec-243','2.4.3 行政への照会先は、名古屋市の担当窓口を、条例の登録情報から出しています。',4600);
+      await sec('sec-3','3 履歴を判断できる資料が無いので、所見は「保留」です。根拠が無いまま「低い」とは書きません。',4600);
+      await sec('sec-app1','付録 3,200㎡の形質変更なので、土壌汚染対策法第4条と名古屋市条例の対象になることは、今の時点で判定できます。',5000);
+      await tab('review','右の「確認」にも、未記入の項目と、確認が要る判定が並びます。',3800);
+      await tab('docs','資料が届いたら「資料」タブに入れるだけです。該当する赤枠が消え、表と所見が組み上がります。',4200);
+      await tab('review','',300);
+    }else{
+      demoSay(7,N,'レポートができました。表紙・目次から、既往の報告書と同じ体裁・章立てです。本文はその場で直せます。');await demoSleep(3200);
+      await sec('sec-11','1.1 調査件名、特定施設・指定区域の有無、筆の一覧です。ページ下の番号と脚注も原本の形です。',4000);
+      await sec('sec-22','2.2 登記簿から、地番ごとの履歴表と地番の変遷図を作ります。小さな札が、根拠の資料とページです。',4600);
+      await sec('sec-23','2.3 地形図・住宅地図・空中写真の利用履歴を年次順に並べます。',3200);
+      await sec('sec-3','3 所見です。オートバイ・自動車の修理の履歴から「否定できない」と判定しました。',3800);
+      await sec('sec-4','4 対象物質の選定と指定基準の表、続く5・6章まで出します。',3800);
+      await sec('sec-app1','付録 何条に当たる調査かを、土壌汚染対策法と川崎市条例で判定しています。原本にない部分は付録に分けました。',4200);
+      await tab('review','人が見るのは右の「確認」だけです。判読が怪しい箇所、資料どうしの食い違い、未記入だけが出ます。',4200);
+      await tab('judge','「判断」で懸念の扱い・対象物質・筆ごとの区分を切り替えると、所見と4〜6章を組み直します。',4000);
+      await tab('src','「出典」には、公式サイトで確認した法令・条例だけを、URLと確認日つきで並べます。',3800);
+      await tab('review','',300);
+    }
     /* 9 出力 */
     window.scrollTo({top:0,behavior:'smooth'});demoSpot(document.querySelector('.wa'),false);
-    demoSay(9,N,'「PDFで出力」「Wordで保存」で、提出用の形にできます。');await demoSleep(3200);
-    demoEnd('デモは以上です。このレポートはそのまま触れます。もう一度見るときは、案件一覧の「デモを再生する」から。');
+    demoSay(9,N,nofile?'この状態でも「PDFで出力」できます。赤枠ごと出るので、何が未取得かを依頼主と共有できます。':'「PDFで出力」「Wordで保存」で、提出用の形にできます。');await demoSleep(3600);
+    demoEnd(nofile?'デモ②は以上です。このレポートはそのまま触れます。資料ありの流れは、案件一覧の「デモ① 資料あり」から。':'デモ①は以上です。このレポートはそのまま触れます。資料の無い土地の流れは、案件一覧の「デモ② 資料なし」から。');
   }catch(e){if(e.message==='demo-stop')demoEnd();else{demoEnd('デモを中断しました：'+e.message);}}
 }

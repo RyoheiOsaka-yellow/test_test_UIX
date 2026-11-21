@@ -37,8 +37,31 @@ function selectSubstances(c){
   return {ids:SUB.filter(s=>ids.has(s.id)).map(s=>s.id),extra:[...extra]};
 }
 function openConcerns(c){return (c.concerns||[]).filter(x=>!x.resolved);}
+/* 年代別の空中写真（国土地理院 地理院タイル）。位置が分かれば、資料の共有なしで取得できる */
+const GSI_PHOTOS=[['ort_USA10','png','1945年～1950年','米軍撮影'],['ort_old10','png','1961年～1969年',''],['gazo1','jpg','1974年～1978年',''],['gazo2','jpg','1979年～1983年',''],['gazo3','jpg','1984年～1986年',''],['gazo4','jpg','1987年～1990年',''],['ort','jpg','2007年以降','オルソ画像'],['seamlessphoto','jpg','最新','全国最新写真']];
+/* 未取得の項目：何が無いか、どこで取得できるか、共有すると報告書のどこが埋まるか。本文では赤枠で示す */
+function gapsOf(c){
+  const s=c.site||{},g=c.regs||{},out=[];const has=re=>(c.docs||[]).some(d=>re.test(d.kind||''));
+  const desk=((ordFor(s.pref,s.city)||[]).filter(o=>o.desk).sort((a,b)=>(b.city?1:0)-(a.city?1:0))[0]||{}).desk||'';
+  const dk=desk?'窓口：'+desk.split('。')[0]:'窓口：所管の都道府県・政令市の環境部局';
+  const add=(k,sec,label,how,fill)=>out.push({k,sec,label,how,fill});
+  if(!(c.land||[]).length)add('land','sec-22','登記簿謄本（土地・建物・閉鎖登記簿、旧土地台帳）','法務局の窓口、または登記情報提供サービス（一般財団法人 民事法務協会）','2.2 の地番ごとの履歴表、地番の変遷、建物・法人の抽出、1.1 の地目・所有者');
+  if(!has(/公図/)&&!c.source)add('kozu','sec-172','公図','法務局の窓口、または登記情報提供サービス（一般財団法人 民事法務協会）','図1.7-2 調査対象地地番図、6.3 の区分図');
+  if(!s.geoText)add('geo','sec-211','地形・地質の記述','下の治水地形分類図（国土地理院）と、表層地質図（産業技術総合研究所 地質図Navi 等）を読んで記入','2.1.1 地形・地質概要');
+  if(!(c.maps||[]).length)add('maps','sec-23','住宅地図・旧版地形図','住宅地図は国立国会図書館・都道府県立図書館の所蔵または発行元、旧版地形図は国土地理院の謄本交付','2.3 の年次ごとの利用履歴表（対象地用途・周辺地の土地利用）と、利用履歴からの懸念の抽出');
+  if(!(c.hearing||[]).length)add('hearing','sec-241','ヒアリングの記録','土地所有者・管理者・近隣住民への聴取（聴取調査票）','2.4.1 の聴取内容、懸念のある利用履歴の確定・解消');
+  if(!c.siteVisit)add('visit','sec-242','現地踏査の記録','現地で土地の使用状況、漏洩の痕跡・変色・臭気を確認し、写真を記録','2.4.2 の踏査結果、添付資料（現地踏査写真）');
+  if(!(g.suidaku&&g.suidaku.v)||!(g.gesui&&g.gesui.v))add('fac','sec-243','特定施設の届出の有無（水質汚濁防止法・下水道法）','所管行政への照会（'+dk+'）。下水道法は下水道管理者','1.1 の特定施設の有無、2.4.3（1）、適用条項の判定（法第3条）');
+  if(!g.art6||!g.art11jin)add('zone','sec-243','指定区域の有無（法第6条・第11条、条例）','都道府県・政令市が公表する指定区域の台帳（'+dk+'）','1.1 の指定区域の有無、2.4.3（2）');
+  if(!g.natural)add('natural','sec-243','自然由来・公有水面埋立に関する情報','指定区域の台帳（自然由来特例区域・埋立地特例区域）と、公有水面埋立の免許・竣功の記録','2.4.3（3）、5章の由来の区分');
+  return out;
+}
+/* 履歴を判断できる資料が1点も無いときは、所見を出さずに保留にする */
+const hasHistory=c=>!!((c.land||[]).length||(c.maps||[]).length||(c.corps||[]).length||(c.concerns||[]).length);
+const lvlCls=lv=>lv==='低い'?'low':lv==='否定できない'?'high':'none';
 function verdictOf(c){
   const open=openConcerns(c);
+  if(!open.length&&!hasHistory(c))return {level:'保留',headline:'資料の取得後に判定する。',text:'登記簿謄本と住宅地図・地形図がいずれも未取得のため、土壌汚染の可能性は判定していない。資料を共有すると、利用履歴に基づいて所見を組み立てる。'};
   if(!open.length){const res=(c.concerns||[]).filter(x=>x.resolved&&(!x.pending||x.resolveNote));
     return {level:'低い',headline:'土壌汚染の可能性は低いと判断する。',text:'対象地における製造事業等の利用履歴及び「土壌汚染対策法」に規定する特定有害物質の使用等'+(res.length?`に関する履歴事項は無かったが、過去に${res.map(x=>x.use).join('、')}の利用が確認された。しかしながら、${res.map(x=>x.resolveNote||'有害物質の使用は確認されなかった').join('。また、')}ことから、土壌汚染の可能性は低いものと判断する。`:'は確認されなかった。よって、土壌汚染の可能性は低いものと判断する。')};}
   const parts=open.map(x=>`${x.period?x.period+'に':''}${x.use}としての利用履歴がある事が${x.basis}にて確認が取れた`);

@@ -91,7 +91,7 @@ function finalizeCase(c,keep){
     co.assess=hit.length?'concern':'low';co.comment=hit.length?`当法人は会社の目的に「${hit[0].label}」に関わる文言があることから、その過程において土壌汚染のおそれのある有害物質を使用していた可能性が否定できず、当時の有害物質の使用状況について、ヒアリング調査を実施する。`:'当法人は会社の目的から考えるに特定有害物質使用の可能性は低く、土壌汚染の可能性は低いと考えられる。';}});
   const v=verdictOf(c);const prev=c.verdict;
   if(!keep||!prev||prev.level!==v.level){
-    if(keep&&prev)pushDiff(c,{sev:'bad',text:`資料の追加で、所見が「${prev.level}」から「${v.level}」に変わった。追加で見つかった利用履歴（${fresh.map(x=>x.use).join('、')||'—'}）を「判断」で確認する。`});
+    if(keep&&prev&&prev.level!=='保留')pushDiff(c,{sev:'bad',text:`資料の追加で、所見が「${prev.level}」から「${v.level}」に変わった。追加で見つかった利用履歴（${fresh.map(x=>x.use).join('、')||'—'}）を「判断」で確認する。`});
     c.verdict=v;c.verdictEdited=false;}
   if(c.srcVerdict&&c.srcVerdict.level&&c.srcVerdict.level!==c.verdict.level)pushDiff(c,{sev:'bad',text:`共有された報告書の所見は「${c.srcVerdict.level}」、本システムの判定は「${c.verdict.level}」。根拠を見比べて確定してください。`,ref:c.srcVerdict.ref});
   if(!keep){const sel=selectSubstances(c);c.substances=sel.ids;c.extraSubstances=sel.extra;c.substancesManual=false;}

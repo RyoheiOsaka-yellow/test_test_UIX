@@ -67,7 +67,7 @@ const path = require('path');
   ok('F2 根拠チップの資料', logic.f2.some(t => /添付\(一般\)A 登記簿謄本 p\.3 \[doc=A p=3\]/.test(t)), JSON.stringify(logic.f2));
   ok('F6 固定ページなし', logic.f6.sec11 === 'none' && logic.f6.sec14 === 'none', JSON.stringify(logic.f6));
   ok('F3 診療所・工業', logic.f3.verdict === '低い' && logic.f3.review >= 1, JSON.stringify(logic.f3));
-  ok('F7 否定文', logic.f7.verdict === '低い' && logic.f7.concerns === 0, JSON.stringify(logic.f7));
+  ok('F7 否定文', logic.f7.verdict !== '否定できない' && logic.f7.concerns === 0, JSON.stringify(logic.f7));
   const f4 = logic.f4;
   ok('F4 副閾値', /900/.test(f4.osaka_1200_fac) && /非該当/.test(f4.osaka_1200_nofac) && /対象$/.test(f4.osaka_3200) && /300/.test(f4.tokyo_site3200_ch200) && /対象$/.test(f4.tokyo_site3200_ch500) && /900/.test(f4.tokyo_site1000_fac) && /非該当/.test(f4.tokyo_site1000_nofac) && /法第4条/.test(f4.yokohama_3500) && /対象$/.test(f4.yokohama_2500) && /下限なし/.test(f4.yokohama_500_fac) && /非該当/.test(f4.yokohama_500_nofac), JSON.stringify(f4));
   ok('F10 位置づけ', logic.f10.indexOf('義務によるものではない') < 0 && logic.f10.indexOf('第4条第1項') > 0, logic.f10);

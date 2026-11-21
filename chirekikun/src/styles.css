@@ -149,7 +149,7 @@ h1,h2,h3{text-wrap:balance}
 /* paper：エコ・テック様の報告書の紙面（A4、ゴシック、右下にページ番号、ページ下に脚注）。寸法は原本の実測 */
 .ws-paper{min-width:0}
 .paper{width:210mm;margin:0 auto;color:#000;font-family:var(--f-rep);overflow-wrap:anywhere;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.paper .sheet{box-sizing:border-box;width:210mm;min-height:297mm;background:#fff;padding:17mm 20mm 13mm 30mm;margin:0 0 16px;border:1px solid var(--line);box-shadow:0 14px 34px -24px rgba(0,0,0,.45);display:flex;flex-direction:column;font-size:10.5pt;line-height:1.7}
+.paper .sheet{position:relative;box-sizing:border-box;width:210mm;min-height:297mm;background:#fff;padding:17mm 20mm 13mm 30mm;margin:0 0 16px;border:1px solid var(--line);box-shadow:0 14px 34px -24px rgba(0,0,0,.45);display:flex;flex-direction:column;font-size:10.5pt;line-height:1.7}
 .paper .sbody{flex:1 1 auto;min-width:0}
 .paper .pno{flex:none;text-align:right;font-family:var(--f-pno);font-size:10.5pt;line-height:1;margin-top:9px;height:5mm}
 .paper .fnotes{flex:none;position:relative;margin-top:14px;padding-top:5px;font-size:8pt;line-height:1.55}.paper .fnotes::before{content:'';position:absolute;left:0;top:0;width:34%;border-top:1px solid #000}
@@ -197,6 +197,19 @@ h1,h2,h3{text-wrap:balance}
 .paper .toc{margin:0 3mm 0 5mm}.paper .toc a{display:flex;align-items:baseline;color:#000;text-decoration:none;font-size:9.5pt;line-height:1.72}.paper .toc a i{flex:1 1 auto;border-bottom:1.5px dotted #000;margin:0 4px 0 5px;transform:translateY(-.34em)}.paper .toc a b{font-weight:400;min-width:1.1em;text-align:right}
 .paper .toc a.l0{font-size:10.5pt;margin-top:.34em}.paper .toc a.l1{padding-left:1.1em}.paper .toc a.l2{padding-left:1.1em}.paper .toc a:hover span{text-decoration:underline}
 .paper .sheet.attp .atth{text-align:center;font-size:14pt;margin:78mm 0 12mm}.paper table.attl{width:52%;margin:0 auto}.paper .attl th{text-align:left}
+/* 未取得の注記（赤枠）。下書きであることが分かるよう、印刷にも出す */
+.paper .miss{position:relative;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;font-size:8.5pt;line-height:1.6;padding:12px 12px 8px;margin:16px 0 12px;text-indent:0}
+.paper .miss>b{position:absolute;top:-9px;left:10px;background:#d0021b;color:#fff;font-weight:700;font-size:7.5pt;line-height:16px;padding:0 8px;letter-spacing:.12em}
+.paper .miss .mt{font-weight:700;font-size:9pt}.paper .miss p{padding-left:0}
+.paper .miss.fig{box-sizing:border-box;width:520px;max-width:100%;height:330px;margin:0 auto;padding:20px 44px;display:flex;flex-direction:column;justify-content:center}.paper .miss.fig.tall{height:400px;margin-top:22px}
+.paper .ngv{color:#d0021b;border:1px solid #d0021b;background:#fff7f7;padding:0 4px;white-space:nowrap;text-indent:0}.paper .ngp{color:#d0021b}
+.paper .shoken.pend{border-color:#d0021b}.paper .shoken.pend .sh{border-color:#d0021b}.paper .shoken.pend .shh{color:#d0021b;border-color:#d0021b}.paper .shoken.pend .sht{color:#a30015}
+.paper .draft{position:absolute;top:11mm;right:13mm;border:1.5px solid #d0021b;background:#fff7f7;color:#d0021b;font-size:9pt;line-height:1.5;padding:3px 10px}
+.paper .phg{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-top:6px}.paper .ph{margin:0;position:relative;text-align:center}.paper .ph figcaption{font-size:8.5pt;line-height:1.5;margin-top:3px}
+.paper .ph .nop{display:none;position:absolute;left:50%;top:0;transform:translateX(-50%);box-sizing:border-box;width:252px;height:170px;border:1.5px solid #d0021b;background:#fff7f7;color:#d0021b;font-size:8pt;align-items:center;justify-content:center}
+.paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
+.paper [id]{scroll-margin-top:130px}
+.gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
 /* 付録（原本にない部分）と、画面でだけ見せる札 */
 .paper .sheet.app .sbody{font-size:9.5pt}.paper .pos,.paper .why,.paper .srcs{margin:.6em 0 0}.paper .why p{margin-top:.8em}.paper table.jt{font-size:7.5pt;margin-top:10px}.paper .jt th:nth-child(1){width:6%}.paper .jt th:nth-child(2){width:17%}.paper .jt th:nth-child(3){width:21%}.paper .jt th:nth-child(4){width:11%}.paper .jt td.b{font-weight:700}
 .paper .unv{font-family:var(--f-body);font-size:9px;color:#9a6a12;border:1px solid #d8b860;border-radius:3px;padding:0 4px;margin-left:5px;white-space:nowrap}
@@ -230,7 +243,7 @@ h1,h2,h3{text-wrap:balance}
 #printarea{display:none}
 
 @media(max-width:1180px){.ws{grid-template-columns:minmax(0,1fr) 340px}.ws-toc{display:none}}
-@media screen and (max-width:860px){.ws{grid-template-columns:1fr}.ws-side{position:static;max-height:none;order:-1}.paper{width:auto}.paper .sheet{width:auto;min-height:0;padding:26px 16px 22px;font-size:12px}.paper .sheet.cover{min-height:0;padding-bottom:60px}.paper .sheet.cover .sbody{font-size:17px}.paper .sheet.cover .ct{margin-top:40px}.paper .ct2,.paper .cd,.paper .co{margin-top:64px}.paper .sheet.attp .atth{margin-top:30px}.paper table.attl{width:auto!important;display:table}.paper table.yn{margin-left:0}.paper table{display:block;overflow-x:auto;width:auto!important;max-width:100%}.paper .tfig{overflow-x:auto}.paper .in2,.paper .in3,.paper .law{padding-left:1.2em}.paper .hang{padding-left:2.2em}.ws-head{position:static}}
+@media screen and (max-width:860px){.ws{grid-template-columns:1fr}.ws-side{position:static;max-height:none;order:-1}.paper{width:auto}.paper .sheet{width:auto;min-height:0;padding:26px 16px 22px;font-size:12px}.paper .sheet.cover{min-height:0;padding-bottom:60px}.paper .sheet.cover .sbody{font-size:17px}.paper .sheet.cover .ct{margin-top:40px}.paper .ct2,.paper .cd,.paper .co{margin-top:64px}.paper .sheet.attp .atth{margin-top:30px}.paper table.attl{width:auto!important;display:table}.paper table.yn{margin-left:0}.paper .phg{grid-template-columns:1fr}.paper .miss.fig{height:auto;width:auto}.paper .draft{position:static;display:inline-block;margin-bottom:10px}.paper table{display:block;overflow-x:auto;width:auto!important;max-width:100%}.paper .tfig{overflow-x:auto}.paper .in2,.paper .in3,.paper .law{padding-left:1.2em}.paper .hang{padding-left:2.2em}.ws-head{position:static}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media print{
   @page{size:A4;margin:0}
