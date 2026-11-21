@@ -11,7 +11,10 @@ export const LAYERS = [
 export const NL = LAYERS.length;
 
 // 配線しない「プレーン」ネット（内層ベタで供給する想定）
-export const NET_WIDTH = { signal: 0.16, diff: 0.24, power: 0.4, plane: 0.3 };
+// 配線幅・ビア径・クリアランス（KiCad の既定ルール: クリアランス 0.2mm に合わせた寸法）
+export const NET_WIDTH = { signal: 0.15, diff: 0.15, power: 0.15, plane: 0.15 };
+export const VIA = { d: 0.45, drill: 0.2 };
+export const CLEAR = 0.2;
 
 export function mulberry32(a) {
   return function () {
@@ -35,11 +38,13 @@ export class Board {
     this.meta = {};
   }
   get gridH() { return this.h + (this.tab ? this.tab.h : 0); }
-  inside(x, y) {
-    if (x < 0 || x > this.w || y < 0) return false;
-    if (y <= this.h) return true;
-    const t = this.tab;
-    return !!t && x >= t.x0 && x <= t.x1 && y <= this.h + t.h;
+  // m: 基板端からの余白
+  inside(x, y, m = 0) {
+    const t = this.tab, inTab = !!t && x >= t.x0 + m && x <= t.x1 - m;
+    if (x < m || x > this.w - m || y < m) return false;
+    if (y <= this.h - m) return true;
+    if (!inTab || y > this.h + t.h - m) return false;
+    return !(y > this.h + 1 - m && x > t.x0 + 11 - m && x < t.x0 + 13 + m);   // キー溝
   }
   group(id) { return this.groups.find(g => g.id === id); }
   ensureGroup(id, label, kind, color) {

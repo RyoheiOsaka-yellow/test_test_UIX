@@ -21,7 +21,7 @@ function prep(board) {
 }
 export function coreOf(board) {
   let best = null;
-  for (const c of board.comps) if (c.fixed && c.part.pads.length > 200 && (!best || c.part.pads.length > best.part.pads.length)) best = c;
+  for (const c of board.comps) if (c.fixed && c.part.pads.length >= 64 && (!best || c.part.pads.length > best.part.pads.length)) best = c;
   return best;
 }
 // グループごとの配置領域。core 系は負荷 IC を囲むリング、power 系は「12V 入力 → VRM → 負荷」の順に並ぶ帯。
@@ -127,7 +127,7 @@ export function overlapPairs(board) {
 
 // ───────── モジュール（剛体ブロック）─────────
 // near の親子関係とスイッチノードでつながる部品を 1 ブロックにまとめる（例: DrMOS+インダクタ+コンデンサ、メモリ+デカップリング）
-function buildModules(board, P) {
+function buildModules(board, P, packAll) {
   const mv = P.movable, idx = new Map(mv.map((c, i) => [c, i])), par = mv.map((_, i) => i);
   const find = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
   const uni = (a, b) => { if (idx.has(a) && idx.has(b)) par[find(idx.get(a))] = find(idx.get(b)); };
@@ -140,18 +140,72 @@ function buildModules(board, P) {
     const root = list.reduce((a, c) => (score(c) > score(a) ? c : a));
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, area = 0;
     for (const c of list) { const B = compBox(c); x0 = Math.min(x0, B.x0); y0 = Math.min(y0, B.y0); x1 = Math.max(x1, B.x1); y1 = Math.max(y1, B.y1); area += (B.x1 - B.x0) * (B.y1 - B.y0); }
-    let mem = list.map(c => ({ c, dx: c.x - root.x, dy: c.y - root.y, rot: c.rot }));
-    if ((x1 - x0) * (y1 - y0) > 3.5 * area + 40) { // ばらけている場合は横一列に詰め直す
-      const R = compBox(root); let cur = (R.x1 - R.x0) / 2, under = 0;
-      mem = list.map(c => {
-        if (c === root) return { c, dx: 0, dy: 0, rot: c.rot };
-        const B = compBox(c), w = B.x1 - B.x0;
-        if (c.side !== root.side) return { c, dx: snap((under++ % 3 - 1) * 2), dy: snap(Math.floor(under / 3) * 2), rot: c.rot };
-        const dx = snap(cur + w / 2 + 0.5); cur = dx + w / 2; return { c, dx, dy: 0, rot: c.rot };
-      });
-    }
-    return { root, mem, group: root.group };
+    if (list.length > 1 && (packAll || (x1 - x0) * (y1 - y0) > 3.5 * area + 40)) packModule(list, root, P);
+    return { root, mem: list.map(c => ({ c, dx: c.x - root.x, dy: c.y - root.y, rot: c.rot })), group: root.group };
   });
+}
+// ブロック内部の配置をネットリストから組み立てる。
+// 親（near またはスイッチノードの相手）の周囲で、同じネットのパッド同士が最も近く、
+// 親の信号ピンが出ていく側をふさがず、ブロックが小さくまとまる位置と向きを選ぶ。
+function packModule(list, root, P) {
+  const inMod = new Set(list), placed = [root], todo = list.filter(c => c !== root);
+  const anchorOf = c => {
+    const a = c.near && P.byId.get(c.near); if (a && inMod.has(a)) return a;
+    const m = P.mate.get(c); if (m && inMod.has(m.other)) return m.other;
+    return root;
+  };
+  // 親の「外へ出る信号ピン」の向き
+  const outDir = a => {
+    let sx = 0, sy = 0, k = 0;
+    for (const n of P.netsOf.get(a) || []) { if (n.pins.every(p => inMod.has(p.c))) continue; for (const p of n.pins) if (p.c === a) { const q = padWorld(a, a.part.padMap[p.p]); sx += q.x - a.x; sy += q.y - a.y; k++; } }
+    const d = Math.hypot(sx, sy); return k && d > 0.3 * k ? [sx / d, sy / d] : null;
+  };
+  while (todo.length) {
+    let i = todo.findIndex(c => placed.includes(anchorOf(c))); if (i < 0) i = 0;
+    const c = todo.splice(i, 1)[0], a = anchorOf(c), A = compBox(a), od = outDir(a);
+    const mateGap = P.mate.has(c) && P.mate.get(c).other === a ? 1 : 0.5;
+    const mates = placed.filter(o => o.side === c.side || o.part.th || c.part.th);
+    const peers = []; // 同じネットの既配置パッド
+    for (const pad of c.part.pads) {
+      const nm = c.padNet[pad.n]; const arr = [];
+      if (nm) for (const o of placed) for (const op of o.part.pads) if (o.padNet[op.n] === nm) arr.push(padWorld(o, op));
+      peers.push(arr);
+    }
+    let best = null;
+    const tryAt = (x, y, rot) => {
+      c.x = snap(x); c.y = snap(y); c.rot = rot;
+      const B = compBox(c, 0.2);
+      for (const o of mates) if (boxOverlap(B, compBox(o, 0.2)) > 0) return;
+      let sc = 0;
+      c.part.pads.forEach((pad, j) => {
+        const arr = peers[j]; if (!arr.length) return;
+        const q = padWorld(c, pad); let d = 1e9;
+        for (const o of arr) d = Math.min(d, Math.abs(q.x - o.x) + Math.abs(q.y - o.y));
+        sc += d * (c.part.pads.length === 2 ? 1 : 3);
+      });
+      if (od && c.side === a.side) { const dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 1; sc += Math.max(0, (dx * od[0] + dy * od[1]) / d) * 25; }
+      let x0 = B.x0, y0 = B.y0, x1 = B.x1, y1 = B.y1;
+      for (const o of mates) { const Q = compBox(o); x0 = Math.min(x0, Q.x0); y0 = Math.min(y0, Q.y0); x1 = Math.max(x1, Q.x1); y1 = Math.max(y1, Q.y1); }
+      sc += 0.2 * (x1 - x0 + y1 - y0);
+      if (!best || sc < best.sc) best = { sc, x: c.x, y: c.y, rot };
+    };
+    const rots = c.part.w === c.part.h && c.part.pads.length > 2 ? [0, 90, 180, 270] : [0, 90, 180, 270];
+    for (const rot of rots) {
+      c.rot = rot; const w = rot % 180 ? c.part.h : c.part.w, h = rot % 180 ? c.part.w : c.part.h;
+      if (c.side !== a.side && !c.part.th && !a.part.th) { // 反対面：親の真下に並べる
+        for (let y = A.y0 + h / 2; y <= A.y1 - h / 2 + 0.01; y += 0.5) for (let x = A.x0 + w / 2; x <= A.x1 - w / 2 + 0.01; x += 0.5) tryAt(x, y, rot);
+        if (!best) tryAt(a.x, a.y, rot);
+        continue;
+      }
+      for (let t = A.x0 - w / 2; t <= A.x1 + w / 2; t += 0.5) { tryAt(t, A.y0 - h / 2 - mateGap, rot); tryAt(t, A.y1 + h / 2 + mateGap, rot); }
+      for (let t = A.y0 - h / 2; t <= A.y1 + h / 2; t += 0.5) { tryAt(A.x0 - w / 2 - mateGap, t, rot); tryAt(A.x1 + w / 2 + mateGap, t, rot); }
+    }
+    if (!best) { // 置き場がなければ外側へ逃がす
+      for (let r = 2; r < 60 && !best; r += 1) for (let k = 0; k < 16 && !best; k++) tryAt(a.x + Math.cos(k * 0.3927) * r, a.y + Math.sin(k * 0.3927) * r, c.rot);
+      if (!best) best = { x: a.x, y: a.y, rot: c.rot };
+    }
+    c.x = best.x; c.y = best.y; c.rot = best.rot; placed.push(c);
+  }
 }
 function pose(mod, x, y, k) {
   for (const m of mod.mem) {
@@ -170,10 +224,10 @@ function modBox(mod) {
 
 // 配置計画：領域 → 構成的配置（相ブロックの整列、負荷 IC のボール正面への配置、裏面コンデンサの格子）→ 残りは散布
 // 基板は変更せず、各部品の目標姿勢を返す。
-export function planLayout(board, seed) {
+export function planLayout(board, seed, packAll = true) {
   const rnd = mulberry32(seed), P = prep(board), core = P.core;
   const orig = board.comps.map(c => [c, c.x, c.y, c.rot]);
-  const mods = buildModules(board, P), pinned = new Set(), soft = new Set();
+  const mods = buildModules(board, P, packAll), pinned = new Set(), soft = new Set();
   const kind = id => (board.group(id) || {}).kind;
   const info = { blocks: 0, facing: 0, grid: 0 };
 

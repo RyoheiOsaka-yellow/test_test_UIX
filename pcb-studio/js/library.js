@@ -8,12 +8,12 @@ function fp2(dx, pw, ph) { return [P('1', -dx, 0, pw, ph), P('2', dx, 0, pw, ph)
 function fpBGA(w, h) {
   const cols = Math.floor(w - 2), rows = Math.floor(h - 2), pads = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    pads.push(P(`${r}_${c}`, c - (cols - 1) / 2, r - (rows - 1) / 2, 0.5, 0.5, { round: true, ring: Math.min(r, c, rows - 1 - r, cols - 1 - c) }));
+    pads.push(P(`${r}_${c}`, c - (cols - 1) / 2, r - (rows - 1) / 2, 0.4, 0.4, { round: true, ring: Math.min(r, c, rows - 1 - r, cols - 1 - c) }));
   }
   return pads;
 }
 function fpQFN(per, names) {
-  const o = Math.floor(per / 2), half = o * 0.5 + 0.5, pads = [];
+  const o = Math.floor(per / 2), half = o * 0.5 + 1, pads = [];   // 角のパッド同士が 0.5mm 空く
   let k = 0;
   const nm = () => names[k] || 'NC' + (k + 1);
   for (let i = 0; i < per; i++, k++) pads.push(P(nm(), -half, (i - o) * 0.5, 0.7, 0.3));
@@ -145,8 +145,8 @@ function build(p) {
   const f = p.family;
   if (f === 'gpu') p.pads = fpBGA(p.w, p.h);
   else if (f === 'vram') { p.w = 12; p.h = 14; p.pads = fpBGA(12, 14); }
-  else if (f === 'ctl') { p.w = 8; p.h = 8; p.pads = fpQFN(14, CTL_NAMES); }
-  else if (f === 'ctl8') { p.w = 6; p.h = 6; p.pads = fpQFN(10, CTL8_NAMES); }
+  else if (f === 'ctl') { p.w = 9.5; p.h = 9.5; p.pads = fpQFN(14, CTL_NAMES); }
+  else if (f === 'ctl8') { p.w = 7.5; p.h = 7.5; p.pads = fpQFN(10, CTL8_NAMES); }
   else if (f === 'drmos') p.pads = fpDrMOS(p.w, p.h);
   else if (f === 'ind' || f === 'indin') { const d = Math.floor((p.w / 2 - 1) * 2) / 2; p.pads = fp2(d, 1.5, Math.max(2, p.h - 3)); }
   else if (f === 'indaux') p.pads = fp2(1.5, 0.8, 2.5);
@@ -161,13 +161,13 @@ function build(p) {
   } else if (f === 'pwrconn8') {
     p.th = true;
     p.pads = fpGrid(4, 2, 4, ['V1', 'V2', 'V3', 'S1', 'G1', 'G2', 'G3', 'G4'], 1.6, 1.6, TH);
-  } else if (f === 'mon') { p.w = 4; p.h = 4; p.pads = fpQFN(5, ['IN1P', 'IN1N', 'IN2P', 'IN2N', 'IN3P', 'IN3N', 'SDA', 'SCL', 'VCC', 'GND', 'ALERT']); }
+  } else if (f === 'mon') { p.w = 4.5; p.h = 4.5; p.pads = fpQFN(5, ['IN1P', 'IN1N', 'IN2P', 'IN2N', 'IN3P', 'IN3N', 'SDA', 'SCL', 'VCC', 'GND', 'ALERT']); }
   else if (f === 'dp' || f === 'hdmi') p.pads = fpGrid(10, 2, 1, seq(f === 'dp' ? 20 : 19, i => 'P' + i), 0.5, 1.2).map(q => ({ ...q, y: q.y * 2 + 2 }));
-  else if (f === 'retimer') { p.w = 5; p.h = 5; p.pads = fpQFN(7, [...seq(4, i => 'IN' + i), ...seq(4, i => 'OUT' + i), 'SDA', 'SCL', 'VCC', 'GND']); }
-  else if (f === 'pcie') p.pads = fpRow(82, 1, pcieNames(), 0.6, 4);
+  else if (f === 'retimer') { p.w = 5.5; p.h = 5.5; p.pads = fpQFN(7, [...seq(4, i => 'IN' + i), ...seq(4, i => 'OUT' + i), 'SDA', 'SCL', 'VCC', 'GND']); }
+  else if (f === 'pcie') p.pads = fpRow(82, 1, pcieNames(), 0.6, 4).filter((_, i) => i < 8 || i > 10);   // キー溝の位置には端子がない
   else if (f === 'flash') { p.w = 5; p.h = 5; p.pads = fpSO(4, ['CS', 'MISO', 'WP', 'GND', 'MOSI', 'CLK', 'HOLD', 'VCC'], 5); }
-  else if (f === 'mcu') { p.w = 6; p.h = 6; p.pads = fpQFN(8, MCU_NAMES); }
-  else if (f === 'buck') { p.w = 3.5; p.h = 3.5; p.pads = fpQFN(3, ['VIN', 'EN', 'PG', 'SW', 'SW2', 'GND', 'FB', 'VCC']); }
+  else if (f === 'mcu') { p.w = 6.5; p.h = 6.5; p.pads = fpQFN(8, MCU_NAMES); }
+  else if (f === 'buck') { p.w = 4; p.h = 4; p.pads = fpQFN(3, ['VIN', 'EN', 'PG', 'SW', 'SW2', 'GND', 'FB', 'VCC']); }
   else if (f === 'xtal') p.pads = fpGrid(2, 2, 2, ['X1', 'GND', 'GND2', 'X2'], 0.9, 0.8);
   else if (f === 'fan') { p.th = true; p.pads = fpRow(4, 2, ['GND', 'V12', 'TACH', 'PWM'], 1, 1, TH); }
   p.ref = p.ref || 'U';

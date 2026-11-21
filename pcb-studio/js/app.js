@@ -4,7 +4,9 @@ import { PRESETS, generateGPU, emptyBoard } from './templates.js';
 import { Router } from './router.js';
 import { planLayout, anneal } from './placer.js';
 import { draw, toWorld, flipOf } from './render.js';
-import { exportKicad, importKicad, packPart, unpackPart } from './kicad.js';
+import { exportKicad, importKicad, kicadProject, packPart, unpackPart } from './kicad.js';
+import { planePlan } from './planes.js';
+import { electrical } from './electrical.js';
 import { View3D } from './view3d.js';
 
 const $ = id => document.getElementById(id);
@@ -14,7 +16,7 @@ const cv = $('cv'), ctx = cv.getContext('2d');
 const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
-  show: { rats: true, zones: true, far: true, labels: true },
+  show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'design', time: 0,
   rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
@@ -36,14 +38,17 @@ function zones() {
   const gpu = b.comps.find(c => c.part.family === 'gpu');
   const width = { VCORE: Math.max(8, Math.min(18, (gpu ? gpu.part.val : 300) / 40)), VMEM: 6, '+12V': 6, '+12V_IN': 7, '+1V8': 3.5, '+PEX': 3.5 };
   for (const name of Object.keys(width)) {
-    const n = b.nets.get(name); if (!n) continue;
+    const n = b.nets.get(name); if (!n || n.cls !== 'plane') continue;
     const w = width[name], nodes = [], seen = new Set();
     for (const p of n.pins) {
       const c = p.c; if (seen.has(c)) continue; seen.add(c);
       if (c.part.pads.length > 60) { // 大型 BGA は面で受ける
         const B = compBox(c, -Math.min(w / 2, c.part.w / 4));
         for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) nodes.push({ x: B.x0 + (B.x1 - B.x0) * i / 2, y: B.y0 + (B.y1 - B.y0) * j / 2 });
-      } else nodes.push({ x: c.x, y: c.y });
+      } else { // 2 端子で相手側が別の電源、または電源コネクタ → このレールへの供給元
+        const other = c.part.pads.length === 2 ? Object.values(c.padNet).find(x => x !== name) : null;
+        nodes.push({ x: c.x, y: c.y, src: (other && other !== 'GND' && !(name === '+12V_IN')) || /^pwrconn/.test(c.part.family) });
+      }
     }
     if (nodes.length < 2) continue;
     const edges = [], d = new Float64Array(nodes.length).fill(1e18), from = new Int32Array(nodes.length), inT = new Uint8Array(nodes.length);
@@ -58,7 +63,13 @@ function zones() {
       }
       inT[bi] = 1; edges.push([from[bi], bi]); cur = bi;
     }
-    out.push({ name, w, nodes, edges });
+    // 供給元から木をたどって、電流の向き（供給元 → 負荷）を決める
+    const adj = nodes.map(() => []), flow = [], vis = new Uint8Array(nodes.length);
+    for (const [i, j] of edges) { adj[i].push(j); adj[j].push(i); }
+    let q = nodes.map((nd, i) => (nd.src ? i : -1)).filter(i => i >= 0);
+    for (const i of q) vis[i] = 1;
+    while (q.length) { const nx2 = []; for (const i of q) for (const j of adj[i]) if (!vis[j]) { vis[j] = 1; flow.push([i, j]); nx2.push(j); } q = nx2; }
+    out.push({ name, w, nodes, edges, flow });
   }
   return out;
 }
@@ -83,8 +94,10 @@ function commit(nets = []) {
   for (const n of set) R.ripNet(n);
   for (const n of R.rebuild()) { R.ripNet(n); set.add(n); }
   const list = [...set].filter(n => b.nets.get(n.name) === n);
-  if (liveRoute && list.length) {
+  if (liveRoute) {
     for (const _ of R.routeMany(list));
+  }
+  if (liveRoute && list.length) {
     const fails = list.filter(n => n.route && n.route.fails.length).length;
     toast(`${list.length} 本を再配線${fails ? `（${fails} 本は未完了）` : ''}`);
   }
@@ -377,7 +390,7 @@ function toggle3d() {
   if (!v3.ok) return toast('3D ライブラリを読み込めませんでした（ネットワークを確認してください）');
   v3on = !v3on;
   $('cv3').hidden = !v3on; $('explodeWrap').hidden = !v3on; $('btn3d').setAttribute('aria-pressed', v3on); $('tip').hidden = true;
-  if (v3on) { v3.resize(S.cw, S.ch, S.dpr); v3.setBoard(S.board); toast('3D 表示：ドラッグで回転、Shift+ドラッグで移動、ホイールで拡大。編集は 2D に戻って行います'); }
+  if (v3on) { v3.style = S.style; v3.resize(S.cw, S.ch, S.dpr); v3.setBoard(S.board); toast('3D 表示：ドラッグで回転、Shift+ドラッグで移動、ホイールで拡大。編集は 2D に戻って行います'); }
 }
 const saveData = () => ({ ...serialize(S.board), custom: [...new Set(S.board.comps.map(c => c.part))].filter(p => p.cat === 'kicad').map(packPart) });
 function loadText(text) {
@@ -391,15 +404,16 @@ function loadText(text) {
   stage('', t.startsWith('(kicad_pcb') ? 'KiCad 基板を取り込み、このツールのグリッドで再配線しました（元の配線は使いません）。' : '読み込みました。');
 }
 async function saveFile() {
-  const kicad = ioKind === 'kicad', text = $('ioText').value, msg = $('ioMsg');
+  const kicad = ioKind !== 'json', text = $('ioText').value, msg = $('ioMsg');
+  const base = ioKind === 'pro' ? 'gpu-board.kicad_pro' : 'gpu-board.kicad_pcb';
   const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
   if (dl) {
-    try { await dl.save({ filename: kicad ? 'gpu-board.kicad_pcb.txt' : 'gpu-board.json', data: text }); msg.textContent = kicad ? '保存しました。ファイル名末尾の .txt を外すと KiCad で開けます。' : '保存しました。'; }
+    try { await dl.save({ filename: kicad ? base + '.txt' : 'gpu-board.json', data: text }); msg.textContent = kicad ? '保存しました。ファイル名末尾の .txt を外すと KiCad で開けます。' : '保存しました。'; }
     catch (err) { msg.textContent = err && err.code === 'declined' ? '保存を取り消しました。' : 'この画面では保存できません。「コピー」を使ってください。'; }
     return;
   }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = kicad ? 'gpu-board.kicad_pcb' : 'gpu-board.json';
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = kicad ? base : 'gpu-board.json';
   document.body.appendChild(a); a.click(); a.remove(); msg.textContent = '保存を開始しました。始まらない場合は「コピー」を使ってください。';
 }
 
@@ -477,6 +491,7 @@ function renderStats() {
     const bad = n.route ? n.route.fails : n.pins.map((_, i) => i).slice(1);
     for (const i of bad) { const p = n.pins[i], q = padWorld(p.c, p.c.part.padMap[p.p]); issues.push({ t: `未接続: ${n.name}（${p.c.ref}）`, x: q.x, y: q.y, side: p.c.side }); }
   }
+  for (const n of b.nets.values()) if (n.cls === 'plane' && n.route) for (const i of n.route.fails) { const p = n.pins[i], q = padWorld(p.c, p.c.part.padMap[p.p]); issues.push({ t: `プレーン未接続: ${n.name}（${p.c.ref}）`, x: q.x, y: q.y, side: p.c.side }); }
   S.issues = issues;
   const pads = b.comps.reduce((s, c) => s + c.part.pads.length, 0);
   const fam = f => b.comps.filter(c => c.part.family === f);
@@ -490,6 +505,9 @@ function renderStats() {
   row('配線ネット', `${st.routed} / ${st.total} ${pill(st.routed === st.total, st.total ? Math.round(st.routed / st.total * 100) + '%' : '-')}`);
   row('未接続', `${st.fails} 箇所 ${pill(!st.fails, st.fails ? '要対応' : 'OK')}`);
   row('配線長 / ビア', `${Math.round(st.len).toLocaleString()} mm / ${st.vias}`);
+  if (st.pPins) row('プレーン接続', `${(st.pPins - st.pFail).toLocaleString()} / ${st.pPins.toLocaleString()} ピン（ビア ${st.pVias.toLocaleString()}）${pill(!st.pFail, st.pFail ? '未接続 ' + st.pFail : 'OK')}`);
+  const plan = planePlan(b);
+  if (plan.rails.length) row('層構成', `<span title="${esc(plan.stack.join(' / '))}">${plan.copper} 層（信号 4・GND ${plan.gnd}・電源 ${plan.power}）</span>`);
   const ms = S.router.matchStats();
   if (ms.groups) row('等長グループ', `${ms.good} / ${ms.groups} 組が ±1mm 以内 ${pill(ms.good === ms.groups, ms.good === ms.groups ? 'OK' : `最大差 ${ms.worst.toFixed(1)}mm`)}`);
   row('部品の重なり', `${ov} 組 ${pill(!ov, ov ? '要対応' : 'OK')}`);
@@ -502,7 +520,12 @@ function renderStats() {
     row('VRAM', `${fam('vram').length} 枚 = ${gb} GB`);
     for (const c of fam('ctl')) { const n = Object.keys(c.padNet).filter(k => k.startsWith('PWM')).length; if (n > c.part.val) row('コントローラ', `${esc(c.part.pn)} は最大 ${c.part.val} 相（${n} 相接続）${pill(false, '位相ダブラ要')}`); }
   }
-  $('stats').innerHTML = `<table>${rows.join('')}</table>` + (issues.length
+  const el = electrical(b);
+  const elec = el.length ? `<div class="sub">電源経路の概算（2oz プレーン 1 層あたり）</div><table class="elec"><tr><th>レール</th><th>電流</th><th>経路</th><th>降下</th><th>損失</th></tr>${el.map(e => {
+    const need = Math.ceil(e.pct / 2);
+    return `<tr><td>${esc(e.name)}</td><td class="num">${Math.round(e.I)} A</td><td class="num">${e.L.toFixed(0)}×${e.W.toFixed(0)} mm</td><td class="num">${e.mV.toFixed(1)} mV<br><span class="dim">${e.pct.toFixed(1)}%</span></td><td class="num">${e.loss.toFixed(1)} W${need > 1 ? `<br><span class="pill bad">${need} 層必要</span>` : '<br><span class="pill good">1 層で可</span>'}</td></tr>`;
+  }).join('')}</table><p class="dim">経路は供給元（インダクタ等）から負荷までの平均距離 × 有効幅。降下 2% 以内を目安に必要なプレーン枚数を示します。銅箔温度・ビア・リターン経路は含みません。</p>` : '';
+  $('stats').innerHTML = `<table>${rows.join('')}</table>` + elec + (issues.length
     ? `<div class="sub">問題 ${issues.length} 件（クリックでその場所へ）</div><div class="pins">${issues.slice(0, 30).map((q, i) => `<button class="pin bad" data-issue="${i}">${esc(q.t)}</button>`).join('')}</div>`
     : '<div class="sub ok">配置・接続の問題は見つかりません</div>');
 }
@@ -532,7 +555,8 @@ function renderBom() {
 }
 function renderLayers() {
   $('layers').innerHTML = LAYERS.map(l => `<label class="ck"><input type="checkbox" data-layer="${l.id}" id="ly${l.id}" checked><i style="background:${l.color}"></i>${l.label}</label>`).join('')
-    + [['rats', '未配線（ラッツネスト）'], ['zones', '電源プレーン領域'], ['far', '反対面の部品'], ['labels', '部品ラベル']].map(([k, t]) => `<label class="ck"><input type="checkbox" data-show="${k}" id="sh_${k}" checked>${t}</label>`).join('');
+    + [['rats', '未配線（ラッツネスト）'], ['zones', '電源プレーン領域'], ['flow', '電流の流れ'], ['pvias', 'プレーン接続ビア'], ['far', '反対面の部品'], ['labels', '部品ラベル']].map(([k, t]) => `<label class="ck"><input type="checkbox" data-show="${k}" id="sh_${k}" checked>${t}</label>`).join('');
+  for (const k of Object.keys(S.show)) { const e = $('sh_' + k); if (e) e.checked = S.show[k]; }
 }
 let toastT = 0;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600); }
@@ -568,8 +592,10 @@ document.addEventListener('click', e => {
   else if (t.id === 'btnGen') genFromForm();
   else if (t.id === 'btnEmpty') { if (!run) { pushUndo(); setBoard(emptyBoard()); toast('空の基板を作成しました。ライブラリから部品を配置してください'); } }
   else if (t.id === 'btn3d') toggle3d();
+  else if (t.id === 'btnStyle') { S.style = S.style === 'real' ? 'design' : 'real'; t.setAttribute('aria-pressed', S.style === 'real'); dirty = true; if (v3on) { v3.style = S.style; v3.sync(); } }
+  else if (t.id === 'ioPro') { ioKind = 'pro'; $('ioText').value = kicadProject(); $('ioMsg').textContent = 'KiCad の設計ルール。gpu-board.kicad_pro として .kicad_pcb と同じフォルダに置いてください。'; }
   else if (t.id === 'btnIO' || t.id === 'ioJson') { ioKind = 'json'; $('ioText').value = JSON.stringify(saveData()); $('ioMsg').textContent = 'JSON を表示中'; if (!$('io').open) $('io').showModal(); }
-  else if (t.id === 'ioKicad') { ioKind = 'kicad'; $('ioText').value = exportKicad(S.board); $('ioMsg').textContent = `KiCad 形式を表示中（${Math.round($('ioText').value.length / 1024)} KB）`; }
+  else if (t.id === 'ioKicad') { ioKind = 'kicad'; $('ioText').value = exportKicad(S.board); $('ioMsg').textContent = `KiCad 形式を表示中（${Math.round($('ioText').value.length / 1024)} KB）。開いたら B キーでゾーンを塗りつぶしてください。`; }
   else if (t.id === 'ioSave') saveFile();
   else if (t.id === 'ioCopy') { navigator.clipboard.writeText($('ioText').value).then(() => { $('ioMsg').textContent = 'コピーしました'; }, () => { $('ioText').select(); $('ioMsg').textContent = '選択しました。Ctrl+C でコピーしてください'; }); }
   else if (t.id === 'ioLoad') { if (run) return; try { loadText($('ioText').value); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } }
@@ -609,6 +635,7 @@ function resize() {
 }
 new ResizeObserver(() => { const first = !S.cw; resize(); if (first && S.board) fit(); }).observe(cv.parentElement);
 
+let frameNo = 0;
 function frame(now) {
   if (run && playing) {
     elapsed = now - t0;
@@ -618,6 +645,8 @@ function frame(now) {
     if (r.done) finish('完了。部品をドラッグして調整できます。');
     dirty = true;
   }
+  S.time = now / 1000;
+  if (S.show.flow && S.show.zones && !v3on && !document.hidden && (frameNo++ & 1)) dirty = true;
   if (v3on) {
     if (run && playing) { v3.sync(); if (now - v3.texAt > 600) v3.paint(); }
     if (v3.dirty) v3.render();

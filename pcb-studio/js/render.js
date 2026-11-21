@@ -1,10 +1,17 @@
 // Canvas 描画。ワールド座標 mm、基板中心まわりの左右反転（裏返し）に対応。
-import { LAYERS, NL, NET_WIDTH, padWorld, compBox } from './core.js';
+import { LAYERS, NL, NET_WIDTH, VIA, padWorld, compBox } from './core.js';
 
 const C = {
   bg: '#0d1216', board: '#171d22', edge: '#c9a25a', bracket: '#56606b', via: '#d9dde2', hole: '#0d1216',
   padSig: '#f1d27a', padGnd: '#7f8a96', padPwr: '#e8955a', padNc: '#4d5661', padFar: '#3d4955', hi: '#ffffff', rats: '#e9eef5',
 };
+// 実物風表示の部品色（ファミリ別）
+export const REAL = {
+  gpu: '#2b4a3a', vram: '#16191c', ctl: '#1a1d21', ctl8: '#1a1d21', drmos: '#1a1d21', mon: '#1a1d21', mcu: '#1a1d21', buck: '#1a1d21', retimer: '#1a1d21', flash: '#1a1d21',
+  ind: '#5d636a', indin: '#5d636a', indaux: '#4a4f55', bulk: '#b7862f', bulkin: '#9aa2ab', mlcc: '#a98f6c', res: '#23272c', shunt: '#8e959c', fuse: '#d8d2c2',
+  pwrconn: '#121416', pwrconn8: '#121416', dp: '#aeb5bc', hdmi: '#aeb5bc', pcie: '#c9a25a', xtal: '#b9c0c7', fan: '#e6e2d6',
+};
+export const realColor = p => REAL[p.family] || (p.pads.length > 6 ? '#1a1d21' : p.pads.length === 2 ? '#a98f6c' : '#3a4047');
 const ZONE_COL = { VCORE: '#f26d6d', VMEM: '#d98cf0', '+12V': '#f0d264', '+12V_IN': '#f0a04a', '+1V8': '#a3d977', '+PEX': '#7fe0c3' };
 
 export function flipOf(S) { const f = S.view.flip; return Math.abs(f) < 0.03 ? (f < 0 ? -0.03 : 0.03) : f; }
@@ -34,8 +41,15 @@ export function draw(ctx, S) {
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
   // 基板とブラケット
+  if (v.z > 2.2) { // 背景の 10mm グリッド
+    ctx.fillStyle = '#1b242c';
+    const gx0 = Math.floor(Math.min(toWorld(S, 0, 0).x, toWorld(S, cw, 0).x) / 10) * 10, gx1 = Math.max(toWorld(S, 0, 0).x, toWorld(S, cw, 0).x), gy0 = Math.floor(toWorld(S, 0, 0).y / 10) * 10, gy1 = toWorld(S, 0, ch).y;
+    for (let y = gy0; y <= gy1; y += 10) for (let x = gx0; x <= gx1; x += 10) ctx.fillRect(x - px, y - px, 2 * px, 2 * px);
+  }
   ctx.fillStyle = C.bracket; ctx.fillRect(-3.2, -5, 1.2, b.h + 9);
-  boardPath(ctx, b); ctx.fillStyle = C.board; ctx.fill();
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 18 * dpr; ctx.shadowOffsetY = 5 * dpr;
+  boardPath(ctx, b); ctx.fillStyle = S.style === 'real' ? '#12181c' : C.board; ctx.fill(); ctx.restore();
+  boardPath(ctx, b);
   ctx.lineWidth = Math.max(0.25, px); ctx.strokeStyle = C.edge; ctx.stroke();
 
   const a0 = toWorld(S, 0, 0), a1 = toWorld(S, cw, ch);
@@ -81,14 +95,16 @@ export function draw(ctx, S) {
 
   // 配線（奥の層から）
   const order = back ? [0, 1, 2, 3] : [3, 2, 1, 0];
-  const nets = [...b.nets.values()].filter(n => n.route && n.route.segs.length);
+  const routedAll = [...b.nets.values()].filter(n => n.route && (n.route.segs.length || n.route.vias.length));
+  const nets = routedAll.filter(n => !n.route.plane), planeNets = routedAll.filter(n => n.route.plane);
+  const real = S.style === 'real';
   for (const l of order) {
     if (!S.layerVis[l]) continue;
     ctx.strokeStyle = LAYERS[l].color;
-    ctx.globalAlpha = hi || hg ? 0.2 : (l === order[NL - 1] ? 1 : 0.85);
-    for (const cls of ['signal', 'diff', 'power']) {
+    ctx.globalAlpha = hi || hg ? 0.2 : (l === order[NL - 1] ? 1 : 0.85) * (real ? 0.6 : 1);
+    for (const cls of ['signal', 'diff', 'power', 'plane']) {
       ctx.beginPath();
-      for (const n of nets) {
+      for (const n of routedAll) {
         if (n.cls !== cls) continue;
         for (const s of n.route.segs) { if (s.l !== l) continue; const p = s.pts; ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); }
       }
@@ -108,13 +124,30 @@ export function draw(ctx, S) {
     ctx.lineWidth = Math.max(NET_WIDTH[hi.cls] * 2.2, 4 * px); ctx.strokeStyle = '#ffffff'; ctx.globalAlpha = 0.35; ctx.stroke();
     ctx.lineWidth = Math.max(NET_WIDTH[hi.cls] * 1.3, 2 * px); ctx.strokeStyle = LAYERS[l].color; ctx.globalAlpha = 1; ctx.stroke();
   }
-  // ビア
+  // 電流の流れ（供給元 → 負荷）
+  if (S.show.flow && S.show.zones && v.z > 1.5) {
+    ctx.setLineDash([1.4, 2.6]); ctx.lineDashOffset = -(S.time || 0) * 9; ctx.lineWidth = Math.max(0.45, 1.5 * px); ctx.globalAlpha = hi || hg ? 0.25 : 0.95;
+    for (const z of S.zones) {
+      if (!z.flow.length) continue;
+      ctx.strokeStyle = ZONE_COL[z.name] || '#fff'; ctx.beginPath();
+      for (const [i, j] of z.flow) { ctx.moveTo(z.nodes[i].x, z.nodes[i].y); ctx.lineTo(z.nodes[j].x, z.nodes[j].y); }
+      ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.lineDashOffset = 0; ctx.globalAlpha = 1;
+  }
+  // ビア（信号ビアと、電源・GND をプレーンへ落とすビア）
+  const vr = VIA.d / 2;
+  if (v.z > 3 && S.show.pvias) {
+    ctx.globalAlpha = hi || hg ? 0.25 : 0.8; ctx.fillStyle = '#56606b'; ctx.beginPath();
+    for (const n of planeNets) { if (hi === n) continue; for (const q of n.route.vias) { if (q.x < vx0 || q.x > vx1 || q.y < vy0 || q.y > vy1) continue; if (v.z > 7) { ctx.moveTo(q.x + vr, q.y); ctx.arc(q.x, q.y, vr, 0, 6.2832); } else ctx.rect(q.x - vr, q.y - vr, VIA.d, VIA.d); } }
+    ctx.fill();
+  }
   if (v.z > 1.2) {
     ctx.globalAlpha = hi || hg ? 0.3 : 1; ctx.fillStyle = C.via; ctx.beginPath();
-    for (const n of nets) for (const q of n.route.vias) { ctx.moveTo(q.x + 0.3, q.y); ctx.arc(q.x, q.y, 0.3, 0, 6.2832); }
+    for (const n of nets) for (const q of n.route.vias) { ctx.moveTo(q.x + vr, q.y); ctx.arc(q.x, q.y, vr, 0, 6.2832); }
     ctx.fill();
-    if (v.z > 5) { ctx.fillStyle = C.hole; ctx.beginPath(); for (const n of nets) for (const q of n.route.vias) { ctx.moveTo(q.x + 0.13, q.y); ctx.arc(q.x, q.y, 0.13, 0, 6.2832); } ctx.fill(); }
-    if (hi && hi.route) { ctx.globalAlpha = 1; ctx.fillStyle = C.hi; ctx.beginPath(); for (const q of hi.route.vias) { ctx.moveTo(q.x + 0.36, q.y); ctx.arc(q.x, q.y, 0.36, 0, 6.2832); } ctx.fill(); }
+    if (v.z > 5) { ctx.fillStyle = C.hole; ctx.beginPath(); for (const n of nets) for (const q of n.route.vias) { ctx.moveTo(q.x + VIA.drill / 2, q.y); ctx.arc(q.x, q.y, VIA.drill / 2, 0, 6.2832); } ctx.fill(); }
+    if (hi && hi.route) { ctx.globalAlpha = 1; ctx.fillStyle = C.hi; ctx.beginPath(); for (const q of hi.route.vias) { if (v.z > 3 || !hi.route.plane) { ctx.moveTo(q.x + vr * 1.2, q.y); ctx.arc(q.x, q.y, vr * 1.2, 0, 6.2832); } } ctx.fill(); }
     ctx.globalAlpha = 1;
   }
 
@@ -149,13 +182,28 @@ export function draw(ctx, S) {
   ctx.globalAlpha = 1;
 
   // 手前側の部品
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, Math.min(r, w / 2, h / 2)); else ctx.rect(x, y, w, h); };
   for (const c of comps) {
     if (c.side !== nearSide && !c.part.th) continue;
-    const B = compBox(c), col = gcol(c), sel = S.sel.has(c), dim = hg && hg !== c.group;
+    const B = compBox(c), col = gcol(c), sel = S.sel.has(c), dim = hg && hg !== c.group, w = B.x1 - B.x0, h = B.y1 - B.y0, fam = c.part.family;
+    if (real && fam !== 'pcie') {
+      // 実物風：不透明なパッケージ、シルクの外形、1 番ピンの印
+      ctx.globalAlpha = dim ? 0.25 : 1; ctx.fillStyle = realColor(c.part);
+      if (fam === 'bulkin') { ctx.beginPath(); ctx.arc(c.x, c.y, Math.min(w, h) / 2, 0, 6.2832); } else rr(B.x0, B.y0, w, h, fam === 'mlcc' || fam === 'res' ? 0.08 : 0.35);
+      ctx.fill();
+      if (fam === 'gpu') { ctx.fillStyle = '#c3c9cf'; rr(c.x - w * 0.24, c.y - h * 0.24, w * 0.48, h * 0.48, 0.6); ctx.fill(); }
+      else if (fam === 'ind' || fam === 'indin') { ctx.fillStyle = '#747a81'; rr(B.x0 + w * 0.12, B.y0 + h * 0.12, w * 0.76, h * 0.76, 0.8); ctx.fill(); }
+      else if (fam === 'bulkin') { ctx.fillStyle = '#5b3f88'; ctx.beginPath(); ctx.arc(c.x, c.y, Math.min(w, h) / 2, -1.2, 0.4); ctx.lineTo(c.x, c.y); ctx.fill(); }
+      else if ((fam === 'mlcc' || fam === 'bulk' || fam === 'res') && w * v.z > 6) { ctx.fillStyle = '#c9ced4'; const e = (c.rot % 180 ? h : w) * 0.2; if (c.rot % 180) { ctx.fillRect(B.x0, B.y0, w, e); ctx.fillRect(B.x0, B.y1 - e, w, e); } else { ctx.fillRect(B.x0, B.y0, e, h); ctx.fillRect(B.x1 - e, B.y0, e, h); } }
+      if (c.part.pads.length > 6 && w * v.z > 14) { ctx.fillStyle = '#8c949c'; ctx.beginPath(); ctx.arc(B.x0 + 0.7, B.y0 + 0.7, 0.28, 0, 6.2832); ctx.fill(); }
+      ctx.strokeStyle = sel ? '#ffffff' : 'rgba(235,238,240,0.5)'; ctx.lineWidth = sel ? 2 * px : Math.min(0.12, px);
+      if (fam !== 'bulkin') { rr(B.x0, B.y0, w, h, 0.35); ctx.stroke(); }
+      continue;
+    }
     ctx.fillStyle = col; ctx.globalAlpha = dim ? 0.05 : sel ? 0.5 : (c.part.pads.length > 60 ? 0.16 : 0.3);
-    ctx.fillRect(B.x0, B.y0, B.x1 - B.x0, B.y1 - B.y0);
+    rr(B.x0, B.y0, w, h, 0.3); ctx.fill();
     ctx.globalAlpha = dim ? 0.2 : 1; ctx.strokeStyle = sel ? '#ffffff' : col; ctx.lineWidth = sel ? 2 * px : px;
-    ctx.strokeRect(B.x0, B.y0, B.x1 - B.x0, B.y1 - B.y0);
+    ctx.stroke();
   }
   ctx.globalAlpha = 1;
   for (const c of S.sel) if (c.side !== nearSide && !c.part.th) { const B = compBox(c); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * px; ctx.strokeRect(B.x0, B.y0, B.x1 - B.x0, B.y1 - B.y0); }
@@ -190,10 +238,11 @@ export function draw(ctx, S) {
       if (wpx < 30 || hpx < 12) continue;
       const s = toScreen(S, c.x, c.y), fs = Math.max(9, Math.min(15, Math.min(wpx, hpx) * 0.3));
       ctx.globalAlpha = hg && hg !== c.group ? 0.25 : 1;
-      ctx.font = `600 ${fs}px "IBM Plex Mono", ui-monospace, monospace`; ctx.fillStyle = '#f4f6f8';
+      const lightBody = S.style === 'real' && /^(gpu|dp|hdmi|bulk|bulkin|fan|xtal|shunt|fuse|mlcc|ind|indin|pcie)$/.test(c.part.family);
+      ctx.font = `600 ${fs}px "IBM Plex Mono", ui-monospace, monospace`; ctx.fillStyle = lightBody ? '#14181c' : '#f4f6f8';
       const big = wpx > 110 && hpx > 44;
       ctx.fillText(c.ref, s.x, s.y - (big ? fs * 0.7 : 0));
-      if (big) { ctx.font = `400 ${Math.max(9, fs * 0.8)}px "IBM Plex Sans JP", system-ui, sans-serif`; ctx.fillStyle = '#c4ccd4'; ctx.fillText(c.part.pn, s.x, s.y + fs * 0.7, wpx - 8); }
+      if (big) { ctx.font = `400 ${Math.max(9, fs * 0.8)}px "IBM Plex Sans JP", system-ui, sans-serif`; ctx.fillStyle = lightBody ? '#2c343b' : '#c4ccd4'; ctx.fillText(c.part.pn, s.x, s.y + fs * 0.7, (c.part.family === 'gpu' && S.style === 'real' ? wpx * 0.46 : wpx) - 8); }
     }
     ctx.globalAlpha = 1;
   }
@@ -223,7 +272,7 @@ export function drawLayerTexture(ctx, b, kind, sc) {
   boardPath(ctx, b);
   if (outer) { ctx.fillStyle = C.board; ctx.fill(); ctx.lineWidth = 0.3; ctx.strokeStyle = C.edge; ctx.stroke(); }
   else { ctx.fillStyle = LAYERS[l].color; ctx.globalAlpha = 0.12; ctx.fill(); ctx.globalAlpha = 0.8; ctx.lineWidth = 0.25; ctx.strokeStyle = LAYERS[l].color; ctx.stroke(); ctx.globalAlpha = 1; }
-  const nets = [...b.nets.values()].filter(n => n.route && n.route.segs.length);
+  const nets = [...b.nets.values()].filter(n => n.route && (n.route.segs.length || n.route.vias.length));
   ctx.strokeStyle = LAYERS[l].color;
   for (const cls of ['signal', 'diff', 'power']) {
     ctx.beginPath();
@@ -231,7 +280,7 @@ export function drawLayerTexture(ctx, b, kind, sc) {
     ctx.lineWidth = Math.max(NET_WIDTH[cls], (outer ? 1.6 : 2.4) / sc); ctx.stroke();
   }
   ctx.fillStyle = C.via; ctx.beginPath();
-  for (const n of nets) for (const q of n.route.vias) { ctx.moveTo(q.x + 0.3, q.y); ctx.arc(q.x, q.y, 0.3, 0, 6.2832); }
+  for (const n of nets) for (const q of n.route.vias) { if (n.route.plane) continue; ctx.moveTo(q.x + VIA.d / 2, q.y); ctx.arc(q.x, q.y, VIA.d / 2, 0, 6.2832); }
   ctx.fill();
   if (!outer) return;
   const side = kind === 'top' ? 'T' : 'B';

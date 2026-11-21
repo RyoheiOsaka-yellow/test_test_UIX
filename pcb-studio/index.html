@@ -25,7 +25,7 @@ body { background: var(--bg); color: var(--fg); font: 13px/1.5 var(--sans); padd
 #app { height: 100%; display: grid; gap: 10px; grid-template-columns: 272px minmax(0, 1fr) 304px; grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "bar bar bar" "left stage right"; }
 button, select, input, textarea { font: inherit; color: inherit; }
-button { cursor: pointer; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
+button { cursor: pointer; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; }
 button:hover { border-color: var(--accent); }
 button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 button[aria-pressed="true"], button[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
@@ -36,11 +36,13 @@ button.warn:hover { border-color: var(--bad); color: var(--bad); }
 select, input[type="number"], input[type="search"], textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; min-width: 0; width: 100%; }
 kbd { font: 11px var(--mono); color: var(--dim); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
 
-#bar { grid-area: bar; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+#bar { grid-area: bar; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+#bar button { font-size: 12px; } #bar kbd { margin-left: 3px; }
+.elec th, .elec td { padding: 3px 6px 3px 0; vertical-align: top; } .elec th { font-size: 11px; }
 #bar h1 { font-size: 16px; font-weight: 600; margin: 0 6px 0 0; letter-spacing: .02em; }
 #bar h1 span { color: var(--accent); }
 .grp { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
-.grp + .grp { padding-left: 14px; border-left: 1px solid var(--line); }
+.grp + .grp { padding-left: 10px; border-left: 1px solid var(--line); }
 .ck { display: flex; align-items: center; gap: 6px; color: var(--fg); }
 .ck i, #legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
 
@@ -142,6 +144,7 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
     <div class="grp">
       <button id="btnBack" aria-pressed="false">裏面を見る<kbd>B</kbd></button>
       <button id="btn3d" aria-pressed="false">3D 表示<kbd>3</kbd></button>
+      <button id="btnStyle" aria-pressed="false" title="部品を実物に近い色と形で表示します">実物風</button>
       <button id="btnFit">全体表示</button>
       <button id="btnIO">保存・読込</button>
     </div>
@@ -209,8 +212,8 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
 
 <dialog id="io">
   <h2>保存・読込</h2>
-  <p class="dim">JSON はこのツール用（配置とネットリスト）。KiCad は .kicad_pcb 形式で、部品・パッド・ネット・配線・ビア・外形を書き出します。読み込みは部品とネットを取り込み、配線はこのツールのグリッドで引き直します。</p>
-  <div class="row"><button id="ioJson">JSON を表示</button><button id="ioKicad">KiCad (.kicad_pcb) を表示</button><button id="ioSave" class="primary">ファイルに保存</button></div>
+  <p class="dim">JSON はこのツール用（配置とネットリスト）。KiCad は部品・パッド・ネット・配線・ビア・外形に加え、GND/電源プレーンのゾーンと層構成を書き出します（KiCad 7.0.11 で読み込みと DRC を確認済み）。設計ルールのファイルも一緒に保存してください。読み込みは部品とネットを取り込み、配線はこのツールのグリッドで引き直します。</p>
+  <div class="row"><button id="ioJson">JSON</button><button id="ioKicad">KiCad 基板 (.kicad_pcb)</button><button id="ioPro">KiCad 設計ルール (.kicad_pro)</button><button id="ioSave" class="primary">ファイルに保存</button></div>
   <textarea id="ioText" aria-label="基板データ"></textarea>
   <div class="row"><button id="ioCopy">コピー</button><button id="ioLoad" class="primary">この内容を読み込む</button>
     <label class="ck" for="ioFile">ファイルを開く<input type="file" id="ioFile" accept=".kicad_pcb,.json,.txt"></label><button id="ioClose">閉じる</button></div>

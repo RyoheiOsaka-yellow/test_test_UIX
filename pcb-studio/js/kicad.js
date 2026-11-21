@@ -1,15 +1,20 @@
 // KiCad (.kicad_pcb) の書き出しと読み込み
-import { Board, padWorld, snap, NET_WIDTH } from './core.js';
+import { Board, padWorld, snap, NET_WIDTH, VIA } from './core.js';
+import { planePlan } from './planes.js';
 
-const CU = ['F.Cu', 'In1.Cu', 'In2.Cu', 'B.Cu'];
 const f = v => { const s = (Math.round(v * 1000) / 1000).toFixed(3).replace(/\.?0+$/, ''); return s === '-0' ? '0' : s; };
 const q = s => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
 
 export function exportKicad(b) {
   const nets = [...b.nets.values()], num = new Map(nets.map((n, i) => [n.name, i + 1]));
-  const o = [];
-  o.push('(kicad_pcb (version 20211014) (generator gpu_kiban_studio)', '  (general (thickness 1.6))', '  (paper "A3")',
-    '  (layers', '    (0 "F.Cu" signal)', '    (1 "In1.Cu" signal)', '    (2 "In2.Cu" signal)', '    (31 "B.Cu" signal)',
+  const o = [], plan = planePlan(b);
+  // 銅箔層：表 / GND / 信号 / 電源… / 信号 / (GND) / 裏
+  const inner = plan.copper - 2, IN = i => `In${i}.Cu`;
+  const CUL = ['F.Cu', IN(2), IN(3 + plan.power), 'B.Cu'];           // このツールの配線 4 層の対応先
+  const role = { 1: 'power' }; for (let i = 0; i < plan.power; i++) role[3 + i] = 'power'; if (plan.gnd === 2) role[inner] = 'power';
+  o.push('(kicad_pcb (version 20211014) (generator gpu_kiban_studio)', '  (general (thickness 1.6))', '  (paper "A3")', '  (layers', '    (0 "F.Cu" signal)');
+  for (let i = 1; i <= inner; i++) o.push(`    (${i} "${IN(i)}" ${role[i] || 'signal'})`);
+  o.push('    (31 "B.Cu" signal)',
     '    (36 "B.SilkS" user "B.Silkscreen")', '    (37 "F.SilkS" user "F.Silkscreen")', '    (38 "B.Mask" user)', '    (39 "F.Mask" user)',
     '    (44 "Edge.Cuts" user)', '    (48 "B.Fab" user)', '    (49 "F.Fab" user)', '  )', '  (setup (pad_to_mask_clearance 0))', '  (net 0 "")');
   for (const n of nets) o.push(`  (net ${num.get(n.name)} ${q(n.name)})`);
@@ -17,7 +22,7 @@ export function exportKicad(b) {
     const B = c.side === 'B', lay = B ? 'B' : 'F', ang = (360 - c.rot) % 360, p = c.part;
     o.push(`  (footprint ${q('gks:' + p.pn.replace(/[^\w.+-]+/g, '_'))} (layer "${lay}.Cu")`, `    (at ${f(c.x)} ${f(c.y)}${ang ? ' ' + ang : ''})`,
       `    (descr ${q(`${p.mfr} ${p.name} / ${p.pkg}`)})`, `    (attr ${p.th ? 'through_hole' : 'smd'})`,
-      `    (fp_text reference ${q(c.ref)} (at 0 ${f(-p.h / 2 - 1)}${ang ? ' ' + ang : ''}) (layer "${lay}.SilkS") (effects (font (size 0.8 0.8) (thickness 0.12))${B ? ' (justify mirror)' : ''}))`,
+      `    (fp_text reference ${q(c.ref)} (at 0 ${f(-p.h / 2 - 1)}${ang ? ' ' + ang : ''}) (layer "${lay}.Fab") (effects (font (size 0.8 0.8) (thickness 0.12))${B ? ' (justify mirror)' : ''}))`,
       `    (fp_text value ${q(p.pn)} (at 0 ${f(p.h / 2 + 1)}${ang ? ' ' + ang : ''}) (layer "${lay}.Fab") (effects (font (size 0.8 0.8) (thickness 0.12))${B ? ' (justify mirror)' : ''}))`);
     const hw = p.w / 2, hh = p.h / 2;
     for (const [x0, y0, x1, y1] of [[-hw, -hh, hw, -hh], [hw, -hh, hw, hh], [hw, hh, -hw, hh], [-hw, hh, -hw, -hh]])
@@ -38,11 +43,18 @@ export function exportKicad(b) {
   // 配線とビア
   for (const n of nets) {
     if (!n.route) continue;
-    const w = n.cls === 'power' ? 0.4 : n.cls === 'diff' ? 0.2 : NET_WIDTH.signal, id = num.get(n.name);
+    const w = NET_WIDTH[n.cls] || NET_WIDTH.signal, id = num.get(n.name);
     for (const s of n.route.segs) for (let i = 0; i + 3 < s.pts.length; i += 2)
-      o.push(`  (segment (start ${f(s.pts[i])} ${f(s.pts[i + 1])}) (end ${f(s.pts[i + 2])} ${f(s.pts[i + 3])}) (width ${w}) (layer "${CU[s.l]}") (net ${id}))`);
-    for (const v of n.route.vias) o.push(`  (via (at ${f(v.x)} ${f(v.y)}) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net ${id}))`);
+      o.push(`  (segment (start ${f(s.pts[i])} ${f(s.pts[i + 1])}) (end ${f(s.pts[i + 2])} ${f(s.pts[i + 3])}) (width ${w}) (layer "${CUL[s.l]}") (net ${id}))`);
+    for (const v of n.route.vias) o.push(`  (via (at ${f(v.x)} ${f(v.y)}) (size ${VIA.d}) (drill ${VIA.drill}) (layers "F.Cu" "B.Cu") (net ${id}))`);
   }
+  // プレーン：GND は全面、電源レールは領域ごと（KiCad で B キーを押すと塗りつぶされる）
+  const zone = (net, layer, pts, prio) => o.push(`  (zone (net ${num.get(net)}) (net_name ${q(net)}) (layer "${layer}") (hatch edge 0.5)${prio ? ` (priority ${prio})` : ''}`,
+    '    (connect_pads yes (clearance 0.2))', '    (min_thickness 0.15)', '    (fill (thermal_gap 0.2) (thermal_bridge_width 0.25))',
+    `    (polygon (pts ${pts.map(p => `(xy ${f(p.x)} ${f(p.y)})`).join(' ')}))`, '  )');
+  const full = pts.map(p => ({ x: p[0], y: p[1] }));
+  if (num.has('GND')) { zone('GND', IN(1), full, 0); if (plan.gnd === 2) zone('GND', IN(inner), full, 0); }
+  for (const r of plan.rails) zone(r.name, IN(3 + r.layer), r.hull, r.priority);
   o.push(')');
   return o.join('\n') + '\n';
 }
@@ -139,7 +151,35 @@ export function importKicad(text, register) {
     const c = b.add(part, cx - ox, cy - oy, { ref: it.ref, side: it.side, group: 'k_' + g[0], fixed: /^(J|P)/.test(pre) });
     for (const p of it.pads) if (p.net) b.connect(c, p.n, p.net, POWER.test(p.net) || count.get(p.net) >= 12 ? 'plane' : 'signal');
   }
+  // 回路図がないので、配置と接続から役割を推定する
+  const ics = b.comps.filter(c => c.part.pads.length >= 8);
+  const core = ics.reduce((a, c) => (!a || c.part.pads.length > a.part.pads.length ? c : a), null);
+  if (core && core.part.pads.length >= 64) core.fixed = true;                   // 最大の IC を基準に据える
+  for (const n of b.nets.values()) {   // インダクタと IC を 1 対 1 で結ぶネットはスイッチノード
+    if (n.cls === 'plane' || n.pins.length !== 2) continue;
+    const [x, y] = n.pins.map(p => p.c);
+    if ((/^L/i.test(x.ref) && y.part.pads.length > 2) || (/^L/i.test(y.ref) && x.part.pads.length > 2)) n.cls = 'power';
+  }
+  for (const c of b.comps) {           // 2 端子部品は、同じ電源・信号を共有する最寄りの IC の付属とみなす
+    if (c.part.pads.length !== 2 || c.fixed) continue;
+    const mine = new Set(Object.values(c.padNet).filter(n => n !== 'GND'));
+    let best = null, bd = 144;
+    for (const u of ics) {
+      if (!Object.values(u.padNet).some(n => mine.has(n))) continue;
+      const d = (u.x - c.x) ** 2 + (u.y - c.y) ** 2; if (d < bd) { bd = d; best = u; }
+    }
+    if (best) { c.near = best.id; c.nearR = Math.max(best.part.w, best.part.h) / 2 + 4; }
+  }
   return b;
+}
+
+// KiCad のプロジェクト設定（設計ルール）。.kicad_pcb と同じ名前で同じフォルダに置く。
+export function kicadProject(name = 'gpu-board') {
+  return JSON.stringify({
+    board: { design_settings: { rules: { min_clearance: 0.2, min_track_width: 0.15, min_via_diameter: 0.4, min_via_annular_width: 0.1, min_through_hole_diameter: 0.2, min_hole_clearance: 0.25, min_hole_to_hole: 0.25, min_copper_edge_clearance: 0.5 } } },
+    meta: { filename: name + '.kicad_pro', version: 1 },
+    net_settings: { classes: [{ name: 'Default', clearance: 0.2, track_width: 0.15, via_diameter: 0.45, via_drill: 0.2, diff_pair_width: 0.15, diff_pair_gap: 0.2, bus_width: 12, wire_width: 6, line_style: 0, microvia_diameter: 0.3, microvia_drill: 0.1, pcb_color: 'rgba(0, 0, 0, 0.000)', schematic_color: 'rgba(0, 0, 0, 0.000)' }], meta: { version: 2 } },
+  }, null, 1);
 }
 
 // 独自部品（KiCad 取り込み分）を JSON 保存に含めるための変換

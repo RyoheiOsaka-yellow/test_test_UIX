@@ -1,5 +1,5 @@
 // グリッド A* 自動配線（4 配線層・45度配線・貫通ビア・引き剥がし再配線つき）
-import { G, NL, padWorld } from './core.js';
+import { G, NL, padWorld, NET_WIDTH, CLEAR, VIA } from './core.js';
 
 const SQ2 = Math.SQRT2;
 const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1];
@@ -43,6 +43,9 @@ export class Router {
     this.par = new Int32Array(n);
     this.stamp = new Uint32Array(n);
     this.closed = new Uint32Array(n);
+    this.viaNet = new Int32Array(this.plane);   // 各格子点のビアの持ち主
+    this.thAt = new Uint8Array(this.plane);      // スルーホールパッドの中心
+    this.viaKeep = new Int32Array(this.plane);  // 他ネットのパッドに近すぎてビアを打てない格子点（0=可, id=そのネットのみ可, -1=不可）
     this.pen = new Uint8Array(this.plane);      // 他ネットのパッド周辺を避けるためのコスト
     this.penOwner = new Int32Array(this.plane);
     this.gen = 0; this.viaCost = VIA_COST;
@@ -52,24 +55,39 @@ export class Router {
   inGrid(ix, iy) { return ix >= 0 && iy >= 0 && ix < this.nx && iy < this.ny; }
 
   // パッドと既存配線からグリッドを作り直す。パッドに潰された配線のネットを返す。
+  // fixed: 0=配線可, 1=パッド本体, 2=パッド周囲のクリアランス域, 4=基板外・基板端
   rebuild() {
-    const { occ, fixed, nx, ny, board } = this;
-    occ.fill(0); fixed.fill(0); this.pen.fill(0); this.penOwner.fill(0);
+    const { occ, fixed, nx, ny, board, viaNet } = this;
+    occ.fill(0); fixed.fill(0); viaNet.fill(0); this.thAt.fill(0); this.viaKeep.fill(0); this.pen.fill(0); this.penOwner.fill(0);
+    const vk = this.viaKeep, vr = VIA.d / 2 + CLEAR + 0.001;
     for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
-      if (!board.inside(ix * G, iy * G)) for (let l = 0; l < NL; l++) { const c = this.cell(l, ix, iy); occ[c] = -1; fixed[c] = 1; }
+      if (!board.inside(ix * G, iy * G, 0.75)) for (let l = 0; l < NL; l++) { const c = this.cell(l, ix, iy); occ[c] = -1; fixed[c] = 4; }
     }
-    for (const c of board.comps) for (const pad of c.part.pads) {
+    const halo = CLEAR + NET_WIDTH.signal / 2;
+    for (const pass of [1, 2]) for (const c of board.comps) for (const pad of c.part.pads) {
       const p = padWorld(c, pad);
       const nm = c.padNet[pad.n], net = nm && board.nets.get(nm);
-      const id = net ? net.id : -1;
-      const x0 = Math.ceil((p.x - p.w / 2 - 0.1) / G - 1e-6), x1 = Math.floor((p.x + p.w / 2 + 0.1) / G + 1e-6);
-      const y0 = Math.ceil((p.y - p.h / 2 - 0.1) / G - 1e-6), y1 = Math.floor((p.y + p.h / 2 + 0.1) / G + 1e-6);
+      const id = net ? net.id : -1, m = pass === 1 ? 0.1 : halo;
+      const x0 = Math.ceil((p.x - p.w / 2 - m) / G - 1e-6), x1 = Math.floor((p.x + p.w / 2 + m) / G + 1e-6);
+      const y0 = Math.ceil((p.y - p.h / 2 - m) / G - 1e-6), y1 = Math.floor((p.y + p.h / 2 + m) / G + 1e-6);
       const cx = Math.round(p.x / G), cy = Math.round(p.y / G);
       const l0 = p.th ? 0 : (c.side === 'B' ? NL - 1 : 0), l1 = p.th ? NL - 1 : l0;
-      if (net && net.cls !== 'plane' && net.pins.length > 1) {
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (pass === 1 && p.th && this.inGrid(cx, cy)) this.thAt[cy * nx + cx] = 1;
+      if (pass === 1) { // ビア禁止域：パッド外形から（ビア半径＋クリアランス）以内
+        const bx0 = Math.ceil((p.x - p.w / 2 - vr) / G), bx1 = Math.floor((p.x + p.w / 2 + vr) / G), by0 = Math.ceil((p.y - p.h / 2 - vr) / G), by1 = Math.floor((p.y + p.h / 2 + vr) / G);
+        for (let iy = by0; iy <= by1; iy++) for (let ix = bx0; ix <= bx1; ix++) {
+          if (!this.inGrid(ix, iy)) continue;
+          const dx = Math.abs(ix * G - p.x), dy = Math.abs(iy * G - p.y);
+          const d = p.round ? Math.hypot(dx, dy) - p.w / 2 : Math.hypot(Math.max(0, dx - p.w / 2), Math.max(0, dy - p.h / 2));
+          if (d >= vr) continue;
+          const r = iy * nx + ix; vk[r] = vk[r] === 0 || vk[r] === id ? id : -1;
+        }
+      }
+      if (pass === 1 && net && net.cls !== 'plane' && net.pins.length > 1) {
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { // 引き出し口をふさがせない
           const ix = cx + dx, iy = cy + dy; if (!this.inGrid(ix, iy)) continue;
-          const r = iy * nx + ix, v = dx || dy ? 3 : 9;
+          const far = Math.max(Math.abs(dx), Math.abs(dy)); if (far === 2 && p.round) continue;   // BGA は 1 マス分だけ
+          const r = iy * nx + ix, v = far === 0 ? 9 : 3;
           if (v > this.pen[r]) { this.pen[r] = v; this.penOwner[r] = id; }
         }
       }
@@ -77,8 +95,10 @@ export class Router {
         for (let iy = Math.min(y0, cy); iy <= Math.max(y1, cy); iy++) for (let ix = Math.min(x0, cx); ix <= Math.max(x1, cx); ix++) {
           if (!this.inGrid(ix, iy)) continue;
           const k = this.cell(l, ix, iy);
-          if (occ[k] === -1 && fixed[k] && id !== -1 && !board.inside(ix * G, iy * G)) continue;
-          occ[k] = id; fixed[k] = 1;
+          if (pass === 1) { occ[k] = id; fixed[k] = 1; }
+          else if (fixed[k] === 1) continue;                       // 他パッドの本体
+          else if (occ[k] === 0 || (fixed[k] === 4 && id !== -1)) { occ[k] = id; fixed[k] = 2; }
+          else if (occ[k] !== id) { occ[k] = -1; if (!fixed[k]) fixed[k] = 2; }   // 2 つのネットのクリアランス域が重なる
         }
       }
     }
@@ -86,20 +106,84 @@ export class Router {
     for (const net of board.nets.values()) {
       if (!net.route) continue;
       for (const k of net.route.cells) {
-        if (fixed[k] && occ[k] !== net.id) bad.add(net);
-        else if (occ[k] && occ[k] !== net.id) bad.add(net);
+        if (occ[k] && occ[k] !== net.id) bad.add(net);
         else occ[k] = net.id;
       }
+      for (const v of net.route.vias) viaNet[Math.round(v.y / G) * nx + Math.round(v.x / G)] = net.id;
     }
     return bad;
   }
 
   ripNet(net) {
     if (!net.route) return;
-    const { occ, fixed } = this;
+    const { occ, fixed, viaNet, nx } = this;
     for (const k of net.route.cells) if (occ[k] === net.id && !fixed[k]) occ[k] = 0;
+    for (const v of net.route.vias) { const r = Math.round(v.y / G) * nx + Math.round(v.x / G); if (viaNet[r] === net.id) viaNet[r] = 0; }
     net.route = null;
   }
+  // ビアを打てるか（位置の条件）：他ネットのパッド・ビアから 0.2mm 以上離れ、角をかすめる斜め配線もないこと
+  viaNear(id, r) {
+    const { occ, viaNet, viaKeep, nx, ny, plane } = this, ix = r % nx, iy = (r / nx) | 0;
+    if (viaKeep[r] !== 0 && viaKeep[r] !== id) return false;
+    if (ix < 1 || iy < 1 || ix >= nx - 1 || iy >= ny - 1) return false;
+    for (let d = 0; d < 4; d++) { const v = viaNet[r + DX[d] + DY[d] * nx]; if (v && v !== id) return false; }
+    for (let m = 0; m < NL; m++) {
+      const k = m * plane + r, e = occ[k + 1], w = occ[k - 1], s2 = occ[k + nx], n = occ[k - nx];
+      const f = o => o > 0 && o !== id;
+      if ((f(e) && (e === s2 || e === n)) || (f(w) && (w === s2 || w === n))) return false;
+    }
+    return true;
+  }
+  viaOk(id, r) {
+    for (let m = 0; m < NL; m++) { const o = this.occ[m * this.plane + r]; if (o !== 0 && o !== id) return false; }
+    return this.viaNear(id, r);
+  }
+  // 電源・GND ピンを内層プレーンへ落とすビア。パッド内に打てなければ隣の格子へ短く引き出す。
+  connectPlanes() {
+    const { occ, viaNet, nx, plane, board } = this;
+    for (const net of board.nets.values()) {
+      if (net.cls !== 'plane') continue;
+      this.ripNet(net);
+      const route = { cells: [], segs: [], vias: [], fails: [], len: 0, plane: true, smd: 0 };
+      net.route = route;
+      const id = net.id;
+      const drop = r => { viaNet[r] = id; route.vias.push({ x: (r % nx) * G, y: ((r / nx) | 0) * G }); for (let m = 0; m < NL; m++) { occ[m * plane + r] = id; route.cells.push(m * plane + r); } };
+      const par = new Map();
+      net.pins.forEach((pin, i) => {
+        const pad = pin.c.part.padMap[pin.p]; if (pad.th) return;
+        route.smd++;
+        const p = padWorld(pin.c, pad), ix = Math.round(p.x / G), iy = Math.round(p.y / G);
+        if (!this.inGrid(ix, iy)) { route.fails.push(i); return; }
+        const l = pin.c.side === 'B' ? NL - 1 : 0, r0 = iy * nx + ix, base = l * plane;
+        // パッドの層を幅優先でたどり、ビアを打てる最寄りの格子点を探す（最大 6 歩）
+        par.clear(); par.set(r0, -1);
+        let front = [r0], hit = -1;
+        for (let depth = 0; depth <= 6 && hit < 0 && front.length; depth++) {
+          const next = [];
+          for (const r of front) {
+            if (viaNet[r] === id || (this.thAt[r] && occ[r] === id) || this.viaOk(id, r)) { hit = r; break; }
+            const x = r % nx, y = (r / nx) | 0;
+            for (let d = 0; d < 8; d++) {
+              const jx = x + DX[d], jy = y + DY[d]; if (!this.inGrid(jx, jy)) continue;
+              const rr = jy * nx + jx; if (par.has(rr)) continue;
+              const o = occ[base + rr]; if (o !== 0 && o !== id) continue;
+              if (d >= 4) { const a = occ[base + r + DX[d]], b = occ[base + r + DY[d] * nx]; if ((a !== 0 && a !== id) || (b !== 0 && b !== id)) continue; }
+              par.set(rr, r); next.push(rr);
+            }
+          }
+          front = next;
+        }
+        if (hit < 0) { route.fails.push(i); return; }
+        if (viaNet[hit] !== id && !this.thAt[hit]) drop(hit);   // スルーホールはそれ自体がプレーンにつながる
+        if (hit !== r0) {
+          const pts = [];
+          for (let r = hit; r !== -1; r = par.get(r)) { pts.push((r % nx) * G, ((r / nx) | 0) * G); occ[base + r] = id; route.cells.push(base + r); }
+          route.segs.push({ l, pts });
+        }
+      });
+    }
+  }
+
   ripAll() { for (const n of this.board.nets.values()) this.ripNet(n); }
 
   pinCells(pin) {
@@ -151,7 +235,7 @@ export class Router {
         if (stamp[k] !== gen || ng < g[k]) { stamp[k] = gen; g[k] = ng; par[k] = cur; heap.push(ng + hfun(jx, jy), k); }
       }
       // 貫通ビア：全層で通行可能なときだけ層を替えられる
-      let ok = true, extra = 0;
+      let ok = this.viaNear(id, r), extra = 0;
       for (let m = 0; m < NL && ok; m++) { const pc = pass(m * plane + r); if (pc < 0) ok = false; else extra += pc; }
       if (ok) for (let m = 0; m < NL; m++) {
         if (m === l) continue;
@@ -205,6 +289,7 @@ export class Router {
         if (prev >= 0 && ((prev / plane) | 0) !== l) { // 層替え＝ビア
           route.vias.push({ x, y });
           for (let m = 0; m < NL; m++) { const kk = m * plane + r; occ[kk] = id; route.cells.push(kk); }
+          this.viaNet[r] = id;
           seg = null;
         }
         occ[k] = id; route.cells.push(k); tree.push(k);
@@ -300,6 +385,7 @@ export class Router {
     return { groups, good, worst };
   }
 
+  // 配線順：スイッチノード → 差動 → 信号（短い順）→ 多ピンのバイアス電源
   order(nets) {
     const pr = { power: 0, diff: 1, signal: 2 };
     const span = n => {
@@ -308,7 +394,7 @@ export class Router {
       return (x1 - x0) + (y1 - y0);
     };
     return nets.filter(n => n.cls !== 'plane' && n.pins.length > 1)
-      .map(n => [n, (pr[n.cls] ?? 2) * 1000 + span(n)]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+      .map(n => [n, (n.cls === 'power' && n.pins.length > 2 ? 3 : pr[n.cls] ?? 2) * 1000 + span(n)]).sort((a, b) => a[1] - b[1]).map(a => a[0]);
   }
 
   // 配線ジェネレータ：1 ネットごとに進捗を yield する（アニメーション用）
@@ -316,16 +402,17 @@ export class Router {
     // 等長グループの一員を配線し直すときは、グループ全体をやり直す
     const groups = this.matchGroups(), touched = new Set(), all = new Set(nets);
     for (const n of nets) { const k = Router.matchKey(n); if (k) { touched.add(k); for (const m of groups.get(k)) all.add(m); } }
+    for (const n of this.board.nets.values()) if (n.cls === 'plane') this.ripNet(n);
     const list = this.order([...all]), total = list.length;
     let i = 0;
     for (const n of list) { this.routeNet(n); yield { phase: 'route', i: ++i, total, net: n }; }
     // 失敗したネットは、邪魔な配線を引き剥がして再挑戦
-    const tried = new Set();
-    for (let round = 0; round < 3; round++) {
-      const failed = list.filter(n => n.route && n.route.fails.length && !tried.has(n));
+    const tried = new Map();
+    for (let round = 0; round < 5; round++) {
+      const failed = list.filter(n => n.route && n.route.fails.length && (tried.get(n) || 0) < 2);
       if (!failed.length) break;
       for (const n of failed) {
-        tried.add(n);
+        tried.set(n, (tried.get(n) || 0) + 1);
         const ripped = this.routeNet(n, true);
         yield { phase: 'ripup', i, total, net: n };
         for (const r of this.order([...ripped])) { this.routeNet(r); yield { phase: 'reroute', i, total, net: r }; const k = Router.matchKey(r); if (k) touched.add(k); }
@@ -355,6 +442,8 @@ export class Router {
       }
       yield { phase: 'tune', i, total, net: groups.get(k)[0], key: k };
     }
+    this.connectPlanes();
+    yield { phase: 'plane', i, total, net: list[0] || { name: '' }, key: '電源・GND ピンをプレーンへ接続' };
   }
   routeAllSync(nets) { for (const _ of this.routeMany(nets || [...this.board.nets.values()])); }
 
@@ -373,6 +462,8 @@ export class Router {
       if (n.route) { if (!n.route.fails.length) routed++; fails += n.route.fails.length; vias += n.route.vias.length; len += n.route.len; }
       else fails += n.pins.length - 1;
     }
-    return { total, routed, fails, vias, len };
+    let pPins = 0, pFail = 0, pVias = 0;
+    for (const n of this.board.nets.values()) if (n.cls === 'plane' && n.route) { pPins += n.route.smd; pFail += n.route.fails.length; pVias += n.route.vias.length; }
+    return { total, routed, fails, vias, len, pPins, pFail, pVias };
   }
 }

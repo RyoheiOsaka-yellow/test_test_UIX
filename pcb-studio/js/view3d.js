@@ -1,6 +1,6 @@
 // 3D 表示（three.js）。基板・部品を立体で確認し、銅箔 4 層を上下に分解して見られる。
 import { compBox } from './core.js';
-import { drawLayerTexture } from './render.js';
+import { drawLayerTexture, realColor } from './render.js';
 
 const T = 0.8; // 基板厚の半分 (mm)
 function heightOf(p) {
@@ -100,9 +100,11 @@ export class View3D {
     for (const c of b.comps) {
       if (k >= this.cap - 1) break;
       const B = compBox(c), hgt = heightOf(c.part), top = c.side === 'T' || c.part.th;
-      const g = b.group(c.group); col.set(g ? g.color : '#9aa3ad').convertSRGBToLinear().lerp(dark, /^(gpu|vram)$/.test(c.part.family) ? 0.55 : 0.2);
+      const g = b.group(c.group);
+      if (this.style === 'real') col.set(realColor(c.part)).convertSRGBToLinear();
+      else col.set(g ? g.color : '#9aa3ad').convertSRGBToLinear().lerp(dark, /^(gpu|vram)$/.test(c.part.family) ? 0.55 : 0.2);
       put(c.x, c.y, B.x1 - B.x0, B.y1 - B.y0, hgt, top ? this.layerY(0) : this.layerY(3), top ? 1 : -1, col);
-      if (c.part.family === 'gpu') { col.set(0x8f979f); put(c.x, c.y, (B.x1 - B.x0) * 0.46, (B.y1 - B.y0) * 0.46, 0.8, this.layerY(0) + hgt, 1, col); }
+      if (c.part.family === 'gpu') { col.set(this.style === 'real' ? 0xc3c9cf : 0x8f979f); put(c.x, c.y, (B.x1 - B.x0) * 0.46, (B.y1 - B.y0) * 0.46, 0.8, this.layerY(0) + hgt, 1, col); }
     }
     this.inst.count = k; this.inst.instanceMatrix.needsUpdate = true; if (this.inst.instanceColor) this.inst.instanceColor.needsUpdate = true;
     this.dirty = true;

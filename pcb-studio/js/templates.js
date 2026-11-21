@@ -45,7 +45,9 @@ export function generateGPU(prm) {
   b.meta = { kind: 'gpu', prm: { ...prm } };
 
   const put = (id, x, y, group, o = {}) => b.add(PART[id], x, y, { group, ...o });
-  const pl = (c, pad, net) => b.connect(c, pad, net, 'plane');
+  // 大電流・多ピンのレールは内層プレーン、小電流のバイアス系（+5V, +3V3, +PEX）は配線で引く
+  const PLANES = new Set(['GND', 'VCORE', 'VMEM', '+12V', '+12V_IN', '+1V8']);
+  const pl = (c, pad, net) => b.connect(c, pad, net, PLANES.has(net) ? 'plane' : 'power');
   const two = (c, n1, n2) => { pl(c, '1', n1); pl(c, '2', n2); };
   const wp = (c, name) => padWorld(c, c.part.padMap[name]);
 
@@ -125,8 +127,8 @@ export function generateGPU(prm) {
   const pe = put('pcie_x16', xe, H + 3.5, 'grp_pcie', { fixed: true });
   const lanes = [];
   for (let i = 0; i < 16; i++) {
-    const j = 9 + Math.floor(i * 4.5);
-    for (const [o, t] of [[0, 'TX'], [2, 'RX']]) { const p = pe.part.pads[j + o]; lanes.push({ c: pe, pad: p.n, pos: padWorld(pe, p), net: `PEX_${t}${i}` }); }
+    const j = 15 + Math.floor(i * 4.2);   // キー溝より先に割り当てる
+    for (const [o, t] of [[0, 'TX'], [2, 'RX']]) { const p = pe.part.padMap['A' + (j + o)]; lanes.push({ c: pe, pad: p.n, pos: padWorld(pe, p), net: `PEX_${t}${i}` }); }
   }
   for (let i = 0; i < 32; i += 8) attach('bottom', lanes.slice(i, i + 8), 'diff');
   attach('bottom', [[4, 'PERST#'], [5, 'REFCLK']].map(([j, net]) => ({ c: pe, pad: pe.part.pads[j].n, pos: padWorld(pe, pe.part.pads[j]), net })), 'signal');
