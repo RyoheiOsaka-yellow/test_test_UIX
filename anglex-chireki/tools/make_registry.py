@@ -55,37 +55,63 @@ laws = {'checkedOn': n['checkedOn'], 'items': items, 'articles': arts,
 (OUT / 'laws.json').write_text(json.dumps(laws, ensure_ascii=False, indent=1), encoding='utf-8')
 
 # ───────── 条例 ─────────
-# 県条例の適用が除外される市（公式記載に基づく。research の appliesNote を参照）
-EXCLUDE = {}
-OVERRIDE = {}
-exec((root / 'tools' / 'registry_overrides.py').read_text(encoding='utf-8')) if (root / 'tools' / 'registry_overrides.py').exists() else None
+# 県条例の土壌規定が適用されない市（県の公式ページの記載に基づく。research の appliesNote を参照）
+EXCLUDE = {('神奈川県', None): ['横浜市', '川崎市'], ('埼玉県', None): ['さいたま市'], ('愛知県', None): ['名古屋市'], ('大阪府', None): []}
+# レジストリに載せないエントリ（県条例の適用先の案内、未確認のみのもの）
+SKIP = {('神奈川県', '相模原市'): '相模原市域は神奈川県条例が適用され、届出・報告先と公表の主体が相模原市長になる（権限移譲市）。',
+        ('大阪府', '大阪市'): '大阪市内の土地にも府条例が適用され、報告の受理・区域の指定・台帳の事務は条例第111条（事務処理の特例）により大阪市が処理する。窓口：大阪市環境局環境管理部環境管理課 土壌汚染対策グループ。'}
+EXTRA_PAGES = {}
+SKIP_NAMES = {'千葉市環境保全条例'}
 ords = []
 for fn in ['tokyo_osaka.json', 'kanto.json', 'national_ordinances.json']:
     p = R / fn
     if not p.exists(): continue
     d = json.loads(p.read_text(encoding='utf-8'))
     for o in d['ordinances']:
-        has = o.get('hasSoilProvision', True) is not False and bool(o.get('rules'))
-        rules = []
-        for r in (o.get('rules') or []) if has else []:
-            basis = r.get('thresholdBasis') or ''
-            rule = {'art': k2a(r.get('art')), 'heading': r.get('heading'), 'trigger': r.get('trigger') or 'other', 'threshold': r.get('threshold'),
-                    'thresholdBasis': basis, 'areaBasis': 'site' if re.search(r'敷地面積(?!ではない)', basis) and '形質変更の部分' not in basis else 'change',
-                    'summary': r.get('summary'), 'duty': r.get('duty'), 'quote': r.get('quote'), 'url': r.get('url'), 'verified': truthy(r.get('verified'))}
-            rule.update(OVERRIDE.get((o['pref'], o.get('city'), rule['art']), {}))
-            rules.append(rule)
         key = (o['pref'], o.get('city'))
+        if key in SKIP or (o.get('name') or '') in SKIP_NAMES:
+            EXTRA_PAGES.setdefault(o['pref'], []).extend(pg for pg in (o.get('pages') or []) if pg.get('url'))
+            continue
+        has = o.get('hasSoilProvision', True) is not False and bool(o.get('rules'))
+        rules, notes, seen = [], [], set()
+        for r in (o.get('rules') or []) if has else []:
+            art = k2a(r.get('art') or '')
+            # 条番号ではない行（「面積要件の有無」など調査メモ）は補足に回す
+            if not art or art[0] in '（—-' or not re.search(r'第\d', art):
+                txt = '：'.join(x for x in [r.get('heading'), r.get('duty') or r.get('summary')] if x and x != '—')
+                if txt: notes.append({'text': txt, 'url': r.get('url'), 'verified': truthy(r.get('verified'))})
+                continue
+            basis = r.get('thresholdBasis') or ''
+            trig = r.get('trigger') or 'other'
+            if trig == 'area' and not r.get('threshold'): trig = 'other'
+            rule = {'art': art, 'heading': r.get('heading'), 'trigger': trig, 'threshold': r.get('threshold'), 'thresholdBasis': basis,
+                    'areaBasis': 'site' if re.search(r'敷地面積(?!ではない|基準との)', basis) and not re.search(r'形質変更|改変を行う|形質の変更', basis) else 'change',
+                    'summary': r.get('summary'), 'duty': r.get('duty'), 'quote': r.get('quote'), 'url': r.get('url'), 'verified': truthy(r.get('verified'))}
+            # 判定表に出すのは、契機ごとに代表の1条だけ（残りは法令・条例の画面で一覧）
+            fam = 'area' if trig == 'area' else 'check' if trig in ('ledger', 'zone') else ('facility' if trig == 'facility' and re.search(r'廃止|除却|土壌調査の実施', (r.get('heading') or '') + (r.get('duty') or '')) else None)
+            if re.match(r'[（(]?定義', r.get('heading') or ''): fam = None
+            rule['judge'] = bool(fam) and fam not in seen
+            if rule['judge']: seen.add(fam)
+            if trig == 'area' and re.search(r'許可', basis): rule['cond'], rule['condLabel'] = '開発許可・宅地造成等の許可を要する改変に限る', '許可を要する改変なら対象'
+            if trig == 'area' and re.search(r'取扱工場等の敷地|特定工場等の敷地', basis): rule['cond'], rule['condLabel'] = '特定有害物質等を取り扱う工場等の敷地に限る', '工場等の敷地なら対象'
+            rules.append(rule)
         name = o.get('name') or ''
         ent = {'pref': o['pref'], 'city': o.get('city'), 'name': name if has else f"{o['pref']}{o.get('city') or ''}：独自の調査義務を定める条例なし",
-               'origName': name, 'number': o.get('number'), 'lastAmended': o.get('lastAmended'), 'lastAmendedShort': short_amend(o.get('lastAmended')), 'desk': o.get('desk'), 'rules': rules,
-               'extraSubstances': o.get('extraSubstances') or [], 'zones': o.get('zones') or [], 'pages': [pg for pg in (o.get('pages') or []) if pg.get('url')],
-               'appliesNote': o.get('appliesNote'), 'basis': o.get('verificationBasis'), 'excludeCities': EXCLUDE.get(key, []), 'checkedOn': d['checkedOn'],
-               'noneVerified': (not has) and truthy(o.get('verified'))}
-        ent.update(OVERRIDE.get((o['pref'], o.get('city')), {}))
+               'origName': name, 'instrument': o.get('instrumentType'), 'number': o.get('number'), 'lastAmended': o.get('lastAmended'), 'lastAmendedShort': short_amend(o.get('lastAmended')),
+               'desk': o.get('desk'), 'rules': rules, 'notes': notes, 'extraSubstances': o.get('extraSubstances') or [], 'zones': o.get('zones') or [],
+               'pages': [pg for pg in (o.get('pages') or []) if pg.get('url')], 'appliesNote': o.get('appliesNote'), 'basis': o.get('verificationBasis'),
+               'excludeCities': EXCLUDE.get(key, []), 'checkedOn': d['checkedOn'], 'noneVerified': (not has) and truthy(o.get('verified'))}
+        if key == ('神奈川県', None): ent['appliesNote'] = (ent['appliesNote'] or '') + ' ' + SKIP[('神奈川県', '相模原市')]
+        if key == ('大阪府', None): ent['appliesNote'] = SKIP[('大阪府', '大阪市')] + ' ' + (ent['appliesNote'] or '')
+        ent['numberShort'] = short_amend(o.get('number'))
         ords.append(ent)
+for e in ords:
+    if e['city'] is None and e['pref'] in EXTRA_PAGES: e['pages'] = e['pages'] + EXTRA_PAGES[e['pref']]
 order = ['東京都', '神奈川県', '埼玉県', '千葉県', '大阪府', '愛知県', '三重県', '滋賀県', '京都府', '兵庫県', '広島県', '岡山県', '新潟県', '福岡県', '宮城県', '北海道', '静岡県', '岐阜県', '熊本県']
 ords.sort(key=lambda o: (order.index(o['pref']) if o['pref'] in order else 99, o['city'] or ''))
 (OUT / 'ordinances.json').write_text(json.dumps(ords, ensure_ascii=False, indent=1), encoding='utf-8')
+for o in ords:
+    print(' ', o['pref'], o['city'] or '', '|', len(o['rules']), 'rules | judge:', [(r['art'], r['trigger'], r['threshold']) for r in o['rules'] if r['judge']])
 
 # ───────── 業種 × 物質（環境省 調査結果の表） ─────────
 NAME2ID = {'クロロエチレン': 'VC', '四塩化炭素': 'CCl4', '1,2-ジクロロエタン': '12DCA', '1,1-ジクロロエチレン': '11DCE', '1,2-ジクロロエチレン': '12DCE', '1,3-ジクロロプロペン': '13DCP',

@@ -35,3 +35,28 @@ html = (src / 'index.tpl.html').read_text(encoding='utf-8')
 html = html.replace('/*{{CSS}}*/', (src / 'styles.css').read_text(encoding='utf-8')).replace('/*{{JS}}*/', js)
 (root / 'index.html').write_text(html, encoding='utf-8')
 print('built index.html', len(html), 'bytes')
+
+
+def patch_screening():
+    """以前の試作（screening.html）の条例表も、公式出典で確認したレジストリに差し替える。"""
+    f = root / 'screening.html'
+    ords = load('ordinances.json')
+    if not f.exists() or not ords:
+        return
+    out = []
+    for o in ords:
+        rules = [{'art': r['art'], 'trigger': 'ledger' if r['trigger'] == 'zone' else r['trigger'], 'th': r.get('threshold'),
+                  'title': (f"{int(r['threshold']):,}m²以上の" if r['trigger'] == 'area' and r.get('threshold') else '') + (r.get('heading') or ''),
+                  'duty': r.get('duty') or r.get('summary') or '', 'conf': 'high' if r.get('verified') and r.get('url') else 'low'}
+                 for r in o['rules'] if r.get('judge')]
+        out.append({'pref': o['pref'], **({'city': o['city']} if o.get('city') else {}), 'name': o['name'], 'desk': o.get('desk') or '', 'rules': rules})
+    t = f.read_text(encoding='utf-8')
+    a, b = t.index('let ORD=['), t.index('const CONF_LABEL=')
+    t = t[:a] + 'let ORD=' + json.dumps(out, ensure_ascii=False) + ';\n' + t[b:]
+    t = t.replace("function ordFor(pref,city){return ORD.filter(o=>o.pref===pref&&(!o.city||(city&&city.startsWith(o.city))));}",
+                  "function ordFor(pref,city){return ORD.filter(o=>o.pref===pref&&(!o.city||(city&&city.indexOf(o.city)>=0)));}")
+    f.write_text(t, encoding='utf-8')
+    print('patched screening.html ORD', len(out))
+
+
+patch_screening()

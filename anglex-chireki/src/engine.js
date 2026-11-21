@@ -62,7 +62,7 @@ function judge(c){
   L('第5条第1項','土壌汚染により健康被害が生ずるおそれがある土地の調査命令',rq.purpose==='order'?['maybe','命令の有無を確認']:['no','命令なし'],'都道府県知事等の命令による調査','art5');
   L('第14条第1項','自主調査の結果による区域指定の申請',rq.purpose==='sale'||rq.purpose==='develop'?['info','任意で申請可']:['info','—'],'法に基づかない調査で基準不適合が判明した場合、所有者等は区域指定を申請できる。本地歴調査はその前段。','art14');
   L('第6条・第11条','要措置区域・形質変更時要届出区域の指定',inZone?['yes','区域内']:!(g.art6||g.art11jin)?['todo','未確認']:['no','指定なし'],g.zoneSrc?`確認先：${g.zoneSrc}${g.radius?'、'+g.radius:''}`:'区域指定の公表資料を確認','art6');
-  ordFor(s.pref,s.city).forEach(o=>(o.rules||[]).forEach(r=>{
+  ordFor(s.pref,s.city).forEach(o=>(o.rules||[]).filter(r=>r.judge!==false).forEach(r=>{
     let st,why;const rec=(g.ord||[]).find(x=>x.name&&o.name.indexOf(x.name.replace(/（.*$/,''))===0||x.name===o.name);
     if(r.trigger==='area'){const th=+r.threshold||0;const site=r.areaBasis==='site';const hit=rq.formChange&&(site?area:ch)>=th;
       st=!th?['maybe','閾値を確認']:!rq.formChange?['no','形質変更の予定なし']:!hit?['no','面積要件に非該当']:r.cond?['maybe',r.condLabel||'条件に当たれば対象']:['yes','届出・調査の対象'];
@@ -70,7 +70,8 @@ function judge(c){
     else if(r.trigger==='facility'){st=rq.purpose==='closure'?['maybe','対象事業場か確認']:openConcerns(c).length?['maybe','事業場の届出履歴を確認']:['no','該当の手がかりなし'];why=r.summary||r.duty||'';}
     else if(r.trigger==='other'){st=['info','参考'];why=r.summary||r.duty||'';}
     else {st=rec?['done','確認済：'+rec.v]:['todo','未確認'];why=rec?`${rec.item||r.heading||''}：${rec.v}`:(r.summary||'条例に基づく台帳・区域の有無を窓口または公表資料で確認する');}
-    rows.push({src:'条例',law:o.name,art:r.art,title:r.heading||r.summary||'',st,why,cite:{url:r.url,quote:r.quote,verified:!!(r.verified&&r.url),checkedOn:o.checkedOn}});
+    const zn=(o.zones||[]).map(z=>z.name).filter(n=>n.length<16);const title=(r.trigger==='ledger'||r.trigger==='zone')?(zn.length?`条例に基づく区域（${zn.slice(0,3).join('・')}）・台帳の確認`:'条例に基づく台帳・公表の確認'):(r.heading||r.summary||'');
+    rows.push({src:'条例',law:o.name,art:r.art,title,st,why,cite:{url:r.url,quote:r.quote,verified:!!(r.verified&&r.url),checkedOn:o.checkedOn}});
   }));
   return rows;
 }
@@ -102,7 +103,7 @@ function reviewItems(c){
   if(c.verdict&&c.verdict.level==='低い'&&open.length)add('bad','所見',`未解消の懸念（${open.map(x=>x.use).join('、')}）があるのに所見が「低い」。`,'sec-3');
   if(c.verdict&&c.verdict.level==='否定できない'&&!open.length)add('warn','所見','所見は「否定できない」だが、根拠となる利用履歴が登録されていない。','sec-3');
   open.forEach(x=>{const i=INDBY[x.industry];if(i&&!i.subs.length)add('warn','対象物質',`「${x.use}」（${i.label}）は公式資料・社内実績の登録がなく、物質を自動選定していない。担当者が選定する。`,'sec-4');});
-  judge(c).filter(r=>r.st[0]==='todo'&&r.src==='条例').forEach(r=>add('warn','条例',`${r.law} ${r.art}：${r.title||'台帳・区域'}の確認結果が未記入。`,'sec-243'));
+  judge(c).filter(r=>r.st[0]==='todo'&&r.src==='条例').forEach(r=>add('warn','条例',`${r.law.replace(/（.*?）/g,'')} ${r.art}：${/確認$/.test(r.title||'')?r.title+'の結果':(r.title||'台帳・区域')+'の確認結果'}が未記入。「判断」で結果を入れると本文 2.4.3 に入る。`,'sec-243'));
   judge(c).filter(r=>r.src==='条例'&&!r.cite.verified).slice(0,1).forEach(r=>add('info','条例',`${r.law}に、公式出典での確認が済んでいない条項がある。法令・条例の画面で状態を確認。`,null));
   const g=c.regs||{};[['水質汚濁防止法の特定施設',g.suidaku&&g.suidaku.v],['下水道法の特定施設',g.gesui&&g.gesui.v],['法第6条 要措置区域',g.art6],['法第11条 形質変更時要届出区域',g.art11jin]].filter(x=>!x[1]).forEach(x=>add('warn','公的機関の環境情報',x[0]+'の確認結果が未記入。','sec-243'));
   if(s.gwElev)add('warn','地下水','地下水流向は標高（国土地理院 標高API）からの自動推定。治水地形分類図と周辺の河川・海域の位置で確認する。流速・到達距離の計算は未搭載。','sec-21');
@@ -117,7 +118,7 @@ function reviewItems(c){
 function sourcesOf(c){
   const S=[];const push=(kind,title,detail,url,verified,checkedOn)=>{S.push({n:S.length+1,kind,title,detail,url,verified,checkedOn});return S.length;};
   LAWS.items.forEach(l=>push('法令',l.name,`${l.number}${l.lastAmended?'（最終改正：'+l.lastAmended+'）':''}`,l.url,l.verified,LAWS.checkedOn));
-  ordFor(c.site.pref,c.site.city).forEach(o=>push('条例',o.name,`${o.number||''}${(o.lastAmendedShort||o.lastAmended)?'（最終改正：'+(o.lastAmendedShort||o.lastAmended)+'）':''}`,(o.rules.find(r=>r.url)||{}).url||(o.pages&&o.pages[0]&&o.pages[0].url)||'',ordVerified(o),o.checkedOn));
+  ordFor(c.site.pref,c.site.city).forEach(o=>push('条例',o.name,`${o.numberShort||o.number||''}${(o.lastAmendedShort||o.lastAmended)?'（最終改正：'+(o.lastAmendedShort||o.lastAmended)+'）':''}`,(o.rules.find(r=>r.url)||{}).url||(o.pages&&o.pages[0]&&o.pages[0].url)||'',ordVerified(o),o.checkedOn));
   const g=c.regs||{};
   if(g.suidaku&&g.suidaku.src)push('行政照会','水質汚濁防止法・下水道法の特定施設の届出',`${g.suidaku.src}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'、'+g.gesui.src:''}${g.suidaku.date?'（'+g.suidaku.date+'照会）':''}`,'',true);
   if(g.zoneSrc)push('行政公表','土壌汚染対策法に基づく区域の指定状況',g.zoneSrc,'',true);

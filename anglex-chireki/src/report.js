@@ -11,6 +11,18 @@ function ev(c,ref,ids){
 const E=(path,html,tag)=>`<${tag||'span'} data-path="${path}" contenteditable="true" spellcheck="false">${html}</${tag||'span'}>`;
 const P=(path,text)=>`<p data-path="${path}" contenteditable="true" spellcheck="false">${esc(text||'').replace(/\n/g,'<br>')}</p>`;
 
+/* 地理院タイルを3×3枚並べ、対象地を中央に置いた図。印刷・PDFでもそのまま出る */
+const DIRV={'北':[0,-1],'北東':[1,-1],'東':[1,0],'南東':[1,1],'南':[0,1],'南西':[-1,1],'西':[-1,0],'北西':[-1,-1]};
+function tileFig(lat,lng,layer,ext,z,opt){
+  if(!lat||!lng)return '';opt=opt||{};
+  const n=Math.pow(2,z),x=(lng+180)/360*n,rad=lat*Math.PI/180,y=(1-Math.asinh(Math.tan(rad))/Math.PI)/2*n;
+  const tx=Math.floor(x),ty=Math.floor(y),mx=512+(x-tx)*256,my=256+(y-ty)*256,W=600,H=380;
+  let imgs='';for(let j=-1;j<=1;j++)for(let i=-2;i<=2;i++)imgs+=`<img alt="" loading="lazy" src="https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}" style="position:absolute;left:${(i+2)*256}px;top:${(j+1)*256}px;width:256px;height:256px;max-width:none">`;
+  const d=DIRV[opt.dir];const k=d?1/Math.hypot(d[0],d[1]):0;const ax=d?d[0]*k:0,ay=d?d[1]*k:0;
+  const arrow=d?`<line x1="${W/2+ax*26}" y1="${H/2+ay*26}" x2="${W/2+ax*104}" y2="${H/2+ay*104}" stroke="#1f6fd6" stroke-width="7"/><polygon points="${W/2+ax*128},${H/2+ay*128} ${W/2+ax*100-ay*13},${H/2+ay*100+ax*13} ${W/2+ax*100+ay*13},${H/2+ay*100-ax*13}" fill="#1f6fd6"/><rect x="${W/2+ax*150-42}" y="${H/2+ay*150-11}" width="84" height="22" fill="#fff" stroke="#1f6fd6"/><text x="${W/2+ax*150}" y="${H/2+ay*150+4.5}" text-anchor="middle" font-size="12" font-weight="700" fill="#1f6fd6">地下水流向</text>`:'';
+  return `<div class="tfig" contenteditable="false"><div class="tview" style="width:${W}px;height:${H}px"><div style="position:absolute;left:${W/2-mx}px;top:${H/2-my}px;width:1280px;height:768px">${imgs}</div>
+   <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="position:absolute;left:0;top:0">${arrow}<circle cx="${W/2}" cy="${H/2}" r="${opt.r||15}" fill="none" stroke="#e02020" stroke-width="3"/><rect x="${W/2-118}" y="${H/2-52}" width="86" height="22" fill="#fff" stroke="#e02020"/><text x="${W/2-75}" y="${H/2-36.5}" text-anchor="middle" font-size="12" font-weight="700" fill="#e02020">調査対象地</text><line x1="${W/2-40}" y1="${H/2-30}" x2="${W/2-11}" y2="${H/2-10}" stroke="#e02020" stroke-width="1.5"/></svg></div></div>`;
+}
 function tocOf(c){
   const neg=c.verdict&&c.verdict.level==='否定できない';
   const t=[['sec-1','１．調査概要',0],['sec-11','1.1 調査件名',1],['sec-12','1.2 調査目的',1],['sec-13','1.3 敷地面積',1],['sec-14','1.4 関連法規',1],['sec-15','1.5 調査期間',1],['sec-16','1.6 調査機関',1],['sec-17','1.7 調査場所',1],
@@ -69,7 +81,7 @@ function renderReport(c){
   const addr=`${s.pref}${s.city}${s.town}`;const chibans=(s.parcels||[]).map(p=>p.chiban).join('、');
   const maps=c.maps||[];const h=c.hearing||[];
   const lawsHtml=LAWS.items.map(l=>`<div class="law">・${esc(l.name)}${fn(l.name)}<br><span>（${esc(l.number)}）${l.lastAmended?'（改正：'+esc(l.lastAmended)+'）':''}</span></div>`).join('')+
-    ords.filter(o=>o.rules&&o.rules.length).map(o=>`<div class="law">・${esc(o.name)}${fn(o.name)}<br><span>${o.number?'（'+esc(o.number)+'）':''}${(o.lastAmendedShort||o.lastAmended)?'（改正：'+esc(o.lastAmendedShort||o.lastAmended)+'）':''}</span></div>`).join('');
+    ords.filter(o=>o.rules&&o.rules.length).map(o=>`<div class="law">・${esc(o.name)}${fn(o.name)}<br><span>${(o.numberShort||o.number)?'（'+esc(o.numberShort||o.number)+'）':''}${(o.lastAmendedShort||o.lastAmended)?'（改正：'+esc(o.lastAmendedShort||o.lastAmended)+'）':''}</span></div>`).join('');
   const stLabel={yes:'該当',maybe:'要確認',no:'非該当',info:'参考',done:'確認済',todo:'未確認'};
   let html=`
   <section class="cover" id="sec-cover"><div class="ct">${esc(c.title)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${E('reportDate',esc(c.reportDate||toWareki(new Date())))}</div><div class="co">${esc(c.org.name)}</div></section>
@@ -86,19 +98,21 @@ function renderReport(c){
   <table class="reg"><caption>＜調査対象地の筆及び一覧表＞</caption><thead><tr><th></th><th>所在</th><th>地番</th><th>地目</th><th>地積</th><th>所有者</th></tr></thead><tbody>${(s.parcels||[]).map((p,i)=>`<tr><td class="c">${i+1}</td><td>${E(`site.parcels.${i}.shozai`,esc(p.shozai))}</td><td>${E(`site.parcels.${i}.chiban`,esc(p.chiban))}</td><td class="c">${esc(p.chimoku)}</td><td class="r">${fmtArea(p.chiseki)} ㎡</td><td>${E(`site.parcels.${i}.owner`,esc(p.owner))}</td></tr>`).join('')}<tr><td colspan="4" class="r">合計</td><td class="r">${fmtArea(s.area)} ㎡</td><td></td></tr></tbody></table>
   <h3 id="sec-12">1.2 調査目的</h3><p>本調査は、${esc(addr)}${chibans&&(s.parcels||[]).length===1?' '+esc(chibans):''}地内（以下「調査対象地」と称す）における土壌汚染のおそれの可能性について判断することを目的とした。</p>
   <div class="pos" contenteditable="false"><b>調査の位置づけ（適用条項の判定）</b><p>${esc(positionText(c))}</p>
-   <table class="jt"><thead><tr><th>根拠</th><th>条項</th><th>内容</th><th>判定</th><th>判定の理由</th></tr></thead><tbody>${J.map(r=>`<tr class="j-${r.st[0]}"><td class="c">${r.src}</td><td>${esc(r.law.replace(/（.*?）/g,''))} ${esc(r.art)}${r.cite&&r.cite.verified?'':'<span class="unv">出典未確認</span>'}</td><td>${esc(r.title)}</td><td class="c"><b>${esc(r.st[1])}</b></td><td>${esc(r.why)}</td></tr>`).join('')}</tbody></table></div>
+   <table class="jt"><thead><tr><th>根拠</th><th>条項</th><th>内容</th><th>判定</th><th>判定の理由</th></tr></thead><tbody>${J.map(r=>`<tr class="j-${r.st[0]}"><td class="c">${r.src}</td><td>${esc(r.law.replace(/（.*?）/g,''))} ${esc(r.art)}${r.cite&&r.cite.verified?'':'<span class="unv">出典未確認</span>'}</td><td>${esc(r.title)}</td><td class="c"><b>${esc(r.st[1])}</b></td><td>${esc(r.why)}</td></tr>`).join('')}</tbody></table>${ords.filter(o=>(o.extraSubstances||[]).length).map(o=>`<p>※ ${esc(o.name.replace(/（.*?）/g,''))}は、法の特定有害物質26物質に加えて「${esc(o.extraSubstances.map(x=>x.replace(/（.*$/,'')).join('、'))}」を対象とする。</p>`).join('')}${ords.filter(o=>o.appliesNote&&o.rules.length).slice(0,1).map(o=>`<p class="cap">窓口：${esc((o.desk||'').slice(0,90))}</p>`).join('')}</div>
   <h3 id="sec-13">1.3 敷地面積</h3><p>${fmtArea(s.area)} ㎡（${E('site.areaNote',esc(s.areaNote||'公簿面積による推定'))}）</p>
   <h3 id="sec-14">1.4 関連法規 ${ev(c,{p:c.source?4:0})}</h3>${lawsHtml}
   <h3 id="sec-15">1.5 調査期間</h3><p>${E('period',esc(c.period||'（調査期間）'))}</p>
   <h3 id="sec-16">1.6 調査機関</h3><p>${esc(c.org.name)}（指定調査機関指定番号【 ${esc(c.org.no)} 】）<br>所 在 地：${esc(c.org.addr)}<br>電話番号：${esc(c.org.tel)}</p>
   <h3 id="sec-17">1.7 調査場所</h3><p>${esc(s.pref)}${esc(s.city)}${esc(s.town)} ${esc(chibans)}（地番表示）</p>
-  <div class="fig" contenteditable="false"><div class="figbox" data-map="1">図 1.7-1 調査対象地位置図／図 1.7-2 調査対象地地番図<br><small>位置図は${esc(s.mapSrc||'地理院地図(電子国土web)')}、地番図は添付資料(一般B)「公図」を参照。出力時に差し込み。</small></div></div>
+  ${s.lat?tileFig(s.lat,s.lng,'std','png',18)+`<p class="cap fc">図 1.7-1 調査対象地位置図${s.pinned?'':'（町丁目の概略位置。番地への位置合わせは未確定）'}　出典：地理院地図(電子国土web)${fn('治水地形分類図・地理院タイル')}</p>`:''}
+  <div class="fig" contenteditable="false"><div class="figbox">図 1.7-2 調査対象地地番図<br><small>添付資料(一般B)「公図」から作成して差し込み。</small></div></div>
 
   <h2 id="sec-2">２．履歴調査</h2>
   <h3 id="sec-21">2.1 地形・地質及び地下水概要 ${ev(c,s.ref)}</h3>
   <h4>2.1.1 地形・地質概要</h4>${P('site.geoText',s.geoText||'（地形・地質の概要を記入。位置を確定すると治水地形分類図の区分を参照できます）')}
   <h4>2.1.2 地下水概要</h4>${P('site.gwText',s.gwText||'（地下水流向の推定を記入）')}
-  <p class="cap">図 2.1 地形地質概要及び推定地下水流向${s.gwDir?'（推定流向：'+esc(s.gwDir)+'向き）':''}。国土交通省国土地理院 電子国土web（治水地形分類図）より引用し、編集・加工のうえ掲載。${fn('治水地形分類図・地理院タイル')}</p>
+  ${s.lat?tileFig(s.lat,s.lng,'lcmfc2','png',16,{dir:s.gwDir,r:11}):''}
+  <p class="cap fc">図 2.1 地形地質概要及び推定地下水流向${s.gwDir?'（推定流向：'+esc(s.gwDir)+'向き）':''}　国土交通省国土地理院 電子国土web（治水地形分類図）より引用し、編集・加工のうえ掲載。${fn('治水地形分類図・地理院タイル')}</p>
 
   <h3 id="sec-22">2.2 登記簿謄本による履歴調査 ${ev(c,(c.land&&c.land[0]&&c.land[0].ref)||null,['A','B'])}</h3>
   <p>対象地について、現状の登記簿謄本から旧土地台帳までの遡及調査を行った調査結果の要約を「登記簿謄本による対象地の履歴」に示す。</p>

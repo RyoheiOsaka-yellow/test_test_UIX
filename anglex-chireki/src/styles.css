@@ -161,7 +161,7 @@ h1,h2,h3{text-wrap:balance}
 .paper table.kv th{width:9.5em;text-align:center;letter-spacing:.2em}.paper table.reg tr.unc td{background:#fff6dc}.paper .mapt td.yr{background:#d9d9d9}
 .paper table.yn td{border:0;border-bottom:1px dotted #777;padding:5px 4px}.paper table.yn td:last-child{width:6em;white-space:nowrap}
 .paper table.std{font-size:10px}.paper table.std td{padding:2px 5px}.paper table.std tr.sel td{background:#fff3c4;font-weight:700}.paper .vk{writing-mode:vertical-rl;text-align:center;letter-spacing:.15em;white-space:nowrap;width:22px;padding:4px 2px}
-.paper table.att{margin-top:26px}.paper table.jt{font-family:var(--f-body);font-size:11px}.paper table.jt th{background:#ece8dc}
+.paper table.att{margin-top:26px}.paper table.jt{font-family:var(--f-body);font-size:11px}.paper table.jt th{background:#ece8dc}.paper table.jt td:nth-child(2){min-width:10em}.paper table.jt td:nth-child(3){min-width:11em}.paper table.jt td:nth-child(4){min-width:6.5em}
 .paper tr.j-yes td{background:#fbe4e0}.paper tr.j-maybe td,.paper tr.j-todo td{background:#fdf3d7}
 .paper .pos,.paper .why{font-family:var(--f-body);border:1px solid #cfc7ae;background:#faf8f0;border-radius:6px;padding:11px 14px;margin:10px 0 14px;font-size:12px}
 .paper .pos p,.paper .why p{margin:5px 0}.paper .why small{color:#666}
@@ -170,6 +170,7 @@ h1,h2,h3{text-wrap:balance}
 .paper .num{display:grid;grid-template-columns:2em minmax(0,1fr);font-family:var(--f-doc)}.paper .num p{margin-top:0}
 .paper .hear{margin:8px 0 14px;padding-left:10px;border-left:2px solid #bbb}.paper .corp{margin:12px 0}.paper .corp .ch{font-weight:700}
 .paper .cls{padding-left:1.5em}.paper .fig{margin:10px 0}.paper .figbox{border:1px dashed #999;padding:26px 14px;text-align:center;font-size:11.5px;color:#555;font-family:var(--f-body)}
+.paper .tfig{margin:10px 0 4px;overflow-x:auto}.paper .tview{position:relative;overflow:hidden;margin:0 auto;border:1px solid #333;background:#eee}.paper .tview img{border:0}.paper p.fc{text-align:center}
 .paper .shoken{border:1.5px solid #222;margin:10px 0}.paper .sh{background:#cfcfcf;text-align:center;padding:4px;letter-spacing:.5em;border-bottom:1px solid #222}.paper .shh{text-align:center;font-weight:700;padding:11px;border-bottom:1px solid #222}.paper .sht{padding:12px 14px}
 .paper svg.lineage{width:100%;height:auto;display:block;margin:6px 0;border:1px solid #ccc;background:#fff}
 .paper .evs{display:inline-flex;gap:4px;flex-wrap:wrap;vertical-align:middle;margin-left:6px}
@@ -209,5 +210,6 @@ h1,h2,h3{text-wrap:balance}
   #printarea .shoken{border:1.5pt solid #000;page-break-inside:avoid}#printarea .sh{background:#ccc;text-align:center;letter-spacing:.5em;border-bottom:1px solid #000}#printarea .shh{text-align:center;font-weight:700;padding:7pt;border-bottom:1px solid #000}#printarea .sht{padding:8pt}
   #printarea .evs,#printarea .unv,#printarea .todo{display:none}#printarea .pos,#printarea .why{border:1px solid #999;padding:6pt 8pt;font-size:9pt;page-break-inside:avoid}#printarea .figbox{border:1px dashed #999;padding:20pt;text-align:center;font-size:9pt}
   #printarea svg.lineage{width:100%;height:auto}#printarea .num{display:grid;grid-template-columns:2em 1fr}#printarea .cls{padding-left:1.5em}#printarea .src{display:grid;grid-template-columns:2.6em 1fr;font-size:8.5pt;border-bottom:1px dotted #aaa;padding:3pt 0}#printarea .src a{color:#000;word-break:break-all}
+  #printarea .tview{position:relative;overflow:hidden;margin:6pt auto;border:1px solid #333;page-break-inside:avoid}#printarea p.fc{text-align:center}
   #printarea p.cap{font-size:8.5pt;color:#333}#printarea .law span{padding-left:1em}
 }

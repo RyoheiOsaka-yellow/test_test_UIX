@@ -91,7 +91,7 @@ function viewNew(v){
     if(!map){map=L.map('n-map',{maxZoom:19}).setView([lat,lng],18);
       const tile=(t,ext,mx)=>L.tileLayer(`https://cyberjapandata.gsi.go.jp/xyz/${t}/{z}/{x}/{y}.${ext}`,{maxNativeZoom:mx,maxZoom:19,attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>'});
       const std=tile('std','png',18).addTo(map),ph=tile('seamlessphoto','jpg',18);L.control.layers({'標準地図':std,'空中写真（最新）':ph},{}, {collapsed:false}).addTo(map);
-      marker=L.marker([lat,lng],{draggable:true}).addTo(map);marker.on('dragend',()=>{const p=marker.getLatLng();d.lat=p.lat;d.lng=p.lng;$('n-ll').textContent=` ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;});
+      marker=L.marker([lat,lng],{draggable:true}).addTo(map);marker.on('dragend',()=>{const p=marker.getLatLng();d.lat=p.lat;d.lng=p.lng;d.pinned=true;$('n-ll').textContent=` ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;});
     }else{map.setView([lat,lng],18);marker.setLatLng([lat,lng]);}
     setTimeout(()=>map.invalidateSize(),60);};
   $('n-geo').onclick=async()=>{sync();if(!d.addr){toast('所在を入力してください');return;}$('n-geo').disabled=true;
@@ -113,7 +113,7 @@ function blankCase(d){
   const parcels=(d.chiban||'').split(/[、,，]/).map(s=>s.trim()).filter(Boolean).map(ch=>({shozai:city+town,chiban:ch,chimoku:'',chiseki:0,owner:''}));if(parcels.length===1&&+d.area)parcels[0].chiseki=+d.area;
   return normalize({id:'c'+Date.now(),sample:false,status:'review',updated:today(),title:d.addr?d.addr+'地内':'（件名未設定）',reportDate:toWareki(new Date()),period:d.period||'',org:store.get('org')||DEFAULT_ORG,
     request:{purpose:d.purpose,note:d.note,formChange:d.purpose==='develop',changeArea:+d.changeArea||0},
-    site:{pref,city,town,jusho:'',chibanLabel:parcels.length?`${d.addr} ${parcels[0].chiban}${parcels.length>1?' 他':''}`:'',area:+d.area||0,areaNote:'公簿面積による推定',lat:d.lat,lng:d.lng,parcels,geoText:'',gwText:'',gwDir:'',mapSrc:'地理院地図(電子国土web)'},
+    site:{pref,city,town,jusho:'',chibanLabel:parcels.length?`${d.addr} ${parcels[0].chiban}${parcels.length>1?' 他':''}`:'',area:+d.area||0,areaNote:'公簿面積による推定',lat:d.lat,lng:d.lng,pinned:!!d.pinned,parcels,geoText:'',gwText:'',gwDir:'',mapSrc:'地理院地図(電子国土web)'},
     regs:{ord:[],natural:''},verdict:null});
 }
 async function runCreate(d){
@@ -221,7 +221,7 @@ function drawSide(keep){
 }
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type+';charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportWord(c){
-  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.unv').forEach(e=>e.remove());
+  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.unv,.tfig').forEach(e=>e.remove());
   const css='body{font-family:"MS Mincho","Yu Mincho",serif;font-size:10.5pt;line-height:1.7}h2{font-size:13pt;margin-top:18pt}h3{font-size:11pt}h4{font-size:10.5pt}table{border-collapse:collapse;width:100%}th,td{border:1px solid #555;padding:3pt 5pt;font-size:9.5pt;vertical-align:top}th{background:#ddd}.cover{text-align:center;page-break-after:always;padding-top:120pt}.ct{font-size:18pt}.ct2{font-size:16pt;margin-top:60pt}.cd{margin-top:80pt}.co{margin-top:40pt;font-size:13pt}.toc a{display:block;color:#000;text-decoration:none}.shoken{border:1.5pt solid #333}.sh{background:#ccc;text-align:center}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt}svg{display:none}';
   download(`${c.title}_地歴調査報告書.doc`,`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>${css}</style></head><body>${body.innerHTML}</body></html>`,'application/msword');
   toast('Word形式で保存しました（体裁はWordで調整できます）');
@@ -249,9 +249,9 @@ function viewLaws(v){
     ${(LAWS.notes||[]).length?`<div class="note">${LAWS.notes.map(esc).join('<br>')}</div>`:''}</div>
    <div class="sec"><div class="sec-h"><h2>地域の条例</h2><select id="lw-pref" aria-label="都道府県で絞り込み"><option value="">すべての都道府県</option>${prefs.map(p=>`<option>${esc(p)}</option>`).join('')}</select></div><div id="lw-list"></div></div></div>`;
   const draw=()=>{const p=$('lw-pref').value;$('lw-list').innerHTML=ORD.filter(o=>!p||o.pref===p).map(o=>`<div class="ordc"><div class="oh"><span class="oj">${esc(o.pref)}${o.city?' '+esc(o.city):''}</span><b>${esc(o.name)}</b>${o.rules&&o.rules.length?(ordVerified(o)?'<span class="pill ok">公式出典で確認</span>':'<span class="pill warn">出典未確認</span>'):'<span class="pill gray">独自の調査義務の規定なし</span>'}</div>
-     <div class="om">${o.number?esc(o.number):''}${o.lastAmended?'　最終改正：'+esc(o.lastAmended):''}${o.desk?'　窓口：'+esc(o.desk):''}</div>
+     <div class="om">${o.instrument&&o.instrument!=='条例'?'<b>'+esc(o.instrument)+'</b>　':''}${o.number?esc(o.number):''}${o.lastAmended?'　最終改正：'+esc(o.lastAmended):''}${o.desk?'　窓口：'+esc(o.desk):''}</div>
      ${o.rules&&o.rules.length?`<div class="tblwrap"><table class="gt"><thead><tr><th>条</th><th>契機</th><th>内容・義務</th><th>条文（原文）</th><th>出典</th></tr></thead><tbody>${o.rules.map(r=>`<tr><td class="nw"><b>${esc(r.art)}</b></td><td class="nw">${trig[r.trigger]||'—'}${r.threshold?`<br><small>${Number(r.threshold).toLocaleString()}㎡${r.thresholdBasis?'（'+esc(r.thresholdBasis)+'）':''}</small>`:''}</td><td class="wrapc">${esc(r.heading||'')}${r.summary?`<small>${esc(r.summary)}</small>`:''}${r.duty?`<small>義務：${esc(r.duty)}</small>`:''}</td><td class="wrapc q">${r.quote?esc(r.quote):'—'}</td><td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc((()=>{try{return new URL(r.url).hostname;}catch(e){return '出典';}})())}</a>`:'—'}<br>${r.verified&&r.url?'<span class="pill ok">確認</span>':'<span class="pill warn">未確認</span>'}</td></tr>`).join('')}</tbody></table></div>`:''}
-     ${(o.extraSubstances||[]).length?`<div class="om">法の26物質に加える物質：${o.extraSubstances.map(esc).join('、')}</div>`:''}${o.appliesNote?`<div class="om">${esc(o.appliesNote)}</div>`:''}
+     ${(o.notes||[]).length?`<div class="om">${o.notes.map(n=>esc(n.text)).join('／')}</div>`:''}${(o.extraSubstances||[]).length?`<div class="om">法の26物質に加える物質：${o.extraSubstances.map(esc).join('、')}</div>`:''}${o.appliesNote?`<div class="om">${esc(o.appliesNote)}</div>`:''}
      ${(o.pages||[]).length?`<div class="opg">${o.pages.map(pg=>`<a href="${esc(pg.url)}" target="_blank" rel="noopener">${esc(pg.title||pg.what||'公式ページ')}</a>`).join('')}</div>`:''}</div>`).join('')||'<div class="empty">登録がありません。</div>';};
   $('lw-pref').onchange=draw;draw();
 }
