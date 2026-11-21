@@ -21,11 +21,10 @@ function ordVerified(o){return (o.rules||[]).some(r=>r.verified&&r.url);}
 function matchInd(text){const t=String(text||'');return IND.filter(i=>i.re.test(t));}
 function detectConcerns(c){
   const out=[];const seen=new Set();
-  const add=(ind,use,period,basis,ref)=>{const k=ind.id+'|'+use;if(seen.has(k))return;seen.add(k);out.push({period,use,industry:ind.id,parcels:(c.site.parcels||[]).map(p=>p.chiban),basis,ref,auto:true,resolved:!!ind.soft&&!ind.subs.length?undefined:undefined});};
+  const add=(ind,use,period,basis,ref)=>{const k=ind.id+'|'+use;if(seen.has(k))return;seen.add(k);out.push({period,use,industry:ind.id,parcels:(c.site.parcels||[]).map(p=>p.chiban),basis,ref,auto:true});};
   (c.corps||[]).forEach(co=>{const t=(co.name||'')+' '+(co.purpose||[]).join(' ');matchInd(t).forEach(i=>add(i,co.name,co.est?co.est+'～':'',`法人登記（${co.name}）の目的`,co.ref));});
   resolveSame(c.maps).forEach(m=>matchInd(m.useR).forEach(i=>add(i,m.useR,m.y+'年頃',`${m.src}（${m.y}年）`,c.mapsRef)));
   (c.land||[]).forEach(l=>l.rows.forEach(r=>{if(/株式会社|有限会社|合名|合資|㈱|㈲/.test(r.holder||''))matchInd(r.holder).forEach(i=>add(i,r.holder,r.date+'～','登記名義人（'+l.chiban+'）',l.ref));}));
-  (c.hearing||[]).forEach(h=>matchInd(h.text).filter(i=>!i.soft).forEach(i=>add(i,'ヒアリングでの言及',h.date,'ヒアリング（'+(h.target||'')+'）',h.ref)));
   /* 同じ業種の手がかりは1件にまとめる（名称・根拠は併記） */
   const by={};out.forEach(x=>{const g=by[x.industry];if(!g){by[x.industry]={...x,_uses:[x.use],_basis:[x.basis],_per:[x.period]};return;}
     if(!g._uses.some(u=>u.indexOf(x.use)>=0||x.use.indexOf(u)>=0))g._uses.push(x.use);if(!g._basis.includes(x.basis))g._basis.push(x.basis);g._per.push(x.period);});
@@ -40,7 +39,7 @@ function selectSubstances(c){
 function openConcerns(c){return (c.concerns||[]).filter(x=>!x.resolved);}
 function verdictOf(c){
   const open=openConcerns(c);
-  if(!open.length){const res=(c.concerns||[]).filter(x=>x.resolved);
+  if(!open.length){const res=(c.concerns||[]).filter(x=>x.resolved&&(!x.pending||x.resolveNote));
     return {level:'低い',headline:'土壌汚染の可能性は低いと判断する。',text:'対象地における製造事業等の利用履歴及び「土壌汚染対策法」に規定する特定有害物質の使用等'+(res.length?`に関する履歴事項は無かったが、過去に${res.map(x=>x.use).join('、')}の利用が確認された。しかしながら、${res.map(x=>x.resolveNote||'有害物質の使用は確認されなかった').join('。また、')}ことから、土壌汚染の可能性は低いものと判断する。`:'は確認されなかった。よって、土壌汚染の可能性は低いものと判断する。')};}
   const parts=open.map(x=>`${x.period?x.period+'に':''}${x.use}としての利用履歴がある事が${x.basis}にて確認が取れた`);
   const inds=[...new Set(open.map(x=>INDBY[x.industry]&&INDBY[x.industry].label).filter(Boolean))];
@@ -64,9 +63,18 @@ function judge(c){
   L('第6条・第11条','要措置区域・形質変更時要届出区域の指定',inZone?['yes','区域内']:!(g.art6||g.art11jin)?['todo','未確認']:['no','指定なし'],g.zoneSrc?`確認先：${g.zoneSrc}${g.radius?'、'+g.radius:''}`:'区域指定の公表資料を確認','art6');
   ordFor(s.pref,s.city).forEach(o=>(o.rules||[]).filter(r=>r.judge!==false).forEach(r=>{
     let st,why;const rec=(g.ord||[]).find(x=>x.name&&o.name.indexOf(x.name.replace(/（.*$/,''))===0||x.name===o.name);
-    if(r.trigger==='area'){const th=+r.threshold||0;const site=r.areaBasis==='site';const hit=rq.formChange&&(site?area:ch)>=th;
-      st=!th?['maybe','閾値を確認']:!rq.formChange?['no','形質変更の予定なし']:!hit?['no','面積要件に非該当']:r.cond?['maybe',r.condLabel||'条件に当たれば対象']:['yes','届出・調査の対象'];
-      why=`${site?'敷地面積':'形質変更の面積'} ${th?th.toLocaleString()+'㎡以上':''}${r.cond?'（'+r.cond+'）':''}。本件：敷地 ${fmtArea(area)}㎡${rq.formChange?'、形質変更 '+fmtArea(ch)+'㎡':''}`;}
+    if(r.trigger==='area'){const th=+r.threshold||0,th2=+r.threshold2||0;const site=r.areaBasis==='site';const val=site?area:ch;
+      /* 施設のある（あった）敷地か：届出あり＝yes／過去の事業利用の手がかりあり・未照会＝unknown／届出なしで手がかりもなし＝no */
+      const facSite=hasFac?'yes':(openConcerns(c).length||!(g.suidaku&&g.suidaku.v))?'unknown':'no';
+      const t2=th2>1?th2.toLocaleString()+'㎡以上':'面積の下限なし';
+      if(!th)st=['maybe','閾値を確認'];
+      else if(!rq.formChange)st=['no','形質変更の予定なし'];
+      else if(r.minChange&&ch<r.minChange)st=['no',`改変${r.minChange}㎡未満は対象外`];
+      else if(r.upper&&val>=r.upper)st=['no','法第4条の届出による'];
+      else if(val>=th)st=r.cond?['maybe',r.condLabel||'条件に当たれば対象']:['yes','届出・調査の対象'];
+      else if(th2&&val>=th2)st=facSite==='yes'?['yes',`届出・調査の対象（${t2}）`]:facSite==='unknown'?['maybe','施設のある敷地なら対象']:['no','面積要件に非該当'];
+      else st=['no','面積要件に非該当'];
+      why=`${site?'敷地面積':'形質変更の面積'} ${th?th.toLocaleString()+'㎡以上':''}${r.cond?'（'+r.cond+'）':''}${th2?'。'+r.cond2+'は'+t2:''}${r.upperNote?'。'+r.upperNote:''}${r.minNote?'。'+r.minNote:''}。本件：敷地 ${fmtArea(area)}㎡${rq.formChange?'、形質変更 '+fmtArea(ch)+'㎡':''}`;}
     else if(r.trigger==='facility'){st=rq.purpose==='closure'?['maybe','対象事業場か確認']:openConcerns(c).length?['maybe','事業場の届出履歴を確認']:['no','該当の手がかりなし'];why=r.summary||r.duty||'';}
     else if(r.trigger==='other'){st=['info','参考'];why=r.summary||r.duty||'';}
     else {st=rec?['done','確認済：'+rec.v]:['todo','未確認'];why=rec?`${rec.item||r.heading||''}：${rec.v}`:(r.summary||'条例に基づく台帳・区域の有無を窓口または公表資料で確認する');}
@@ -82,7 +90,8 @@ function positionText(c){
     develop:'本調査は、土地の形質の変更に先立って土壌汚染のおそれを把握するために行う地歴調査である。',
     closure:'本調査は、工場・事業場の廃止に伴い土壌汚染のおそれを把握するために行う地歴調査である。',
     order:'本調査は、行政からの求めに応じて土壌汚染のおそれを把握するために行う地歴調査である。'}[rq.purpose||'sale'];
-  return base+(yes.length?'なお、'+yes.map(r=>`${r.law}${r.art}（${r.title}）`).join('、')+'に該当する。':'');
+  const lawYes=yes.some(r=>r.src==='法');const head=(rq.purpose||'sale')==='sale'&&lawYes?'本調査は、土地の売買に先立って土壌汚染のおそれを把握するために行う地歴調査である。':base;
+  return head+(yes.length?'なお、本件は'+yes.map(r=>`${r.law.replace(/（.*?）/g,'')}${r.art}（${r.title}）`).join('、')+'に該当する。':'');
 }
 
 /* 確認が必要な点だけを集める（人が見る項目を最小にする） */
@@ -99,6 +108,9 @@ function reviewItems(c){
   if(asc)add('warn','地図年次',`年次が${asc}箇所で昇順になっていない。`,'sec-23',c.mapsRef);
   if(wa)add('bad','地図年次',`西暦と和暦が${wa}箇所で食い違う。`,'sec-23',c.mapsRef);
   const open=openConcerns(c);
+  (c.concerns||[]).filter(x=>x.pending).forEach(x=>{const i=INDBY[x.industry]||{};add('warn','利用履歴',`「${x.use}」（${i.label||''}）：${i.why||''}「判断」で、汚染のおそれとして扱うかを決める。`,'sec-23',x.ref);});
+  const hInd=[...new Set((c.hearing||[]).flatMap(h=>matchInd(h.text).filter(i=>!i.soft&&!(c.concerns||[]).some(x=>x.industry===i.id)).map(i=>i.label)))];
+  if(hInd.length)add('info','ヒアリング',`聴取内容に「${hInd.join('」「')}」に関わる語がある。利用の有無を読み、該当するなら「判断」で懸念を追加する。`,'sec-24');
   if(open.length&&!(c.hearing||[]).length)add('warn','ヒアリング','事業場としての利用履歴があるが、ヒアリングの記録がない。','sec-24');
   if(c.verdict&&c.verdict.level==='低い'&&open.length)add('bad','所見',`未解消の懸念（${open.map(x=>x.use).join('、')}）があるのに所見が「低い」。`,'sec-3');
   if(c.verdict&&c.verdict.level==='否定できない'&&!open.length)add('warn','所見','所見は「否定できない」だが、根拠となる利用履歴が登録されていない。','sec-3');

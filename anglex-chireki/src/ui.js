@@ -4,9 +4,11 @@ const store={get(k){try{const v=localStorage.getItem('anglex.'+k);return v==null
 let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3800);}
 const today=()=>new Date().toISOString().slice(0,10);
 const clone=o=>JSON.parse(JSON.stringify(o));
-function normalize(c){c.srcSubstances=c.srcSubstances||[];c.reviewed=c.reviewed||[];c.diffs=c.diffs||[];c.docs=c.docs||[];c.regs=c.regs||{};c.regs.ord=c.regs.ord||[];['land','lineage','buildings','corps','maps','mapNotes','hearing','concerns','substances','extraSubstances'].forEach(k=>c[k]=c[k]||[]);c.classification=c.classification||{none:[],low:[],high:[]};c.request=c.request||{purpose:'sale'};return c;}
+function normalize(c){c.srcSubstances=c.srcSubstances||[];c.reviewed=c.reviewed||[];c.diffs=c.diffs||[];c.docs=c.docs||[];c.regs=c.regs||{};c.regs.ord=c.regs.ord||[];['land','lineage','buildings','corps','maps','mapNotes','hearing','concerns','substances','extraSubstances'].forEach(k=>c[k]=c[k]||[]);c.classification=c.classification||{none:[],low:[],high:[]};c.request=c.request||{purpose:'sale'};if(c.sample){if(c.verdictEdited==null)c.verdictEdited=true;if(c.substancesManual==null)c.substancesManual=c.substances.length>0;}return c;}
 const ST={user:store.get('user'),cases:[],route:'login',caseId:null,tab:'review',files:[],pdf:{}};
-function loadCases(){const saved=store.get('cases');ST.cases=(saved&&saved.length?saved:clone(SAMPLES)).map(normalize);}
+function loadCases(){const saved=store.get('cases');let cs=saved&&saved.length?saved:clone(SAMPLES);
+  if(store.get('samplesVer')!==SAMPLES_VERSION){cs=clone(SAMPLES).concat(cs.filter(c=>!c.sample));store.set('samplesVer',SAMPLES_VERSION);store.set('cases',cs);}
+  ST.cases=cs.map(normalize);}
 function saveCases(){store.set('cases',ST.cases);}
 const curCase=()=>ST.cases.find(c=>c.id===ST.caseId);
 const DEFAULT_ORG={name:'株式会社エコ・テック',no:'2016-3-1006',addr:'東京都品川区南大井6-16-20 品川水神ビル7階',tel:'03-5781-5433'};
@@ -128,7 +130,7 @@ async function runCreate(d){
     await tick(250);mark('docs','ok');
     mark('read','run');
     if(useAI){for(let i=0;i<files.length;i++){mark('read','run',`${i+1} / ${files.length}　${files[i].name}`);
-        try{const part=await aiExtractFile(files[i]);const doc=c.docs.find(x=>x.id===ids[i]);if(doc&&part.kind)doc.kind=part.kind.replace(/（.*$/,'');if(part.kind==='既往報告書'){c.source={file:files[i].name,pages:null,bodyOffset:0};}mergePart(c,part,ids[i]);}
+        try{const part=await aiExtractFile(files[i]);const doc=c.docs.find(x=>x.id===ids[i]);if(doc&&part.kind)doc.kind=part.kind.replace(/（.*$/,'');if(part.kind==='既往報告書'){c.source={file:files[i].name,pages:null,bodyOffset:0,overviewP:(part.site&&+part.site.p)||null,lawsP:(part.meta&&+part.meta.lawsP)||null};}mergePart(c,part,ids[i]);}
         catch(e){c.diffs.push({sev:'bad',text:`「${files[i].name}」を読み取れませんでした：${e.message}`});}}
       mark('read','ok',`${files.length}点`);}
     else{await tick(200);mark('read',files.length?'skip':'ok');}
@@ -156,7 +158,11 @@ function viewCase(v){
    <div class="ws"><nav class="ws-toc" id="c-toc" aria-label="目次"></nav><div class="ws-paper"><article class="paper" id="paper"></article></div>
     <aside class="ws-side"><div class="tabs2" role="tablist">${[['review','確認'],['judge','判断'],['src','出典'],['docs','資料']].map(t=>`<button type="button" role="tab" data-t="${t[0]}" class="${ST.tab===t[0]?'on':''}">${t[1]}<i id="tb-${t[0]}"></i></button>`).join('')}</div><div class="side-body" id="side"></div></aside></div>`;
   $('c-back').onclick=()=>go('cases');
-  $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));window.print();};
+  $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
+    const imgs=[...$('printarea').querySelectorAll('img')].filter(i=>!i.complete);const b=$('c-pdf');
+    if(!imgs.length){window.print();return;}
+    b.disabled=true;b.textContent='図を読み込み中…';
+    Promise.race([Promise.all(imgs.map(i=>new Promise(r=>{i.onload=i.onerror=r;}))),new Promise(r=>setTimeout(r,6000))]).then(()=>{b.disabled=false;b.textContent='PDFで出力';window.print();});};
   $('c-word').onclick=()=>exportWord(c);
   v.querySelectorAll('.tabs2 button').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.t;v.querySelectorAll('.tabs2 button').forEach(x=>x.classList.toggle('on',x===b));drawSide();});
   drawPaper();drawSide();
@@ -165,8 +171,8 @@ function drawPaper(){
   const c=curCase();const p=$('paper');p.innerHTML=renderReport(c);
   $('c-toc').innerHTML=`<div class="tl">目次</div>`+tocOf(c).map(t=>`<a href="#${t[0]}" data-go="${t[0]}" class="l${t[2]}">${t[1]}</a>`).join('');
   document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();const el=document.getElementById(a.dataset.go);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
-  p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();setPath(c,el.dataset.path,val);c.updated=today();saveCases();drawSide(true);}));
-  p.querySelectorAll('.ev').forEach(el=>el.onclick=()=>openPage(c,+el.dataset.p));
+  p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
+  p.querySelectorAll('.ev').forEach(el=>el.onclick=()=>openPage(c,+el.dataset.p||1,el.dataset.doc));
 }
 function drawSide(keep){
   const c=curCase();const R=reviewItems(c);const open=R.filter(r=>!r.done&&r.sev!=='info');
@@ -174,29 +180,39 @@ function drawSide(keep){
   const side=$('side');
   if(ST.tab==='review'){
     side.innerHTML=`<div class="sv-head"><b>${open.length?`人の確認が必要な点：${open.length}件`:'確認が必要な点はありません'}</b><p>読み取りに自信がない箇所、資料どうしの食い違い、未記入の項目だけを出しています。ほかの記載は根拠ページ付きで本文に入っています。</p></div>`+
-     R.map(r=>`<div class="rv ${r.sev}${r.done?' done':''}"><div class="rh"><span class="pill ${r.sev==='bad'?'bad':r.sev==='warn'?'warn':'info'}">${r.sev==='bad'?'要修正':r.sev==='warn'?'要確認':'参考'}</span><em>${esc(r.area)}</em>${r.ref&&r.ref.p?`<button type="button" class="pg" data-p="${r.ref.p}">p.${r.ref.p}</button>`:''}</div><p>${esc(r.text)}</p>
+     R.map(r=>`<div class="rv ${r.sev}${r.done?' done':''}"><div class="rh"><span class="pill ${r.sev==='bad'?'bad':r.sev==='warn'?'warn':'info'}">${r.sev==='bad'?'要修正':r.sev==='warn'?'要確認':'参考'}</span><em>${esc(r.area)}</em>${r.ref&&r.ref.p?`<button type="button" class="pg" data-p="${r.ref.p}" data-doc="${r.ref.doc&&r.ref.doc!=='R'?esc(r.ref.doc):''}">p.${r.ref.p}</button>`:''}</div><p>${esc(r.text)}</p>
        <div class="ra">${r.anchor?`<button type="button" class="lnk" data-a="${r.anchor}">該当箇所へ</button>`:''}<button type="button" class="lnk" data-k="${esc(r.key)}">${r.done?'未確認に戻す':'確認済みにする'}</button></div></div>`).join('');
     side.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const el=document.getElementById(b.dataset.a);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1600);}});
     side.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const k=b.dataset.k;const i=c.reviewed.indexOf(k);if(i>=0)c.reviewed.splice(i,1);else c.reviewed.push(k);saveCases();drawSide();});
-    side.querySelectorAll('.pg').forEach(b=>b.onclick=()=>openPage(c,+b.dataset.p));
+    side.querySelectorAll('.pg').forEach(b=>b.onclick=()=>openPage(c,+b.dataset.p,b.dataset.doc));
   }else if(ST.tab==='judge'){
     const rq=c.request;const all=(c.site.parcels||[]).map(p=>p.chiban);const cl=c.classification;const sel=new Set(c.substances);
     side.innerHTML=`<div class="jg"><h3>調査の目的</h3><select id="j-purpose">${PURPOSES.map(p=>`<option value="${p.id}" ${rq.purpose===p.id?'selected':''}>${p.label}</option>`).join('')}</select>
       <label class="ck"><input type="checkbox" id="j-chg" ${rq.formChange?'checked':''}> 土地の形質変更を行う</label><div class="f" ${rq.formChange?'':'hidden'} id="j-chgw"><label for="j-area">形質変更の面積（㎡）</label><input id="j-area" type="number" value="${rq.changeArea||''}"></div></div>
      <div class="jg"><h3>適用条項</h3>${judge(c).map(r=>`<div class="jr j-${r.st[0]}"><span><b>${esc(r.law.replace(/（.*?）/g,'').replace('土壌汚染対策法','法'))} ${esc(r.art)}</b><small>${esc(r.title)}</small></span><span class="pill ${{yes:'bad',maybe:'warn',no:'ok',info:'info',done:'ok',todo:'warn'}[r.st[0]]}">${esc(r.st[1])}</span></div>`).join('')}</div>
      <div class="jg"><h3>懸念となる利用履歴</h3>${c.concerns.length?c.concerns.map((x,i)=>`<div class="cc ${x.resolved?'res':''}"><b>${esc(x.use)}</b><small>${esc(x.period||'')}　${esc(INDBY[x.industry]?INDBY[x.industry].label:'')}<br>根拠：${esc(x.basis||'')}</small>
-        <label class="ck"><input type="checkbox" data-ci="${i}" ${x.resolved?'':'checked'}> 汚染のおそれとして扱う</label>${x.resolved?`<input class="rn" data-cn="${i}" placeholder="扱わない理由（所見に入ります）" value="${esc(x.resolveNote||'')}">`:''}</div>`).join(''):'<p class="mute">事業場としての利用履歴は見つかっていません。</p>'}</div>
+        ${x.pending?'<small class="pend">確認待ち：規模・設備を確かめて、扱うかどうかを決めてください。</small>':''}<label class="ck"><input type="checkbox" data-ci="${i}" ${x.resolved?'':'checked'}> 汚染のおそれとして扱う</label>${x.resolved?`<input class="rn" data-cn="${i}" placeholder="扱わない理由（所見に入ります）" value="${esc(x.resolveNote||'')}">`:''}</div>`).join(''):'<p class="mute">事業場としての利用履歴は見つかっていません。</p>'}
+      <div class="cadd"><select id="j-ind" aria-label="業種">${IND.map(i=>`<option value="${i.id}">${esc(i.label)}</option>`).join('')}</select><input id="j-use" class="rn" placeholder="利用の内容（例：○○鍍金工業所、昭和40年頃）"><button class="btn mini" type="button" id="j-add">懸念を追加</button></div></div>
      <div class="jg"><h3>所見</h3><p class="vd"><span class="lvl ${c.verdict.level==='低い'?'low':'high'}">${esc(c.verdict.level)}</span> 懸念の扱いを変えると所見・4～6章を組み直します。</p><button class="btn mini" type="button" id="j-redo">所見の文章を判定から書き直す</button></div>
      ${c.verdict.level==='否定できない'?`<div class="jg"><h3>試料採取等対象物質</h3>${[1,2,3].map(k=>`<div class="sk"><small>${KIND[k]}</small>${SUB.filter(s=>s.k===k).map(s=>`<button type="button" class="sb2 ${sel.has(s.id)?'on':''}" data-s="${s.id}">${s.name.replace(/及びその化合物|化合物/,'')}</button>`).join('')}</div>`).join('')}</div>
      <div class="jg"><h3>おそれの区分（筆ごと）</h3>${(all.length?all:['敷地全域']).map(p=>{const cur=cl.high.includes(p)?'high':cl.none.includes(p)?'none':'low';return `<div class="cp"><span>${esc(p)}</span><select data-p="${esc(p)}"><option value="none" ${cur==='none'?'selected':''}>おそれがない</option><option value="low" ${cur==='low'?'selected':''}>おそれが少ない</option><option value="high" ${cur==='high'?'selected':''}>比較的多い</option></select></div>`;}).join('')}</div>`:''}
      <div class="jg"><h3>条例に基づく確認結果</h3>${ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.some(r=>r.trigger==='ledger'||r.trigger==='zone')).map(o=>{const rec=c.regs.ord.find(x=>x.name===o.name||o.name.indexOf(x.name)===0);const r=o.rules.find(r=>r.trigger==='ledger'||r.trigger==='zone');return `<div class="cp"><span>${esc(o.name.replace(/（.*?）/g,''))}<small>${esc(r.heading||r.art)}</small></span><select data-o="${esc(o.name)}" data-item="${esc(r.heading||'台帳・区域')}"><option value="">未確認</option><option ${rec&&rec.v==='なし'?'selected':''}>なし</option><option ${rec&&rec.v==='あり'?'selected':''}>あり</option></select></div>`;}).join('')||'<p class="mute">この地域に、台帳・区域の確認を要する条例の登録はありません。</p>'}</div>`;
-    const redo=(full)=>{if(full){const v=verdictOf(c);c.verdict=v;const s=selectSubstances(c);c.substances=s.ids;c.extraSubstances=s.extra;}c.updated=today();saveCases();const y=window.scrollY;drawPaper();drawSide();window.scrollTo(0,y);
+    const redo=(full,force)=>{
+      if(full){const v=verdictOf(c);const changed=!c.verdict||c.verdict.level!==v.level;
+        /* 所見の文章：手で直してあれば、判定（低い／否定できない）が変わらない限り残す */
+        if(force||changed||!c.verdictEdited){if(c.verdictEdited&&changed&&!force)toast(`判定が「${v.level}」に変わったため、所見の文章を書き直しました。直した文章は入れ直してください`);c.verdict=v;c.verdictEdited=false;}
+        if(force||!c.substancesManual){const s=selectSubstances(c);c.substances=s.ids;c.extraSubstances=s.extra;c.substancesManual=false;}
+        const cl=c.classification;if(c.verdict.level==='否定できない'&&!(cl.none.length+cl.low.length+cl.high.length)){cl.low=(c.site.parcels||[]).map(p=>p.chiban);if(!cl.low.length)cl.low=['敷地全域'];}}
+      c.updated=today();saveCases();const y=window.scrollY;drawPaper();drawSide();window.scrollTo(0,y);
       const lv=c.verdict.level;const h=document.querySelector('.ws-head .lvl');if(h){h.textContent=lv;h.className='lvl '+(lv==='低い'?'low':'high');}};
     $('j-purpose').onchange=e=>{rq.purpose=e.target.value;redo();};$('j-chg').onchange=e=>{rq.formChange=e.target.checked;redo();};if($('j-area'))$('j-area').onchange=e=>{rq.changeArea=+e.target.value||0;redo();};
-    side.querySelectorAll('[data-ci]').forEach(b=>b.onchange=()=>{c.concerns[+b.dataset.ci].resolved=!b.checked;redo(true);});
-    side.querySelectorAll('[data-cn]').forEach(b=>b.onchange=()=>{c.concerns[+b.dataset.cn].resolveNote=b.value;redo(true);});
-    $('j-redo').onclick=()=>{redo(true);toast('所見と対象物質を判定から組み直しました');};
-    side.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const id=b.dataset.s;const i=c.substances.indexOf(id);if(i>=0)c.substances.splice(i,1);else c.substances.push(id);c.substances=SUB.filter(s=>c.substances.includes(s.id)).map(s=>s.id);redo();});
+    side.querySelectorAll('[data-ci]').forEach(b=>b.onchange=()=>{const x=c.concerns[+b.dataset.ci];x.resolved=!b.checked;x.pending=false;redo(true);});
+    side.querySelectorAll('[data-cn]').forEach(b=>b.onchange=()=>{const x=c.concerns[+b.dataset.cn];x.resolveNote=b.value;x.pending=false;redo(true);});
+    $('j-redo').onclick=()=>{redo(true,true);toast('所見と対象物質を判定から組み直しました');};
+    $('j-add').onclick=()=>{const use=$('j-use').value.trim();if(!use){$('j-use').focus();toast('利用の内容を入力してください');return;}
+      c.concerns.push({period:'',use,industry:$('j-ind').value,parcels:(c.site.parcels||[]).map(p=>p.chiban),basis:'担当者の判断',manual:true});
+      if(c.substancesManual){const i=INDBY[$('j-ind').value];c.substances=SUB.filter(s=>c.substances.includes(s.id)||i.subs.includes(s.id)).map(s=>s.id);}redo(true);};
+    side.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const id=b.dataset.s;const i=c.substances.indexOf(id);if(i>=0)c.substances.splice(i,1);else c.substances.push(id);c.substances=SUB.filter(s=>c.substances.includes(s.id)).map(s=>s.id);c.substancesManual=true;redo();});
     side.querySelectorAll('select[data-p]').forEach(sl=>sl.onchange=()=>{const p=sl.dataset.p;['none','low','high'].forEach(k=>{cl[k]=cl[k].filter(x=>x!==p);});cl[sl.value].push(p);redo();});
     side.querySelectorAll('select[data-o]').forEach(sl=>sl.onchange=()=>{const n=sl.dataset.o;c.regs.ord=c.regs.ord.filter(x=>!(x.name===n||n.indexOf(x.name)===0));if(sl.value)c.regs.ord.push({name:n.replace(/（.*?）/g,''),item:sl.dataset.item,v:sl.value});redo();});
   }else if(ST.tab==='src'){
@@ -209,10 +225,10 @@ function drawSide(keep){
      (c.docs||[]).map(d=>`<div class="dc"><span class="fk">${esc(d.cls==='本文'?'本文':d.cls.replace('資料','')+d.id.replace('P','').replace('K',''))}</span><span><b>${esc(d.kind)}</b><small>${esc(d.name||'')}${d.pages?'　p.'+esc(d.pages):''}</small></span></div>`).join('')+
      `<label class="drop sm" id="d-drop">${c.source&&!ST.pdf[c.id]?'<b>原本PDFを入れる</b>と、根拠ページをその場で表示できます':'<b>資料を追加</b>（PDF・画像）'}<input type="file" id="d-file" accept="application/pdf,image/*" multiple></label><div class="note" id="d-msg">${ST.pdf[c.id]?'原本PDFを読み込み済み':''}</div>
      <button class="btn mini" type="button" id="d-json">この案件をJSONで保存</button> <button class="btn mini" type="button" id="d-del">この案件を削除</button>`;
-    const add=async fl=>{const fs=[...fl];if(c.source&&!ST.pdf[c.id]&&fs[0]&&/pdf$/i.test(fs[0].name)){ST.pdf[c.id]=fs[0];ST.pdfDoc=null;$('d-msg').textContent='原本PDFを読み込みました。本文の「p.」を押すとページを表示します';toast('原本PDFを読み込みました');return;}
-      if(AI.mode==='none'){fs.forEach(f=>{const k=kindByName(f.name);c.docs.push({id:'X'+(c.docs.length+1),kind:k[0],name:f.name,cls:k[1],pages:''});});saveCases();drawSide();toast('資料を添付として登録しました（AI読み取りは未接続）');return;}
+    const add=async fl=>{const fs=[...fl];if(c.source&&!ST.pdf[c.id]&&fs[0]&&/pdf$/i.test(fs[0].name)){ST.pdf[c.id]=fs.shift();ST.pdfDoc=null;$('d-msg').textContent='原本PDFを読み込みました。本文の「p.」を押すとページを表示します';toast('原本PDFを読み込みました');if(!fs.length)return;}
+      if(AI.mode==='none'){fs.forEach(f=>{const k=kindByName(f.name);const id='X'+(c.docs.length+1);c.docs.push({id,kind:k[0],name:f.name,cls:k[1],pages:''});ST.pdf[c.id+':'+id]=f;});saveCases();drawSide();toast('資料を添付として登録しました（AI読み取りは未接続）');return;}
       for(const f of fs){$('d-msg').textContent=`読み取り中：${f.name}`;try{const id='X'+(c.docs.length+1);const part=await aiExtractFile(f);c.docs.push({id,kind:(part.kind||kindByName(f.name)[0]).replace(/（.*$/,''),name:f.name,cls:kindByName(f.name)[1],pages:''});ST.pdf[c.id+':'+id]=f;mergePart(c,part,id);}catch(e){toast(`${f.name} を読み取れませんでした：${e.message}`);}}
-      finalizeCase(c);saveCases();drawPaper();drawSide();toast('資料を読み取り、レポートに反映しました');};
+      finalizeCase(c,true);c.updated=today();saveCases();drawPaper();drawSide();toast('資料を読み取り、レポートに追記しました。懸念の扱い・所見・物質・区分はそのままです');};
     const dz=$('d-drop');dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');add(e.dataTransfer.files);});
     $('d-file').onchange=e=>add(e.target.files);
     $('d-json').onclick=()=>download(`chireki-${c.title}.json`,JSON.stringify(c,null,1),'application/json');
@@ -227,13 +243,15 @@ function exportWord(c){
   toast('Word形式で保存しました（体裁はWordで調整できます）');
 }
 /* 根拠ページの表示（pdf.js） */
-async function openPage(c,p){
-  const f=ST.pdf[c.id];
-  if(!f){toast(`${c.source?c.source.file+' の ':''}p.${p}。「資料」タブで原本PDFを入れると、ここでページを表示します`);return;}
+async function openPage(c,p,doc){
+  const d=doc?(c.docs||[]).find(x=>x.id===doc):null;const key=d?c.id+':'+doc:c.id;const f=ST.pdf[key];
+  const name=d?(d.name||d.kind):(c.source?c.source.file:'資料');
+  if(!f){toast(`${name} の p.${p}。「資料」タブでこのPDFを入れると、ここでページを表示します`);return;}
+  if(!/pdf$/i.test(f.name)){toast(`${name} は画像のため、ページ表示の対象外です`);return;}
   if(typeof pdfjsLib==='undefined'){toast('PDF表示の部品を読み込めませんでした（ネットワーク）');return;}
   try{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    if(!ST.pdfDoc||ST.pdfFor!==c.id){ST.pdfDoc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;ST.pdfFor=c.id;}
-    const show=async n=>{n=Math.max(1,Math.min(ST.pdfDoc.numPages,n));ST.pdfPage=n;const page=await ST.pdfDoc.getPage(n);const cv=$('pv-canvas');const w=Math.min(820,window.innerWidth-48);const v0=page.getViewport({scale:1});const vp=page.getViewport({scale:w/v0.width*2});cv.width=vp.width;cv.height=vp.height;cv.style.width=w+'px';await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;$('pv-n').textContent=`p.${n} / ${ST.pdfDoc.numPages}`;};
+    if(!ST.pdfDoc||ST.pdfFor!==key){ST.pdfDoc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;ST.pdfFor=key;}
+    const show=async n=>{n=Math.max(1,Math.min(ST.pdfDoc.numPages,n));ST.pdfPage=n;const page=await ST.pdfDoc.getPage(n);const cv=$('pv-canvas');const w=Math.min(820,window.innerWidth-48);const v0=page.getViewport({scale:1});const vp=page.getViewport({scale:w/v0.width*2});cv.width=vp.width;cv.height=vp.height;cv.style.width=w+'px';await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;$('pv-n').textContent=`${name}　p.${n} / ${ST.pdfDoc.numPages}`;};
     $('pv').hidden=false;$('pv-prev').onclick=()=>show(ST.pdfPage-1);$('pv-next').onclick=()=>show(ST.pdfPage+1);$('pv-close').onclick=()=>{$('pv').hidden=true;};await show(p);
   }catch(e){toast('PDFを開けません：'+e.message);}
 }

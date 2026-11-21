@@ -148,7 +148,11 @@
     "quote": "規則で定める面積以上の土地における土地の切り盛り、掘削その他の規則で定める行為(以下「土地の改変」という。)を行う者(以下「土地改変者」という。)は",
     "url": "https://www.reiki.metro.tokyo.lg.jp/reiki/reiki_honbun/g101RG00001328.html",
     "verified": true,
-    "judge": true
+    "judge": true,
+    "threshold2": 900,
+    "cond2": "法第4条第1項の適用を受ける土地",
+    "minChange": 300,
+    "minNote": "改変対象面積の合計が300㎡未満の行為は対象外（基準超過が確実な場合を除く）"
    },
    {
     "art": "施行規則第57条",
@@ -1040,7 +1044,11 @@
     "quote": "土地の形質の変更をしようとする者は、当該土地の形質の変更に着手する日の30日前までに、規則で定めるところにより、当該土地の形質の変更の場所及び着手予定日その他規則で定める事項を市長に届け出なければならない。",
     "url": "https://cgi.city.yokohama.lg.jp/somu/reiki/reiki_honbun/g202RG00001294.html",
     "verified": true,
-    "judge": true
+    "judge": true,
+    "threshold2": 1,
+    "cond2": "特定有害物質使用等事業所の敷地（であった土地）",
+    "upper": 3000,
+    "upperNote": "3,000㎡以上は法第4条の届出に係る行為として条例の届出から除外"
    },
    {
     "art": "第65条第1項第4号",
@@ -1741,7 +1749,9 @@
     "quote": "本市において開発行為等をしようとする者は、開発行為等に着手する前に、開発区域の地歴調査",
     "url": "https://www.city.chiba.jp/kankyo/kankyohozen/kankyokisei/documents/dojoyoko.pdf",
     "verified": true,
-    "judge": true
+    "judge": true,
+    "threshold2": 900,
+    "cond2": "有害物質使用特定施設が現に設置されている、又は廃止された工場等の敷地"
    },
    {
     "art": "第4条第2項",
@@ -1952,7 +1962,9 @@
     "quote": "土地の形質の変更であって、その対象となる土地の面積が規則で定める規模以上のものをしようとする者は、当該土地の形質の変更に着手する日の三十日前までに、規則で定めるところにより",
     "url": "https://www.pref.osaka.lg.jp/houbun/reiki/reiki_honbun/k201RG00000392.html",
     "verified": true,
-    "judge": true
+    "judge": true,
+    "threshold2": 900,
+    "cond2": "有害物質使用特定施設が設置されている、又は廃止された工場・事業場の敷地"
    },
    {
     "art": "施行規則第48条の24",
@@ -2314,7 +2326,10 @@
     "quote": "「土地の形質の変更」は、掘削、盛土、切土の別を問わず、形質の変更の部分の面積が3,000平方メートル以上(水質汚濁防止法に規定される特定施設で特定有害物質を使用している事業場等の敷地においては900平方メートル以上)となる場合です。",
     "url": "https://www.pref.aichi.jp/soshiki/kankyo/dojyoutikasui.html",
     "verified": true,
-    "judge": true
+    "judge": true,
+    "threshold2": 900,
+    "cond2": "水質汚濁防止法の特定施設で特定有害物質を使用している事業場等の敷地",
+    "minNote": "盛土のみの行為は対象外"
    },
    {
     "art": "第39条",
@@ -2430,7 +2445,9 @@
     "quote": "その対象となる土地の面積が規則で定める規模以上のものをしようとする者は、当該土地の形質の変更に着手する日の30日前までに、規則で定めるところにより、当該土地における過去の特定有害物質等を取り扱っていた工場等の設置の状況その他の規則で定める事項を調査し、その結果を市長に報告しなければならない",
     "url": "https://www.city.nagoya.jp/_res/projects/default_project/_page_/001/008/790/kankyouhozennjyourei.pdf",
     "verified": true,
-    "judge": true
+    "judge": true,
+    "threshold2": 900,
+    "cond2": "現に有害物質使用特定施設が設置されている、又は廃止された工場・事業場の敷地"
    },
    {
     "art": "第55条",
@@ -2581,7 +2598,9 @@
     "quote": "当該土地における過去の特定有害物質（土壌汚染対策法（平成十四年法律第五十三号）第二条第一項に規定する特定有害物質をいう。以下同じ。）の製造、使用その他の取扱いを行っていた工場等の設置の状況その他の規則で定める事項を調査し、その結果を記録しなければならない。",
     "url": "https://en3-jg.d1-law.com/mie-ken/d1w_reiki/H413901010007/H413901010007_j.html",
     "verified": true,
-    "judge": true
+    "judge": true,
+    "threshold2": 900,
+    "cond2": "現に有害物質使用特定施設が設置されている、又は廃止された工場等の敷地"
    },
    {
     "art": "第72条の3",

@@ -62,6 +62,16 @@ SKIP = {('神奈川県', '相模原市'): '相模原市域は神奈川県条例�
         ('大阪府', '大阪市'): '大阪市内の土地にも府条例が適用され、報告の受理・区域の指定・台帳の事務は条例第111条（事務処理の特例）により大阪市が処理する。窓口：大阪市環境局環境管理部環境管理課 土壌汚染対策グループ。'}
 EXTRA_PAGES = {}
 SKIP_NAMES = {'千葉市環境保全条例'}
+# 面積要件の副閾値・除外（research の thresholdBasis / summary の記載を条ごとに整理したもの）
+AREA2 = {
+    ('東京都', None, '第117条'): {'threshold2': 900, 'cond2': '法第4条第1項の適用を受ける土地', 'minChange': 300, 'minNote': '改変対象面積の合計が300㎡未満の行為は対象外（基準超過が確実な場合を除く）'},
+    ('大阪府', None, '第81条の5'): {'threshold2': 900, 'cond2': '有害物質使用特定施設が設置されている、又は廃止された工場・事業場の敷地'},
+    ('愛知県', None, '第39条の2'): {'threshold2': 900, 'cond2': '水質汚濁防止法の特定施設で特定有害物質を使用している事業場等の敷地', 'minNote': '盛土のみの行為は対象外'},
+    ('愛知県', '名古屋市', '第57条'): {'threshold2': 900, 'cond2': '現に有害物質使用特定施設が設置されている、又は廃止された工場・事業場の敷地'},
+    ('三重県', None, '第72条の2'): {'threshold2': 900, 'cond2': '現に有害物質使用特定施設が設置されている、又は廃止された工場等の敷地'},
+    ('千葉県', '千葉市', '第4条第1項・第2項'): {'threshold2': 900, 'cond2': '有害物質使用特定施設が現に設置されている、又は廃止された工場等の敷地'},
+    ('神奈川県', '横浜市', '第65条第1項'): {'threshold2': 1, 'cond2': '特定有害物質使用等事業所の敷地（であった土地）', 'upper': 3000, 'upperNote': '3,000㎡以上は法第4条の届出に係る行為として条例の届出から除外'},
+}
 ords = []
 for fn in ['tokyo_osaka.json', 'kanto.json', 'national_ordinances.json']:
     p = R / fn
@@ -94,6 +104,7 @@ for fn in ['tokyo_osaka.json', 'kanto.json', 'national_ordinances.json']:
             if rule['judge']: seen.add(fam)
             if trig == 'area' and re.search(r'許可', basis): rule['cond'], rule['condLabel'] = '開発許可・宅地造成等の許可を要する改変に限る', '許可を要する改変なら対象'
             if trig == 'area' and re.search(r'取扱工場等の敷地|特定工場等の敷地', basis): rule['cond'], rule['condLabel'] = '特定有害物質等を取り扱う工場等の敷地に限る', '工場等の敷地なら対象'
+            if rule['judge']: rule.update(AREA2.get((o['pref'], o.get('city'), art), {}))
             rules.append(rule)
         name = o.get('name') or ''
         ent = {'pref': o['pref'], 'city': o.get('city'), 'name': name if has else f"{o['pref']}{o.get('city') or ''}：独自の調査義務を定める条例なし",

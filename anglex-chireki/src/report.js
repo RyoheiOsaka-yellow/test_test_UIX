@@ -3,9 +3,11 @@ const CIRC='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
 function docOf(c,id){return (c.docs||[]).find(d=>d.id===id);}
 /* 根拠チップ：どの資料の何ページか */
 function ev(c,ref,ids){
-  const parts=[];
-  if(ref&&ref.p)parts.push(`<span class="ev" data-p="${ref.p}" title="${c.source?esc(c.source.file):''}">${c.source?'原本':esc(ref.doc||'資料')} p.${ref.p}</span>`);
-  (ids||[]).forEach(id=>{const d=docOf(c,id);if(d)parts.push(`<span class="ev att" data-p="${String(d.pages).split('–')[0]}">${d.cls==='私的資料'?'添付(私的)':'添付(一般)'}${id.replace('P','')} ${esc(d.kind)}${d.pages?' p.'+d.pages:''}</span>`);});
+  const parts=[];const clsLabel=d=>(d.cls==='私的資料'?'添付(私的)':d.cls==='公的資料'?'添付(公的)':'添付(一般)')+String(d.id).replace(/^[PKX]/,'');
+  if(ref&&ref.p){const d=ref.doc&&ref.doc!=='R'?docOf(c,ref.doc):null;
+    parts.push(`<span class="ev${d?' att':''}" data-p="${ref.p}" data-doc="${d?esc(d.id):''}" title="${esc(d?(d.name||d.kind):(c.source?c.source.file:''))}">${d?clsLabel(d)+' '+esc(d.kind):(c.source?'原本':'資料')} p.${ref.p}</span>`);}
+  /* 添付資料：原本PDFの中のページ範囲が分かっていれば原本を、別ファイルで共有された資料はその資料を開く */
+  (ids||[]).forEach(id=>{const d=docOf(c,id);if(d)parts.push(`<span class="ev att" data-p="${String(d.pages||'').split('–')[0]||1}" data-doc="${d.pages?'':esc(d.id)}" title="${esc(d.name||'')}">${clsLabel(d)} ${esc(d.kind)}${d.pages?' p.'+d.pages:''}</span>`);});
   return parts.length?`<span class="evs" contenteditable="false">${parts.join('')}</span>`:'';
 }
 const E=(path,html,tag)=>`<${tag||'span'} data-path="${path}" contenteditable="true" spellcheck="false">${html}</${tag||'span'}>`;
@@ -17,7 +19,7 @@ function tileFig(lat,lng,layer,ext,z,opt){
   if(!lat||!lng)return '';opt=opt||{};
   const n=Math.pow(2,z),x=(lng+180)/360*n,rad=lat*Math.PI/180,y=(1-Math.asinh(Math.tan(rad))/Math.PI)/2*n;
   const tx=Math.floor(x),ty=Math.floor(y),mx=512+(x-tx)*256,my=256+(y-ty)*256,W=600,H=380;
-  let imgs='';for(let j=-1;j<=1;j++)for(let i=-2;i<=2;i++)imgs+=`<img alt="" loading="lazy" src="https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}" style="position:absolute;left:${(i+2)*256}px;top:${(j+1)*256}px;width:256px;height:256px;max-width:none">`;
+  let imgs='';for(let j=-1;j<=1;j++)for(let i=-2;i<=2;i++)imgs+=`<img alt="" src="https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}" style="position:absolute;left:${(i+2)*256}px;top:${(j+1)*256}px;width:256px;height:256px;max-width:none">`;
   const d=DIRV[opt.dir];const k=d?1/Math.hypot(d[0],d[1]):0;const ax=d?d[0]*k:0,ay=d?d[1]*k:0;
   const arrow=d?`<line x1="${W/2+ax*26}" y1="${H/2+ay*26}" x2="${W/2+ax*104}" y2="${H/2+ay*104}" stroke="#1f6fd6" stroke-width="7"/><polygon points="${W/2+ax*128},${H/2+ay*128} ${W/2+ax*100-ay*13},${H/2+ay*100+ax*13} ${W/2+ax*100+ay*13},${H/2+ay*100-ax*13}" fill="#1f6fd6"/><rect x="${W/2+ax*150-42}" y="${H/2+ay*150-11}" width="84" height="22" fill="#fff" stroke="#1f6fd6"/><text x="${W/2+ax*150}" y="${H/2+ay*150+4.5}" text-anchor="middle" font-size="12" font-weight="700" fill="#1f6fd6">地下水流向</text>`:'';
   return `<div class="tfig" contenteditable="false"><div class="tview" style="width:${W}px;height:${H}px"><div style="position:absolute;left:${W/2-mx}px;top:${H/2-my}px;width:1280px;height:768px">${imgs}</div>
@@ -89,7 +91,7 @@ function renderReport(c){
    <table class="att"><thead><tr><th>一般公表資料</th><th>公的資料</th><th>私的資料</th></tr></thead><tbody>${[0,1,2,3].map(i=>{const gen=(c.docs||[]).filter(d=>d.cls==='一般公表資料')[i],pub=(c.docs||[]).filter(d=>d.cls==='公的資料')[i],pri=(c.docs||[]).filter(d=>d.cls==='私的資料')[i];return `<tr><td>${gen?'ABCD'[i]+'）'+esc(gen.kind):'―'}</td><td>${pub?'ABCD'[i]+'）'+esc(pub.kind):'―'}</td><td>${pri?'ABCD'[i]+'）'+esc(pri.kind):'―'}</td></tr>`;}).join('')}</tbody></table></section>
 
   <h2 id="sec-1">１．調査概要</h2>
-  <h3 id="sec-11">1.1 調査件名 ${ev(c,{p:c.source?3:0})}</h3><p>${esc(c.title)}　地歴調査</p>
+  <h3 id="sec-11">1.1 調査件名 ${ev(c,c.source&&c.source.overviewP?{p:c.source.overviewP}:null)}</h3><p>${esc(c.title)}　地歴調査</p>
   <table class="kv">${s.jusho?`<tr><th>住居表示</th><td colspan="2">${E('site.jusho',esc(s.jusho))}</td></tr>`:''}<tr><th>地番表示</th><td colspan="2">${E('site.chibanLabel',esc(s.chibanLabel))}</td></tr>
    <tr><th rowspan="2">特定施設の有無</th><td>水質汚濁防止法に基づく有害物質使用の特定施設</td><td class="c">${esc((g.suidaku&&g.suidaku.v)||'未確認')}</td></tr><tr><td>下水道法に基づく有害物質使用の特定施設</td><td class="c">${esc((g.gesui&&g.gesui.v)||'未確認')}</td></tr>
    <tr><th rowspan="${4+(g.ord||[]).length}">指定区域の有無</th><td>調査対象地・周辺地等の土壌汚染対策法に基づく「人為等由来」の指定区域</td><td class="c">${esc(g.art11jin||'未確認')}</td></tr>
@@ -100,7 +102,7 @@ function renderReport(c){
   <div class="pos" contenteditable="false"><b>調査の位置づけ（適用条項の判定）</b><p>${esc(positionText(c))}</p>
    <table class="jt"><thead><tr><th>根拠</th><th>条項</th><th>内容</th><th>判定</th><th>判定の理由</th></tr></thead><tbody>${J.map(r=>`<tr class="j-${r.st[0]}"><td class="c">${r.src}</td><td>${esc(r.law.replace(/（.*?）/g,''))} ${esc(r.art)}${r.cite&&r.cite.verified?'':'<span class="unv">出典未確認</span>'}</td><td>${esc(r.title)}</td><td class="c"><b>${esc(r.st[1])}</b></td><td>${esc(r.why)}</td></tr>`).join('')}</tbody></table>${ords.filter(o=>(o.extraSubstances||[]).length).map(o=>`<p>※ ${esc(o.name.replace(/（.*?）/g,''))}は、法の特定有害物質26物質に加えて「${esc(o.extraSubstances.map(x=>x.replace(/（.*$/,'')).join('、'))}」を対象とする。</p>`).join('')}${ords.filter(o=>o.appliesNote&&o.rules.length).slice(0,1).map(o=>`<p class="cap">窓口：${esc((o.desk||'').slice(0,90))}</p>`).join('')}</div>
   <h3 id="sec-13">1.3 敷地面積</h3><p>${fmtArea(s.area)} ㎡（${E('site.areaNote',esc(s.areaNote||'公簿面積による推定'))}）</p>
-  <h3 id="sec-14">1.4 関連法規 ${ev(c,{p:c.source?4:0})}</h3>${lawsHtml}
+  <h3 id="sec-14">1.4 関連法規 ${ev(c,c.source&&c.source.lawsP?{p:c.source.lawsP}:null)}</h3>${lawsHtml}
   <h3 id="sec-15">1.5 調査期間</h3><p>${E('period',esc(c.period||'（調査期間）'))}</p>
   <h3 id="sec-16">1.6 調査機関</h3><p>${esc(c.org.name)}（指定調査機関指定番号【 ${esc(c.org.no)} 】）<br>所 在 地：${esc(c.org.addr)}<br>電話番号：${esc(c.org.tel)}</p>
   <h3 id="sec-17">1.7 調査場所</h3><p>${esc(s.pref)}${esc(s.city)}${esc(s.town)} ${esc(chibans)}（地番表示）</p>
