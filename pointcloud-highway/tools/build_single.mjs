@@ -20,7 +20,7 @@ function flatten(src, { keepThree = true } = {}) {
   return { src, imports };
 }
 
-const order = ['geom', 'structure', 'synth', 'colormaps', 'shaders', 'post', 'bim', 'camera', 'measure', 'annotations', 'crs', 'las', 'fit', 'scan2bim', 'lod', 'traffic', 'main'];
+const order = ['geom', 'structure', 'synth', 'colormaps', 'shaders', 'post', 'bim', 'camera', 'measure', 'annotations', 'crs', 'las', 'fit', 'scan2bim', 'lod', 'trafficdata', 'flow', 'traffic', 'main'];
 const importSet = new Set();
 let bundle = '';
 for (const name of order) {
@@ -28,8 +28,7 @@ for (const name of order) {
   if (name === 'main') {
     src = src.replace("const NO_ELEM = 65535;\n", '');
     src = src.replace("new Worker(new URL('./synth.worker.js', import.meta.url), { type: 'module' })", 'new Worker(WORKER_URL)');
-    src = src.replace("const res = await fetch(`./data/${key}.json`);\n  data = await res.json();", "data = JSON.parse(document.getElementById(`data-${key}`).textContent);");
-    if (!src.includes('new Worker(WORKER_URL)') || !src.includes('data-${key}')) throw new Error('main.js patch points not found');
+    if (!src.includes('new Worker(WORKER_URL)') || !src.includes('data-${name}')) throw new Error('main.js patch points not found');
   }
   const f = flatten(src);
   f.imports.forEach((i) => importSet.add(i));
@@ -41,7 +40,7 @@ const workerSrc = ['geom', 'structure', 'synth'].map((n) => flatten(read(`src/${
   '\n' + flatten(read('src/synth.worker.js')).src;
 
 const safe = (s) => s.replace(/<\//g, '<\\/');
-const sites = ['hakozaki', 'ohashi'];
+const sites = ['hakozaki', 'ohashi', 'traffic'];
 const dataTags = sites.map((s) => `<script type="application/json" id="data-${s}">${safe(read(`data/${s}.json`))}</script>`).join('\n');
 
 let html = read('index.html');

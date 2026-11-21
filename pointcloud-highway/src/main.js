@@ -13,6 +13,8 @@ import { buildLevels, buildGridBubbles, SectionBox } from './annotations.js';
 import { LAS_WORKER_BODY, writeLas } from './las.js';
 import { buildLod } from './lod.js';
 import { buildTraffic } from './traffic.js';
+import { buildFlowModel, METRICS, atHour, speedAt, rampCss } from './trafficdata.js';
+import { buildFlowViz } from './flow.js';
 import { describeEpsg, tmForward, tmInverse, guessZone, formatDms } from './crs.js';
 
 const $ = (id) => document.getElementById(id);
@@ -52,10 +54,12 @@ const state = {
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
   clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null, budget: 8e6,
   style: 'accum', autoStyle: true, exposure: 1.0, bloom: 0.3, fog: 0.5, trafficOn: true, pulse: true,
+  hour: 8, hourPlaying: false, flowOn: true, flowMetric: 'v24', flowShape: 'wall', flowSel: -1,
 };
 // test / kiosk overrides: ?density=0.2&budget=3000000&style=solid
 { const q = new URLSearchParams(location.search); if (q.has('noreveal')) { state.noReveal = true; state.pulse = false; } if (q.has('notraffic')) state.trafficOn = false; if (q.has('density')) state.density = +q.get('density'); if (q.has('budget')) state.budget = +q.get('budget'); if (q.has('style')) state.style = q.get('style'); }
-let traffic = null;
+let traffic = null, tdata = null, flowModel = null, flowViz = null;
+async function loadJson(name) { const el = document.getElementById(`data-${name}`); if (el) return JSON.parse(el.textContent); return (await fetch(`./data/${name}.json`)).json(); }
 const sweep = { t: -1, dur: 4.2, pulseT: 0, maxR: 1200 };
 const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let data = null, elements = [], points = null, lod = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
@@ -80,8 +84,10 @@ async function loadSite(key) {
   overlay.classList.remove('hidden');
   setProgress(0.02, 'OSM 由来データを読み込み中…');
   clearSelection(); measure.clear();
-  const res = await fetch(`./data/${key}.json`);
-  data = await res.json();
+  data = await loadJson(key);
+  if (!tdata) tdata = await loadJson('traffic');
+  flowModel = buildFlowModel(data, tdata, key);
+  state.flowSel = -1;
   $('site-name').textContent = data.site.nameJa;
   elements = buildStructure(data).elements;
   setProgress(0.08, `構造モデル生成: ${elements.length.toLocaleString()} 要素`);
@@ -96,6 +102,7 @@ async function loadSite(key) {
   syncSectionSliders();
   renderCrs();
   rebuildTraffic();
+  rebuildFlow();
   overlay.classList.add('hidden');
   if (!state.noReveal && !reduceMotion) startReveal();
 }
@@ -142,10 +149,89 @@ function installCloud(m) {
 // ---------------------------------------------------------------- traffic + scan sweep
 function rebuildTraffic() {
   if (traffic) { scene.remove(traffic.points); traffic.dispose(); traffic = null; }
-  if (!state.trafficOn || state.las || !data) { $('stat-vehicles').textContent = '—'; return; }
-  traffic = buildTraffic(data, pointMat, { rate: 1 });
+  if (!state.trafficOn || state.las || !flowModel) { $('stat-vehicles').textContent = '—'; return; }
+  traffic = buildTraffic(flowModel, pointMat);
+  traffic.setHour(state.hour);
   scene.add(traffic.points);
   $('stat-vehicles').textContent = traffic.count.toLocaleString();
+}
+
+// ---------------------------------------------------------------- traffic volume (real counts)
+const hh = (h) => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
+function rebuildFlow() {
+  if (flowViz) { scene.remove(flowViz.group); flowViz.dispose(); flowViz = null; }
+  const on = !!flowModel && !state.las;
+  document.body.classList.toggle('has-tpanel', on);
+  if (!on) return;
+  flowViz = buildFlowViz(flowModel);
+  scene.add(flowViz.group);
+  flowViz.update({ metric: state.flowMetric, shape: state.flowShape, hour: state.hour, selected: state.flowSel });
+  flowViz.setVisible(state.flowOn);
+  renderTrafficPanel();
+}
+function setHour(h, fromSlider = false) {
+  state.hour = ((h % 24) + 24) % 24;
+  if (!fromSlider) $('hour').value = state.hour;
+  $('hour-label').textContent = hh(state.hour);
+  if (traffic) { traffic.setHour(state.hour); $('stat-vehicles').textContent = traffic.count.toLocaleString(); }
+  if (flowViz) flowViz.update({ hour: state.hour });
+  renderTrafficPanel(true);
+}
+function selectFlow(fi, fly = false) {
+  state.flowSel = fi;
+  if (flowViz) flowViz.update({ selected: fi });
+  renderTrafficPanel();
+  if (fly && fi >= 0) { const f = flowModel.flows[fi], p = f.path[f.path.length >> 1]; const c = new THREE.Vector3(p.x, p.y + 10, p.z); director.setMode('orbit'); setActiveView(null); director.flyTo(c.clone().add(new THREE.Vector3(-160, 190, 230)), c); }
+}
+const congBadge = (c) => `<span class="badge ${c >= 1.25 ? 'bad' : c >= 1 ? 'warn' : 'ok'}">混雑度 ${c.toFixed(2)}</span>`;
+function hourlyChart(large, small, hour) {
+  const W = 336, H = 96, pad = 10, max = Math.max(...large.map((v, i) => v + small[i])) || 1, bw = (W - pad - 8) / 24;
+  let bars = '';
+  for (let i = 0; i < 24; i++) {
+    const hs = (small[i] / max) * (H - 18), hl = (large[i] / max) * (H - 18), x = pad + i * bw, cur = Math.floor(hour) === i;
+    bars += `<rect x="${x + 1}" y="${H - 14 - hs}" width="${bw - 2}" height="${hs}" fill="var(--accent)" opacity="${cur ? 1 : 0.55}"><title>${i}時台 小型 ${Math.round(small[i]).toLocaleString()} 台</title></rect>`;
+    bars += `<rect x="${x + 1}" y="${H - 14 - hs - hl}" width="${bw - 2}" height="${hl}" fill="var(--accent2)" opacity="${cur ? 1 : 0.7}"><title>${i}時台 大型 ${Math.round(large[i]).toLocaleString()} 台</title></rect>`;
+  }
+  const xh = pad + (hour / 24) * (W - pad - 8);
+  const ticks = [0, 6, 12, 18, 24].map((t) => `<text x="${pad + (t / 24) * (W - pad - 8)}" y="${H - 2}" text-anchor="middle">${t}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="hchart" role="img" aria-label="時間帯別交通量"><line x1="${pad}" y1="${H - 14}" x2="${W}" y2="${H - 14}" class="axis"/><text x="${pad - 2}" y="9" text-anchor="start">${Math.round(max).toLocaleString()} 台/時</text>${bars}<line x1="${xh}" y1="12" x2="${xh}" y2="${H - 12}" class="now"/>${ticks}</svg>`;
+}
+let panelT = 0;
+function renderTrafficPanel(throttle = false) {
+  if (!flowModel || state.las) return;
+  const now = performance.now();
+  clearTimeout(renderTrafficPanel.timer);
+  if (throttle && now - panelT < 200) { renderTrafficPanel.timer = setTimeout(() => renderTrafficPanel(), 220); return; } // trailing update
+  panelT = now;
+  const M = METRICS[state.flowMetric], h = state.hour, m = flowModel;
+  const src = tdata.meta.sources.map((x) => `<a href="${x.url}" target="_blank" rel="noopener">${x.publisher} ${x.id === 'census-r3' ? '令和3年度 道路交通センサス' : '代表断面交通量（2023年4月28日）'}</a>`).join(' ／ ');
+  const legend = `<div class="tlegend"><div class="bar" style="background:${rampCss(M.ramp)}"></div><div class="ticks"><span>${M.ticks(m)[0]}</span><span>色: ${M.label}${M.unit ? `（${M.unit}${M.ramp === 'volume' ? '・片方向' : ''}）` : ''}　${state.flowShape === 'wall' ? '高さ' : '幅'}: 交通量</span><span>${M.ticks(m)[1]}</span></div></div>`;
+  let body;
+  const f = state.flowSel >= 0 ? m.flows[state.flowSel] : null;
+  if (f && f.measured) {
+    const st = f.st, sec = f.sec, hr = st.hourly || { small: tdata.surfaceShape.small.map((x) => x * st.v24), large: tdata.surfaceShape.large.map((x) => x * st.v24) };
+    const qh = atHour(hr.small.map((v, i) => v + hr.large[i]), h), lh = atHour(hr.large, h);
+    const up = sec.ways.find((w) => w.up === true), dn = sec.ways.find((w) => w.up === false), any = sec.ways[0];
+    const mlit = tdata.mlit2023.find((x) => x.station === st.id);
+    const spd = up && dn ? `上り ${Math.round(speedAt(up, h))} / 下り ${Math.round(speedAt(dn, h))} km/h` : `${Math.round(speedAt(any, h))} km/h`;
+    body = `<div class="tsec"><button class="tback" id="t-back">← 区間一覧</button><h3>${sec.label || st.route.replace('高速', '首都高速')}</h3><p class="muted">${st.section}（観測地点 ${st.id}・${st.date}）</p>
+      <div class="tbig"><b>${st.v24.toLocaleString()}</b> 台/日${st.v24est ? '<span class="est">推定（12時間 ' + st.v12.toLocaleString() + ' 台 × 昼夜率 ' + st.nightRatio + '）</span>' : ''} ${congBadge(st.congestion)}</div>
+      <div class="kpis"><div><span>大型車</span><b>${st.hv} %</b></div><div><span>ピーク率</span><b>${st.peakPct} %</b></div><div><span>昼夜率</span><b>${st.nightRatio}</b></div><div><span>朝夕速度 上/下</span><b>${st.vUp != null ? Math.round(st.vUp) : '—'}/${st.vDown != null ? Math.round(st.vDown) : '—'}</b></div><div><span>H27 比</span><b>${st.growth ? (st.growth >= 1 ? '+' : '') + Math.round((st.growth - 1) * 100) + ' %' : '—'}</b></div></div>
+      ${hourlyChart(hr.large, hr.small, h)}
+      <p class="tnow"><b>${hh(h)}</b>　${Math.round(qh).toLocaleString()} 台/時（大型 ${Math.round((lh / Math.max(1, qh)) * 100)} %）・モデル速度 ${spd}${st.hourly ? '' : '<span class="est">時間変動は一般道平均形状</span>'}</p>
+      ${mlit ? `<p class="muted">参考: ${mlit.section} ${mlit.v2023.toLocaleString()} 台/日（2023年4月28日、2019年比 ${Math.round((mlit.v2023 / mlit.v2019) * 100)} %、国交省速報値）</p>` : ''}</div>`;
+  } else if (f) {
+    body = `<div class="tsec"><button class="tback" id="t-back">← 区間一覧</button><h3>連結路（${f.road.name || 'ランプ・JCT'}）</h3><p class="muted">観測値なし。前後区間の収支からの推定値です。</p>
+      <div class="tbig"><b>${f.ramp.v24.toLocaleString()}</b> 台/日<span class="est">推定</span></div><p class="muted">${f.ramp.basis}</p>
+      ${hourlyChart(f.q.map((v, i) => v * 2 * f.hvh[i]), f.q.map((v, i) => v * 2 * (1 - f.hvh[i])), h)}<p class="muted">時間変動は隣接区間（${f.st.section}）の形状を適用。</p></div>`;
+  } else {
+    const secs = m.sections.filter((x) => x.ways.length).sort((a, b) => b.st.v24 - a.st.v24), vm = secs[0].st.v24;
+    let tot = 0; for (const t of m.tracks) tot += (atHour(t.q, h) / speedAt(t, h)) * (t.L / 1000);
+    body = `<p class="tnow"><b>${hh(h)}</b>　モデル内の走行台数 約 ${Math.round(tot).toLocaleString()} 台（交通量 ÷ 速度 × 延長）</p><div class="trank">${secs.map((x) => `<button class="trow" data-st="${x.index}"><span class="nm">${x.label || x.st.route.replace('高速', '')}<small>${x.kind === 'exp' ? x.st.section : x.st.section}</small></span><span class="br"><i style="width:${(x.st.v24 / vm) * 100}%;background:${x.st.congestion >= 1.25 ? '#ef5350' : x.st.congestion >= 1 ? '#ffb347' : 'var(--accent)'}"></i></span><span class="vl">${x.st.v24.toLocaleString()}${x.st.v24est ? '*' : ''}</span></button>`).join('')}</div><p class="muted">台/日（上下計・平日）。* は 12 時間値 × 昼夜率による推定。棒の色: 混雑度 1.0 以上は橙、1.25 以上は赤。</p>`;
+  }
+  $('tpanel-body').innerHTML = `${body}${legend}<p class="tsrc">出典: ${src}</p>`;
+  const back = $('t-back'); if (back) back.addEventListener('click', () => selectFlow(-1));
+  $('tpanel-body').querySelectorAll('.trow').forEach((b) => b.addEventListener('click', () => { const sec = m.sections[+b.dataset.st]; const w = sec.ways.slice().sort((p, q) => q.L - p.L)[0]; selectFlow(m.flows.indexOf(w), true); }));
 }
 function startReveal() { if (!points) return; const b = new THREE.Box3().setFromObject(points); sweep.maxR = b.getSize(new THREE.Vector3()).length() / 2 + 40; sweep.t = 0; }
 function updateSweep(dt) {
@@ -288,7 +374,7 @@ async function loadLasFile(file) {
   director.route = null; director.setMode('orbit'); setActiveView(null);
   document.body.classList.add('las-mode', 'no-bim');
   $('s2b-log').textContent = '';
-  rebuildTraffic();
+  rebuildTraffic(); rebuildFlow();
   installCloud(m);
   applySpacing();
   const h = m.header;
@@ -509,6 +595,10 @@ canvas.addEventListener('pointerup', (e) => {
     if (hit) { showCoord(hit.point); measure.addPoint(hit.point); toast(measure.pending ? '2 点目をクリック' : `計測: ${(measure.items.at(-1).d).toFixed(3)} m`); }
     return;
   }
+  if (flowViz && state.flowOn) {
+    const hit = raycaster.intersectObject(flowViz.mesh, false)[0];
+    if (hit) { selectFlow(flowViz.flowAtFace(hit.faceIndex)); return; }
+  }
   let id = -1;
   if (bim && bim.group.visible) {
     const hit = raycaster.intersectObject(bim.faces, false)[0];
@@ -598,6 +688,7 @@ document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('clic
   setActiveView(v);
   // close-range views read better as opaque surfels; overviews as the accumulated X-ray look
   if (state.autoStyle) setStyle(v === 'drive' || v === 'low' ? 'solid' : 'accum');
+  { const shape = v === 'top' ? 'band' : 'wall'; if (state.flowShape !== shape) { state.flowShape = shape; $('flow-shape').value = shape; if (flowViz) flowViz.update({ shape }); renderTrafficPanel(); } }
   if (v === 'drive') { if (!director.route) { toast('走行ルートがありません（実測データでは利用不可）'); setActiveView(null); return; } director.setMode('drive'); return; }
   if (v === 'fly') { director.setMode('flyover'); return; }
   director.setMode('orbit');
@@ -624,6 +715,12 @@ $('exposure').addEventListener('input', (e) => { state.exposure = +e.target.valu
 $('bloom').addEventListener('input', (e) => { state.bloom = +e.target.value; applyStyle(); });
 $('fog').addEventListener('input', (e) => { state.fog = +e.target.value; applyStyle(); });
 $('traffic').addEventListener('change', async (e) => { state.trafficOn = e.target.checked; if (!state.las) { await rebuildCloud(); applyPhase(); } rebuildTraffic(); });
+$('flow-on').addEventListener('change', (e) => { state.flowOn = e.target.checked; if (flowViz) flowViz.setVisible(state.flowOn); });
+$('flow-metric').addEventListener('change', (e) => { state.flowMetric = e.target.value; if (flowViz) flowViz.update({ metric: state.flowMetric }); renderTrafficPanel(); });
+$('flow-shape').addEventListener('change', (e) => { state.flowShape = e.target.value; if (flowViz) flowViz.update({ shape: state.flowShape }); renderTrafficPanel(); });
+$('hour').addEventListener('input', (e) => setHour(+e.target.value, true));
+$('hour-play').addEventListener('click', () => { state.hourPlaying = !state.hourPlaying; $('hour-play').textContent = state.hourPlaying ? '⏸ 停止' : '▶ 24時間を再生'; });
+$('tpanel-toggle').addEventListener('click', () => document.body.classList.toggle('tpanel-min'));
 $('pulse').addEventListener('change', (e) => { state.pulse = e.target.checked; });
 $('reveal').addEventListener('click', () => startReveal());
 function setStyle(v) { if (state.style === v) return; state.style = v; $('style').value = v; applyStyle(); }
@@ -669,6 +766,7 @@ function loop(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (state.phasePlaying) { state.phase = Math.min(1, state.phase + dt * 0.06); $('phase').value = state.phase * 100; applyPhase(); if (state.phase >= 1) { state.phasePlaying = false; $('phase-play').textContent = '▶ 再生'; } }
   director.update(dt);
+  if (state.hourPlaying) setHour(state.hour + dt * 0.5); // one hour every two seconds
   if (traffic) { traffic.points.visible = state.showCloud && state.phase >= 1 && !state.isolateRoute; if (traffic.points.visible) traffic.update(dt); }
   updateSweep(dt);
   pointMat.uniforms.uFogStart.value = director.mode === 'drive' ? 80 : camera.position.distanceTo(controls.target) * 0.75;
@@ -683,7 +781,7 @@ function loop(now) {
 }
 
 // debugging / automation hooks
-window.__app = { get traffic() { return traffic; }, startReveal, sweep, post: edl, pointMat, applyStyle, setStyle, maxSplat, select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
+window.__app = { get traffic() { return traffic; }, get flowModel() { return flowModel; }, get flowViz() { return flowViz; }, setHour, selectFlow, startReveal, sweep, post: edl, pointMat, applyStyle, setStyle, maxSplat, select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
 applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();

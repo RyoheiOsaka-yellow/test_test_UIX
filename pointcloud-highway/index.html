@@ -54,7 +54,37 @@
   .kv.hint { display: block; color: var(--accent2); }
   .filebtn { display: block; text-align: center; background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
   .filebtn:hover { background: #242a39; }
-  body.las-mode #sec-sim { display: none; }
+  body.las-mode #sec-sim, body.las-mode #sec-flow { display: none; }
+  #tpanel { display: none; position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 372px; max-height: 56vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); z-index: 4; scrollbar-width: thin; }
+  body.has-tpanel #tpanel { display: block; }
+  body.has-tpanel #props { max-height: calc(44vh - 68px); }
+  body.has-tpanel #props.empty { display: none; }
+  body.tpanel-min #tpanel-body { display: none; }
+  #tpanel .head { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: rgba(12,14,20,0.95); }
+  #tpanel .head h2 { font-size: 13px; margin: 0; font-weight: 600; } #tpanel .head small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  #tpanel .head button { padding: 2px 8px; }
+  #tpanel-body { padding: 10px 14px 12px; font-size: 12px; }
+  #tpanel-body h3 { margin: 6px 0 2px; font-size: 14px; } #tpanel-body p { margin: 4px 0; line-height: 1.5; }
+  .tbig { margin: 6px 0; } .tbig b { font-size: 24px; font-family: var(--mono); font-weight: 600; letter-spacing: -0.01em; }
+  .est { display: inline-block; margin-left: 6px; font-size: 10.5px; color: var(--accent2); border: 1px solid rgba(255,179,71,0.4); border-radius: 4px; padding: 0 5px; }
+  .badge { display: inline-block; margin-left: 8px; font-size: 11px; border-radius: 10px; padding: 1px 8px; font-family: var(--mono); vertical-align: 3px; }
+  .badge.ok { background: rgba(92,200,255,0.16); color: var(--accent); } .badge.warn { background: rgba(255,179,71,0.18); color: var(--accent2); } .badge.bad { background: rgba(239,83,80,0.2); color: #ff8a80; }
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 6px 0 8px; }
+  .kpis div { background: #151924; border: 1px solid var(--panel-border); border-radius: 6px; padding: 4px 6px; min-width: 0; }
+  .kpis span { display: block; color: var(--muted); font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .kpis b { font-family: var(--mono); font-size: 11.5px; font-weight: 500; white-space: nowrap; } .kpis small { color: var(--muted); font-size: 9px; }
+  .hchart { width: 100%; height: auto; display: block; } .hchart text { fill: var(--muted); font-size: 9px; font-family: var(--mono); } .hchart .axis { stroke: var(--panel-border); } .hchart .now { stroke: #fff; stroke-width: 1; stroke-dasharray: 2 2; }
+  .tnow b { font-family: var(--mono); color: var(--text); }
+  .tback { padding: 2px 8px; font-size: 11px; }
+  .trank { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; }
+  .trow { display: grid; grid-template-columns: 132px 1fr 62px; gap: 8px; align-items: center; text-align: left; padding: 4px 6px; background: transparent; border: 1px solid transparent; }
+  .trow:hover { background: #1a1f2b; border-color: var(--panel-border); }
+  .trow .nm { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .trow .nm small { display: block; color: var(--muted); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; }
+  .trow .br { height: 8px; background: #1c2230; border-radius: 4px; overflow: hidden; } .trow .br i { display: block; height: 100%; border-radius: 4px; }
+  .trow .vl { font-family: var(--mono); font-size: 11px; text-align: right; }
+  .tlegend { margin-top: 8px; } .tlegend .bar { height: 8px; border-radius: 4px; } .tlegend .ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .tsrc { font-size: 10px; color: var(--muted); } .tsrc a { color: var(--accent); }
+  .flow-label { font-family: var(--mono); font-size: 11px; color: #fff; background: rgba(0,0,0,0.62); border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 2px 6px; white-space: nowrap; transform: translateY(-14px); text-align: center; }
+  .flow-label small { color: #b8c2d4; font-size: 9.5px; } .flow-label span { display: block; color: #ffd27a; font-size: 10px; }
   body.no-bim #sec-bim, body.no-bim #sec-4d, body.no-bim #drive, body.no-bim .presets [data-preset=bim], body.no-bim .presets [data-preset=scan2bim] { display: none; }
   .las-only { display: none; }
   body.las-mode .las-only { display: block; }
@@ -115,6 +145,8 @@
     #panel { top: 48px; left: 10px; width: calc(100vw - 20px); max-height: 55vh; }
     #props { left: 10px; right: 10px; width: auto; top: auto; bottom: 10px; max-height: 45vh; }
     #legend { display: none; }
+    #tpanel { left: 10px; right: 10px; width: auto; max-height: 40vh; }
+    body.has-tpanel #props { display: none; }
     #drive { display: none; }
     header .stats { display: none; }
     header h1 { margin-left: 36px; font-size: 12px; }
@@ -132,7 +164,7 @@
     <span>点数 <b id="stat-points">—</b></span>
     <span>BIM 要素 <b id="stat-elements">—</b></span>
     <span>描画 <b id="stat-drawn">—</b></span>
-    <span>車両 <b id="stat-vehicles">—</b></span>
+    <span>走行台数 <b id="stat-vehicles">—</b></span>
     <span>合成 <b id="stat-time">—</b></span>
     <span><b id="stat-fps">— fps</b></span>
   </div>
@@ -192,6 +224,19 @@
     <div class="row check"><input id="surfel" type="checkbox" checked><label for="surfel">サーフェル（法線に沿った楕円スプラット）</label></div>
     <div class="row"><label>法線陰影</label><input id="shade" type="range" min="0" max="1" step="0.05" value="0.5" style="width:120px"></div>
     <div class="row check" id="edl-row"><input id="edl" type="checkbox" checked><label for="edl">Eye-Dome Lighting（輪郭強調）</label><input id="edl-strength" type="range" min="0" max="1.5" step="0.05" value="0.35" style="width:70px"></div>
+  </div>
+  <div class="sec" id="sec-flow">
+    <h2>交通量（実データ）</h2>
+    <div class="row check"><input id="flow-on" type="checkbox" checked><label for="flow-on">交通量を表示</label></div>
+    <div class="row"><label>指標（色）</label>
+      <select id="flow-metric" style="width:150px"><option value="v24">日交通量（台/日）</option><option value="qh">時間交通量（台/時）</option><option value="congestion">混雑度</option><option value="speed">走行速度（km/h）</option><option value="heavy">大型車混入率（%）</option></select>
+    </div>
+    <div class="row"><label>形状</label>
+      <select id="flow-shape" style="width:150px"><option value="wall">壁（高さ＝交通量）</option><option value="band">帯（幅＝交通量）</option></select>
+    </div>
+    <div class="row"><label>時刻</label><input id="hour" type="range" min="0" max="24" step="0.25" value="8" style="width:120px"><span class="val" id="hour-label">08:00</span></div>
+    <button id="hour-play" style="width:100%">▶ 24時間を再生</button>
+    <p class="muted small">東京都 令和3年度 道路交通センサスの区間交通量・時間帯別台数・旅行速度で、帯と走行車両の台数・速度・大型車比率を決めています。</p>
   </div>
   <div class="sec" id="sec-sim">
     <h2>シミュレーション</h2>
@@ -273,7 +318,8 @@
 </aside>
 
 <div id="legend"></div>
-<div id="drive">走行ルート: <span id="drive-name">—</span><div class="track"><i id="drive-progress"></i></div></div>
+<aside id="tpanel"><div class="head"><h2>交通量 <small>平日・上下計</small></h2><button id="tpanel-toggle" title="最小化">▁</button></div><div id="tpanel-body"></div></aside>
+<div id="drive" hidden>走行ルート: <span id="drive-name">—</span><div class="track"><i id="drive-progress"></i></div></div>
 <div id="toast"></div>
 <div id="isolate-banner" style="display:none"><span>分離表示: <b id="isolate-name"></b></span><button id="isolate-reset">解除</button></div>
 
