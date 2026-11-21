@@ -4,7 +4,36 @@ import { resample, framePath, pathLength } from './geom.js';
 
 const VF = { expressway: 60, ramp: 40, arterial: 40 }; // free-flow speed (km/h) when the census speed is lower
 
-export function buildFlowModel(data, tdata, siteKey) {
+/**
+ * Hourly volumes (index = clock hour) of a station for one direction ('up' | 'down') or both (null).
+ * Daytime hours of a direction are observed; its night hours are the station's total hourly counts
+ * split by that direction's share of the night total. Holidays are an estimate (see dayType.holiday.basis).
+ */
+export function stationHourly(st, dir, tdata, dayType = 'weekday', rk = 'exp') {
+  const shape = tdata.surfaceShape;
+  const tot = st.hourly || { small: shape.small.map((f) => f * st.v24), large: shape.large.map((f) => f * st.v24) };
+  let small = tot.small.slice(), large = tot.large.slice();
+  const d = dir && st.dir && st.dir[dir];
+  if (d) {
+    const nightTot = st.v24 - st.v12;
+    const share = d.v24 != null && nightTot > 0 ? (d.v24 - d.v12) / nightTot : d.v12 / st.v12;
+    for (let h = 0; h < 24; h++) {
+      if (h >= 7 && h < 19) { small[h] = d.small12h[h - 7]; large[h] = d.large12h[h - 7]; }
+      else { small[h] *= share; large[h] *= share; }
+    }
+  } else if (dir) { small = small.map((v) => v / 2); large = large.map((v) => v / 2); }
+  if (dayType === 'holiday') {
+    const H = tdata.dayType.holiday, before = small.reduce((a, v) => a + v, 0) + large.reduce((a, v) => a + v, 0);
+    small = small.map((v, h) => v * H.hourRatioSmall[h]); large = large.map((v, h) => v * H.hourRatioLarge[h]);
+    const after = small.reduce((a, v) => a + v, 0) + large.reduce((a, v) => a + v, 0);
+    const k = (before * (H.volumeRatio[rk] ?? H.volumeRatio.exp)) / Math.max(1, after);
+    small = small.map((v) => v * k); large = large.map((v) => v * k);
+  }
+  return { small, large };
+}
+const sum = (a) => a.reduce((x, v) => x + v, 0);
+
+export function buildFlowModel(data, tdata, siteKey, dayType = 'weekday') {
   const site = tdata.sites[siteKey];
   if (!site) return null;
   const [lat0, lon0] = data.site.center;
@@ -13,8 +42,12 @@ export function buildFlowModel(data, tdata, siteKey) {
   const distSeg = (p, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1; const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / L2)); return Math.hypot(p[0] - a[0] - dx * t, p[1] - a[1] - dz * t); };
   const sections = site.sections.map((s, i) => ({ ...s, index: i, st: tdata.stations[s.station], a: s.from && proj(s.from), b: s.to && proj(s.to), upPt: s.up && proj(s.up), laneLen: 0, ways: [] }));
   const expSections = sections.filter((s) => s.kind === 'exp');
-  const shape = tdata.surfaceShape;
-  const hourlyOf = (st) => st.hourly || { small: shape.small.map((f) => f * st.v24), large: shape.large.map((f) => f * st.v24), est: true };
+  for (const sc of sections) {
+    sc.rk = sc.rk || (sc.kind === 'exp' ? 'exp' : 'surface');
+    const t = stationHourly(sc.st, null, tdata, dayType, sc.rk), u = stationHourly(sc.st, 'up', tdata, dayType, sc.rk), d = stationHourly(sc.st, 'down', tdata, dayType, sc.rk);
+    sc.day = { small: t.small, large: t.large, v24: Math.round(sum(t.small) + sum(t.large)), qUp: u.small.map((v, i) => v + u.large[i]), qDown: d.small.map((v, i) => v + d.large[i]), est: !!sc.st.v24est || dayType === 'holiday', hasDir: !!sc.st.dir };
+    sc.day.up24 = Math.round(sum(sc.day.qUp)); sc.day.down24 = Math.round(sum(sc.day.qDown));
+  }
 
   // Roads are cut into ~100 m chunks so that a long OSM way spanning several census sections is
   // assigned section by section. `flows` (chunks) drive the visualisation, `tracks` (whole ways) the simulation.
@@ -65,7 +98,7 @@ export function buildFlowModel(data, tdata, siteKey) {
   // share of the section volume carried by each chunk: half per direction, divided between parallel
   // carriageways of the same direction (e.g. the 6号 and 9号 lanes side by side) in proportion to their lanes
   for (const sc of sections) {
-    if (sc.kind !== 'exp') { for (const f of sc.ways) f.share = f.oneway ? 0.5 : 1; continue; } // dual carriageways are two one-way ways
+    if (sc.kind !== 'exp') { for (const f of sc.ways) { f.share = 1; f.dirKey = f.oneway ? 'half' : null; } continue; } // one-way surface ways: direction unknown → half
     const ab = [sc.b[0] - sc.a[0], sc.b[1] - sc.a[1]], L2 = ab[0] * ab[0] + ab[1] * ab[1];
     for (const dir of [true, false, null]) {
       const ws = sc.ways.filter((f) => f.up === dir);
@@ -74,16 +107,23 @@ export function buildFlowModel(data, tdata, siteKey) {
       for (const f of ws) { const t = Math.max(0, Math.min(1, ((f.mid[0] - sc.a[0]) * ab[0] + (f.mid[1] - sc.a[1]) * ab[1]) / L2)); t0 = Math.min(t0, t); t1 = Math.max(t1, t); laneLen += f.lanes * f.L; }
       const covered = Math.max(CHUNK, (t1 - t0) * Math.sqrt(L2) + CHUNK); // centreline length actually covered by the model
       const lanesAcross = Math.max(1, laneLen / covered);               // lanes of this direction across the section
-      for (const f of ws) f.share = (dir === null ? 1 : 0.5) * Math.min(1, f.lanes / lanesAcross);
+      for (const f of ws) { f.share = Math.min(1, f.lanes / lanesAcross); f.dirKey = dir === null ? 'half' : dir ? 'up' : 'down'; }
     }
   }
   let vmax = 0, qmax = 0;
   for (const f of flows) {
-    const st = f.st, h = hourlyOf(st), tot24 = h.small.reduce((a, v) => a + v, 0) + h.large.reduce((a, v) => a + v, 0);
-    f.v24 = f.measured ? st.v24 * f.share : f.ramp.v24 / 2;
-    f.v24est = f.measured ? !!st.v24est : true;
-    const k = f.v24 / tot24;
+    const st = f.st, rk = f.sec.rk;
+    let h, k;
+    if (f.measured) { // direction-specific counts where the direction is known
+      h = stationHourly(st, f.dirKey === 'half' ? null : f.dirKey, tdata, dayType, rk);
+      k = f.share * (f.dirKey === 'half' ? 0.5 : 1);
+    } else {          // connecting road: balance-based daily estimate with the neighbouring section's hourly shape
+      h = stationHourly(st, null, tdata, dayType, rk);
+      k = (f.ramp.v24 / 2) * (dayType === 'holiday' ? (tdata.dayType.holiday.volumeRatio[rk] ?? 1) : 1) / Math.max(1, sum(h.small) + sum(h.large));
+    }
     f.q = h.small.map((v, i) => (v + h.large[i]) * k);            // veh/h on this chunk, per clock hour
+    f.v24 = sum(f.q);
+    f.v24est = f.measured ? !!st.v24est || dayType === 'holiday' : true;
     f.hvh = h.small.map((v, i) => h.large[i] / Math.max(1, v + h.large[i])); // heavy-vehicle share per hour
     f.qmax = Math.max(...f.q);
     const obs = f.up == null ? (st.vUp && st.vDown ? (st.vUp + st.vDown) / 2 : st.vUp || st.vDown) : f.up ? st.vUp : st.vDown;
@@ -102,7 +142,7 @@ export function buildFlowModel(data, tdata, siteKey) {
     t.hv = t.chunks.reduce((a, f) => a + f.st.hv * f.L, 0) / Ls;
     t.v24 = t.chunks.reduce((a, f) => a + f.v24 * f.L, 0) / Ls;
   }
-  return { flows, tracks, sections, vmax, qmax, site, tdata, siteKey };
+  return { flows, tracks, sections, vmax, qmax, site, tdata, siteKey, dayType };
 }
 
 /** Linear interpolation of an hourly array at fractional clock hour (bin centres at h + 0.5). */
@@ -123,12 +163,14 @@ export const RAMPS = {
   congestion: ramp([[0.2, 0.85, 0.5], [0.75, 0.9, 0.3], [1.0, 0.8, 0.2], [1.0, 0.45, 0.15], [0.95, 0.15, 0.2]]),
   speed: ramp([[0.95, 0.15, 0.2], [1.0, 0.5, 0.15], [1.0, 0.85, 0.25], [0.55, 0.9, 0.4], [0.2, 0.8, 0.95]]),
   heavy: ramp([[0.35, 0.3, 0.75], [0.6, 0.35, 0.85], [0.9, 0.45, 0.6], [1.0, 0.65, 0.3], [1.0, 0.85, 0.3]]),
+  diverge: ramp([[0.15, 0.4, 1.0], [0.35, 0.65, 1.0], [0.62, 0.66, 0.72], [1.0, 0.6, 0.35], [0.95, 0.25, 0.2]]),
 };
 export const METRICS = {
   v24: { label: '日交通量', unit: '台/日', ramp: 'volume', value: (f) => f.v24, norm: (v, m) => v / m.vmax, ticks: (m) => ['0', Math.round(m.vmax).toLocaleString()] },
   qh: { label: '時間交通量', unit: '台/時', ramp: 'volume', value: (f, h) => atHour(f.q, h), norm: (v, m) => v / m.qmax, ticks: (m) => ['0', Math.round(m.qmax).toLocaleString()] },
   congestion: { label: '混雑度', unit: '', ramp: 'congestion', value: (f) => f.st.congestion, norm: (v) => (v - 0.4) / 0.9, ticks: () => ['0.4', '1.3'], measuredOnly: true },
   speed: { label: '走行速度', unit: 'km/h', ramp: 'speed', value: (f, h) => speedAt(f, h), norm: (v) => (v - 10) / 60, ticks: () => ['10', '70 km/h'] },
+  growth: { label: '平成27年度比', unit: '%', ramp: 'diverge', value: (f) => (f.st.growth ? (f.st.growth - 1) * 100 : 0), norm: (v) => (v + 15) / 30, ticks: () => ['−15 %', '+15 %'], measuredOnly: true },
   heavy: { label: '大型車混入率', unit: '%', ramp: 'heavy', value: (f, h) => atHour(f.hvh, h) * 100, norm: (v) => v / 40, ticks: () => ['0', '40 %'] },
 };
 export function rampCss(name) { const r = RAMPS[name]; const s = []; for (let i = 0; i <= 8; i++) { const c = r(i / 8); s.push(`rgb(${c.map((v) => (v * 255) | 0).join(',')}) ${i * 12.5}%`); } return `linear-gradient(90deg, ${s.join(',')})`; }

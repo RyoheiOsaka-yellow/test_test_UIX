@@ -55,7 +55,7 @@
   .filebtn { display: block; text-align: center; background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
   .filebtn:hover { background: #242a39; }
   body.las-mode #sec-sim, body.las-mode #sec-flow { display: none; }
-  #tpanel { display: none; position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 372px; max-height: 56vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); z-index: 4; scrollbar-width: thin; }
+  #tpanel { display: none; position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 372px; max-height: 72vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); z-index: 4; scrollbar-width: thin; }
   body.has-tpanel #tpanel { display: block; }
   body.has-tpanel #props { max-height: calc(44vh - 68px); }
   body.has-tpanel #props.empty { display: none; }
@@ -74,6 +74,8 @@
   .kpis span { display: block; color: var(--muted); font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .kpis b { font-family: var(--mono); font-size: 11.5px; font-weight: 500; white-space: nowrap; } .kpis small { color: var(--muted); font-size: 9px; }
   .hchart { width: 100%; height: auto; display: block; } .hchart text { fill: var(--muted); font-size: 9px; font-family: var(--mono); } .hchart .axis { stroke: var(--panel-border); } .hchart .now { stroke: #fff; stroke-width: 1; stroke-dasharray: 2 2; }
   .tnow b { font-family: var(--mono); color: var(--text); }
+  .tdir { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; } .tdir b { font-family: var(--mono); font-size: 13px; } .tdir .muted { font-size: 10.5px; }
+  .tcap { font-size: 10.5px; color: var(--muted); margin: 8px 0 2px !important; }
   .tback { padding: 2px 8px; font-size: 11px; }
   .trank { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; }
   .trow { display: grid; grid-template-columns: 132px 1fr 62px; gap: 8px; align-items: center; text-align: left; padding: 4px 6px; background: transparent; border: 1px solid transparent; }
@@ -228,15 +230,18 @@
   <div class="sec" id="sec-flow">
     <h2>交通量（実データ）</h2>
     <div class="row check"><input id="flow-on" type="checkbox" checked><label for="flow-on">交通量を表示</label></div>
+    <div class="row"><label>曜日</label>
+      <select id="day-type" style="width:150px"><option value="weekday">平日（観測値）</option><option value="holiday">休日（推定）</option></select>
+    </div>
     <div class="row"><label>指標（色）</label>
-      <select id="flow-metric" style="width:150px"><option value="v24">日交通量（台/日）</option><option value="qh">時間交通量（台/時）</option><option value="congestion">混雑度</option><option value="speed">走行速度（km/h）</option><option value="heavy">大型車混入率（%）</option></select>
+      <select id="flow-metric" style="width:150px"><option value="v24">日交通量（台/日）</option><option value="qh">時間交通量（台/時）</option><option value="congestion">混雑度</option><option value="speed">走行速度（km/h）</option><option value="heavy">大型車混入率（%）</option><option value="growth">平成27年度比（%）</option></select>
     </div>
     <div class="row"><label>形状</label>
       <select id="flow-shape" style="width:150px"><option value="wall">壁（高さ＝交通量）</option><option value="band">帯（幅＝交通量）</option></select>
     </div>
     <div class="row"><label>時刻</label><input id="hour" type="range" min="0" max="24" step="0.25" value="8" style="width:120px"><span class="val" id="hour-label">08:00</span></div>
     <button id="hour-play" style="width:100%">▶ 24時間を再生</button>
-    <p class="muted small">東京都 令和3年度 道路交通センサスの区間交通量・時間帯別台数・旅行速度で、帯と走行車両の台数・速度・大型車比率を決めています。</p>
+    <p class="muted small">東京都 令和3年度 道路交通センサスの方向別・時間帯別台数と旅行速度で、壁と走行車両の台数・速度・大型車比率を決めています。休日は首都高の観測がないため、国交省の土曜代表断面比などによる推定です。</p>
   </div>
   <div class="sec" id="sec-sim">
     <h2>シミュレーション</h2>
@@ -318,7 +323,7 @@
 </aside>
 
 <div id="legend"></div>
-<aside id="tpanel"><div class="head"><h2>交通量 <small>平日・上下計</small></h2><button id="tpanel-toggle" title="最小化">▁</button></div><div id="tpanel-body"></div></aside>
+<aside id="tpanel"><div class="head"><h2>交通量 <small id="tpanel-sub">平日（令和3年度センサス）</small></h2><button id="tpanel-toggle" title="最小化">▁</button></div><div id="tpanel-body"></div></aside>
 <div id="drive" hidden>走行ルート: <span id="drive-name">—</span><div class="track"><i id="drive-progress"></i></div></div>
 <div id="toast"></div>
 <div id="isolate-banner" style="display:none"><span>分離表示: <b id="isolate-name"></b></span><button id="isolate-reset">解除</button></div>

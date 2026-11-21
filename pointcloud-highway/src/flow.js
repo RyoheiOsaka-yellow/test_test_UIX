@@ -41,7 +41,7 @@ export function buildFlowViz(model) {
     const hMax = 70, wMax = 34; // metres at the site maximum
     for (const [fi, f] of model.flows.entries()) {
       // size always encodes volume (daily, or hourly when an hourly metric is shown); colour encodes the metric
-      const hourly = state.metric !== 'v24' && state.metric !== 'congestion';
+      const hourly = state.metric !== 'v24' && state.metric !== 'congestion' && state.metric !== 'growth';
       const frac = hourly ? METRICS.qh.value(f, state.hour) / model.qmax : f.v24 / model.vmax;
       const val = M.value(f, state.hour);
       const c = M.measuredOnly && !f.measured ? [0.45, 0.47, 0.52] : rampFn(M.norm(val, model));
@@ -68,12 +68,11 @@ export function buildFlowViz(model) {
     }
     posA.needsUpdate = true; colA.needsUpdate = true;
     for (const L of labels) {
-      const w = L.s.ways[0], st = L.s.st;
-      const hourly = state.metric !== 'v24' && state.metric !== 'congestion';
-      const hr = st.hourly || { small: model.tdata.surfaceShape.small.map((x) => x * st.v24), large: model.tdata.surfaceShape.large.map((x) => x * st.v24) };
-      const secQ = atHour(hr.small.map((x, i) => x + hr.large[i]), state.hour); // both directions, from the station's hourly counts
-      const main = hourly ? `${Math.round(secQ).toLocaleString()}<small> 台/時</small>` : `${st.v24.toLocaleString()}<small> 台/日${st.v24est ? '（推定）' : ''}</small>`;
-      const extra = state.metric === 'congestion' ? `混雑度 ${st.congestion.toFixed(2)}` : state.metric === 'speed' ? `${Math.round(METRICS.speed.value(w, state.hour))} km/h` : state.metric === 'heavy' ? `大型 ${METRICS.heavy.value(w, state.hour).toFixed(0)} %` : '';
+      const w = L.s.ways[0], st = L.s.st, day = L.s.day;
+      const hourly = state.metric !== 'v24' && state.metric !== 'congestion' && state.metric !== 'growth';
+      const secQ = atHour(day.small.map((x, i) => x + day.large[i]), state.hour); // both directions
+      const main = hourly ? `${Math.round(secQ).toLocaleString()}<small> 台/時</small>` : `${day.v24.toLocaleString()}<small> 台/日${day.est ? '（推定）' : ''}</small>`;
+      const extra = state.metric === 'congestion' ? `混雑度 ${st.congestion.toFixed(2)}` : state.metric === 'speed' ? `${Math.round(METRICS.speed.value(w, state.hour))} km/h` : state.metric === 'heavy' ? `大型 ${METRICS.heavy.value(w, state.hour).toFixed(0)} %` : state.metric === 'growth' && st.growth ? `H27比 ${st.growth >= 1 ? '+' : ''}${Math.round((st.growth - 1) * 100)} %` : '';
       L.el.innerHTML = `<b>${main}</b>${extra ? `<span>${extra}</span>` : ''}`;
       L.lab.position.y = L.base + (wall ? Math.max(...L.s.ways.map((f) => f.height)) : 2);
     }

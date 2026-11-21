@@ -54,7 +54,7 @@ const state = {
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
   clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null, budget: 8e6,
   style: 'accum', autoStyle: true, exposure: 1.0, bloom: 0.3, fog: 0.5, trafficOn: true, pulse: true,
-  hour: 8, hourPlaying: false, flowOn: true, flowMetric: 'v24', flowShape: 'wall', flowSel: -1,
+  hour: 8, hourPlaying: false, dayType: 'weekday', flowOn: true, flowMetric: 'v24', flowShape: 'wall', flowSel: -1,
 };
 // test / kiosk overrides: ?density=0.2&budget=3000000&style=solid
 { const q = new URLSearchParams(location.search); if (q.has('noreveal')) { state.noReveal = true; state.pulse = false; } if (q.has('notraffic')) state.trafficOn = false; if (q.has('density')) state.density = +q.get('density'); if (q.has('budget')) state.budget = +q.get('budget'); if (q.has('style')) state.style = q.get('style'); }
@@ -86,7 +86,7 @@ async function loadSite(key) {
   clearSelection(); measure.clear();
   data = await loadJson(key);
   if (!tdata) tdata = await loadJson('traffic');
-  flowModel = buildFlowModel(data, tdata, key);
+  flowModel = buildFlowModel(data, tdata, key, state.dayType);
   state.flowSel = -1;
   $('site-name').textContent = data.site.nameJa;
   elements = buildStructure(data).elements;
@@ -196,6 +196,29 @@ function hourlyChart(large, small, hour) {
   const ticks = [0, 6, 12, 18, 24].map((t) => `<text x="${pad + (t / 24) * (W - pad - 8)}" y="${H - 2}" text-anchor="middle">${t}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" class="hchart" role="img" aria-label="時間帯別交通量"><line x1="${pad}" y1="${H - 14}" x2="${W}" y2="${H - 14}" class="axis"/><text x="${pad - 2}" y="9" text-anchor="start">${Math.round(max).toLocaleString()} 台/時</text>${bars}<line x1="${xh}" y1="12" x2="${xh}" y2="${H - 12}" class="now"/>${ticks}</svg>`;
 }
+function historyChart(st) {
+  const hst = st.history12; if (!hst) return '';
+  const ys = Object.keys(hst), vals = ys.map((y) => hst[y]), max = Math.max(...vals), W = 336, H = 58, bw = (W - 8) / ys.length;
+  const bars = ys.map((y, i) => { const hgt = (vals[i] / max) * (H - 24); return `<rect x="${4 + i * bw + 3}" y="${H - 12 - hgt}" width="${bw - 6}" height="${hgt}" fill="${y === 'R3' ? 'var(--accent)' : '#3d5a73'}"><title>${y} ${vals[i].toLocaleString()} 台/12h</title></rect><text x="${4 + i * bw + bw / 2}" y="${H - 2}" text-anchor="middle">${y}</text><text x="${4 + i * bw + bw / 2}" y="${H - 15 - hgt}" text-anchor="middle">${(vals[i] / 1000).toFixed(0)}</text>`; }).join('');
+  return `<p class="tcap">推移（昼間 12 時間、千台。調査区間の変更により不連続の年度があります）</p><svg viewBox="0 0 ${W} ${H}" class="hchart" role="img" aria-label="交通量の推移">${bars}</svg>`;
+}
+function mlitChart(st) {
+  const ser = tdata.mlitSeries[st.id]; if (!ser) return '';
+  const W = 336, H = 64, lo = Math.min(...ser.map((x) => x.v)) * 0.96, hi = Math.max(...ser.map((x) => x.v)) * 1.02, n = ser.length;
+  const xy = (x, i) => [10 + (i / (n - 1)) * (W - 20), H - 14 - ((x.v - lo) / (hi - lo)) * (H - 26)];
+  const dots = ser.map((x, i) => { const [cx, cy] = xy(x, i), we = x.dow === '土' || x.dow === '日'; return `<circle cx="${cx}" cy="${cy}" r="3.2" fill="${we ? 'var(--accent2)' : 'var(--accent)'}"><title>${x.date}（${x.dow}） ${x.v.toLocaleString()} 台/日</title></circle>`; }).join('');
+  const line = ser.map((x, i) => xy(x, i).join(',')).join(' ');
+  const sec = tdata.mlitSections[st.id];
+  return `<p class="tcap">${sec[1]} の日交通量（国交省 代表断面、2020/9〜2023/4。<span style="color:var(--accent2)">●</span> 土日）</p><svg viewBox="0 0 ${W} ${H}" class="hchart" role="img" aria-label="代表断面の日交通量"><polyline points="${line}" fill="none" stroke="#3d5a73" stroke-width="1"/>${dots}<text x="10" y="${H - 2}">${ser[0].date.slice(0, 7)}</text><text x="${W - 10}" y="${H - 2}" text-anchor="end">${ser[n - 1].date.slice(0, 7)}</text><text x="10" y="9">${Math.round(hi / 1000)} 千台</text></svg>`;
+}
+function setDayType(v) {
+  state.dayType = v; $('day-type').value = v;
+  const keep = state.flowSel >= 0 ? flowModel.flows[state.flowSel] : null;
+  flowModel = buildFlowModel(data, tdata, state.site, v);
+  state.flowSel = keep ? flowModel.flows.findIndex((f) => f.ri === keep.ri && f.sec.index === keep.sec.index && f.measured === keep.measured) : -1;
+  rebuildTraffic(); rebuildFlow();
+  $('tpanel-sub').textContent = v === 'holiday' ? '休日（推定）' : '平日（令和3年度センサス）';
+}
 let panelT = 0;
 function renderTrafficPanel(throttle = false) {
   if (!flowModel || state.las) return;
@@ -209,25 +232,29 @@ function renderTrafficPanel(throttle = false) {
   let body;
   const f = state.flowSel >= 0 ? m.flows[state.flowSel] : null;
   if (f && f.measured) {
-    const st = f.st, sec = f.sec, hr = st.hourly || { small: tdata.surfaceShape.small.map((x) => x * st.v24), large: tdata.surfaceShape.large.map((x) => x * st.v24) };
-    const qh = atHour(hr.small.map((v, i) => v + hr.large[i]), h), lh = atHour(hr.large, h);
+    const st = f.st, sec = f.sec, day = sec.day, hol = state.dayType === 'holiday', H = tdata.dayType.holiday;
+    const qh = atHour(day.small.map((v, i) => v + day.large[i]), h), lh = atHour(day.large, h);
     const up = sec.ways.find((w) => w.up === true), dn = sec.ways.find((w) => w.up === false), any = sec.ways[0];
-    const mlit = tdata.mlit2023.find((x) => x.station === st.id);
     const spd = up && dn ? `上り ${Math.round(speedAt(up, h))} / 下り ${Math.round(speedAt(dn, h))} km/h` : `${Math.round(speedAt(any, h))} km/h`;
-    body = `<div class="tsec"><button class="tback" id="t-back">← 区間一覧</button><h3>${sec.label || st.route.replace('高速', '首都高速')}</h3><p class="muted">${st.section}（観測地点 ${st.id}・${st.date}）</p>
-      <div class="tbig"><b>${st.v24.toLocaleString()}</b> 台/日${st.v24est ? '<span class="est">推定（12時間 ' + st.v12.toLocaleString() + ' 台 × 昼夜率 ' + st.nightRatio + '）</span>' : ''} ${congBadge(st.congestion)}</div>
+    const ratio = H.volumeRatio[sec.rk] ?? 1;
+    const dirLine = day.hasDir ? `<p class="tdir"><span>上り <b>${day.up24.toLocaleString()}</b></span><span>下り <b>${day.down24.toLocaleString()}</b></span><span class="muted">${st.dir.up.v24 == null ? '台/日（夜間は按分推定）' : '台/日'}　${hh(h)}: ${Math.round(atHour(day.qUp, h)).toLocaleString()} / ${Math.round(atHour(day.qDown, h)).toLocaleString()} 台/時</span></p>` : '';
+    const cmp = hol ? `<p class="muted">平日 ${st.v24.toLocaleString()} 台/日 → 休日 推定 ×${ratio.toFixed(2)}${sec.kind === 'surface' ? '（一般道は休日データなし。平日値のまま、時間変動のみ補正）' : ''}</p>`
+      : `<p class="muted">休日（推定）: ×${ratio.toFixed(2)} → 約 ${(Math.round((st.v24 * ratio) / 100) * 100).toLocaleString()} 台/日</p>`;
+    body = `<div class="tsec"><button class="tback" id="t-back">← 区間一覧</button><h3>${sec.label || st.route.replace('高速', '首都高速')}</h3><p class="muted">${st.section}（観測地点 ${st.id}・${st.date}${st.lanes ? `・${st.lanes} 車線` : ''}）</p>
+      <div class="tbig"><b>${day.v24.toLocaleString()}</b> 台/日${hol ? '<span class="est">休日推定</span>' : st.v24est ? '<span class="est">推定（12時間 ' + st.v12.toLocaleString() + ' 台 × 昼夜率 ' + st.nightRatio + '）</span>' : ''} ${congBadge(st.congestion)}</div>
+      ${dirLine}
       <div class="kpis"><div><span>大型車</span><b>${st.hv} %</b></div><div><span>ピーク率</span><b>${st.peakPct} %</b></div><div><span>昼夜率</span><b>${st.nightRatio}</b></div><div><span>朝夕速度 上/下</span><b>${st.vUp != null ? Math.round(st.vUp) : '—'}/${st.vDown != null ? Math.round(st.vDown) : '—'}</b></div><div><span>H27 比</span><b>${st.growth ? (st.growth >= 1 ? '+' : '') + Math.round((st.growth - 1) * 100) + ' %' : '—'}</b></div></div>
-      ${hourlyChart(hr.large, hr.small, h)}
-      <p class="tnow"><b>${hh(h)}</b>　${Math.round(qh).toLocaleString()} 台/時（大型 ${Math.round((lh / Math.max(1, qh)) * 100)} %）・モデル速度 ${spd}${st.hourly ? '' : '<span class="est">時間変動は一般道平均形状</span>'}</p>
-      ${mlit ? `<p class="muted">参考: ${mlit.section} ${mlit.v2023.toLocaleString()} 台/日（2023年4月28日、2019年比 ${Math.round((mlit.v2023 / mlit.v2019) * 100)} %、国交省速報値）</p>` : ''}</div>`;
+      ${hourlyChart(day.large, day.small, h)}
+      <p class="tnow"><b>${hh(h)}</b>　${Math.round(qh).toLocaleString()} 台/時（大型 ${Math.round((lh / Math.max(1, qh)) * 100)} %）・モデル速度 ${spd}${st.hourly ? '' : '<span class="est">夜間の時間変動は一般道平均形状</span>'}</p>
+      ${cmp}${historyChart(st)}${mlitChart(st)}${hol ? `<p class="muted">${H.basis}</p>` : ''}</div>`;
   } else if (f) {
     body = `<div class="tsec"><button class="tback" id="t-back">← 区間一覧</button><h3>連結路（${f.road.name || 'ランプ・JCT'}）</h3><p class="muted">観測値なし。前後区間の収支からの推定値です。</p>
       <div class="tbig"><b>${f.ramp.v24.toLocaleString()}</b> 台/日<span class="est">推定</span></div><p class="muted">${f.ramp.basis}</p>
       ${hourlyChart(f.q.map((v, i) => v * 2 * f.hvh[i]), f.q.map((v, i) => v * 2 * (1 - f.hvh[i])), h)}<p class="muted">時間変動は隣接区間（${f.st.section}）の形状を適用。</p></div>`;
   } else {
-    const secs = m.sections.filter((x) => x.ways.length).sort((a, b) => b.st.v24 - a.st.v24), vm = secs[0].st.v24;
+    const secs = m.sections.filter((x) => x.ways.length).sort((a, b) => b.day.v24 - a.day.v24), vm = secs[0].day.v24;
     let tot = 0; for (const t of m.tracks) tot += (atHour(t.q, h) / speedAt(t, h)) * (t.L / 1000);
-    body = `<p class="tnow"><b>${hh(h)}</b>　モデル内の走行台数 約 ${Math.round(tot).toLocaleString()} 台（交通量 ÷ 速度 × 延長）</p><div class="trank">${secs.map((x) => `<button class="trow" data-st="${x.index}"><span class="nm">${x.label || x.st.route.replace('高速', '')}<small>${x.kind === 'exp' ? x.st.section : x.st.section}</small></span><span class="br"><i style="width:${(x.st.v24 / vm) * 100}%;background:${x.st.congestion >= 1.25 ? '#ef5350' : x.st.congestion >= 1 ? '#ffb347' : 'var(--accent)'}"></i></span><span class="vl">${x.st.v24.toLocaleString()}${x.st.v24est ? '*' : ''}</span></button>`).join('')}</div><p class="muted">台/日（上下計・平日）。* は 12 時間値 × 昼夜率による推定。棒の色: 混雑度 1.0 以上は橙、1.25 以上は赤。</p>`;
+    body = `<p class="tnow"><b>${hh(h)}</b>　モデル内の走行台数 約 ${Math.round(tot).toLocaleString()} 台（交通量 ÷ 速度 × 延長）</p><div class="trank">${secs.map((x) => `<button class="trow" data-st="${x.index}"><span class="nm">${x.label || x.st.route.replace('高速', '')}<small>${x.kind === 'exp' ? x.st.section : x.st.section}</small></span><span class="br"><i style="width:${(x.day.v24 / vm) * 100}%;background:${x.st.congestion >= 1.25 ? '#ef5350' : x.st.congestion >= 1 ? '#ffb347' : 'var(--accent)'}"></i></span><span class="vl">${x.day.v24.toLocaleString()}${x.day.est ? '*' : ''}</span></button>`).join('')}</div><p class="muted">台/日（上下計）。* は推定（${state.dayType === 'holiday' ? '休日は全区間が推定値' : '12 時間値 × 昼夜率'}）。棒の色: 平日の混雑度 1.0 以上は橙、1.25 以上は赤。</p>`;
   }
   $('tpanel-body').innerHTML = `${body}${legend}<p class="tsrc">出典: ${src}</p>`;
   const back = $('t-back'); if (back) back.addEventListener('click', () => selectFlow(-1));
@@ -718,6 +745,7 @@ $('traffic').addEventListener('change', async (e) => { state.trafficOn = e.targe
 $('flow-on').addEventListener('change', (e) => { state.flowOn = e.target.checked; if (flowViz) flowViz.setVisible(state.flowOn); });
 $('flow-metric').addEventListener('change', (e) => { state.flowMetric = e.target.value; if (flowViz) flowViz.update({ metric: state.flowMetric }); renderTrafficPanel(); });
 $('flow-shape').addEventListener('change', (e) => { state.flowShape = e.target.value; if (flowViz) flowViz.update({ shape: state.flowShape }); renderTrafficPanel(); });
+$('day-type').addEventListener('change', (e) => setDayType(e.target.value));
 $('hour').addEventListener('input', (e) => setHour(+e.target.value, true));
 $('hour-play').addEventListener('click', () => { state.hourPlaying = !state.hourPlaying; $('hour-play').textContent = state.hourPlaying ? '⏸ 停止' : '▶ 24時間を再生'; });
 $('tpanel-toggle').addEventListener('click', () => document.body.classList.toggle('tpanel-min'));
@@ -781,7 +809,7 @@ function loop(now) {
 }
 
 // debugging / automation hooks
-window.__app = { get traffic() { return traffic; }, get flowModel() { return flowModel; }, get flowViz() { return flowViz; }, setHour, selectFlow, startReveal, sweep, post: edl, pointMat, applyStyle, setStyle, maxSplat, select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
+window.__app = { get traffic() { return traffic; }, get flowModel() { return flowModel; }, get flowViz() { return flowViz; }, setHour, selectFlow, setDayType, startReveal, sweep, post: edl, pointMat, applyStyle, setStyle, maxSplat, select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
 applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();
