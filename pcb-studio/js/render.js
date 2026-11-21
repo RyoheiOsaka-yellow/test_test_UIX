@@ -283,6 +283,7 @@ export function drawLayerTexture(ctx, b, kind, sc, opt = {}) {
     return;
   }
   const pour = Math.max(0, Math.min(1, opt.pour || 0)), side = kind === 'top' ? 'T' : 'B';
+  if (opt.finish && opt.finish !== 'ref') { drawRealBoard(ctx, b, l, side, sc, pour, opt, routed, path); return; }
   ctx.fillStyle = '#1e4632'; ctx.fill();
   if (pour > 0) { ctx.globalAlpha = pour; ctx.fillStyle = '#7d5546'; ctx.fill(); ctx.globalAlpha = 1; }
   ctx.save(); boardPath(ctx, b); ctx.clip();
@@ -315,4 +316,79 @@ export function drawLayerTexture(ctx, b, kind, sc, opt = {}) {
   }
   ctx.restore();
   boardPath(ctx, b); ctx.lineWidth = 0.35; ctx.strokeStyle = '#b9d2c4'; ctx.stroke();
+}
+
+// 実物に近い基板面：ソルダーレジスト越しに見える銅箔（ベタと配線）、金めっきのパッド、
+// レジストで覆われたビア、白いシルク（外形・部品番号・1 番ピン）、めっきされた取り付け穴。
+// opt.aux=true のときは陰影用のマップを描く（R=凹凸, G=粗さ, B=金属度）。
+const FINISH = {
+  green: { base: '#0a3522', cu: '#176b41', gap: '#082c1c', silk: '#f1f1ea', gold: '#d8b560', edge: '#0a2f1e' },
+  black: { base: '#101214', cu: '#26292d', gap: '#0b0c0e', silk: '#eeeeea', gold: '#d8b560', edge: '#08090a' },
+};
+function drawRealBoard(ctx, b, l, side, sc, pour, opt, routed, path) {
+  const aux = !!opt.aux, F = FINISH[opt.finish] || FINISH.green;
+  const col = aux ? { base: 'rgb(84,122,0)', cu: 'rgb(150,112,0)', gap: 'rgb(70,125,0)', silk: 'rgb(196,235,0)', gold: 'rgb(178,74,255)', edge: 'rgb(84,122,0)' } : F;
+  boardPath(ctx, b); ctx.fillStyle = col.base; ctx.fill();
+  ctx.save(); boardPath(ctx, b); ctx.clip();
+  // 外層の GND ベタ（配線が進むにつれて現れる）
+  if (pour > 0) { ctx.globalAlpha = pour; ctx.fillStyle = col.cu; ctx.fillRect(0.8, 0.8, b.w - 1.6, b.gridH - 1.6); ctx.globalAlpha = 1; }
+  // 配線：ベタとの間に隙間を空けて、銅箔の色で
+  path(); ctx.strokeStyle = col.gap; ctx.lineWidth = NET_WIDTH.signal + 0.42; ctx.stroke();
+  ctx.strokeStyle = col.cu; ctx.lineWidth = Math.max(NET_WIDTH.signal + 0.02, 1.4 / sc); ctx.stroke();
+  // ビア（レジストで覆われた小さなふくらみ）
+  if (!opt.fast) {
+    ctx.fillStyle = col.gap; ctx.beginPath();
+    for (const n of routed) for (const q of n.route.vias) { ctx.moveTo(q.x + 0.36, q.y); ctx.arc(q.x, q.y, 0.36, 0, 6.2832); }
+    ctx.fill();
+    ctx.fillStyle = col.cu; ctx.beginPath();
+    for (const n of routed) for (const q of n.route.vias) { ctx.moveTo(q.x + VIA.d / 2, q.y); ctx.arc(q.x, q.y, VIA.d / 2, 0, 6.2832); }
+    ctx.fill();
+    if (!aux && sc >= 10) { ctx.fillStyle = col.gap; ctx.beginPath(); for (const n of routed) for (const q of n.route.vias) { ctx.moveTo(q.x + 0.08, q.y); ctx.arc(q.x, q.y, 0.08, 0, 6.2832); } ctx.fill(); }
+  }
+  // パッド：レジストの開口 → 金めっき
+  const mine = c => c.side === side || c.part.th;
+  for (const passN of [0, 1]) {
+    ctx.fillStyle = passN ? col.gold : col.gap; ctx.beginPath();
+    const m = passN ? 0 : 0.09;
+    for (const c of b.comps) { if (c.part.family === 'hole') continue; for (const pad of c.part.pads) {
+      if (c.side !== side && !pad.th) continue;
+      const p = padWorld(c, pad);
+      if (p.round || pad.th) { ctx.moveTo(p.x + p.w / 2 + m, p.y); ctx.arc(p.x, p.y, p.w / 2 + m, 0, 6.2832); } else ctx.rect(p.x - p.w / 2 - m, p.y - p.h / 2 - m, p.w + 2 * m, p.h + 2 * m);
+    } }
+    ctx.fill();
+  }
+  // スルーホールと取り付け穴
+  ctx.fillStyle = aux ? 'rgb(0,255,0)' : '#050506'; ctx.beginPath();
+  for (const c of b.comps) for (const pad of c.part.pads) { if (!pad.th) continue; const p = padWorld(c, pad), r = c.part.family === 'hole' ? p.w / 2 : Math.max(0.2, p.w * 0.28); ctx.moveTo(p.x + r, p.y); ctx.arc(p.x, p.y, r, 0, 6.2832); }
+  ctx.fill();
+  ctx.strokeStyle = col.gold; ctx.lineWidth = 0.45; ctx.beginPath();
+  for (const c of b.comps) if (c.part.family === 'hole') { ctx.moveTo(c.x + 2.1, c.y); ctx.arc(c.x, c.y, 2.1, 0, 6.2832); }
+  ctx.stroke();
+  // シルク
+  if (!opt.fast) {
+    ctx.strokeStyle = ctx.fillStyle = col.silk; ctx.lineWidth = 0.13; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const c of b.comps) {
+      if (!mine(c) || c.part.family === 'pcie' || c.part.family === 'hole') continue;
+      const B = compBox(c, 0.18), w = B.x1 - B.x0, h = B.y1 - B.y0, small = c.part.pads.length === 2 && w * h < 9;
+      if (small) { // チップ部品は両脇の線だけ
+        ctx.beginPath(); if (w >= h) { ctx.moveTo(B.x0 + w * 0.3, B.y0); ctx.lineTo(B.x1 - w * 0.3, B.y0); ctx.moveTo(B.x0 + w * 0.3, B.y1); ctx.lineTo(B.x1 - w * 0.3, B.y1); } else { ctx.moveTo(B.x0, B.y0 + h * 0.3); ctx.lineTo(B.x0, B.y1 - h * 0.3); ctx.moveTo(B.x1, B.y0 + h * 0.3); ctx.lineTo(B.x1, B.y1 - h * 0.3); } ctx.stroke();
+        continue;
+      }
+      const k = Math.min(1.2, w * 0.18, h * 0.18);     // 角だけの外形線
+      ctx.beginPath();
+      for (const [x, y, dx, dy] of [[B.x0, B.y0, 1, 1], [B.x1, B.y0, -1, 1], [B.x1, B.y1, -1, -1], [B.x0, B.y1, 1, -1]]) { ctx.moveTo(x + dx * k, y); ctx.lineTo(x, y); ctx.lineTo(x, y + dy * k); }
+      ctx.stroke();
+      if (c.part.pads.length > 2) { ctx.beginPath(); ctx.arc(B.x0 - 0.35, B.y0 - 0.35, 0.22, 0, 6.2832); ctx.fill(); }
+      if (aux || sc < 8) continue;
+      const fs = Math.max(0.7, Math.min(1.5, Math.min(w, 12) * 0.2));
+      ctx.font = `600 ${fs}px "IBM Plex Mono", ui-monospace, monospace`;
+      ctx.save(); ctx.translate(c.x, B.y0 - fs * 0.62); if (side === 'B') ctx.scale(-1, 1); ctx.fillText(c.ref, 0, 0); ctx.restore();
+    }
+    if (!aux && side === 'T' && b.tab) { // 基板名のシルク
+      ctx.font = '700 1.7px "IBM Plex Mono", ui-monospace, monospace'; ctx.textAlign = 'left';
+      ctx.fillText('GPU-KIBAN STUDIO   REV A   ' + Math.round(b.w) + 'x' + Math.round(b.h) + 'mm', b.tab.x1 + 5, b.h - 1.7);
+    }
+  }
+  ctx.restore();
+  boardPath(ctx, b); ctx.lineWidth = 0.3; ctx.strokeStyle = col.edge; ctx.stroke();
 }

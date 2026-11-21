@@ -39,7 +39,8 @@ export class View3D {
     this.root = new THREE.Group(); this.scene.add(this.root);
     this.ray = new THREE.Raycaster();
     this.az = -0.5; this.el = 0.72; this.dist = 400; this.target = new THREE.Vector3();
-    this.explode = 0; this.board = null; this.texAt = 0; this.style = 'design'; this.pour = 0;
+    this.explode = 0; this.board = null; this.texAt = 0; this.style = 'design'; this.pour = 0; this.finish = 'green'; this.xray = null;
+    this.maxTex = Math.min(8192, R.capabilities.maxTextureSize || 4096);
   }
   resize(w, h, dpr) { if (!this.ok) return; this.w = w; this.h = h; this.renderer.setPixelRatio(dpr); this.renderer.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); this.dirty = true; }
   frameAll() {
@@ -84,8 +85,9 @@ export class View3D {
     this.board = b; this.nComps = b.comps.length;
     while (this.root.children.length) { const m = this.root.children.pop(); m.geometry && m.geometry.dispose(); if (m.material) { m.material.map && m.material.map.dispose(); m.material.dispose(); } }
     const W = b.w, H = b.gridH;
-    this.sc = Math.max(3, Math.min(10, Math.floor(4096 / Math.max(W, H))));
-    this.slabMat = new THREE.MeshStandardMaterial({ color: 0x183326, roughness: 0.75, transparent: true });
+    this.sc = Math.max(3, Math.min(8, Math.floor(4096 / Math.max(W, H))));                    // 内層
+    this.scOut = Math.max(3, Math.min(16, Math.floor(this.maxTex / Math.max(W, H))));     // 表裏は高精細に
+    this.slabMat = new THREE.MeshStandardMaterial({ color: 0xb9a468, roughness: 0.85, transparent: true });   // 断面は FR-4 の色
     const slab = new THREE.Mesh(new THREE.BoxGeometry(W, 2 * T - 0.04, b.h), this.slabMat); slab.position.set(W / 2, 0, b.h / 2); slab.castShadow = true; this.root.add(slab);
     if (b.tab) { const t = b.tab, tb = new THREE.Mesh(new THREE.BoxGeometry(t.x1 - t.x0, 2 * T - 0.04, t.h), this.slabMat); tb.position.set((t.x0 + t.x1) / 2, 0, b.h + t.h / 2); tb.castShadow = true; this.root.add(tb); }
     this.bracket = null;
@@ -95,12 +97,17 @@ export class View3D {
     }
     this.planes = [];
     for (const kind of ['top', 1, 2, 'bottom']) {
-      const cv = document.createElement('canvas'); cv.width = Math.round(W * this.sc); cv.height = Math.round(H * this.sc);
-      const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
-      const outer = typeof kind === 'string';
-      const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true, alphaTest: outer ? 0.5 : 0.02, depthWrite: outer });
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat); m.rotation.x = -Math.PI / 2; m.position.set(W / 2, 0, H / 2); m.renderOrder = outer ? 0 : 2;
-      this.root.add(m); this.planes.push({ kind, cv, tex, mesh: m });
+      const outer = typeof kind === 'string', sc = outer ? this.scOut : this.sc;
+      const cv = document.createElement('canvas'); cv.width = Math.round(W * sc); cv.height = Math.round(H * sc);
+      const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8;
+      let mat, aux = null, auxCv = null;
+      if (outer) { // 表裏は光を受ける素材：凹凸・粗さ・金属度のマップで、レジストの艶と金パッドの反射を出す
+        auxCv = document.createElement('canvas'); auxCv.width = Math.round(W * sc / 2); auxCv.height = Math.round(H * sc / 2);
+        aux = new THREE.CanvasTexture(auxCv); aux.anisotropy = 4;
+        mat = new THREE.MeshStandardMaterial({ map: tex, bumpMap: aux, bumpScale: 0.05, roughnessMap: aux, metalnessMap: aux, roughness: 1, metalness: 1, side: THREE.DoubleSide, transparent: true, alphaTest: 0.5 });
+      } else mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true, alphaTest: 0.02, depthWrite: false });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat); m.rotation.x = -Math.PI / 2; m.position.set(W / 2, 0, H / 2); m.renderOrder = outer ? 0 : 2; m.receiveShadow = outer;
+      this.root.add(m); this.planes.push({ kind, cv, tex, mesh: m, sc, aux, auxCv });
     }
     // 部品：不透明の箱、半透明の箱（固定コネクタ・BGA）、円筒（電解コンデンサ）とその天面
     const n = b.comps.length + 16, box = new THREE.BoxGeometry(1, 1, 1), cyl = new THREE.CylinderGeometry(0.5, 0.5, 1, 28);
@@ -138,7 +145,17 @@ export class View3D {
   // 銅箔面のテクスチャを描き直す。outerOnly=true なら表裏だけ（ドラッグ中用）
   paint(S, outerOnly) {
     if (!this.ok || !this.board) return;
-    for (const p of this.planes) { if (outerOnly && typeof p.kind !== 'string') continue; drawLayerTexture(p.cv.getContext('2d'), this.board, p.kind, this.sc, { pour: this.pour, hide: S && S.hidePads }); p.tex.needsUpdate = true; }
+    for (const p of this.planes) {
+      const outer = typeof p.kind === 'string'; if (outerOnly && !outer) continue;
+      const opt = { pour: this.pour, finish: this.finish, fast: !!outerOnly };
+      drawLayerTexture(p.cv.getContext('2d'), this.board, p.kind, p.sc, opt); p.tex.needsUpdate = true;
+      if (outer) {
+        const real = this.finish !== 'ref', m = p.mesh.material;
+        if (real && !outerOnly) { drawLayerTexture(p.auxCv.getContext('2d'), this.board, p.kind, p.sc / 2, { ...opt, aux: true }); p.aux.needsUpdate = true; }
+        const want = real ? p.aux : null;
+        if (m.bumpMap !== want) { m.bumpMap = m.roughnessMap = m.metalnessMap = want; m.roughness = real ? 1 : 0.7; m.metalness = real ? 1 : 0.05; m.needsUpdate = true; }
+      }
+    }
     this.texAt = performance.now(); this.dirty = true;
   }
   seg(L, x0, y0, z0, x1, y1, z1, c) {
@@ -154,7 +171,15 @@ export class View3D {
     const THREE = this.THREE, b = this.board, M = new THREE.Matrix4(), col = new THREE.Color(), dark = new THREE.Color(0x101214), white = new THREE.Color(0xffffff), grey = new THREE.Color(0xb4bac0).convertSRGBToLinear();
     this.planes.forEach((p, i) => { p.mesh.position.y = this.layerY(i); });
     this.edge.position.y = this.layerY(0) + 0.02;
-    this.slabMat.opacity = (1 - this.explode * 0.9) * 0.96; this.slabMat.depthWrite = this.explode < 0.05;
+    // 透視：基板と部品を薄くして内層を見せる（xray = 'all' または作業中の層番号）
+    const x = this.xray, see = x != null;
+    this.slabMat.opacity = see ? 0.1 : (1 - this.explode * 0.9); this.slabMat.depthWrite = !see && this.explode < 0.05;
+    this.planes.forEach((p, i) => {
+      const m = p.mesh.material, outer = typeof p.kind === 'string', on = !see || x === 'all' || x === i;
+      if (outer) { const o = see && x !== i ? 0.28 : 1; if (m.opacity !== o) { m.opacity = o; m.alphaTest = o < 1 ? 0.01 : 0.5; m.depthWrite = o === 1; m.needsUpdate = true; } }
+      else m.opacity = on ? 1 : 0.12;
+    });
+    for (const m of this.all) { const mt = m.mesh.material, o = see ? (m === this.mGlass ? 0.12 : 0.2) : (m === this.mGlass ? 0.5 : 1); if (mt.opacity !== o) { mt.opacity = o; mt.transparent = o < 1; mt.depthWrite = o === 1; mt.needsUpdate = true; } m.mesh.castShadow = !see && m !== this.mCap && m !== this.mLeg && m !== this.mSec; }
     if (this.bracket) this.bracket.visible = this.explode < 0.03;
     const sel = S ? S.sel : new Set(), hg = S && S.hiGroup;
     for (const m of this.all) { m.k = 0; m.map.length = 0; }

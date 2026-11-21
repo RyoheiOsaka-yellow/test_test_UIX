@@ -16,7 +16,7 @@ const cv = $('cv'), ctx = cv.getContext('2d');
 const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
-  show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'design', time: 0,
+  show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'design', finish: 'green', xray: false, time: 0,
   rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
@@ -171,7 +171,7 @@ function onDown(e) {
   if (alt || !editable() || blocked(true)) { nav(); return; }
   if (S.ghost) { placeGhost(e.shiftKey); return; }
   if (tool === 'wire') { wireClick(w, e.altKey); return; }
-  if (tool === 'route') { routeClick(w); return; }
+  if (tool === 'route') { routeClick(w, e.altKey); return; }
   const c = compAt(w, sx, sy);
   if (c) {
     if (e.shiftKey) { S.sel.has(c) ? S.sel.delete(c) : S.sel.add(c); }
@@ -323,18 +323,30 @@ function wireClick(w, alt) {
 // ───────── 手配線 ─────────
 // パッドから始め、クリックした点まで今の層で経路を引く。1〜4 キーで層を替える（その場にビア）。
 const LNAME = ['L1 表層', '内層（横）', '内層（縦）', '裏層'];
-function manStatus() { $('status').textContent = man ? `手配線 ${man.net.name}｜${LNAME[man.l]}｜クリックで経路を確定、同じネットのパッドで接続、1〜4 で層替え（ビア）、Esc で終了` : '手配線：始点にするパッドをクリックしてください。'; }
+function manStatus() { $('status').textContent = man ? `手配線 ${man.net.name}｜${LNAME[man.l]}｜クリックで確定、同じネットのパッドで接続、1〜4 で層替え（ビア）、Backspace で一手戻す、Esc で終了` : '手配線：始点のパッドをクリック。引いた線の上をクリックすると途中から続け、Alt+クリックでその区間を消します。'; }
 function afterMan() { refresh(); renderStats(); renderNets(); renderGuide(); if (v3on) v3.paint(S); dirty = true; }
 function endMan() { S.man = man = null; S.manPrev = null; dirty = true; if (tool === 'route') manStatus(); }
-function routeClick(w) {
-  const R = S.router, hit = padAt(w);
+function routeClick(w, alt) {
+  const R = S.router, hit = padAt(w), vis = (nearSide() === 'B' ? [3, 2, 1, 0] : [0, 1, 2, 3]);
   if (!man) {
-    if (!hit) return toast('始点にするパッドをクリックしてください');
+    const tr = !hit || alt ? R.manualSegAt(w.x, w.y, vis) : null;
+    if (alt) { // 手配線の一部を消す
+      if (!tr) return toast('Alt+クリックは、手で引いた配線の上で使います（その区間を消します）');
+      pushUndo(); dropRec(); tr.net.route.segs.splice(tr.si, 1); R.manualRebuild(tr.net);
+      if (!tr.net.route.segs.length && !tr.net.route.vias.length) R.ripNet(tr.net);
+      toast(`${tr.net.name} の一部を消しました。線の端やパッドをクリックすると引き直せます`); afterMan(); return;
+    }
+    if (!hit && tr) { // 引いてある手配線の途中から続ける
+      pushUndo(); dropRec();
+      S.man = man = { net: tr.net, l: tr.l, ix: Math.round(tr.x / G), iy: Math.round(tr.y / G), steps: [] };
+      pinNet = S.hiNet = tr.net; manStatus(); afterMan(); return;
+    }
+    if (!hit) return toast('始点にするパッド（または手で引いた配線）をクリックしてください');
     const nm = hit.c.padNet[hit.pad.n], net = nm && S.board.nets.get(nm);
     if (!net) return toast('このパッドはどこにもつながっていません。先に「結線」でつないでください');
     if (net.cls === 'plane') return toast('電源・GND は内層プレーンで接続するため、手配線の対象外です');
     pushUndo(); dropRec(); R.manualBegin(net);
-    S.man = man = { net, l: hit.p.th ? (nearSide() === 'B' ? 3 : 0) : hit.c.side === 'B' ? 3 : 0, ix: Math.round(hit.p.x / G), iy: Math.round(hit.p.y / G) };
+    S.man = man = { net, l: hit.p.th ? (nearSide() === 'B' ? 3 : 0) : hit.c.side === 'B' ? 3 : 0, ix: Math.round(hit.p.x / G), iy: Math.round(hit.p.y / G), steps: [] };
     pinNet = S.hiNet = net; manStatus(); afterMan(); return;
   }
   let ix = Math.round(w.x / G), iy = Math.round(w.y / G), endPad = false;
@@ -342,13 +354,22 @@ function routeClick(w) {
   if (ix === man.ix && iy === man.iy) return;
   const path = R.manualPath(man.net, man.l, man.ix, man.iy, ix, iy);
   if (!path) return toast('この層ではそこへ通れません（他の配線・パッドとの間隔が足りません）。1〜4 キーで層を替えられます');
-  R.manualAdd(man.net, path); man.ix = ix; man.iy = iy; S.manPrev = null;
+  manStep(); R.manualAdd(man.net, path); man.ix = ix; man.iy = iy; S.manPrev = null;
   if (endPad) { const left = man.net.route.fails.length; toast(left ? `接続しました（このネットは残り ${left} ピン）` : `${man.net.name} を接続しました（${man.net.route.len.toFixed(1)} mm）`); endMan(); }
   afterMan();
 }
+const manStep = () => man.steps.push({ segs: man.net.route.segs.length, vias: man.net.route.vias.length, ix: man.ix, iy: man.iy, l: man.l });
+// 手配線の直前の一手を取り消す
+function manBack() {
+  if (!man) return;
+  const st = man.steps.pop(); if (!st) return toast('これ以上戻せません（Esc で手配線を終了）');
+  const r = man.net.route; r.segs.length = st.segs; r.vias.length = st.vias; S.router.manualRebuild(man.net);
+  man.ix = st.ix; man.iy = st.iy; man.l = st.l; S.manPrev = null; manStatus(); afterMan();
+}
 function manLayer(l) {
   if (!man || l === man.l) return;
-  if (!S.router.manualVia(man.net, man.ix, man.iy)) return toast('ここにはビアを打てません（パッドや他のビアが近すぎます）。少し先まで引いてから層を替えてください');
+  manStep();
+  if (!S.router.manualVia(man.net, man.ix, man.iy)) { man.steps.pop(); return toast('ここにはビアを打てません（パッドや他のビアが近すぎます）。少し先まで引いてから層を替えてください'); }
   man.l = l; S.manPrev = null; manStatus(); afterMan();
 }
 function ripPinned() {
@@ -547,7 +568,7 @@ function toggle3d(quiet) {
   if (!v3.ok) { if (!quiet) toast('3D ライブラリを読み込めませんでした（ネットワークを確認してください）'); return; }
   v3on = !v3on;
   cv3.hidden = !v3on; $('explodeWrap').hidden = !v3on; $('btn3d').setAttribute('aria-pressed', v3on); $('tip').hidden = true; S.sel.clear();
-  if (v3on) v3.style = S.style, v3.resize(S.cw, S.ch, S.dpr);
+  if (v3on) v3.style = S.style, v3.finish = S.finish, v3.resize(S.cw, S.ch, S.dpr);
   if (!S.board) return;
   refresh(); if (v3on) v3.setBoard(S.board, S);
   renderInspector();
@@ -785,6 +806,7 @@ document.addEventListener('click', e => {
   else if (t.id === 'btnGen') genFromForm();
   else if (t.id === 'btnEmpty') { if (!run) { pushUndo(); setBoard(emptyBoard()); toast('空の基板を作成しました。ライブラリから部品を配置してください'); } }
   else if (t.id === 'btn3d') toggle3d();
+  else if (t.id === 'btnXray') { S.xray = !S.xray; t.setAttribute('aria-pressed', S.xray); dirty = true; if (!v3on) toast('透視は 3D 表示で使えます'); }
   else if (t.id === 'btnStyle') { S.style = S.style === 'real' ? 'design' : 'real'; t.setAttribute('aria-pressed', S.style === 'real'); dirty = true; if (v3on) { v3.style = S.style; v3.sync(); } }
   else if (t.id === 'ioPro') { ioKind = 'pro'; $('ioText').value = kicadProject(); $('ioMsg').textContent = 'KiCad の設計ルール。gpu-board.kicad_pro として .kicad_pcb と同じフォルダに置いてください。'; }
   else if (t.id === 'btnIO' || t.id === 'ioJson') { ioKind = 'json'; $('ioText').value = JSON.stringify(saveData()); $('ioMsg').textContent = 'JSON を表示中'; if (!$('io').open) $('io').showModal(); }
@@ -804,6 +826,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'live') liveRoute = t.checked;
   else if (t.id === 'oRegions') opts.regions = t.checked; else if (t.id === 'oPack') opts.pack = t.checked; else if (t.id === 'oTune') opts.tune = t.checked; else if (t.id === 'oStep') opts.step = t.checked;
   else if (t.id === 'oEffort') opts.effort = parseFloat(t.value);
+  else if (t.id === 'finish') { S.finish = t.value; if (v3on) { v3.finish = S.finish; v3.paint(S); } }
   else if (t.id === 'ioFile' && t.files[0]) { const fr = new FileReader(); fr.onload = () => { try { loadText(String(fr.result)); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } t.value = ''; }; fr.readAsText(t.files[0]); }
 });
 $('libq').addEventListener('input', renderLibrary);
@@ -814,11 +837,13 @@ document.addEventListener('keydown', e => {
   if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
   const k = e.key.toLowerCase();
   if (man && /^[1-4]$/.test(k)) { manLayer(+k - 1); return; }
+  if (man && (k === 'backspace' || ((e.ctrlKey || e.metaKey) && k === 'z'))) { e.preventDefault(); manBack(); return; }
   if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); doRedo(); }
   else if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); doUndo(); }
   else if (k === 'r') rotateSel(); else if (k === 'f') flipSel();
   else if (k === 'delete' || k === 'backspace') { e.preventDefault(); if (!S.sel.size && pinNet) ripPinned(); else deleteSel(); }
   else if (k === 'x') setTool('route');
+  else if (k === 't') $('btnXray').click();
   else if (k === 'enter' && man) endMan();
   else if (k === 'v') setTool('select'); else if (k === 'w') setTool('wire');
   else if (k === 'b') $('btnBack').click();
@@ -855,7 +880,7 @@ function frame(now) {
   S.time = now / 1000;
   if (S.show.flow && S.show.zones && !v3on && !document.hidden && (frameNo++ & 1)) dirty = true;
   if (v3on) {
-    if (dirty) { dirty = false; v3.sync(S); }
+    if (dirty) { dirty = false; v3.xray = man && man.l !== (v3.side() === 'B' ? 3 : 0) ? man.l : S.xray ? 'all' : null; v3.sync(S); }
     if (run && playing && now - v3.texAt > 450) v3.paint(S);
     if (v3.dirty) v3.render();
   } else if (dirty) { dirty = false; draw(ctx, S); }
