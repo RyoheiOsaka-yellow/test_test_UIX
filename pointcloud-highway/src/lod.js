@@ -48,6 +48,7 @@ export function buildLod(m, material, { cell = 64 } = {}) {
     geo.computeBoundingSphere();
     const points = new THREE.Points(geo, material);
     points.frustumCulled = false; // we cull ourselves
+    points.layers.set(2); // POINT_LAYER (see post.js): drawn in the accumulation pass
     const sphere = geo.boundingSphere.clone();
     const area = Math.max(1, Math.min(cell * cell, Math.PI * sphere.radius * sphere.radius));
     const cellObj = { points, offset: off, total, cum, sphere, spacing: Math.sqrt(area / total), lodScale: 1, drawn: 0 };

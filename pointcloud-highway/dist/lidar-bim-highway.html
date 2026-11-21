@@ -54,6 +54,7 @@
   .kv.hint { display: block; color: var(--accent2); }
   .filebtn { display: block; text-align: center; background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
   .filebtn:hover { background: #242a39; }
+  body.las-mode #sec-sim { display: none; }
   body.no-bim #sec-bim, body.no-bim #sec-4d, body.no-bim #drive, body.no-bim .presets [data-preset=bim], body.no-bim .presets [data-preset=scan2bim] { display: none; }
   .las-only { display: none; }
   body.las-mode .las-only { display: block; }
@@ -131,6 +132,7 @@
     <span>点数 <b id="stat-points">—</b></span>
     <span>BIM 要素 <b id="stat-elements">—</b></span>
     <span>描画 <b id="stat-drawn">—</b></span>
+    <span>車両 <b id="stat-vehicles">—</b></span>
     <span>合成 <b id="stat-time">—</b></span>
     <span><b id="stat-fps">— fps</b></span>
   </div>
@@ -148,8 +150,8 @@
   <div class="sec">
     <h2>プリセット</h2>
     <div class="presets grid2">
-      <button data-preset="lidar" class="active">LiDAR 点群<small>参考画像の再現</small></button>
-      <button data-preset="mono">モノクロ スキャン<small>反射強度のみ</small></button>
+      <button data-preset="lidar" class="active">LiDAR 点群<small>参考画像の再現（X-ray 蓄積）</small></button>
+      <button data-preset="mono">モノクロ スキャン<small>反射強度・ソリッド</small></button>
       <button data-preset="bim">BIM 重畳<small>カテゴリ色・レベル・通り芯</small></button>
       <button data-preset="scan2bim">Scan-to-BIM<small>設計との偏差ヒートマップ</small></button>
       <button data-preset="xray">X-ray 都市<small>建物マス + magma</small></button>
@@ -157,6 +159,12 @@
   </div>
   <div class="sec">
     <h2>点群 表示</h2>
+    <div class="row"><label>描画スタイル</label>
+      <select id="style" style="width:150px"><option value="accum">X-ray 蓄積（参考画像）</option><option value="solid">ソリッド（EDL）</option></select>
+    </div>
+    <div id="exposure-row" class="row"><label>露出</label><input id="exposure" type="range" min="0.3" max="3" step="0.05" value="1.0" style="width:120px"></div>
+    <div class="row"><label>ブルーム（発光）</label><input id="bloom" type="range" min="0" max="1.2" step="0.05" value="0.3" style="width:120px"></div>
+    <div class="row"><label>奥行きフェード</label><input id="fog" type="range" min="0" max="2" step="0.05" value="0.5" style="width:120px"></div>
     <div class="row"><label>着色モード</label></div>
     <select id="mode">
       <option value="0">LiDAR（反射強度 × 高さ）</option>
@@ -183,7 +191,13 @@
     </div>
     <div class="row check"><input id="surfel" type="checkbox" checked><label for="surfel">サーフェル（法線に沿った楕円スプラット）</label></div>
     <div class="row"><label>法線陰影</label><input id="shade" type="range" min="0" max="1" step="0.05" value="0.5" style="width:120px"></div>
-    <div class="row check"><input id="edl" type="checkbox" checked><label for="edl">Eye-Dome Lighting（輪郭強調）</label><input id="edl-strength" type="range" min="0" max="1.5" step="0.05" value="0.55" style="width:70px"></div>
+    <div class="row check" id="edl-row"><input id="edl" type="checkbox" checked><label for="edl">Eye-Dome Lighting（輪郭強調）</label><input id="edl-strength" type="range" min="0" max="1.5" step="0.05" value="0.35" style="width:70px"></div>
+  </div>
+  <div class="sec" id="sec-sim">
+    <h2>シミュレーション</h2>
+    <div class="row check"><input id="traffic" type="checkbox" checked><label for="traffic">交通流（走行車両・左側通行・追従）</label></div>
+    <div class="row check"><input id="pulse" type="checkbox" checked><label for="pulse">LiDAR パルス（走査波）</label></div>
+    <button id="reveal" style="width:100%">▶ スキャン演出を再生</button>
   </div>
   <div class="sec" id="sec-bim">
     <h2>レイヤー（BIM / Revit 風）</h2>
@@ -769,11 +783,11 @@ class Cloud {
 
 // nominal surface densities (points / m²) at density = 1
 const DENS = {
-  deck: 11, arterial: 4.5, street: 4.0, marking: 16, sidewalk: 3.2, kerb: 8, railFace: 6.5, railTop: 18,
+  deck: 16, arterial: 4.5, street: 4.0, marking: 16, sidewalk: 3.2, kerb: 8, railFace: 6.5, railTop: 18,
   girderSide: 2.2, girderBot: 1.0, column: 7, cap: 5, wall: 0.55, roof: 0.4, floorSlab: 0.09, ground: 0.8, grass: 0.4,
 };
 
-function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
+function synthesize(data, { density = 1, seed = 1, traffic = 'static' } = {}, progress = () => {}) {
   const rnd = mulberry32(seed);
   const jit = () => (rnd() + rnd() - 1) * 0.025; // ~σ 10 mm ranging noise
   const cloud = new Cloud(Math.round(3.2e6 * density + 3e5));
@@ -782,6 +796,16 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   const [cw, ch] = data.site.cropM;
   const inCrop = (x, z) => Math.abs(x) <= cw / 2 && Math.abs(z) <= ch / 2;
   const cnt = (n) => Math.floor(n) + (rnd() < n - Math.floor(n) ? 1 : 0);
+  // Low-discrepancy (R2 / R3) sequences: surfaces are sampled quasi-uniformly instead of with white noise,
+  // so the same number of points covers a surface without clumps and holes (reads as a solid face).
+  let qa = 0, qb = 0, qc = 0, qo = 0;
+  const qSeed = () => { qo = rnd() * 16; };
+  const q2 = (i) => { const a = qo + i * 0.7548776662466927, b = qo * 1.37 + i * 0.5698402909980532; qa = a - Math.floor(a); qb = b - Math.floor(b); };
+  const q3 = (i) => { const a = qo + i * 0.8191725133961645, b = qo * 1.37 + i * 0.6710436067037893, c = qo * 0.61 + i * 0.5497004779019703; qa = a - Math.floor(a); qb = b - Math.floor(b); qc = c - Math.floor(c); };
+  // low-frequency reflectance variation (patched asphalt, weathered concrete): value noise at 7 m and 31 m
+  const h2 = (i, j) => { let n = Math.imul(i, 374761393) + Math.imul(j, 668265263); n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  const vnoise = (x, z, sc) => { x /= sc; z /= sc; const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j, ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz); return (h2(i, j) * (1 - ux) + h2(i + 1, j) * ux) * (1 - uz) + (h2(i, j + 1) * (1 - ux) + h2(i + 1, j + 1) * ux) * uz; };
+  const tex = (x, z) => (vnoise(x, z, 7) - 0.5) * 1.2 + (vnoise(x, z, 31) - 0.5) * 0.8;
 
   // deviation (mm) of an element at a given point, signed
   const bump = (u, at, span) => { const t = (u - at) / (span || 1); return Math.abs(t) < 0.5 ? 0.5 + 0.5 * Math.cos(2 * Math.PI * t) : 0; };
@@ -800,9 +824,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   const UP = () => N(0, 1, 0);
   const emitE = (e, x, y, z, i, c, u = 0) => {
     const d = devAt(e, x, y, z, u);
-    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.06, c, d.mm, e.id, cn0, cn1, cn2);
+    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.022, c, d.mm, e.id, cn0, cn1, cn2);
   };
-  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.06, c, gauss(rnd) * 2.5, NO_ELEM, cn0, cn1, cn2);
+  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.022, c, gauss(rnd) * 2.5, NO_ELEM, cn0, cn1, cn2);
   // generic helpers (unassigned points)
   const vline = (x, z, y0, y1, perM, inten, cls, r = 0.08) => { N(0, 0, 0); for (let k = 0, n = (y1 - y0) * perM * D; k < n; k++) emit(x + (rnd() - 0.5) * r, y0 + rnd() * (y1 - y0), z + (rnd() - 0.5) * r, inten, cls); };
   const seg = (ax, ay, az, bx, by, bz, perM, inten, cls, r = 0.05, sag = 0) => {
@@ -812,14 +836,14 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   };
   const boxU = (cx, cy, cz, tx, tz, l, w, h, dens, inten, cls, top = true) => {
     const nx = -tz, nz = tx;
-    const area = 2 * (l * h + w * h) + (top ? l * w : 0);
+    const area = 2 * (l * h + w * h) + (top ? l * w : 0); qSeed();
     for (let k = 0, n = area * dens * D; k < n; k++) {
-      const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
+      q3(k); const f = qa * area; let u, v, y;
+      if (f < l * h) { u = (qb - 0.5) * l; v = -w / 2; y = qc * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (qb - 0.5) * l; v = w / 2; y = qc * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (qb - 0.5) * w; y = qc * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (qb - 0.5) * w; y = qc * h; N(tx, 0, tz); }
+      else { u = (qb - 0.5) * l; v = (qc - 0.5) * w; y = h; UP(); }
       emit(cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -850,7 +874,8 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const L = pathLength(path), w = road.width;
     const lanes = Math.max(1, road.lanes), laneW = (w - 0.9) / lanes;
     const per100 = road.kind === 'street' ? 0.3 : elev ? 2.0 : 1.3;
-    for (let q = 0, n = cnt((L / 100) * lanes * per100); q < n; q++) {
+    const moving = traffic === 'dynamic' && road.kind !== 'street'; // simulated separately (traffic.js)
+    for (let q = 0, n = moving ? 0 : cnt((L / 100) * lanes * per100); q < n; q++) {
       const p = samplePath(path, rnd() * L);
       const lane = Math.floor(rnd() * lanes);
       vehicle(p, -w / 2 + 0.45 + laneW * (lane + 0.5), elev, e);
@@ -872,13 +897,15 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (let k = 1; k < path.length; k++) {
       const a = path[k - 1], b = path[k];
       const ds = b.s - a.s;
+      qSeed();
       for (let q = 0, n = cnt(ds * w * base * D); q < n; q++) {
-        const t = rnd(), v = (rnd() - 0.5) * w;
+        q2(q); const t = qa, v = (qb - 0.5) * w;
         const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t;
         const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
         const lanePos = ((v + w / 2) % laneW) / laneW;
         const wear = Math.abs(lanePos - 0.25) < 0.08 || Math.abs(lanePos - 0.75) < 0.08 ? -0.025 : 0;
-        put(x + nx * v, y + 0.01, z + nz * v, 0.13 + wear + rnd() * 0.05, cls, a.s / L);
+        const X = x + nx * v, Z = z + nz * v;
+        put(X, y + 0.01, Z, 0.135 + wear + 0.04 * tex(X, Z), cls, a.s / L);
       }
       // markings
       const lines = road.kind === 'street' ? [] : [[-w / 2 + 0.45, 'solid'], [w / 2 - 0.45, 'solid']];
@@ -886,7 +913,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       if (!road.oneway && lanes === 1 && road.kind !== 'street') lines.push([0, 'solid']);
       for (const [v, kind] of lines) {
         for (let q = 0, m = cnt(ds * DENS.marking * D); q < m; q++) {
-          const t = rnd(), s = a.s + ds * t;
+          const t = (q + rnd()) / m, s = a.s + ds * t;
           if (kind === 'dash' && s % 15 > 6) continue;
           const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t;
           const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
@@ -922,8 +949,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
           UP();
+          qSeed();
           for (let q = 0, n = cnt(ds * 2.8 * DENS.sidewalk * D); q < n; q++) {
-            const t = rnd(), v = side * (w / 2 + 0.25 + rnd() * 2.8);
+            q2(q); const t = qa, v = side * (w / 2 + 0.25 + qb * 2.8);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
             const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
             emit(x + nx * v, 0.15, z + nz * v, 0.24 + rnd() * 0.08, CLS.ground);
@@ -1091,14 +1119,14 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
 
   // ---------- structural elements ----------
   const boxFaces = (e, cx, cy, cz, tx, tz, nx, nz, l, w, h, dens, inten, cls, top = false) => {
-    const area = 2 * (l * h + w * h) + (top ? l * w : 0);
+    const area = 2 * (l * h + w * h) + (top ? l * w : 0); qSeed();
     for (let k = 0, n = area * dens * D; k < n; k++) {
-      const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
+      q3(k); const f = qa * area; let u, v, y;
+      if (f < l * h) { u = (qb - 0.5) * l; v = -w / 2; y = qc * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (qb - 0.5) * l; v = w / 2; y = qc * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (qb - 0.5) * w; y = qc * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (qb - 0.5) * w; y = qc * h; N(tx, 0, tz); }
+      else { u = (qb - 0.5) * l; v = (qc - 0.5) * w; y = h; UP(); }
       emitE(e, cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -1110,8 +1138,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         const path = e.path, L = pathLength(path);
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
+          qSeed();
           for (let q = 0, n = ds * e.depth * DENS.girderSide * D; q < n; q++) {
-            const t = rnd(), f = rnd(), side = rnd() < 0.5 ? -1 : 1;
+            q2(q); const t = qa, f = qb, side = rnd() < 0.5 ? -1 : 1;
             N(a.nx * side, 0.25, a.nz * side);
             const v = side * (e.wTop / 2 + (e.wBot / 2 - e.wTop / 2) * f);
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - f * e.depth, z = a.z + (b.z - a.z) * t;
@@ -1119,13 +1148,13 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           }
           N(0, -1, 0);
           for (let q = 0, n = ds * e.wBot * DENS.girderBot * D; q < n; q++) {
-            const t = rnd(), v = (rnd() - 0.5) * e.wBot;
+            q2(q); const t = qa, v = (qb - 0.5) * e.wBot;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - e.depth, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.3 + rnd() * 0.08, CLS.girder, a.s / L);
           }
           // deck soffit outside the girder (cantilever slab underside)
           for (let q = 0, n = ds * (e.wTop + 2) * 1.2 * D; q < n; q++) {
-            const t = rnd(), v = (rnd() - 0.5) * (e.wTop + 2.4);
+            q2(q); const t = qa, v = (qb - 0.5) * (e.wTop + 2.4);
             if (Math.abs(v) < e.wTop / 2) continue;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.33, CLS.girder, a.s / L);
@@ -1138,8 +1167,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         const fence = e.road.kind !== 'ramp' || hashStr(e.tag) % 3 === 0;
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
+          qSeed();
           for (let q = 0, n = ds * e.h * 2 * DENS.railFace * D; q < n; q++) {
-            const t = rnd(), f = rnd(), sd = rnd() < 0.5 ? -1 : 1;
+            q2(q); const t = qa, f = qb, sd = (q & 1) ? -1 : 1;
             N(a.nx * sd, 0, a.nz * sd);
             const v = e.offset + sd * e.t / 2;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + f * e.h, z = a.z + (b.z - a.z) * t;
@@ -1147,7 +1177,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           }
           UP();
           for (let q = 0, n = ds * DENS.railTop * D; q < n; q++) {
-            const t = rnd(), v = e.offset + (rnd() - 0.5) * e.t;
+            const t = Math.min(1, (q + rnd()) / n), v = e.offset + (rnd() - 0.5) * e.t;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + e.h, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.86 + rnd() * 0.12, CLS.railing, (a.s + ds * t) / L);
           }
@@ -1181,8 +1211,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       case 'column': {
         const h = e.yTop - e.yBot;
         if (e.round) {
+          qSeed();
           for (let k = 0, n = Math.PI * e.colW * h * DENS.column * D; k < n; k++) {
-            const th = rnd() * Math.PI * 2, y = e.yBot + rnd() * h;
+            q2(k); const th = qa * Math.PI * 2, y = e.yBot + qb * h;
             N(Math.cos(th), 0, Math.sin(th));
             emitE(e, e.x + Math.cos(th) * e.colW / 2, y, e.z + Math.sin(th) * e.colW / 2, 0.4 + rnd() * 0.08 + (y < 1.2 ? 0.1 : 0), CLS.column);
           }
@@ -1235,8 +1266,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       if (L < 0.5) continue;
       const nxw = (b[1] - a[1]) / L, nzw = -(b[0] - a[0]) / L; // outward-ish normal (sign irrelevant)
       N(nxw, 0, nzw);
+      qSeed();
       for (let k = 0, n = L * h * wallD * 1.6 * D; k < n; k++) {
-        const t = rnd(), y = rnd() * h;
+        q2(k); const t = qa, y = qb * h;
         const vis = 0.3 + 0.7 * Math.exp(-y / 50);
         if (rnd() > vis) continue;
         const ph = (y % floorH) / floorH, mt = (t * L) % mullion;
@@ -1251,7 +1283,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       }
       // vertical corner line
       N(0, 0, 0);
-      for (let k = 0, n = h * 6 * D; k < n; k++) emitE(e, a[0], rnd() * h, a[1], 0.5 + rnd() * 0.08, CLS.building);
+      for (let k = 0, n = h * 2.5 * D; k < n; k++) emitE(e, a[0], rnd() * h, a[1], 0.46 + rnd() * 0.08, CLS.building);
       // roof parapet (1 m) + balconies
       N(nxw, 0, nzw);
       for (let k = 0, n = L * 4 * D; k < n; k++) { const t = rnd(); emitE(e, a[0] + (b[0] - a[0]) * t, h + rnd() * 1.0, a[1] + (b[1] - a[1]) * t, 0.45, CLS.building); }
@@ -1276,8 +1308,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const bw = x1 - x0, bh = z1 - z0;
     const roofN = Math.min(e.area, 12000) * DENS.roof * D;
     UP();
+    qSeed();
     for (let tries = 0, got = 0; got < roofN && tries < roofN * 4; tries++) {
-      const x = x0 + rnd() * bw, z = z0 + rnd() * bh;
+      q2(tries); const x = x0 + qa * bw, z = z0 + qb * bh;
       if (!pointInPolygon(x, z, poly)) continue;
       got++;
       emitE(e, x, h + 0.02, z, 0.3 + rnd() * 0.08, CLS.building);
@@ -1325,13 +1358,14 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
 
   // ---------- ground, water, parks, parking lots ----------
   UP();
+  qSeed();
   for (let k = 0, n = cw * ch * DENS.ground * D; k < n; k++) {
-    const x = (rnd() - 0.5) * cw, z = (rnd() - 0.5) * ch;
+    q2(k); const x = (qa - 0.5) * cw, z = (qb - 0.5) * ch;
     const m = mask.get(x, z);
     if (m === 1 || m === 2 || m === 3 || m === 255) continue;
     const und = 0.25 * Math.sin(x * 0.011) * Math.cos(z * 0.013);
     if (m === 4) { if (rnd() < DENS.grass / DENS.ground) emit(x, und + rnd() * 0.25, z, 0.26 + rnd() * 0.12, CLS.lowVeg); }
-    else emit(x, und, z, 0.18 + rnd() * 0.08, CLS.ground);
+    else emit(x, und, z, 0.18 + 0.04 * tex(x, z) + rnd() * 0.05, CLS.ground);
   }
   // open plots become small parking lots: rows of cars + a few bollards
   for (let k = 0, lots = 0; k < 4000 && lots < 160; k++) {
@@ -3844,11 +3878,11 @@ class Cloud {
 
 // nominal surface densities (points / m²) at density = 1
 const DENS = {
-  deck: 11, arterial: 4.5, street: 4.0, marking: 16, sidewalk: 3.2, kerb: 8, railFace: 6.5, railTop: 18,
+  deck: 16, arterial: 4.5, street: 4.0, marking: 16, sidewalk: 3.2, kerb: 8, railFace: 6.5, railTop: 18,
   girderSide: 2.2, girderBot: 1.0, column: 7, cap: 5, wall: 0.55, roof: 0.4, floorSlab: 0.09, ground: 0.8, grass: 0.4,
 };
 
-function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
+function synthesize(data, { density = 1, seed = 1, traffic = 'static' } = {}, progress = () => {}) {
   const rnd = mulberry32(seed);
   const jit = () => (rnd() + rnd() - 1) * 0.025; // ~σ 10 mm ranging noise
   const cloud = new Cloud(Math.round(3.2e6 * density + 3e5));
@@ -3857,6 +3891,16 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   const [cw, ch] = data.site.cropM;
   const inCrop = (x, z) => Math.abs(x) <= cw / 2 && Math.abs(z) <= ch / 2;
   const cnt = (n) => Math.floor(n) + (rnd() < n - Math.floor(n) ? 1 : 0);
+  // Low-discrepancy (R2 / R3) sequences: surfaces are sampled quasi-uniformly instead of with white noise,
+  // so the same number of points covers a surface without clumps and holes (reads as a solid face).
+  let qa = 0, qb = 0, qc = 0, qo = 0;
+  const qSeed = () => { qo = rnd() * 16; };
+  const q2 = (i) => { const a = qo + i * 0.7548776662466927, b = qo * 1.37 + i * 0.5698402909980532; qa = a - Math.floor(a); qb = b - Math.floor(b); };
+  const q3 = (i) => { const a = qo + i * 0.8191725133961645, b = qo * 1.37 + i * 0.6710436067037893, c = qo * 0.61 + i * 0.5497004779019703; qa = a - Math.floor(a); qb = b - Math.floor(b); qc = c - Math.floor(c); };
+  // low-frequency reflectance variation (patched asphalt, weathered concrete): value noise at 7 m and 31 m
+  const h2 = (i, j) => { let n = Math.imul(i, 374761393) + Math.imul(j, 668265263); n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+  const vnoise = (x, z, sc) => { x /= sc; z /= sc; const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j, ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz); return (h2(i, j) * (1 - ux) + h2(i + 1, j) * ux) * (1 - uz) + (h2(i, j + 1) * (1 - ux) + h2(i + 1, j + 1) * ux) * uz; };
+  const tex = (x, z) => (vnoise(x, z, 7) - 0.5) * 1.2 + (vnoise(x, z, 31) - 0.5) * 0.8;
 
   // deviation (mm) of an element at a given point, signed
   const bump = (u, at, span) => { const t = (u - at) / (span || 1); return Math.abs(t) < 0.5 ? 0.5 + 0.5 * Math.cos(2 * Math.PI * t) : 0; };
@@ -3875,9 +3919,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   const UP = () => N(0, 1, 0);
   const emitE = (e, x, y, z, i, c, u = 0) => {
     const d = devAt(e, x, y, z, u);
-    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.06, c, d.mm, e.id, cn0, cn1, cn2);
+    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.022, c, d.mm, e.id, cn0, cn1, cn2);
   };
-  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.06, c, gauss(rnd) * 2.5, NO_ELEM, cn0, cn1, cn2);
+  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.022, c, gauss(rnd) * 2.5, NO_ELEM, cn0, cn1, cn2);
   // generic helpers (unassigned points)
   const vline = (x, z, y0, y1, perM, inten, cls, r = 0.08) => { N(0, 0, 0); for (let k = 0, n = (y1 - y0) * perM * D; k < n; k++) emit(x + (rnd() - 0.5) * r, y0 + rnd() * (y1 - y0), z + (rnd() - 0.5) * r, inten, cls); };
   const seg = (ax, ay, az, bx, by, bz, perM, inten, cls, r = 0.05, sag = 0) => {
@@ -3887,14 +3931,14 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   };
   const boxU = (cx, cy, cz, tx, tz, l, w, h, dens, inten, cls, top = true) => {
     const nx = -tz, nz = tx;
-    const area = 2 * (l * h + w * h) + (top ? l * w : 0);
+    const area = 2 * (l * h + w * h) + (top ? l * w : 0); qSeed();
     for (let k = 0, n = area * dens * D; k < n; k++) {
-      const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
+      q3(k); const f = qa * area; let u, v, y;
+      if (f < l * h) { u = (qb - 0.5) * l; v = -w / 2; y = qc * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (qb - 0.5) * l; v = w / 2; y = qc * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (qb - 0.5) * w; y = qc * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (qb - 0.5) * w; y = qc * h; N(tx, 0, tz); }
+      else { u = (qb - 0.5) * l; v = (qc - 0.5) * w; y = h; UP(); }
       emit(cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -3925,7 +3969,8 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const L = pathLength(path), w = road.width;
     const lanes = Math.max(1, road.lanes), laneW = (w - 0.9) / lanes;
     const per100 = road.kind === 'street' ? 0.3 : elev ? 2.0 : 1.3;
-    for (let q = 0, n = cnt((L / 100) * lanes * per100); q < n; q++) {
+    const moving = traffic === 'dynamic' && road.kind !== 'street'; // simulated separately (traffic.js)
+    for (let q = 0, n = moving ? 0 : cnt((L / 100) * lanes * per100); q < n; q++) {
       const p = samplePath(path, rnd() * L);
       const lane = Math.floor(rnd() * lanes);
       vehicle(p, -w / 2 + 0.45 + laneW * (lane + 0.5), elev, e);
@@ -3947,13 +3992,15 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (let k = 1; k < path.length; k++) {
       const a = path[k - 1], b = path[k];
       const ds = b.s - a.s;
+      qSeed();
       for (let q = 0, n = cnt(ds * w * base * D); q < n; q++) {
-        const t = rnd(), v = (rnd() - 0.5) * w;
+        q2(q); const t = qa, v = (qb - 0.5) * w;
         const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t;
         const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
         const lanePos = ((v + w / 2) % laneW) / laneW;
         const wear = Math.abs(lanePos - 0.25) < 0.08 || Math.abs(lanePos - 0.75) < 0.08 ? -0.025 : 0;
-        put(x + nx * v, y + 0.01, z + nz * v, 0.13 + wear + rnd() * 0.05, cls, a.s / L);
+        const X = x + nx * v, Z = z + nz * v;
+        put(X, y + 0.01, Z, 0.135 + wear + 0.04 * tex(X, Z), cls, a.s / L);
       }
       // markings
       const lines = road.kind === 'street' ? [] : [[-w / 2 + 0.45, 'solid'], [w / 2 - 0.45, 'solid']];
@@ -3961,7 +4008,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       if (!road.oneway && lanes === 1 && road.kind !== 'street') lines.push([0, 'solid']);
       for (const [v, kind] of lines) {
         for (let q = 0, m = cnt(ds * DENS.marking * D); q < m; q++) {
-          const t = rnd(), s = a.s + ds * t;
+          const t = (q + rnd()) / m, s = a.s + ds * t;
           if (kind === 'dash' && s % 15 > 6) continue;
           const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t;
           const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
@@ -3997,8 +4044,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
           UP();
+          qSeed();
           for (let q = 0, n = cnt(ds * 2.8 * DENS.sidewalk * D); q < n; q++) {
-            const t = rnd(), v = side * (w / 2 + 0.25 + rnd() * 2.8);
+            q2(q); const t = qa, v = side * (w / 2 + 0.25 + qb * 2.8);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
             const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
             emit(x + nx * v, 0.15, z + nz * v, 0.24 + rnd() * 0.08, CLS.ground);
@@ -4166,14 +4214,14 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
 
   // ---------- structural elements ----------
   const boxFaces = (e, cx, cy, cz, tx, tz, nx, nz, l, w, h, dens, inten, cls, top = false) => {
-    const area = 2 * (l * h + w * h) + (top ? l * w : 0);
+    const area = 2 * (l * h + w * h) + (top ? l * w : 0); qSeed();
     for (let k = 0, n = area * dens * D; k < n; k++) {
-      const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
+      q3(k); const f = qa * area; let u, v, y;
+      if (f < l * h) { u = (qb - 0.5) * l; v = -w / 2; y = qc * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (qb - 0.5) * l; v = w / 2; y = qc * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (qb - 0.5) * w; y = qc * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (qb - 0.5) * w; y = qc * h; N(tx, 0, tz); }
+      else { u = (qb - 0.5) * l; v = (qc - 0.5) * w; y = h; UP(); }
       emitE(e, cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -4185,8 +4233,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         const path = e.path, L = pathLength(path);
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
+          qSeed();
           for (let q = 0, n = ds * e.depth * DENS.girderSide * D; q < n; q++) {
-            const t = rnd(), f = rnd(), side = rnd() < 0.5 ? -1 : 1;
+            q2(q); const t = qa, f = qb, side = rnd() < 0.5 ? -1 : 1;
             N(a.nx * side, 0.25, a.nz * side);
             const v = side * (e.wTop / 2 + (e.wBot / 2 - e.wTop / 2) * f);
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - f * e.depth, z = a.z + (b.z - a.z) * t;
@@ -4194,13 +4243,13 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           }
           N(0, -1, 0);
           for (let q = 0, n = ds * e.wBot * DENS.girderBot * D; q < n; q++) {
-            const t = rnd(), v = (rnd() - 0.5) * e.wBot;
+            q2(q); const t = qa, v = (qb - 0.5) * e.wBot;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - e.depth, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.3 + rnd() * 0.08, CLS.girder, a.s / L);
           }
           // deck soffit outside the girder (cantilever slab underside)
           for (let q = 0, n = ds * (e.wTop + 2) * 1.2 * D; q < n; q++) {
-            const t = rnd(), v = (rnd() - 0.5) * (e.wTop + 2.4);
+            q2(q); const t = qa, v = (qb - 0.5) * (e.wTop + 2.4);
             if (Math.abs(v) < e.wTop / 2) continue;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.33, CLS.girder, a.s / L);
@@ -4213,8 +4262,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         const fence = e.road.kind !== 'ramp' || hashStr(e.tag) % 3 === 0;
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
+          qSeed();
           for (let q = 0, n = ds * e.h * 2 * DENS.railFace * D; q < n; q++) {
-            const t = rnd(), f = rnd(), sd = rnd() < 0.5 ? -1 : 1;
+            q2(q); const t = qa, f = qb, sd = (q & 1) ? -1 : 1;
             N(a.nx * sd, 0, a.nz * sd);
             const v = e.offset + sd * e.t / 2;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + f * e.h, z = a.z + (b.z - a.z) * t;
@@ -4222,7 +4272,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           }
           UP();
           for (let q = 0, n = ds * DENS.railTop * D; q < n; q++) {
-            const t = rnd(), v = e.offset + (rnd() - 0.5) * e.t;
+            const t = Math.min(1, (q + rnd()) / n), v = e.offset + (rnd() - 0.5) * e.t;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + e.h, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.86 + rnd() * 0.12, CLS.railing, (a.s + ds * t) / L);
           }
@@ -4256,8 +4306,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       case 'column': {
         const h = e.yTop - e.yBot;
         if (e.round) {
+          qSeed();
           for (let k = 0, n = Math.PI * e.colW * h * DENS.column * D; k < n; k++) {
-            const th = rnd() * Math.PI * 2, y = e.yBot + rnd() * h;
+            q2(k); const th = qa * Math.PI * 2, y = e.yBot + qb * h;
             N(Math.cos(th), 0, Math.sin(th));
             emitE(e, e.x + Math.cos(th) * e.colW / 2, y, e.z + Math.sin(th) * e.colW / 2, 0.4 + rnd() * 0.08 + (y < 1.2 ? 0.1 : 0), CLS.column);
           }
@@ -4310,8 +4361,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       if (L < 0.5) continue;
       const nxw = (b[1] - a[1]) / L, nzw = -(b[0] - a[0]) / L; // outward-ish normal (sign irrelevant)
       N(nxw, 0, nzw);
+      qSeed();
       for (let k = 0, n = L * h * wallD * 1.6 * D; k < n; k++) {
-        const t = rnd(), y = rnd() * h;
+        q2(k); const t = qa, y = qb * h;
         const vis = 0.3 + 0.7 * Math.exp(-y / 50);
         if (rnd() > vis) continue;
         const ph = (y % floorH) / floorH, mt = (t * L) % mullion;
@@ -4326,7 +4378,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       }
       // vertical corner line
       N(0, 0, 0);
-      for (let k = 0, n = h * 6 * D; k < n; k++) emitE(e, a[0], rnd() * h, a[1], 0.5 + rnd() * 0.08, CLS.building);
+      for (let k = 0, n = h * 2.5 * D; k < n; k++) emitE(e, a[0], rnd() * h, a[1], 0.46 + rnd() * 0.08, CLS.building);
       // roof parapet (1 m) + balconies
       N(nxw, 0, nzw);
       for (let k = 0, n = L * 4 * D; k < n; k++) { const t = rnd(); emitE(e, a[0] + (b[0] - a[0]) * t, h + rnd() * 1.0, a[1] + (b[1] - a[1]) * t, 0.45, CLS.building); }
@@ -4351,8 +4403,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const bw = x1 - x0, bh = z1 - z0;
     const roofN = Math.min(e.area, 12000) * DENS.roof * D;
     UP();
+    qSeed();
     for (let tries = 0, got = 0; got < roofN && tries < roofN * 4; tries++) {
-      const x = x0 + rnd() * bw, z = z0 + rnd() * bh;
+      q2(tries); const x = x0 + qa * bw, z = z0 + qb * bh;
       if (!pointInPolygon(x, z, poly)) continue;
       got++;
       emitE(e, x, h + 0.02, z, 0.3 + rnd() * 0.08, CLS.building);
@@ -4400,13 +4453,14 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
 
   // ---------- ground, water, parks, parking lots ----------
   UP();
+  qSeed();
   for (let k = 0, n = cw * ch * DENS.ground * D; k < n; k++) {
-    const x = (rnd() - 0.5) * cw, z = (rnd() - 0.5) * ch;
+    q2(k); const x = (qa - 0.5) * cw, z = (qb - 0.5) * ch;
     const m = mask.get(x, z);
     if (m === 1 || m === 2 || m === 3 || m === 255) continue;
     const und = 0.25 * Math.sin(x * 0.011) * Math.cos(z * 0.013);
     if (m === 4) { if (rnd() < DENS.grass / DENS.ground) emit(x, und + rnd() * 0.25, z, 0.26 + rnd() * 0.12, CLS.lowVeg); }
-    else emit(x, und, z, 0.18 + rnd() * 0.08, CLS.ground);
+    else emit(x, und, z, 0.18 + 0.04 * tex(x, z) + rnd() * 0.05, CLS.ground);
   }
   // open plots become small parking lots: rows of cars + a few bollards
   for (let k = 0, lots = 0; k < 4000 && lots < 160; k++) {
@@ -4557,6 +4611,21 @@ function createPointMaterial(lut, visTex) {
       uHasRgb: { value: 0 },
       uLodScale: { value: 1 },
       uShade: { value: 0.5 },  // normal-based shading amount
+      // accumulation ("X-ray") rendering: additive gaussian splats. Each point carries the screen area it
+      // represents (sample spacing² × pixels-per-metre²), so a surface accumulates a weight equal to its
+      // coverage (≈ number of overlapping layers × class opacity) whatever the sampling density, distance or LOD
+      uAccum: { value: 0 },
+      uClsW: { value: new Float32Array(32).fill(1) },
+      uClsK: { value: new Float32Array(32).fill(1) },
+      uClsMax: { value: new Float32Array(32).fill(6) }, // largest splat (px): big for continuous surfaces, small for sparse see-through classes  // splat width relative to the sample spacing (smooth fill vs crisp dots)
+      uFog: { value: 0.0 },
+      uFogStart: { value: 300 },
+      // scan sweep: an expanding ring that brightens points; points beyond uRevealR are hidden
+      uSweepC: { value: new THREE.Vector3() },
+      uSweepR: { value: -1e6 },
+      uSweepW: { value: 14 },
+      uSweepK: { value: 0 },
+      uRevealR: { value: 1e9 },
     },
     vertexShader: /* glsl */ `
       attribute float intensity;
@@ -4571,10 +4640,18 @@ function createPointMaterial(lut, visTex) {
       uniform float uSpacing[32];
       uniform float uTanHalfFov;
       uniform float uShade, uLodScale;
+      uniform float uClsW[32];
+      uniform float uClsK[32];
+      uniform float uClsMax[32];
+      uniform float uAccum, uFog, uFogStart, uSweepR, uSweepW, uSweepK, uRevealR;
+      uniform vec3 uSweepC;
       varying vec3 vColor;
       varying vec3 vNv;
       varying float vSize;
       varying float vHide;
+      varying float vAlpha;
+      varying float vViewZ;
+      varying float vPpm;
       #include <clipping_planes_pars_vertex>
       ${VIS_GLSL}
       vec3 lut(float row, float t) { return texture2D(uLut, vec2(clamp(t, 0.002, 0.998), (row + 0.5) / ${LUT_ROWS}.0)).rgb; }
@@ -4583,7 +4660,8 @@ function createPointMaterial(lut, visTex) {
         gl_Position = projectionMatrix * mvPosition;
         #include <clipping_planes_vertex>
         int ci = int(cls + 0.5);
-        vHide = (uClsMask[ci] < 0.5 || visOf(elem) < 0.5) ? 1.0 : 0.0;
+        float sweepD = length(position.xz - uSweepC.xz);
+        vHide = (uClsMask[ci] < 0.5 || visOf(elem) < 0.5 || sweepD > uRevealR) ? 1.0 : 0.0;
         float hN = clamp((position.y - uHMin) / (uHMax - uHMin), 0.0, 1.0);
         float I = clamp(intensity * uGain, 0.0, 1.0);
         float devMm = dev * 255.0 - 128.0;
@@ -4605,42 +4683,84 @@ function createPointMaterial(lut, visTex) {
           nv = normalize(normalMatrix * normal);
           if (nv.z < 0.0) nv = -nv; // orientation is ambiguous: face the camera
           float lam = 0.45 + 0.55 * abs(dot(nv, normalize(vec3(0.35, 0.75, 0.6))));
-          c *= mix(1.0, lam, uShade);
+          c *= mix(1.0, lam, uShade * (1.0 - 0.6 * uAccum));
         }
         vNv = nv;
-        vColor = c;
         float dist = max(1.0, -mvPosition.z);
-        // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
-        float px = uSize * uViewportH / dist * 0.45;
-        float splat = uSpacing[ci] * uLodScale * 0.62 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
-        px = clamp(max(px, min(splat, uMaxPx * 1.7)), uMinPx, uMaxPx * 1.7) * (1.0 + sel * 0.8);
+        float ppm = uViewportH / (2.0 * uTanHalfFov * dist);          // CSS pixels per metre at this depth
+        float fog = exp(-max(0.0, dist - uFogStart) * uFog * 0.0006);
+        float band = uSweepK * exp(-pow((sweepD - uSweepR) / uSweepW, 2.0));
+        c = mix(c, vec3(0.7, 1.0, 1.0), clamp(band, 0.0, 0.85));
+        float px, alpha = 1.0;
+        if (uAccum > 0.5) {
+          // gaussian splat ~1.7× the local sample spacing; energy per point = ppm² / ρ0 spread over the kernel
+          float sp = uSpacing[ci] * uLodScale;
+          bool hasN = dot(normal, normal) > 0.05;
+          float spx = sp * ppm;                                         // spacing in pixels = side of the area this point stands for
+          px = clamp(spx * (hasN ? uClsK[ci] : 0.6) * uSize * 0.5, 1.3, hasN ? uClsMax[ci] : 5.0) * (1.0 + sel * 0.6);
+          float kernel = px > 2.5 ? 0.288 : 1.0;                       // ∫ exp(-10 r²) over the unit sprite, or a flat square
+          float wgt = uClsW[ci];
+          if (ci == 21 && normal.y > 0.9) wgt *= 0.22;                   // parapet copings are sampled far denser than the faces
+          if (px <= 2.5 && hasN) wgt *= max(abs(nv.z), 0.2);            // projected area (large splats get this from the ellipse)
+          alpha = wgt * spx * spx / (kernel * px * px);
+          alpha = min(alpha, 3.0) * fog * (1.0 + 2.5 * band) * (1.0 + 2.0 * sel);
+        } else {
+          // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
+          px = uSize * uViewportH / dist * 0.45;
+          bool hasN = dot(normal, normal) > 0.05;
+          float cap = hasN ? max(uMaxPx * 1.7, min(uClsMax[ci], 120.0)) : uMaxPx * 1.7; // continuous surfaces may grow to close up
+          float splat = uSpacing[ci] * uLodScale * (hasN ? uClsK[ci] * 0.85 : 0.62) * ppm * uSize * 0.5;
+          px = clamp(max(min(px, uMaxPx * 1.7), min(splat, cap)), uMinPx, cap) * (1.0 + sel * 0.8);
+          c *= fog;
+        }
+        vColor = c;
+        vAlpha = alpha;
+        vViewZ = mvPosition.z; vPpm = ppm;
         vSize = px;
         gl_PointSize = px * uPixelRatio;
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uOpacity, uSurfel;
+      uniform float uOpacity, uSurfel, uAccum;
+      uniform mat4 projectionMatrix;
+      varying float vViewZ;
+      varying float vPpm;
       varying vec3 vColor;
       varying float vSize;
       varying float vHide;
+      varying float vAlpha;
       varying vec3 vNv;
       #include <clipping_planes_pars_fragment>
       void main() {
         #include <clipping_planes_fragment>
         if (vHide > 0.5) discard;
+        float r2 = 0.0;
+        float depth = gl_FragCoord.z;
         if (vSize > 2.5) {
           vec2 d = gl_PointCoord - 0.5;
           vec2 a = vec2(vNv.x, -vNv.y); // projected normal (PointCoord y points down)
           float la = length(a);
+          if (uSurfel > 0.5 && vNv.z > 0.0 && uAccum < 0.5) {
+            // true surfel depth: the fragment lies on the tangent plane, not at the sprite centre. Coplanar
+            // splats then share one continuous depth, so EDL shades the surface instead of outlining every disc.
+            vec2 off = vec2(d.x, -d.y) * vSize / vPpm;                 // view-space offset (m)
+            float z = vViewZ - dot(vNv.xy, off) / max(vNv.z, 0.18);
+            depth = clamp((projectionMatrix[2][2] * z + projectionMatrix[3][2]) / (-z) * 0.5 + 0.5, 0.0, 1.0);
+          }
           if (uSurfel > 0.5 && la > 0.03) {
             // ellipse: the disc on the tangent plane foreshortens along the projected normal by |n.z|
             a /= la;
             float cosv = max(abs(vNv.z), 0.18);
             float u = dot(d, a) / cosv, v = dot(d, vec2(-a.y, a.x));
-            if (u * u + v * v > 0.25) discard;
-          } else if (dot(d, d) > 0.25) discard;
+            r2 = u * u + v * v;
+          } else r2 = dot(d, d);
+          if (r2 > 0.25) discard;
         }
-        gl_FragColor = vec4(vColor, uOpacity);
+        if (uAccum > 0.5) {
+          float w = vAlpha * (vSize > 2.5 ? exp(-10.0 * r2) : 1.0);
+          gl_FragColor = vec4(vColor * w, w); // additive: rgb accumulates colour × weight, alpha the weight
+        } else gl_FragColor = vec4(vColor, uOpacity);
+        gl_FragDepth = depth;
       }
     `,
     clipping: true,
@@ -4648,6 +4768,19 @@ function createPointMaterial(lut, visTex) {
     depthWrite: true,
   });
   return mat;
+}
+
+/** Switch a point material between opaque (depth-tested, EDL) and additive accumulation rendering. */
+function setAccumulation(mat, on) {
+  mat.uniforms.uAccum.value = on ? 1 : 0;
+  mat.transparent = on;
+  mat.depthTest = !on;
+  mat.depthWrite = !on;
+  mat.blending = on ? THREE.CustomBlending : THREE.NormalBlending;
+  mat.blendEquation = THREE.AddEquation;
+  mat.blendSrc = THREE.OneFactor; mat.blendDst = THREE.OneFactor;
+  mat.blendSrcAlpha = THREE.OneFactor; mat.blendDstAlpha = THREE.OneFactor;
+  mat.needsUpdate = true;
 }
 
 /** Translucent BIM faces with per-element sequence (4D) + selection support + flat derivative shading. */
@@ -4745,78 +4878,137 @@ function createBimEdgeMaterial(visTex) {
   });
 }
 
-// ===== src/edl.js =====
-// Eye-Dome Lighting post-process (Potree style) — adds depth-based shading so dense point
-// clouds read as surfaces instead of a flat speckle.
+// ===== src/post.js =====
+// Render pipeline:
+//   solid mode       : scene (points + overlays, depth) → Eye-Dome Lighting → LDR
+//   accumulation mode: points only, additive into a half-float target → density tone map → LDR,
+//                      then overlays (BIM, annotations) drawn on top
+//   both             : bloom (3 mip levels of a thresholded blur) + vignette → screen
+// Points live on layer 2, everything else on layer 0.
 
-class EDL {
+const POINT_LAYER = 2;
+
+const VS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+
+class Post {
   constructor(renderer, camera) {
-    this.renderer = renderer;
-    this.camera = camera;
-    this.enabled = true;
-    this.strength = 0.55;
-    this.radius = 1.2;
+    this.renderer = renderer; this.camera = camera;
+    this.enabled = true;       // EDL on/off (solid mode)
+    this.strength = 0.35; this.radius = 1.2;
+    this.accumulate = false; this.exposure = 1.0;
+    this.bloom = 0.3; this.vignette = 0.35;
+    const gl = renderer.getContext();
+    this.canFloat = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-    this.target = new THREE.WebGLRenderTarget(size.x, size.y, { depthTexture: new THREE.DepthTexture(size.x, size.y, THREE.UnsignedIntType) });
-    this.target.texture.colorSpace = THREE.SRGBColorSpace;
-    this.material = new THREE.ShaderMaterial({
-      uniforms: {
-        tColor: { value: this.target.texture },
-        tDepth: { value: this.target.depthTexture },
-        uNear: { value: camera.near },
-        uFar: { value: camera.far },
-        uStrength: { value: this.strength },
-        uRadius: { value: this.radius },
-        uTexel: { value: new THREE.Vector2(1 / size.x, 1 / size.y) },
-      },
-      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
-      fragmentShader: /* glsl */ `
-        uniform sampler2D tColor, tDepth; uniform float uNear, uFar, uStrength, uRadius; uniform vec2 uTexel;
-        varying vec2 vUv;
-        float linDepth(vec2 uv) {
-          float d = texture2D(tDepth, uv).x;
-          if (d >= 0.99999) return uFar * 4.0;
-          float z = d * 2.0 - 1.0;
-          return 2.0 * uNear * uFar / (uFar + uNear - z * (uFar - uNear));
-        }
-        void main() {
-          vec4 col = texture2D(tColor, vUv);
-          float dc = log2(linDepth(vUv));
-          float resp = 0.0;
-          vec2 o[8];
-          o[0] = vec2(1,0); o[1] = vec2(-1,0); o[2] = vec2(0,1); o[3] = vec2(0,-1);
-          o[4] = vec2(0.707,0.707); o[5] = vec2(-0.707,0.707); o[6] = vec2(0.707,-0.707); o[7] = vec2(-0.707,-0.707);
-          for (int i = 0; i < 8; i++) {
-            float dn = log2(linDepth(vUv + o[i] * uTexel * uRadius));
-            resp += max(0.0, dc - dn);
-          }
-          resp /= 8.0;
-          float shade = exp(-resp * 300.0 * uStrength);
-          gl_FragColor = vec4(col.rgb * shade, col.a);
-        }
-      `,
-      depthTest: false, depthWrite: false,
-    });
-    this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
-    this.scene = new THREE.Scene();
-    this.scene.add(this.quad);
+    const w = size.x, h = size.y;
+    this.sceneT = new THREE.WebGLRenderTarget(w, h, { depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType) });
+    this.accT = new THREE.WebGLRenderTarget(w, h, { type: this.canFloat ? THREE.HalfFloatType : THREE.UnsignedByteType, depthBuffer: false });
+    this.ldrT = new THREE.WebGLRenderTarget(w, h, {});
+    this.blurT = [];
+    for (let i = 0; i < 3; i++) { const d = 2 << i; this.blurT.push([new THREE.WebGLRenderTarget(Math.max(1, w / d | 0), Math.max(1, h / d | 0), { depthBuffer: false }), new THREE.WebGLRenderTarget(Math.max(1, w / d | 0), Math.max(1, h / d | 0), { depthBuffer: false })]); }
+    const mk = (uniforms, fragmentShader) => new THREE.ShaderMaterial({ uniforms, vertexShader: VS, fragmentShader, depthTest: false, depthWrite: false });
+    this.edlMat = mk({ tColor: { value: this.sceneT.texture }, tDepth: { value: this.sceneT.depthTexture }, uNear: { value: camera.near }, uFar: { value: camera.far }, uStrength: { value: this.strength }, uRadius: { value: this.radius }, uTexel: { value: new THREE.Vector2(1 / w, 1 / h) }, uOn: { value: 1 } }, /* glsl */ `
+      uniform sampler2D tColor, tDepth; uniform float uNear, uFar, uStrength, uRadius, uOn; uniform vec2 uTexel;
+      varying vec2 vUv;
+      float linDepth(vec2 uv) {
+        float d = texture2D(tDepth, uv).x;
+        if (d >= 0.99999) return uFar * 4.0;
+        float z = d * 2.0 - 1.0;
+        return 2.0 * uNear * uFar / (uFar + uNear - z * (uFar - uNear));
+      }
+      void main() {
+        vec4 col = texture2D(tColor, vUv);
+        if (uOn < 0.5) { gl_FragColor = col; return; }
+        float dc = log2(linDepth(vUv));
+        float resp = 0.0;
+        vec2 o[8];
+        o[0] = vec2(1,0); o[1] = vec2(-1,0); o[2] = vec2(0,1); o[3] = vec2(0,-1);
+        o[4] = vec2(0.707,0.707); o[5] = vec2(-0.707,0.707); o[6] = vec2(0.707,-0.707); o[7] = vec2(-0.707,-0.707);
+        for (int i = 0; i < 8; i++) resp += max(0.0, dc - log2(linDepth(vUv + o[i] * uTexel * uRadius)));
+        gl_FragColor = vec4(col.rgb * exp(-resp / 8.0 * 300.0 * uStrength), col.a);
+      }`);
+    // density tone map: average colour of the accumulated splats, brightness 1 - exp(-weight × exposure);
+    // very dense overlap warms slightly towards white so hot spots glow
+    this.toneMat = mk({ tAcc: { value: this.accT.texture }, uExposure: { value: 1 }, uFloat: { value: this.canFloat ? 1 : 0 } }, /* glsl */ `
+      uniform sampler2D tAcc; uniform float uExposure, uFloat; varying vec2 vUv;
+      void main() {
+        vec4 acc = texture2D(tAcc, vUv);
+        float w = acc.a;
+        vec3 avg = pow(max(acc.rgb / max(w, 1e-5), 0.0), vec3(1.0 / 2.2)); // the LUT is decoded to linear when sampled: show its true colours
+        float b = 1.0 - exp(-w * uExposure * 1.6);            // one fully opaque layer (w = 1) → 80 %
+        avg = mix(avg, vec3(1.0), 0.12 * smoothstep(10.0, 60.0, w * uExposure));
+        gl_FragColor = vec4(avg * b, 1.0);
+      }`);
+    this.brightMat = mk({ tColor: { value: null }, uThreshold: { value: 0.62 }, uTexel: { value: new THREE.Vector2() } }, /* glsl */ `
+      uniform sampler2D tColor; uniform float uThreshold; uniform vec2 uTexel; varying vec2 vUv;
+      void main() {
+        vec3 c = 0.25 * (texture2D(tColor, vUv + uTexel * vec2(-0.5, -0.5)).rgb + texture2D(tColor, vUv + uTexel * vec2(0.5, -0.5)).rgb + texture2D(tColor, vUv + uTexel * vec2(-0.5, 0.5)).rgb + texture2D(tColor, vUv + uTexel * vec2(0.5, 0.5)).rgb);
+        float l = max(c.r, max(c.g, c.b));
+        gl_FragColor = vec4(c * smoothstep(uThreshold, uThreshold + 0.35, l), 1.0);
+      }`);
+    this.blurMat = mk({ tColor: { value: null }, uDir: { value: new THREE.Vector2() } }, /* glsl */ `
+      uniform sampler2D tColor; uniform vec2 uDir; varying vec2 vUv;
+      void main() {
+        vec3 c = texture2D(tColor, vUv).rgb * 0.227027;
+        c += (texture2D(tColor, vUv + uDir * 1.3846).rgb + texture2D(tColor, vUv - uDir * 1.3846).rgb) * 0.316216;
+        c += (texture2D(tColor, vUv + uDir * 3.2308).rgb + texture2D(tColor, vUv - uDir * 3.2308).rgb) * 0.070270;
+        gl_FragColor = vec4(c, 1.0);
+      }`);
+    this.finalMat = mk({ tColor: { value: this.ldrT.texture }, tB0: { value: this.blurT[0][0].texture }, tB1: { value: this.blurT[1][0].texture }, tB2: { value: this.blurT[2][0].texture }, uBloom: { value: this.bloom }, uVignette: { value: this.vignette } }, /* glsl */ `
+      uniform sampler2D tColor, tB0, tB1, tB2; uniform float uBloom, uVignette; varying vec2 vUv;
+      void main() {
+        vec3 c = texture2D(tColor, vUv).rgb;
+        vec3 b = texture2D(tB0, vUv).rgb * 0.5 + texture2D(tB1, vUv).rgb * 0.8 + texture2D(tB2, vUv).rgb * 1.0;
+        c += b * uBloom;
+        vec2 q = vUv - 0.5;
+        c *= 1.0 - uVignette * smoothstep(0.35, 0.95, length(q) * 1.25);
+        gl_FragColor = vec4(c, 1.0);
+      }`);
+    this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.edlMat);
+    this.quadScene = new THREE.Scene(); this.quadScene.add(this.quad);
     this.ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   }
   setSize(w, h) {
-    this.target.setSize(w, h);
-    this.material.uniforms.uTexel.value.set(1 / w, 1 / h);
+    this.sceneT.setSize(w, h); this.accT.setSize(w, h); this.ldrT.setSize(w, h);
+    this.blurT.forEach((pair, i) => { const d = 2 << i; pair.forEach((t) => t.setSize(Math.max(1, w / d | 0), Math.max(1, h / d | 0))); });
+    this.edlMat.uniforms.uTexel.value.set(1 / w, 1 / h);
   }
+  pass(mat, target) { this.quad.material = mat; this.renderer.setRenderTarget(target); this.renderer.render(this.quadScene, this.ortho); }
   render(scene) {
-    const r = this.renderer;
-    if (!this.enabled) { r.setRenderTarget(null); r.render(scene, this.camera); return; }
-    this.material.uniforms.uStrength.value = this.strength;
-    this.material.uniforms.uRadius.value = this.radius;
-    this.material.uniforms.uNear.value = this.camera.near;
-    this.material.uniforms.uFar.value = this.camera.far;
-    r.setRenderTarget(this.target);
-    r.render(scene, this.camera);
-    r.setRenderTarget(null);
-    r.render(this.scene, this.ortho);
+    const r = this.renderer, cam = this.camera;
+    const accum = this.accumulate && this.canFloat;
+    if (accum) {
+      cam.layers.set(POINT_LAYER);
+      r.setRenderTarget(this.accT); r.setClearColor(0x000000, 0); r.clear(); r.render(scene, cam);
+      r.setClearColor(0x000000, 1);
+      this.toneMat.uniforms.uExposure.value = this.exposure;
+      this.pass(this.toneMat, this.ldrT);
+      cam.layers.set(0);
+      const ac = r.autoClear; r.autoClear = false;
+      r.setRenderTarget(this.ldrT); r.clearDepth(); r.render(scene, cam);
+      r.autoClear = ac;
+    } else {
+      cam.layers.set(0); cam.layers.enable(POINT_LAYER);
+      r.setRenderTarget(this.sceneT); r.render(scene, cam);
+      const u = this.edlMat.uniforms;
+      u.uOn.value = this.enabled ? 1 : 0; u.uStrength.value = this.strength; u.uRadius.value = this.radius; u.uNear.value = cam.near; u.uFar.value = cam.far;
+      this.pass(this.edlMat, this.ldrT);
+    }
+    cam.layers.set(0); cam.layers.enable(POINT_LAYER);
+    // bloom: threshold + downsample, then separable blur at 1/2, 1/4, 1/8
+    if (this.bloom > 0.001) {
+      let src = this.ldrT;
+      for (let i = 0; i < 3; i++) {
+        const [a, b] = this.blurT[i];
+        if (i === 0) { this.brightMat.uniforms.tColor.value = src.texture; this.brightMat.uniforms.uTexel.value.set(1 / src.width, 1 / src.height); this.pass(this.brightMat, a); }
+        else { this.blurMat.uniforms.tColor.value = src.texture; this.blurMat.uniforms.uDir.value.set(0, 0); this.pass(this.blurMat, a); }
+        this.blurMat.uniforms.tColor.value = a.texture; this.blurMat.uniforms.uDir.value.set(1 / a.width, 0); this.pass(this.blurMat, b);
+        this.blurMat.uniforms.tColor.value = b.texture; this.blurMat.uniforms.uDir.value.set(0, 1 / a.height); this.pass(this.blurMat, a);
+        src = a;
+      }
+    }
+    this.finalMat.uniforms.uBloom.value = this.bloom; this.finalMat.uniforms.uVignette.value = this.vignette;
+    this.pass(this.finalMat, null);
   }
 }
 
@@ -6581,6 +6773,7 @@ function buildLod(m, material, { cell = 64 } = {}) {
     geo.computeBoundingSphere();
     const points = new THREE.Points(geo, material);
     points.frustumCulled = false; // we cull ourselves
+    points.layers.set(2); // POINT_LAYER (see post.js): drawn in the accumulation pass
     const sphere = geo.boundingSphere.clone();
     const area = Math.max(1, Math.min(cell * cell, Math.PI * sphere.radius * sphere.radius));
     const cellObj = { points, offset: off, total, cum, sphere, spacing: Math.sqrt(area / total), lodScale: 1, drawn: 0 };
@@ -6624,6 +6817,153 @@ function buildLod(m, material, { cell = 64 } = {}) {
   return { group, cells, update, dispose, cloud: out, objects: cells.map((c) => c.points), stats };
 }
 
+// ===== src/traffic.js =====
+// Dynamic traffic: vehicles are small point clusters that drive along the road network (left-hand
+// traffic, simple car-following), updated on the CPU every frame and drawn with the point material.
+
+const CLS_VEHICLE = 24, TRAFFIC_LAYER = 2; // same layer as POINT_LAYER in post.js
+
+/** Quasi-uniform samples of a vehicle body in local coordinates (u forward, v right, h up). */
+function template(kind, rnd) {
+  const boxes = kind === 'truck'
+    ? [{ u0: 2.6, u1: 4.9, w: 2.3, h0: 0.5, h1: 2.7, glass: 1.5 }, { u0: -4.9, u1: 2.4, w: 2.45, h0: 0.9, h1: 3.3, glass: 9 }]   // cab + cargo box
+    : [{ u0: -2.2, u1: 2.2, w: 1.75, h0: 0.25, h1: 0.82, glass: 9 }, { u0: -1.45, u1: 0.75, w: 1.6, h0: 0.82, h1: 1.42, glass: 0.86 }]; // body + cabin
+  const pts = [];
+  const dens = kind === 'truck' ? 4.2 : 8.5;
+  for (const b of boxes) {
+    const l = b.u1 - b.u0, h = b.h1 - b.h0, w = b.w;
+    const faces = [
+      { area: l * w, f: (a, c) => [b.u0 + a * l, (c - 0.5) * w, b.h1, 0, 0, 1] },               // top
+      { area: l * h, f: (a, c) => [b.u0 + a * l, -w / 2, b.h0 + c * h, 0, -1, 0] },             // left
+      { area: l * h, f: (a, c) => [b.u0 + a * l, w / 2, b.h0 + c * h, 0, 1, 0] },               // right
+      { area: w * h, f: (a, c) => [b.u1, (a - 0.5) * w, b.h0 + c * h, 1, 0, 0] },               // front
+      { area: w * h, f: (a, c) => [b.u0, (a - 0.5) * w, b.h0 + c * h, -1, 0, 0] },              // back
+    ];
+    for (const face of faces) {
+      const n = Math.round(face.area * dens), o = rnd() * 9;
+      for (let i = 0; i < n; i++) {
+        const a = (o + i * 0.7548776662466927) % 1, c = (o * 1.37 + i * 0.5698402909980532) % 1;
+        const p = face.f(a, c);
+        const isGlass = p[2] > b.glass && p[5] === 0; // side / front / rear glazing above the belt line
+        if (isGlass && rnd() < 0.6) continue;
+        pts.push({ u: p[0], v: p[1], h: p[2], nu: p[3], nv: p[4], nh: p[5], i: isGlass ? 0.2 : 0.5 + rnd() * 0.2 });
+      }
+    }
+  }
+  return pts;
+}
+
+function buildTraffic(data, material, { rate = 1 } = {}) {
+  const rnd = mulberry32(11);
+  const tracks = [];
+  for (const r of data.roads) {
+    if (r.kind === 'street') continue;
+    const path = framePath(resample(r.pts, 2));
+    const L = pathLength(path);
+    if (L < 10) continue;
+    tracks.push({ road: r, path, L, lanes: Math.max(1, r.lanes), w: r.width, oneway: !!(r.oneway || r.elevated), elevated: !!r.elevated });
+  }
+  // entry points of every directed track → successor lookup at a vehicle's exit point
+  const hash = new Map();
+  const key = (x, z) => `${Math.floor(x / 4)},${Math.floor(z / 4)}`;
+  tracks.forEach((t, ti) => {
+    for (const dir of t.oneway ? [1] : [1, -1]) {
+      const p = dir > 0 ? t.path[0] : t.path[t.path.length - 1];
+      const k = key(p.x, p.z); if (!hash.has(k)) hash.set(k, []); hash.get(k).push({ ti, dir, x: p.x, y: p.y, z: p.z });
+    }
+  });
+  const successors = (ti, dir) => {
+    const t = tracks[ti], p = dir > 0 ? t.path[t.path.length - 1] : t.path[0], out = [];
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      const l = hash.get(`${Math.floor(p.x / 4) + di},${Math.floor(p.z / 4) + dj}`); if (!l) continue;
+      for (const c of l) if (c.ti !== ti && Math.hypot(c.x - p.x, c.z - p.z) < 3 && Math.abs(c.y - p.y) < 1.5) out.push(c);
+    }
+    return out;
+  };
+  const car = template('car', rnd), truck = template('truck', rnd);
+  // spawn
+  const vehicles = [];
+  const totalL = tracks.reduce((a, t) => a + t.L, 0);
+  for (const [ti, t] of tracks.entries()) {
+    const per100 = (t.elevated ? 2.0 : 1.2) * rate;
+    const n = Math.floor((t.L / 100) * t.lanes * per100 + rnd());
+    for (let i = 0; i < n; i++) {
+      const dir = t.oneway ? 1 : rnd() < 0.5 ? 1 : -1;
+      const perDir = t.oneway ? t.lanes : Math.max(1, Math.floor(t.lanes / 2));
+      const isTruck = rnd() < 0.16;
+      const v0 = (t.road.kind === 'expressway' ? 17 + rnd() * 6 : t.road.kind === 'ramp' ? 11 + rnd() * 4 : 9 + rnd() * 5) * (isTruck ? 0.88 : 1);
+      vehicles.push({ ti, dir, lane: Math.floor(rnd() * perDir), s: rnd() * t.L, v: v0, v0, tpl: isTruck ? truck : car, len: isTruck ? 9.8 : 4.4, off: 0 });
+    }
+  }
+  let total = 0; for (const v of vehicles) { v.off = total; total += v.tpl.length; }
+  const pos = new Float32Array(total * 3), nrm = new Int8Array(total * 3), inten = new Uint8Array(total), cls = new Uint8Array(total).fill(CLS_VEHICLE), dev = new Uint8Array(total).fill(128), elem = new Uint16Array(total).fill(65535);
+  for (const v of vehicles) v.tpl.forEach((p, i) => { inten[v.off + i] = p.i * 255; });
+  const geo = new THREE.BufferGeometry();
+  const posAttr = new THREE.BufferAttribute(pos, 3), nrmAttr = new THREE.BufferAttribute(nrm, 3, true);
+  posAttr.setUsage(THREE.DynamicDrawUsage); nrmAttr.setUsage(THREE.DynamicDrawUsage);
+  geo.setAttribute('position', posAttr); geo.setAttribute('normal', nrmAttr);
+  geo.setAttribute('intensity', new THREE.BufferAttribute(inten, 1, true));
+  geo.setAttribute('cls', new THREE.BufferAttribute(cls, 1, false));
+  geo.setAttribute('dev', new THREE.BufferAttribute(dev, 1, true));
+  geo.setAttribute('elem', new THREE.BufferAttribute(elem, 1, false));
+  const points = new THREE.Points(geo, material);
+  points.frustumCulled = false; points.layers.set(TRAFFIC_LAYER);
+  points.onBeforeRender = () => { material.uniforms.uLodScale.value = 1; material.uniformsNeedUpdate = true; };
+
+  const lateral = (t, v) => {
+    const laneW = (t.w - 0.9) / t.lanes;
+    if (t.oneway) return -t.w / 2 + 0.45 + laneW * (v.lane + 0.5);
+    return -laneW * (v.lane + 0.5) * 1; // left of the centre line in the direction of travel
+  };
+  const groups = new Map();
+  function update(dt) {
+    // car following: per (track, direction, lane), slow down behind the leader
+    groups.clear();
+    for (const v of vehicles) { const k = v.ti * 64 + (v.dir > 0 ? 0 : 32) + v.lane; let g = groups.get(k); if (!g) { g = []; groups.set(k, g); } g.push(v); }
+    for (const g of groups.values()) {
+      g.sort((a, b) => (a.s - b.s) * a.dir);
+      for (let i = 0; i < g.length; i++) {
+        const v = g[i], lead = g[i + 1];
+        let target = v.v0;
+        if (lead) { const gap = Math.abs(lead.s - v.s) - (lead.len + v.len) / 2; target = Math.min(target, Math.max(0, (gap - 5) / 1.3)); }
+        v.v += Math.max(-7 * dt, Math.min(2.2 * dt, target - v.v));
+      }
+    }
+    for (const v of vehicles) {
+      let t = tracks[v.ti];
+      v.s += v.v * v.dir * dt;
+      if (v.s > t.L || v.s < 0) {
+        const succ = successors(v.ti, v.dir);
+        if (succ.length) {
+          const c = succ[Math.floor(rnd() * succ.length)], over = v.s > t.L ? v.s - t.L : -v.s;
+          v.ti = c.ti; v.dir = c.dir; t = tracks[v.ti];
+          v.s = c.dir > 0 ? over : t.L - over;
+          const perDir = t.oneway ? t.lanes : Math.max(1, Math.floor(t.lanes / 2));
+          v.lane = Math.min(v.lane, perDir - 1);
+        } else { // dead end (edge of the model): re-enter somewhere else
+          let r = rnd() * totalL, ti = 0; while (ti < tracks.length - 1 && r > tracks[ti].L) { r -= tracks[ti].L; ti++; }
+          v.ti = ti; t = tracks[ti]; v.dir = t.oneway ? 1 : rnd() < 0.5 ? 1 : -1; v.s = v.dir > 0 ? 0 : t.L;
+          const perDir = t.oneway ? t.lanes : Math.max(1, Math.floor(t.lanes / 2));
+          v.lane = Math.floor(rnd() * perDir);
+        }
+      }
+      const p = samplePath(t.path, Math.max(0, Math.min(t.L, v.s)));
+      const tx = p.tx * v.dir, tz = p.tz * v.dir, nx = p.nx * v.dir, nz = p.nz * v.dir;
+      const lat = lateral(t, v);
+      const bx = p.x + nx * lat, bz = p.z + nz * lat, by = p.y + 0.02;
+      const tpl = v.tpl; let o = v.off * 3;
+      for (let i = 0; i < tpl.length; i++, o += 3) {
+        const q = tpl[i];
+        pos[o] = bx + tx * q.u + nx * q.v; pos[o + 1] = by + q.h; pos[o + 2] = bz + tz * q.u + nz * q.v;
+        nrm[o] = (tx * q.nu + nx * q.nv) * 127; nrm[o + 1] = q.nh * 127; nrm[o + 2] = (tz * q.nu + nz * q.nv) * 127;
+      }
+    }
+    posAttr.needsUpdate = true; nrmAttr.needsUpdate = true;
+  }
+  update(0);
+  return { points, update, count: vehicles.length, pointCount: total, dispose: () => geo.dispose() };
+}
+
 // ===== src/main.js =====
 
 
@@ -6646,7 +6986,7 @@ controls.target.set(60, 10, 40);
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.minDistance = 4; controls.maxDistance = 3500;
 const labelRenderer = new CSS2DRenderer({ element: $('labels') });
-const edl = new EDL(renderer, camera);
+const edl = new Post(renderer, camera);
 const director = new Director(camera, controls);
 const measure = new Measure(scene);
 const sectionBox = new SectionBox();
@@ -6662,7 +7002,13 @@ const state = {
   showCloud: true, showBim: false, bimStyle: 'wire', showBuildingsBim: false, showLevels: false, showGrid: false,
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
   clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null, budget: 8e6,
+  style: 'accum', autoStyle: true, exposure: 1.0, bloom: 0.3, fog: 0.5, trafficOn: true, pulse: true,
 };
+// test / kiosk overrides: ?density=0.2&budget=3000000&style=solid
+{ const q = new URLSearchParams(location.search); if (q.has('noreveal')) { state.noReveal = true; state.pulse = false; } if (q.has('notraffic')) state.trafficOn = false; if (q.has('density')) state.density = +q.get('density'); if (q.has('budget')) state.budget = +q.get('budget'); if (q.has('style')) state.style = q.get('style'); }
+let traffic = null;
+const sweep = { t: -1, dur: 4.2, pulseT: 0, maxR: 1200 };
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let data = null, elements = [], points = null, lod = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
 
 function resize() {
@@ -6699,7 +7045,9 @@ async function loadSite(key) {
   sectionBox.min.set(-cw / 2, -3, -ch / 2); sectionBox.max.set(cw / 2, 60, ch / 2); sectionBox.update();
   syncSectionSliders();
   renderCrs();
+  rebuildTraffic();
   overlay.classList.add('hidden');
+  if (!state.noReveal && !reduceMotion) startReveal();
 }
 
 function rebuildCloud() {
@@ -6716,7 +7064,7 @@ function rebuildCloud() {
       overlay.classList.add('hidden');
       resolve();
     };
-    worker.postMessage({ data, options: { density: state.density, seed: 1 } });
+    worker.postMessage({ data, options: { density: state.density, seed: 1, traffic: state.trafficOn ? 'dynamic' : 'static' } });
   });
 }
 
@@ -6741,6 +7089,34 @@ function installCloud(m) {
   $('stat-points').textContent = m.n.toLocaleString();
   renderLegend();
 }
+// ---------------------------------------------------------------- traffic + scan sweep
+function rebuildTraffic() {
+  if (traffic) { scene.remove(traffic.points); traffic.dispose(); traffic = null; }
+  if (!state.trafficOn || state.las || !data) { $('stat-vehicles').textContent = '—'; return; }
+  traffic = buildTraffic(data, pointMat, { rate: 1 });
+  scene.add(traffic.points);
+  $('stat-vehicles').textContent = traffic.count.toLocaleString();
+}
+function startReveal() { if (!points) return; const b = new THREE.Box3().setFromObject(points); sweep.maxR = b.getSize(new THREE.Vector3()).length() / 2 + 40; sweep.t = 0; }
+function updateSweep(dt) {
+  const u = pointMat.uniforms;
+  const c = director.mode === 'drive' ? camera.position : controls.target;
+  if (sweep.t >= 0) { // reveal: the scan front expands from the centre, points appear behind it
+    sweep.t += dt;
+    const k = Math.min(1, sweep.t / sweep.dur), e = 1 - Math.pow(1 - k, 2.2), R = e * sweep.maxR;
+    u.uSweepC.value.set(0, 0, 0); u.uRevealR.value = R; u.uSweepR.value = R - 6; u.uSweepW.value = 10 + 30 * e; u.uSweepK.value = 1.0;
+    if (k >= 1) { sweep.t = -1; u.uRevealR.value = 1e9; u.uSweepK.value = 0; sweep.pulseT = 0; }
+    return;
+  }
+  if (!state.pulse) { u.uSweepK.value = 0; return; }
+  // periodic LiDAR pulse: a faint ring travelling outwards every 6 s (from the vehicle in drive mode)
+  sweep.pulseT += dt;
+  const period = 6, speed = director.mode === 'drive' ? 90 : 320, tt = sweep.pulseT % period;
+  if (tt < dt) u.uSweepC.value.copy(c);
+  u.uSweepR.value = tt * speed; u.uSweepW.value = director.mode === 'drive' ? 5 : 16;
+  u.uSweepK.value = 0.55 * Math.max(0, 1 - tt / (period * 0.75));
+}
+
 /** Push updated per-point arrays (elem / dev after scan-to-BIM) to the GPU. */
 function refreshCloudAttributes() {
   for (const c of lod.cells) { for (const name of ['elem', 'dev']) { const a = c.points.geometry.getAttribute(name); if (a) a.needsUpdate = true; } }
@@ -6862,6 +7238,7 @@ async function loadLasFile(file) {
   director.route = null; director.setMode('orbit'); setActiveView(null);
   document.body.classList.add('las-mode', 'no-bim');
   $('s2b-log').textContent = '';
+  rebuildTraffic();
   installCloud(m);
   applySpacing();
   const h = m.header;
@@ -6870,9 +7247,12 @@ async function loadLasFile(file) {
   $('stat-time').textContent = `${(m.spacing).toFixed(2)} m/pt`;
   $('drive-name').textContent = '—（実測データでは利用不可）';
   // fit camera and section box to the data
-  const box = new THREE.Box3().setFromObject(points);
-  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
-  director.flyTo(c.clone().add(new THREE.Vector3(-0.6, 0.55, 0.75).normalize().multiplyScalar(r * 1.9)), c, 10);
+  // frame the bulk of the data (3rd–97th percentile), not stray far points
+  const sx = [], sy = [], sz = []; for (let i = 0, st = Math.max(1, Math.floor(m.n / 20000)); i < m.n; i += st) { sx.push(cloud.pos[i * 3]); sy.push(cloud.pos[i * 3 + 1]); sz.push(cloud.pos[i * 3 + 2]); }
+  const pct = (arr, f) => { arr.sort((p, q) => p - q); return arr[Math.min(arr.length - 1, Math.floor(arr.length * f))]; };
+  const box = new THREE.Box3(new THREE.Vector3(pct(sx, 0.03), pct(sy, 0.03), pct(sz, 0.03)), new THREE.Vector3(pct(sx, 0.97), pct(sy, 0.97), pct(sz, 0.97)));
+  const c = box.getCenter(new THREE.Vector3()), r = Math.max(10, box.getSize(new THREE.Vector3()).length() / 2);
+  director.flyTo(c.clone().add(new THREE.Vector3(-0.6, 0.55, 0.75).normalize().multiplyScalar(r * 1.35)), c, 10);
   controls.maxDistance = r * 8;
   sectionBox.min.set(c.x - r, c.y - r, c.z - r); sectionBox.max.set(c.x + r, c.y + r, c.z + r); sectionBox.update();
   const cfg = [['sx0', c.x - r, c.x + r, c.x - r], ['sx1', c.x - r, c.x + r, c.x + r], ['sy0', c.y - r, c.y + r, c.y - r], ['sy1', c.y - r, c.y + r, c.y + r], ['sz0', c.z - r, c.z + r, c.z - r], ['sz1', c.z - r, c.z + r, c.z + r]];
@@ -6943,10 +7323,10 @@ function applySpacing() {
   const D = state.density, sp = pointMat.uniforms.uSpacing.value;
   const s = (d, cap = 1.2) => Math.min(cap, 1 / Math.sqrt(d * D));
   sp.fill(0.5);
-  sp[CLS.deck] = s(DENS.deck); sp[CLS.road] = s(DENS.arterial * 0.8); sp[CLS.marking] = 0.22 / Math.sqrt(D) * 0.6;
+  sp[CLS.deck] = s(DENS.deck); sp[CLS.road] = s(DENS.arterial * 0.8); sp[CLS.marking] = 0.097 / Math.sqrt(D); // a 0.15 m line sampled at 16·D points per metre
   sp[CLS.railing] = s(DENS.railFace); sp[CLS.girder] = s(DENS.girderSide); sp[CLS.column] = s(DENS.column); sp[CLS.cap] = s(DENS.cap);
   sp[CLS.building] = s(DENS.wall * 0.8, 1.0); sp[CLS.floor] = s(DENS.floorSlab, 1.4); sp[CLS.ground] = s(DENS.ground, 1.3); sp[CLS.lowVeg] = s(DENS.grass, 1.3);
-  sp[CLS.highVeg] = 0.45; sp[CLS.vehicle] = s(6); sp[CLS.pole] = 0.12; sp[CLS.furniture] = 0.12; sp[CLS.gantry] = 0.1; sp[CLS.water] = 1.5; sp[CLS.noise] = 0.1;
+  sp[CLS.highVeg] = 0.45; sp[CLS.vehicle] = state.trafficOn ? 0.4 : s(6); sp[CLS.pole] = 0.12; sp[CLS.furniture] = 0.12; sp[CLS.gantry] = 0.1; sp[CLS.water] = 1.5; sp[CLS.noise] = 0.1;
   if (state.las) sp.fill(Math.min(2.5, Math.max(0.03, state.las.spacing * 1.1)));
   pointMat.uniforms.uTanHalfFov.value = Math.tan((camera.fov / 2) * Math.PI / 180);
 }
@@ -6959,10 +7339,34 @@ function applyMode() {
   pointMat.uniforms.uDevRange.value = state.devRange;
   pointMat.uniforms.uSurfel.value = state.surfel ? 1 : 0;
   pointMat.uniforms.uShade.value = state.shade;
+  applyStyle();
   $('row-group').style.display = state.mode <= 1 ? '' : 'none';
   $('mix-group').style.display = state.mode === 0 ? '' : 'none';
   $('dev-group').style.display = state.mode === 4 ? '' : 'none';
   renderLegend();
+}
+/** Rendering style: additive accumulation ("X-ray", like the reference footage) or opaque splats with EDL. */
+const maxSplat = Math.min(220, (renderer.getContext().getParameter(renderer.getContext().ALIASED_POINT_SIZE_RANGE)[1] || 64) / renderer.getPixelRatio());
+function applyStyle() {
+  const accum = state.style === 'accum' && edl.canFloat;
+  if ((pointMat.uniforms.uAccum.value > 0.5) !== accum) setAccumulation(pointMat, accum);
+  edl.accumulate = accum; edl.exposure = state.exposure; edl.bloom = state.bloom;
+  pointMat.uniforms.uFog.value = state.fog;
+  // per-class opacity of one surface layer in accumulation mode (buildings and vegetation stay translucent)
+  const W = pointMat.uniforms.uClsW.value; W.fill(1);
+  if (!state.las) {
+    W[CLS.deck] = 1.0; W[CLS.road] = 0.9; W[CLS.marking] = 3.0; W[CLS.railing] = 0.65; W[CLS.girder] = 0.4; W[CLS.column] = 0.7; W[CLS.cap] = 0.6;
+    W[CLS.building] = 0.55; W[CLS.floor] = 0.35; W[CLS.ground] = 0.35; W[CLS.lowVeg] = 0.45; W[CLS.highVeg] = 0.3; W[CLS.water] = 0.5;
+    W[CLS.vehicle] = 1.0; W[CLS.pole] = 0.6; W[CLS.gantry] = 0.8; W[CLS.furniture] = 0.6; W[CLS.noise] = 0.2;
+  }
+  // splat width: continuous surfaces are filled smoothly, facades and small objects stay crisp
+  const K = pointMat.uniforms.uClsK.value; K.fill(state.las ? 1.2 : 0.7);
+  const M = pointMat.uniforms.uClsMax.value; M.fill(state.las ? Math.min(maxSplat, 64) : 5);
+  if (!state.las) { for (const c of [CLS.deck, CLS.road, CLS.ground, CLS.lowVeg, CLS.water, CLS.marking]) M[c] = maxSplat; for (const c of [CLS.railing, CLS.vehicle]) M[c] = Math.min(maxSplat, 40); for (const c of [CLS.girder, CLS.column, CLS.cap]) M[c] = 22; }
+  if (!state.las) { for (const c of [CLS.deck, CLS.road, CLS.ground, CLS.lowVeg, CLS.water]) K[c] = 1.35; K[CLS.railing] = 1.0; K[CLS.girder] = 1.1; K[CLS.column] = 1.1; K[CLS.cap] = 1.1; K[CLS.marking] = 1.2; K[CLS.building] = 0.62; K[CLS.floor] = 0.9; K[CLS.vehicle] = 1.0; }
+  document.body.classList.toggle('style-accum', accum);
+  $('style').value = state.style; $('edl-row').style.display = accum ? 'none' : ''; $('exposure-row').style.display = accum ? '' : 'none';
+  if (state.style === 'accum' && !edl.canFloat && !applyStyle.warned) { applyStyle.warned = true; toast('この GPU は浮動小数点レンダーターゲット非対応のため、ソリッド表示に切り替えました', 6000); }
 }
 function renderLegend() {
   const el = $('legend');
@@ -7040,6 +7444,7 @@ for (const id of ['sx0', 'sx1', 'sy0', 'sy1', 'sz0', 'sz1']) {
 
 // ---------------------------------------------------------------- selection
 const raycaster = new THREE.Raycaster();
+raycaster.layers.enableAll();
 raycaster.params.Points.threshold = 0.6;
 const pointer = new THREE.Vector2();
 let downPos = null;
@@ -7085,7 +7490,7 @@ function select(id) {
 }
 function expectedPoints(e) {
   switch (e.type) {
-    case 'deck': return e.length * e.width * 11;
+    case 'deck': return e.length * e.width * 16;
     case 'girder': return e.length * (e.depth * 2.2 * 2 + e.wBot * 1.0 + 2.4);
     case 'railing': return e.length * (e.h * 2 * 6.5 + 18 + 5);
     case 'column': return (e.round ? Math.PI * e.colW : 2 * (e.colW + e.colL)) * (e.yTop - e.yBot) * 7;
@@ -7141,6 +7546,8 @@ function setActiveView(name) { document.querySelectorAll('[data-view]').forEach(
 document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
   const v = b.dataset.view;
   setActiveView(v);
+  // close-range views read better as opaque surfels; overviews as the accumulated X-ray look
+  if (state.autoStyle) setStyle(v === 'drive' || v === 'low' ? 'solid' : 'accum');
   if (v === 'drive') { if (!director.route) { toast('走行ルートがありません（実測データでは利用不可）'); setActiveView(null); return; } director.setMode('drive'); return; }
   if (v === 'fly') { director.setMode('flyover'); return; }
   director.setMode('orbit');
@@ -7162,6 +7569,14 @@ $('row').addEventListener('change', (e) => { state.row = e.target.value; applyMo
 $('mix').addEventListener('input', (e) => { state.heightMix = +e.target.value; applyMode(); });
 $('psize').addEventListener('input', (e) => { state.pointSize = +e.target.value; applyMode(); });
 $('gain').addEventListener('input', (e) => { state.gain = +e.target.value; applyMode(); });
+$('style').addEventListener('change', (e) => { state.style = e.target.value; applyStyle(); });
+$('exposure').addEventListener('input', (e) => { state.exposure = +e.target.value; applyStyle(); });
+$('bloom').addEventListener('input', (e) => { state.bloom = +e.target.value; applyStyle(); });
+$('fog').addEventListener('input', (e) => { state.fog = +e.target.value; applyStyle(); });
+$('traffic').addEventListener('change', async (e) => { state.trafficOn = e.target.checked; if (!state.las) { await rebuildCloud(); applyPhase(); } rebuildTraffic(); });
+$('pulse').addEventListener('change', (e) => { state.pulse = e.target.checked; });
+$('reveal').addEventListener('click', () => startReveal());
+function setStyle(v) { if (state.style === v) return; state.style = v; $('style').value = v; applyStyle(); }
 $('surfel').addEventListener('change', (e) => { state.surfel = e.target.checked; applyMode(); });
 $('shade').addEventListener('input', (e) => { state.shade = +e.target.value; applyMode(); });
 $('devrange').addEventListener('change', (e) => { state.devRange = +e.target.value; applyMode(); });
@@ -7188,11 +7603,11 @@ document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('cl
 
 function applyPreset(name) {
   const set = (id, v) => { const el = $(id); if (el.type === 'checkbox') el.checked = v; else el.value = v; el.dispatchEvent(new Event(el.type === 'range' ? 'input' : 'change')); };
-  if (name === 'lidar') { set('mode', 0); set('row', 'lidar'); set('mix', 0.15); set('gain', 1.0); set('show-bim', false); set('show-levels', false); set('show-grid', false); set('edl', true); }
-  if (name === 'mono') { set('mode', 2); set('gain', 1.0); set('show-bim', false); set('show-levels', false); set('show-grid', false); set('edl', true); }
-  if (name === 'bim') { set('mode', 2); set('gain', 0.7); set('show-bim', true); set('bim-style', 'category'); set('show-levels', true); set('show-grid', true); }
-  if (name === 'scan2bim') { set('mode', 4); set('gain', 1.0); set('show-bim', true); set('bim-style', 'wire'); set('show-levels', false); set('show-grid', true); }
-  if (name === 'xray') { set('mode', 0); set('gain', 1.0); set('row', 'magma'); set('show-bim', true); set('bim-style', 'shaded'); set('show-bldg', true); set('mix', 0.55); }
+  if (name === 'lidar') { setStyle('accum'); set('mode', 0); set('row', 'lidar'); set('mix', 0.15); set('gain', 1.0); set('show-bim', false); set('show-levels', false); set('show-grid', false); set('edl', true); }
+  if (name === 'mono') { setStyle('solid'); set('mode', 2); set('gain', 1.0); set('show-bim', false); set('show-levels', false); set('show-grid', false); set('edl', true); }
+  if (name === 'bim') { setStyle('solid'); set('mode', 2); set('gain', 0.7); set('show-bim', true); set('bim-style', 'category'); set('show-levels', true); set('show-grid', true); }
+  if (name === 'scan2bim') { setStyle('solid'); set('mode', 4); set('gain', 1.0); set('show-bim', true); set('bim-style', 'wire'); set('show-levels', false); set('show-grid', true); }
+  if (name === 'xray') { setStyle('accum'); set('mode', 0); set('gain', 1.0); set('row', 'magma'); set('show-bim', true); set('bim-style', 'shaded'); set('show-bldg', true); set('mix', 0.55); }
   document.querySelectorAll('[data-preset]').forEach((b) => b.classList.toggle('active', b.dataset.preset === name));
 }
 
@@ -7204,6 +7619,10 @@ function loop(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (state.phasePlaying) { state.phase = Math.min(1, state.phase + dt * 0.06); $('phase').value = state.phase * 100; applyPhase(); if (state.phase >= 1) { state.phasePlaying = false; $('phase-play').textContent = '▶ 再生'; } }
   director.update(dt);
+  if (traffic) { traffic.points.visible = state.showCloud && state.phase >= 1 && !state.isolateRoute; if (traffic.points.visible) traffic.update(dt); }
+  updateSweep(dt);
+  pointMat.uniforms.uFogStart.value = director.mode === 'drive' ? 80 : camera.position.distanceTo(controls.target) * 0.75;
+  pointMat.uniforms.uFog.value = state.fog * (director.mode === 'drive' ? 4 : 1);
   if (lod && points.visible) { const st = lod.update(camera, renderer.getDrawingBufferSize(_dbSize).y, state.budget); if ((frames & 15) === 0) $('stat-drawn').textContent = st.drawn.toLocaleString(); }
   if (grids && state.showGrid) { const cp = camera.position; for (const o of grids.children) if (o.element) { const d = cp.distanceTo(o.position); o.element.style.display = d < 420 ? '' : 'none'; o.element.style.opacity = d < 300 ? 1 : 1 - (d - 300) / 120; } }
   if (director.mode === 'drive') $('drive-progress').style.width = `${director.progress * 100}%`;
@@ -7214,7 +7633,7 @@ function loop(now) {
 }
 
 // debugging / automation hooks
-window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
+window.__app = { get traffic() { return traffic; }, startReveal, sweep, post: edl, pointMat, applyStyle, setStyle, maxSplat, select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
 applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();

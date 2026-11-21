@@ -20,7 +20,7 @@ function flatten(src, { keepThree = true } = {}) {
   return { src, imports };
 }
 
-const order = ['geom', 'structure', 'synth', 'colormaps', 'shaders', 'edl', 'bim', 'camera', 'measure', 'annotations', 'crs', 'las', 'fit', 'scan2bim', 'lod', 'main'];
+const order = ['geom', 'structure', 'synth', 'colormaps', 'shaders', 'post', 'bim', 'camera', 'measure', 'annotations', 'crs', 'las', 'fit', 'scan2bim', 'lod', 'traffic', 'main'];
 const importSet = new Set();
 let bundle = '';
 for (const name of order) {

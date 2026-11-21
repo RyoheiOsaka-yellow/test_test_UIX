@@ -4,14 +4,15 @@ import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { buildStructure, elementBounds, elementProperties, CATEGORY } from './structure.js';
 import { CLS, CLS_INFO, DENS } from './synth.js';
 import { buildLut, cssGradient } from './colormaps.js';
-import { createPointMaterial, createBimFaceMaterial, createBimEdgeMaterial, createVisibilityTexture } from './shaders.js';
-import { EDL } from './edl.js';
+import { createPointMaterial, createBimFaceMaterial, createBimEdgeMaterial, createVisibilityTexture, setAccumulation } from './shaders.js';
+import { Post, POINT_LAYER } from './post.js';
 import { buildBIM, elementAtFace } from './bim.js';
 import { buildDriveRoute, Director } from './camera.js';
 import { Measure } from './measure.js';
 import { buildLevels, buildGridBubbles, SectionBox } from './annotations.js';
 import { LAS_WORKER_BODY, writeLas } from './las.js';
 import { buildLod } from './lod.js';
+import { buildTraffic } from './traffic.js';
 import { describeEpsg, tmForward, tmInverse, guessZone, formatDms } from './crs.js';
 
 const $ = (id) => document.getElementById(id);
@@ -34,7 +35,7 @@ controls.target.set(60, 10, 40);
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.minDistance = 4; controls.maxDistance = 3500;
 const labelRenderer = new CSS2DRenderer({ element: $('labels') });
-const edl = new EDL(renderer, camera);
+const edl = new Post(renderer, camera);
 const director = new Director(camera, controls);
 const measure = new Measure(scene);
 const sectionBox = new SectionBox();
@@ -50,7 +51,13 @@ const state = {
   showCloud: true, showBim: false, bimStyle: 'wire', showBuildingsBim: false, showLevels: false, showGrid: false,
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
   clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null, budget: 8e6,
+  style: 'accum', autoStyle: true, exposure: 1.0, bloom: 0.3, fog: 0.5, trafficOn: true, pulse: true,
 };
+// test / kiosk overrides: ?density=0.2&budget=3000000&style=solid
+{ const q = new URLSearchParams(location.search); if (q.has('noreveal')) { state.noReveal = true; state.pulse = false; } if (q.has('notraffic')) state.trafficOn = false; if (q.has('density')) state.density = +q.get('density'); if (q.has('budget')) state.budget = +q.get('budget'); if (q.has('style')) state.style = q.get('style'); }
+let traffic = null;
+const sweep = { t: -1, dur: 4.2, pulseT: 0, maxR: 1200 };
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let data = null, elements = [], points = null, lod = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
 
 function resize() {
@@ -88,7 +95,9 @@ async function loadSite(key) {
   sectionBox.min.set(-cw / 2, -3, -ch / 2); sectionBox.max.set(cw / 2, 60, ch / 2); sectionBox.update();
   syncSectionSliders();
   renderCrs();
+  rebuildTraffic();
   overlay.classList.add('hidden');
+  if (!state.noReveal && !reduceMotion) startReveal();
 }
 
 function rebuildCloud() {
@@ -105,7 +114,7 @@ function rebuildCloud() {
       overlay.classList.add('hidden');
       resolve();
     };
-    worker.postMessage({ data, options: { density: state.density, seed: 1 } });
+    worker.postMessage({ data, options: { density: state.density, seed: 1, traffic: state.trafficOn ? 'dynamic' : 'static' } });
   });
 }
 
@@ -130,6 +139,34 @@ function installCloud(m) {
   $('stat-points').textContent = m.n.toLocaleString();
   renderLegend();
 }
+// ---------------------------------------------------------------- traffic + scan sweep
+function rebuildTraffic() {
+  if (traffic) { scene.remove(traffic.points); traffic.dispose(); traffic = null; }
+  if (!state.trafficOn || state.las || !data) { $('stat-vehicles').textContent = '—'; return; }
+  traffic = buildTraffic(data, pointMat, { rate: 1 });
+  scene.add(traffic.points);
+  $('stat-vehicles').textContent = traffic.count.toLocaleString();
+}
+function startReveal() { if (!points) return; const b = new THREE.Box3().setFromObject(points); sweep.maxR = b.getSize(new THREE.Vector3()).length() / 2 + 40; sweep.t = 0; }
+function updateSweep(dt) {
+  const u = pointMat.uniforms;
+  const c = director.mode === 'drive' ? camera.position : controls.target;
+  if (sweep.t >= 0) { // reveal: the scan front expands from the centre, points appear behind it
+    sweep.t += dt;
+    const k = Math.min(1, sweep.t / sweep.dur), e = 1 - Math.pow(1 - k, 2.2), R = e * sweep.maxR;
+    u.uSweepC.value.set(0, 0, 0); u.uRevealR.value = R; u.uSweepR.value = R - 6; u.uSweepW.value = 10 + 30 * e; u.uSweepK.value = 1.0;
+    if (k >= 1) { sweep.t = -1; u.uRevealR.value = 1e9; u.uSweepK.value = 0; sweep.pulseT = 0; }
+    return;
+  }
+  if (!state.pulse) { u.uSweepK.value = 0; return; }
+  // periodic LiDAR pulse: a faint ring travelling outwards every 6 s (from the vehicle in drive mode)
+  sweep.pulseT += dt;
+  const period = 6, speed = director.mode === 'drive' ? 90 : 320, tt = sweep.pulseT % period;
+  if (tt < dt) u.uSweepC.value.copy(c);
+  u.uSweepR.value = tt * speed; u.uSweepW.value = director.mode === 'drive' ? 5 : 16;
+  u.uSweepK.value = 0.55 * Math.max(0, 1 - tt / (period * 0.75));
+}
+
 /** Push updated per-point arrays (elem / dev after scan-to-BIM) to the GPU. */
 function refreshCloudAttributes() {
   for (const c of lod.cells) { for (const name of ['elem', 'dev']) { const a = c.points.geometry.getAttribute(name); if (a) a.needsUpdate = true; } }
@@ -251,6 +288,7 @@ async function loadLasFile(file) {
   director.route = null; director.setMode('orbit'); setActiveView(null);
   document.body.classList.add('las-mode', 'no-bim');
   $('s2b-log').textContent = '';
+  rebuildTraffic();
   installCloud(m);
   applySpacing();
   const h = m.header;
@@ -259,9 +297,12 @@ async function loadLasFile(file) {
   $('stat-time').textContent = `${(m.spacing).toFixed(2)} m/pt`;
   $('drive-name').textContent = '—（実測データでは利用不可）';
   // fit camera and section box to the data
-  const box = new THREE.Box3().setFromObject(points);
-  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
-  director.flyTo(c.clone().add(new THREE.Vector3(-0.6, 0.55, 0.75).normalize().multiplyScalar(r * 1.9)), c, 10);
+  // frame the bulk of the data (3rd–97th percentile), not stray far points
+  const sx = [], sy = [], sz = []; for (let i = 0, st = Math.max(1, Math.floor(m.n / 20000)); i < m.n; i += st) { sx.push(cloud.pos[i * 3]); sy.push(cloud.pos[i * 3 + 1]); sz.push(cloud.pos[i * 3 + 2]); }
+  const pct = (arr, f) => { arr.sort((p, q) => p - q); return arr[Math.min(arr.length - 1, Math.floor(arr.length * f))]; };
+  const box = new THREE.Box3(new THREE.Vector3(pct(sx, 0.03), pct(sy, 0.03), pct(sz, 0.03)), new THREE.Vector3(pct(sx, 0.97), pct(sy, 0.97), pct(sz, 0.97)));
+  const c = box.getCenter(new THREE.Vector3()), r = Math.max(10, box.getSize(new THREE.Vector3()).length() / 2);
+  director.flyTo(c.clone().add(new THREE.Vector3(-0.6, 0.55, 0.75).normalize().multiplyScalar(r * 1.35)), c, 10);
   controls.maxDistance = r * 8;
   sectionBox.min.set(c.x - r, c.y - r, c.z - r); sectionBox.max.set(c.x + r, c.y + r, c.z + r); sectionBox.update();
   const cfg = [['sx0', c.x - r, c.x + r, c.x - r], ['sx1', c.x - r, c.x + r, c.x + r], ['sy0', c.y - r, c.y + r, c.y - r], ['sy1', c.y - r, c.y + r, c.y + r], ['sz0', c.z - r, c.z + r, c.z - r], ['sz1', c.z - r, c.z + r, c.z + r]];
@@ -332,10 +373,10 @@ function applySpacing() {
   const D = state.density, sp = pointMat.uniforms.uSpacing.value;
   const s = (d, cap = 1.2) => Math.min(cap, 1 / Math.sqrt(d * D));
   sp.fill(0.5);
-  sp[CLS.deck] = s(DENS.deck); sp[CLS.road] = s(DENS.arterial * 0.8); sp[CLS.marking] = 0.22 / Math.sqrt(D) * 0.6;
+  sp[CLS.deck] = s(DENS.deck); sp[CLS.road] = s(DENS.arterial * 0.8); sp[CLS.marking] = 0.097 / Math.sqrt(D); // a 0.15 m line sampled at 16·D points per metre
   sp[CLS.railing] = s(DENS.railFace); sp[CLS.girder] = s(DENS.girderSide); sp[CLS.column] = s(DENS.column); sp[CLS.cap] = s(DENS.cap);
   sp[CLS.building] = s(DENS.wall * 0.8, 1.0); sp[CLS.floor] = s(DENS.floorSlab, 1.4); sp[CLS.ground] = s(DENS.ground, 1.3); sp[CLS.lowVeg] = s(DENS.grass, 1.3);
-  sp[CLS.highVeg] = 0.45; sp[CLS.vehicle] = s(6); sp[CLS.pole] = 0.12; sp[CLS.furniture] = 0.12; sp[CLS.gantry] = 0.1; sp[CLS.water] = 1.5; sp[CLS.noise] = 0.1;
+  sp[CLS.highVeg] = 0.45; sp[CLS.vehicle] = state.trafficOn ? 0.4 : s(6); sp[CLS.pole] = 0.12; sp[CLS.furniture] = 0.12; sp[CLS.gantry] = 0.1; sp[CLS.water] = 1.5; sp[CLS.noise] = 0.1;
   if (state.las) sp.fill(Math.min(2.5, Math.max(0.03, state.las.spacing * 1.1)));
   pointMat.uniforms.uTanHalfFov.value = Math.tan((camera.fov / 2) * Math.PI / 180);
 }
@@ -348,10 +389,34 @@ function applyMode() {
   pointMat.uniforms.uDevRange.value = state.devRange;
   pointMat.uniforms.uSurfel.value = state.surfel ? 1 : 0;
   pointMat.uniforms.uShade.value = state.shade;
+  applyStyle();
   $('row-group').style.display = state.mode <= 1 ? '' : 'none';
   $('mix-group').style.display = state.mode === 0 ? '' : 'none';
   $('dev-group').style.display = state.mode === 4 ? '' : 'none';
   renderLegend();
+}
+/** Rendering style: additive accumulation ("X-ray", like the reference footage) or opaque splats with EDL. */
+const maxSplat = Math.min(220, (renderer.getContext().getParameter(renderer.getContext().ALIASED_POINT_SIZE_RANGE)[1] || 64) / renderer.getPixelRatio());
+function applyStyle() {
+  const accum = state.style === 'accum' && edl.canFloat;
+  if ((pointMat.uniforms.uAccum.value > 0.5) !== accum) setAccumulation(pointMat, accum);
+  edl.accumulate = accum; edl.exposure = state.exposure; edl.bloom = state.bloom;
+  pointMat.uniforms.uFog.value = state.fog;
+  // per-class opacity of one surface layer in accumulation mode (buildings and vegetation stay translucent)
+  const W = pointMat.uniforms.uClsW.value; W.fill(1);
+  if (!state.las) {
+    W[CLS.deck] = 1.0; W[CLS.road] = 0.9; W[CLS.marking] = 3.0; W[CLS.railing] = 0.65; W[CLS.girder] = 0.4; W[CLS.column] = 0.7; W[CLS.cap] = 0.6;
+    W[CLS.building] = 0.55; W[CLS.floor] = 0.35; W[CLS.ground] = 0.35; W[CLS.lowVeg] = 0.45; W[CLS.highVeg] = 0.3; W[CLS.water] = 0.5;
+    W[CLS.vehicle] = 1.0; W[CLS.pole] = 0.6; W[CLS.gantry] = 0.8; W[CLS.furniture] = 0.6; W[CLS.noise] = 0.2;
+  }
+  // splat width: continuous surfaces are filled smoothly, facades and small objects stay crisp
+  const K = pointMat.uniforms.uClsK.value; K.fill(state.las ? 1.2 : 0.7);
+  const M = pointMat.uniforms.uClsMax.value; M.fill(state.las ? Math.min(maxSplat, 64) : 5);
+  if (!state.las) { for (const c of [CLS.deck, CLS.road, CLS.ground, CLS.lowVeg, CLS.water, CLS.marking]) M[c] = maxSplat; for (const c of [CLS.railing, CLS.vehicle]) M[c] = Math.min(maxSplat, 40); for (const c of [CLS.girder, CLS.column, CLS.cap]) M[c] = 22; }
+  if (!state.las) { for (const c of [CLS.deck, CLS.road, CLS.ground, CLS.lowVeg, CLS.water]) K[c] = 1.35; K[CLS.railing] = 1.0; K[CLS.girder] = 1.1; K[CLS.column] = 1.1; K[CLS.cap] = 1.1; K[CLS.marking] = 1.2; K[CLS.building] = 0.62; K[CLS.floor] = 0.9; K[CLS.vehicle] = 1.0; }
+  document.body.classList.toggle('style-accum', accum);
+  $('style').value = state.style; $('edl-row').style.display = accum ? 'none' : ''; $('exposure-row').style.display = accum ? '' : 'none';
+  if (state.style === 'accum' && !edl.canFloat && !applyStyle.warned) { applyStyle.warned = true; toast('この GPU は浮動小数点レンダーターゲット非対応のため、ソリッド表示に切り替えました', 6000); }
 }
 function renderLegend() {
   const el = $('legend');
@@ -429,6 +494,7 @@ for (const id of ['sx0', 'sx1', 'sy0', 'sy1', 'sz0', 'sz1']) {
 
 // ---------------------------------------------------------------- selection
 const raycaster = new THREE.Raycaster();
+raycaster.layers.enableAll();
 raycaster.params.Points.threshold = 0.6;
 const pointer = new THREE.Vector2();
 let downPos = null;
@@ -474,7 +540,7 @@ function select(id) {
 }
 function expectedPoints(e) {
   switch (e.type) {
-    case 'deck': return e.length * e.width * 11;
+    case 'deck': return e.length * e.width * 16;
     case 'girder': return e.length * (e.depth * 2.2 * 2 + e.wBot * 1.0 + 2.4);
     case 'railing': return e.length * (e.h * 2 * 6.5 + 18 + 5);
     case 'column': return (e.round ? Math.PI * e.colW : 2 * (e.colW + e.colL)) * (e.yTop - e.yBot) * 7;
@@ -530,6 +596,8 @@ function setActiveView(name) { document.querySelectorAll('[data-view]').forEach(
 document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
   const v = b.dataset.view;
   setActiveView(v);
+  // close-range views read better as opaque surfels; overviews as the accumulated X-ray look
+  if (state.autoStyle) setStyle(v === 'drive' || v === 'low' ? 'solid' : 'accum');
   if (v === 'drive') { if (!director.route) { toast('走行ルートがありません（実測データでは利用不可）'); setActiveView(null); return; } director.setMode('drive'); return; }
   if (v === 'fly') { director.setMode('flyover'); return; }
   director.setMode('orbit');
@@ -551,6 +619,14 @@ $('row').addEventListener('change', (e) => { state.row = e.target.value; applyMo
 $('mix').addEventListener('input', (e) => { state.heightMix = +e.target.value; applyMode(); });
 $('psize').addEventListener('input', (e) => { state.pointSize = +e.target.value; applyMode(); });
 $('gain').addEventListener('input', (e) => { state.gain = +e.target.value; applyMode(); });
+$('style').addEventListener('change', (e) => { state.style = e.target.value; applyStyle(); });
+$('exposure').addEventListener('input', (e) => { state.exposure = +e.target.value; applyStyle(); });
+$('bloom').addEventListener('input', (e) => { state.bloom = +e.target.value; applyStyle(); });
+$('fog').addEventListener('input', (e) => { state.fog = +e.target.value; applyStyle(); });
+$('traffic').addEventListener('change', async (e) => { state.trafficOn = e.target.checked; if (!state.las) { await rebuildCloud(); applyPhase(); } rebuildTraffic(); });
+$('pulse').addEventListener('change', (e) => { state.pulse = e.target.checked; });
+$('reveal').addEventListener('click', () => startReveal());
+function setStyle(v) { if (state.style === v) return; state.style = v; $('style').value = v; applyStyle(); }
 $('surfel').addEventListener('change', (e) => { state.surfel = e.target.checked; applyMode(); });
 $('shade').addEventListener('input', (e) => { state.shade = +e.target.value; applyMode(); });
 $('devrange').addEventListener('change', (e) => { state.devRange = +e.target.value; applyMode(); });
@@ -577,11 +653,11 @@ document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('cl
 
 function applyPreset(name) {
   const set = (id, v) => { const el = $(id); if (el.type === 'checkbox') el.checked = v; else el.value = v; el.dispatchEvent(new Event(el.type === 'range' ? 'input' : 'change')); };
-  if (name === 'lidar') { set('mode', 0); set('row', 'lidar'); set('mix', 0.15); set('gain', 1.0); set('show-bim', false); set('show-levels', false); set('show-grid', false); set('edl', true); }
-  if (name === 'mono') { set('mode', 2); set('gain', 1.0); set('show-bim', false); set('show-levels', false); set('show-grid', false); set('edl', true); }
-  if (name === 'bim') { set('mode', 2); set('gain', 0.7); set('show-bim', true); set('bim-style', 'category'); set('show-levels', true); set('show-grid', true); }
-  if (name === 'scan2bim') { set('mode', 4); set('gain', 1.0); set('show-bim', true); set('bim-style', 'wire'); set('show-levels', false); set('show-grid', true); }
-  if (name === 'xray') { set('mode', 0); set('gain', 1.0); set('row', 'magma'); set('show-bim', true); set('bim-style', 'shaded'); set('show-bldg', true); set('mix', 0.55); }
+  if (name === 'lidar') { setStyle('accum'); set('mode', 0); set('row', 'lidar'); set('mix', 0.15); set('gain', 1.0); set('show-bim', false); set('show-levels', false); set('show-grid', false); set('edl', true); }
+  if (name === 'mono') { setStyle('solid'); set('mode', 2); set('gain', 1.0); set('show-bim', false); set('show-levels', false); set('show-grid', false); set('edl', true); }
+  if (name === 'bim') { setStyle('solid'); set('mode', 2); set('gain', 0.7); set('show-bim', true); set('bim-style', 'category'); set('show-levels', true); set('show-grid', true); }
+  if (name === 'scan2bim') { setStyle('solid'); set('mode', 4); set('gain', 1.0); set('show-bim', true); set('bim-style', 'wire'); set('show-levels', false); set('show-grid', true); }
+  if (name === 'xray') { setStyle('accum'); set('mode', 0); set('gain', 1.0); set('row', 'magma'); set('show-bim', true); set('bim-style', 'shaded'); set('show-bldg', true); set('mix', 0.55); }
   document.querySelectorAll('[data-preset]').forEach((b) => b.classList.toggle('active', b.dataset.preset === name));
 }
 
@@ -593,6 +669,10 @@ function loop(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (state.phasePlaying) { state.phase = Math.min(1, state.phase + dt * 0.06); $('phase').value = state.phase * 100; applyPhase(); if (state.phase >= 1) { state.phasePlaying = false; $('phase-play').textContent = '▶ 再生'; } }
   director.update(dt);
+  if (traffic) { traffic.points.visible = state.showCloud && state.phase >= 1 && !state.isolateRoute; if (traffic.points.visible) traffic.update(dt); }
+  updateSweep(dt);
+  pointMat.uniforms.uFogStart.value = director.mode === 'drive' ? 80 : camera.position.distanceTo(controls.target) * 0.75;
+  pointMat.uniforms.uFog.value = state.fog * (director.mode === 'drive' ? 4 : 1);
   if (lod && points.visible) { const st = lod.update(camera, renderer.getDrawingBufferSize(_dbSize).y, state.budget); if ((frames & 15) === 0) $('stat-drawn').textContent = st.drawn.toLocaleString(); }
   if (grids && state.showGrid) { const cp = camera.position; for (const o of grids.children) if (o.element) { const d = cp.distanceTo(o.position); o.element.style.display = d < 420 ? '' : 'none'; o.element.style.opacity = d < 300 ? 1 : 1 - (d - 300) / 120; } }
   if (director.mode === 'drive') $('drive-progress').style.width = `${director.progress * 100}%`;
@@ -603,7 +683,7 @@ function loop(now) {
 }
 
 // debugging / automation hooks
-window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
+window.__app = { get traffic() { return traffic; }, startReveal, sweep, post: edl, pointMat, applyStyle, setStyle, maxSplat, select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
 applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();

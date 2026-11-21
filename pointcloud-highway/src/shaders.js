@@ -40,6 +40,21 @@ export function createPointMaterial(lut, visTex) {
       uHasRgb: { value: 0 },
       uLodScale: { value: 1 },
       uShade: { value: 0.5 },  // normal-based shading amount
+      // accumulation ("X-ray") rendering: additive gaussian splats. Each point carries the screen area it
+      // represents (sample spacing² × pixels-per-metre²), so a surface accumulates a weight equal to its
+      // coverage (≈ number of overlapping layers × class opacity) whatever the sampling density, distance or LOD
+      uAccum: { value: 0 },
+      uClsW: { value: new Float32Array(32).fill(1) },
+      uClsK: { value: new Float32Array(32).fill(1) },
+      uClsMax: { value: new Float32Array(32).fill(6) }, // largest splat (px): big for continuous surfaces, small for sparse see-through classes  // splat width relative to the sample spacing (smooth fill vs crisp dots)
+      uFog: { value: 0.0 },
+      uFogStart: { value: 300 },
+      // scan sweep: an expanding ring that brightens points; points beyond uRevealR are hidden
+      uSweepC: { value: new THREE.Vector3() },
+      uSweepR: { value: -1e6 },
+      uSweepW: { value: 14 },
+      uSweepK: { value: 0 },
+      uRevealR: { value: 1e9 },
     },
     vertexShader: /* glsl */ `
       attribute float intensity;
@@ -54,10 +69,18 @@ export function createPointMaterial(lut, visTex) {
       uniform float uSpacing[32];
       uniform float uTanHalfFov;
       uniform float uShade, uLodScale;
+      uniform float uClsW[32];
+      uniform float uClsK[32];
+      uniform float uClsMax[32];
+      uniform float uAccum, uFog, uFogStart, uSweepR, uSweepW, uSweepK, uRevealR;
+      uniform vec3 uSweepC;
       varying vec3 vColor;
       varying vec3 vNv;
       varying float vSize;
       varying float vHide;
+      varying float vAlpha;
+      varying float vViewZ;
+      varying float vPpm;
       #include <clipping_planes_pars_vertex>
       ${VIS_GLSL}
       vec3 lut(float row, float t) { return texture2D(uLut, vec2(clamp(t, 0.002, 0.998), (row + 0.5) / ${LUT_ROWS}.0)).rgb; }
@@ -66,7 +89,8 @@ export function createPointMaterial(lut, visTex) {
         gl_Position = projectionMatrix * mvPosition;
         #include <clipping_planes_vertex>
         int ci = int(cls + 0.5);
-        vHide = (uClsMask[ci] < 0.5 || visOf(elem) < 0.5) ? 1.0 : 0.0;
+        float sweepD = length(position.xz - uSweepC.xz);
+        vHide = (uClsMask[ci] < 0.5 || visOf(elem) < 0.5 || sweepD > uRevealR) ? 1.0 : 0.0;
         float hN = clamp((position.y - uHMin) / (uHMax - uHMin), 0.0, 1.0);
         float I = clamp(intensity * uGain, 0.0, 1.0);
         float devMm = dev * 255.0 - 128.0;
@@ -88,42 +112,84 @@ export function createPointMaterial(lut, visTex) {
           nv = normalize(normalMatrix * normal);
           if (nv.z < 0.0) nv = -nv; // orientation is ambiguous: face the camera
           float lam = 0.45 + 0.55 * abs(dot(nv, normalize(vec3(0.35, 0.75, 0.6))));
-          c *= mix(1.0, lam, uShade);
+          c *= mix(1.0, lam, uShade * (1.0 - 0.6 * uAccum));
         }
         vNv = nv;
-        vColor = c;
         float dist = max(1.0, -mvPosition.z);
-        // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
-        float px = uSize * uViewportH / dist * 0.45;
-        float splat = uSpacing[ci] * uLodScale * 0.62 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
-        px = clamp(max(px, min(splat, uMaxPx * 1.7)), uMinPx, uMaxPx * 1.7) * (1.0 + sel * 0.8);
+        float ppm = uViewportH / (2.0 * uTanHalfFov * dist);          // CSS pixels per metre at this depth
+        float fog = exp(-max(0.0, dist - uFogStart) * uFog * 0.0006);
+        float band = uSweepK * exp(-pow((sweepD - uSweepR) / uSweepW, 2.0));
+        c = mix(c, vec3(0.7, 1.0, 1.0), clamp(band, 0.0, 0.85));
+        float px, alpha = 1.0;
+        if (uAccum > 0.5) {
+          // gaussian splat ~1.7× the local sample spacing; energy per point = ppm² / ρ0 spread over the kernel
+          float sp = uSpacing[ci] * uLodScale;
+          bool hasN = dot(normal, normal) > 0.05;
+          float spx = sp * ppm;                                         // spacing in pixels = side of the area this point stands for
+          px = clamp(spx * (hasN ? uClsK[ci] : 0.6) * uSize * 0.5, 1.3, hasN ? uClsMax[ci] : 5.0) * (1.0 + sel * 0.6);
+          float kernel = px > 2.5 ? 0.288 : 1.0;                       // ∫ exp(-10 r²) over the unit sprite, or a flat square
+          float wgt = uClsW[ci];
+          if (ci == 21 && normal.y > 0.9) wgt *= 0.22;                   // parapet copings are sampled far denser than the faces
+          if (px <= 2.5 && hasN) wgt *= max(abs(nv.z), 0.2);            // projected area (large splats get this from the ellipse)
+          alpha = wgt * spx * spx / (kernel * px * px);
+          alpha = min(alpha, 3.0) * fog * (1.0 + 2.5 * band) * (1.0 + 2.0 * sel);
+        } else {
+          // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
+          px = uSize * uViewportH / dist * 0.45;
+          bool hasN = dot(normal, normal) > 0.05;
+          float cap = hasN ? max(uMaxPx * 1.7, min(uClsMax[ci], 120.0)) : uMaxPx * 1.7; // continuous surfaces may grow to close up
+          float splat = uSpacing[ci] * uLodScale * (hasN ? uClsK[ci] * 0.85 : 0.62) * ppm * uSize * 0.5;
+          px = clamp(max(min(px, uMaxPx * 1.7), min(splat, cap)), uMinPx, cap) * (1.0 + sel * 0.8);
+          c *= fog;
+        }
+        vColor = c;
+        vAlpha = alpha;
+        vViewZ = mvPosition.z; vPpm = ppm;
         vSize = px;
         gl_PointSize = px * uPixelRatio;
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uOpacity, uSurfel;
+      uniform float uOpacity, uSurfel, uAccum;
+      uniform mat4 projectionMatrix;
+      varying float vViewZ;
+      varying float vPpm;
       varying vec3 vColor;
       varying float vSize;
       varying float vHide;
+      varying float vAlpha;
       varying vec3 vNv;
       #include <clipping_planes_pars_fragment>
       void main() {
         #include <clipping_planes_fragment>
         if (vHide > 0.5) discard;
+        float r2 = 0.0;
+        float depth = gl_FragCoord.z;
         if (vSize > 2.5) {
           vec2 d = gl_PointCoord - 0.5;
           vec2 a = vec2(vNv.x, -vNv.y); // projected normal (PointCoord y points down)
           float la = length(a);
+          if (uSurfel > 0.5 && vNv.z > 0.0 && uAccum < 0.5) {
+            // true surfel depth: the fragment lies on the tangent plane, not at the sprite centre. Coplanar
+            // splats then share one continuous depth, so EDL shades the surface instead of outlining every disc.
+            vec2 off = vec2(d.x, -d.y) * vSize / vPpm;                 // view-space offset (m)
+            float z = vViewZ - dot(vNv.xy, off) / max(vNv.z, 0.18);
+            depth = clamp((projectionMatrix[2][2] * z + projectionMatrix[3][2]) / (-z) * 0.5 + 0.5, 0.0, 1.0);
+          }
           if (uSurfel > 0.5 && la > 0.03) {
             // ellipse: the disc on the tangent plane foreshortens along the projected normal by |n.z|
             a /= la;
             float cosv = max(abs(vNv.z), 0.18);
             float u = dot(d, a) / cosv, v = dot(d, vec2(-a.y, a.x));
-            if (u * u + v * v > 0.25) discard;
-          } else if (dot(d, d) > 0.25) discard;
+            r2 = u * u + v * v;
+          } else r2 = dot(d, d);
+          if (r2 > 0.25) discard;
         }
-        gl_FragColor = vec4(vColor, uOpacity);
+        if (uAccum > 0.5) {
+          float w = vAlpha * (vSize > 2.5 ? exp(-10.0 * r2) : 1.0);
+          gl_FragColor = vec4(vColor * w, w); // additive: rgb accumulates colour × weight, alpha the weight
+        } else gl_FragColor = vec4(vColor, uOpacity);
+        gl_FragDepth = depth;
       }
     `,
     clipping: true,
@@ -131,6 +197,19 @@ export function createPointMaterial(lut, visTex) {
     depthWrite: true,
   });
   return mat;
+}
+
+/** Switch a point material between opaque (depth-tested, EDL) and additive accumulation rendering. */
+export function setAccumulation(mat, on) {
+  mat.uniforms.uAccum.value = on ? 1 : 0;
+  mat.transparent = on;
+  mat.depthTest = !on;
+  mat.depthWrite = !on;
+  mat.blending = on ? THREE.CustomBlending : THREE.NormalBlending;
+  mat.blendEquation = THREE.AddEquation;
+  mat.blendSrc = THREE.OneFactor; mat.blendDst = THREE.OneFactor;
+  mat.blendSrcAlpha = THREE.OneFactor; mat.blendDstAlpha = THREE.OneFactor;
+  mat.needsUpdate = true;
 }
 
 /** Translucent BIM faces with per-element sequence (4D) + selection support + flat derivative shading. */
