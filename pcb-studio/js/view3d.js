@@ -4,7 +4,9 @@ import { compBox, padWorld, G } from './core.js';
 import { drawLayerTexture, realColor } from './render.js';
 
 const T = 0.8; // 基板厚の半分 (mm)
+// 部品の高さ (mm)。ライブラリに実値 (ht) があればそれを使い、なければ種別ごとの概算
 export function heightOf(p) {
+  if (p.ht) return p.ht;
   const f = p.family;
   if (f === 'gpu') return 2.4; if (f === 'vram') return 1.1;
   if (f === 'ind' || f === 'indin') return Math.min(6, p.w * 0.45); if (f === 'indaux') return 2;
@@ -167,20 +169,23 @@ export class View3D {
     if (this.cool) { this.root.remove(this.cool); this.cool.traverse(o => { o.geometry && o.geometry.dispose(); o.material && o.material.dispose(); }); }
     this.cool = null; this.fans = []; this.coolInfo = info; this.dirty = true;
     if (!info) return;
-    const g = this.cool = new THREE.Group(), r = info.rect, y0 = T + info.baseZ, y1 = y0 + 3, top = y1 + info.fin;
+    const g = this.cool = new THREE.Group(), r = info.rect, y1 = T + info.top, top = y1 + info.fin;
     const alu = (o, c = 0xc3cad1) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.75, roughness: 0.35, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
     // ベースプレート：2mm の升目のうち、切り欠きにかからない所だけ上下の面を張る
     const P = [], st = 2, cut = (x, z) => info.cuts.some(q => x + st > q.x0 && x < q.x1 && z + st > q.y0 && z < q.y1);
     for (let z = r.y0; z < r.y1 - 0.01; z += st) for (let x = r.x0; x < r.x1 - 0.01; x += st) {
       if (cut(x, z)) continue;
       const xa = Math.min(x + st, r.x1), za = Math.min(z + st, r.y1);
-      for (const y of [y0, y1]) P.push(x, y, z, xa, y, z, xa, y, za, x, y, z, xa, y, za, x, y, za);
+      for (const y of [T + info.und[info.zoneOf(x + st / 2, z + st / 2)], y1]) P.push(x, y, z, xa, y, z, xa, y, za, x, y, z, xa, y, za, x, y, za);
     }
     const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(P), 3)); bg.computeVertexNormals();
     g.add(new THREE.Mesh(bg, alu(0.3)));
     // GPU に当たる受熱面（銅）
     const gB = compBox(info.gpu), cw = (gB.x1 - gB.x0) * 0.5, cd = (gB.y1 - gB.y0) * 0.5;
-    const cp = new THREE.Mesh(new THREE.BoxGeometry(cw, Math.max(0.3, info.baseZ - info.gpuTop + 0.3), cd), alu(0.75, 0xc8794a)); cp.position.set(info.gpu.x, T + (info.gpuTop + info.baseZ) / 2 + 0.15, info.gpu.y); g.add(cp);
+    const cp = new THREE.Mesh(new THREE.BoxGeometry(cw, Math.max(0.3, info.und.base - info.gpuTop + 0.3), cd), alu(0.75, 0xc8794a)); cp.position.set(info.gpu.x, T + (info.gpuTop + info.und.base) / 2 + 0.15, info.gpu.y); g.add(cp);
+    if (info.backOn) { // 裏面のバックプレート
+      const bp = new THREE.Mesh(new THREE.BoxGeometry(this.board.w - 2, 1.5, this.board.h - 2), alu(0.32, 0x8d949b)); bp.position.set(this.board.w / 2, -T - info.back - 0.75, this.board.h / 2); g.add(bp);
+    }
     // フィン
     const n = Math.floor((r.x1 - r.x0) / 2.6), fins = new THREE.InstancedMesh(new THREE.BoxGeometry(0.35, info.fin, r.y1 - r.y0), alu(0.16), n), M = new THREE.Matrix4();
     for (let i = 0; i < n; i++) { M.makeTranslation(r.x0 + 1.3 + i * 2.6, y1 + info.fin / 2, (r.y0 + r.y1) / 2); fins.setMatrixAt(i, M); }
@@ -343,7 +348,7 @@ export class View3D {
       if (S.ghost) { const g = S.ghost, y = sideY(g); this.wireBox(this.lSel, compBox(g), y, y + (g.side === 'B' ? -1 : 1) * heightOf(g.part)); }
       if (S.hoverPad) { const p = S.hoverPad; this.wireBox(this.lSel, { x0: p.x - p.w / 2 - 0.2, y0: p.y - p.h / 2 - 0.2, x1: p.x + p.w / 2 + 0.2, y1: p.y + p.h / 2 + 0.2 }, yT - 0.25, yT); }
       if (S.regions) for (const r of S.regions) { col.set(r.color).convertSRGBToLinear(); const y = yT + 0.1; for (const [a, c2, e, f2] of [[r.x0, r.y0, r.x1, r.y0], [r.x1, r.y0, r.x1, r.y1], [r.x1, r.y1, r.x0, r.y1], [r.x0, r.y1, r.x0, r.y0]]) this.seg(this.lReg, a, y, c2, e, y, f2, col); }
-      if (this.cool && this.cool.visible && this.coolInfo) { const red = new THREE.Color(1, 0.15, 0.1), y = this.layerY(0); for (const q of this.coolInfo.hits) { const B = compBox(q.c, 0.4), hh = q.h + 0.4; for (const e of EDGE) this.seg(this.lReg, B.x0 + e[0] * (B.x1 - B.x0), y + e[1] * hh, B.y0 + e[2] * (B.y1 - B.y0), B.x0 + e[3] * (B.x1 - B.x0), y + e[4] * hh, B.y0 + e[5] * (B.y1 - B.y0), red); } }   // 干渉している部品を赤枠で
+      if (this.cool && this.cool.visible && this.coolInfo) { const red = new THREE.Color(1, 0.15, 0.1); let y = this.layerY(0); for (const q of [...this.coolInfo.hits, ...this.coolInfo.hitsB]) { const bot = q.c.side === 'B', B = compBox(q.c, 0.4), hh = (q.h + 0.4) * (bot ? -1 : 1); if (bot) y = this.layerY(3); for (const e of EDGE) this.seg(this.lReg, B.x0 + e[0] * (B.x1 - B.x0), y + e[1] * hh, B.y0 + e[2] * (B.y1 - B.y0), B.x0 + e[3] * (B.x1 - B.x0), y + e[4] * hh, B.y0 + e[5] * (B.y1 - B.y0), red); } }   // 干渉している部品を赤枠で
       if (S.issues && !S.regions) for (const q of S.issues) { const y = sideY(q); this.seg(this.lSel, q.x, y, q.y, q.x, y + (q.side === 'B' ? -9 : 9), q.y); }
     }
     for (const L of [this.lRats, this.lHi, this.lSel, this.lReg]) { L.l.geometry.setDrawRange(0, L.n * 2); L.l.geometry.attributes.position.needsUpdate = true; if (L.col) L.l.geometry.attributes.color.needsUpdate = true; }

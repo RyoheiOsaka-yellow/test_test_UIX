@@ -142,7 +142,25 @@ const RAW = [
   { id: 'r_0402', cat: 'misc', family: 'res', ref: 'R', name: '抵抗 0402', mfr: '汎用', pn: '0402 1%', pkg: '0402', w: 1.5, h: 0.6, spec: '汎用', seen: '全カード', ok: false },
 ];
 
+// 部品の高さ (mm)：[値, 出典で確認できたか]。未確認のものはパッケージ種別からの一般的な値。
+const HEIGHTS = {
+  // メモリ：180/266 ボール FBGA（Samsung GDDR6 データシート、Micron 製品資料）
+  k4vaf32: [1.1, false], k4vaf28: [1.1, false], mt68a: [1.1, true], mt61k21: [1.2, true], h56g42: [1.2, false], k4zaf: [1.2, true],
+  // パワーステージ：TDA21490 / SiC654A / NCP302150 はパッケージ図面で確認
+  mp86957: [1.0, false], mp87997: [1.0, false], mp87993: [1.0, false], fdmf3170: [0.8, false], tda21490: [1.0, true], sic654a: [0.8, true], aoz5311: [0.8, false], ncp302150: [0.8, true],
+  mp29816: [0.8, false], mp2891: [1.0, false], xdpe132: [0.9, false], mp2868a: [1.0, false], up9512r: [0.8, false], up9529q: [0.8, false],
+  // インダクタ：IHLP5050FD 6.5 / TPI9664 10.0 / AMSLA-7050 5.0 は確認。カスタム品は未確認
+  l_r15: [4.5, false], l_r22: [4.5, false], ihlp5050: [6.5, true], tpi9664: [10.0, true], amsla7050: [5.0, true], l_in: [4.5, false], l_aux: [2.0, false],
+  // コンデンサ：POSCAP 2.0 / T520 D 3.1 / SP-Cap 1.9 / φ6.3 缶 9.0 は確認（いずれも最大値）
+  c_tpe470: [2.0, true], c_t520: [3.1, true], c_gx470: [1.9, true], c_can270: [9.0, true], c_0402: [0.55, false], c_0603: [0.9, false], c_0805: [1.25, false], c_0805hv: [1.25, false],
+  // コネクタ：樹脂部の高さのみ確認できたものは未確認扱い
+  j_12v2x6: [8.9, false], j_12vhpwr: [8.9, false], j_8pin: [12.8, false], j_dp: [6.65, false], j_hdmi: [6.2, false], j_fan: [6.0, false],
+  r_shunt: [0.89, true], f_2410: [3.05, true], ina3221: [0.95, true], us5650q: [0.8, false], ncp45491: [1.0, false],
+  ps8419: [0.8, false], w25q80: [1.75, false], gd25q80: [1.75, false], it8915: [0.9, false], nuc126: [0.9, false], rt6258: [0.8, false], up1666q: [0.8, false],
+  x_27m: [0.8, false], r_0402: [0.35, false],
+};
 function build(p) {
+  const H = HEIGHTS[p.id]; if (H) { p.ht = H[0]; p.htOk = H[1]; }
   const f = p.family;
   if (f === 'gpu') p.pads = fpBGA(p.w, p.h);
   else if (f === 'vram') { p.w = 12; p.h = 14; p.pads = fpBGA(12, 14); }

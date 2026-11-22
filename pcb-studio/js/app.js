@@ -7,8 +7,8 @@ import { draw, toWorld, flipOf } from './render.js';
 import { exportKicad, importKicad, kicadProject, packPart, unpackPart } from './kicad.js';
 import { planePlan } from './planes.js';
 import { electrical } from './electrical.js';
-import { coolerCheck } from './cooler.js';
-import { View3D } from './view3d.js';
+import { coolerCheck, recommend, CEM, PLATE_T } from './cooler.js';
+import { View3D, heightOf } from './view3d.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -18,7 +18,7 @@ const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
   show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'real', finish: 'black', xray: false, time: 0,
-  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true }, coolInfo: null,
+  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true, step: false, mem: 2.1, vrm: 2.4, backOn: false, back: 3 }, coolInfo: null,
   rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
@@ -612,7 +612,7 @@ function renderLibrary() {
     for (const p of list) html += `<div class="part" title="${esc(p.note || '')}">
       <div class="pt"><span class="pn">${esc(p.pn)}</span><span class="badge ${p.ok ? 'ok' : 'un'}">${p.ok ? '出典確認' : '未確認'}</span></div>
       <div class="pd">${esc(p.mfr)}・${esc(p.name)}</div>
-      <div class="pd dim">${esc(p.pkg)}・${esc(p.spec)}・搭載例: ${esc(p.seen)}</div>
+      <div class="pd dim">${esc(p.pkg)}・${esc(p.spec)}・高さ ${heightOf(p).toFixed(2)}mm${p.htOk ? '' : '（概算）'}・搭載例: ${esc(p.seen)}</div>
       <button class="mini" data-place="${p.id}">基板に配置</button></div>`;
     html += '</details>';
   }
@@ -643,7 +643,7 @@ function renderInspector() {
   let h = sel.length > 1 ? `<div class="ih">${sel.length} 個を選択</div>` : `<div class="ih"><span class="pn">${esc(c.ref)}</span> ${esc(p.pn)} <span class="badge ${p.ok ? 'ok' : 'un'}">${p.ok ? '出典確認' : '未確認'}</span></div>`;
   if (sel.length === 1) {
     const g = S.board.group(c.group);
-    h += `<dl><dt>品名</dt><dd>${esc(p.mfr)}・${esc(p.name)}</dd><dt>パッケージ</dt><dd>${esc(p.pkg)}</dd><dt>仕様</dt><dd>${esc(p.spec)}</dd>
+    h += `<dl><dt>品名</dt><dd>${esc(p.mfr)}・${esc(p.name)}</dd><dt>パッケージ</dt><dd>${esc(p.pkg)}</dd><dt>仕様</dt><dd>${esc(p.spec)}</dd><dt>高さ</dt><dd>${heightOf(p).toFixed(2)} mm（${p.htOk ? '出典確認' : '概算'}）</dd>
       <dt>搭載例</dt><dd>${esc(p.seen)}</dd><dt>位置</dt><dd class="num">X ${c.x.toFixed(1)} / Y ${c.y.toFixed(1)} mm・${c.rot}°・${c.side === 'T' ? '表面' : '裏面'}</dd>
       <dt>グループ</dt><dd>${g ? esc(g.label) : '-'}</dd></dl>${p.note ? `<p class="dim">${esc(p.note)}</p>` : ''}`;
   }
@@ -678,7 +678,10 @@ function renderStats() {
   for (const n of b.nets.values()) if (n.cls === 'plane' && n.route) for (const i of n.route.fails) { const p = n.pins[i], q = padWorld(p.c, p.c.part.padMap[p.p]); issues.push({ t: `プレーン未接続: ${n.name}（${p.c.ref}）`, x: q.x, y: q.y, side: p.c.side }); }
   // 冷却機構との干渉
   S.coolInfo = S.cool.on ? coolerCheck(b, S.cool) : null;
-  if (S.coolInfo) for (const q of S.coolInfo.hits) issues.push({ t: `冷却機構と干渉: ${q.c.ref}（高さ ${q.h.toFixed(1)} mm）`, x: q.c.x, y: q.c.y, side: 'T' });
+  if (S.coolInfo) {
+    for (const q of S.coolInfo.hits) issues.push({ t: `冷却機構と干渉: ${q.c.ref}（高さ ${q.h.toFixed(1)} mm）`, x: q.c.x, y: q.c.y, side: 'T' });
+    for (const q of S.coolInfo.hitsB) issues.push({ t: `バックプレートと干渉: ${q.c.ref}（高さ ${q.h.toFixed(1)} mm）`, x: q.c.x, y: q.c.y, side: 'B' });
+  }
   renderCool();
   S.issues = issues;
   const pads = b.comps.reduce((s, c) => s + c.part.pads.length, 0);
@@ -723,11 +726,15 @@ function renderCool() {
   if (!k) { el.innerHTML = '<p class="dim">GPU のある基板で使えます。</p>'; return; }
   const pill = (ok, t) => `<span class="pill ${ok ? 'good' : 'bad'}">${t}</span>`, pad = (q, name) => q ? `<tr><th>${name}</th><td>${q.n} 個・隙間 ${q.min.toFixed(1)}${q.max - q.min > 0.05 ? '〜' + q.max.toFixed(1) : ''} mm ${pill(!q.bad, q.bad ? 'パッドでは届かない' : 'サーマルパッドで接触')}</td></tr>` : '';
   el.innerHTML = `<table><tr><th>干渉</th><td>${k.hits.length} 個 ${pill(!k.hits.length, k.hits.length ? '要対応' : 'なし')}</td></tr>
+    <tr><th>下面の高さ</th><td class="num">${S.cool.step ? `全体 ${k.und.base.toFixed(1)}・メモリ ${k.und.mem.toFixed(1)}・VRM ${k.und.vrm.toFixed(1)} mm` : `${k.und.base.toFixed(1)} mm（段差なし）`}</td></tr>
     <tr><th>切り欠き</th><td>${k.cuts.length} か所・面積の ${k.cutPct.toFixed(0)}%（うちコネクタ ${k.cuts.filter(q => q.access).length}）</td></tr>
     ${pad(k.vram, 'メモリ')}${pad(k.drmos, 'DrMOS')}
-    <tr><th>GPU 受熱面</th><td>${k.baseZ - k.gpuTop > 0.05 ? `銅の台座 ${(k.baseZ - k.gpuTop).toFixed(1)} mm` : '直接接触'}</td></tr>
-    <tr><th>カード厚</th><td>${k.thickness.toFixed(1)} mm ＝ ${k.slots} スロット</td></tr></table>
-    <p class="dim">高さは部品ごとの概算値です。下面を上げると背の高い部品を避けられますが、メモリや DrMOS との隙間が広がります。</p>`;
+    <tr><th>GPU 受熱面</th><td>${k.und.base - k.gpuTop > 0.05 ? `銅の台座 ${(k.und.base - k.gpuTop).toFixed(1)} mm` : '直接接触'}</td></tr>
+    <tr><th>部品面の高さ</th><td>${k.front.toFixed(1)} mm ＝ ${k.slots} スロット<br><span class="dim">規格の上限：2 スロット ${CEM.primary[1].toFixed(2)}、3 スロット ${CEM.primary[2].toFixed(2)} mm</span></td></tr>
+    <tr><th>裏面</th><td>部品の最大 ${k.maxB.toFixed(2)} mm${k.backOn ? `・バックプレートまで ${k.back.toFixed(1)} mm ${pill(!k.hitsB.length, k.hitsB.length ? `干渉 ${k.hitsB.length} 個` : '干渉なし')}` : ''}<br>
+      張り出し ${k.rear.toFixed(1)} mm ${pill(k.rear <= CEM.secondary, k.rear <= CEM.secondary ? '規格内' : `規格 ${CEM.secondary} mm を超過`)}</td></tr>
+    <tr><th>カード全厚</th><td>${k.thickness.toFixed(1)} mm</td></tr></table>
+    <p class="dim">${k.unknown ? `高さが概算のままの部品が ${k.unknown} 種あります（部品を選ぶと確認状況が出ます）。` : '対象の部品はすべて出典で確認した高さです。'}規格値は PCIe CEM 4.0 によります。裏面がこれを超えると隣のスロットに張り出します。</p>`;
 }
 function focusAt(x, y, z) { S.view.x = x; S.view.y = y; if (z) S.view.z = z; if (v3on) v3.focus(x, y, Math.max(60, Math.min(v3.dist, 2600 / (z || 9)))); dirty = true; }
 function showTab(k) { for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', b.dataset.tab === k); $('tabGuide').hidden = k !== 'guide'; $('tabLib').hidden = k !== 'lib'; $('tabGen').hidden = k !== 'gen'; }
@@ -803,6 +810,12 @@ document.addEventListener('click', e => {
     else $(d.go).click();
   }
   else if (t.id === 'btnNext') stepGo = true;
+  else if (t.id === 'cAuto') { // 段差のおすすめ値を入れる
+    const r = recommend(S.board); Object.assign(S.cool, r, { step: true, on: true });
+    $('cOn').checked = $('cStep').checked = true; $('cStepBox').hidden = false;
+    for (const [id, key] of [['cBase', 'base'], ['cMem', 'mem'], ['cVrm', 'vrm']]) { $(id).value = S.cool[key]; $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; }
+    refreshAll(); toast(`段差を設定：全体 ${r.base}・メモリ ${r.mem}・VRM ${r.vrm} mm`);
+  }
   else if (t.id === 'btnAdopt') adopt();
   else if (t.id === 'btnResume') { if (resume && !run) { const info = resume; play(continueRun(info)); } }
   else if (t.id === 'btnReplay') {
@@ -847,13 +860,15 @@ document.addEventListener('change', e => {
   else if (t.id === 'oEffort') opts.effort = parseFloat(t.value);
   else if (t.id === 'cOn') { S.cool.on = t.checked; refreshAll(); }
   else if (t.id === 'cCut') { S.cool.cut = t.checked; refreshAll(); }
+  else if (t.id === 'cStep') { S.cool.step = t.checked; $('cStepBox').hidden = !t.checked; refreshAll(); }
+  else if (t.id === 'cBack') { S.cool.backOn = t.checked; refreshAll(); }
   else if (t.id === 'cFans') { S.cool.fans = +t.value; refreshAll(); }
   else if (t.id === 'finish') { S.finish = t.value; if (v3on) { v3.finish = S.finish; v3.paint(S); } }
   else if (t.id === 'ioFile' && t.files[0]) { const fr = new FileReader(); fr.onload = () => { try { loadText(String(fr.result)); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } t.value = ''; }; fr.readAsText(t.files[0]); }
 });
 $('libq').addEventListener('input', renderLibrary);
 $('netq').addEventListener('input', renderNets);
-for (const [id, key] of [['cBase', 'base'], ['cFin', 'fin']]) $(id).addEventListener('input', e => { S.cool[key] = parseFloat(e.target.value); $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; if (S.cool.on) { renderStats(); if (v3on) v3.setCooler(S.coolInfo); dirty = true; } });
+for (const [id, key] of [['cBase', 'base'], ['cFin', 'fin'], ['cMem', 'mem'], ['cVrm', 'vrm'], ['cBackGap', 'back']]) $(id).addEventListener('input', e => { S.cool[key] = parseFloat(e.target.value); $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; if (S.cool.on) { renderStats(); if (v3on) v3.setCooler(S.coolInfo); dirty = true; } });
 $('seek').addEventListener('input', e => { if (rec && !run) { replay = false; $('btnReplay').textContent = '▶'; showFrame(+e.target.value); } });
 $('explode').addEventListener('input', e => { if (v3) { v3.explode = parseFloat(e.target.value); v3.sync(); } });
 document.addEventListener('keydown', e => {

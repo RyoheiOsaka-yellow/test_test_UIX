@@ -253,10 +253,19 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
     <section><h2>冷却機構と干渉チェック</h2>
       <label class="ck" for="cOn"><input type="checkbox" id="cOn">冷却機構を重ねて表示（3D）</label>
       <div class="two">
-        <div><label class="fl" for="cBase">ベースプレート下面の高さ <span id="cBaseV" class="num">3.2 mm</span></label><input type="range" id="cBase" min="3.2" max="12" step="0.1" value="3.2"></div>
+        <div><label class="fl" for="cBase">下面の高さ（全体） <span id="cBaseV" class="num">3.2 mm</span></label><input type="range" id="cBase" min="3.2" max="12" step="0.1" value="3.2"></div>
         <div><label class="fl" for="cFin">フィンの高さ <span id="cFinV" class="num">28.0 mm</span></label><input type="range" id="cFin" min="10" max="50" step="1" value="28"></div>
         <div><label class="fl" for="cFans">ファン</label><select id="cFans"><option value="2">2 基</option><option value="3" selected>3 基</option></select></div>
         <label class="ck" for="cCut" style="align-self:end"><input type="checkbox" id="cCut" checked>背の高い部品に切り欠きを入れる</label>
+      </div>
+      <div class="row"><label class="ck" for="cStep"><input type="checkbox" id="cStep">段差つきベースプレート</label><button class="mini" id="cAuto">おすすめの段差にする</button></div>
+      <div class="two" id="cStepBox" hidden>
+        <div><label class="fl" for="cMem">メモリ上の下面 <span id="cMemV" class="num">2.1 mm</span></label><input type="range" id="cMem" min="1.2" max="12" step="0.1" value="2.1"></div>
+        <div><label class="fl" for="cVrm">VRM 上の下面 <span id="cVrmV" class="num">2.4 mm</span></label><input type="range" id="cVrm" min="1.2" max="12" step="0.1" value="2.4"></div>
+      </div>
+      <div class="two">
+        <label class="ck" for="cBack" style="align-self:end"><input type="checkbox" id="cBack">裏面にバックプレート</label>
+        <div><label class="fl" for="cBackGap">基板からの距離 <span id="cBackGapV" class="num">3.0 mm</span></label><input type="range" id="cBackGap" min="0.6" max="6" step="0.1" value="3"></div>
       </div>
       <div id="coolInfo"></div>
     </section>
