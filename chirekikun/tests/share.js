@@ -51,14 +51,18 @@ const fs = require('fs');
   await p.waitForTimeout(800);
   R.previewSubmit = await p.evaluate(() => ({ sheets: document.querySelectorAll('#paper .sheet').length, app: document.querySelectorAll('#paper .sheet.app').length }));
   await p.click('#p-mode button[data-m=check]');
-  // 共有リンクを、ログインしていない別の利用者として開く
+  // 共有リンクを、ログインしていない別の利用者として開く：まずログイン画面、ログイン後にプレビュー
   const ctx2 = await b.newContext({ viewport: { width: 1280, height: 900 } });
   const q = await ctx2.newPage();
   q.on('pageerror', e => errs.push('SHARED PAGEERROR ' + e.message));
   await q.goto(url);
+  await q.waitForFunction(() => !!ST.shared, null, { timeout: 15000 });
+  R.sharedLogin = await q.evaluate(() => ({ route: ST.route, loginShown: !!document.getElementById('lf'), note: (document.querySelector('.sharednote') || {}).textContent, paper: !!document.getElementById('paper') }));
+  await q.screenshot({ path: path.join(out, 'shared-login.png') });
+  await q.click('#l-demo');
   await q.waitForFunction(() => ST.route === 'preview' && document.querySelectorAll('#paper .sheet').length > 0, null, { timeout: 15000 });
   await q.waitForTimeout(1500);
-  R.shared = await q.evaluate(() => ({ user: !!ST.user, route: ST.route, title: document.querySelector('.pvh h1').textContent, tag: document.querySelector('.pvh .tag').textContent, sheets: document.querySelectorAll('#paper .sheet').length, text: document.querySelector('#paper .sht').innerText.slice(0, 20), topHidden: document.getElementById('top').hidden, shareBtn: !!document.getElementById('p-share'), editable: document.querySelectorAll('#paper [contenteditable]').length, zoom: document.getElementById('paper').style.zoom, over: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
+  R.shared = await q.evaluate(() => ({ user: !!ST.user, route: ST.route, title: document.querySelector('.pvh h1').textContent, tag: document.querySelector('.pvh .tag').textContent, sheets: document.querySelectorAll('#paper .sheet').length, text: document.querySelector('#paper .sht').innerText.slice(0, 20), topShown: !document.getElementById('top').hidden, shareBtn: !!document.getElementById('p-share'), editable: document.querySelectorAll('#paper [contenteditable]').length, zoom: document.getElementById('paper').style.zoom, over: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
   await q.screenshot({ path: path.join(out, 'shared.png') });
   // 共有プレビューから印刷
   await q.evaluate(() => { window.print = () => { window.__printed = true; }; document.getElementById('p-pdf').click(); });

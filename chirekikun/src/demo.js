@@ -37,7 +37,7 @@ function demoSay(step,total,text){$('demobar').hidden=false;document.body.classL
 async function demoType(el,text,ms){el.focus();el.value='';for(let i=1;i<=text.length;i++){el.value=text.slice(0,i);el.dispatchEvent(new Event('input',{bubbles:true}));await demoSleep(ms||34);}el.value=text;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));}
 function demoEnd(msg){DEMO.on=false;demoSpot(null);if(msg){$('demo-step').textContent='完了';$('demo-cap').textContent=msg;$('demo-stop').textContent='閉じる';DEMO.done=true;}else{$('demobar').hidden=true;document.body.classList.remove('demo-on');}}
 async function runDemo(kind){
-  if(DEMO.on)return;DEMO.on=true;DEMO.abort=false;DEMO.done=false;$('demo-stop').textContent='停止';
+  if(DEMO.on)return;ST.shared=null;DEMO.on=true;DEMO.abort=false;DEMO.done=false;$('demo-stop').textContent='停止';
   const N=9;const nofile=kind==='nofile';const D=nofile?DEMO2_INPUT:DEMO_INPUT;
   try{
     /* 1 ログイン */

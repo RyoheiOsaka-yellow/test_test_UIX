@@ -13,11 +13,11 @@ function saveCases(){store.set('cases',ST.cases);}
 const curCase=()=>ST.cases.find(c=>c.id===ST.caseId);
 const DEFAULT_ORG={name:'株式会社エコ・テック',no:'2016-3-1006',addr:'東京都品川区南大井6-16-20 品川水神ビル7階',tel:'03-5781-5433'};
 
-function go(route,id){ST.route=route;if(id!==undefined)ST.caseId=id;render();window.scrollTo(0,0);}
+function go(route,id){if(route!=='preview'&&route!=='login')ST.shared=null;ST.route=route;if(id!==undefined)ST.caseId=id;render();window.scrollTo(0,0);}
 function render(){
-  if(!ST.user&&ST.route!=='login'&&!(ST.route==='preview'&&ST.shared))ST.route='login';
+  if(!ST.user&&ST.route!=='login')ST.route='login';
   document.body.dataset.route=ST.route;
-  $('top').hidden=ST.route==='login'||(ST.route==='preview'&&!!ST.shared);
+  $('top').hidden=ST.route==='login';
   document.querySelectorAll('#top .nav button').forEach(b=>b.classList.toggle('on',b.dataset.r===ST.route||(b.dataset.r==='cases'&&(ST.route==='case'||ST.route==='new'))));
   if(ST.user)$('who').textContent=ST.user.name;
   const v=$('view');
@@ -32,7 +32,7 @@ function viewLogin(v){
     <ul><li><b>登記簿・地図・聴取記録を共有</b>すると、地番ごとの履歴表と所見まで組み上げます。</li><li>本文のすべての記載に、<b>根拠の資料名とページ番号</b>が付きます。</li><li>法令・条例は<b>公式の出典だけ</b>を使い、地域ごとの条例も照合します。</li></ul>
     <div class="lb-foot">指定調査機関向け　地歴調査レポート作成</div></div></div>
    <div class="login-form"><form id="lf" novalidate>
-    <h2>ログイン</h2><p class="sub">登録済みのメールアドレスとパスワードを入力してください。</p>
+    <h2>ログイン</h2>${ST.shared?`<p class="sub sharednote">共有されたプレビュー「${esc(ST.shared.title)}」を開くには、ログインしてください。</p>`:''}<p class="sub">登録済みのメールアドレスとパスワードを入力してください。</p>
     <div class="f"><label for="l-mail">メールアドレス</label><input id="l-mail" type="email" autocomplete="username" placeholder="name@example.co.jp" value="${esc(store.get('lastMail')||'')}"></div>
     <div class="f"><label for="l-pass">パスワード</label><input id="l-pass" type="password" autocomplete="current-password"></div>
     <div class="err" id="l-err" role="alert"></div>
@@ -41,7 +41,7 @@ function viewLogin(v){
     <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモ① 資料を共有してレポートを作る</button><button class="btn full" type="button" id="l-play2">デモ② 資料のない土地でレポートを作る</button>
     <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。</p>
    </form></div></div>`;
-  const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('user',ST.user);store.set('lastMail',mail);loadCases();aiDetect().then(()=>go('cases'));};
+  const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('user',ST.user);store.set('lastMail',mail);loadCases();aiDetect().then(()=>go(ST.shared?'preview':'cases'));};
   $('lf').onsubmit=e=>{e.preventDefault();const m=$('l-mail').value.trim(),p=$('l-pass').value;
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){$('l-err').textContent='メールアドレスの形式を確認してください。';$('l-mail').focus();return;}
     if(!p){$('l-err').textContent='パスワードを入力してください。';$('l-pass').focus();return;}login(m);};
@@ -337,7 +337,7 @@ function viewPreview(v){
   if($('p-share'))$('p-share').onclick=async()=>{
     const url=location.href.split('#')[0]+'#p='+await packCase(c);const kb=Math.round(url.length/1024);
     const local=location.protocol==='file:';const box=$('p-urlbox');
-    box.hidden=false;box.innerHTML=`<b>共有リンク（約${kb}KB）</b>　開いた人は、ログインなしでこのプレビューを見て印刷できます。内容はリンクの中に入っており、サーバーには保存されません。${local?'<br><b>いまはこの端末のファイルとして開いているため、このリンクは他の人の端末では開けません。</b>Webに置いた版で作ると共有できます。':''}<textarea readonly id="p-url"></textarea>`;
+    box.hidden=false;box.innerHTML=`<b>共有リンク（約${kb}KB）</b>　開いた人は、ログインのあとにこのプレビューを見て印刷できます。内容はリンクの中に入っており、サーバーには保存されません。${local?'<br><b>いまはこの端末のファイルとして開いているため、このリンクは他の人の端末では開けません。</b>Webに置いた版で作ると共有できます。':''}<textarea readonly id="p-url"></textarea>`;
     $('p-url').value=url;$('p-url').focus();$('p-url').select();
     try{await navigator.clipboard.writeText(url);toast('共有リンクをコピーしました');}catch(e){toast('リンクを表示しました。選択してコピーしてください');}};
   draw();
@@ -406,7 +406,7 @@ $('logo').onclick=()=>go('cases');
 $('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
 if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
 render();
-if(location.hash.indexOf('#p=')===0)unpackCase(location.hash.slice(3)).then(c=>{ST.shared=c;ST.route='preview';render();}).catch(()=>toast('共有リンクを開けませんでした（リンクが途中で切れている可能性があります）'));
+if(location.hash.indexOf('#p=')===0)unpackCase(location.hash.slice(3)).then(c=>{ST.shared=c;if(ST.user)loadCases();ST.route=ST.user?'preview':'login';render();}).catch(()=>toast('共有リンクを開けませんでした（リンクが途中で切れている可能性があります）'));
 if(/^https?:$/.test(location.protocol)&&!ZONES.rows.length)fetch('registry/zones.json').then(r=>r.ok?r.json():null).then(j=>{if(j&&j.rows)ZONES=j;}).catch(()=>{});
 if(location.hash==='#demo')setTimeout(runDemo,500);
 if(location.hash==='#demo2')setTimeout(()=>runDemo('nofile'),500);
