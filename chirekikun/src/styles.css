@@ -172,7 +172,7 @@ h1,h2,h3{text-wrap:balance}
 .paper th{background:#d9d9d9;text-align:center}
 .paper td.c{text-align:center}.paper td.nw{white-space:nowrap}.paper td.cb{text-align:left}
 .paper .diag{background:linear-gradient(to top right,transparent calc(50% - .6px),#000 calc(50% - .6px),#000 calc(50% + .6px),transparent calc(50% + .6px))}
-.paper table.t11{border:1.5px solid #000;margin:22px 0 20px}.paper .t11 th,.paper .t11 td{border:0;padding:4.5px 6px}.paper .t11 th{width:7.6em;border-right:1px solid #000;letter-spacing:.12em;white-space:nowrap}.paper .t11 tr.g>*{border-top:1px solid #000}.paper .t11 tr:first-child>*{border-top:0}.paper .t11 td.v{width:4.5em;text-align:center;white-space:nowrap}
+.paper table.t11{border:1.5px solid #000;margin:22px 0 20px}.paper .t11 th,.paper .t11 td{border:0;padding:4.5px 6px}.paper .t11 th{width:7.6em;border-right:1px solid #000;letter-spacing:.12em;white-space:nowrap}.paper .t11 tr.g>*{border-top:1px solid #000}.paper .t11 tr:first-child>*{border-top:0}.paper .t11 td.v{width:4.5em;text-align:center;white-space:nowrap}.paper .ngv.lg{display:inline-block;white-space:normal;text-align:left;line-height:1.35;vertical-align:middle}.paper .t11 td.v:has(.ngv.lg){width:9.5em;white-space:normal}.paper .yn td:last-child:has(.ngv.lg){width:13em;white-space:normal}
 .paper table.tpar{border:1.5px solid #000;margin:0 0 30px}.paper .tpar th.band{text-align:left}.paper .tpar td.no{width:1.6em;text-align:center;padding:3px 2px}.paper .tpar td{padding:5.5px 6px}
 .paper table.reg{table-layout:fixed}.paper table.land td,.paper table.bld td{padding:5.5px 6px}.paper table.land{margin:0}.paper table.land+table.land{margin-top:-1px}.paper table.land+.lb,.paper table.bld+.lb{margin-top:1.4em}
 .paper .land th:nth-child(1){width:15%}.paper .land th:nth-child(2){width:8%}.paper .land th:nth-child(3){width:12%}.paper .land th:nth-child(4){width:19%}.paper .land th:nth-child(5){width:14%}
@@ -210,7 +210,7 @@ h1,h2,h3{text-wrap:balance}
 .paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
 .paper [id]{scroll-margin-top:130px}
 .gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
-.paper table.znt{width:calc(100% - 3.2em);margin:6px 0 16px 1.6em;table-layout:auto}.paper .zn{margin-top:-10px}
+.paper table.znt{width:calc(100% - 3.2em);margin:6px 0 16px 1.6em;table-layout:auto}.paper .znt td{padding:3px 6px}.paper .znt th:nth-child(3){width:5em}.paper .znt th:nth-child(4){width:9.5em}.paper .znt th:nth-child(5){width:11em}.paper .kh{margin-top:.6em}.paper .zn{margin-top:-10px}
 .paper .aiv{display:inline-block;margin-left:5px;color:#d0021b;border:1px solid #d0021b;background:#fff7f7;font-size:6.5pt;line-height:1.5;padding:0 3px;white-space:nowrap;vertical-align:middle}
 .paper .scr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0 1em;font-family:var(--f-body)}.paper .scr .scn{font-size:11px;color:var(--mute)}
 /* 提出用の出力：赤枠・下書きの札・付録を外し、赤字は黒に戻す */

@@ -20,7 +20,7 @@ function attNote(c,re){
 const E=(path,html,tag)=>`<${tag||'span'} data-path="${path}" contenteditable="true" spellcheck="false">${html}</${tag||'span'}>`;
 /* 未取得の注記（赤枠）。印刷にも出す。fig を付けると図の枠の大きさで出す */
 function miss(g,mode){return g?`<div class="miss${mode?' '+mode:''}" contenteditable="false" data-gap="${g.k}"><b>未取得</b><p class="mt">${esc(g.label)}</p><p>取得先：${esc(g.how)}</p><p>共有すると：${esc(g.fill)}</p></div>`:'';}
-const ngv=v=>v?esc(v):'<span class="ngv">未確認</span>';
+const ngv=v=>v?(/^要確認/.test(v)?'<span class="ngv lg">'+esc(v)+'</span>':esc(v)):'<span class="ngv">未確認</span>';
 /* 未記入の欄：赤字の仮の文言を出す。そのまま離れても、仮の文言は保存しない（data-ph） */
 const EP=(path,val,ph)=>val||!ph?E(path,esc(val||'')):`<span class="ngv"><span data-path="${path}" data-ph="${esc(ph)}" contenteditable="true" spellcheck="false">${esc(ph)}</span></span>`;
 const PP=(path,val,ph,cls)=>val?P(path,val,cls):`<p class="${cls||''} ngp" data-path="${path}" data-ph="${esc(ph)}" contenteditable="true" spellcheck="false">${esc(ph)}</p>`;
@@ -194,13 +194,13 @@ function renderReport(c){
   /* 2.4.3・3 */
   sheet();
   add(H('h4','sec-243','2.4.3　公的機関の環境情報',' '+ev(c,g.ref)));
-  add(`<p class="in1">（1）調査対象地上の法・条例に基づく特定施設の有無</p>${G.fac?miss(G.fac):`<p class="in3 ti">${g.suidaku&&g.suidaku.date?esc(g.suidaku.date)+'に':''}${esc((g.suidaku&&g.suidaku.src)||'（照会先）')}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'及び'+esc(g.gesui.src):''}へ特定有害物質の使用等（製造・使用・処理）に関する公的届出資料の有無を確認した。その回答は以下のとおりである。</p>`}`);
+  add(`<p class="in1 kh">（1）調査対象地上の法・条例に基づく特定施設の有無</p>${G.fac?miss(G.fac):`<p class="in3 ti">${g.suidaku&&g.suidaku.date?esc(g.suidaku.date)+'に':''}${esc((g.suidaku&&g.suidaku.src)||'（照会先）')}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'及び'+esc(g.gesui.src):''}へ特定有害物質の使用等（製造・使用・処理）に関する公的届出資料の有無を確認した。その回答は以下のとおりである。</p>`}`);
   add(`<table class="yn"><tr><td>１）</td><td>水質汚濁防止法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${ngv(g.suidaku&&g.suidaku.v)}</td></tr><tr><td>２）</td><td>下水道法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${ngv(g.gesui&&g.gesui.v)}</td></tr></table>`);
-  add(`<p class="in1">（2）土壌・地下水汚染情報</p>${G.zone?miss(G.zone):`<p class="in3 ti">調査対象地及び周辺${g.radius?'（調査対象地から'+esc(g.radius)+'）':''}における土壌汚染対策法第6条及び第11条${(g.ord||[]).length?'、並びに'+g.ord.map(o=>esc(o.name)).join('、'):''}に基づく指定区域の有無について、${esc(g.zoneSrc||'（確認先）')}で確認した。</p>`}`);
+  add(`<p class="in1 kh">（2）土壌・地下水汚染情報</p>${G.zone?miss(G.zone):`<p class="in3 ti">調査対象地及び周辺${g.radius?'（調査対象地から'+esc(g.radius)+'）':''}における土壌汚染対策法第6条及び第11条${(g.ord||[]).length?'、並びに'+g.ord.map(o=>esc(o.name)).join('、'):''}に基づく指定区域の有無について、${esc(g.zoneSrc||'（確認先）')}で確認した。</p>`}`);
   add(`<table class="yn">${[['土壌汚染対策法第6条に基づく要措置区域',g.art6],['土壌汚染対策法第11条に基づく形質変更時要届出区域（人為等由来）',g.art11jin],['土壌汚染対策法第11条に基づく形質変更時要届出区域（自然由来）',g.art11shizen],['土壌汚染対策法第11条に基づく形質変更時要届出区域（水面埋立て土砂由来）',g.art11umetate]].concat((g.ord||[]).map(o=>[`${o.name}${/条例に基づく/.test(o.item)?'':'に基づく'}${o.item.replace(/^条例に基づく/,'に基づく')}`,o.v])).map((r,i)=>`<tr><td>${'１２３４５６７８'[i]}）</td><td>${esc(r[0])}</td><td>：${ngv(r[1])}</td></tr>`).join('')}</table>`);
   const za=g.zoneAuto;
   if(za)add(`<p class="in3 sm zn" contenteditable="false">※ 上記は、公表台帳の写し（${esc(za.checkedOn)}取得${za.updated?'、公表ページの更新日 '+esc(za.updated):''}）との自動照合による<span class="aiv">自動照合・要確認</span>。${za.geo?'町丁目の代表点どうしの距離で1.5km以内（1.0km圏に町丁目の広がりの余裕を加えた範囲）と、同じ町丁目の指定区域を拾っている。':'位置が未設定のため、同じ町丁目の指定区域だけを拾っている。'}</p>${za.hits.length?`<table class="reg znt"><thead><tr><th>区域の種類</th><th>所在地</th><th>指定番号</th><th>指定年月日</th><th>対象地との関係</th></tr></thead><tbody>${za.hits.slice(0,12).map(h=>`<tr><td>${h.k==='6'?'要措置区域':h.k==='11'?'形質変更時要届出区域'+(h.sub?'（'+esc(h.sub)+'）':''):'条例：'+esc(h.sub||'区域')}</td><td>${esc(h.city+h.town)}${h.lot?' '+esc(h.lot):''}</td><td class="c">${esc(h.no)}</td><td class="c">${esc(h.date)}</td><td>${h.same?'同じ町丁目':''}${h.d!=null?(h.same?'・':'')+'代表点間 約'+h.d.toFixed(1)+'km':''}</td></tr>`).join('')}</tbody></table>${za.hits.length>12?`<p class="in3 sm">ほか${za.hits.length-12}件（付録の出典の公表ページを参照）。</p>`:''}`:''}`);
-  add(`<p class="in1">（3）自然由来または公有水面等に関しての情報</p>${miss(G.natural)}${PP('regs.natural',g.natural,'（自然由来・公有水面埋立に関する情報を記入）','in3 ti')}`);
+  add(`<p class="in1 kh">（3）自然由来または公有水面等に関しての情報</p>${miss(G.natural)}${PP('regs.natural',g.natural,'（自然由来・公有水面埋立に関する情報を記入）','in3 ti')}`);
   add(H('h2','sec-3','３．結果まとめ',' '+ev(c,v.ref)));
   add(`<p class="in1">各種資料による利用履歴の調査結果は以下のとおりである。</p><div class="shoken${v.level==='保留'?' pend':''}"><div class="sh">所　見</div><div class="shh">${E('verdict.headline',esc(v.headline))}</div><div class="sht" data-path="verdict.text" contenteditable="true" spellcheck="false">${esc(v.text).replace(/(土壌汚染の(?:可能性|おそれ)[^。、]*と判断(?:する|した|される)。)\s*$/,'<u>$1</u>')}</div></div>`);
 

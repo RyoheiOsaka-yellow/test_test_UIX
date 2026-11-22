@@ -59,7 +59,8 @@ function applyZoneCheck(c){
   const empty=['art6','art11jin','art11shizen','art11umetate'].filter(f=>!g[f]);if(!empty.length)return null;
   const z=zoneCheck(c);if(!z)return null;
   const pick=f=>z.hits.filter(h=>f==='art6'?h.k==='6':f==='art11jin'?h.k==='11'&&!/自然|埋立/.test(h.sub||''):f==='art11shizen'?h.k==='11'&&/自然/.test(h.sub||''):h.k==='11'&&/埋立/.test(h.sub||''));
-  empty.forEach(f=>{const hs=pick(f);g[f]=hs.length?`要確認（${hs.some(h=>h.same)?'同じ町丁目':'周辺'}に${hs.length}件）`:'なし';});
+  const cnt=hs=>{const a=hs.filter(h=>h.same).length,b=hs.length-a;return [a?`同じ町丁目に${a}件`:'',b?`周辺に${b}件`:''].filter(Boolean).join('、');};
+  empty.forEach(f=>{const hs=pick(f);g[f]=hs.length?`要確認（${cnt(hs)}）`:'なし';});
   if(!g.zoneSrc)g.zoneSrc=`${z.src.name}（${z.src.updated||z.checkedOn+'取得'}）`;if(!g.radius&&z.geo)g.radius='半径1.0km圏内';
   const oz=ordFor(c.site.pref,c.site.city).find(o=>(o.rules||[]).some(r=>r.trigger==='zone'));
   if(z.src.ord&&oz&&!(g.ord||[]).some(x=>x.name===oz.name||oz.name.indexOf(x.name)===0)&&!z.hits.some(h=>h.k==='ord')){const r=oz.rules.find(r=>r.trigger==='zone');(g.ord=g.ord||[]).push({name:oz.name.replace(/（.*?）/g,''),item:r.heading||'台帳・区域',v:'なし',auto:true});}
@@ -156,7 +157,7 @@ function reviewItems(c){
     l.rows.filter(r=>r.flag).forEach(r=>add('warn','登記簿',`${l.chiban} ${r.date}：${r.flag}`,'sec-22',l.ref));});
   (c.corps||[]).filter(x=>x.flag).forEach(x=>add('warn','法人',`${x.name}：${x.flag}`,'sec-22',x.ref));
   (c.hearing||[]).filter(h=>h.flag).forEach(h=>add('bad','ヒアリング',h.flag,'sec-24',h.ref));
-  const za=c.regs&&c.regs.zoneAuto;if(za)add('warn','指定区域',za.hits.length?`公表台帳の写し（${za.checkedOn}取得）との自動照合で、${za.hits.some(h=>h.same)?'同じ町丁目':'周辺'}に指定区域が${za.hits.length}件ある。対象地が区域に含まれるか、1.0km圏内かを台帳の図面で確認し、2.4.3 の「要確認」を書き換える。`:`指定区域「なし」は、公表台帳の写し（${za.checkedOn}取得）との自動照合による。提出前に、${za.name}の公表ページで最新の指定状況を確認する。`,'sec-243');
+  const za=c.regs&&c.regs.zoneAuto;if(za)add('warn','指定区域',za.hits.length?`公表台帳の写し（${za.checkedOn}取得）との自動照合で、指定区域が${[za.hits.filter(h=>h.same).length?'同じ町丁目に'+za.hits.filter(h=>h.same).length+'件':'',za.hits.filter(h=>!h.same).length?'周辺に'+za.hits.filter(h=>!h.same).length+'件':''].filter(Boolean).join('、')}ある。対象地が区域に含まれるか、1.0km圏内かを台帳の図面で確認し、2.4.3 の「要確認」を書き換える。`:`指定区域「なし」は、公表台帳の写し（${za.checkedOn}取得）との自動照合による。提出前に、${za.name}の公表ページで最新の指定状況を確認する。`,'sec-243');
   const s=c.site||{};const sum=(s.parcels||[]).reduce((a,p)=>a+(+p.chiseki||0),0);
   if((s.parcels||[]).length&&(s.parcels||[]).every(p=>+p.chiseki>0)&&Math.abs(sum-(+s.area||0))>0.01)add('bad','地積',`筆一覧の合計 ${sum.toFixed(2)}㎡ と敷地面積 ${s.area}㎡ が一致しない。`,'sec-11');
   const maps=resolveSame(c.maps);let asc=0,wa=0;maps.forEach((m,i)=>{if(i&&m.y<maps[i-1].y)asc++;const wy=waToYear(m.w);if(wy&&wy!==m.y)wa++;});

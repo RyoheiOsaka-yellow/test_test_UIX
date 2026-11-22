@@ -181,7 +181,7 @@ function paginate(root){
   const cover=root.querySelector('.sheet.cover');if(!cover)return;
   const H=cover.offsetHeight;if(H<900||cover.offsetWidth<780)return;                       /* スマホ幅（流し込み表示）では区切らない */
   const over=sh=>sh.offsetHeight>H+2;
-  const headish=el=>!!el&&(/^H[234]$/.test(el.tagName)||/(^|\s)(lb|tt|tcap|hb)(\s|$)/.test(el.className||''));
+  const headish=el=>!!el&&(/^H[234]$/.test(el.tagName)||/(^|\s)(lb|tt|tcap|hb|kh)(\s|$)/.test(el.className||''));
   const notes={};root.querySelectorAll('.fnotes>div').forEach(d=>{notes[d.dataset.n]=d;});
   const fix=sh=>{const ns=[...sh.querySelectorAll('.sbody sup.fnr')].map(x=>x.textContent);let f=sh.querySelector('.fnotes');
     if(!ns.length){if(f)f.remove();return;}
