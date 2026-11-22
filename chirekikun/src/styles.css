@@ -211,6 +211,10 @@ h1,h2,h3{text-wrap:balance}
 .paper [id]{scroll-margin-top:130px}
 .gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
 .paper table.znt{width:calc(100% - 3.2em);margin:6px 0 16px 1.6em;table-layout:auto}.paper .znt td{padding:3px 6px}.paper .znt th:nth-child(3){width:5em}.paper .znt th:nth-child(4){width:9.5em}.paper .znt th:nth-child(5){width:11em}.paper .kh{margin-top:.6em}.paper .zn{margin-top:-10px}
+.paper .src .tr{font-size:7pt;border:1px solid #000;padding:0 4px;margin-left:8px;white-space:nowrap}
+.savest{font-size:11px;color:var(--mute);white-space:nowrap}.pvw{padding:20px 16px 90px}.pvh .tag{white-space:nowrap}
+.urlbox{max-width:210mm;margin:0 auto 12px;border:1px solid var(--line2);background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px}.urlbox textarea{width:100%;height:64px;margin-top:6px;font:11px var(--f-mono);border:1px solid var(--line2);border-radius:6px;padding:6px;box-sizing:border-box;word-break:break-all}
+.ver{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:6px 0;border-bottom:1px dotted var(--line2);font-size:12px}.ver span{color:var(--ink2)}
 .paper .aiv{display:inline-block;margin-left:5px;color:#d0021b;border:1px solid #d0021b;background:#fff7f7;font-size:6.5pt;line-height:1.5;padding:0 3px;white-space:nowrap;vertical-align:middle}
 .paper .scr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0 1em;font-family:var(--f-body)}.paper .scr .scn{font-size:11px;color:var(--mute)}
 /* 提出用の出力：赤枠・下書きの札・付録を外し、赤字は黒に戻す */

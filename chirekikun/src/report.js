@@ -32,7 +32,7 @@ function tileFig(lat,lng,layer,ext,z,opt){
   if(!lat||!lng)return '';opt=opt||{};
   const n=Math.pow(2,z),x=(lng+180)/360*n,rad=lat*Math.PI/180,y=(1-Math.asinh(Math.tan(rad))/Math.PI)/2*n;
   const tx=Math.floor(x),ty=Math.floor(y),nx=opt.nx==null?2:opt.nx,ny=opt.ny==null?1:opt.ny,mx=nx*256+(x-tx)*256,my=ny*256+(y-ty)*256,W=opt.w||520,H=opt.h||330;
-  let imgs='';for(let j=-ny;j<=ny;j++)for(let i=-nx;i<=nx;i++)imgs+=`<img alt="" onerror="${i||j?"this.style.visibility='hidden'":"this.closest('.tfig').classList.add('none')"}" src="https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}" style="position:absolute;left:${(i+nx)*256}px;top:${(j+ny)*256}px;width:256px;height:256px;max-width:none">`;
+  let imgs='';for(let j=-ny;j<=ny;j++)for(let i=-nx;i<=nx;i++)imgs+=`<img alt="" onerror="${i||j?"this.style.visibility='hidden'":"this.closest('.tfig').classList.add('none')"}" src="${opt.url?opt.url(tx+i,ty+j,z):`https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}`}" style="position:absolute;left:${(i+nx)*256}px;top:${(j+ny)*256}px;width:256px;height:256px;max-width:none">`;
   const d=DIRV[opt.dir];const k=d?1/Math.hypot(d[0],d[1]):0;const ax=d?d[0]*k:0,ay=d?d[1]*k:0;
   const arrow=d?`<line x1="${W/2+ax*24}" y1="${H/2+ay*24}" x2="${W/2+ax*92}" y2="${H/2+ay*92}" stroke="#1f6fd6" stroke-width="7"/><polygon points="${W/2+ax*114},${H/2+ay*114} ${W/2+ax*88-ay*12},${H/2+ay*88+ax*12} ${W/2+ax*88+ay*12},${H/2+ay*88-ax*12}" fill="#1f6fd6"/><rect x="${W/2+ax*134-40}" y="${H/2+ay*134-10}" width="80" height="20" fill="#fff" stroke="#1f6fd6" stroke-width="1.5"/><text x="${W/2+ax*134}" y="${H/2+ay*134+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#1f6fd6">地下水流向</text>`:'';
   return `<div class="tfig" contenteditable="false"><div class="tview" style="width:${W}px;height:${H}px"><div style="position:absolute;left:${W/2-mx}px;top:${H/2-my}px;width:${(2*nx+1)*256}px;height:${(2*ny+1)*256}px">${imgs}</div>
@@ -166,23 +166,30 @@ function renderReport(c){
   add(H('h3','sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',note(G.maps?'':attNote(c,/地図|地形図|空中写真/)||'添付資料(一般)C「地形図・住宅地図」、添付資料(一般)D「空中写真」を参照。')+' '+ev(c,c.mapsRef)));
   const pr=c.photoRead;const prRow=l=>pr&&pr.rows.find(r=>r.layer===l);
   const aiTag='<span class="aiv">AI判読案</span>';
+  const TS=s.lat?tsList(c):[];const hasT=TS.some(t=>t.kind==='topo');const tsName=hasT?'旧版地形図・空中写真':'空中写真';
   if(maps.length){
     if(G.maps)add(miss(G.maps));
-    add(`<p class="in1 ti">${G.maps?'空中写真':'地形図・住宅地図・空中写真'}によって、${esc(maps[0].w)}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
+    add(`<p class="in1 ti">${G.maps?(maps.some(m=>/地形図/.test(m.src||''))?'旧版地形図・空中写真':'空中写真'):'地形図・住宅地図・空中写真'}によって、${esc(maps[0].w)}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
     add(`<p class="tt b">地形図・住宅地図・空中写真による対象地の利用履歴</p><table class="mapt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="yr">${m.y} 年　(${esc(m.w)})</td><td>${E(`maps.${i}.use`,esc(m.use))}</td><td>${E(`maps.${i}.around`,esc(m.around))}</td><td>${esc(m.src)}</td></tr>`).join('')}</tbody></table>`);
-    if(maps.some(m=>m.ai))add('<p class="in1 sm">空中写真の行は、AIによる判読案を担当者が確認して採用したもの。撮影年は年代の幅で示している。</p>');
+    if(maps.some(m=>m.ai))add('<p class="in1 sm">旧版地形図・空中写真の行は、AIによる判読案を担当者が確認して採用したもの。年次は資料の年代の幅で示している。</p>');
   }else{
     add(miss(G.maps));
     if(s.lat){
-      add(`<p class="tt b">国土地理院の空中写真（年代別）：${pr?'AIによる判読案（担当者の確認前）':'取得済み・判読前'}</p><table class="mapt"><thead><tr><th>撮影年代</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${GSI_PHOTOS.map(p=>{const r=prRow(p[0]);return `<tr><td class="yr">${p[2]}</td><td>${r?esc(r.site)+aiTag:pr?'<span class="ngv">写真なし</span>':'<span class="ngv">判読前</span>'}</td><td>${r?esc(r.around):pr?'':'<span class="ngv">判読前</span>'}</td><td>国土地理院 空中写真${p[3]?'（'+p[3]+'）':''}</td></tr>`;}).join('')}</tbody></table>`);
-      if(pr)add(`<p class="in1 sm">判読案は、写真から読み取れる範囲をAIが下読みしたもの（${esc(pr.at)}）。確からしさ：${pr.rows.map(r=>esc(r.era.replace(/年～.*$/,'年～'))+' '+esc(r.conf)).join('、')}。${pr.summary?'<br>移り変わりの要約（AI判読案）：'+esc(pr.summary):''}</p>`);
-      add(`<p class="in1 sm">写真は次ページの図2.3に掲載。用途の判読は、住宅地図・地形図とあわせて担当者が確定する。</p><p class="scr" contenteditable="false"><button type="button" class="btn mini" data-act="photo-read">${pr?'AIで下読みをやり直す':'AIで下読みする'}</button>${pr?'<button type="button" class="btn mini" data-act="photo-adopt">判読案を利用履歴表に採用する</button>':''}<span class="scn">${pr?'採用すると、通常の年次表として編集できます。':'国土地理院の写真をAIが読み、対象地と周辺の用途の案を入れます。'}</span></p>`);
+      add(`<p class="tt b">${tsName}（年代別）：${pr?'AIによる判読案（担当者の確認前）':'取得済み・判読前'}</p><table class="mapt"><thead><tr><th>年代</th><th>対象地用途</th><th>周辺地の土地利用</th>${pr?'<th>確度</th>':''}<th>根拠資料</th></tr></thead><tbody>${TS.map(t=>{const r=prRow(t.id);return `<tr><td class="yr">${t.era}</td><td>${r?esc(r.site)+aiTag:pr?'<span class="ngv">資料なし</span>':'<span class="ngv">判読前</span>'}</td><td>${r?esc(r.around):pr?'':'<span class="ngv">判読前</span>'}</td>${pr?`<td>${r?esc(r.conf):''}</td>`:''}<td>${t.kind==='topo'?'旧版地形図（今昔マップ on the web）':'国土地理院 空中写真'+(t.note?'（'+t.note+'）':'')}</td></tr>`;}).join('')}</tbody></table>`);
+      if(pr)add(`<p class="in1 sm">判読案は、地形図・写真から読み取れる範囲をAIが下読みしたもの（${esc(pr.at)}）。${pr.summary?'<br>移り変わりの要約（AI判読案）：'+esc(pr.summary):''}</p>`);
+      add(`<p class="in1 sm">図は次ページ以降の図2.3に掲載。用途の判読は、住宅地図とあわせて担当者が確定する。</p><p class="scr" contenteditable="false"><button type="button" class="btn mini" data-act="photo-read">${pr?'AIで下読みをやり直す':'AIで下読みする'}</button>${pr?'<button type="button" class="btn mini" data-act="photo-adopt">判読案を利用履歴表に採用する</button>':''}<span class="scn">${pr?'採用すると、通常の年次表として編集できます。':tsName+'をAIが読み、対象地と周辺の用途の案を入れます。'}</span></p>`);
     }
   }
   add((c.mapNotes||[]).map((n,i)=>`<div class="num"><span>${'１２３４５６７８９'[i]||i+1}）</span>${P('mapNotes.'+i,n)}</div>`).join(''));
 
-  if((!maps.length||maps.every(isPhoto))&&s.lat){sheet('figs');mark('sec-23f');
-    add(`<p class="fc" id="sec-23f" style="margin-bottom:8px">図 2.3　年代別の空中写真（調査対象地とその周辺）${note('出典：国土地理院 地理院タイル（年代別の写真）。撮影年月日は、国土地理院「地図・空中写真閲覧サービス」で特定する。')}</p><div class="phg" contenteditable="false">${GSI_PHOTOS.map(p=>`<figure class="ph">${tileFig(s.lat,s.lng,p[0],p[1],17,{w:250,h:168,nx:1,ny:1,r:10,mini:true})}<span class="nop">この年代の写真は整備されていない</span><figcaption>${p[2]}${p[3]?'（'+p[3]+'）':''}</figcaption></figure>`).join('')}</div>`);}
+  /* 資料の共有が無い（または採用した判読案だけの）ときは、取得した旧版地形図・空中写真を図として載せる */
+  if((!maps.length||maps.every(m=>m.ai||isPhoto(m)))&&s.lat){
+    const figSheet=(list,id,cap,src,none)=>{sheet('figs');mark(id);
+      add(`<p class="fc" id="${id}" style="margin-bottom:8px">${cap}${note(src)}</p>`);
+      for(let i=0;i<list.length;i+=2)add(`<div class="phg" contenteditable="false">${list.slice(i,i+2).map(t=>`<figure class="ph">${tileFig(s.lat,s.lng,null,null,t.z,{w:250,h:168,nx:1,ny:1,r:10,mini:true,url:t.url})}<span class="nop">${none}</span><figcaption>${t.era}${t.note?'（'+t.note+'）':''}</figcaption></figure>`).join('')}</div>`);};
+    if(hasT)figSheet(TS.filter(t=>t.kind==='topo'),'sec-23f','図 2.3-1　旧版地形図（年代別・調査対象地とその周辺）','出典：今昔マップ on the web（埼玉大学教育学部 谷謙二・人文地理学研究室）。国土地理院発行の旧版地形図を複製したもの。','この年代の地形図は収録されていない');
+    figSheet(TS.filter(t=>t.kind==='photo'),hasT?'sec-23p':'sec-23f',`図 2.3${hasT?'-2':''}　年代別の空中写真（調査対象地とその周辺）`,'出典：国土地理院 地理院タイル（年代別の写真）。撮影年月日は、国土地理院「地図・空中写真閲覧サービス」で特定する。','この年代の写真は整備されていない');
+  }
   /* 2.4.1・2.4.2 */
   sheet();
   add(H('h3','sec-24','2.4　ヒアリング調査及び現地踏査',' '+ev(c,(h[0]&&h[0].ref)||null)));
@@ -252,7 +259,8 @@ function renderReport(c){
     add(`<div class="why" contenteditable="false">${openConcerns(c).map(x=>{const i=INDBY[x.industry];return i?`<p class="in1">・${esc(x.use)}（${esc(i.label)}）<br>${esc(i.why)}<br><span class="sm">根拠：${esc(i.src.type==='none'?'未登録（担当者の選定）':i.src.cite)}</span>${i.official?`<br><span class="sm">公式統計：${esc(i.official.text)}</span>`:''}</p>`:'';}).join('')||'<p class="in1">懸念として扱う利用履歴は登録されていません。</p>'}</div>`);}
   sheet('app');
   add(H('h2','sec-src',`付録${neg?'３':'２'}　出典一覧`));
-  add(`<div class="srcs" contenteditable="false">${S.map(x=>`<div class="src"><span class="n">${x.n}</span><div>${esc(x.title)}<span class="k">（${esc(x.kind)}）</span>${x.verified?(x.url?'<span class="ok">公式出典で確認</span>':''):x.own?'<span class="ng">社内の既往報告書</span>':'<span class="ng">出典未確認</span>'}<br>${esc(x.detail||'')}${x.url?`<br><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url)}</a>`:''}${x.checkedOn&&x.url?`　${esc(x.checkedOn)} 確認`:''}</div></div>`).join('')}</div>`);
+  add('<p class="in1 sm" contenteditable="false">出典の等級：1＝公式（法令、自治体の公表、国土地理院、登記簿、行政回答）／2＝公的資料の転載／3＝民間・Web／4＝AIの推定。所見の根拠に使うのは、等級1・2と、担当者が採用した等級3。</p>');
+  add(`<div class="srcs" contenteditable="false">${S.map(x=>`<div class="src"><span class="n">${x.n}</span><div>${esc(x.title)}<span class="k">（${esc(x.kind)}）</span>${x.tier?`<span class="tr">等級${x.tier} ${TIERS[x.tier]}</span>`:''}${x.verified?(x.url?'<span class="ok">公式出典で確認</span>':''):x.own?'<span class="ng">社内の既往報告書</span>':x.tier?'':'<span class="ng">出典未確認</span>'}<br>${esc(x.detail||'')}${x.url?`<br><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url)}</a>`:''}${x.checkedOn&&x.url?`　${esc(x.checkedOn)} 確認`:''}</div></div>`).join('')}</div>`);
 
   /* 添付資料 */
   sheet('attp',false);

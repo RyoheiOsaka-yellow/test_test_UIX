@@ -68,6 +68,41 @@ function applyZoneCheck(c){
     hits:z.hits.map(h=>({k:h.k,sub:h.sub||'',city:h.city,town:h.town,lot:h.lot||'',no:h.no||'',date:h.date||'',same:h.same,d:h.d==null?null:Math.round(h.d*10)/10}))};
   return g.zoneAuto;
 }
+/* 出典の等級：1=公式、2=公的資料の転載、3=民間・Web、4=AIの推定。所見の根拠に使うのは、1・2と、担当者が採用した3 */
+const TIERS={1:'公式',2:'公的資料の転載',3:'民間・Web',4:'AIの推定'};
+const today10=()=>new Date().toISOString().slice(0,10);
+/* 旧版地形図：今昔マップ on the web（埼玉大学教育学部 谷謙二・人文地理学研究室）。国土地理院発行の旧版地形図を複製したタイル。等級2。
+   外部アプリからの利用条件：画面に「今昔マップ on the web」と表示すること（https://ktgis.net/kjmapw/tilemapservice.html）。
+   [フォルダ, 地域名, 中心の緯度, 経度（収録確認の順番を決めるための概略値）, 最大ズーム, [[時期フォルダ, 年次]]]。時期は上記ページの公開一覧による */
+const KJ_SETS=[
+ ['tokyo50','首都圏',35.68,139.76,16,[['2man','1896-1909'],['00','1917-1924'],['01','1927-1939'],['02','1944-1954'],['03','1965-1968'],['04','1975-1978'],['05','1983-1987'],['06','1992-1995'],['07','1998-2005']]],
+ ['chukyo','中京圏',35.17,136.89,16,[['2man','1888-1898'],['00','1920'],['01','1932'],['02','1937-1938'],['03','1947'],['04','1959-1960'],['05','1968-1973'],['06','1976-1980'],['07','1984-1989'],['08','1992-1996']]],
+ ['keihansin','京阪神圏',34.70,135.50,16,[['2man','1892-1910'],['00','1922-1923'],['01','1927-1935'],['02','1947-1950'],['03','1954-1956'],['03x','1961-1964'],['04','1967-1970'],['05','1975-1979'],['06','1983-1988'],['07','1993-1997']]],
+ ['sapporo','札幌',43.06,141.35,16,[['00','1916'],['01','1935'],['02','1950-1952'],['03','1975-1976'],['04','1995-1998']]],
+ ['sendai','仙台',38.26,140.87,16,[['00','1928-1933'],['01','1946'],['02','1963-1967'],['03','1977-1978'],['04','1995-2000']]],
+ ['hiroshima','広島',34.39,132.46,16,[['2man','1894-1899'],['00','1925-1932'],['01','1950-1954'],['02','1967-1969'],['03','1984-1990'],['04','1992-2001']]],
+ ['fukuoka','福岡・北九州',33.72,130.62,16,[['00','1922-1926'],['01','1936-1938'],['02','1948-1956'],['03','1967-1972'],['04','1982-1986'],['05','1991-2000']]],
+ ['hamamatsu','浜松・豊橋',34.73,137.55,16,[['2man','1889-1890'],['00','1916-1918'],['01','1938-1950'],['02','1956-1959'],['03','1975-1988'],['04','1988-1995'],['05','1996-2010']]],
+ ['kumamoto','熊本',32.80,130.71,16,[['2man','1900-1901'],['00','1926'],['01','1965-1971'],['02','1983'],['03','1998-2000']]],
+ ['niigata','新潟',37.90,139.04,16,[['00','1910-1911'],['01','1930-1931'],['02','1966-1968'],['03','1980-1988'],['04','1997-2001']]],
+ ['himeji','姫路',34.82,134.69,16,[['2man','1903-1910'],['00','1923'],['01','1967'],['02','1981-1985'],['03','1997-2001']]],
+ ['okayama','岡山・福山',34.60,133.65,16,[['2man','1895-1898'],['00','1925'],['01','1965-1970'],['02','1978-1988'],['03','1990-2000']]],
+ ['kanazawa','金沢・富山',36.63,136.92,16,[['2man','1909-1910'],['00','1930'],['01','1968-1969'],['02','1981-1985'],['03','1994-2001']]],
+ ['kagoshima','鹿児島',31.60,130.56,16,[['2man','1902'],['00','1932'],['01','1966'],['02','1982-1983'],['03','1996-2001']]],
+ ['kanto','関東',36.10,139.70,15,[['00','1894-1915'],['01','1928-1945'],['02','1972-1982'],['03','1988-2008']]],
+];
+const kjUrl=(ds,f,z,x,y)=>`https://ktgis.net/kjmapw/kjtilemap/${ds}/${f}/${z}/${x}/${Math.pow(2,z)-1-y}.png`;   /* タイルの始点は南西（yを反転） */
+const eraY=y=>{const e=y>=2019?['令和',y-2018]:y>=1989?['平成',y-1988]:y>=1926?['昭和',y-1925]:y>=1912?['大正',y-1911]:['明治',y-1867];return e[0]+(e[1]===1?'元':e[1]);};
+const waRange=(a,b)=>a===b?eraY(a)+'年':eraY(a)+'年～'+(eraY(b).slice(0,2)===eraY(a).slice(0,2)?eraY(b).slice(2):eraY(b))+'年';
+/* 対象地について、資料の共有なしで取得できる年代別の資料（旧版地形図と空中写真）を、古い順に並べる */
+function tsList(c){
+  const s=c.site||{},out=[];
+  const set=s.kj&&KJ_SETS.find(x=>x[0]===s.kj.ds);
+  if(set)set[5].forEach(p=>{const m=p[1].split('-').map(Number),a=m[0],b=m[1]||m[0];const era=a===b?a+'年':`${a}年～${b}年`;
+    out.push({id:`kj:${set[0]}/${p[0]}`,kind:'topo',y:a,era,w:waRange(a,b),name:'旧版地形図',note:'',src:`旧版地形図（今昔マップ on the web ${era}）`,tier:2,z:set[4],url:(x,y,z)=>kjUrl(set[0],p[0],z,x,y)});});
+  GSI_PHOTOS.forEach(p=>out.push({id:p[0],kind:'photo',y:p[4]||9999,era:p[2],w:p[5],name:'空中写真',note:p[3],src:`空中写真（国土地理院 ${p[2]}${p[3]?'・'+p[3]:''}）`,tier:1,z:17,url:(x,y,z)=>`https://cyberjapandata.gsi.go.jp/xyz/${p[0]}/${z}/${x}/${y}.${p[1]}`}));
+  return out.sort((a,b)=>a.y-b.y);
+}
 /* 年代別の空中写真（国土地理院 地理院タイル）。位置が分かれば、資料の共有なしで取得できる */
 const GSI_PHOTOS=[['ort_USA10','png','1945年～1950年','米軍撮影',1945,'昭和20年～25年'],['ort_old10','png','1961年～1969年','',1961,'昭和36年～44年'],['gazo1','jpg','1974年～1978年','',1974,'昭和49年～53年'],['gazo2','jpg','1979年～1983年','',1979,'昭和54年～58年'],['gazo3','jpg','1984年～1986年','',1984,'昭和59年～61年'],['gazo4','jpg','1987年～1990年','',1987,'昭和62年～平成2年'],['ort','jpg','2007年以降','オルソ画像',2007,'平成19年以降'],['seamlessphoto','jpg','最新','全国最新写真',0,'最新']];
 /* 未取得の項目：何が無いか、どこで取得できるか、共有すると報告書のどこが埋まるか。本文では赤枠で示す */
@@ -79,7 +114,8 @@ function gapsOf(c){
   if(!(c.land||[]).length)add('land','sec-22','登記簿謄本（土地・建物・閉鎖登記簿、旧土地台帳）','法務局の窓口、または登記情報提供サービス（一般財団法人 民事法務協会）','2.2 の地番ごとの履歴表、地番の変遷、建物・法人の抽出、1.1 の地目・所有者');
   if(!has(/公図/)&&!c.source)add('kozu','sec-172','公図','法務局の窓口、または登記情報提供サービス（一般財団法人 民事法務協会）','図1.7-2 調査対象地地番図、6.3 の区分図');
   if(!s.geoText)add('geo','sec-211','地形・地質の記述','下の治水地形分類図（国土地理院）と、表層地質図（産業技術総合研究所 地質図Navi 等）を読んで記入','2.1.1 地形・地質概要');
-  if(!(c.maps||[]).some(m=>!isPhoto(m)))add('maps','sec-23','住宅地図・旧版地形図','住宅地図は国立国会図書館・都道府県立図書館の所蔵または発行元、旧版地形図は国土地理院の謄本交付','2.3 の年次ごとの利用履歴表（対象地用途・周辺地の土地利用）と、利用履歴からの懸念の抽出');
+  const hasTopo=!!s.kj||(c.maps||[]).some(m=>/地形図/.test(m.src||''));
+  if(!(c.maps||[]).some(m=>/住宅地図/.test(m.src||'')))add('maps','sec-23',hasTopo?'住宅地図':'住宅地図・旧版地形図',hasTopo?'国立国会図書館・都道府県立図書館の所蔵、または発行元':'住宅地図は国立国会図書館・都道府県立図書館の所蔵または発行元、旧版地形図は国土地理院の謄本交付','2.3 の年次ごとの利用履歴表（対象地用途・周辺地の土地利用）と、利用履歴からの懸念の抽出');
   if(!(c.hearing||[]).length)add('hearing','sec-241','ヒアリングの記録','土地所有者・管理者・近隣住民への聴取（聴取調査票）','2.4.1 の聴取内容、懸念のある利用履歴の確定・解消');
   if(!c.siteVisit)add('visit','sec-242','現地踏査の記録','現地で土地の使用状況、漏洩の痕跡・変色・臭気を確認し、写真を記録','2.4.2 の踏査結果、添付資料（現地踏査写真）');
   if(!(g.suidaku&&g.suidaku.v)||!(g.gesui&&g.gesui.v))add('fac','sec-243','特定施設の届出の有無（水質汚濁防止法・下水道法）','所管行政への照会（'+dk+'）。下水道法は下水道管理者','1.1 の特定施設の有無、2.4.3（1）、適用条項の判定（法第3条）');
@@ -185,15 +221,18 @@ function reviewItems(c){
 
 /* 出典一覧：本文で使う公式出典に通し番号を振る */
 function sourcesOf(c){
-  const S=[];const push=(kind,title,detail,url,verified,checkedOn)=>{S.push({n:S.length+1,kind,title,detail,url,verified,checkedOn});return S.length;};
+  const S=[];const push=(kind,title,detail,url,verified,checkedOn,tier)=>{S.push({n:S.length+1,kind,title,detail,url,verified,checkedOn,tier});return S.length;};
   LAWS.items.forEach(l=>push('法令',l.name,`${l.number}${l.lastAmended?'（最終改正：'+l.lastAmended+'）':''}`,l.url,l.verified,LAWS.checkedOn));
   ordFor(c.site.pref,c.site.city).forEach(o=>push('条例',o.name,`${o.numberShort||o.number||''}${(o.lastAmendedShort||o.lastAmended)?'（最終改正：'+(o.lastAmendedShort||o.lastAmended)+'）':''}`,(o.rules.find(r=>r.url)||{}).url||(o.pages&&o.pages[0]&&o.pages[0].url)||'',ordVerified(o),o.checkedOn));
   const g=c.regs||{};
   if(g.suidaku&&g.suidaku.src)push('行政照会','水質汚濁防止法・下水道法の特定施設の届出',`${g.suidaku.src}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'、'+g.gesui.src:''}${g.suidaku.date?'（'+g.suidaku.date+'照会）':''}`,'',true);
   if(g.zoneSrc)push('行政公表','土壌汚染対策法に基づく区域の指定状況',g.zoneAuto?`${g.zoneSrc}。公表台帳の写しとの自動照合`:g.zoneSrc,g.zoneAuto?g.zoneAuto.url:'',true,g.zoneAuto?g.zoneAuto.checkedOn:undefined);
   push('公的地図','治水地形分類図・地理院タイル','国土交通省国土地理院 電子国土web',DATASRC[0].url,true);
+  if(c.site.kj)push('旧版地形図','今昔マップ on the web（時系列地形図閲覧サイト）',`埼玉大学教育学部 谷謙二（人文地理学研究室）。国土地理院発行の旧版地形図を複製したタイル（${c.site.kj.name}）`,'https://ktgis.net/kjmapw/',false,today10(),2);
+  if(c.photoRead)push('AI判読案','旧版地形図・空中写真の用途の読み取り',`AIによる下読み（${c.photoRead.at}）。担当者が採用した行だけを利用履歴に使う`,'',false,undefined,4);
   const used=[...new Set(openConcerns(c).map(x=>INDBY[x.industry]).filter(i=>i&&i.src.type!=='none'))];
   used.forEach(i=>{const n=push(i.src.type==='moe'?'環境省資料':'社内実績',`業種と特定有害物質：${i.label}`,i.src.cite,i.src.type==='moe'&&i.official?i.official.url:'',i.src.type==='moe',LAWS.checkedOn);S[n-1].own=i.src.type==='eco';
     if(i.src.type==='eco'&&i.official)push('環境省資料',`公式統計：${i.label}`,i.official.text,i.official.url,true,LAWS.checkedOn);});
+  S.forEach(x=>{if(!x.tier)x.tier=x.own?0:x.verified?1:0;});
   return S;
 }

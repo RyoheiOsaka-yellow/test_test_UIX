@@ -15,13 +15,13 @@ const DEFAULT_ORG={name:'株式会社エコ・テック',no:'2016-3-1006',addr:'
 
 function go(route,id){ST.route=route;if(id!==undefined)ST.caseId=id;render();window.scrollTo(0,0);}
 function render(){
-  if(!ST.user&&ST.route!=='login')ST.route='login';
+  if(!ST.user&&ST.route!=='login'&&!(ST.route==='preview'&&ST.shared))ST.route='login';
   document.body.dataset.route=ST.route;
-  $('top').hidden=ST.route==='login';
+  $('top').hidden=ST.route==='login'||(ST.route==='preview'&&!!ST.shared);
   document.querySelectorAll('#top .nav button').forEach(b=>b.classList.toggle('on',b.dataset.r===ST.route||(b.dataset.r==='cases'&&(ST.route==='case'||ST.route==='new'))));
   if(ST.user)$('who').textContent=ST.user.name;
   const v=$('view');
-  ({login:viewLogin,cases:viewCases,new:viewNew,case:viewCase,laws:viewLaws,settings:viewSettings})[ST.route](v);
+  ({login:viewLogin,cases:viewCases,new:viewNew,case:viewCase,preview:viewPreview,laws:viewLaws,settings:viewSettings})[ST.route](v);
 }
 
 /* ── ログイン ── */
@@ -56,10 +56,12 @@ function viewCases(v){
      <span class="cj"><em>${esc(c.site.pref||'—')}${c.site.city?' '+esc(c.site.city.replace(/^(.+?市).+区$/,'$1')):''}</em>${ords.map(o=>`<small>${esc(o.name.replace(/（.*?）/g,''))}</small>`).join('')||'<small class="mute">条例の登録なし</small>'}</span>
      <span><span class="lvl ${lvlCls(lv)}">${esc(lv)}</span></span>
      <span class="cn ${R.length?'':'zero'}">${R.length?`確認 <b>${R.length}</b> 件`:'確認済み'}</span><span class="cd num">${esc(c.updated||'')}</span></button>`;}).join('');
-  v.innerHTML=`<div class="wrap"><div class="pagehead"><div><h1>案件</h1><p>資料を共有した案件ごとに、報告書の下書きと確認が必要な点をまとめています。</p></div><div class="hbtns"><button class="btn lg" id="b-demo" type="button">デモ① 資料あり</button><button class="btn lg" id="b-demo2" type="button">デモ② 資料なし</button><button class="btn pri lg" id="b-new" type="button">新しい調査を始める</button></div></div>
+  v.innerHTML=`<div class="wrap"><div class="pagehead"><div><h1>案件</h1><p>資料を共有した案件ごとに、報告書の下書きと確認が必要な点をまとめています。</p></div><div class="hbtns"><button class="btn lg" id="b-open" type="button">ファイルから開く</button><input type="file" id="b-file" accept=".json,application/json" hidden><button class="btn lg" id="b-demo" type="button">デモ① 資料あり</button><button class="btn lg" id="b-demo2" type="button">デモ② 資料なし</button><button class="btn pri lg" id="b-new" type="button">新しい調査を始める</button></div></div>
    <div class="clist"><div class="chead"><span>案件</span><span>自治体・照合する条例</span><span>所見</span><span>確認が必要な点</span><span>更新</span></div>${rows||'<div class="empty">案件はまだありません。「新しい調査を始める」から作成します。</div>'}</div>
    <p class="note">サンプルの4件は、共有いただいた既往報告書PDFを読み取り、同じ章立てで再構成したものです。原本との違い（誤記・転記ミスの疑い）は各案件の「確認」に出ます。</p></div>`;
   $('b-new').onclick=()=>{ST.files=[];ST.draft=null;go('new');};
+  $('b-open').onclick=()=>$('b-file').click();
+  $('b-file').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());if(!j||!j.site||!j.title)throw new Error('案件のファイルではありません');const c=normalize(j);c.sample=false;c.demo=false;if(ST.cases.some(x=>x.id===c.id))c.id='c'+Date.now();ST.cases.unshift(c);saveCases();ST.tab='review';go('case',c.id);toast('ファイルから案件を開きました');}catch(err){toast('開けませんでした：'+err.message);}};
   $('b-demo').onclick=()=>runDemo();$('b-demo2').onclick=()=>runDemo('nofile');
   v.querySelectorAll('.crow').forEach(b=>b.onclick=()=>{ST.tab='review';go('case',b.dataset.id);});
 }
@@ -124,7 +126,7 @@ function blankCase(d){
 }
 async function runCreate(d){
   const c=blankCase(d);const files=ST.files.slice();const canRead=f=>!!f.demo||AI.mode!=='none';const useAI=files.some(canRead);const allDemo=files.length>0&&files.every(f=>f.demo);
-  const steps=[['docs','資料の種類を判別',files.length?`${files.length}点`:'資料なし'],['read','資料を読み取り',useAI?`0 / ${files.length}`:files.length?'未接続のため添付として登録':'—'],['land','地番ごとの履歴を整理',''],['law','法令・条例を照合',''],['gw','地下水流向を推定','']].concat(AI.mode!=='none'&&d.lat&&!files.length?[['photo','空中写真を下読み（AI）','']]:[],[['draft','所見の下書き','']]);
+  const steps=[['docs','資料の種類を判別',files.length?`${files.length}点`:'資料なし'],['read','資料を読み取り',useAI?`0 / ${files.length}`:files.length?'未接続のため添付として登録':'—'],['land','地番ごとの履歴を整理',''],['law','法令・条例を照合',''],['gw','地下水流向を推定','']].concat(d.lat&&!files.length?[['old','旧版地形図を確認','']]:[],AI.mode!=='none'&&d.lat&&!files.length?[['photo','空中写真を下読み（AI）','']]:[],[['draft','所見の下書き','']]);
   $('view').innerHTML=`<div class="wrap narrow"><div class="proc"><h1>レポートを作成しています</h1><p class="sub">${esc(c.title)}</p><div class="psteps">${steps.map(s=>`<div class="ps" id="ps-${s[0]}"><i></i><b>${s[1]}</b><span>${s[2]}</span></div>`).join('')}</div><div class="err" id="p-err"></div></div></div>`;
   const mark=(id,state,txt)=>{const e=$('ps-'+id);if(!e)return;e.className='ps '+state;if(txt!=null)e.querySelector('span').textContent=txt;};
   const tick=ms=>new Promise(r=>setTimeout(r,ms));
@@ -147,6 +149,7 @@ async function runCreate(d){
         c.site.gwText=g.dir?`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高と比較すると${g.dir}方向が約${g.drop.toFixed(1)}m低い。このことから調査対象地における地下水の流向は、概ね${g.dir}向きの流向が推定される。ただし、調査対象地における局所的な地下水の流れについては、調査対象地及び隣接地の地下構造物等にも影響されることに注意が必要となる。`
           :`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高差は${Math.max(0,g.drop).toFixed(1)}mとほぼ平坦である。地形からは流向を特定できないため、周辺の河川・海域の位置関係から判断する必要がある。`;mark('gw','ok',g.dir?`${g.dir}向き（標高差 ${g.drop.toFixed(1)}m）`:'平坦のため特定できず');}else mark('gw','skip','標高を取得できず');}catch(e){mark('gw','skip','標高APIに接続できず');}}
     else mark('gw',c.site.gwText?'ok':'skip',c.site.gwText?'資料の記載を採用':'位置が未設定');
+    if($('ps-old')){mark('old','run');try{c.site.kj=await kjProbe(c.site.lat,c.site.lng);const n=c.site.kj?tsList(c).filter(t=>t.kind==='topo').length:0;mark('old',c.site.kj?'ok':'skip',c.site.kj?`${c.site.kj.name}　${n}時期（今昔マップ on the web）`:'収録範囲外');}catch(e){mark('old','skip','確認できず');}}
     if($('ps-photo')){mark('photo','run');try{await aiReadPhotos(c,s=>mark('photo','run',s));mark('photo','ok',`${c.photoRead.rows.length}年代の判読案`);}catch(e){mark('photo','skip','下読みできず：'+e.message);}}
     mark('draft','run');await tick(250);mark('draft','ok',c.verdict?`所見：${c.verdict.level}`:'');
     if(allDemo||(DEMO.on&&!files.length)){c.demo=true;c.demoKind=files.length?'files':'nofile';ST.cases=ST.cases.filter(x=>!x.demo||(x.demoKind||'files')!==c.demoKind);}
@@ -161,17 +164,16 @@ function viewCase(v){
   if(!c.verdict)c.verdict=verdictOf(c);
   const lv=c.verdict.level;
   v.innerHTML=`<div class="ws-head"><div class="wh-in"><button class="btn mini" id="c-back" type="button">案件一覧</button><div class="wt"><h1>${esc(c.title)}</h1><span class="lvl ${lvlCls(lv)}">${esc(lv)}</span>${c.sample?'<span class="tag">サンプル</span>':''}</div>
-    <div class="wa"><div class="seg" id="c-mode" role="group" aria-label="出力の種類"><button type="button" data-m="check" title="赤枠（未取得の注記）と付録を付けて出力します">確認用</button><button type="button" data-m="submit" title="赤枠・下書きの札・付録を外して出力します">提出用</button></div><button class="btn" id="c-word" type="button">Wordで保存</button><button class="btn pri" id="c-pdf" type="button">PDFで出力</button></div></div></div>
+    <div class="wa"><span class="savest" id="c-savest"></span><button class="btn" id="c-save" type="button" title="いまの内容を版として保存します（直前5版まで戻せます）">保存</button><button class="btn" id="c-prev" type="button">プレビュー</button><div class="seg" id="c-mode" role="group" aria-label="出力の種類"><button type="button" data-m="check" title="赤枠（未取得の注記）と付録を付けて出力します">確認用</button><button type="button" data-m="submit" title="赤枠・下書きの札・付録を外して出力します">提出用</button></div><button class="btn" id="c-word" type="button">Wordで保存</button><button class="btn pri" id="c-pdf" type="button">PDFで出力</button></div></div></div>
    <div class="ws"><nav class="ws-toc" id="c-toc" aria-label="目次"></nav><div class="ws-paper"><div class="gapbar" id="c-gaps" hidden></div><article class="paper" id="paper"></article></div>
     <aside class="ws-side"><div class="tabs2" role="tablist">${[['review','確認'],['judge','判断'],['src','出典'],['docs','資料']].map(t=>`<button type="button" role="tab" data-t="${t[0]}" class="${ST.tab===t[0]?'on':''}">${t[1]}<i id="tb-${t[0]}"></i></button>`).join('')}</div><div class="side-body" id="side"></div></aside></div>`;
   $('c-back').onclick=()=>go('cases');
   const segDraw=()=>$('c-mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===(ST.outMode||'check')));segDraw();
   $('c-mode').querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.outMode=b.dataset.m;segDraw();const n=gapsOf(c).length;toast(ST.outMode==='submit'?`提出用：赤枠と付録を外して出力します${n?`（未取得の項目が${n}件残っています）`:''}`:'確認用：赤枠と付録を付けて出力します');});
-  $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;forOutput($('printarea'));$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
-    const imgs=[...$('printarea').querySelectorAll('img')].filter(i=>!i.complete);const b=$('c-pdf');
-    if(!imgs.length){window.print();return;}
-    b.disabled=true;b.textContent='図を読み込み中…';
-    Promise.race([Promise.all(imgs.map(i=>new Promise(r=>{i.addEventListener('load',r);i.addEventListener('error',r);}))),new Promise(r=>setTimeout(r,6000))]).then(()=>{b.disabled=false;b.textContent='PDFで出力';window.print();});};
+  $('c-pdf').onclick=()=>printPaper($('c-pdf'));
+  const savest=()=>{$('c-savest').textContent=c.savedAt?'保存 '+fmtAt(c.savedAt):'自動保存中';};savest();
+  $('c-save').onclick=()=>{c.savedAt=new Date().toISOString();c.updated=today();const n=saveVersion(c);savest();if(ST.tab==='docs')drawSide(true);toast(`保存しました。「資料」タブの「保存した版」から、直前${n}版まで戻せます`);};
+  $('c-prev').onclick=()=>go('preview');
   $('c-word').onclick=()=>exportWord(c);
   v.querySelectorAll('.tabs2 button').forEach(b=>b.onclick=()=>{ST.tab=b.dataset.t;v.querySelectorAll('.tabs2 button').forEach(x=>x.classList.toggle('on',x===b));drawSide();});
   drawPaper();drawSide();
@@ -272,7 +274,7 @@ function drawSide(keep){
     side.innerHTML=`<div class="sv-head"><b>資料</b><p>${c.source?`原本：${esc(c.source.file)}${c.source.pages?'（'+c.source.pages+'頁）':''}`:'共有された資料の一覧です。'}　本文の「p.」を押すと、該当ページを開きます。</p></div>`+
      (c.docs||[]).map(d=>`<div class="dc"><span class="fk">${esc(d.cls==='本文'?'本文':d.cls.replace('資料','')+d.id.replace('P','').replace('K',''))}</span><span><b>${esc(d.kind)}</b><small>${esc(d.name||'')}${d.pages?'　p.'+esc(d.pages):''}</small></span></div>`).join('')+
      `<label class="drop sm" id="d-drop">${c.source&&!ST.pdf[c.id]?'<b>原本PDFを入れる</b>と、根拠ページをその場で表示できます':'<b>資料を追加</b>（PDF・画像）'}<input type="file" id="d-file" accept="application/pdf,image/*" multiple></label><div class="note" id="d-msg">${ST.pdf[c.id]?'原本PDFを読み込み済み':''}</div>
-     <button class="btn mini" type="button" id="d-json">この案件をJSONで保存</button> <button class="btn mini" type="button" id="d-del">この案件を削除</button>`;
+     <button class="btn mini" type="button" id="d-json">この案件をファイルに保存</button> <button class="btn mini" type="button" id="d-del">この案件を削除</button>`;
     const add=async fl=>{const fs=[...fl];if(c.source&&!ST.pdf[c.id]&&fs[0]&&/pdf$/i.test(fs[0].name)){ST.pdf[c.id]=fs.shift();ST.pdfDoc=null;$('d-msg').textContent='原本PDFを読み込みました。本文の「p.」を押すとページを表示します';toast('原本PDFを読み込みました');if(!fs.length)return;}
       if(AI.mode==='none'){fs.forEach(f=>{const k=kindByName(f.name);const id='X'+(c.docs.length+1);c.docs.push({id,kind:k[0],name:f.name,cls:k[1],pages:''});ST.pdf[c.id+':'+id]=f;});saveCases();drawSide();toast('資料を添付として登録しました（AI読み取りは未接続）');return;}
       for(const f of fs){$('d-msg').textContent=`読み取り中：${f.name}`;try{const id='X'+(c.docs.length+1);const part=await aiExtractFile(f);c.docs.push({id,kind:(part.kind||kindByName(f.name)[0]).replace(/（.*$/,''),name:f.name,cls:kindByName(f.name)[1],pages:''});ST.pdf[c.id+':'+id]=f;mergePart(c,part,id);}catch(e){toast(`${f.name} を読み取れませんでした：${e.message}`);}}
@@ -280,6 +282,8 @@ function drawSide(keep){
     const dz=$('d-drop');dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');add(e.dataTransfer.files);});
     $('d-file').onchange=e=>add(e.target.files);
     $('d-json').onclick=()=>download(`chireki-${c.title}.json`,JSON.stringify(c,null,1),'application/json');
+    const vs=store.get('ver.'+c.id)||[];const vb=document.createElement('div');vb.className='jg';vb.innerHTML=`<h3>保存した版</h3>${vs.length?vs.map((x,i)=>`<div class="ver"><span>${esc(fmtAt(x.at))}　所見：${esc((x.data.verdict||{}).level||'—')}</span><button type="button" class="btn mini" data-ver="${i}">この版に戻す</button></div>`).join(''):'<p class="mute">まだありません。右上の「保存」を押すと、その時点の内容を版として残します（直前5版まで）。</p>'}`;side.appendChild(vb);
+    vb.querySelectorAll('[data-ver]').forEach(b=>b.onclick=()=>{const x=vs[+b.dataset.ver];if(!x)return;const i=ST.cases.findIndex(k=>k.id===c.id);ST.cases[i]=normalize(clone(x.data));saveCases();drawPaper();drawSide();toast(`${fmtAt(x.at)} の版に戻しました`);});
     $('d-del').onclick=()=>{const b=$('d-del');if(b.dataset.arm){ST.cases=ST.cases.filter(x=>x.id!==c.id);saveCases();go('cases');toast('案件を削除しました');}else{b.dataset.arm='1';b.textContent='もう一度押すと削除します';b.classList.add('danger');}};
   }
 }
@@ -288,6 +292,57 @@ function forOutput(el){const sub=ST.outMode==='submit';el.classList.toggle('subm
   el.querySelectorAll('.miss,.draft,.ngp,.sheet.app,.scr').forEach(e=>e.remove());
   el.querySelectorAll('.toc a').forEach(a=>{if(/^sec-(app|src)/.test(a.dataset.go||''))a.remove();});
   el.querySelectorAll('.ngv').forEach(e=>{if(e.querySelector('[data-ph]'))e.remove();});}
+/* ── 保存：いまの内容を版として残す（直前5版まで）。編集のたびの自動保存とは別 ── */
+const fmtAt=iso=>{const d=new Date(iso);const p=n=>String(n).padStart(2,'0');return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;};
+function saveVersion(c){
+  saveCases();const k='chireki.ver.'+c.id;const vs=store.get('ver.'+c.id)||[];vs.unshift({at:new Date().toISOString(),data:clone(c)});while(vs.length>5)vs.pop();
+  for(;;){try{localStorage.setItem(k,JSON.stringify(vs));break;}catch(e){if(vs.length<=1)break;vs.pop();}}   /* 容量が足りなければ古い版から落とす */
+  return vs.length;
+}
+/* ── 印刷：紙面の写しを印刷領域に置き、図の読み込みを待ってから印刷ダイアログを開く（PDFに保存を選べる） ── */
+function printPaper(btn){
+  const a=$('printarea');a.innerHTML=$('paper').innerHTML;forOutput(a);a.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
+  const imgs=[...a.querySelectorAll('img')].filter(i=>!i.complete);
+  if(!imgs.length){window.print();return;}
+  const t0=btn.textContent;btn.disabled=true;btn.textContent='図を読み込み中…';
+  Promise.race([Promise.all(imgs.map(i=>new Promise(r=>{i.addEventListener('load',r);i.addEventListener('error',r);}))),new Promise(r=>setTimeout(r,6000))]).then(()=>{btn.disabled=false;btn.textContent=t0;window.print();});
+}
+/* ── 共有リンク：案件の内容を圧縮してURLの「#」以降に入れる。サーバーには送らないので、リンクを知っている人だけが開ける ── */
+async function packCase(c){
+  const d=clone(c);if(d.photoRead)delete d.photoRead.usage;
+  let u=new TextEncoder().encode(JSON.stringify({v:1,c:d})),z='0';
+  if(typeof CompressionStream!=='undefined'){u=new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());z='1';}
+  let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));
+  return z+btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function unpackCase(h){
+  const b=atob(h.slice(1).replace(/-/g,'+').replace(/_/g,'/'));let u=Uint8Array.from(b,ch=>ch.charCodeAt(0));
+  if(h[0]==='1')u=new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  const j=JSON.parse(new TextDecoder().decode(u));if(!j||!j.c||!j.c.site)throw new Error('bad link');return normalize(j.c);
+}
+/* ── プレビュー：紙面だけを閲覧用に表示する。共有リンクから開いたときは、ログインなしで見られる ── */
+function viewPreview(v){
+  const shared=!!ST.shared;const c=ST.shared||curCase();if(!c){go('cases');return;}
+  if(!c.verdict)c.verdict=verdictOf(c);
+  v.innerHTML=`<div class="ws-head pvh"><div class="wh-in">${shared?'<span class="tag">共有されたプレビュー（閲覧のみ）</span>':'<button class="btn mini" id="p-back" type="button">編集に戻る</button>'}<div class="wt"><h1>${esc(c.title)}</h1><span class="lvl ${lvlCls(c.verdict.level)}">${esc(c.verdict.level)}</span></div>
+    <div class="wa"><div class="seg" id="p-mode" role="group" aria-label="出力の種類"><button type="button" data-m="check">確認用</button><button type="button" data-m="submit">提出用</button></div>${shared?'':'<button class="btn" id="p-share" type="button">共有リンクをコピー</button>'}<button class="btn pri" id="p-pdf" type="button">PDFとして印刷</button></div></div></div>
+   <div class="pvw"><div class="urlbox" id="p-urlbox" hidden></div><article class="paper" id="paper"></article></div>`;
+  const draw=()=>{const p=$('paper');p.style.zoom='';p.innerHTML=renderReport(c);paginate(p);forOutput(p);
+    p.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));p.querySelectorAll('.scr').forEach(e=>e.remove());
+    p.querySelectorAll('.toc a').forEach(a=>a.onclick=e=>{e.preventDefault();const el=document.getElementById(a.dataset.go);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
+    fitPaper();$('p-mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===(ST.outMode||'check')));};
+  $('p-mode').querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.outMode=b.dataset.m;draw();});
+  if($('p-back'))$('p-back').onclick=()=>go('case');
+  $('p-pdf').onclick=()=>printPaper($('p-pdf'));
+  if($('p-share'))$('p-share').onclick=async()=>{
+    const url=location.href.split('#')[0]+'#p='+await packCase(c);const kb=Math.round(url.length/1024);
+    const local=location.protocol==='file:';const box=$('p-urlbox');
+    box.hidden=false;box.innerHTML=`<b>共有リンク（約${kb}KB）</b>　開いた人は、ログインなしでこのプレビューを見て印刷できます。内容はリンクの中に入っており、サーバーには保存されません。${local?'<br><b>いまはこの端末のファイルとして開いているため、このリンクは他の人の端末では開けません。</b>Webに置いた版で作ると共有できます。':''}<textarea readonly id="p-url"></textarea>`;
+    $('p-url').value=url;$('p-url').focus();$('p-url').select();
+    try{await navigator.clipboard.writeText(url);toast('共有リンクをコピーしました');}catch(e){toast('リンクを表示しました。選択してコピーしてください');}};
+  draw();
+  if(!ST.fontOK&&document.fonts&&document.fonts.load){ST.fontOK=true;document.fonts.load('10.5pt "BIZ UDGothic"','地歴調査A1').then(()=>{if(ST.route==='preview')draw();}).catch(()=>{});}
+}
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type+';charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportWord(c){
   const body=$('paper').cloneNode(true);forOutput(body);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.phg,.todo,.scr,.pno,.toc i,.toc b').forEach(e=>e.remove());
@@ -351,6 +406,7 @@ $('logo').onclick=()=>go('cases');
 $('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
 if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
 render();
+if(location.hash.indexOf('#p=')===0)unpackCase(location.hash.slice(3)).then(c=>{ST.shared=c;ST.route='preview';render();}).catch(()=>toast('共有リンクを開けませんでした（リンクが途中で切れている可能性があります）'));
 if(/^https?:$/.test(location.protocol)&&!ZONES.rows.length)fetch('registry/zones.json').then(r=>r.ok?r.json():null).then(j=>{if(j&&j.rows)ZONES=j;}).catch(()=>{});
 if(location.hash==='#demo')setTimeout(runDemo,500);
 if(location.hash==='#demo2')setTimeout(()=>runDemo('nofile'),500);

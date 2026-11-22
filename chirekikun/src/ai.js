@@ -124,46 +124,57 @@ async function estimateGW(lat,lng){
 /* ══════════ 空中写真の下読み（AI判読案） ══════════
    国土地理院の年代別の空中写真を、対象地を中心に1枚の画像にまとめてClaudeに渡し、用途の読み取り案を受け取る。
    結果は「判読案」として表に出し、担当者が採用するまで利用履歴・所見には使わない。 */
-async function photoImage(lat,lng,layer,ext,z){
+async function tileImage(lat,lng,z,url){
   const n=Math.pow(2,z),x=(lng+180)/360*n,y=(1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n,tx=Math.floor(x),ty=Math.floor(y);
   const W=512,H=512,cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');g.fillStyle='#ddd';g.fillRect(0,0,W,H);
   const ox=W/2-(256+(x-tx)*256),oy=H/2-(256+(y-ty)*256);
-  const load=(i,j)=>new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>res({i,j,im});im.onerror=()=>res({i,j,im:null});im.src=`https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}`;});
+  const load=(i,j)=>new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>res({i,j,im});im.onerror=()=>res({i,j,im:null});im.src=url(tx+i,ty+j,z);});
   const jobs=[];for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++)jobs.push(load(i,j));
   const tiles=await Promise.all(jobs);if(!tiles.find(t=>t.i===0&&t.j===0).im)return null;
   tiles.forEach(t=>{if(t.im)g.drawImage(t.im,ox+(t.i+1)*256,oy+(t.j+1)*256);});
   g.strokeStyle='#e60012';g.lineWidth=3;g.beginPath();g.arc(W/2,H/2,20,0,Math.PI*2);g.stroke();
   return cv.toDataURL('image/jpeg',0.88).split(',')[1];
 }
-const PHOTO_PROMPT=`あなたは土壌汚染対策法に基づく地歴調査の担当者の下読み役です。国土地理院の年代別の空中写真を、古い順に渡しました。各写真の中心の赤い丸が調査対象地の代表点です（敷地の境界は示していません。丸の中とそのすぐ外側を対象地として読んでください）。写真1枚は一辺およそ500mです。
-写真ごとに、写真から見て取れることだけを書いてください。
-- site：対象地の土地利用（例：田、畑、空地、住宅、低層の建物、大きな屋根の建物（工場・倉庫の可能性）、駐車場、資材置場）。25字以内。
+/* 旧版地形図（今昔マップ on the web）の収録範囲に対象地が入るかを、近い順に3地域まで実際のタイルで確かめる */
+async function kjProbe(lat,lng){
+  const km=(a,b,c2,d)=>{const p=Math.PI/180;return Math.hypot((d-b)*p*Math.cos((a+c2)/2*p),(c2-a)*p)*6371;};
+  const cand=KJ_SETS.map(s=>({s,d:km(lat,lng,s[2],s[3])})).filter(x=>x.d<(x.s[0]==='kanto'?170:90)).sort((a,b)=>a.d-b.d).slice(0,3);
+  for(const {s} of cand){const z=s[4],n=Math.pow(2,z),tx=Math.floor((lng+180)/360*n),ty=Math.floor((1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n);
+    const hit=await Promise.all(s[5].slice(-2).map(p=>new Promise(res=>{const im=new Image();im.onload=()=>res(true);im.onerror=()=>res(false);im.src=kjUrl(s[0],p[0],z,tx,ty);})));
+    if(hit.some(Boolean))return {ds:s[0],name:s[1]};}
+  return null;
+}
+const PHOTO_PROMPT=`あなたは土壌汚染対策法に基づく地歴調査の担当者の下読み役です。調査対象地の旧版地形図と空中写真を、古い順に渡しました。各画像の中心の赤い丸が調査対象地の代表点です（敷地の境界は示していません。丸の中とそのすぐ外側を対象地として読んでください）。画像の一辺の長さは、資料ごとの見出しに書いてあります。
+資料ごとに、その画像から見て取れることだけを書いてください。
+- 旧版地形図は、地図記号と注記を読みます（田、畑、桑畑、荒地、建物、建物の密集、工場の記号、鉄道、水面、埋立地の形など）。注記の文字が読めるときは、読めた文字だけを書いてください。
+- 空中写真は、土地の状態と建物の形を読みます（田、畑、空地、住宅、低層の建物、大きな屋根の建物（工場・倉庫の可能性）、駐車場、資材置場など）。
+- site：対象地の土地利用。25字以内。
 - around：周辺の土地利用。35字以内。
 - conf：判読の確からしさ。「高」「中」「低」のいずれか。
-- note：そう読んだ根拠と、写真では分からない点。60字以内。
-業種や事業者名は写真からは分からないので書かないでください。工場・給油所などに見える形状は「〜の可能性」と書いてください。解像度や影で読めないときは site を「判読不能」としてください。
-最後に summary として、年代を通した土地利用の移り変わりを120字以内でまとめてください。
-次のJSONだけを返してください（説明文・コードフェンス不要）。n は写真の番号です。
+- note：そう読んだ根拠と、この資料では分からない点。60字以内。
+業種や事業者名は、注記として読めた場合を除いて書かないでください。工場・給油所などに見える形状は「〜の可能性」と書いてください。読めないときは site を「判読不能」としてください。
+最後に summary として、年代を通した土地利用の移り変わりを150字以内でまとめてください。
+次のJSONだけを返してください（説明文・コードフェンス不要）。n は資料の番号です。
 {"photos":[{"n":1,"site":"","around":"","conf":"","note":""}],"summary":""}`;
 async function aiReadPhotos(c,onStep){
   const s=c.site||{};if(!s.lat)throw new Error('対象地の位置が未設定です');
   const got=[];
-  for(const p of GSI_PHOTOS){if(onStep)onStep(`写真を取得中　${p[2]}`);const b=await photoImage(s.lat,s.lng,p[0],p[1],17);if(b)got.push({p,b});}
-  if(!got.length)throw new Error('この地点の空中写真を取得できませんでした');
-  const content=[];got.forEach((g,i)=>{content.push({type:'text',text:`写真${i+1}：撮影年代 ${g.p[2]}${g.p[3]?'（'+g.p[3]+'）':''}`});content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:g.b}});});
+  for(const t of tsList(c)){if(onStep)onStep(`${t.name}を取得中　${t.era}`);const b=await tileImage(s.lat,s.lng,t.z,t.url);if(b)got.push({t,b});}
+  if(!got.length)throw new Error('この地点の旧版地形図・空中写真を取得できませんでした');
+  const content=[];got.forEach((g,i)=>{content.push({type:'text',text:`資料${i+1}：${g.t.name} ${g.t.era}${g.t.note?'（'+g.t.note+'）':''}／画像の一辺 約${g.t.z>=17?'500m':g.t.z===16?'1km':'2km'}`});content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:g.b}});});
   content.push({type:'text',text:PHOTO_PROMPT});
-  if(onStep)onStep(`${got.length}年代の写真を判読中`);
-  const {text,usage}=await aiCall(content,8000,{effort:'high'});
+  if(onStep)onStep(`${got.length}点の地形図・写真を判読中`);
+  const {text,usage}=await aiCall(content,12000,{effort:'high'});
   const m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('判読結果を解釈できませんでした');
   const j=JSON.parse(m[0]);const cut=(v,n)=>String(v==null?'':v).replace(/\s+/g,' ').trim().slice(0,n);
-  const rows=got.map((g,i)=>{const r=(j.photos||[]).find(x=>+x.n===i+1)||(j.photos||[])[i]||{};return {layer:g.p[0],era:g.p[2],site:cut(r.site,40)||'判読不能',around:cut(r.around,60),conf:/^(高|中|低)$/.test(r.conf)?r.conf:'低',note:cut(r.note,120)};});
-  c.photoRead={at:new Date().toISOString().slice(0,10),rows,summary:cut(j.summary,240),usage,adopted:false};
+  const rows=got.map((g,i)=>{const r=(j.photos||[]).find(x=>+x.n===i+1)||(j.photos||[])[i]||{};return {layer:g.t.id,kind:g.t.kind,era:g.t.era,site:cut(r.site,40)||'判読不能',around:cut(r.around,60),conf:/^(高|中|低)$/.test(r.conf)?r.conf:'低',note:cut(r.note,120)};});
+  c.photoRead={at:new Date().toISOString().slice(0,10),rows,summary:cut(j.summary,300),usage,adopted:false};
   return c.photoRead;
 }
 /* 判読案を利用履歴表に採用する（担当者の操作）。以後は通常の年次表として編集できる */
 function adoptPhotoRead(c){
-  const pr=c.photoRead;if(!pr||!pr.rows.length)return 0;const year=new Date().getFullYear();let n=0;
-  pr.rows.filter(r=>r.site&&r.site!=='判読不能').forEach(r=>{const p=GSI_PHOTOS.find(x=>x[0]===r.layer);if(!p)return;const y=p[4]||year;const src=`空中写真（国土地理院 ${p[2]}${p[3]?'・'+p[3]:''}）`;
-    if(c.maps.some(m=>m.src===src))return;c.maps.push({y,w:p[4]?p[5]:toWareki(new Date()).replace(/年.*$/,'年'),use:r.site,around:r.around,src,ai:true});n++;});
+  const pr=c.photoRead;if(!pr||!pr.rows.length)return 0;const year=new Date().getFullYear();const ts=tsList(c);let n=0;
+  pr.rows.filter(r=>r.site&&r.site!=='判読不能').forEach(r=>{const t=ts.find(x=>x.id===r.layer);if(!t)return;
+    if(c.maps.some(m=>m.src===t.src))return;c.maps.push({y:t.y===9999?year:t.y,w:t.y===9999?eraY(year)+'年':t.w,use:r.site,around:r.around,src:t.src,ai:true,tier:t.tier});n++;});
   c.maps.sort((a,b)=>a.y-b.y);pr.adopted=true;return n;
 }
