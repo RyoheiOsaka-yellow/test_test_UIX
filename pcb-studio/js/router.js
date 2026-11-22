@@ -141,9 +141,11 @@ export class Router {
   }
   // 電源・GND ピンを内層プレーンへ落とすビア。パッド内に打てなければ隣の格子へ短く引き出す。
   connectPlanes() {
-    const { occ, viaNet, nx, plane, board } = this;
-    for (const net of board.nets.values()) {
-      if (net.cls !== 'plane') continue;
+    for (const net of this.board.nets.values()) if (net.cls === 'plane') this.connectPlane(net);
+  }
+  connectPlane(net) {
+    const { occ, viaNet, nx, plane } = this;
+    {
       this.ripNet(net);
       const route = { cells: [], segs: [], vias: [], fails: [], len: 0, plane: true, smd: 0 };
       net.route = route; if (this.log) this.log.push(net, route);
@@ -282,6 +284,97 @@ export class Router {
   }
   // 2 ピンのネットを、内層の中継点を経由する遠回りの経路に引き直して target の長さに近づける。
   // 表層が混んでいて蛇行を入れられないときに使う。うまくいかなければ元に戻して false。
+  // プレーンへ落とせなかったピンの救済：ビアを打ちたい場所をふさいでいる信号線（2 本まで）をいったん外し、
+  // ビアを打ってから引き直す。引き直せない、または等長が崩れるなら元に戻す。
+  fixPlaneFails() {
+    const { occ, fixed, viaNet, nx, plane, board } = this;
+    const restore = (n, old) => { this.ripNet(n); if (old.cells.every(k => occ[k] === 0 || occ[k] === n.id)) { for (const k of old.cells) occ[k] = n.id; for (const v of old.vias) viaNet[Math.round(v.y / G) * nx + Math.round(v.x / G)] = n.id; n.route = old; if (this.log) this.log.push(n, old); return true; } return false; };
+    for (const net of board.nets.values()) {
+      if (net.cls !== 'plane' || !net.route || !net.route.fails.length) continue;
+      const id = net.id, route = net.route;
+      for (const i of [...route.fails]) {
+        const pin = net.pins[i], p = padWorld(pin.c, pin.c.part.padMap[pin.p]), ix = Math.round(p.x / G), iy = Math.round(p.y / G);
+        if (!this.inGrid(ix, iy)) continue;
+        const l = pin.c.side === 'B' ? NL - 1 : 0, base = l * plane, r0 = iy * nx + ix;
+        // パッドの層で 3 歩以内に届く格子点を候補にする
+        const par = new Map([[r0, -1]]); let front = [r0];
+        for (let depth = 0; depth < 3; depth++) {
+          const next = [];
+          for (const r of front) for (let d = 0; d < 4; d++) {
+            const jx = (r % nx) + DX[d], jy = ((r / nx) | 0) + DY[d]; if (!this.inGrid(jx, jy)) continue;
+            const rr = jy * nx + jx; if (par.has(rr)) continue;
+            const o = occ[base + rr]; if (o !== 0 && o !== id) continue;
+            par.set(rr, r); next.push(rr);
+          }
+          front = next;
+        }
+        let done = false;
+        for (const r of par.keys()) {
+          if (done) break;
+          const at = new Set(), wide = new Set(); let hard = false;
+          for (const q of [r, r + 1, r - 1, r + nx, r - nx]) for (let m = 0; m < NL; m++) {
+            const k = m * plane + q, o = occ[k]; if (o === 0 || o === id) continue;
+            const b = o > 0 ? board.netById[o] : null;
+            if (!b || b.cls === 'plane' || !b.route || b.route.manual || fixed[k]) { if (q === r) hard = true; continue; }
+            wide.add(b); if (q === r) at.add(b);
+          }
+          if (hard || !wide.size) continue;
+          // まず真上の線だけを外して試し、だめなら隣の線も外す
+          for (const bl of at.size && at.size < wide.size ? [at, wide] : [wide]) {
+          if (done || bl.size > 2) continue;
+          const before = this.matchStats(), olds = [...bl].map(b => [b, b.route]);
+          for (const [b] of olds) this.ripNet(b);
+          let ok = this.viaOk(id, r);
+          const mine = [], stub = [];
+          if (ok) {
+            viaNet[r] = id; for (let m = 0; m < NL; m++) { if (occ[m * plane + r] === 0) mine.push(m * plane + r); occ[m * plane + r] = id; }
+            for (let q = r; q !== -1; q = par.get(q)) { if (occ[base + q] === 0) { occ[base + q] = id; mine.push(base + q); } stub.push((q % nx) * G, ((q / nx) | 0) * G); }
+            for (const [b, old] of olds) {
+              this.routeNet(b);
+              if (!b.route || b.route.fails.length) { ok = false; break; }
+              if (old.tuned && b.route.len < old.len - 0.5) this.lengthen(b, old.len);
+            }
+            if (ok) { const after = this.matchStats(); if (after.good < before.good) ok = false; }
+          }
+          if (ok) {
+            route.vias.push({ x: (r % nx) * G, y: ((r / nx) | 0) * G }); route.cells.push(...mine); if (stub.length >= 4) route.segs.push({ l, pts: stub });
+            route.fails.splice(route.fails.indexOf(i), 1); done = true;
+          } else {
+            for (const [b] of olds) this.ripNet(b);
+            for (const k of mine) occ[k] = 0; viaNet[r] = 0;
+            for (const [b, old] of olds) if (!restore(b, old)) this.routeNet(b);
+          }
+          }
+        }
+        if (done) continue;
+        // それでもだめなら、隣にある別の電源・GND のビアをどかせるか試す（そのネットのビアを打ち直し、未接続が増えるなら戻す）
+        for (const r of par.keys()) {
+          if (done) break;
+          let clear = true; for (let m = 0; m < NL && clear; m++) { const o = occ[m * plane + r]; if (o !== 0 && o !== id) clear = false; }
+          if (!clear) continue;
+          const bl = new Set();
+          for (const q of [r + 1, r - 1, r + nx, r - nx]) { const v = viaNet[q], b = v && v !== id ? board.netById[v] : null; if (b && b.cls === 'plane' && !this.thAt[q]) bl.add(b); }
+          if (!bl.size || bl.size > 2) continue;
+          const was = [...bl].map(b => [b, b.route.fails.length]);
+          for (const [b] of was) this.ripNet(b);
+          let ok = this.viaOk(id, r); const mine = [], stub = [];
+          if (ok) {
+            viaNet[r] = id; for (let m = 0; m < NL; m++) { if (occ[m * plane + r] === 0) mine.push(m * plane + r); occ[m * plane + r] = id; }
+            for (let q = r; q !== -1; q = par.get(q)) { if (occ[base + q] === 0) { occ[base + q] = id; mine.push(base + q); } stub.push((q % nx) * G, ((q / nx) | 0) * G); }
+            for (const [b, n0] of was) { this.connectPlane(b); if (b.route.fails.length > n0) ok = false; }
+          }
+          if (ok) {
+            route.vias.push({ x: (r % nx) * G, y: ((r / nx) | 0) * G }); route.cells.push(...mine); if (stub.length >= 4) route.segs.push({ l, pts: stub });
+            route.fails.splice(route.fails.indexOf(i), 1); done = true;
+          } else {
+            for (const [b] of was) this.ripNet(b);
+            for (const k of mine) occ[k] = 0; if (viaNet[r] === id) viaNet[r] = 0;
+            for (const [b] of was) this.connectPlane(b);
+          }
+        }
+      }
+    }
+  }
   detour(net, target) {
     if (net.pins.length !== 2) return false;
     const { occ, fixed, nx, plane } = this, id = net.id;
@@ -509,7 +602,7 @@ export class Router {
       }
       yield { phase: 'tune', i, total, net: groups.get(k)[0], key: k };
     }
-    this.connectPlanes();
+    this.connectPlanes(); this.fixPlaneFails();
     yield { phase: 'plane', i, total, net: list[0] || { name: '' }, key: '電源・GND ピンをプレーンへ接続' };
   }
   // ───── 手配線 ─────

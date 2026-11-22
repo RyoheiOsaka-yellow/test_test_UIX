@@ -102,6 +102,16 @@ export function draw(ctx, S) {
     if (!S.layerVis[l]) continue;
     ctx.strokeStyle = LAYERS[l].color;
     ctx.globalAlpha = hi || hg ? 0.2 : (l === order[NL - 1] ? 1 : 0.85) * (real ? 0.6 : 1);
+    if (S.roleWires) {   // 役割の色で光らせる
+      const ga = ctx.globalAlpha; ctx.globalAlpha = hi || hg ? 0.2 : 1;
+      for (const role of ROLES) {
+        ctx.beginPath();
+        for (const n of routedAll) { if (n.route.plane || netRole(n) !== role) continue; for (const s of n.route.segs) { if (s.l !== l) continue; const p = s.pts; ctx.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]); } }
+        ctx.strokeStyle = role.color; ctx.globalCompositeOperation = 'lighter'; const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * 0.22; ctx.lineWidth = Math.max(0.6, 5 * px); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = a0; ctx.lineWidth = Math.max(0.15, px); ctx.stroke();
+      }
+      ctx.globalAlpha = ga; ctx.strokeStyle = LAYERS[l].color; continue;
+    }
     for (const cls of ['signal', 'diff', 'power', 'plane']) {
       ctx.beginPath();
       for (const n of routedAll) {
@@ -214,7 +224,8 @@ export function draw(ctx, S) {
     for (const role of ROLES) {   // 役割ごとに色を分ける
       ctx.strokeStyle = role.color; ctx.beginPath();
       for (const r of S.rats) { if ((hi && r.net === hi) || netRole(r.net) !== role) continue; ctx.moveTo(r.a.x, r.a.y); ctx.lineTo(r.b.x, r.b.y); }
-      ctx.stroke();
+      const a0 = ctx.globalAlpha; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = a0 * 0.3; ctx.lineWidth = 5 * px; ctx.stroke();   // 発光のにじみ
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = a0; ctx.lineWidth = px; ctx.stroke();
     }
     if (hi) { ctx.globalAlpha = 1; ctx.lineWidth = 1.5 * px; ctx.strokeStyle = C.rats; ctx.beginPath(); for (const r of S.rats) if (r.net === hi) { ctx.moveTo(r.a.x, r.a.y); ctx.lineTo(r.b.x, r.b.y); } ctx.stroke(); }
     ctx.globalAlpha = 1;

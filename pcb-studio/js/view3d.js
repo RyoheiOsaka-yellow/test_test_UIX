@@ -162,7 +162,13 @@ export class View3D {
       return { l, max, n: 0, pos: g.attributes.position.array, col: vc ? g.attributes.color.array : null };
     };
     this.labSig = null; this.labMesh = null; this.buildLabels();
-    this.lRats = line(3000, 0xffffff, 0.9, true); this.lHi = line(6000, 0xffffff, 1); this.lSel = line(1200, 0xffffff, 1); this.lReg = line(3000, 0xffffff, 0.95, true);
+    this.lRats = line(3000, 0xffffff, 1, true); this.lWire = line(30000, 0xffffff, 1, true);
+    // 発光のにじみ：線の両側へ色が消えていく帯を加算合成で重ねる
+    { const max = 33000, g = new THREE.BufferGeometry(), idx = new Uint32Array(max * 12);
+      for (let i = 0; i < max; i++) idx.set([0, 1, 3, 1, 4, 3, 1, 2, 4, 2, 5, 4].map(v => v + i * 6), i * 12);
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(max * 18), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(max * 18), 3)); g.setIndex(new THREE.BufferAttribute(idx, 1));
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+      m.frustumCulled = false; m.renderOrder = 4.5; this.root.add(m); this.glow = { m, max, n: 0, pos: g.attributes.position.array, col: g.attributes.color.array }; } this.lHi = line(6000, 0xffffff, 1); this.lSel = line(1200, 0xffffff, 1); this.lReg = line(3000, 0xffffff, 0.95, true);
     // 基板の縁
     const o = [[0, 0], [W, 0], [W, b.h]]; if (b.tab) { const t = b.tab; o.push([t.x1, b.h], [t.x1, b.h + t.h], [t.x0, b.h + t.h], [t.x0, b.h]); } o.push([0, b.h]);
     const og = new THREE.BufferGeometry().setFromPoints(o.map(p => new THREE.Vector3(p[0], 0, p[1])));
@@ -264,6 +270,16 @@ export class View3D {
     }
     this.texAt = performance.now(); this.dirty = true;
   }
+  // 水平な線分に沿った発光の帯（幅 w mm、中心の明るさ k）
+  glowSeg(x0, y, z0, x1, z1, c, w, k) {
+    const Gw = this.glow; if (Gw.n >= Gw.max) return;
+    let dx = x1 - x0, dz = z1 - z0; const d = Math.hypot(dx, dz); if (d < 1e-6) return;
+    const px = -dz / d * w / 2, pz = dx / d * w / 2, i = Gw.n * 18, P = Gw.pos, C = Gw.col;
+    P[i] = x0 + px; P[i + 1] = y; P[i + 2] = z0 + pz; P[i + 3] = x0; P[i + 4] = y; P[i + 5] = z0; P[i + 6] = x0 - px; P[i + 7] = y; P[i + 8] = z0 - pz;
+    P[i + 9] = x1 + px; P[i + 10] = y; P[i + 11] = z1 + pz; P[i + 12] = x1; P[i + 13] = y; P[i + 14] = z1; P[i + 15] = x1 - px; P[i + 16] = y; P[i + 17] = z1 - pz;
+    for (let v = 0; v < 6; v++) { const mid = v === 1 || v === 4 ? k : 0; C[i + v * 3] = c.r * mid; C[i + v * 3 + 1] = c.g * mid; C[i + v * 3 + 2] = c.b * mid; }
+    Gw.n++;
+  }
   seg(L, x0, y0, z0, x1, y1, z1, c) {
     if (L.n >= L.max) return; const i = L.n * 6;
     L.pos[i] = x0; L.pos[i + 1] = y0; L.pos[i + 2] = z0; L.pos[i + 3] = x1; L.pos[i + 4] = y1; L.pos[i + 5] = z1;
@@ -293,7 +309,7 @@ export class View3D {
     for (const m of this.all) { m.k = 0; m.map.length = 0; }
     const metal = new THREE.Color(0xc9ced4).convertSRGBToLinear(), tmp = new THREE.Color();
     const put = (m, c, x, z, sw, sh, hgt, base, sign, color) => { if (m.k >= m.mesh.instanceMatrix.count) return; M.makeScale(sw, hgt, sh); M.setPosition(x, base + sign * hgt / 2, z); m.mesh.setMatrixAt(m.k, M); m.mesh.setColorAt(m.k, color); m.map[m.k] = c; m.k++; };
-    for (const L of [this.lRats, this.lHi, this.lSel, this.lReg]) L.n = 0;
+    for (const L of [this.lRats, this.lWire, this.lHi, this.lSel, this.lReg, this.glow]) L.n = 0;
     for (const c of b.comps) {
       const f = c.part.family; if (f === 'pcie' || f === 'hole') continue;
       const B = compBox(c), hgt = heightOf(c.part), top = c.side === 'T' || c.part.th, base = top ? this.layerY(0) : this.layerY(3), sg = top ? 1 : -1;
@@ -353,7 +369,13 @@ export class View3D {
     if (S) {
       const yT = this.layerY(0) + 0.3, yB = this.layerY(3) - 0.3, hi = S.hiNet;
       const sideY = q => (q.side === 'B' ? yB : yT);
-      if (S.show.rats) { const rc = this.roleCol || (this.roleCol = new Map()); for (const r of S.rats) { const role = netRole(r.net); let c = rc.get(role); if (!c) rc.set(role, c = new THREE.Color(role.color)); this.seg(this.lRats, r.a.x, yT, r.a.y, r.b.x, yT, r.b.y, c); } }
+      { const rc = this.roleCol || (this.roleCol = new Map()); if (S.show.rats) for (const r of S.rats) { const role = netRole(r.net); let c = rc.get(role); if (!c) rc.set(role, c = new THREE.Color(role.color).convertSRGBToLinear()); this.seg(this.lRats, r.a.x, yT, r.a.y, r.b.x, yT, r.b.y, c); this.glowSeg(r.a.x, yT, r.a.y, r.b.x, r.b.y, c, 1.8, 0.3); }
+        // 配線済みの線を役割の色で光らせる
+        if (S.roleWires) for (const n of S.board.nets.values()) {
+          if (!n.route || n.route.plane || !n.route.segs.length) continue;
+          const role = netRole(n); let c = rc.get(role); if (!c) rc.set(role, c = new THREE.Color(role.color).convertSRGBToLinear());
+          for (const s of n.route.segs) { if (S.layerVis && !S.layerVis[s.l]) continue; const y = this.layerY(s.l) + (s.l < 2 ? 0.05 : -0.05), p = s.pts; for (let i = 0; i + 3 < p.length; i += 2) { this.seg(this.lWire, p[i], y, p[i + 1], p[i + 2], y, p[i + 3], c); this.glowSeg(p[i], y, p[i + 1], p[i + 2], p[i + 3], c, 0.9, 0.3); } }
+        } }
       if (hi && hi.route) {
         for (const s of hi.route.segs) { const y = this.layerY(s.l) + (s.l < 2 ? 0.06 : -0.06), p = s.pts; for (let i = 0; i + 3 < p.length; i += 2) this.seg(this.lHi, p[i], y, p[i + 1], p[i + 2], y, p[i + 3]); }
         if (!hi.route.plane) for (const v of hi.route.vias) this.seg(this.lHi, v.x, this.layerY(0) + 0.06, v.y, v.x, this.layerY(3) - 0.06, v.y);
@@ -368,7 +390,8 @@ export class View3D {
       if (this.cool && this.cool.visible && this.coolInfo) { const red = new THREE.Color(1, 0.15, 0.1); let y = this.layerY(0); for (const q of [...this.coolInfo.hits, ...this.coolInfo.hitsB]) { const bot = q.c.side === 'B', B = compBox(q.c, 0.4), hh = (q.h + 0.4) * (bot ? -1 : 1); if (bot) y = this.layerY(3); for (const e of EDGE) this.seg(this.lReg, B.x0 + e[0] * (B.x1 - B.x0), y + e[1] * hh, B.y0 + e[2] * (B.y1 - B.y0), B.x0 + e[3] * (B.x1 - B.x0), y + e[4] * hh, B.y0 + e[5] * (B.y1 - B.y0), red); } }   // 干渉している部品を赤枠で
       if (S.issues && !S.regions) for (const q of S.issues) { const y = sideY(q); this.seg(this.lSel, q.x, y, q.y, q.x, y + (q.side === 'B' ? -9 : 9), q.y); }
     }
-    for (const L of [this.lRats, this.lHi, this.lSel, this.lReg]) { L.l.geometry.setDrawRange(0, L.n * 2); L.l.geometry.attributes.position.needsUpdate = true; if (L.col) L.l.geometry.attributes.color.needsUpdate = true; }
+    { const Gw = this.glow, g = Gw.m.geometry; g.setDrawRange(0, Gw.n * 12); g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; }
+    for (const L of [this.lRats, this.lWire, this.lHi, this.lSel, this.lReg]) { L.l.geometry.setDrawRange(0, L.n * 2); L.l.geometry.attributes.position.needsUpdate = true; if (L.col) L.l.geometry.attributes.color.needsUpdate = true; }
     this.dirty = true;
   }
   render() {

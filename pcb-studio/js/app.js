@@ -855,11 +855,11 @@ function renderWireLegend() {
   const cnt = new Map(); for (const r of S.rats) { const k = netRole(r.net); cnt.set(k, (cnt.get(k) || 0) + 1); }
   if (S.ratRole && !cnt.get(ROLES.find(r => r.id === S.ratRole))) S.ratRole = null;
   if (S.ratRole) S.rats = S.rats.filter(r => netRole(r.net).id === S.ratRole);
-  const key = S.ratRole + '|' + ROLES.map(r => cnt.get(r) || 0).join(',');
+  const key = S.ratRole + '|' + !!S.roleWires + '|' + ROLES.map(r => cnt.get(r) || 0).join(',');
   if (key === wlKey) return; wlKey = key;
-  const el = $('wlegend'), use = ROLES.filter(r => cnt.get(r));
+  const el = $('wlegend'), use = ROLES.filter(r => cnt.get(r) || S.roleWires);
   el.hidden = !use.length;
-  el.innerHTML = use.length ? '<span>未配線の線</span>' + use.map(r => `<button data-r="${r.id}" aria-pressed="${S.ratRole === r.id}" title="${r.label}の線だけを表示"><i style="background:${r.color}"></i>${r.label} <span>${cnt.get(r)}</span></button>`).join('') : '';
+  el.innerHTML = use.length ? `<span>${S.roleWires ? '配線の役割' : '未配線の線'}</span>` + use.map(r => `<button data-r="${r.id}" aria-pressed="${S.ratRole === r.id}" ${cnt.get(r) ? '' : 'disabled'} title="${r.label}の未配線の線だけを表示"><i style="background:${r.color};box-shadow:0 0 6px ${r.color}"></i>${r.label}${cnt.get(r) ? ` <span>未配線 ${cnt.get(r)}</span>` : ''}</button>`).join('') : '';
 }
 function renderLegend() {
   const b = S.board, cnt = {};
@@ -953,6 +953,7 @@ document.addEventListener('click', e => {
   else if (t.id === 'btnEmpty') { if (!run) { pushUndo(); setBoard(emptyBoard()); toast('空の基板を作成しました。ライブラリから部品を配置してください'); } }
   else if (t.id === 'btn3d') toggle3d();
   else if (t.id === 'btnXray') { S.xray = !S.xray; t.setAttribute('aria-pressed', S.xray); dirty = true; if (!v3on) toast('透視は 3D 表示で使えます'); }
+  else if (t.id === 'btnRole') { S.roleWires = !S.roleWires; t.setAttribute('aria-pressed', S.roleWires); wlKey = ''; refresh(); if (v3on) v3.sync(S); }
   else if (t.id === 'btnStyle') { S.style = S.style === 'real' ? 'design' : 'real'; t.setAttribute('aria-pressed', S.style === 'real'); dirty = true; if (v3on) { v3.style = S.style; v3.sync(); } }
   else if (t.id === 'ioReport') { ioKind = 'report'; $('ioText').value = buildReport(); $('ioMsg').textContent = `レポート（HTML・${Math.round($('ioText').value.length / 1024)} KB）。「ファイルに保存」して、ブラウザで開いてください。`; }
   else if (t.id === 'ioPro') { ioKind = 'pro'; $('ioText').value = kicadProject(); $('ioMsg').textContent = 'KiCad の設計ルール。gpu-board.kicad_pro として .kicad_pcb と同じフォルダに置いてください。'; }
