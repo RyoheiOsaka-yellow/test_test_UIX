@@ -94,7 +94,11 @@ const path = require('path');
   await p.evaluate(() => { const cs = JSON.parse(localStorage.getItem('chireki.cases')); cs.forEach(c => { if (c.id === 's-kanamachi') c.title = '古いサンプル'; }); cs.push({ id: 'c-mine', sample: false, title: '自分の案件', site: { pref: '東京都', city: '港区', town: '', parcels: [], area: 0 }, org: { name: 'x', no: '', addr: '', tel: '' }, request: { purpose: 'sale' }, regs: { ord: [] }, updated: '2026-11-21' }); localStorage.setItem('chireki.cases', JSON.stringify(cs)); localStorage.setItem('chireki.samplesVer', '1'); });
   await p.reload();
   await p.waitForTimeout(800);
+  const reLogin = await p.$('#lf') !== null;
+  await p.click('#l-demo');
+  await p.waitForTimeout(800);
   const f9 = await p.$$eval('.crow .ct b', els => els.map(e => e.textContent));
+  ok('F11 再読み込みでログイン画面', reLogin, String(reLogin));
   ok('F9 サンプルの版', !f9.includes('古いサンプル') && f9.includes('自分の案件') && f9.includes('東京都葛飾区金町六丁目地内'), JSON.stringify(f9));
 
   console.log(JSON.stringify(R, null, 1));

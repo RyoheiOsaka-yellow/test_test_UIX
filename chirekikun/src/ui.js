@@ -5,7 +5,7 @@ let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('sho
 const today=()=>new Date().toISOString().slice(0,10);
 const clone=o=>JSON.parse(JSON.stringify(o));
 function normalize(c){c.srcSubstances=c.srcSubstances||[];c.reviewed=c.reviewed||[];c.diffs=c.diffs||[];c.docs=c.docs||[];c.regs=c.regs||{};c.regs.ord=c.regs.ord||[];['land','lineage','buildings','corps','maps','mapNotes','hearing','concerns','substances','extraSubstances'].forEach(k=>c[k]=c[k]||[]);c.classification=c.classification||{none:[],low:[],high:[]};c.request=c.request||{purpose:'sale'};if(c.sample){if(c.verdictEdited==null)c.verdictEdited=true;if(c.substancesManual==null)c.substancesManual=c.substances.length>0;}return c;}
-const ST={user:store.get('user'),cases:[],route:'login',caseId:null,tab:'review',files:[],pdf:{}};
+const ST={user:null,cases:[],route:'login',caseId:null,tab:'review',files:[],pdf:{}};
 function loadCases(){const saved=store.get('cases');let cs=saved&&saved.length?saved:clone(SAMPLES);
   if(store.get('samplesVer')!==SAMPLES_VERSION){cs=clone(SAMPLES).concat(cs.filter(c=>!c.sample));store.set('samplesVer',SAMPLES_VERSION);store.set('cases',cs);}
   ST.cases=cs.map(normalize);}
@@ -41,7 +41,7 @@ function viewLogin(v){
     <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモ① 資料を共有してレポートを作る</button><button class="btn full" type="button" id="l-play2">デモ② 資料のない土地でレポートを作る</button>
     <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。</p>
    </form></div></div>`;
-  const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('user',ST.user);store.set('lastMail',mail);loadCases();aiDetect().then(()=>go(ST.shared?'preview':'cases'));};
+  const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('lastMail',mail);loadCases();aiDetect().then(()=>go(ST.shared?'preview':'cases'));};
   $('lf').onsubmit=e=>{e.preventDefault();const m=$('l-mail').value.trim(),p=$('l-pass').value;
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){$('l-err').textContent='メールアドレスの形式を確認してください。';$('l-mail').focus();return;}
     if(!p){$('l-err').textContent='パスワードを入力してください。';$('l-pass').focus();return;}login(m);};
@@ -397,14 +397,16 @@ function viewSettings(v){
   $('s-save').onclick=()=>{store.set('org',{name:$('s-name').value,no:$('s-no').value,addr:$('s-addr').value,tel:$('s-tel').value});toast('調査機関の情報を保存しました');};
   $('s-keysave').onclick=async()=>{const k=$('s-key').value.trim();if(k)store.set('apiKey',k);else store.del('apiKey');store.set('model',$('s-model').value);await aiDetect();st();toast(AI.mode==='none'?'接続を解除しました':'接続を保存しました');};
   $('s-reset').onclick=()=>{const mine=ST.cases.filter(c=>!c.sample);ST.cases=clone(SAMPLES).map(normalize).concat(mine);saveCases();toast('サンプル案件を初期状態に戻しました');};
-  $('s-out').onclick=()=>{store.del('user');ST.user=null;go('login');};
+  $('s-out').onclick=logout;
 }
 
 /* ── 起動 ── */
 document.querySelectorAll('#top .nav button').forEach(b=>b.onclick=()=>go(b.dataset.r));
+function logout(){ST.user=null;ST.shared=null;ST.files=[];ST.draft=null;go('login');}
 $('logo').onclick=()=>go('cases');
+$('logout').onclick=logout;
 $('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
-if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
+store.del('user');
 render();
 if(location.hash.indexOf('#p=')===0)unpackCase(location.hash.slice(3)).then(c=>{ST.shared=c;if(ST.user)loadCases();ST.route=ST.user?'preview':'login';render();}).catch(()=>toast('共有リンクを開けませんでした（リンクが途中で切れている可能性があります）'));
 if(/^https?:$/.test(location.protocol)&&!ZONES.rows.length)fetch('registry/zones.json').then(r=>r.ok?r.json():null).then(j=>{if(j&&j.rows)ZONES=j;}).catch(()=>{});
