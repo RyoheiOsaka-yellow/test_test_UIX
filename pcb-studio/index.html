@@ -250,6 +250,16 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
   <aside id="right">
     <section><h2>インスペクタ</h2><div id="insp"></div></section>
     <section><h2>検査・設計サマリ</h2><div id="stats"></div></section>
+    <section><h2>冷却機構と干渉チェック</h2>
+      <label class="ck" for="cOn"><input type="checkbox" id="cOn">冷却機構を重ねて表示（3D）</label>
+      <div class="two">
+        <div><label class="fl" for="cBase">ベースプレート下面の高さ <span id="cBaseV" class="num">3.2 mm</span></label><input type="range" id="cBase" min="3.2" max="12" step="0.1" value="3.2"></div>
+        <div><label class="fl" for="cFin">フィンの高さ <span id="cFinV" class="num">28.0 mm</span></label><input type="range" id="cFin" min="10" max="50" step="1" value="28"></div>
+        <div><label class="fl" for="cFans">ファン</label><select id="cFans"><option value="2">2 基</option><option value="3" selected>3 基</option></select></div>
+        <label class="ck" for="cCut" style="align-self:end"><input type="checkbox" id="cCut" checked>背の高い部品に切り欠きを入れる</label>
+      </div>
+      <div id="coolInfo"></div>
+    </section>
     <section><details><summary>ネット一覧<span class="n" id="netN"></span></summary><input type="search" id="netq" placeholder="ネット名で絞り込み" aria-label="ネットを検索"><div id="nets"></div></details></section>
     <section><h2>レイヤと表示</h2><div id="layers"></div></section>
     <section id="bomWrap"><details><summary>部品表 (BOM)<span class="n" id="bomN"></span></summary><div id="bom"></div></details></section>

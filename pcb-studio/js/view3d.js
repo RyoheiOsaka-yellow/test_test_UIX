@@ -103,9 +103,15 @@ export class View3D {
     const slab = new THREE.Mesh(new THREE.BoxGeometry(W, 2 * T - 0.04, b.h), this.slabMat); slab.position.set(W / 2, 0, b.h / 2); slab.castShadow = true; this.root.add(slab);
     if (b.tab) { const t = b.tab, tb = new THREE.Mesh(new THREE.BoxGeometry(t.x1 - t.x0, 2 * T - 0.04, t.h), this.slabMat); tb.position.set((t.x0 + t.x1) / 2, 0, b.h + t.h / 2); tb.castShadow = true; this.root.add(tb); }
     this.bracket = null;
-    if (b.meta && b.meta.kind === 'gpu') {
-      const br = new THREE.Mesh(new THREE.BoxGeometry(1, 40, b.h + 9), new THREE.MeshStandardMaterial({ color: 0xaab0b6, metalness: 0.6, roughness: 0.4, transparent: true, opacity: 0.4 }));
-      br.position.set(-2.6, 8, b.h / 2 - 0.5); this.root.add(br); this.bracket = br;
+    if (b.meta && b.meta.kind === 'gpu') { // ブラケット：コネクタの開口と通気スリットつきの板金
+      const sh = new THREE.Shape(); sh.moveTo(-5, -12); sh.lineTo(b.h + 4, -12); sh.lineTo(b.h + 4, 28); sh.lineTo(-5, 28); sh.closePath();
+      const hole = (u0, v0, u1, v1) => { const h = new THREE.Path(), r = Math.min(0.9, (v1 - v0) / 2, (u1 - u0) / 2); h.moveTo(u0 + r, v0); h.lineTo(u1 - r, v0); h.quadraticCurveTo(u1, v0, u1, v0 + r); h.lineTo(u1, v1 - r); h.quadraticCurveTo(u1, v1, u1 - r, v1); h.lineTo(u0 + r, v1); h.quadraticCurveTo(u0, v1, u0, v1 - r); h.lineTo(u0, v0 + r); h.quadraticCurveTo(u0, v0, u0 + r, v0); sh.holes.push(h); };
+      for (const c of b.comps) if (c.fixed && (c.part.family === 'dp' || c.part.family === 'hdmi') && c.x < 14) { const B = compBox(c), hgt = heightOf(c.part), m = (B.y1 - B.y0) * 0.09; hole(B.y0 + m, T + 0.7, B.y1 - m, T + hgt - 0.5); }
+      for (let row = 0; row < 3; row++) for (let u = 4; u + 13 < b.h - 2; u += 16.5) hole(u, 13 + row * 4.4, u + 13, 15.4 + row * 4.4);
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: 1, bevelEnabled: false });
+      geo.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, -3.1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1));   // 形状の (u,v,奥行) を 3D の (z,y,x) へ
+      const br = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xaab0b6, metalness: 0.6, roughness: 0.4, transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
+      this.root.add(br); this.bracket = br;
     }
     this.planes = [];
     for (const kind of ['top', 1, 2, 'bottom']) {
@@ -145,7 +151,7 @@ export class View3D {
       return { l, max, n: 0, pos: g.attributes.position.array, col: vc ? g.attributes.color.array : null };
     };
     this.labSig = null; this.labMesh = null; this.buildLabels();
-    this.lRats = line(3000, 0xffffff, 0.8); this.lHi = line(6000, 0xffffff, 1); this.lSel = line(1200, 0xffffff, 1); this.lReg = line(200, 0xffffff, 0.95, true);
+    this.lRats = line(3000, 0xffffff, 0.8); this.lHi = line(6000, 0xffffff, 1); this.lSel = line(1200, 0xffffff, 1); this.lReg = line(3000, 0xffffff, 0.95, true);
     // 基板の縁
     const o = [[0, 0], [W, 0], [W, b.h]]; if (b.tab) { const t = b.tab; o.push([t.x1, b.h], [t.x1, b.h + t.h], [t.x0, b.h + t.h], [t.x0, b.h]); } o.push([0, b.h]);
     const og = new THREE.BufferGeometry().setFromPoints(o.map(p => new THREE.Vector3(p[0], 0, p[1])));
@@ -154,6 +160,42 @@ export class View3D {
     this.sun.position.set(W / 2 - W * 0.5, W * 1.6, H / 2 + W * 0.9); this.sun.target.position.set(W / 2, 0, H / 2);
     this.paint(S); this.sync(S);
     if (first) this.frameAll();
+  }
+  // 冷却機構を半透明で重ねる。info は coolerCheck() の結果（null で消す）
+  setCooler(info) {
+    const THREE = this.THREE; if (!this.ok || !this.board) return;
+    if (this.cool) { this.root.remove(this.cool); this.cool.traverse(o => { o.geometry && o.geometry.dispose(); o.material && o.material.dispose(); }); }
+    this.cool = null; this.fans = []; this.coolInfo = info; this.dirty = true;
+    if (!info) return;
+    const g = this.cool = new THREE.Group(), r = info.rect, y0 = T + info.baseZ, y1 = y0 + 3, top = y1 + info.fin;
+    const alu = (o, c = 0xc3cad1) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.75, roughness: 0.35, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
+    // ベースプレート：2mm の升目のうち、切り欠きにかからない所だけ上下の面を張る
+    const P = [], st = 2, cut = (x, z) => info.cuts.some(q => x + st > q.x0 && x < q.x1 && z + st > q.y0 && z < q.y1);
+    for (let z = r.y0; z < r.y1 - 0.01; z += st) for (let x = r.x0; x < r.x1 - 0.01; x += st) {
+      if (cut(x, z)) continue;
+      const xa = Math.min(x + st, r.x1), za = Math.min(z + st, r.y1);
+      for (const y of [y0, y1]) P.push(x, y, z, xa, y, z, xa, y, za, x, y, z, xa, y, za, x, y, za);
+    }
+    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(P), 3)); bg.computeVertexNormals();
+    g.add(new THREE.Mesh(bg, alu(0.3)));
+    // GPU に当たる受熱面（銅）
+    const gB = compBox(info.gpu), cw = (gB.x1 - gB.x0) * 0.5, cd = (gB.y1 - gB.y0) * 0.5;
+    const cp = new THREE.Mesh(new THREE.BoxGeometry(cw, Math.max(0.3, info.baseZ - info.gpuTop + 0.3), cd), alu(0.75, 0xc8794a)); cp.position.set(info.gpu.x, T + (info.gpuTop + info.baseZ) / 2 + 0.15, info.gpu.y); g.add(cp);
+    // フィン
+    const n = Math.floor((r.x1 - r.x0) / 2.6), fins = new THREE.InstancedMesh(new THREE.BoxGeometry(0.35, info.fin, r.y1 - r.y0), alu(0.16), n), M = new THREE.Matrix4();
+    for (let i = 0; i < n; i++) { M.makeTranslation(r.x0 + 1.3 + i * 2.6, y1 + info.fin / 2, (r.y0 + r.y1) / 2); fins.setMatrixAt(i, M); }
+    fins.frustumCulled = false; g.add(fins);
+    // ファン
+    const L = r.x1 - r.x0, rad = Math.min((r.y1 - r.y0) / 2 - 2, L / info.fans / 2 - 3), dark = (o) => new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
+    for (let i = 0; i < info.fans; i++) {
+      const f = new THREE.Group(); f.position.set(r.x0 + L * (i + 0.5) / info.fans, top + 7.5, (r.y0 + r.y1) / 2);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, 14, 48, 1, true), dark(0.45)); g.add(ring); ring.position.copy(f.position);
+      f.add(new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.27, rad * 0.27, 10, 24), dark(0.8)));
+      for (let k = 0; k < 9; k++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(rad * 0.68, 0.8, rad * 0.3), dark(0.6)); const a = k / 9 * Math.PI * 2; bl.position.set(Math.cos(a) * rad * 0.6, 0, Math.sin(a) * rad * 0.6); bl.rotation.set(0.5, -a, 0, 'YXZ'); f.add(bl); }
+      g.add(f); this.fans.push(f);
+    }
+    g.traverse(o => { o.renderOrder = 6; });
+    this.root.add(g);
   }
   // 刻印のアトラス（1 枚の画像に全部品ぶんを並べる）と、部品ごとの四角形を作る
   buildLabels() {
@@ -224,6 +266,7 @@ export class View3D {
       else m.opacity = on ? 1 : 0.12;
     });
     for (const m of this.all) { const mt = m.mesh.material, o = see ? (m === this.mGlass ? 0.12 : 0.2) : (m === this.mGlass ? 0.5 : 1); if (mt.opacity !== o) { mt.opacity = o; mt.transparent = o < 1; mt.depthWrite = o === 1; mt.needsUpdate = true; } m.mesh.castShadow = !see && m !== this.mCap && m !== this.mLeg && m !== this.mSec; }
+    if (this.cool) this.cool.visible = this.explode < 0.03 && this.xray == null;
     if (this.bracket) { this.bracket.visible = this.explode < 0.03; const o = this.xray != null ? 0.12 : this.style === 'real' ? 0.92 : 0.4; if (this.bracket.material.opacity !== o) { this.bracket.material.opacity = o; this.bracket.material.depthWrite = o > 0.9; this.bracket.material.needsUpdate = true; } }
     this.buildLabels();   // 部品の入れ替えや表示スタイルの変更に追従
     const sel = S ? S.sel : new Set(), hg = S && S.hiGroup;
@@ -300,6 +343,7 @@ export class View3D {
       if (S.ghost) { const g = S.ghost, y = sideY(g); this.wireBox(this.lSel, compBox(g), y, y + (g.side === 'B' ? -1 : 1) * heightOf(g.part)); }
       if (S.hoverPad) { const p = S.hoverPad; this.wireBox(this.lSel, { x0: p.x - p.w / 2 - 0.2, y0: p.y - p.h / 2 - 0.2, x1: p.x + p.w / 2 + 0.2, y1: p.y + p.h / 2 + 0.2 }, yT - 0.25, yT); }
       if (S.regions) for (const r of S.regions) { col.set(r.color).convertSRGBToLinear(); const y = yT + 0.1; for (const [a, c2, e, f2] of [[r.x0, r.y0, r.x1, r.y0], [r.x1, r.y0, r.x1, r.y1], [r.x1, r.y1, r.x0, r.y1], [r.x0, r.y1, r.x0, r.y0]]) this.seg(this.lReg, a, y, c2, e, y, f2, col); }
+      if (this.cool && this.cool.visible && this.coolInfo) { const red = new THREE.Color(1, 0.15, 0.1), y = this.layerY(0); for (const q of this.coolInfo.hits) { const B = compBox(q.c, 0.4), hh = q.h + 0.4; for (const e of EDGE) this.seg(this.lReg, B.x0 + e[0] * (B.x1 - B.x0), y + e[1] * hh, B.y0 + e[2] * (B.y1 - B.y0), B.x0 + e[3] * (B.x1 - B.x0), y + e[4] * hh, B.y0 + e[5] * (B.y1 - B.y0), red); } }   // 干渉している部品を赤枠で
       if (S.issues && !S.regions) for (const q of S.issues) { const y = sideY(q); this.seg(this.lSel, q.x, y, q.y, q.x, y + (q.side === 'B' ? -9 : 9), q.y); }
     }
     for (const L of [this.lRats, this.lHi, this.lSel, this.lReg]) { L.l.geometry.setDrawRange(0, L.n * 2); L.l.geometry.attributes.position.needsUpdate = true; if (L.col) L.l.geometry.attributes.color.needsUpdate = true; }
@@ -308,6 +352,7 @@ export class View3D {
   render() {
     if (!this.ok) return;
     this.updateCam();
+    if (this.cool && this.cool.visible) for (const f of this.fans) f.rotation.y += 0.22;   // ファンを回す
     this.scene.fog.near = this.dist * 1.6; this.scene.fog.far = this.dist * 6;
     this.renderer.render(this.scene, this.cam); this.dirty = false;
   }

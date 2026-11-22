@@ -7,6 +7,7 @@ import { draw, toWorld, flipOf } from './render.js';
 import { exportKicad, importKicad, kicadProject, packPart, unpackPart } from './kicad.js';
 import { planePlan } from './planes.js';
 import { electrical } from './electrical.js';
+import { coolerCheck } from './cooler.js';
 import { View3D } from './view3d.js';
 
 const $ = id => document.getElementById(id);
@@ -17,6 +18,7 @@ const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
   show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'real', finish: 'black', xray: false, time: 0,
+  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true }, coolInfo: null,
   rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
@@ -41,7 +43,7 @@ function refresh() {
   S.rats = S.show.rats ? ratsnest(S.board) : []; S.zones = v3on ? [] : zones(); dirty = true;
   if (v3on) { let t = 0, r = 0; for (const n of S.board.nets.values()) if (n.cls !== 'plane' && n.pins.length > 1) { t++; if (n.route && n.route.segs.length) r++; } v3.pour = t ? r / t : 0; }
 }
-function refreshAll() { refresh(); renderInspector(); renderStats(); renderNets(); renderLegend(); renderBom(); renderGuide(); if (v3on) v3.setBoard(S.board, S); }
+function refreshAll() { refresh(); renderInspector(); renderStats(); renderNets(); renderLegend(); renderBom(); renderGuide(); if (v3on) { v3.setBoard(S.board, S); v3.setCooler(S.cool.on ? S.coolInfo : null); } }
 function zones() {
   const b = S.board, out = [];
   const gpu = b.comps.find(c => c.part.family === 'gpu');
@@ -674,6 +676,10 @@ function renderStats() {
     for (const i of bad) { const p = n.pins[i], q = padWorld(p.c, p.c.part.padMap[p.p]); issues.push({ t: `未接続: ${n.name}（${p.c.ref}）`, x: q.x, y: q.y, side: p.c.side }); }
   }
   for (const n of b.nets.values()) if (n.cls === 'plane' && n.route) for (const i of n.route.fails) { const p = n.pins[i], q = padWorld(p.c, p.c.part.padMap[p.p]); issues.push({ t: `プレーン未接続: ${n.name}（${p.c.ref}）`, x: q.x, y: q.y, side: p.c.side }); }
+  // 冷却機構との干渉
+  S.coolInfo = S.cool.on ? coolerCheck(b, S.cool) : null;
+  if (S.coolInfo) for (const q of S.coolInfo.hits) issues.push({ t: `冷却機構と干渉: ${q.c.ref}（高さ ${q.h.toFixed(1)} mm）`, x: q.c.x, y: q.c.y, side: 'T' });
+  renderCool();
   S.issues = issues;
   const pads = b.comps.reduce((s, c) => s + c.part.pads.length, 0);
   const fam = f => b.comps.filter(c => c.part.family === f);
@@ -710,6 +716,18 @@ function renderStats() {
   $('stats').innerHTML = `<table>${rows.join('')}</table>` + elec + (issues.length
     ? `<div class="sub">問題 ${issues.length} 件（クリックでその場所へ）</div><div class="pins">${issues.slice(0, 30).map((q, i) => `<button class="pin bad" data-issue="${i}">${esc(q.t)}</button>`).join('')}</div>`
     : '<div class="sub ok">配置・接続の問題は見つかりません</div>');
+}
+function renderCool() {
+  const k = S.coolInfo, el = $('coolInfo');
+  if (!S.cool.on) { el.innerHTML = '<p class="dim">表示すると、ベースプレート・フィン・ファンを半透明で重ね、部品の高さとの干渉を調べます。</p>'; return; }
+  if (!k) { el.innerHTML = '<p class="dim">GPU のある基板で使えます。</p>'; return; }
+  const pill = (ok, t) => `<span class="pill ${ok ? 'good' : 'bad'}">${t}</span>`, pad = (q, name) => q ? `<tr><th>${name}</th><td>${q.n} 個・隙間 ${q.min.toFixed(1)}${q.max - q.min > 0.05 ? '〜' + q.max.toFixed(1) : ''} mm ${pill(!q.bad, q.bad ? 'パッドでは届かない' : 'サーマルパッドで接触')}</td></tr>` : '';
+  el.innerHTML = `<table><tr><th>干渉</th><td>${k.hits.length} 個 ${pill(!k.hits.length, k.hits.length ? '要対応' : 'なし')}</td></tr>
+    <tr><th>切り欠き</th><td>${k.cuts.length} か所・面積の ${k.cutPct.toFixed(0)}%（うちコネクタ ${k.cuts.filter(q => q.access).length}）</td></tr>
+    ${pad(k.vram, 'メモリ')}${pad(k.drmos, 'DrMOS')}
+    <tr><th>GPU 受熱面</th><td>${k.baseZ - k.gpuTop > 0.05 ? `銅の台座 ${(k.baseZ - k.gpuTop).toFixed(1)} mm` : '直接接触'}</td></tr>
+    <tr><th>カード厚</th><td>${k.thickness.toFixed(1)} mm ＝ ${k.slots} スロット</td></tr></table>
+    <p class="dim">高さは部品ごとの概算値です。下面を上げると背の高い部品を避けられますが、メモリや DrMOS との隙間が広がります。</p>`;
 }
 function focusAt(x, y, z) { S.view.x = x; S.view.y = y; if (z) S.view.z = z; if (v3on) v3.focus(x, y, Math.max(60, Math.min(v3.dist, 2600 / (z || 9)))); dirty = true; }
 function showTab(k) { for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', b.dataset.tab === k); $('tabGuide').hidden = k !== 'guide'; $('tabLib').hidden = k !== 'lib'; $('tabGen').hidden = k !== 'gen'; }
@@ -827,11 +845,15 @@ document.addEventListener('change', e => {
   else if (t.id === 'live') liveRoute = t.checked;
   else if (t.id === 'oRegions') opts.regions = t.checked; else if (t.id === 'oPack') opts.pack = t.checked; else if (t.id === 'oTune') opts.tune = t.checked; else if (t.id === 'oStep') opts.step = t.checked;
   else if (t.id === 'oEffort') opts.effort = parseFloat(t.value);
+  else if (t.id === 'cOn') { S.cool.on = t.checked; refreshAll(); }
+  else if (t.id === 'cCut') { S.cool.cut = t.checked; refreshAll(); }
+  else if (t.id === 'cFans') { S.cool.fans = +t.value; refreshAll(); }
   else if (t.id === 'finish') { S.finish = t.value; if (v3on) { v3.finish = S.finish; v3.paint(S); } }
   else if (t.id === 'ioFile' && t.files[0]) { const fr = new FileReader(); fr.onload = () => { try { loadText(String(fr.result)); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } t.value = ''; }; fr.readAsText(t.files[0]); }
 });
 $('libq').addEventListener('input', renderLibrary);
 $('netq').addEventListener('input', renderNets);
+for (const [id, key] of [['cBase', 'base'], ['cFin', 'fin']]) $(id).addEventListener('input', e => { S.cool[key] = parseFloat(e.target.value); $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; if (S.cool.on) { renderStats(); if (v3on) v3.setCooler(S.coolInfo); dirty = true; } });
 $('seek').addEventListener('input', e => { if (rec && !run) { replay = false; $('btnReplay').textContent = '▶'; showFrame(+e.target.value); } });
 $('explode').addEventListener('input', e => { if (v3) { v3.explode = parseFloat(e.target.value); v3.sync(); } });
 document.addEventListener('keydown', e => {
@@ -883,7 +905,7 @@ function frame(now) {
   if (v3on) {
     if (dirty) { dirty = false; v3.xray = man && man.l !== (v3.side() === 'B' ? 3 : 0) ? man.l : S.xray ? 'all' : null; v3.sync(S); }
     if (run && playing && now - v3.texAt > 450) v3.paint(S);
-    if (v3.dirty) v3.render();
+    if (v3.dirty || (S.cool.on && v3.cool && v3.cool.visible && !document.hidden)) v3.render();
   } else if (dirty) { dirty = false; draw(ctx, S); }
   requestAnimationFrame(frame);
 }
