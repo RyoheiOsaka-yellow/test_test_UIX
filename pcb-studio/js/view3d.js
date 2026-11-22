@@ -43,7 +43,7 @@ export class View3D {
     R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.Fog(0x2c2e31, 600, 2200);
-    this.cam = new THREE.PerspectiveCamera(32, 1, 2, 6000);
+    this.cam = new THREE.PerspectiveCamera(20, 1, 2, 9000);   // 画角を狭めて、真上から見たときの部品の傾きを抑える
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x2a2c30, 0.62));
     const sun = this.sun = new THREE.DirectionalLight(0xffffff, 0.62); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; sun.shadow.radius = 4;
     this.scene.add(sun); this.scene.add(sun.target);
@@ -59,13 +59,13 @@ export class View3D {
   resize(w, h, dpr) { if (!this.ok) return; this.w = w; this.h = h; this.renderer.setPixelRatio(dpr); this.renderer.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); this.dirty = true; }
   frameAll() {
     const b = this.board; if (!b) return;
-    this.target.set(b.w / 2, 0, b.gridH / 2 + 4); this.dist = Math.max(b.w * 1.05, b.gridH * 2.2) * (this.cam.aspect < 1.3 ? 2.4 : 1.55);
+    this.target.set(b.w / 2, 0, b.gridH / 2 + 4); this.dist = Math.max(b.w * 1.05, b.gridH * 2.2) * (this.cam.aspect < 1.3 ? 3.9 : 2.5);
     this.az = -0.5; this.el = 0.72; this.dirty = true;
   }
   side() { return this.el >= 0 ? 'T' : 'B'; }
   orbit(dx, dy) { this.az -= dx * 0.006; this.el = Math.max(-1.5, Math.min(1.5, this.el + dy * 0.006)); this.dirty = true; }
-  pan(dx, dy) { const k = this.dist / 900, c = Math.cos(this.az), s = Math.sin(this.az); this.target.x -= (c * dx + s * dy) * k; this.target.z -= (-s * dx + c * dy) * k; this.dirty = true; }
-  zoom(f) { this.dist = Math.max(25, Math.min(2500, this.dist * f)); this.dirty = true; }
+  pan(dx, dy) { const k = this.dist / 1450, c = Math.cos(this.az), s = Math.sin(this.az); this.target.x -= (c * dx + s * dy) * k; this.target.z -= (-s * dx + c * dy) * k; this.dirty = true; }
+  zoom(f) { this.dist = Math.max(40, Math.min(4000, this.dist * f)); this.dirty = true; }
   focus(x, y, d) { this.target.set(x, 0, y); if (d) this.dist = d; this.dirty = true; }
   updateCam() {
     const c = this.cam, t = this.target, ce = Math.cos(this.el);
@@ -103,7 +103,11 @@ export class View3D {
     this.scOut = Math.max(3, Math.min(16, Math.floor(this.maxTex / Math.max(W, H))));     // 表裏は高精細に
     this.slabMat = new THREE.MeshStandardMaterial({ color: 0xb9a468, roughness: 0.85, transparent: true });   // 断面は FR-4 の色
     const slab = new THREE.Mesh(new THREE.BoxGeometry(W, 2 * T - 0.04, b.h), this.slabMat); slab.position.set(W / 2, 0, b.h / 2); slab.castShadow = true; this.root.add(slab);
-    if (b.tab) { const t = b.tab, tb = new THREE.Mesh(new THREE.BoxGeometry(t.x1 - t.x0, 2 * T - 0.04, t.h), this.slabMat); tb.position.set((t.x0 + t.x1) / 2, 0, b.h + t.h / 2); tb.castShadow = true; this.root.add(tb); }
+    if (b.tab) { // カードエッジ：キー溝（x0+11〜13）を避けて 2 枚に分ける
+      const t = b.tab;
+      for (const [xa, xb] of [[t.x0, t.x0 + 11], [t.x0 + 13, t.x1]]) { const tb = new THREE.Mesh(new THREE.BoxGeometry(xb - xa, 2 * T - 0.04, t.h), this.slabMat); tb.position.set((xa + xb) / 2, 0, b.h + t.h / 2); tb.castShadow = true; this.root.add(tb); }
+      const nk = new THREE.Mesh(new THREE.BoxGeometry(2, 2 * T - 0.04, 1), this.slabMat); nk.position.set(t.x0 + 12, 0, b.h + 0.5); this.root.add(nk);
+    }
     this.bracket = null;
     if (b.meta && b.meta.kind === 'gpu') { // ブラケット：コネクタの開口と通気スリットつきの板金
       const sh = new THREE.Shape(); sh.moveTo(-5, -12); sh.lineTo(b.h + 4, -12); sh.lineTo(b.h + 4, 28); sh.lineTo(-5, 28); sh.closePath();

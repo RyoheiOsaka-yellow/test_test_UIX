@@ -113,7 +113,7 @@ export function generateGPU(prm) {
   // ── 映像出力（左端ブラケット側）──
   const disp = ['j_dp', 'j_dp', 'j_dp', 'j_hdmi'];
   disp.forEach((id, i) => {
-    const c = put(id, 6, 13 + i * 21.5, 'grp_disp', { rot: 270, fixed: true });
+    const c = put(id, 2.5, 13 + i * 21.5, 'grp_disp', { rot: 270, fixed: true });   // ブラケット面に合わせて基板端から少し張り出す
     const nm = id === 'j_dp' ? `DP${i}` : 'HDMI';
     const sig = ['ML0', 'ML1', 'ML2', 'ML3', 'AUX', 'HPD'];
     const pads = c.part.pads.filter((_, j) => j % 3 === 0).slice(0, 6);

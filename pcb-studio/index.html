@@ -193,6 +193,7 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
       <label class="ck" for="oRegions"><input type="checkbox" id="oRegions" checked>電源の流れで領域を割り当てる</label>
       <label class="ck" for="oPack"><input type="checkbox" id="oPack" checked>ブロック内部を接続から組み立て直す</label>
       <label class="ck" for="oTune"><input type="checkbox" id="oTune" checked>等長配線（ミアンダ）を入れる</label>
+      <label class="ck" for="oThermal"><input type="checkbox" id="oThermal">熱を優先して VRM を広げる（電源経路は長くなる）</label>
       <label class="fl" for="oEffort">焼きなましの探索量</label>
       <input type="range" id="oEffort" min="0.3" max="2.5" step="0.1" value="1">
       <label class="ck" for="seed">乱数の種 (seed)<input type="number" id="seed" value="6" min="1" max="9999"></label>
@@ -268,6 +269,14 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
         <label class="ck" for="cBack" style="align-self:end"><input type="checkbox" id="cBack">裏面にバックプレート</label>
         <div><label class="fl" for="cBackGap">基板からの距離 <span id="cBackGapV" class="num">3.0 mm</span></label><input type="range" id="cBackGap" min="0.6" max="6" step="0.1" value="3"></div>
       </div>
+      <details><summary>熱の前提を変える</summary>
+        <div class="two">
+          <div><label class="fl" for="tAmb">ケース内の気温 (℃)</label><input type="number" id="tAmb" value="35" min="10" max="70" step="1"></div>
+          <div><label class="fl" for="tEff">VRM の効率 (%)</label><input type="number" id="tEff" value="90" min="50" max="99" step="1"></div>
+          <div><label class="fl" for="tMem">メモリ 1 枚の発熱 (W)</label><input type="number" id="tMem" value="2.7" min="0.1" max="10" step="0.1"></div>
+          <div><label class="fl" for="tK">サーマルパッド (W/mK)</label><input type="number" id="tK" value="6" min="0.5" max="20" step="0.5"></div>
+        </div>
+      </details>
       <label class="ck" for="cHeat"><input type="checkbox" id="cHeat">部品を温度の概算で色分け（青 40℃ 〜 赤 110℃）</label>
       <div id="coolInfo"></div>
     </section>
@@ -280,7 +289,7 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
 <dialog id="io">
   <h2>保存・読込</h2>
   <p class="dim">JSON はこのツール用（配置とネットリスト）。KiCad は部品・パッド・ネット・配線・ビア・外形に加え、GND/電源プレーンのゾーンと層構成を書き出します（KiCad 7.0.11 で読み込みと DRC を確認済み）。設計ルールのファイルも一緒に保存してください。読み込みは部品とネットを取り込み、配線はこのツールのグリッドで引き直します。</p>
-  <div class="row"><button id="ioJson">JSON</button><button id="ioKicad">KiCad 基板 (.kicad_pcb)</button><button id="ioPro">KiCad 設計ルール (.kicad_pro)</button><button id="ioSave" class="primary">ファイルに保存</button></div>
+  <div class="row"><button id="ioJson">JSON</button><button id="ioKicad">KiCad 基板 (.kicad_pcb)</button><button id="ioPro">KiCad 設計ルール (.kicad_pro)</button><button id="ioReport">レポート (HTML)</button><button id="ioSave" class="primary">ファイルに保存</button></div>
   <textarea id="ioText" aria-label="基板データ"></textarea>
   <div class="row"><button id="ioCopy">コピー</button><button id="ioLoad" class="primary">この内容を読み込む</button>
     <label class="ck" for="ioFile">ファイルを開く<input type="file" id="ioFile" accept=".kicad_pcb,.json,.txt"></label><button id="ioClose">閉じる</button></div>

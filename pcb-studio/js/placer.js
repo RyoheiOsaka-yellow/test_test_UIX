@@ -1,12 +1,12 @@
 // 自動配置：グループごとの散布 → 焼きなまし法 → 重なり解消
 import { compBox, boxOverlap, sameSide, padWorld, snap, mulberry32 } from './core.js';
 
-function prep(board) {
+function prep(board, spread) {
   const movable = board.comps.filter(c => !c.fixed);
   const netsOf = new Map();
   for (const c of board.comps) netsOf.set(c, [...board.netsOf(c)].filter(n => n.cls !== 'plane' && n.pins.length > 1 && n.pins.length <= 16));
   const byId = new Map(board.comps.map(c => [c.id, c]));
-  const regions = planRegions(board), core = coreOf(board);
+  const regions = planRegions(board, spread), core = coreOf(board);
   // 電源の流れ：スイッチノード(2ピンの power ネット)では、出力側(2端子部品=インダクタ)を負荷に近い側へ
   const mate = new Map();
   if (core) for (const n of board.nets.values()) {
@@ -25,7 +25,8 @@ export function coreOf(board) {
   return best;
 }
 // グループごとの配置領域。core 系は負荷 IC を囲むリング、power 系は「12V 入力 → VRM → 負荷」の順に並ぶ帯。
-export function planRegions(board) {
+// spread=true なら、最大の VRM に空いている幅をすべて与える（発熱を広げるため）
+export function planRegions(board, spread) {
   const out = new Map(), core = coreOf(board);
   if (!core) return out;
   const area = new Map(), mv = board.comps.filter(c => !c.fixed);
@@ -72,8 +73,9 @@ export function planRegions(board) {
   const rest = pw.filter(([g]) => !inputG.has(g));
   for (const [g, a] of rest) {
     // 最大の VRM は入力側、残りの小さなレールは反対側（ブラケット側）を優先
-    const w = Math.max(14, a * 2.1 / H, lattice(g) + a * 0.25 / H), o = srcSide === 'right' ? 'left' : 'right';
-    const first = g === rest[0][0] ? srcSide : o, second = first === srcSide ? o : srcSide;
+    const o = srcSide === 'right' ? 'left' : 'right', first = g === rest[0][0] ? srcSide : o, second = first === srcSide ? o : srcSide;
+    let w = Math.max(14, a * 2.1 / H, lattice(g) + a * 0.25 / H);
+    if (spread && g === rest[0][0]) { const others = rest.slice(1).reduce((q, [g2, a2]) => q + Math.max(14, a2 * 2.1 / H, lattice(g2) + a2 * 0.25 / H), 0); w = Math.max(w, free[first][1] - free[first][0] - (free[o][1] - free[o][0] < others ? others : 0)); }
     const fits = sd => free[sd][1] - free[sd][0] >= w;
     const r = take(fits(first) ? first : fits(second) ? second : (free[first][1] - free[first][0] > free[second][1] - free[second][0] ? first : second), w, false);
     if (r) out.set(g, r);
@@ -224,8 +226,8 @@ function modBox(mod) {
 
 // 配置計画：領域 → 構成的配置（相ブロックの整列、負荷 IC のボール正面への配置、裏面コンデンサの格子）→ 残りは散布
 // 基板は変更せず、各部品の目標姿勢を返す。
-export function planLayout(board, seed, packAll = true, useRegions = true) {
-  const rnd = mulberry32(seed), P = prep(board), core = P.core;
+export function planLayout(board, seed, packAll = true, useRegions = true, spread = false) {
+  const rnd = mulberry32(seed), P = prep(board, spread), core = P.core;
   if (!useRegions) P.regions = new Map();
   const orig = board.comps.map(c => [c, c.x, c.y, c.rot]);
   const mods = buildModules(board, P, packAll), pinned = new Set(), soft = new Set();
@@ -295,7 +297,8 @@ export function planLayout(board, seed, packAll = true, useRegions = true) {
       const maxRows = Math.max(1, Math.floor(RH / (bh + 1))), cols = Math.ceil(blocks.length / maxRows), rows = Math.ceil(blocks.length / cols);
       blocks.forEach((mod, i) => {
         const col = Math.floor(i / rows), row = i % rows;
-        const bx = dir < 0 ? reg.x0 + reserve + bw / 2 + 1 + col * (bw + 2) : reg.x1 - reserve - bw / 2 - 1 - col * (bw + 2);
+        const pitch = spread ? Math.max(bw + 2, (reg.x1 - reg.x0 - reserve - 2) / cols) : bw + 2;   // 熱を優先するときは列の間隔を広げる
+        const bx = dir < 0 ? reg.x0 + reserve + bw / 2 + 1 + col * pitch : reg.x1 - reserve - bw / 2 - 1 - col * pitch;
         const by = reg.y0 + 1 + RH * (row + 0.5) / rows;
         pose(mod, bx - mod._c[0], by - mod._c[1], mod.k); pinned.add(mod); info.blocks++;
       });

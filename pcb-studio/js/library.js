@@ -165,8 +165,8 @@ function build(p) {
   const f = p.family;
   if (f === 'gpu') p.pads = fpBGA(p.w, p.h);
   else if (f === 'vram') { p.w = 12; p.h = 14; p.pads = fpBGA(12, 14); }
-  else if (f === 'ctl') { p.w = 9.5; p.h = 9.5; p.pads = fpQFN(14, CTL_NAMES); }
-  else if (f === 'ctl8') { p.w = 7.5; p.h = 7.5; p.pads = fpQFN(10, CTL8_NAMES); }
+  else if (f === 'ctl') { p.w = 9.5; p.h = 9.5; p.pads = fpQFN(15, CTL_NAMES); }
+  else if (f === 'ctl8') { p.w = 7.5; p.h = 7.5; p.pads = fpQFN(11, CTL8_NAMES); }
   else if (f === 'drmos') p.pads = fpDrMOS(p.w, p.h);
   else if (f === 'ind' || f === 'indin') { const d = Math.floor((p.w / 2 - 1) * 2) / 2; p.pads = fp2(d, 1.5, Math.max(2, p.h - 3)); }
   else if (f === 'indaux') p.pads = fp2(1.5, 0.8, 2.5);
@@ -186,7 +186,7 @@ function build(p) {
   else if (f === 'retimer') { p.w = 5.5; p.h = 5.5; p.pads = fpQFN(7, [...seq(4, i => 'IN' + i), ...seq(4, i => 'OUT' + i), 'SDA', 'SCL', 'VCC', 'GND']); }
   else if (f === 'pcie') p.pads = fpRow(82, 1, pcieNames(), 0.6, 4).filter((_, i) => i < 8 || i > 10);   // キー溝の位置には端子がない
   else if (f === 'flash') { p.w = 5; p.h = 5; p.pads = fpSO(4, ['CS', 'MISO', 'WP', 'GND', 'MOSI', 'CLK', 'HOLD', 'VCC'], 5); }
-  else if (f === 'mcu') { p.w = 6.5; p.h = 6.5; p.pads = fpQFN(8, MCU_NAMES); }
+  else if (f === 'mcu') { p.w = 6.5; p.h = 6.5; p.pads = fpQFN(9, MCU_NAMES); }
   else if (f === 'buck') { p.w = 4; p.h = 4; p.pads = fpQFN(3, ['VIN', 'EN', 'PG', 'SW', 'SW2', 'GND', 'FB', 'VCC']); }
   else if (f === 'xtal') p.pads = fpGrid(2, 2, 2, ['X1', 'GND', 'GND2', 'X2'], 0.9, 0.8);
   else if (f === 'hole') { p.th = true; p.pads = [P('H', 0, 0, 3.2, 3.2, TH)]; }

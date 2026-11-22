@@ -67,15 +67,16 @@ export function coolerCheck(b, cfg) {
   return info;
 }
 
-// 熱の概算。仮定：ケース内気温 35℃、ベースプレートは一様な温度、フィンは強制空冷、
-// VRM の効率 90%（損失の 7 割が DrMOS、3 割がインダクタ）、メモリ 1 枚 2.7W、サーマルパッドの熱伝導率 6 W/mK。
+// 熱の概算。前提（cfg で変更可）：ケース内気温、VRM の効率（損失の 7 割が DrMOS、3 割がインダクタ）、
+// メモリ 1 枚の発熱、サーマルパッドの熱伝導率。ベースプレートは一様な温度、フィンは強制空冷とする。
+// VRM は発熱が密集するほど局所的に熱くなるとみなし、発熱密度 1 W/cm² あたり 12℃ を上乗せする。
 export const LIMIT = { gpu: 90, vram: 95, drmos: 110, ind: 110 };
 export function thermal(b, info, cfg) {
-  const AMB = 35, K_PAD = 6, gpu = info.gpu, top = b.comps.filter(c => c.side === 'T');
+  const AMB = cfg.amb ?? 35, K_PAD = cfg.kPad ?? 6, EFF = cfg.eff ?? 0.9, MEM_W = cfg.memW ?? 2.7, gpu = info.gpu, top = b.comps.filter(c => c.side === 'T');
   const fam = f => top.filter(c => (f === 'ind' ? isInd(c.part.family) : c.part.family === f));
-  const P = new Map(), pGpu = gpu.part.val || 0, loss = pGpu * (1 / 0.9 - 1), dm = fam('drmos'), ind = fam('ind'), mem = fam('vram');
+  const P = new Map(), pGpu = gpu.part.val || 0, loss = pGpu * (1 / EFF - 1), dm = fam('drmos'), ind = fam('ind'), mem = fam('vram');
   P.set(gpu, pGpu);
-  for (const c of mem) P.set(c, 2.7);
+  for (const c of mem) P.set(c, MEM_W);
   for (const c of dm) P.set(c, loss * 0.7 / dm.length);
   for (const c of ind) P.set(c, loss * 0.3 / ind.length);
   const Q = [...P.values()].reduce((a, v) => a + v, 0);
@@ -85,13 +86,21 @@ export function thermal(b, info, cfg) {
   const T = new Map(), gap = new Map(info.pads.map(p => [p.c, p.gap]));
   const gB = compBox(gpu), Rgpu = 0.05 + 5e-5 / (8 * (gB.x1 - gB.x0) * 0.46 * (gB.y1 - gB.y0) * 0.46 * 1e-6) + Math.max(0, info.und.base - info.gpuTop) / 1000 / (390 * (gB.x1 - gB.x0) * 0.5 * (gB.y1 - gB.y0) * 0.5 * 1e-6);
   T.set(gpu, tBase + pGpu * Rgpu);
+  // VRM の発熱密度（DrMOS とインダクタを囲む範囲あたり）
+  let dens = 0;
+  if (dm.length) {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const c of [...dm, ...ind.filter(q => q.group === dm[0].group)]) { const B = compBox(c); x0 = Math.min(x0, B.x0); y0 = Math.min(y0, B.y0); x1 = Math.max(x1, B.x1); y1 = Math.max(y1, B.y1); }
+    dens = loss / Math.max(1, (x1 - x0) * (y1 - y0) / 100);
+  }
+  const local = dens * 12, vrmSet = new Set([...dm, ...ind]);
   let open = 0;
   for (const c of [...mem, ...dm, ...ind]) {
     const g = gap.get(c), B = compBox(c), a = (B.x1 - B.x0) * (B.y1 - B.y0) * 1e-6;
     // パッドで接触していれば t/(kA)。届かない・切り欠き内なら自然対流に近い値
     const R = g != null && g <= 3 ? Math.max(0.1, g) / 1000 / (K_PAD * a) : (open++, 1 / (25 * a * 8));   // 接触なし：風が当たる表面からの放熱のみ
-    T.set(c, (g != null && g <= 3 ? tBase : AMB + 15) + P.get(c) * R);
+    T.set(c, (g != null && g <= 3 ? tBase : AMB + 15) + P.get(c) * R + (vrmSet.has(c) ? local : 0));
   }
   const mx = L => (L.length ? Math.max(...L.map(c => T.get(c))) : null);
-  return { Q, loss, Rsink, tBase, A, T, gpu: T.get(gpu), vram: mx(mem), drmos: mx(dm), ind: mx(ind), open, amb: AMB };
+  return { dens, local, kPad: K_PAD, eff: EFF, memW: MEM_W, Q, loss, Rsink, tBase, A, T, gpu: T.get(gpu), vram: mx(mem), drmos: mx(dm), ind: mx(ind), open, amb: AMB };
 }

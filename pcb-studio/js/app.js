@@ -18,7 +18,7 @@ const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
   show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'real', finish: 'black', xray: false, time: 0,
-  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true, step: false, mem: 2.1, vrm: 2.4, ind: 5.3, backOn: false, back: 3, heat: false }, coolInfo: null,
+  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true, step: false, mem: 2.1, vrm: 2.4, ind: 5.3, backOn: false, back: 3, heat: false, amb: 35, eff: 0.9, memW: 2.7, kPad: 6 }, coolInfo: null,
   rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
@@ -28,7 +28,7 @@ let redo = [];
 let stageProg = 0;
 let rec = null, recPos = 0, replay = false, stepWait = false, stepGo = false, phase = '', curStage = '', userCam = false;
 let man = null, resume = null, manT = 0;   // 手配線の途中状態 / 途中の時点からの作り直し
-const opts = { regions: true, pack: true, tune: true, step: false, effort: 1 };
+const opts = { regions: true, pack: true, tune: true, step: false, effort: 1, thermal: false };
 let undo = [], run = null, playing = false, speed = 1, t0 = 0, elapsed = 0;
 
 // ───────── 基板の入れ替え・再計算 ─────────
@@ -499,7 +499,7 @@ function adopt() {
 function* autoLayout(seed) {
   const b = S.board;
   S.router.ripAll(); S.sel.clear(); S.hiNet = pinNet = null;
-  const plan = planLayout(b, seed, opts.pack, opts.regions), tg = plan.targets;
+  const plan = planLayout(b, seed, opts.pack, opts.regions, opts.thermal), tg = plan.targets;
   if (rec) { rec.plan = plan; rec.seed = seed; }
   S.regions = [...plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
   const from = new Map([...tg.keys()].map(c => [c, { x: c.x, y: c.y }]));
@@ -594,6 +594,10 @@ async function saveFile() {
   const kicad = ioKind !== 'json', text = $('ioText').value, msg = $('ioMsg');
   const base = ioKind === 'pro' ? 'gpu-board.kicad_pro' : 'gpu-board.kicad_pcb';
   const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+  if (ioKind === 'report') {
+    if (dl) { try { await dl.save({ filename: 'gpu-board-report.html', data: text }); msg.textContent = '保存しました。'; } catch (err) { msg.textContent = err && err.code === 'declined' ? '保存を取り消しました。' : 'この画面では保存できません。「コピー」を使ってください。'; } return; }
+    const a2 = document.createElement('a'); a2.href = URL.createObjectURL(new Blob([text], { type: 'text/html' })); a2.download = 'gpu-board-report.html'; document.body.appendChild(a2); a2.click(); a2.remove(); msg.textContent = '保存を開始しました。'; return;
+  }
   if (dl) {
     try { await dl.save({ filename: kicad ? base + '.txt' : 'gpu-board.json', data: text }); msg.textContent = kicad ? '保存しました。ファイル名末尾の .txt を外すと KiCad で開けます。' : '保存しました。'; }
     catch (err) { msg.textContent = err && err.code === 'declined' ? '保存を取り消しました。' : 'この画面では保存できません。「コピー」を使ってください。'; }
@@ -602,6 +606,63 @@ async function saveFile() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = kicad ? base : 'gpu-board.json';
   document.body.appendChild(a); a.click(); a.remove(); msg.textContent = '保存を開始しました。始まらない場合は「コピー」を使ってください。';
+}
+
+// ───────── レポート（1 ページの HTML）─────────
+function snapshot(maxW) {   // 基板の画像：3D の現在の見た目と、表面の銅箔
+  const out = {};
+  try {
+    if (v3on && v3.ok) { const cool = v3.cool, was = cool && cool.visible; if (cool) cool.visible = false; v3.fans = was ? [] : v3.fans; v3.render(); out.view = cv3.toDataURL('image/jpeg', 0.85); if (cool) { cool.visible = was; v3.setCooler(S.cool.on ? S.coolInfo : null); } }   // 画像は冷却機構を外した状態で撮る
+    const src = v3 && v3.planes ? v3.planes[0].cv : null;
+    if (src) { const c = document.createElement('canvas'); c.width = maxW; c.height = Math.round(maxW * src.height / src.width); c.getContext('2d').drawImage(src, 0, 0, c.width, c.height); out.top = c.toDataURL('image/jpeg', 0.85); }
+  } catch (err) { /* 画像が取れなくても本文は出す */ }
+  return out;
+}
+function buildReport() {
+  const b = S.board, st = S.router.stats(), ms = S.router.matchStats(), plan = planePlan(b), el = electrical(b), k = S.coolInfo, img = snapshot(1500);
+  const fam = f => b.comps.filter(c => c.part.family === f), gpu = fam('gpu')[0];
+  const kind = b.meta && b.meta.kind === 'gpu' ? (PRESETS[$('gPreset').value] || {}).label || 'GPU 基板' : b.meta && b.meta.kind === 'kicad' ? 'KiCad から取り込み' : '基板';
+  const row = (a, v) => `<tr><th>${a}</th><td>${v}</td></tr>`, ok = (c, t) => `<span class="${c ? 'ok' : 'ng'}">${t}</span>`;
+  const bom = new Map(); for (const c of b.comps) bom.set(c.part, (bom.get(c.part) || 0) + 1);
+  const d = new Date(), date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>基板レポート ${esc(kind)}</title>
+<style>body{font:14px/1.6 "Hiragino Sans","Noto Sans JP",system-ui,sans-serif;color:#1b1f23;max-width:960px;margin:24px auto;padding:0 20px}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:26px 0 8px;border-bottom:2px solid #1b1f23;padding-bottom:3px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid #d9dde1;vertical-align:top}th{font-weight:600;white-space:nowrap;color:#4a5560}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}.ok{color:#0a7a45;font-weight:600}.ng{color:#b3261e;font-weight:600}.dim{color:#5c6770;font-size:12px}img{max-width:100%;border:1px solid #d9dde1;border-radius:4px;margin:6px 0}img.view{width:100%;aspect-ratio:16/9;object-fit:cover}
+.num{font-family:ui-monospace,Menlo,monospace}@media(max-width:640px){.cols{grid-template-columns:1fr}}@media print{body{margin:0}h2{break-after:avoid}}</style></head><body>
+<h1>基板レポート：${esc(kind)}</h1><div class="dim">${date}　GPU基板スタジオで作成。数値は概算を含みます（末尾の前提を参照）。</div>
+${img.view ? `<img class="view" alt="基板の 3D 表示" src="${img.view}">` : ''}
+<h2>構成と結果</h2><div class="cols"><table>
+${row('基板', `${b.w} × ${b.h} mm・${plan.copper} 層（信号 4・GND ${plan.gnd}・電源 ${plan.power}）`)}
+${row('部品', `${b.comps.length} 点・${bom.size} 品種`)}
+${gpu ? row('GPU', `${esc(gpu.part.pn)}（${gpu.part.val} W）`) : ''}
+${fam('vram').length ? row('メモリ', `${esc(fam('vram')[0].part.pn)} × ${fam('vram').length} = ${fam('vram').reduce((q, c) => q + c.part.val, 0)} GB`) : ''}
+${fam('drmos').length ? row('VRM', `${fam('drmos').filter(c => c.group === 'grp_vcore').length} 相（Vcore）・${esc(fam('drmos')[0].part.pn)}`) : ''}
+</table><table>
+${row('配線', `${st.routed} / ${st.total} 本 ${ok(st.routed === st.total, st.routed === st.total ? '完了' : '未完了あり')}`)}
+${row('配線長 / ビア', `${Math.round(st.len).toLocaleString()} mm / ${st.vias}`)}
+${st.pPins ? row('プレーン接続', `${(st.pPins - st.pFail).toLocaleString()} / ${st.pPins.toLocaleString()} ピン ${ok(!st.pFail, st.pFail ? `未接続 ${st.pFail}` : 'すべて接続')}`) : ''}
+${ms.groups ? row('等長グループ', `${ms.good} / ${ms.groups} 組が ±1mm 以内${ms.good === ms.groups ? '' : `（最大差 ${ms.worst.toFixed(1)} mm）`}`) : ''}
+${row('検査', ok(!S.issues.length, S.issues.length ? `問題 ${S.issues.length} 件` : '問題なし'))}
+</table></div>
+${S.issues.length ? `<h2>検査で見つかった問題</h2><table>${S.issues.slice(0, 40).map(q => `<tr><td>${esc(q.t)}</td><td class="num">X ${q.x.toFixed(1)} / Y ${q.y.toFixed(1)} mm・${q.side === 'B' ? '裏面' : '表面'}</td></tr>`).join('')}</table>${S.issues.length > 40 ? `<div class="dim">ほか ${S.issues.length - 40} 件</div>` : ''}` : ''}
+${el.length ? `<h2>電源経路の概算（2oz プレーン 1 層あたり）</h2><table><tr><th>レール</th><th>電流</th><th>経路（長さ × 幅）</th><th>電圧降下</th><th>損失</th><th>必要なプレーン</th></tr>${el.map(e => `<tr><td>${esc(e.name)}</td><td class="num">${Math.round(e.I)} A</td><td class="num">${e.L.toFixed(0)} × ${e.W.toFixed(0)} mm</td><td class="num">${e.mV.toFixed(1)} mV（${e.pct.toFixed(1)}%）</td><td class="num">${e.loss.toFixed(1)} W</td><td>${Math.max(1, Math.ceil(e.pct / 2))} 層</td></tr>`).join('')}</table>` : ''}
+<h2>冷却機構と熱の概算</h2>${k ? `<div class="cols"><table>
+${row('ベースプレート下面', S.cool.step ? `全体 ${k.und.base.toFixed(1)}・メモリ ${k.und.mem.toFixed(1)}・VRM ${k.und.vrm.toFixed(1)}・インダクタ ${k.und.ind.toFixed(1)} mm` : `${k.und.base.toFixed(1)} mm（段差なし）`)}
+${row('干渉', ok(!k.hits.length, k.hits.length ? `${k.hits.length} 個` : 'なし') + `・切り欠き ${k.cuts.length} か所（面積の ${k.cutPct.toFixed(0)}%）`)}
+${row('部品面の高さ', `${k.front.toFixed(1)} mm ＝ ${k.slots} スロット`)}
+${row('裏面の張り出し', `${k.rear.toFixed(1)} mm ${ok(k.rear <= CEM.secondary, k.rear <= CEM.secondary ? '規格内' : `規格 ${CEM.secondary} mm を超過`)}`)}
+</table><table>
+${row('発熱', `合計 ${k.heat.Q.toFixed(0)} W（VRM の損失 ${k.heat.loss.toFixed(0)} W）`)}
+${row('ベースプレート', `${k.heat.tBase.toFixed(0)}℃（熱抵抗 ${k.heat.Rsink.toFixed(3)} K/W）`)}
+${[['gpu', 'GPU'], ['vram', 'メモリ'], ['drmos', 'DrMOS'], ['ind', 'インダクタ']].map(([key, name]) => k.heat[key] == null ? '' : row(name, `${k.heat[key].toFixed(0)}℃ ${ok(k.heat[key] <= LIMIT[key], `目安 ${LIMIT[key]}℃`)}`)).join('')}
+</table></div><div class="dim">前提：ケース内 ${k.heat.amb}℃、VRM 効率 ${(k.heat.eff * 100).toFixed(0)}%、メモリ ${k.heat.memW} W/枚、サーマルパッド ${k.heat.kPad} W/mK、フィン ${k.fin} mm・ファン ${k.fans} 基。高さが概算のままの部品 ${k.unknown} 種。</div>` : '<div class="dim">冷却機構を表示していないため、この項目は計算していません（右パネルの「冷却機構を重ねて表示」をオンにしてからレポートを作成してください）。</div>'}
+${img.top ? `<h2>表面の銅箔とシルク</h2><img alt="表面の銅箔" src="${img.top}">` : ''}
+<h2>部品表（BOM）</h2><table><tr><th>数量</th><th>型番</th><th>メーカー・品名</th><th>パッケージ</th><th>高さ</th><th>型番の確認</th></tr>
+${[...bom].sort((a, c) => c[1] - a[1]).map(([p, n]) => `<tr><td class="num">${n}</td><td class="num">${esc(p.pn)}</td><td>${esc(p.mfr)}・${esc(p.name)}</td><td>${esc(p.pkg)}</td><td class="num">${heightOf(p).toFixed(2)} mm${p.htUser ? '（手入力）' : p.htOk ? '' : '（概算）'}</td><td>${p.ok ? '出典確認' : '未確認'}</td></tr>`).join('')}</table>
+<h2>前提と制約</h2><div class="dim">フットプリントは 0.5mm グリッド向けの概念モデルで、実ピン配置とは異なります。配線はクリアランス 0.2mm・配線幅 0.15mm・ビア 0.45/0.2mm のルールで自動生成したものです。
+電源経路は一様に広がる平面電流を仮定した概算、熱は一様な温度のベースプレートと強制空冷のフィンを仮定した概算で、実測と合わせたものではありません。製造用データではありません。</div>
+</body></html>`;
 }
 
 // ───────── パネル描画 ─────────
@@ -670,7 +731,7 @@ function renderStats() {
   let off = 0, ov = 0;
   for (let i = 0; i < b.comps.length; i++) {
     const c = b.comps[i], B = compBox(c), A = compBox(c, -0.05);
-    if (c.part.family !== 'pcie' && (B.x0 < 0 || B.y0 < 0 || B.x1 > b.w || B.y1 > b.h)) { off++; issues.push({ t: `基板外: ${c.ref}`, x: c.x, y: c.y, side: c.side }); }
+    if (c.part.family !== 'pcie' && !(c.fixed && /^(dp|hdmi)$/.test(c.part.family)) && (B.x0 < 0 || B.y0 < 0 || B.x1 > b.w || B.y1 > b.h)) { off++; issues.push({ t: `基板外: ${c.ref}`, x: c.x, y: c.y, side: c.side }); }
     for (let j = i + 1; j < b.comps.length; j++) { const o = b.comps[j]; if (sameSide(c, o) && boxOverlap(A, compBox(o, -0.05)) > 0) { ov++; issues.push({ t: `重なり: ${c.ref} と ${o.ref}`, x: (c.x + o.x) / 2, y: (c.y + o.y) / 2, side: c.side }); } }
   }
   for (const n of b.nets.values()) {
@@ -738,13 +799,14 @@ function renderCool() {
       張り出し ${k.rear.toFixed(1)} mm ${pill(k.rear <= CEM.secondary, k.rear <= CEM.secondary ? '規格内' : `規格 ${CEM.secondary} mm を超過`)}</td></tr>
     <tr><th>カード全厚</th><td>${k.thickness.toFixed(1)} mm</td></tr></table>
     <div class="sub">熱の概算（ケース内 ${k.heat.amb}℃）</div>
-    <table><tr><th>発熱</th><td>合計 ${k.heat.Q.toFixed(0)} W（うち VRM の損失 ${k.heat.loss.toFixed(0)} W）</td></tr>
+    <table><tr><th>発熱</th><td>合計 ${k.heat.Q.toFixed(0)} W（うち VRM の損失 ${k.heat.loss.toFixed(0)} W・効率 ${(k.heat.eff * 100).toFixed(0)}%）</td></tr>
+    <tr><th>VRM の発熱密度</th><td>${k.heat.dens.toFixed(2)} W/cm²（局所の上乗せ ${k.heat.local.toFixed(0)}℃）</td></tr>
     <tr><th>ヒートシンク</th><td>フィン面積 ${k.heat.A.toFixed(2)} m²・熱抵抗 ${k.heat.Rsink.toFixed(3)} K/W → ベースプレート ${k.heat.tBase.toFixed(0)}℃</td></tr>
     ${[['gpu', 'GPU'], ['vram', 'メモリ（最高）'], ['drmos', 'DrMOS（最高）'], ['ind', 'インダクタ（最高）']].map(([key, name]) => k.heat[key] == null ? '' : `<tr><th>${name}</th><td>${k.heat[key].toFixed(0)}℃ ${pill(k.heat[key] <= LIMIT[key], k.heat[key] <= LIMIT[key] ? `目安 ${LIMIT[key]}℃ 以内` : `目安 ${LIMIT[key]}℃ を超過`)}</td></tr>`).join('')}
     ${k.heat.open ? `<tr><th>非接触</th><td>${k.heat.open} 個がベースプレートに触れていません（切り欠きの中、または隙間が 3mm 超）</td></tr>` : ''}</table>
     <p class="dim">${k.unknown ? `高さが概算のままの部品が ${k.unknown} 種あります（部品を選ぶと確認状況が出ます）。` : '対象の部品はすべて出典で確認した高さです。'}規格値は PCIe CEM 4.0 によります。裏面がこれを超えると隣のスロットに張り出します。</p>`;
 }
-function focusAt(x, y, z) { S.view.x = x; S.view.y = y; if (z) S.view.z = z; if (v3on) v3.focus(x, y, Math.max(60, Math.min(v3.dist, 2600 / (z || 9)))); dirty = true; }
+function focusAt(x, y, z) { S.view.x = x; S.view.y = y; if (z) S.view.z = z; if (v3on) v3.focus(x, y, Math.max(95, Math.min(v3.dist, 4200 / (z || 9)))); dirty = true; }
 function showTab(k) { for (const b of document.querySelectorAll('[data-tab]')) b.setAttribute('aria-selected', b.dataset.tab === k); $('tabGuide').hidden = k !== 'guide'; $('tabLib').hidden = k !== 'lib'; $('tabGen').hidden = k !== 'gen'; }
 function renderNets() {
   const q = $('netq').value.trim().toLowerCase();
@@ -849,6 +911,7 @@ document.addEventListener('click', e => {
   else if (t.id === 'btn3d') toggle3d();
   else if (t.id === 'btnXray') { S.xray = !S.xray; t.setAttribute('aria-pressed', S.xray); dirty = true; if (!v3on) toast('透視は 3D 表示で使えます'); }
   else if (t.id === 'btnStyle') { S.style = S.style === 'real' ? 'design' : 'real'; t.setAttribute('aria-pressed', S.style === 'real'); dirty = true; if (v3on) { v3.style = S.style; v3.sync(); } }
+  else if (t.id === 'ioReport') { ioKind = 'report'; $('ioText').value = buildReport(); $('ioMsg').textContent = `レポート（HTML・${Math.round($('ioText').value.length / 1024)} KB）。「ファイルに保存」して、ブラウザで開いてください。`; }
   else if (t.id === 'ioPro') { ioKind = 'pro'; $('ioText').value = kicadProject(); $('ioMsg').textContent = 'KiCad の設計ルール。gpu-board.kicad_pro として .kicad_pcb と同じフォルダに置いてください。'; }
   else if (t.id === 'btnIO' || t.id === 'ioJson') { ioKind = 'json'; $('ioText').value = JSON.stringify(saveData()); $('ioMsg').textContent = 'JSON を表示中'; if (!$('io').open) $('io').showModal(); }
   else if (t.id === 'ioKicad') { ioKind = 'kicad'; $('ioText').value = exportKicad(S.board); $('ioMsg').textContent = `KiCad 形式を表示中（${Math.round($('ioText').value.length / 1024)} KB）。開いたら B キーでゾーンを塗りつぶしてください。`; }
@@ -867,6 +930,12 @@ document.addEventListener('change', e => {
   else if (t.id === 'live') liveRoute = t.checked;
   else if (t.id === 'oRegions') opts.regions = t.checked; else if (t.id === 'oPack') opts.pack = t.checked; else if (t.id === 'oTune') opts.tune = t.checked; else if (t.id === 'oStep') opts.step = t.checked;
   else if (t.id === 'oEffort') opts.effort = parseFloat(t.value);
+  else if (t.id === 'oThermal') opts.thermal = t.checked;
+  else if (/^t(Amb|Eff|Mem|K)$/.test(t.id)) { // 熱の前提
+    const v = parseFloat(t.value); if (!(v > 0)) return;
+    if (t.id === 'tAmb') S.cool.amb = v; else if (t.id === 'tEff') S.cool.eff = Math.min(0.99, Math.max(0.5, v / 100)); else if (t.id === 'tMem') S.cool.memW = v; else S.cool.kPad = v;
+    refreshAll();
+  }
   else if (t.id === 'htIn') { // 高さの手入力（同じ型番の部品すべてに効く）
     const p = [...S.sel][0].part, v = parseFloat(t.value);
     if (v > 0 && v <= 40) { p.ht = v; p.htUser = true; (S.board.meta.heights = S.board.meta.heights || {})[p.id] = v; refreshAll(); toast(`${p.pn} の高さを ${v} mm にしました（この基板に保存されます）`); }
