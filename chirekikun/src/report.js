@@ -18,12 +18,12 @@ function attNote(c,re){
   return ds.map(d=>esc(attLabel(d))+`<span class="ev att" contenteditable="false" data-p="${String(d.pages||'').split('–')[0]||1}" data-doc="${d.pages?'':esc(d.id)}" title="${esc(d.name||'')}">${d.pages?'p.'+esc(d.pages):'開く'}</span>`).join('、')+'を参照。';
 }
 const E=(path,html,tag)=>`<${tag||'span'} data-path="${path}" contenteditable="true" spellcheck="false">${html}</${tag||'span'}>`;
-/* 未取得の注記（赤枠）。印刷にも出す。fig を付けると図の枠の大きさで出す */
-function miss(g,mode){return g?`<div class="miss${mode?' '+mode:''}" contenteditable="false" data-gap="${g.k}"><b>未取得</b><p class="mt">${esc(g.label)}</p><p>取得先：${esc(g.how)}</p><p>共有すると：${esc(g.fill)}</p></div>`:'';}
-const ngv=v=>v?(/^要確認/.test(v)?'<span class="ngv lg">'+esc(v)+'</span>':esc(v)):'<span class="ngv">未確認</span>';
-/* 未記入の欄：赤字の仮の文言を出す。そのまま離れても、仮の文言は保存しない（data-ph） */
-const EP=(path,val,ph)=>val||!ph?E(path,esc(val||'')):`<span class="ngv"><span data-path="${path}" data-ph="${esc(ph)}" contenteditable="true" spellcheck="false">${esc(ph)}</span></span>`;
-const PP=(path,val,ph,cls)=>val?P(path,val,cls):`<p class="${cls||''} ngp" data-path="${path}" data-ph="${esc(ph)}" contenteditable="true" spellcheck="false">${esc(ph)}</p>`;
+/* 未取得の注記（色分けした枠：青＝有料の資料、緑＝APIで取得、赤＝人の作業）。確認用の印刷にも出す。fig を付けると図の枠の大きさで出す */
+function miss(g,mode){return g?`<div class="miss ${g.cls}${mode?' '+mode:''}" contenteditable="false" data-gap="${g.k}"><b>${GAPC[g.cls]}</b><p class="mt">${esc(g.label)}</p><p>取得先：${esc(g.how)}</p><p>共有すると：${esc(g.fill)}</p>${g.more?`<p>今後：${esc(g.more)}</p>`:''}</div>`:'';}
+const ngv=(v,cls)=>v?(/^要確認/.test(v)?'<span class="ngv lg human">'+esc(v)+'</span>':esc(v)):'<span class="ngv '+(cls||'human')+'">未確認</span>';
+/* 未記入の欄：色つきの仮の文言を出す。そのまま離れても、仮の文言は保存しない（data-ph） */
+const EP=(path,val,ph,cls)=>val||!ph?E(path,esc(val||'')):`<span class="ngv ${cls||'human'}"><span data-path="${path}" data-ph="${esc(ph)}" contenteditable="true" spellcheck="false">${esc(ph)}</span></span>`;
+const PP=(path,val,ph,cls,gc)=>val?P(path,val,cls):`<p class="${cls||''} ngp ${gc||'human'}" data-path="${path}" data-ph="${esc(ph)}" contenteditable="true" spellcheck="false">${esc(ph)}</p>`;
 const P=(path,text,cls)=>`<p${cls?' class="'+cls+'"':''} data-path="${path}" contenteditable="true" spellcheck="false">${esc(text||'').replace(/\n/g,'<br>')}</p>`;
 
 /* 地理院タイルを並べ、対象地を中央に置いた図。印刷・PDFでもそのまま出る */
@@ -120,8 +120,8 @@ function renderReport(c){
   const zr=[['調査対象地・周辺地等の土壌汚染対策法に基づく「人為等由来」の指定区域',g.art11jin],['調査対象地・周辺地等の土壌汚染対策法に基づく「自然由来」の指定区域',g.art11shizen],['調査対象地・周辺地等の土壌汚染対策法に基づく「水面埋立て土砂由来」の指定区域',g.art11umetate],['調査対象地の廃棄物の処理及び清掃に関する法律の指定区域',g.haiki]].concat((g.ord||[]).map(o=>[`${o.name}に基づく${o.item.replace(/^条例に基づく/,'')}`,o.v]));
   add(`<table class="t11">${s.jusho?`<tr class="g"><th>住 居 表 示</th><td colspan="2">${E('site.jusho',esc(s.jusho))}</td></tr>`:''}<tr class="g"><th>地 番 表 示</th><td colspan="2">${E('site.chibanLabel',esc(s.chibanLabel))}</td></tr>
    <tr class="g"><th rowspan="2">特定施設の有無</th><td>水質汚濁防止法に基づく有害物質使用の特定施設</td><td class="v">${ngv(g.suidaku&&g.suidaku.v)}</td></tr><tr><td>下水道法に基づく有害物質使用の特定施設</td><td class="v">${ngv(g.gesui&&g.gesui.v)}</td></tr>
-   ${zr.map((r,i)=>`<tr${i===0?' class="g"':''}>${i===0?`<th rowspan="${zr.length}">指定区域の有無</th>`:''}<td>${esc(r[0])}</td><td class="v">${ngv(r[1])}</td></tr>`).join('')}</table>`);
-  add(`<table class="tpar"><tr><th colspan="6" class="band">＜調査対象地の筆及び一覧表＞</th></tr><tr class="hd"><td colspan="2">所　在</td><td>地番</td><td>地目</td><td>地積</td><td>所有者</td></tr>${(s.parcels||[]).map((p,i)=>`<tr><td class="no">${i+1}</td><td>${E(`site.parcels.${i}.shozai`,esc(p.shozai))}</td><td>${E(`site.parcels.${i}.chiban`,esc(p.chiban))}</td><td>${p.chimoku?esc(p.chimoku):G.land?'<span class="ngv">未取得</span>':''}</td><td>${+p.chiseki?fmtA2(p.chiseki)+' ㎡':''}</td><td>${EP(`site.parcels.${i}.owner`,p.owner,G.land?'未取得':'')}</td></tr>`).join('')}<tr><td colspan="4">合計</td><td>${fmtA2(s.area)} ㎡</td><td class="diag"></td></tr></table>`);
+   ${zr.map((r,i)=>`<tr${i===0?' class="g"':''}>${i===0?`<th rowspan="${zr.length}">指定区域の有無</th>`:''}<td>${esc(r[0])}</td><td class="v">${ngv(r[1],'api')}</td></tr>`).join('')}</table>`);
+  add(`<table class="tpar"><tr><th colspan="6" class="band">＜調査対象地の筆及び一覧表＞</th></tr><tr class="hd"><td colspan="2">所　在</td><td>地番</td><td>地目</td><td>地積</td><td>所有者</td></tr>${(s.parcels||[]).map((p,i)=>`<tr><td class="no">${i+1}</td><td>${E(`site.parcels.${i}.shozai`,esc(p.shozai))}</td><td>${E(`site.parcels.${i}.chiban`,esc(p.chiban))}</td><td>${p.chimoku?esc(p.chimoku):G.land?'<span class="ngv paid">未取得</span>':''}</td><td>${+p.chiseki?fmtA2(p.chiseki)+' ㎡':''}</td><td>${EP(`site.parcels.${i}.owner`,p.owner,G.land?'未取得':'','paid')}</td></tr>`).join('')}<tr><td colspan="4">合計</td><td>${fmtA2(s.area)} ㎡</td><td class="diag"></td></tr></table>`);
   add(H('h3','sec-12','1.2　調査目的'));
   add(`<p class="in2 ti">本調査は、${esc(addr)}${chibans&&(s.parcels||[]).length===1?' '+esc(chibans):''}地内（以下「調査対象地」と称す）における土壌汚染のおそれの可能性について判断することを目的とした。</p>`);
   add(H('h3','sec-13','1.3　敷地面積'));
@@ -147,8 +147,8 @@ function renderReport(c){
   sheet();
   add(H('h2','sec-2','２．履歴調査'));
   add(H('h3','sec-21','2.1　地形・地質及び地下水概要',' '+ev(c,s.ref)));
-  add(H('h4','sec-211','2.1.1　地形・地質概要'));add(miss(G.geo)+PP('site.geoText',s.geoText,'（地形・地質の概要を記入）','in2 ti'));
-  add(H('h4','sec-212','2.1.2　地下水概要'));add(PP('site.gwText',s.gwText,'（地下水流向の推定を記入）','in2 ti'));
+  add(H('h4','sec-211','2.1.1　地形・地質概要'));add(miss(G.geo)+PP('site.geoText',s.geoText,'（地形・地質の概要を記入）','in2 ti','api'));
+  add(H('h4','sec-212','2.1.2　地下水概要'));add(PP('site.gwText',s.gwText,'（地下水流向の推定を記入）','in2 ti','api'));
   add(`<p class="fc">図 2.1　地形地質概要及び推定地下水流向${note('国土交通省国土地理院 電子国土web（治水地形分類図）より引用し、編集・加工のうえ掲載している。')}</p>`);
   add(s.lat?tileFig(s.lat,s.lng,'lcmfc2','png',16,{dir:s.gwDir,r:10}):`<div class="figbox" contenteditable="false">位置を確定すると、治水地形分類図に推定地下水流向を重ねて作成します。</div>`);
 
@@ -175,7 +175,7 @@ function renderReport(c){
   }else{
     add(miss(G.maps));
     if(s.lat){
-      add(`<p class="tt b">${tsName}（年代別）：${pr?'AIによる判読案（担当者の確認前）':'取得済み・判読前'}</p><table class="mapt"><thead><tr><th>年代</th><th>対象地用途</th><th>周辺地の土地利用</th>${pr?'<th>確度</th>':''}<th>根拠資料</th></tr></thead><tbody>${TS.map(t=>{const r=prRow(t.id);return `<tr><td class="yr">${t.era}</td><td>${r?esc(r.site)+aiTag:pr?'<span class="ngv">資料なし</span>':'<span class="ngv">判読前</span>'}</td><td>${r?esc(r.around):pr?'':'<span class="ngv">判読前</span>'}</td>${pr?`<td>${r?esc(r.conf):''}</td>`:''}<td>${t.kind==='topo'?'旧版地形図（今昔マップ on the web）':'国土地理院 空中写真'+(t.note?'（'+t.note+'）':'')}</td></tr>`;}).join('')}</tbody></table>`);
+      add(`<p class="tt b">${tsName}（年代別）：${pr?'AIによる判読案（担当者の確認前）':'取得済み・判読前'}</p><table class="mapt"><thead><tr><th>年代</th><th>対象地用途</th><th>周辺地の土地利用</th>${pr?'<th>確度</th>':''}<th>根拠資料</th></tr></thead><tbody>${TS.map(t=>{const r=prRow(t.id);return `<tr><td class="yr">${t.era}</td><td>${r?esc(r.site)+aiTag:pr?'<span class="ngv na">資料なし</span>':'<span class="ngv api">判読前</span>'}</td><td>${r?esc(r.around):pr?'':'<span class="ngv api">判読前</span>'}</td>${pr?`<td>${r?esc(r.conf):''}</td>`:''}<td>${t.kind==='topo'?'旧版地形図（今昔マップ on the web）':'国土地理院 空中写真'+(t.note?'（'+t.note+'）':'')}</td></tr>`;}).join('')}</tbody></table>`);
       if(pr)add(`<p class="in1 sm">判読案は、地形図・写真から読み取れる範囲をAIが下読みしたもの（${esc(pr.at)}）。${pr.summary?'<br>移り変わりの要約（AI判読案）：'+esc(pr.summary):''}</p>`);
       add(`<p class="in1 sm">図は次ページ以降の図2.3に掲載。用途の判読は、住宅地図とあわせて担当者が確定する。</p><p class="scr" contenteditable="false"><button type="button" class="btn mini" data-act="photo-read">${pr?'AIで下読みをやり直す':'AIで下読みする'}</button>${pr?'<button type="button" class="btn mini" data-act="photo-adopt">判読案を利用履歴表に採用する</button>':''}<span class="scn">${pr?'採用すると、通常の年次表として編集できます。':tsName+'をAIが読み、対象地と周辺の用途の案を入れます。'}</span></p>`);
     }
@@ -204,10 +204,10 @@ function renderReport(c){
   add(`<p class="in1 kh">（1）調査対象地上の法・条例に基づく特定施設の有無</p>${G.fac?miss(G.fac):`<p class="in3 ti">${g.suidaku&&g.suidaku.date?esc(g.suidaku.date)+'に':''}${esc((g.suidaku&&g.suidaku.src)||'（照会先）')}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'及び'+esc(g.gesui.src):''}へ特定有害物質の使用等（製造・使用・処理）に関する公的届出資料の有無を確認した。その回答は以下のとおりである。</p>`}`);
   add(`<table class="yn"><tr><td>１）</td><td>水質汚濁防止法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${ngv(g.suidaku&&g.suidaku.v)}</td></tr><tr><td>２）</td><td>下水道法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${ngv(g.gesui&&g.gesui.v)}</td></tr></table>`);
   add(`<p class="in1 kh">（2）土壌・地下水汚染情報</p>${G.zone?miss(G.zone):`<p class="in3 ti">調査対象地及び周辺${g.radius?'（調査対象地から'+esc(g.radius)+'）':''}における土壌汚染対策法第6条及び第11条${(g.ord||[]).length?'、並びに'+g.ord.map(o=>esc(o.name)).join('、'):''}に基づく指定区域の有無について、${esc(g.zoneSrc||'（確認先）')}で確認した。</p>`}`);
-  add(`<table class="yn">${[['土壌汚染対策法第6条に基づく要措置区域',g.art6],['土壌汚染対策法第11条に基づく形質変更時要届出区域（人為等由来）',g.art11jin],['土壌汚染対策法第11条に基づく形質変更時要届出区域（自然由来）',g.art11shizen],['土壌汚染対策法第11条に基づく形質変更時要届出区域（水面埋立て土砂由来）',g.art11umetate]].concat((g.ord||[]).map(o=>[`${o.name}${/条例に基づく/.test(o.item)?'':'に基づく'}${o.item.replace(/^条例に基づく/,'に基づく')}`,o.v])).map((r,i)=>`<tr><td>${'１２３４５６７８'[i]}）</td><td>${esc(r[0])}</td><td>：${ngv(r[1])}</td></tr>`).join('')}</table>`);
+  add(`<table class="yn">${[['土壌汚染対策法第6条に基づく要措置区域',g.art6],['土壌汚染対策法第11条に基づく形質変更時要届出区域（人為等由来）',g.art11jin],['土壌汚染対策法第11条に基づく形質変更時要届出区域（自然由来）',g.art11shizen],['土壌汚染対策法第11条に基づく形質変更時要届出区域（水面埋立て土砂由来）',g.art11umetate]].concat((g.ord||[]).map(o=>[`${o.name}${/条例に基づく/.test(o.item)?'':'に基づく'}${o.item.replace(/^条例に基づく/,'に基づく')}`,o.v])).map((r,i)=>`<tr><td>${'１２３４５６７８'[i]}）</td><td>${esc(r[0])}</td><td>：${ngv(r[1],'api')}</td></tr>`).join('')}</table>`);
   const za=g.zoneAuto;
   if(za)add(`<p class="in3 sm zn" contenteditable="false">※ 上記は、公表台帳の写し（${esc(za.checkedOn)}取得${za.updated?'、公表ページの更新日 '+esc(za.updated):''}）との自動照合による<span class="aiv">自動照合・要確認</span>。${za.geo?'町丁目の代表点どうしの距離で1.5km以内（1.0km圏に町丁目の広がりの余裕を加えた範囲）と、同じ町丁目の指定区域を拾っている。':'位置が未設定のため、同じ町丁目の指定区域だけを拾っている。'}</p>${za.hits.length?`<table class="reg znt"><thead><tr><th>区域の種類</th><th>所在地</th><th>指定番号</th><th>指定年月日</th><th>対象地との関係</th></tr></thead><tbody>${za.hits.slice(0,12).map(h=>`<tr><td>${h.k==='6'?'要措置区域':h.k==='11'?'形質変更時要届出区域'+(h.sub?'（'+esc(h.sub)+'）':''):'条例：'+esc(h.sub||'区域')}</td><td>${esc(h.city+h.town)}${h.lot?' '+esc(h.lot):''}</td><td class="c">${esc(h.no)}</td><td class="c">${esc(h.date)}</td><td>${h.same?'同じ町丁目':''}${h.d!=null?(h.same?'・':'')+'代表点間 約'+h.d.toFixed(1)+'km':''}</td></tr>`).join('')}</tbody></table>${za.hits.length>12?`<p class="in3 sm">ほか${za.hits.length-12}件（付録の出典の公表ページを参照）。</p>`:''}`:''}`);
-  add(`<p class="in1 kh">（3）自然由来または公有水面等に関しての情報</p>${miss(G.natural)}${PP('regs.natural',g.natural,'（自然由来・公有水面埋立に関する情報を記入）','in3 ti')}`);
+  add(`<p class="in1 kh">（3）自然由来または公有水面等に関しての情報</p>${miss(G.natural)}${PP('regs.natural',g.natural,'（自然由来・公有水面埋立に関する情報を記入）','in3 ti','api')}`);
   add(H('h2','sec-3','３．結果まとめ',' '+ev(c,v.ref)));
   add(`<p class="in1">各種資料による利用履歴の調査結果は以下のとおりである。</p><div class="shoken${v.level==='保留'?' pend':''}"><div class="sh">所　見</div><div class="shh">${E('verdict.headline',esc(v.headline))}</div><div class="sht" data-path="verdict.text" contenteditable="true" spellcheck="false">${esc(v.text).replace(/(土壌汚染の(?:可能性|おそれ)[^。、]*と判断(?:する|した|される)。)\s*$/,'<u>$1</u>')}</div></div>`);
 
@@ -271,7 +271,7 @@ function renderReport(c){
   const toc=tocOf(c).map(t=>`<a href="#${t[0]}" class="l${t[2]}" data-go="${t[0]}"><span>${t[1]}</span><i></i><b>${pageOf[t[0]]||''}</b></a>`).join('');
   const rowsN=Math.max(4,...['一般公表資料','公的資料','私的資料'].map(k=>grp(k).length));
   const cell=(k,i)=>{const d=grp(k)[i];return d?'ABCDEFGHIJ'[i]+'）'+esc(d.kind):'―';};
-  const front=`<section class="sheet cover" id="sec-cover">${gaps.length?`<div class="draft" contenteditable="false">下書き　未取得の項目 ${gaps.length}件（本文の赤枠）</div>`:''}<div class="sbody"><div class="ct">${esc(c.title)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${E('reportDate',esc(c.reportDate||toWareki(new Date())))}</div><div class="co">${esc(c.org.name)}</div></div></section>
+  const front=`<section class="sheet cover" id="sec-cover">${gaps.length?`<div class="draft" contenteditable="false">下書き　未取得 ${gaps.length}件：${gapCount(gaps).map(x=>`<span class="${x[0]}">${GAPC[x[0]]} ${x[1]}</span>`).join('')}<br><small><span class="paid">青</span>＝有料の資料　<span class="api">緑</span>＝APIで取得できる　<span class="human">赤</span>＝人の作業</small></div>`:''}<div class="sbody"><div class="ct">${esc(c.title)}　地歴調査</div><div class="ct2">報告書</div><div class="cd">${E('reportDate',esc(c.reportDate||toWareki(new Date())))}</div><div class="co">${esc(c.org.name)}</div></div></section>
    <section class="sheet tocp"><div class="sbody"><h2 class="tc">目　　　次</h2><div class="toc">${toc}</div><p class="lb atl">【添付資料】</p><table class="att"><thead><tr><th>一般公表資料</th><th>公的資料</th><th>私的資料</th></tr></thead><tbody>${Array.from({length:rowsN},(_,i)=>`<tr><td>${cell('一般公表資料',i)}</td><td class="c">${cell('公的資料',i)}</td><td>${cell('私的資料',i)}</td></tr>`).join('')}</tbody></table></div></section>`;
   return front+sheets.map(sh=>`<section class="sheet ${sh.cls}"><div class="sbody">${sh.body}</div>${sh.notes.length?`<div class="fnotes">${sh.notes.map(nn=>`<div data-n="${nn[0]}"><sup>${nn[0]}</sup><span>${nn[1]}</span></div>`).join('')}</div>`:''}${sh.page?`<div class="pno">${sh.page}</div>`:''}</section>`).join('');
 }

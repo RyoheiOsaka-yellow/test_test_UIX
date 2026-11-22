@@ -203,13 +203,19 @@ h1,h2,h3{text-wrap:balance}
 .paper .miss .mt{font-weight:700;font-size:9pt}.paper .miss p{padding-left:0}
 .paper .miss.fig{box-sizing:border-box;width:520px;max-width:100%;height:330px;margin:0 auto;padding:20px 44px;display:flex;flex-direction:column;justify-content:center}.paper .miss.fig.tall{height:400px;margin-top:22px}
 .paper .ngv{color:#d0021b;border:1px solid #d0021b;background:#fff7f7;padding:0 4px;white-space:nowrap;text-indent:0}.paper .ngp{color:#d0021b}
-.paper .shoken.pend{border-color:#d0021b}.paper .shoken.pend .sh{border-color:#d0021b}.paper .shoken.pend .shh{color:#d0021b;border-color:#d0021b}.paper .shoken.pend .sht{color:#a30015}
-.paper .draft{position:absolute;top:11mm;right:13mm;border:1.5px solid #d0021b;background:#fff7f7;color:#d0021b;font-size:9pt;line-height:1.5;padding:3px 10px}
+/* 色分け：青＝有料の資料、緑＝APIで取得できる、赤＝人の作業（既定）。灰色＝その年代の資料が存在しない */
+.paper .miss.paid{border-color:#1857b6;background:#f3f7ff;color:#123f85}.paper .miss.paid>b{background:#1857b6}
+.paper .miss.api{border-color:#0a7d3b;background:#f1faf4;color:#075c2b}.paper .miss.api>b{background:#0a7d3b}
+.paper .ngv.paid{color:#1857b6;border-color:#1857b6;background:#f3f7ff}.paper .ngv.api{color:#0a7d3b;border-color:#0a7d3b;background:#f1faf4}.paper .ngv.na{color:#666;border-color:#999;background:#f4f4f4}
+.paper .ngp.paid{color:#1857b6}.paper .ngp.api{color:#0a7d3b}
+.paper .draft .paid,.gapbar .paid{color:#1857b6}.paper .draft .api,.gapbar .api{color:#0a7d3b}.paper .draft .human,.gapbar .human{color:#d0021b}.paper .draft span{margin-left:6px;font-weight:700}.paper .draft small{font-size:7.5pt;color:#333}.paper .draft small span{margin-left:0}
+.paper .shoken.pend{border-color:#1857b6}.paper .shoken.pend .sh{border-color:#1857b6}.paper .shoken.pend .shh{color:#1857b6;border-color:#1857b6}.paper .shoken.pend .sht{color:#123f85}
+.paper .draft{position:absolute;top:11mm;right:13mm;border:1.5px solid #333;background:#fff;color:#111;text-align:left;letter-spacing:0;font-size:9pt;line-height:1.5;padding:3px 10px}
 .paper .phg{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-top:6px}.paper .ph{margin:0;position:relative;text-align:center}.paper .ph figcaption{font-size:8.5pt;line-height:1.5;margin-top:3px}
-.paper .ph .nop{display:none;position:absolute;left:50%;top:0;transform:translateX(-50%);box-sizing:border-box;width:252px;height:170px;border:1.5px solid #d0021b;background:#fff7f7;color:#d0021b;font-size:8pt;align-items:center;justify-content:center}
+.paper .ph .nop{display:none;position:absolute;left:50%;top:0;transform:translateX(-50%);box-sizing:border-box;width:252px;height:170px;border:1px solid #999;background:#f4f4f4;color:#666;font-size:8pt;align-items:center;justify-content:center}
 .paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
 .paper [id]{scroll-margin-top:130px}
-.gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
+.gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #333;background:#fff;color:#222;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.8}.gapbar b{margin-right:6px}.gapbar .cnt{font-weight:700;margin-right:10px;white-space:nowrap}.gapbar div{margin-top:2px}.gapbar a{margin-right:12px;white-space:nowrap}.gapbar .lg{font-size:11px;color:#555}.gapbar i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:currentColor;vertical-align:baseline}
 .paper table.znt{width:calc(100% - 3.2em);margin:6px 0 16px 1.6em;table-layout:auto}.paper .znt td{padding:3px 6px}.paper .znt th:nth-child(3){width:5em}.paper .znt th:nth-child(4){width:9.5em}.paper .znt th:nth-child(5){width:11em}.paper .kh{margin-top:.6em}.paper .zn{margin-top:-10px}
 .paper .src .tr{font-size:7pt;border:1px solid #000;padding:0 4px;margin-left:8px;white-space:nowrap}
 .sharednote{border:1px solid var(--line2);background:var(--sunk);border-radius:8px;padding:8px 11px;color:var(--ink)!important}
@@ -219,7 +225,7 @@ h1,h2,h3{text-wrap:balance}
 .paper .aiv{display:inline-block;margin-left:5px;color:#d0021b;border:1px solid #d0021b;background:#fff7f7;font-size:6.5pt;line-height:1.5;padding:0 3px;white-space:nowrap;vertical-align:middle}
 .paper .scr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0 1em;font-family:var(--f-body)}.paper .scr .scn{font-size:11px;color:var(--mute)}
 /* 提出用の出力：赤枠・下書きの札・付録を外し、赤字は黒に戻す */
-.paper.submit .ngv,.paper.submit .aiv{color:#000;border:0;background:none;padding:0}.paper.submit .aiv{display:none}.paper.submit .shoken.pend,.paper.submit .shoken.pend .sh,.paper.submit .shoken.pend .shh{border-color:#000;color:#000}.paper.submit .shoken.pend .sht{color:#000}.paper.submit .ph .nop{border-color:#000;color:#000;background:#fff}
+.paper.submit .ngv[class],.paper.submit .aiv{color:#000;border:0;background:none;padding:0}.paper.submit .aiv{display:none}.paper.submit .shoken.pend,.paper.submit .shoken.pend .sh,.paper.submit .shoken.pend .shh{border-color:#000;color:#000}.paper.submit .shoken.pend .sht{color:#000}.paper.submit .ph .nop{border-color:#000;color:#000;background:#fff}.paper.submit .shoken.pend .shh{color:#000}
 .seg{display:inline-flex;border:1px solid var(--line2);border-radius:980px;overflow:hidden;background:var(--surface)}.seg button{border:0;background:none;padding:7px 13px;font:inherit;font-size:12px;color:var(--mute);cursor:pointer}.seg button.on{background:var(--ink);color:var(--bg,#fff)}
 /* 付録（原本にない部分）と、画面でだけ見せる札 */
 .paper .sheet.app .sbody{font-size:9.5pt}.paper .pos,.paper .why,.paper .srcs{margin:.6em 0 0}.paper .why p{margin-top:.8em}.paper table.jt{font-size:7.5pt;margin-top:10px}.paper .jt th:nth-child(1){width:6%}.paper .jt th:nth-child(2){width:17%}.paper .jt th:nth-child(3){width:21%}.paper .jt th:nth-child(4){width:11%}.paper .jt td.b{font-weight:700}

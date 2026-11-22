@@ -105,7 +105,12 @@ function tsList(c){
 }
 /* 年代別の空中写真（国土地理院 地理院タイル）。位置が分かれば、資料の共有なしで取得できる */
 const GSI_PHOTOS=[['ort_USA10','png','1945年～1950年','米軍撮影',1945,'昭和20年～25年'],['ort_old10','png','1961年～1969年','',1961,'昭和36年～44年'],['gazo1','jpg','1974年～1978年','',1974,'昭和49年～53年'],['gazo2','jpg','1979年～1983年','',1979,'昭和54年～58年'],['gazo3','jpg','1984年～1986年','',1984,'昭和59年～61年'],['gazo4','jpg','1987年～1990年','',1987,'昭和62年～平成2年'],['ort','jpg','2007年以降','オルソ画像',2007,'平成19年以降'],['seamlessphoto','jpg','最新','全国最新写真',0,'最新']];
-/* 未取得の項目：何が無いか、どこで取得できるか、共有すると報告書のどこが埋まるか。本文では赤枠で示す */
+/* 未取得の項目：何が無いか、どこで取得できるか、共有すると報告書のどこが埋まるか。本文では、残りの作業の種類で色分けした枠で示す。
+   paid＝有料の資料（青）／api＝APIで取得できる（緑）／human＝人が動く（赤） */
+const GAPC={paid:'有料の資料',api:'APIで取得',human:'人の作業'};
+const GAP_CLS={land:'paid',kozu:'paid',maps:'paid',geo:'api',zone:'api',natural:'api',hearing:'human',visit:'human',fac:'human'};
+const GAP_MORE={kozu:'整備済みの地域は、法務省の公開データから作図できる見込み（未対応）',geo:'公開の地質図・地形分類を地点で引いて下書きできる（未対応）',zone:'自治体の公表台帳の取り込み、またはAIの調査で確認できる（東京都・名古屋市は対応済み）',natural:'地形分類の埋立地の判定と、台帳の区域の種別から下書きできる（未対応）',fac:'公表している自治体の一覧や国のPRTRデータで、一部は自動で確認できる見込み（未対応）'};
+const gapCount=gs=>['paid','api','human'].map(k=>[k,gs.filter(g=>g.cls===k).length]).filter(x=>x[1]);
 function gapsOf(c){
   const s=c.site||{},g=c.regs||{},out=[];const has=re=>(c.docs||[]).some(d=>re.test(d.kind||''));
   const desk=((ordFor(s.pref,s.city)||[]).filter(o=>o.desk).sort((a,b)=>(b.city?1:0)-(a.city?1:0))[0]||{}).desk||'';
@@ -121,6 +126,7 @@ function gapsOf(c){
   if(!(g.suidaku&&g.suidaku.v)||!(g.gesui&&g.gesui.v))add('fac','sec-243','特定施設の届出の有無（水質汚濁防止法・下水道法）','所管行政への照会（'+dk+'）。下水道法は下水道管理者','1.1 の特定施設の有無、2.4.3（1）、適用条項の判定（法第3条）');
   if(!g.art6||!g.art11jin)add('zone','sec-243','指定区域の有無（法第6条・第11条、条例）','都道府県・政令市が公表する指定区域の台帳（'+dk+'）','1.1 の指定区域の有無、2.4.3（2）');
   if(!g.natural)add('natural','sec-243','自然由来・公有水面埋立に関する情報','指定区域の台帳（自然由来特例区域・埋立地特例区域）と、公有水面埋立の免許・竣功の記録','2.4.3（3）、5章の由来の区分');
+  out.forEach(x=>{x.cls=GAP_CLS[x.k]||'human';x.more=GAP_MORE[x.k]||'';});
   return out;
 }
 /* 履歴を判断できる資料が1点も無いときは、所見を出さずに保留にする */
