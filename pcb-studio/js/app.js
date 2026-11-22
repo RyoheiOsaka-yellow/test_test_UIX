@@ -16,7 +16,7 @@ const cv = $('cv'), ctx = cv.getContext('2d');
 const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
-  show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'design', finish: 'green', xray: false, time: 0,
+  show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'real', finish: 'black', xray: false, time: 0,
   rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
@@ -762,6 +762,7 @@ function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = fals
 
 // ───────── イベント配線 ─────────
 document.addEventListener('click', e => {
+  for (const m of document.querySelectorAll('details.menu[open]')) if (!m.contains(e.target)) m.open = false;   // メニューの外を押したら閉じる
   const t = e.target.closest('button, [data-tab]'); if (!t) return;
   const d = t.dataset;
   if (d.tool) setTool(d.tool);

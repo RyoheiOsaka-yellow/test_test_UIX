@@ -17,6 +17,18 @@ export function heightOf(p) {
   if (/^kicad/.test(f)) return Math.max(0.5, Math.min(8, Math.min(p.w, p.h) * (p.th ? 0.7 : 0.3)));
   return 0.9;
 }
+// 部品の天面に入れる刻印・印字
+function labelOf(c) {
+  const p = c.part, f = p.family;
+  if (c.side !== 'T' || p.th) return null;
+  const code = () => { const m = /([\d.]+)\s*(nH|µH|uH)/.exec(p.spec || ''); if (!m) return p.pn.slice(0, 5); const v = +m[1]; return m[2] === 'nH' ? 'R' + String(Math.round(v / 10)).padStart(2, '0') : (v + 'R0').replace('.', 'R').slice(0, 3); };
+  if (f === 'gpu') return { lines: [p.mfr.toUpperCase(), p.name.replace(p.mfr, '').trim()], dark: true, k: 0.42, lift: 0.8 };
+  if (f === 'ind' || f === 'indin' || f === 'indaux') return { lines: [code()], big: true, k: 0.55, lift: 0.25 };
+  if (f === 'xtal') return { lines: ['27.000'], dark: true, k: 0.8 };
+  if (f === 'vram' || f === 'drmos' || f === 'flash' || f === 'ctl' || f === 'ctl8' || f === 'mon' || f === 'mcu' || f === 'buck' || f === 'retimer') return { lines: [p.mfr.split(' ')[0].toUpperCase(), p.pn.split(' ')[0]], k: f === 'vram' ? 0.8 : 0.72 };
+  if (/^kicad/.test(f) && p.pads.length > 4) return { lines: [p.pn.slice(0, 12)], k: 0.72 };
+  return null;
+}
 const EDGE = [[0, 0, 0, 1, 0, 0], [1, 0, 0, 1, 0, 1], [1, 0, 1, 0, 0, 1], [0, 0, 1, 0, 0, 0], [0, 1, 0, 1, 1, 0], [1, 1, 0, 1, 1, 1], [1, 1, 1, 0, 1, 1], [0, 1, 1, 0, 1, 0], [0, 0, 0, 0, 1, 0], [1, 0, 0, 1, 1, 0], [1, 0, 1, 1, 1, 1], [0, 0, 1, 0, 1, 1]];
 
 export class View3D {
@@ -81,7 +93,7 @@ export class View3D {
   setBoard(b, S) {
     if (!this.ok) return;
     const THREE = this.THREE, first = !this.board || this.board.w !== b.w || this.board.gridH !== b.gridH;
-    if (this.board === b && this.nComps === b.comps.length && this.planes) { this.paint(S); this.sync(S); return; }   // 部品数が同じなら描き直すだけ
+    if (this.board === b && this.nComps === b.comps.length && this.planes) { this.buildLabels(); this.paint(S); this.sync(S); return; }   // 部品数が同じなら描き直すだけ
     this.board = b; this.nComps = b.comps.length;
     while (this.root.children.length) { const m = this.root.children.pop(); m.geometry && m.geometry.dispose(); if (m.material) { m.material.map && m.material.map.dispose(); m.material.dispose(); } }
     const W = b.w, H = b.gridH;
@@ -92,7 +104,7 @@ export class View3D {
     if (b.tab) { const t = b.tab, tb = new THREE.Mesh(new THREE.BoxGeometry(t.x1 - t.x0, 2 * T - 0.04, t.h), this.slabMat); tb.position.set((t.x0 + t.x1) / 2, 0, b.h + t.h / 2); tb.castShadow = true; this.root.add(tb); }
     this.bracket = null;
     if (b.meta && b.meta.kind === 'gpu') {
-      const br = new THREE.Mesh(new THREE.BoxGeometry(1, 40, b.h + 9), new THREE.MeshStandardMaterial({ color: 0xaab0b6, metalness: 0.5, roughness: 0.45, transparent: true, opacity: 0.4 }));
+      const br = new THREE.Mesh(new THREE.BoxGeometry(1, 40, b.h + 9), new THREE.MeshStandardMaterial({ color: 0xaab0b6, metalness: 0.6, roughness: 0.4, transparent: true, opacity: 0.4 }));
       br.position.set(-2.6, 8, b.h / 2 - 0.5); this.root.add(br); this.bracket = br;
     }
     this.planes = [];
@@ -123,7 +135,7 @@ export class View3D {
     this.mOct = mk(oct, new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.15 }), true);
     this.mSec = mk(new THREE.CylinderGeometry(0.5, 0.5, 1, 24, 1, false, 0.4, 2.1), new THREE.MeshStandardMaterial({ roughness: 0.6 }), false);
     this.mGlass.mesh.renderOrder = 3;
-    this.meshes = [this.mBox, this.mGlass, this.mCan, this.mOct];
+    this.meshes = [this.mBox, this.mGlass, this.mCan, this.mOct, this.mLeg];
     this.all = [this.mBox, this.mGlass, this.mCan, this.mCap, this.mLeg, this.mOct, this.mSec];
     // 線：接続線、強調ネット、選択枠、領域
     const line = (max, color, opacity, vc) => {
@@ -132,6 +144,7 @@ export class View3D {
       const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity, vertexColors: !!vc, depthTest: false })); l.frustumCulled = false; l.renderOrder = 5; this.root.add(l);
       return { l, max, n: 0, pos: g.attributes.position.array, col: vc ? g.attributes.color.array : null };
     };
+    this.labSig = null; this.labMesh = null; this.buildLabels();
     this.lRats = line(3000, 0xffffff, 0.8); this.lHi = line(6000, 0xffffff, 1); this.lSel = line(1200, 0xffffff, 1); this.lReg = line(200, 0xffffff, 0.95, true);
     // 基板の縁
     const o = [[0, 0], [W, 0], [W, b.h]]; if (b.tab) { const t = b.tab; o.push([t.x1, b.h], [t.x1, b.h + t.h], [t.x0, b.h + t.h], [t.x0, b.h]); } o.push([0, b.h]);
@@ -141,6 +154,37 @@ export class View3D {
     this.sun.position.set(W / 2 - W * 0.5, W * 1.6, H / 2 + W * 0.9); this.sun.target.position.set(W / 2, 0, H / 2);
     this.paint(S); this.sync(S);
     if (first) this.frameAll();
+  }
+  // 刻印のアトラス（1 枚の画像に全部品ぶんを並べる）と、部品ごとの四角形を作る
+  buildLabels() {
+    const THREE = this.THREE, b = this.board;
+    const items = []; for (const c of b.comps) { const l = labelOf(c); if (l) items.push({ c, l }); }
+    const sig = this.style + '|' + items.map(q => q.c.part.id).join(',');
+    if (sig === this.labSig) return;
+    this.labSig = sig; this.labels = items;
+    if (this.labMesh) { this.root.remove(this.labMesh); this.labMesh.geometry.dispose(); this.labMesh.material.map.dispose(); this.labMesh.material.dispose(); this.labMesh = null; }
+    if (!items.length) return;
+    const CW = 256, CH = 128, cols = Math.min(16, items.length), rows = Math.ceil(items.length / cols);
+    const cv = document.createElement('canvas'); cv.width = cols * CW; cv.height = rows * CH;
+    const ctx = cv.getContext('2d'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const uv = new Float32Array(items.length * 8), idx = [];
+    items.forEach((q, i) => {
+      const cx = (i % cols) * CW, cy = Math.floor(i / cols) * CH, L = q.l.lines.filter(Boolean), n = L.length;
+      ctx.fillStyle = q.l.dark ? 'rgba(40,46,52,0.85)' : this.style === 'real' ? 'rgba(200,205,210,0.8)' : 'rgba(255,255,255,0.9)';
+      L.forEach((t, j) => {
+        let fs = q.l.big ? 86 : n === 1 ? 44 : j === 0 ? 30 : 40;
+        ctx.font = `700 ${fs}px "IBM Plex Mono", ui-monospace, Menlo, monospace`;
+        const w = ctx.measureText(t).width; if (w > CW - 16) { fs *= (CW - 16) / w; ctx.font = `700 ${fs}px "IBM Plex Mono", ui-monospace, Menlo, monospace`; }
+        ctx.fillText(t, cx + CW / 2, cy + CH * (n === 1 ? 0.5 : j === 0 ? 0.3 : 0.7));
+      });
+      const u0 = cx / cv.width, u1 = (cx + CW) / cv.width, v1 = 1 - cy / cv.height, v0 = 1 - (cy + CH) / cv.height;
+      uv.set([u0, v1, u1, v1, u1, v0, u0, v0], i * 8); idx.push(i * 4, i * 4 + 2, i * 4 + 1, i * 4, i * 4 + 3, i * 4 + 2);
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(items.length * 12), 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(idx);
+    const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 8;
+    this.labMesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+    this.labMesh.frustumCulled = false; this.labMesh.renderOrder = 4; this.root.add(this.labMesh);
   }
   // 銅箔面のテクスチャを描き直す。outerOnly=true なら表裏だけ（ドラッグ中用）
   paint(S, outerOnly) {
@@ -180,7 +224,8 @@ export class View3D {
       else m.opacity = on ? 1 : 0.12;
     });
     for (const m of this.all) { const mt = m.mesh.material, o = see ? (m === this.mGlass ? 0.12 : 0.2) : (m === this.mGlass ? 0.5 : 1); if (mt.opacity !== o) { mt.opacity = o; mt.transparent = o < 1; mt.depthWrite = o === 1; mt.needsUpdate = true; } m.mesh.castShadow = !see && m !== this.mCap && m !== this.mLeg && m !== this.mSec; }
-    if (this.bracket) this.bracket.visible = this.explode < 0.03;
+    if (this.bracket) { this.bracket.visible = this.explode < 0.03; const o = this.xray != null ? 0.12 : this.style === 'real' ? 0.92 : 0.4; if (this.bracket.material.opacity !== o) { this.bracket.material.opacity = o; this.bracket.material.depthWrite = o > 0.9; this.bracket.material.needsUpdate = true; } }
+    this.buildLabels();   // 部品の入れ替えや表示スタイルの変更に追従
     const sel = S ? S.sel : new Set(), hg = S && S.hiGroup;
     for (const m of this.all) { m.k = 0; m.map.length = 0; }
     const metal = new THREE.Color(0xc9ced4).convertSRGBToLinear(), tmp = new THREE.Color();
@@ -190,8 +235,10 @@ export class View3D {
       const f = c.part.family; if (f === 'pcie' || f === 'hole') continue;
       const B = compBox(c), hgt = heightOf(c.part), top = c.side === 'T' || c.part.th, base = top ? this.layerY(0) : this.layerY(3), sg = top ? 1 : -1;
       const g = b.group(c.group), w = B.x1 - B.x0, d = B.y1 - B.y0;
-      const glassy = (c.fixed && f !== 'gpu') || c.part.pads.length > 60;
-      if (this.style === 'real') col.set(realColor(c.part)).convertSRGBToLinear();
+      const real = this.style === 'real', shell = real && (f === 'dp' || f === 'hdmi');
+      const glassy = !real && ((c.fixed && f !== 'gpu') || c.part.pads.length > 60);
+      if (real && hg === c.group && g) col.set(g.color).convertSRGBToLinear();   // 凡例で選んだグループは色で示す
+      else if (real) col.set(realColor(c.part)).convertSRGBToLinear();
       else if (c.fixed && f !== 'gpu') col.copy(grey);
       else col.set(g ? g.color : '#9aa3ad').convertSRGBToLinear().lerp(dark, 0.12);
       if (hg && hg !== c.group) col.lerp(dark, 0.75);
@@ -203,7 +250,7 @@ export class View3D {
         put(this.mBox, c, c.x, c.y, w, d, 0.9, base, sg, tmp.copy(col).lerp(dark, 0.55));
         put(this.mCan, c, c.x, c.y, r, r, hgt, base, sg, col);
         put(this.mCap, c, c.x, c.y, r * 0.97, r * 0.97, 0.12, base + sg * hgt, sg, tmp.set(0xf4f4f4));
-        put(this.mSec, c, c.x, c.y, r * 0.97, r * 0.97, 0.14, base + sg * hgt, sg, tmp.copy(col).lerp(dark, 0.25));
+        put(this.mSec, c, c.x, c.y, r * 0.97, r * 0.97, 0.14, base + sg * hgt, sg, real ? tmp.set(0x2c2140) : tmp.copy(col).lerp(dark, 0.25));
       } else if (f === 'ind' || f === 'indin' || f === 'indaux') { // インダクタ：角を落とした角柱＋天面のくぼみ
         put(this.mOct, c, c.x, c.y, w, d, hgt, base, sg, col);
         put(this.mOct, c, c.x, c.y, w * 0.62, d * 0.62, 0.25, base + sg * hgt, sg, tmp.copy(col).lerp(dark, 0.4));
@@ -217,11 +264,25 @@ export class View3D {
         for (const pad of pads) { const p = padWorld(c, pad); put(this.mLeg, null, p.x, p.y, Math.max(0.25, p.w), Math.max(0.25, p.h), 0.3, base, sg, tmp); }
         put(this.mCap, null, c.x - w * 0.3, c.y - d * 0.3, 0.5, 0.5, 0.05, base + sg * hgt, sg, tmp.copy(col).lerp(white, 0.5));   // 1 番ピンの印
       } else {
-        put(glassy ? this.mGlass : this.mBox, c, c.x, c.y, w, d, hgt, base, sg, col);
+        if (shell) { // 映像コネクタ：金属シェルと、ブラケット側の黒い開口
+          put(this.mLeg, c, c.x, c.y, w, d, hgt, base, sg, dimmed ? tmp.copy(metal).lerp(dark, 0.75) : metal);
+          put(this.mBox, null, B.x0 + 0.3, c.y, 0.7, d * 0.82, hgt * 0.62, base + sg * hgt * 0.19, sg, tmp.set(0x0b0c0d));
+        } else put(glassy ? this.mGlass : this.mBox, c, c.x, c.y, w, d, hgt, base, sg, col);
+        if (real && /^pwrconn/.test(f)) for (const pad of pads) { const p = padWorld(c, pad); put(this.mBox, null, p.x, p.y, Math.min(2.4, p.w * 1.7), Math.min(2.4, p.h * 1.7), 0.06, base + sg * hgt, sg, tmp.set(0x050506)); }   // ピン穴
         if (c.part.th && f !== 'hole') for (const pad of pads) { const p = padWorld(c, pad), ph = f === 'fan' ? hgt * 0.85 : Math.min(3.5, hgt * 0.5); put(this.mLeg, null, p.x, p.y, Math.min(0.8, p.w * 0.5), Math.min(0.8, p.h * 0.5), ph, base, sg, tmp); }  // コネクタのピン
       }
       if (f === 'gpu') { col.set(this.style === 'real' ? 0xc3c9cf : 0x8f979f); put(this.mBox, c, c.x, c.y, w * 0.46, d * 0.46, 0.8, base + sg * hgt, sg, col); }
       else if (f === 'drmos') put(this.mCap, null, c.x - w * 0.3, c.y - d * 0.3, 0.6, 0.6, 0.05, base + sg * hgt, sg, tmp.copy(col).lerp(white, 0.5));
+    }
+    if (this.labMesh) { // 刻印を部品の天面へ
+      const pos = this.labMesh.geometry.attributes.position.array, y0 = this.layerY(0);
+      this.labels.forEach((q, i) => {
+        const c = q.c, p = c.part, r = c.rot * Math.PI / 180, ux = Math.cos(r), uz = Math.sin(r);
+        const wq = Math.min(p.w * q.l.k, p.h * q.l.k * 2) * (p.family === 'gpu' ? 0.46 / 0.42 * 0.9 : 1), hw = wq / 2, hh = wq / 4, y = y0 + heightOf(p) + (q.l.lift || 0) + 0.04;
+        [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, e], j) => { pos[i * 12 + j * 3] = c.x + ux * hw * a - uz * hh * e; pos[i * 12 + j * 3 + 1] = y; pos[i * 12 + j * 3 + 2] = c.y + uz * hw * a + ux * hh * e; });
+      });
+      this.labMesh.geometry.attributes.position.needsUpdate = true;
+      this.labMesh.material.opacity = see ? 0.15 : 1;
     }
     for (const m of this.all) { m.mesh.count = m.k; m.mesh.instanceMatrix.needsUpdate = true; if (m.mesh.instanceColor) m.mesh.instanceColor.needsUpdate = true; }
     if (S) {
