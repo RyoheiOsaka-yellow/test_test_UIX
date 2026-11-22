@@ -1,4 +1,4 @@
-import { G, LAYERS, snap, padWorld, compBox, boxOverlap, ratsnest, serialize, deserialize, sameSide } from './core.js';
+import { G, LAYERS, snap, padWorld, compBox, boxOverlap, ratsnest, ROLES, netRole, serialize, deserialize, sameSide } from './core.js';
 import { PARTS, PART, CATS, alternatives } from './library.js';
 import { PRESETS, generateGPU, emptyBoard } from './templates.js';
 import { Router } from './router.js';
@@ -43,7 +43,7 @@ function setBoard(b, route = true) {
   fit(); refreshAll();
 }
 function refresh() {
-  S.rats = S.show.rats ? ratsnest(S.board) : []; S.zones = v3on ? [] : zones(); dirty = true;
+  S.rats = S.show.rats ? ratsnest(S.board) : []; renderWireLegend(); S.zones = v3on ? [] : zones(); dirty = true;
   if (v3on) { let t = 0, r = 0; for (const n of S.board.nets.values()) if (n.cls !== 'plane' && n.pins.length > 1) { t++; if (n.route && n.route.segs.length) r++; } v3.pour = t ? r / t : 0; }
 }
 function refreshAll() { refresh(); renderInspector(); renderStats(); renderNets(); renderLegend(); renderBom(); renderGuide(); if (v3on) { v3.heat = S.cool.on && S.cool.heat && S.coolInfo ? S.coolInfo.heat.T : null; v3.setBoard(S.board, S); v3.setCooler(S.cool.on ? S.coolInfo : null); } }
@@ -849,6 +849,18 @@ function renderNets() {
   }).join('')}</table>`;
   $('netN').textContent = `${list.length} / ${all.length} 本${list.length > 50 ? '（上位 50 本を表示）' : ''}`;
 }
+// 未配線の線の凡例。役割ごとの残り本数を示し、押すとその役割だけを表示する
+let wlKey = '';
+function renderWireLegend() {
+  const cnt = new Map(); for (const r of S.rats) { const k = netRole(r.net); cnt.set(k, (cnt.get(k) || 0) + 1); }
+  if (S.ratRole && !cnt.get(ROLES.find(r => r.id === S.ratRole))) S.ratRole = null;
+  if (S.ratRole) S.rats = S.rats.filter(r => netRole(r.net).id === S.ratRole);
+  const key = S.ratRole + '|' + ROLES.map(r => cnt.get(r) || 0).join(',');
+  if (key === wlKey) return; wlKey = key;
+  const el = $('wlegend'), use = ROLES.filter(r => cnt.get(r));
+  el.hidden = !use.length;
+  el.innerHTML = use.length ? '<span>未配線の線</span>' + use.map(r => `<button data-r="${r.id}" aria-pressed="${S.ratRole === r.id}" title="${r.label}の線だけを表示"><i style="background:${r.color}"></i>${r.label} <span>${cnt.get(r)}</span></button>`).join('') : '';
+}
 function renderLegend() {
   const b = S.board, cnt = {};
   for (const c of b.comps) cnt[c.group] = (cnt[c.group] || 0) + 1;
@@ -1050,3 +1062,4 @@ setBoard(generateGPU(PRESETS.highend));
 stage('', 'リファレンス配置を表示中。部品はつかんで動かせます。「自動レイアウト」で 計画・整列 → 焼きなまし → 配線 → 裏面確認 を実行します。');
 requestAnimationFrame(frame);
 window.__pcb = { S, play, autoLayout, get v3() { return v3; } };
+$('wlegend').addEventListener('click', e => { const t = e.target.closest('button[data-r]'); if (!t) return; S.ratRole = S.ratRole === t.dataset.r ? null : t.dataset.r; refresh(); if (v3on) v3.sync(S); });

@@ -1,6 +1,6 @@
 // 3D 表示（three.js）。床と影の上に基板を置き、グループ色の立体部品・接続線・銅箔面を描く。
 // つかんで動かすための当たり判定（pick / point）もここで行う。
-import { compBox, padWorld, G } from './core.js';
+import { compBox, padWorld, G, netRole } from './core.js';
 import { drawLayerTexture, realColor } from './render.js';
 
 const T = 0.8; // 基板厚の半分 (mm)
@@ -162,7 +162,7 @@ export class View3D {
       return { l, max, n: 0, pos: g.attributes.position.array, col: vc ? g.attributes.color.array : null };
     };
     this.labSig = null; this.labMesh = null; this.buildLabels();
-    this.lRats = line(3000, 0xffffff, 0.8); this.lHi = line(6000, 0xffffff, 1); this.lSel = line(1200, 0xffffff, 1); this.lReg = line(3000, 0xffffff, 0.95, true);
+    this.lRats = line(3000, 0xffffff, 0.9, true); this.lHi = line(6000, 0xffffff, 1); this.lSel = line(1200, 0xffffff, 1); this.lReg = line(3000, 0xffffff, 0.95, true);
     // 基板の縁
     const o = [[0, 0], [W, 0], [W, b.h]]; if (b.tab) { const t = b.tab; o.push([t.x1, b.h], [t.x1, b.h + t.h], [t.x0, b.h + t.h], [t.x0, b.h]); } o.push([0, b.h]);
     const og = new THREE.BufferGeometry().setFromPoints(o.map(p => new THREE.Vector3(p[0], 0, p[1])));
@@ -353,7 +353,7 @@ export class View3D {
     if (S) {
       const yT = this.layerY(0) + 0.3, yB = this.layerY(3) - 0.3, hi = S.hiNet;
       const sideY = q => (q.side === 'B' ? yB : yT);
-      if (S.show.rats) for (const r of S.rats) this.seg(this.lRats, r.a.x, yT, r.a.y, r.b.x, yT, r.b.y);
+      if (S.show.rats) { const rc = this.roleCol || (this.roleCol = new Map()); for (const r of S.rats) { const role = netRole(r.net); let c = rc.get(role); if (!c) rc.set(role, c = new THREE.Color(role.color)); this.seg(this.lRats, r.a.x, yT, r.a.y, r.b.x, yT, r.b.y, c); } }
       if (hi && hi.route) {
         for (const s of hi.route.segs) { const y = this.layerY(s.l) + (s.l < 2 ? 0.06 : -0.06), p = s.pts; for (let i = 0; i + 3 < p.length; i += 2) this.seg(this.lHi, p[i], y, p[i + 1], p[i + 2], y, p[i + 3]); }
         if (!hi.route.plane) for (const v of hi.route.vias) this.seg(this.lHi, v.x, this.layerY(0) + 0.06, v.y, v.x, this.layerY(3) - 0.06, v.y);

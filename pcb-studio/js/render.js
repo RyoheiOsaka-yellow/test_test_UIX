@@ -1,5 +1,5 @@
 // Canvas 描画。ワールド座標 mm、基板中心まわりの左右反転（裏返し）に対応。
-import { LAYERS, NL, NET_WIDTH, VIA, padWorld, compBox } from './core.js';
+import { LAYERS, NL, NET_WIDTH, VIA, padWorld, compBox, ROLES, netRole } from './core.js';
 
 const C = {
   bg: '#0d1216', board: '#171d22', edge: '#c9a25a', bracket: '#56606b', via: '#d9dde2', hole: '#0d1216',
@@ -210,10 +210,13 @@ export function draw(ctx, S) {
 
   // ラッツネスト
   if (S.show.rats && S.rats.length) {
-    ctx.lineWidth = px; ctx.strokeStyle = C.rats; ctx.globalAlpha = hi ? 0.15 : 0.5; ctx.beginPath();
-    for (const r of S.rats) { if (hi && r.net === hi) continue; ctx.moveTo(r.a.x, r.a.y); ctx.lineTo(r.b.x, r.b.y); }
-    ctx.stroke();
-    if (hi) { ctx.globalAlpha = 1; ctx.lineWidth = 1.5 * px; ctx.beginPath(); for (const r of S.rats) if (r.net === hi) { ctx.moveTo(r.a.x, r.a.y); ctx.lineTo(r.b.x, r.b.y); } ctx.stroke(); }
+    ctx.lineWidth = px; ctx.globalAlpha = hi ? 0.2 : 0.75;
+    for (const role of ROLES) {   // 役割ごとに色を分ける
+      ctx.strokeStyle = role.color; ctx.beginPath();
+      for (const r of S.rats) { if ((hi && r.net === hi) || netRole(r.net) !== role) continue; ctx.moveTo(r.a.x, r.a.y); ctx.lineTo(r.b.x, r.b.y); }
+      ctx.stroke();
+    }
+    if (hi) { ctx.globalAlpha = 1; ctx.lineWidth = 1.5 * px; ctx.strokeStyle = C.rats; ctx.beginPath(); for (const r of S.rats) if (r.net === hi) { ctx.moveTo(r.a.x, r.a.y); ctx.lineTo(r.b.x, r.b.y); } ctx.stroke(); }
     ctx.globalAlpha = 1;
   }
 

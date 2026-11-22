@@ -136,6 +136,26 @@ export function boxOverlap(a, b) {
 // 同じ面で干渉するか（スルーホール部品は両面を占有）
 export function sameSide(a, b) { return a.side === b.side || a.part.th || b.part.th; }
 
+// 配線の役割（未配線の線の色分けに使う）。ネット名と種類から決める
+export const ROLES = [
+  { id: 'mem', label: 'メモリ信号', color: '#5ec8f2' },
+  { id: 'pcie', label: 'PCIe', color: '#f0d264' },
+  { id: 'disp', label: '映像出力', color: '#a48cff' },
+  { id: 'power', label: '電源', color: '#ff6b6b' },
+  { id: 'vrm', label: 'VRM 制御', color: '#ff9f43' },
+  { id: 'ctrl', label: '監視・制御', color: '#5fe0a8' },
+];
+const ROLE = Object.fromEntries(ROLES.map(r => [r.id, r]));
+export function netRole(n) {
+  const s = n.name;
+  if (n.cls === 'power' || n.cls === 'plane') return ROLE.power;
+  if (/^MEM\d/.test(s)) return ROLE.mem;
+  if (/^(PEX_|PERST|REFCLK)/.test(s)) return ROLE.pcie;
+  if (/^(DP\d|HDMI)/.test(s)) return ROLE.disp;
+  if (/^M?PWM\d|_VSEN|_VRTN/.test(s)) return ROLE.vrm;
+  return ROLE.ctrl;
+}
+
 // 未配線の接続（ラッツネスト）を列挙
 export function ratsnest(board) {
   const out = [];
