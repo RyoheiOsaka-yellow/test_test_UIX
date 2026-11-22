@@ -68,11 +68,23 @@ export function coolerCheck(b, cfg) {
 }
 
 // 熱の概算。前提（cfg で変更可）：ケース内気温、VRM の効率（損失の 7 割が DrMOS、3 割がインダクタ）、
-// メモリ 1 枚の発熱、サーマルパッドの熱伝導率。ベースプレートは一様な温度、フィンは強制空冷とする。
+// メモリ 1 枚の発熱、サーマルパッドの熱伝導率、ヒートパイプの本数、ファンの位置と風量（熱伝達は風量の 0.8 乗に比例）。
+// ベースプレートを長手方向に約 10mm ごとの区画に分け、各区画が「フィンから空気へ逃がす熱」と
+// 「隣の区画へ伝える熱（アルミ板＋ヒートパイプ）」を持つ 1 次元の熱回路として解く。
+// ファンの真下の区画はよく冷え、ファンから外れた区画は冷えにくい。
 // VRM は発熱が密集するほど局所的に熱くなるとみなし、発熱密度 1 W/cm² あたり 12℃ を上乗せする。
 export const LIMIT = { gpu: 90, vram: 95, drmos: 110, ind: 110 };
+export function fanCenters(b, info, cfg) {
+  const r = info.rect, L = r.x1 - r.x0, n = cfg.fans, rad = Math.min((r.y1 - r.y0) / 2 - 2, L / n / 2 - 3);
+  const even = Array.from({ length: n }, (_, i) => r.x0 + L * (i + 0.5) / n);
+  const dm = b.comps.filter(c => c.part.family === 'drmos' && c.side === 'T');
+  const aim = cfg.fanPos === 'gpu' ? info.gpu.x : cfg.fanPos === 'vrm' && dm.length ? dm.reduce((q, c) => q + c.x, 0) / dm.length : null;
+  // 寄せる設定のときは、全体を目標へ 40% 近づける（基板からはみ出さない範囲で）
+  const xs = aim == null ? even : even.map(x => Math.max(r.x0 + rad, Math.min(r.x1 - rad, x + (aim - (r.x0 + r.x1) / 2) * 0.4)));
+  return { xs, rad };
+}
 export function thermal(b, info, cfg) {
-  const AMB = cfg.amb ?? 35, K_PAD = cfg.kPad ?? 6, EFF = cfg.eff ?? 0.9, MEM_W = cfg.memW ?? 2.7, gpu = info.gpu, top = b.comps.filter(c => c.side === 'T');
+  const AMB = cfg.amb ?? 35, K_PAD = cfg.kPad ?? 6, EFF = cfg.eff ?? 0.9, MEM_W = cfg.memW ?? 2.7, PIPES = cfg.pipes ?? 6, gpu = info.gpu, top = b.comps.filter(c => c.side === 'T');
   const fam = f => top.filter(c => (f === 'ind' ? isInd(c.part.family) : c.part.family === f));
   const P = new Map(), pGpu = gpu.part.val || 0, loss = pGpu * (1 / EFF - 1), dm = fam('drmos'), ind = fam('ind'), mem = fam('vram');
   P.set(gpu, pGpu);
@@ -80,16 +92,30 @@ export function thermal(b, info, cfg) {
   for (const c of dm) P.set(c, loss * 0.7 / dm.length);
   for (const c of ind) P.set(c, loss * 0.3 / ind.length);
   const Q = [...P.values()].reduce((a, v) => a + v, 0);
-  // ヒートシンク：フィンの表面積 × 熱伝達率 × フィン効率
-  const r = info.rect, nFin = Math.floor((r.x1 - r.x0) / 2), A = 2 * nFin * (cfg.fin / 1000) * ((r.y1 - r.y0) / 1000);
-  const hConv = cfg.fans >= 3 ? 40 : 32, Rsink = 1 / (hConv * A * 0.7), tBase = AMB + Q * Rsink;
-  const T = new Map(), gap = new Map(info.pads.map(p => [p.c, p.gap]));
-  const gB = compBox(gpu), Rgpu = 0.05 + 5e-5 / (8 * (gB.x1 - gB.x0) * 0.46 * (gB.y1 - gB.y0) * 0.46 * 1e-6) + Math.max(0, info.und.base - info.gpuTop) / 1000 / (390 * (gB.x1 - gB.x0) * 0.5 * (gB.y1 - gB.y0) * 0.5 * 1e-6);
-  T.set(gpu, tBase + pGpu * Rgpu);
-  // VRM の発熱密度（DrMOS とインダクタを囲む範囲あたり）
+  const r = info.rect, nFin = Math.floor((r.x1 - r.x0) / 2), depth = (r.y1 - r.y0) / 1000, A = 2 * nFin * (cfg.fin / 1000) * depth;
+  // 区画ごとの熱回路
+  const N = Math.max(4, Math.ceil((r.x1 - r.x0) / 10)), dx = (r.x1 - r.x0) / N, col = x => Math.max(0, Math.min(N - 1, Math.floor((x - r.x0) / dx)));
+  const fan = fanCenters(b, info, cfg), gap = new Map(info.pads.map(p => [p.c, p.gap]));
+  const gAir = new Float64Array(N), qIn = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    const xc = r.x0 + (i + 0.5) * dx, cover = Math.max(0, ...fan.xs.map(fx => Math.max(0, Math.min(1, 1 - Math.max(0, Math.abs(xc - fx) - fan.rad) / fan.rad))));
+    gAir[i] = 40 * Math.pow(cfg.rpm ?? 1, 0.8) * (0.55 + 0.75 * cover) * (A / N) * 0.7;
+  }
+  const gLat = (200 * 0.005 * depth + PIPES * 10000 * 2.8e-5) / (dx / 1000);
+  const gB = compBox(gpu), g0 = col(gB.x0 + (gB.x1 - gB.x0) * 0.25), g1 = col(gB.x1 - (gB.x1 - gB.x0) * 0.25);
+  for (let i = g0; i <= g1; i++) qIn[i] += pGpu / (g1 - g0 + 1);
+  let open = 0;
+  const contact = c => { const g = gap.get(c); return g != null && g <= 3; };
+  for (const c of [...mem, ...dm, ...ind]) if (contact(c)) qIn[col(c.x)] += P.get(c); else open++;
+  // 三重対角の連立方程式を解く
+  const a = new Float64Array(N), d = new Float64Array(N), c2 = new Float64Array(N), rhs = new Float64Array(N), Tc = new Float64Array(N);
+  for (let i = 0; i < N; i++) { const l = i > 0 ? gLat : 0, rr = i < N - 1 ? gLat : 0; a[i] = -l; c2[i] = -rr; d[i] = gAir[i] + l + rr; rhs[i] = qIn[i] + gAir[i] * AMB; }
+  for (let i = 1; i < N; i++) { const m = a[i] / d[i - 1]; d[i] -= m * c2[i - 1]; rhs[i] -= m * rhs[i - 1]; }
+  Tc[N - 1] = rhs[N - 1] / d[N - 1]; for (let i = N - 2; i >= 0; i--) Tc[i] = (rhs[i] - c2[i] * Tc[i + 1]) / d[i];
+  const tAvg = Tc.reduce((q, v) => q + v, 0) / N; let tGpu = 0; for (let i = g0; i <= g1; i++) tGpu = Math.max(tGpu, Tc[i]);
+  // VRM の発熱密度：GPU の左右でかたまりを分け、それぞれを囲む面積の合計で割る
   let dens = 0;
   if (dm.length) {
-    // GPU の左右でかたまりを分け、それぞれを囲む面積の合計で割る
     let area = 0;
     for (const side of [c => c.x < gpu.x, c => c.x >= gpu.x]) {
       const cl = [...dm, ...ind].filter(side); if (!cl.length) continue;
@@ -99,14 +125,15 @@ export function thermal(b, info, cfg) {
     }
     dens = loss / Math.max(1, area);
   }
-  const local = dens * 12, vrmSet = new Set([...dm, ...ind]);
-  let open = 0;
+  const local = dens * 12, vrmSet = new Set([...dm, ...ind]), T = new Map();
+  const Rgpu = 0.05 + 5e-5 / (8 * (gB.x1 - gB.x0) * 0.46 * (gB.y1 - gB.y0) * 0.46 * 1e-6) + Math.max(0, info.und.base - info.gpuTop) / 1000 / (390 * (gB.x1 - gB.x0) * 0.5 * (gB.y1 - gB.y0) * 0.5 * 1e-6);
+  T.set(gpu, tGpu + pGpu * Rgpu);
   for (const c of [...mem, ...dm, ...ind]) {
-    const g = gap.get(c), B = compBox(c), a = (B.x1 - B.x0) * (B.y1 - B.y0) * 1e-6;
-    // パッドで接触していれば t/(kA)。届かない・切り欠き内なら自然対流に近い値
-    const R = g != null && g <= 3 ? Math.max(0.1, g) / 1000 / (K_PAD * a) : (open++, 1 / (25 * a * 8));   // 接触なし：風が当たる表面からの放熱のみ
-    T.set(c, (g != null && g <= 3 ? tBase : AMB + 15) + P.get(c) * R + (vrmSet.has(c) ? local : 0));
+    const g = gap.get(c), B = compBox(c), ar = (B.x1 - B.x0) * (B.y1 - B.y0) * 1e-6;
+    // パッドで接触していれば t/(kA)。届かない・切り欠き内なら、風が当たる表面からの放熱のみ
+    const R = contact(c) ? Math.max(0.1, g) / 1000 / (K_PAD * ar) : 1 / (25 * ar * 8);
+    T.set(c, (contact(c) ? Tc[col(c.x)] : AMB + 15) + P.get(c) * R + (vrmSet.has(c) ? local : 0));
   }
   const mx = L => (L.length ? Math.max(...L.map(c => T.get(c))) : null);
-  return { dens, local, kPad: K_PAD, eff: EFF, memW: MEM_W, Q, loss, Rsink, tBase, A, T, gpu: T.get(gpu), vram: mx(mem), drmos: mx(dm), ind: mx(ind), open, amb: AMB };
+  return { dens, local, kPad: K_PAD, eff: EFF, memW: MEM_W, pipes: PIPES, Q, loss, Rsink: (tAvg - AMB) / Q, tBase: tGpu, tAvg, tMin: Math.min(...Tc), prof: [...Tc], x0: r.x0, dx, fan, A, T, gpu: T.get(gpu), vram: mx(mem), drmos: mx(dm), ind: mx(ind), open, amb: AMB };
 }

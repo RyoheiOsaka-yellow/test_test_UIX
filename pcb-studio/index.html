@@ -193,7 +193,7 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
       <label class="ck" for="oRegions"><input type="checkbox" id="oRegions" checked>電源の流れで領域を割り当てる</label>
       <label class="ck" for="oPack"><input type="checkbox" id="oPack" checked>ブロック内部を接続から組み立て直す</label>
       <label class="ck" for="oTune"><input type="checkbox" id="oTune" checked>等長配線（ミアンダ）を入れる</label>
-      <label class="ck" for="oThermal"><input type="checkbox" id="oThermal">VRM を GPU の両側に分ける（熱と電源経路を優先）</label>
+      <label class="ck" for="oThermal"><input type="checkbox" id="oThermal">電源経路を優先（VRM を GPU の両側に分ける）</label>
       <label class="fl" for="oEffort">焼きなましの探索量</label>
       <input type="range" id="oEffort" min="0.3" max="2.5" step="0.1" value="1">
       <label class="ck" for="seed">乱数の種 (seed)<input type="number" id="seed" value="6" min="1" max="9999"></label>
@@ -258,6 +258,9 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
         <div><label class="fl" for="cBase">下面の高さ（全体） <span id="cBaseV" class="num">3.2 mm</span></label><input type="range" id="cBase" min="3.2" max="12" step="0.1" value="3.2"></div>
         <div><label class="fl" for="cFin">フィンの高さ <span id="cFinV" class="num">28.0 mm</span></label><input type="range" id="cFin" min="10" max="50" step="1" value="28"></div>
         <div><label class="fl" for="cFans">ファン</label><select id="cFans"><option value="2">2 基</option><option value="3" selected>3 基</option></select></div>
+        <div><label class="fl" for="cFanPos">ファンの位置</label><select id="cFanPos"><option value="even" selected>均等</option><option value="gpu">GPU 寄り</option><option value="vrm">VRM 寄り</option></select></div>
+        <div><label class="fl" for="cPipes">ヒートパイプ <span id="cPipesV" class="num">6 本</span></label><input type="range" id="cPipes" min="0" max="10" step="1" value="6"></div>
+        <div><label class="fl" for="cRpm">ファンの風量 <span id="cRpmV" class="num">100%</span></label><input type="range" id="cRpm" min="0.5" max="1.5" step="0.1" value="1"></div>
         <label class="ck" for="cCut" style="align-self:end"><input type="checkbox" id="cCut" checked>背の高い部品に切り欠きを入れる</label>
       </div>
       <div class="row"><label class="ck" for="cStep"><input type="checkbox" id="cStep">段差つきベースプレート</label><button class="mini" id="cAuto">おすすめの段差にする</button></div>

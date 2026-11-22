@@ -156,10 +156,10 @@ export class Router {
         const p = padWorld(pin.c, pad), ix = Math.round(p.x / G), iy = Math.round(p.y / G);
         if (!this.inGrid(ix, iy)) { route.fails.push(i); return; }
         const l = pin.c.side === 'B' ? NL - 1 : 0, r0 = iy * nx + ix, base = l * plane;
-        // パッドの層を幅優先でたどり、ビアを打てる最寄りの格子点を探す（最大 6 歩）
+        // パッドの層を幅優先でたどり、ビアを打てる最寄りの格子点を探す（最大 12 歩）
         par.clear(); par.set(r0, -1);
         let front = [r0], hit = -1;
-        for (let depth = 0; depth <= 6 && hit < 0 && front.length; depth++) {
+        for (let depth = 0; depth <= 12 && hit < 0 && front.length; depth++) {
           const next = [];
           for (const r of front) {
             if (viaNet[r] === id || (this.thAt[r] && occ[r] === id) || this.viaOk(id, r)) { hit = r; break; }
@@ -254,6 +254,69 @@ export class Router {
   }
 
   // 1 ネットを配線する。戻り値: 引き剥がしたネットの集合
+  // 探索で得た経路を配線として確定する（占有の書き込み、ビア、折れ線の組み立て）
+  commitPath(net, route, path, tree) {
+    const { occ, plane, nx } = this, id = net.id;
+    let seg = null;
+    for (let q = 0; q < path.length; q++) {
+      const k = path[q], l = (k / plane) | 0, r = k - l * plane, x = (r % nx) * G, y = ((r / nx) | 0) * G;
+      const prev = q ? path[q - 1] : -1;
+      if (prev >= 0 && ((prev / plane) | 0) !== l) { // 層替え＝ビア
+        route.vias.push({ x, y });
+        for (let m = 0; m < NL; m++) { const kk = m * plane + r; occ[kk] = id; route.cells.push(kk); }
+        this.viaNet[r] = id;
+        seg = null;
+      }
+      occ[k] = id; route.cells.push(k); if (tree) tree.push(k);
+      if (!seg) { seg = { l, pts: [x, y] }; route.segs.push(seg); }
+      else {
+        const p = seg.pts, n = p.length;
+        route.len += Math.hypot(x - p[n - 2], y - p[n - 1]);
+        if (n >= 4) { // 同一直線上なら点を伸ばすだけ
+          const ax = p[n - 2] - p[n - 4], ay = p[n - 1] - p[n - 3], bx = x - p[n - 2], by = y - p[n - 1];
+          if (Math.abs(ax * by - ay * bx) < 1e-9 && ax * bx + ay * by > 0) { p[n - 2] = x; p[n - 1] = y; continue; }
+        }
+        p.push(x, y);
+      }
+    }
+  }
+  // 2 ピンのネットを、内層の中継点を経由する遠回りの経路に引き直して target の長さに近づける。
+  // 表層が混んでいて蛇行を入れられないときに使う。うまくいかなければ元に戻して false。
+  detour(net, target) {
+    if (net.pins.length !== 2) return false;
+    const { occ, fixed, nx, plane } = this, id = net.id;
+    const pc = net.pins.map(p => this.pinCells(p)), pos = net.pins.map(p => padWorld(p.c, p.c.part.padMap[p.p]));
+    if (!pc[0].length || !pc[1].length) return false;
+    const D = Math.hypot(pos[1].x - pos[0].x, pos[1].y - pos[0].y), need = target - 2 * 0.5;   // ビア前後のぶんを少し見込む
+    if (need <= D + 1) return false;
+    const off = Math.sqrt((need / 2) ** 2 - (D / 2) ** 2), mx = (pos[0].x + pos[1].x) / 2, my = (pos[0].y + pos[1].y) / 2;
+    const ux = (pos[1].x - pos[0].x) / (D || 1), uy = (pos[1].y - pos[0].y) / (D || 1);
+    const old = net.route;
+    for (const scale of [1, 0.9, 0.8, 1.1, 0.7, 0.6]) for (const sgn of [1, -1]) for (const l of [1, 2]) for (const along of [0, 1.5, -1.5]) {
+      const wx = Math.round((mx + ux * along - uy * off * scale * sgn) / G), wy = Math.round((my + uy * along + ux * off * scale * sgn) / G);
+      if (!this.inGrid(wx, wy)) continue;
+      const w = this.cell(l, wx, wy); if (occ[w] !== 0) continue;
+      this.ripNet(net);
+      const route = { cells: [], segs: [], vias: [], fails: [], len: 0 }; net.route = route;
+      const leg1 = this.search(id, pc[0], [w], false, false, 120000);
+      if (leg1) {
+        this.commitPath(net, route, leg1);
+        const hold = route.cells.filter(k => !fixed[k] && k !== w); for (const k of hold) occ[k] = -1;   // 2 本目が 1 本目をなぞらないよう一時的にふさぐ
+        const leg2 = this.search(id, [w], pc[1], false, false, 120000);
+        for (const k of hold) occ[k] = id;
+        if (leg2) {
+          this.commitPath(net, route, leg2); route.segs = route.segs.filter(q => q.pts.length >= 4);
+          this.connectivity(net);
+          if (!route.fails.length && route.len <= target + 0.6) { if (this.log) this.log.push(net, route); return true; }
+        }
+      }
+    }
+    // どの中継点でもだめなら、元の配線をそのまま戻す
+    this.ripNet(net);
+    if (old && old.cells.every(k => occ[k] === 0 || occ[k] === id)) { for (const k of old.cells) occ[k] = id; for (const v of old.vias) this.viaNet[Math.round(v.y / G) * nx + Math.round(v.x / G)] = id; net.route = old; if (this.log) this.log.push(net, old); }
+    else this.routeNet(net);
+    return false;
+  }
   routeNet(net, rip = false) {
     this.ripNet(net);
     const { occ, fixed, plane, nx } = this, id = net.id;
@@ -285,29 +348,7 @@ export class Router {
         for (let m = 0; m < NL; m++) { const o = occ[m * plane + r]; if (o > 0 && o !== id && !fixed[m * plane + r]) { const on = this.board.netById[o]; if (on && on.route) ripped.add(on); } }
       }
       for (const on of ripped) this.ripNet(on);
-      // 経路を確定
-      let seg = null;
-      for (let q = 0; q < path.length; q++) {
-        const k = path[q], l = (k / plane) | 0, r = k - l * plane, x = (r % nx) * G, y = ((r / nx) | 0) * G;
-        const prev = q ? path[q - 1] : -1;
-        if (prev >= 0 && ((prev / plane) | 0) !== l) { // 層替え＝ビア
-          route.vias.push({ x, y });
-          for (let m = 0; m < NL; m++) { const kk = m * plane + r; occ[kk] = id; route.cells.push(kk); }
-          this.viaNet[r] = id;
-          seg = null;
-        }
-        occ[k] = id; route.cells.push(k); tree.push(k);
-        if (!seg) { seg = { l, pts: [x, y] }; route.segs.push(seg); }
-        else {
-          const p = seg.pts, n = p.length;
-          route.len += Math.hypot(x - p[n - 2], y - p[n - 1]);
-          if (n >= 4) { // 同一直線上なら点を伸ばすだけ
-            const ax = p[n - 2] - p[n - 4], ay = p[n - 1] - p[n - 3], bx = x - p[n - 2], by = y - p[n - 1];
-            if (Math.abs(ax * by - ay * bx) < 1e-9 && ax * bx + ay * by > 0) { p[n - 2] = x; p[n - 1] = y; continue; }
-          }
-          p.push(x, y);
-        }
-      }
+      this.commitPath(net, route, path, tree);
       done.push(i);
     }
     route.segs = route.segs.filter(s => s.pts.length >= 4);
@@ -377,6 +418,8 @@ export class Router {
     if (ok.length < 2) return;
     const target = Math.max(...ok.map(n => n.route.len));
     for (const n of ok) if (n.route.len < target - 0.5) this.lengthen(n, target);
+    // 蛇行を入れきれなかったネットは、内層へ遠回りさせてから仕上げる
+    for (const n of ok) if (n.route.len < target - 1 && this.detour(n, target)) this.lengthen(n, target);
   }
   matchStats() {
     let groups = 0, good = 0, worst = 0;

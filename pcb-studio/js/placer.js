@@ -94,8 +94,10 @@ function hpwl(n) {
   for (const p of n.pins) { const q = padWorld(p.c, p.c.part.padMap[p.p]); if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x; if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y; }
   return (x1 - x0) + (y1 - y0);
 }
+// ピンの細かい IC は、引き出しの配線が通るよう周囲を広めに空ける
+const margin = (c, base) => (c.part.pads.length >= 12 && c.part.pads.length <= 60 && !c.part.th ? 1.8 : base);
 function overlapOf(board, c) {
-  const A = compBox(c, 0.25); let s = 0;
+  const A = compBox(c, margin(c, 0.25)); let s = 0;
   for (const o of board.comps) { if (o === c || !sameSide(c, o)) continue; s += boxOverlap(A, compBox(o, 0.25)); }
   return s;
 }
@@ -379,10 +381,10 @@ export function* anneal(board, seed, chunk, plan, effort = 1, start = 0) {
     for (const u of movable) {
       let hit = null;
       for (const q of u.mem) {
-        const A = compBox(q.c, 0.2);
+        const A = compBox(q.c, margin(q.c, 0.2));
         for (const o of board.comps) {
           if (owner.get(o) === u || !sameSide(q.c, o)) continue;
-          const B = compBox(o, 0.2);
+          const B = compBox(o, margin(o, 0.2));
           if (boxOverlap(A, B)) { hit = [q.c, o, A, B]; break; }
         }
         if (hit) break;
@@ -401,7 +403,7 @@ export function* anneal(board, seed, chunk, plan, effort = 1, start = 0) {
     yield { move: total, total, T: 0, cost: wireLength(board), overlap: totalOverlap(board), legal: it + 1 };
     if (!moved) break;
     if (it % 25 === 24) { // 押し合いで決着しないブロックは、最寄りの空き位置へ移す
-      const clash = u => u.mem.some(q => { const A = compBox(q.c, 0.2); return board.comps.some(o => owner.get(o) !== u && sameSide(q.c, o) && boxOverlap(A, compBox(o, 0.2))); });
+      const clash = u => u.mem.some(q => { const A = compBox(q.c, margin(q.c, 0.2)); return board.comps.some(o => owner.get(o) !== u && sameSide(q.c, o) && boxOverlap(A, compBox(o, margin(o, 0.2)))); });
       const inside = u => { const b = modBox(u); return b.x0 >= 0.5 && b.y0 >= 0.5 && b.x1 <= board.w - 0.5 && b.y1 <= board.h - 0.5; };
       for (const u of movable) {
         if (!clash(u)) continue;

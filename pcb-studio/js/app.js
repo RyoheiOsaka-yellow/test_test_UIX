@@ -18,7 +18,7 @@ const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
   show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'real', finish: 'black', xray: false, time: 0,
-  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true, step: false, mem: 2.1, vrm: 2.4, ind: 5.3, backOn: false, back: 3, heat: false, amb: 35, eff: 0.9, memW: 2.7, kPad: 6 }, coolInfo: null,
+  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true, step: false, mem: 2.1, vrm: 2.4, ind: 5.3, backOn: false, back: 3, heat: false, amb: 35, eff: 0.9, memW: 2.7, kPad: 6, pipes: 6, fanPos: 'even', rpm: 1 }, coolInfo: null,
   rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
@@ -615,7 +615,7 @@ function metrics() {
     ['配線長', st.len, 'mm', 0, -1], ['ビア', st.vias, '個', 0, -1], ['未接続', st.fails + st.pFail, '箇所', 0, -1],
     ['等長（±1mm 以内）', ms.groups ? ms.good : null, `/ ${ms.groups} 組`, 0, 1], ['問題', S.issues.length, '件', 0, -1],
     ['VCORE 電圧降下', vc ? vc.mV : null, 'mV', 1, -1], ['VCORE 損失', vc ? vc.loss : null, 'W', 1, -1],
-    ['GPU 温度', k ? k.heat.gpu : null, '℃', 0, -1], ['DrMOS 温度', k ? k.heat.drmos : null, '℃', 0, -1], ['VRM 発熱密度', k ? k.heat.dens : null, 'W/cm²', 2, -1],
+    ['GPU 温度', k ? k.heat.gpu : null, '℃', 0, -1], ['ベースプレート最高', k ? k.heat.tBase : null, '℃', 0, -1], ['DrMOS 温度', k ? k.heat.drmos : null, '℃', 0, -1], ['VRM 発熱密度', k ? k.heat.dens : null, 'W/cm²', 2, -1],
     ['切り欠き', k ? k.cuts.length : null, 'か所', 0, -1], ['部品面の高さ', k ? k.front : null, 'mm', 1, -1],
   ];
 }
@@ -681,7 +681,7 @@ ${row('部品面の高さ', `${k.front.toFixed(1)} mm ＝ ${k.slots} スロッ�
 ${row('裏面の張り出し', `${k.rear.toFixed(1)} mm ${ok(k.rear <= CEM.secondary, k.rear <= CEM.secondary ? '規格内' : `規格 ${CEM.secondary} mm を超過`)}`)}
 </table><table>
 ${row('発熱', `合計 ${k.heat.Q.toFixed(0)} W（VRM の損失 ${k.heat.loss.toFixed(0)} W）`)}
-${row('ベースプレート', `${k.heat.tBase.toFixed(0)}℃（熱抵抗 ${k.heat.Rsink.toFixed(3)} K/W）`)}
+${row('ベースプレート', `GPU の真上 ${k.heat.tBase.toFixed(0)}℃・平均 ${k.heat.tAvg.toFixed(0)}℃（ヒートパイプ ${k.heat.pipes} 本）`)}
 ${[['gpu', 'GPU'], ['vram', 'メモリ'], ['drmos', 'DrMOS'], ['ind', 'インダクタ']].map(([key, name]) => k.heat[key] == null ? '' : row(name, `${k.heat[key].toFixed(0)}℃ ${ok(k.heat[key] <= LIMIT[key], `目安 ${LIMIT[key]}℃`)}`)).join('')}
 </table></div><div class="dim">前提：ケース内 ${k.heat.amb}℃、VRM 効率 ${(k.heat.eff * 100).toFixed(0)}%、メモリ ${k.heat.memW} W/枚、サーマルパッド ${k.heat.kPad} W/mK、フィン ${k.fin} mm・ファン ${k.fans} 基。高さが概算のままの部品 ${k.unknown} 種。</div>` : '<div class="dim">冷却機構を表示していないため、この項目は計算していません（右パネルの「冷却機構を重ねて表示」をオンにしてからレポートを作成してください）。</div>'}
 ${img.top ? `<h2>表面の銅箔とシルク</h2><img alt="表面の銅箔" src="${img.top}">` : ''}
@@ -828,7 +828,9 @@ function renderCool() {
     <div class="sub">熱の概算（ケース内 ${k.heat.amb}℃）</div>
     <table><tr><th>発熱</th><td>合計 ${k.heat.Q.toFixed(0)} W（うち VRM の損失 ${k.heat.loss.toFixed(0)} W・効率 ${(k.heat.eff * 100).toFixed(0)}%）</td></tr>
     <tr><th>VRM の発熱密度</th><td>${k.heat.dens.toFixed(2)} W/cm²（局所の上乗せ ${k.heat.local.toFixed(0)}℃）</td></tr>
-    <tr><th>ヒートシンク</th><td>フィン面積 ${k.heat.A.toFixed(2)} m²・熱抵抗 ${k.heat.Rsink.toFixed(3)} K/W → ベースプレート ${k.heat.tBase.toFixed(0)}℃</td></tr>
+    <tr><th>ヒートシンク</th><td>フィン面積 ${k.heat.A.toFixed(2)} m²・ヒートパイプ ${k.heat.pipes} 本・熱抵抗 ${k.heat.Rsink.toFixed(3)} K/W</td></tr>
+    <tr><th>ベースプレート</th><td>GPU の真上 ${k.heat.tBase.toFixed(0)}℃・平均 ${k.heat.tAvg.toFixed(0)}℃・最低 ${k.heat.tMin.toFixed(0)}℃<br>${(() => { const p = k.heat.prof, lo = Math.min(k.heat.amb, ...p), hi = Math.max(...p) + 1, W = 240, H = 44, X = i => (i + 0.5) / p.length * W, Y = v => H - 4 - (v - lo) / (hi - lo) * (H - 8);
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="基板の長手方向の温度分布"><rect x="0" y="0" width="${W}" height="${H}" fill="none" stroke="currentColor" stroke-opacity=".25"/>${k.heat.fan.xs.map(fx => `<rect x="${((fx - k.heat.fan.rad - k.heat.x0) / (p.length * k.heat.dx) * W).toFixed(1)}" y="1" width="${(2 * k.heat.fan.rad / (p.length * k.heat.dx) * W).toFixed(1)}" height="${H - 2}" fill="currentColor" fill-opacity=".08"/>`).join('')}<polyline fill="none" stroke="#f07272" stroke-width="2" points="${p.map((v, i) => X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ')}"/></svg>`; })()}<span class="dim">ブラケット側 → 電源コネクタ側の温度。薄い帯はファンの位置</span></td></tr>
     ${[['gpu', 'GPU'], ['vram', 'メモリ（最高）'], ['drmos', 'DrMOS（最高）'], ['ind', 'インダクタ（最高）']].map(([key, name]) => k.heat[key] == null ? '' : `<tr><th>${name}</th><td>${k.heat[key].toFixed(0)}℃ ${pill(k.heat[key] <= LIMIT[key], k.heat[key] <= LIMIT[key] ? `目安 ${LIMIT[key]}℃ 以内` : `目安 ${LIMIT[key]}℃ を超過`)}</td></tr>`).join('')}
     ${k.heat.open ? `<tr><th>非接触</th><td>${k.heat.open} 個がベースプレートに触れていません（切り欠きの中、または隙間が 3mm 超）</td></tr>` : ''}</table>
     <p class="dim">${k.unknown ? `高さが概算のままの部品が ${k.unknown} 種あります（部品を選ぶと確認状況が出ます）。` : '対象の部品はすべて出典で確認した高さです。'}規格値は PCIe CEM 4.0 によります。裏面がこれを超えると隣のスロットに張り出します。</p>`;
@@ -910,7 +912,7 @@ document.addEventListener('click', e => {
   else if (t.id === 'cAuto') { // 段差のおすすめ値を入れる
     const r = recommend(S.board); Object.assign(S.cool, r, { step: true, on: true });
     $('cOn').checked = $('cStep').checked = true; $('cStepBox').hidden = false;
-    for (const [id, key] of [['cBase', 'base'], ['cMem', 'mem'], ['cVrm', 'vrm'], ['cInd', 'ind']]) { $(id).value = S.cool[key]; $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; }
+    for (const [id, key] of [['cBase', 'base'], ['cMem', 'mem'], ['cVrm', 'vrm'], ['cInd', 'ind'], ['cPipes', 'pipes'], ['cRpm', 'rpm']]) { $(id).value = S.cool[key]; $(id + 'V').textContent = id === 'cPipes' ? S.cool[key] + ' 本' : id === 'cRpm' ? Math.round(S.cool[key] * 100) + '%' : S.cool[key].toFixed(1) + ' mm'; }
     refreshAll(); toast(`段差を設定：全体 ${r.base}・メモリ ${r.mem}・VRM ${r.vrm}・インダクタ ${r.ind} mm`);
   }
   else if (t.id === 'btnAdopt') adopt();
@@ -975,12 +977,13 @@ document.addEventListener('change', e => {
   else if (t.id === 'cStep') { S.cool.step = t.checked; $('cStepBox').hidden = !t.checked; refreshAll(); }
   else if (t.id === 'cBack') { S.cool.backOn = t.checked; refreshAll(); }
   else if (t.id === 'cFans') { S.cool.fans = +t.value; refreshAll(); }
+  else if (t.id === 'cFanPos') { S.cool.fanPos = t.value; refreshAll(); }
   else if (t.id === 'finish') { S.finish = t.value; if (v3on) { v3.finish = S.finish; v3.paint(S); } }
   else if (t.id === 'ioFile' && t.files[0]) { const fr = new FileReader(); fr.onload = () => { try { loadText(String(fr.result)); $('io').close(); } catch (err) { $('ioMsg').textContent = '読み込めません: ' + err.message; } t.value = ''; }; fr.readAsText(t.files[0]); }
 });
 $('libq').addEventListener('input', renderLibrary);
 $('netq').addEventListener('input', renderNets);
-for (const [id, key] of [['cBase', 'base'], ['cFin', 'fin'], ['cMem', 'mem'], ['cVrm', 'vrm'], ['cInd', 'ind'], ['cBackGap', 'back']]) $(id).addEventListener('input', e => { S.cool[key] = parseFloat(e.target.value); $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; if (S.cool.on) { renderStats(); if (v3on) { v3.heat = S.cool.heat && S.coolInfo ? S.coolInfo.heat.T : null; v3.setCooler(S.coolInfo); } dirty = true; } });
+for (const [id, key] of [['cBase', 'base'], ['cFin', 'fin'], ['cMem', 'mem'], ['cVrm', 'vrm'], ['cInd', 'ind'], ['cBackGap', 'back'], ['cPipes', 'pipes'], ['cRpm', 'rpm']]) $(id).addEventListener('input', e => { S.cool[key] = parseFloat(e.target.value); $(id + 'V').textContent = id === 'cPipes' ? S.cool[key] + ' 本' : id === 'cRpm' ? Math.round(S.cool[key] * 100) + '%' : S.cool[key].toFixed(1) + ' mm'; if (S.cool.on) { renderStats(); if (v3on) { v3.heat = S.cool.heat && S.coolInfo ? S.coolInfo.heat.T : null; v3.setCooler(S.coolInfo); } dirty = true; } });
 $('seek').addEventListener('input', e => { if (rec && !run) { replay = false; $('btnReplay').textContent = '▶'; showFrame(+e.target.value); } });
 $('explode').addEventListener('input', e => { if (v3) { v3.explode = parseFloat(e.target.value); v3.sync(); } });
 document.addEventListener('keydown', e => {

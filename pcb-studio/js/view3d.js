@@ -196,13 +196,18 @@ export class View3D {
     for (let i = 0; i < n; i++) { M.makeTranslation(r.x0 + 1 + i * 2, y1 + info.fin / 2, (r.y0 + r.y1) / 2); fins.setMatrixAt(i, M); }
     fins.frustumCulled = false; g.add(fins);
     // ファン
-    const L = r.x1 - r.x0, rad = Math.min((r.y1 - r.y0) / 2 - 2, L / info.fans / 2 - 3), dark = (o) => new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6, transparent: true, opacity: o * fade, depthWrite: false, side: THREE.DoubleSide });
+    const rad = info.heat.fan.rad, dark = (o) => new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6, transparent: true, opacity: o * fade, depthWrite: false, side: THREE.DoubleSide });
     for (let i = 0; i < info.fans; i++) {
-      const f = new THREE.Group(); f.position.set(r.x0 + L * (i + 0.5) / info.fans, top + 7.5, (r.y0 + r.y1) / 2);
+      const f = new THREE.Group(); f.position.set(info.heat.fan.xs[i], top + 7.5, (r.y0 + r.y1) / 2);
       const ring = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, 14, 48, 1, true), dark(0.45)); g.add(ring); ring.position.copy(f.position);
       f.add(new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.27, rad * 0.27, 10, 24), dark(0.8)));
       for (let k = 0; k < 9; k++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(rad * 0.68, 0.8, rad * 0.3), dark(0.6)); const a = k / 9 * Math.PI * 2; bl.position.set(Math.cos(a) * rad * 0.6, 0, Math.sin(a) * rad * 0.6); bl.rotation.set(0.5, -a, 0, 'YXZ'); f.add(bl); }
       g.add(f); this.fans.push(f);
+    }
+    // ヒートパイプ：GPU の上からベースプレートの両端へ伸びる銅管
+    for (let i = 0; i < info.heat.pipes; i++) {
+      const z = info.gpu.y + (i - (info.heat.pipes - 1) / 2) * 7.5; if (z < r.y0 + 4 || z > r.y1 - 4) continue;
+      const pp = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, r.x1 - r.x0 - 8, 16), alu(0.6, 0xc8794a)); pp.rotation.z = Math.PI / 2; pp.position.set((r.x0 + r.x1) / 2, y1 + 3.2, z); g.add(pp);
     }
     g.traverse(o => { o.renderOrder = 6; });
     this.root.add(g);
