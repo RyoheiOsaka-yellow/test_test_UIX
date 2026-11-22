@@ -472,7 +472,7 @@ function* continueRun(info) {
     phase = 'place';
     if (info.plan) {
       resyncPlan(info.plan);
-      S.regions = [...info.plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
+      S.regions = [...info.plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g.split('#')[0]) || {}).label || g, color: (b.group(g.split('#')[0]) || {}).color || '#fff' }));
       yield* annealStage(anneal(b, info.seed, 60, info.plan, opts.effort, info.st === 'anneal' ? info.frac : 0));
     }
     yield* gate('配線');
@@ -501,10 +501,10 @@ function* autoLayout(seed) {
   S.router.ripAll(); S.sel.clear(); S.hiNet = pinNet = null;
   const plan = planLayout(b, seed, opts.pack, opts.regions, opts.thermal), tg = plan.targets;
   if (rec) { rec.plan = plan; rec.seed = seed; }
-  S.regions = [...plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g) || {}).label || g, color: (b.group(g) || {}).color || '#fff' }));
+  S.regions = [...plan.regions].map(([g, r]) => ({ ...r, label: (b.group(g.split('#')[0]) || {}).label || g, color: (b.group(g.split('#')[0]) || {}).color || '#fff' }));
   const from = new Map([...tg.keys()].map(c => [c, { x: c.x, y: c.y }]));
   const pi = plan.info;
-  stage('scatter', pi.blocks + pi.facing ? `plan: 電源の流れで領域を割り当て → 相ブロック ${pi.blocks} 個を列に整列・${pi.facing} ブロックを GPU のボール正面へ・裏面コンデンサ ${pi.grid} 個を格子に (seed ${seed})`
+  stage('scatter', pi.blocks + pi.facing ? `plan: 電源の流れで領域を割り当て → 相ブロック ${pi.blocks} 個を列に整列${pi.split ? `（うち ${pi.split} 個は GPU の反対側）` : ''}・${pi.facing} ブロックを GPU のボール正面へ・裏面コンデンサ ${pi.grid} 個を格子に (seed ${seed})`
     : `scatter: 各ブロックを、配線が望む位置の周りへ散布 (seed ${seed})`);
   for (let t = 0; t < 1; t += 0.014 * speed) {
     const e = t * t * (3 - 2 * t);
@@ -608,6 +608,32 @@ async function saveFile() {
   document.body.appendChild(a); a.click(); a.remove(); msg.textContent = '保存を開始しました。始まらない場合は「コピー」を使ってください。';
 }
 
+// ───────── 案の記録と比較 ─────────
+function metrics() {
+  const b = S.board, st = S.router.stats(), ms = S.router.matchStats(), el = electrical(b), vc = el.find(e => e.name === 'VCORE'), k = S.coolInfo;
+  return [
+    ['配線長', st.len, 'mm', 0, -1], ['ビア', st.vias, '個', 0, -1], ['未接続', st.fails + st.pFail, '箇所', 0, -1],
+    ['等長（±1mm 以内）', ms.groups ? ms.good : null, `/ ${ms.groups} 組`, 0, 1], ['問題', S.issues.length, '件', 0, -1],
+    ['VCORE 電圧降下', vc ? vc.mV : null, 'mV', 1, -1], ['VCORE 損失', vc ? vc.loss : null, 'W', 1, -1],
+    ['GPU 温度', k ? k.heat.gpu : null, '℃', 0, -1], ['DrMOS 温度', k ? k.heat.drmos : null, '℃', 0, -1], ['VRM 発熱密度', k ? k.heat.dens : null, 'W/cm²', 2, -1],
+    ['切り欠き', k ? k.cuts.length : null, 'か所', 0, -1], ['部品面の高さ', k ? k.front : null, 'mm', 1, -1],
+  ];
+}
+// 記録した案と今の状態を並べる。better: 1=増えるほど良い、-1=減るほど良い
+function compareRows(cls) {
+  if (!S.base) return '';
+  const now = metrics();
+  return now.map(([name, v, unit, dp, better], i) => {
+    const a = S.base.rows[i][1]; if (a == null && v == null) return '';
+    const f = x => (x == null ? '—' : x.toFixed(dp)), d = a != null && v != null ? v - a : null;
+    const tag = d == null || Math.abs(d) < 10 ** -dp / 2 ? '' : `<span class="${(d * better > 0 ? cls.good : cls.bad)}">${d > 0 ? '+' : ''}${d.toFixed(dp)}</span>`;
+    return `<tr><th>${name}</th><td class="num">${f(a)}</td><td class="num">${f(v)} ${unit}</td><td class="num">${tag}</td></tr>`;
+  }).join('');
+}
+function renderCompare() {
+  $('compare').innerHTML = S.base ? `<table class="elec"><tr><th></th><th>${esc(S.base.label)}</th><th>現在</th><th>差</th></tr>${compareRows({ good: 'pill good', bad: 'pill bad' })}</table><p class="dim">冷却機構をオフにしている案は、温度などの項目が空欄になります。</p>` : '<p class="dim">いまの状態を記録しておくと、設定や配置を変えたあとに数値の差を見比べられます。</p>';
+}
+
 // ───────── レポート（1 ページの HTML）─────────
 function snapshot(maxW) {   // 基板の画像：3D の現在の見た目と、表面の銅箔
   const out = {};
@@ -645,6 +671,7 @@ ${st.pPins ? row('プレーン接続', `${(st.pPins - st.pFail).toLocaleString()
 ${ms.groups ? row('等長グループ', `${ms.good} / ${ms.groups} 組が ±1mm 以内${ms.good === ms.groups ? '' : `（最大差 ${ms.worst.toFixed(1)} mm）`}`) : ''}
 ${row('検査', ok(!S.issues.length, S.issues.length ? `問題 ${S.issues.length} 件` : '問題なし'))}
 </table></div>
+${S.base ? `<h2>記録した案との比較</h2><table><tr><th></th><th>${esc(S.base.label)}</th><th>現在</th><th>差</th></tr>${compareRows({ good: 'ok', bad: 'ng' })}</table>` : ''}
 ${S.issues.length ? `<h2>検査で見つかった問題</h2><table>${S.issues.slice(0, 40).map(q => `<tr><td>${esc(q.t)}</td><td class="num">X ${q.x.toFixed(1)} / Y ${q.y.toFixed(1)} mm・${q.side === 'B' ? '裏面' : '表面'}</td></tr>`).join('')}</table>${S.issues.length > 40 ? `<div class="dim">ほか ${S.issues.length - 40} 件</div>` : ''}` : ''}
 ${el.length ? `<h2>電源経路の概算（2oz プレーン 1 層あたり）</h2><table><tr><th>レール</th><th>電流</th><th>経路（長さ × 幅）</th><th>電圧降下</th><th>損失</th><th>必要なプレーン</th></tr>${el.map(e => `<tr><td>${esc(e.name)}</td><td class="num">${Math.round(e.I)} A</td><td class="num">${e.L.toFixed(0)} × ${e.W.toFixed(0)} mm</td><td class="num">${e.mV.toFixed(1)} mV（${e.pct.toFixed(1)}%）</td><td class="num">${e.loss.toFixed(1)} W</td><td>${Math.max(1, Math.ceil(e.pct / 2))} 層</td></tr>`).join('')}</table>` : ''}
 <h2>冷却機構と熱の概算</h2>${k ? `<div class="cols"><table>
@@ -747,7 +774,7 @@ function renderStats() {
     for (const q of S.coolInfo.hitsB) issues.push({ t: `バックプレートと干渉: ${q.c.ref}（高さ ${q.h.toFixed(1)} mm）`, x: q.c.x, y: q.c.y, side: 'B' });
   }
   renderCool();
-  S.issues = issues;
+  S.issues = issues; renderCompare();
   const pads = b.comps.reduce((s, c) => s + c.part.pads.length, 0);
   const fam = f => b.comps.filter(c => c.part.family === f);
   const gpu = fam('gpu')[0], dm = fam('drmos').filter(c => c.group === 'grp_vcore');
@@ -887,6 +914,8 @@ document.addEventListener('click', e => {
     refreshAll(); toast(`段差を設定：全体 ${r.base}・メモリ ${r.mem}・VRM ${r.vrm}・インダクタ ${r.ind} mm`);
   }
   else if (t.id === 'btnAdopt') adopt();
+  else if (t.id === 'btnMark') { const d = new Date(); S.base = { label: `記録 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`, rows: metrics() }; renderCompare(); toast('いまの状態を比較用に記録しました'); }
+  else if (t.id === 'btnUnmark') { S.base = null; renderCompare(); }
   else if (t.id === 'btnResume') { if (resume && !run) { const info = resume; play(continueRun(info)); } }
   else if (t.id === 'btnReplay') {
     if (!rec || run) return;

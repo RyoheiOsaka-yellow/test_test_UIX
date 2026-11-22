@@ -193,7 +193,7 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
       <label class="ck" for="oRegions"><input type="checkbox" id="oRegions" checked>電源の流れで領域を割り当てる</label>
       <label class="ck" for="oPack"><input type="checkbox" id="oPack" checked>ブロック内部を接続から組み立て直す</label>
       <label class="ck" for="oTune"><input type="checkbox" id="oTune" checked>等長配線（ミアンダ）を入れる</label>
-      <label class="ck" for="oThermal"><input type="checkbox" id="oThermal">熱を優先して VRM を広げる（電源経路は長くなる）</label>
+      <label class="ck" for="oThermal"><input type="checkbox" id="oThermal">VRM を GPU の両側に分ける（熱と電源経路を優先）</label>
       <label class="fl" for="oEffort">焼きなましの探索量</label>
       <input type="range" id="oEffort" min="0.3" max="2.5" step="0.1" value="1">
       <label class="ck" for="seed">乱数の種 (seed)<input type="number" id="seed" value="6" min="1" max="9999"></label>
@@ -251,6 +251,7 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
   <aside id="right">
     <section><h2>インスペクタ</h2><div id="insp"></div></section>
     <section><h2>検査・設計サマリ</h2><div id="stats"></div></section>
+    <section><h2>案の比較</h2><div class="row"><button class="mini" id="btnMark">この状態を記録</button><button class="mini" id="btnUnmark">記録を消す</button></div><div id="compare"></div></section>
     <section><h2>冷却機構と干渉チェック</h2>
       <label class="ck" for="cOn"><input type="checkbox" id="cOn">冷却機構を重ねて表示（3D）</label>
       <div class="two">

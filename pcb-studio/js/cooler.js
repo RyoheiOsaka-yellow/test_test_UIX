@@ -89,9 +89,15 @@ export function thermal(b, info, cfg) {
   // VRM の発熱密度（DrMOS とインダクタを囲む範囲あたり）
   let dens = 0;
   if (dm.length) {
-    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    for (const c of [...dm, ...ind.filter(q => q.group === dm[0].group)]) { const B = compBox(c); x0 = Math.min(x0, B.x0); y0 = Math.min(y0, B.y0); x1 = Math.max(x1, B.x1); y1 = Math.max(y1, B.y1); }
-    dens = loss / Math.max(1, (x1 - x0) * (y1 - y0) / 100);
+    // GPU の左右でかたまりを分け、それぞれを囲む面積の合計で割る
+    let area = 0;
+    for (const side of [c => c.x < gpu.x, c => c.x >= gpu.x]) {
+      const cl = [...dm, ...ind].filter(side); if (!cl.length) continue;
+      let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+      for (const c of cl) { const B = compBox(c); x0 = Math.min(x0, B.x0); y0 = Math.min(y0, B.y0); x1 = Math.max(x1, B.x1); y1 = Math.max(y1, B.y1); }
+      area += (x1 - x0) * (y1 - y0) / 100;
+    }
+    dens = loss / Math.max(1, area);
   }
   const local = dens * 12, vrmSet = new Set([...dm, ...ind]);
   let open = 0;

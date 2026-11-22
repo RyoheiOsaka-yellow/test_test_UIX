@@ -25,7 +25,7 @@ export function coreOf(board) {
   return best;
 }
 // グループごとの配置領域。core 系は負荷 IC を囲むリング、power 系は「12V 入力 → VRM → 負荷」の順に並ぶ帯。
-// spread=true なら、最大の VRM に空いている幅をすべて与える（発熱を広げるため）
+// spread=true なら、最大の VRM を負荷 IC の両側に分ける（反対側に 1 列ぶんの領域 '<グループ>#2' を取る）
 export function planRegions(board, spread) {
   const out = new Map(), core = coreOf(board);
   if (!core) return out;
@@ -74,10 +74,12 @@ export function planRegions(board, spread) {
   for (const [g, a] of rest) {
     // 最大の VRM は入力側、残りの小さなレールは反対側（ブラケット側）を優先
     const o = srcSide === 'right' ? 'left' : 'right', first = g === rest[0][0] ? srcSide : o, second = first === srcSide ? o : srcSide;
-    let w = Math.max(14, a * 2.1 / H, lattice(g) + a * 0.25 / H);
-    if (spread && g === rest[0][0]) { const others = rest.slice(1).reduce((q, [g2, a2]) => q + Math.max(14, a2 * 2.1 / H, lattice(g2) + a2 * 0.25 / H), 0); w = Math.max(w, free[first][1] - free[first][0] - (free[o][1] - free[o][0] < others ? others : 0)); }
+    const w = Math.max(14, a * 2.1 / H, lattice(g) + a * 0.25 / H);
+    if (spread && g === rest[0][0] && need.get(g)) { const w2 = need.get(g).bw + 4; if (free[o][1] - free[o][0] >= w2) out.set(g + '#2', take(o, w2, false)); }
     const fits = sd => free[sd][1] - free[sd][0] >= w;
-    const r = take(fits(first) ? first : fits(second) ? second : (free[first][1] - free[first][0] > free[second][1] - free[second][0] ? first : second), w, false);
+    // 入りきる側がなければ領域を決めず、焼きなましに任せる（狭い所へ押し込むと他の部品に重なる）
+    const sd = fits(first) ? first : fits(second) ? second : (g === rest[0][0] ? (free[first][1] - free[first][0] > free[second][1] - free[second][0] ? first : second) : null);
+    const r = sd && take(sd, w, false);
     if (r) out.set(g, r);
   }
   return out;
@@ -274,13 +276,8 @@ export function planLayout(board, seed, packAll = true, useRegions = true, sprea
       const sh = mean0 - pos.reduce((a, b) => a + b, 0) / pos.length;
       list.forEach((s, i) => { const d = pos[i] + sh - al(s); pose(s.mod, s.x + (horiz ? d : 0), s.y + (horiz ? 0 : d), s.k); soft.add(s.mod); info.facing++; });
     }
-    // 2) 電源の相ブロックを、負荷側から順に列へ整列
-    for (const [g, reg] of P.regions) {
-      if (reg.type !== 'rect') continue;
-      const blocks = mods.filter(m => m.group === g && m.mem.some(q => P.mate.has(q.c)));
-      if (!blocks.length) continue;
-      const num = m => parseInt((m.root.ref.match(/\d+/) || [0])[0], 10);
-      blocks.sort((a, b) => num(a) - num(b));
+    // 2) 電源の相ブロックを、負荷側から順に列へ整列（両側に分ける設定なら '#2' の領域にも振り分ける）
+    const layoutIn = (reg, blocks, g, first) => {
       const dir = core.x < (reg.x0 + reg.x1) / 2 ? -1 : 1;     // 負荷のある向き
       let bw = 0, bh = 0;
       for (const mod of blocks) {
@@ -292,16 +289,31 @@ export function planLayout(board, seed, packAll = true, useRegions = true, sprea
         bw = Math.max(bw, B.x1 - B.x0); bh = Math.max(bh, B.y1 - B.y0);
       }
       let single = 0;
-      for (const c of P.movable) if (c.group === g && c.side === 'T' && !blocks.some(m => m.mem.some(q => q.c === c))) single += (c.part.w + 0.6) * (c.part.h + 0.6);
+      if (first) for (const c of P.movable) if (c.group === g && c.side === 'T' && !owned.has(c)) single += (c.part.w + 0.6) * (c.part.h + 0.6);
       const RH = reg.y1 - reg.y0 - 2, reserve = single * 1.9 / RH;
       const maxRows = Math.max(1, Math.floor(RH / (bh + 1))), cols = Math.ceil(blocks.length / maxRows), rows = Math.ceil(blocks.length / cols);
       blocks.forEach((mod, i) => {
         const col = Math.floor(i / rows), row = i % rows;
-        const pitch = spread ? Math.max(bw + 2, (reg.x1 - reg.x0 - reserve - 2) / cols) : bw + 2;   // 熱を優先するときは列の間隔を広げる
-        const bx = dir < 0 ? reg.x0 + reserve + bw / 2 + 1 + col * pitch : reg.x1 - reserve - bw / 2 - 1 - col * pitch;
+        const bx = dir < 0 ? reg.x0 + reserve + bw / 2 + 1 + col * (bw + 2) : reg.x1 - reserve - bw / 2 - 1 - col * (bw + 2);
         const by = reg.y0 + 1 + RH * (row + 0.5) / rows;
         pose(mod, bx - mod._c[0], by - mod._c[1], mod.k); pinned.add(mod); info.blocks++;
       });
+      return { maxRows, bw };
+    };
+    const owned = new Set();
+    for (const [g, reg] of P.regions) {
+      if (reg.type !== 'rect' || g.includes('#')) continue;
+      const blocks = mods.filter(m => m.group === g && m.mem.some(q => P.mate.has(q.c)));
+      if (!blocks.length) continue;
+      owned.clear(); for (const m of blocks) for (const q of m.mem) owned.add(q.c);
+      const num = m => parseInt((m.root.ref.match(/\d+/) || [0])[0], 10);
+      blocks.sort((a, b) => num(a) - num(b));
+      const reg2 = P.regions.get(g + '#2');
+      if (reg2) { // 反対側に入るぶん（最大で 4 割）を後ろの番号から回す
+        const probe = layoutIn(reg2, blocks.slice(0, 1), g, false), cap = probe.maxRows * Math.max(1, Math.floor((reg2.x1 - reg2.x0 - 2) / (probe.bw + 2)));
+        info.blocks--; const n2 = Math.min(cap, Math.round(blocks.length * 0.4));
+        layoutIn(reg2, blocks.slice(blocks.length - n2), g, false); layoutIn(reg, blocks.slice(0, blocks.length - n2), g, true); info.split = n2;
+      } else layoutIn(reg, blocks, g, true);
     }
     // 3) 負荷 IC 裏面のデカップリングは格子に並べる
     const sat = mods.filter(m => m.mem.length === 1 && m.root.side === 'B' && m.root.near === core.id && m.root.part.pads.length === 2);

@@ -32,14 +32,22 @@ export function electrical(board) {
     let lx = 0, ly = 0, lw = 0;
     for (const c of load) { const w = Object.values(c.padNet).filter(n => n === name).length; lx += c.x * w; ly += c.y * w; lw += w; }
     lx /= lw; ly /= lw;
-    const sx = src.reduce((s, c) => s + c.x, 0) / src.length, sy = src.reduce((s, c) => s + c.y, 0) / src.length;
-    const L = Math.max(1, src.reduce((s, c) => s + dist(c), 0) / src.length);
-    const d = Math.hypot(lx - sx, ly - sy) || 1, nx = -(ly - sy) / d, ny = (lx - sx) / d;
-    const span = arr => { const t = arr.map(c => c.x * nx + c.y * ny); return Math.max(...t) - Math.min(...t); };
-    const loadSpan = Math.max(...boxes.map(B => Math.abs(nx) * (B.x1 - B.x0) + Math.abs(ny) * (B.y1 - B.y0)), span(load));
-    const W = Math.max(4, Math.min(span(src) + 8, loadSpan + 2 * L));
-    const I = amps[name], R = RS * L / W, drop = I * R;
-    out.push({ name, I, L, W, mV: drop * 1000, pct: drop / VRAIL[name] * 100, loss: I * I * R, dens: I / W, nSrc: src.length });
+    // 供給元が負荷の両側にあるときは、左右を別々の経路として並列に扱う
+    const left = src.filter(c => c.x < lx), right = src.filter(c => c.x >= lx);
+    const sides = Math.min(left.length, right.length) >= src.length * 0.2 ? [left, right] : [src];
+    const I = amps[name];
+    let mV = 0, loss = 0, Lsum = 0, Wsum = 0;
+    for (const grp of sides) {
+      const sx = grp.reduce((s, c) => s + c.x, 0) / grp.length, sy = grp.reduce((s, c) => s + c.y, 0) / grp.length;
+      const L = Math.max(1, grp.reduce((s, c) => s + dist(c), 0) / grp.length);
+      const d = Math.hypot(lx - sx, ly - sy) || 1, nx = -(ly - sy) / d, ny = (lx - sx) / d;
+      const span = arr => { const t = arr.map(c => c.x * nx + c.y * ny); return Math.max(...t) - Math.min(...t); };
+      const loadSpan = Math.max(...boxes.map(B => Math.abs(nx) * (B.x1 - B.x0) + Math.abs(ny) * (B.y1 - B.y0)), span(load));
+      const W = Math.max(4, Math.min(span(grp) + 8, loadSpan + 2 * L));
+      const Ic = I * grp.length / src.length, R = RS * L / W;
+      mV = Math.max(mV, Ic * R * 1000); loss += Ic * Ic * R; Lsum += L * grp.length / src.length; Wsum += W;
+    }
+    out.push({ name, I, L: Lsum, W: Wsum, mV, pct: mV / 1000 / VRAIL[name] * 100, loss, dens: I / Wsum, nSrc: src.length, sides: sides.length });
   }
   return out;
 }

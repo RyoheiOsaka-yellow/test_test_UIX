@@ -367,6 +367,7 @@ function drawRealBoard(ctx, b, l, side, sc, pour, opt, routed, path) {
   // シルク
   if (!opt.fast) {
     ctx.strokeStyle = ctx.fillStyle = col.silk; ctx.lineWidth = 0.13; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const boxes = b.comps.filter(c => mine(c) && c.part.family !== 'hole').map(c => ({ ...compBox(c, 0.1), c }));
     for (const c of b.comps) {
       if (!mine(c) || c.part.family === 'pcie' || c.part.family === 'hole') continue;
       const B = compBox(c, 0.18), w = B.x1 - B.x0, h = B.y1 - B.y0, small = c.part.pads.length === 2 && w * h < 9;
@@ -380,9 +381,18 @@ function drawRealBoard(ctx, b, l, side, sc, pour, opt, routed, path) {
       ctx.stroke();
       if (c.part.pads.length > 2) { ctx.beginPath(); ctx.arc(B.x0 - 0.35, B.y0 - 0.35, 0.22, 0, 6.2832); ctx.fill(); }
       if (aux || sc < 8) continue;
-      const fs = Math.max(0.7, Math.min(1.5, Math.min(w, 12) * 0.2));
+      // 部品番号は、ほかの部品に隠れない側（上 → 下 → 右 → 左）へ置く。空きがなければ省く
+      const fs = Math.max(0.7, Math.min(1.5, Math.min(w, 12) * 0.2)), tw = c.ref.length * fs * 0.62 + 0.4, th = fs + 0.3;
+      let at = null;
+      for (const [tx, ty] of [[c.x, B.y0 - th / 2 - 0.1], [c.x, B.y1 + th / 2 + 0.1], [B.x1 + tw / 2 + 0.2, c.y], [B.x0 - tw / 2 - 0.2, c.y]]) {
+        const R = { x0: tx - tw / 2, y0: ty - th / 2, x1: tx + tw / 2, y1: ty + th / 2 };
+        if (R.x0 < 0.6 || R.y0 < 0.6 || R.x1 > b.w - 0.6 || R.y1 > b.h - 0.6) continue;
+        if (boxes.some(q => q.c !== c && R.x1 > q.x0 && R.x0 < q.x1 && R.y1 > q.y0 && R.y0 < q.y1)) continue;
+        at = [tx, ty]; boxes.push({ ...R, c: null }); break;
+      }
+      if (!at) continue;
       ctx.font = `600 ${fs}px "IBM Plex Mono", ui-monospace, monospace`;
-      ctx.save(); ctx.translate(c.x, B.y0 - fs * 0.62); if (side === 'B') ctx.scale(-1, 1); ctx.fillText(c.ref, 0, 0); ctx.restore();
+      ctx.save(); ctx.translate(at[0], at[1]); if (side === 'B') ctx.scale(-1, 1); ctx.fillText(c.ref, 0, 0); ctx.restore();
     }
     if (!aux && side === 'T' && b.tab) { // 基板名のシルク
       ctx.font = '700 1.7px "IBM Plex Mono", ui-monospace, monospace'; ctx.textAlign = 'left';
