@@ -44,6 +44,7 @@ h1,h2,h3{text-wrap:balance}
 .brand span{font-family:var(--f-mono);font-size:10px;letter-spacing:.24em;color:var(--onpanel-mute)}
 .nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
 .nav button{background:transparent;border:1px solid transparent;color:var(--onpanel-mute);padding:7px 14px;border-radius:980px;cursor:pointer;font-size:12.5px}
+.nav a{color:var(--onpanel-mute);padding:7px 14px;border:1px solid transparent;border-radius:980px;font-size:12.5px;text-decoration:none;line-height:normal}.nav a:hover{color:var(--onpanel);border-color:#3a3a30}
 .nav button:hover{color:var(--onpanel);border-color:#3a3a30}.nav button.on{background:var(--onpanel);color:#13130f;font-weight:600}
 .who{font-size:11.5px;color:var(--onpanel-mute);font-family:var(--f-mono)}.lo{background:none;border:1px solid #4a4a3e;color:var(--onpanel);border-radius:980px;padding:5px 12px;font:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap}.lo:hover{border-color:var(--onpanel)}
 
@@ -295,6 +296,7 @@ h1,h2,h3{text-wrap:balance}
       <button data-r="cases" type="button">案件</button>
       <button data-r="laws" type="button">法令・条例</button>
       <button data-r="settings" type="button">設定</button>
+      <a href="manual.html" target="_blank" rel="noopener">マニュアル</a>
     </nav>
     <span class="who" id="who"></span>
     <button class="lo" id="logout" type="button">ログアウト</button>
@@ -1474,7 +1476,7 @@ function viewLogin(v){
     <button class="btn pri full lg" type="submit">ログイン</button>
     <button class="btn full" type="button" id="l-demo">デモ用アカウントで入る</button>
     <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモ① 資料を共有してレポートを作る</button><button class="btn full" type="button" id="l-play2">デモ② 資料のない土地でレポートを作る</button>
-    <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。</p>
+    <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。<br>使い方は <a href="manual.html" target="_blank" rel="noopener">操作マニュアル</a> をご覧ください。</p>
    </form></div></div>`;
   const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('lastMail',mail);loadCases();aiDetect().then(()=>go(ST.shared?'preview':'cases'));};
   $('lf').onsubmit=e=>{e.preventDefault();const m=$('l-mail').value.trim(),p=$('l-pass').value;

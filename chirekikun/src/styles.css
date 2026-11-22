@@ -31,6 +31,7 @@ h1,h2,h3{text-wrap:balance}
 .brand span{font-family:var(--f-mono);font-size:10px;letter-spacing:.24em;color:var(--onpanel-mute)}
 .nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
 .nav button{background:transparent;border:1px solid transparent;color:var(--onpanel-mute);padding:7px 14px;border-radius:980px;cursor:pointer;font-size:12.5px}
+.nav a{color:var(--onpanel-mute);padding:7px 14px;border:1px solid transparent;border-radius:980px;font-size:12.5px;text-decoration:none;line-height:normal}.nav a:hover{color:var(--onpanel);border-color:#3a3a30}
 .nav button:hover{color:var(--onpanel);border-color:#3a3a30}.nav button.on{background:var(--onpanel);color:#13130f;font-weight:600}
 .who{font-size:11.5px;color:var(--onpanel-mute);font-family:var(--f-mono)}.lo{background:none;border:1px solid #4a4a3e;color:var(--onpanel);border-radius:980px;padding:5px 12px;font:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap}.lo:hover{border-color:var(--onpanel)}
 

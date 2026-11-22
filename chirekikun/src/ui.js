@@ -39,7 +39,7 @@ function viewLogin(v){
     <button class="btn pri full lg" type="submit">ログイン</button>
     <button class="btn full" type="button" id="l-demo">デモ用アカウントで入る</button>
     <p class="or">入力せずに流れを見る</p><button class="btn full" type="button" id="l-play">デモ① 資料を共有してレポートを作る</button><button class="btn full" type="button" id="l-play2">デモ② 資料のない土地でレポートを作る</button>
-    <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。</p>
+    <p class="note">試作版のため、認証サーバーにはまだ接続していません。入力した内容はこの端末のブラウザにだけ保存されます。<br>使い方は <a href="manual.html" target="_blank" rel="noopener">操作マニュアル</a> をご覧ください。</p>
    </form></div></div>`;
   const login=(mail)=>{ST.user={mail,name:mail.split('@')[0]};store.set('lastMail',mail);loadCases();aiDetect().then(()=>go(ST.shared?'preview':'cases'));};
   $('lf').onsubmit=e=>{e.preventDefault();const m=$('l-mail').value.trim(),p=$('l-pass').value;

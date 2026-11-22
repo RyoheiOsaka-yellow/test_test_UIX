@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ちれきくん 操作マニュアル</title>
+<style>
+:root{--ink:#1b1b18;--mute:#6b675f;--line:#d9d5cb;--bg:#f6f4ee;--paper:#fff;--accent:#b4432a;--blue:#1857b6;--green:#0a7d3b;--red:#d0021b}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Hiragino Sans','Yu Gothic','Meiryo','Noto Sans JP',system-ui,sans-serif;font-size:15px;line-height:1.85}
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);gap:28px;max-width:1180px;margin:0 auto;padding:0 20px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:26px 0 30px;font-size:13px;line-height:1.6}
+nav.toc b{display:block;font-size:15px;margin-bottom:10px}
+nav.toc a{display:block;color:var(--ink);text-decoration:none;padding:4px 8px;border-radius:6px}
+nav.toc a:hover{background:#ebe7dc}
+nav.toc a.s{padding-left:20px;color:var(--mute);font-size:12.5px}
+main{background:var(--paper);border:1px solid var(--line);border-radius:10px;margin:22px 0 60px;padding:44px 52px 56px}
+h1{font-size:28px;margin:0 0 4px;letter-spacing:.02em}
+.lead{color:var(--mute);margin:0 0 6px}
+.meta{font-size:12.5px;color:var(--mute);border-top:1px solid var(--line);padding-top:10px;margin-top:18px}
+h2{font-size:21px;margin:54px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--ink);scroll-margin-top:16px}
+h3{font-size:16.5px;margin:30px 0 8px;scroll-margin-top:16px}
+p{margin:8px 0}
+ul,ol{margin:8px 0 8px 0;padding-left:1.5em}
+li{margin:4px 0}
+figure{margin:16px 0 22px}
+figure img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:6px}
+figure.s img{width:62%}
+figcaption{font-size:12.5px;color:var(--mute);margin-top:6px}
+table{border-collapse:collapse;width:100%;margin:12px 0 18px;font-size:13.5px;line-height:1.65}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#f1eee6;font-weight:600;white-space:nowrap}td.nw{white-space:nowrap}
+.btn{display:inline-block;border:1px solid #b9b4a8;border-radius:980px;padding:0 9px;font-size:12.5px;line-height:1.7;background:#fff;white-space:nowrap}
+.note{border:1px solid var(--line);border-left:4px solid var(--accent);background:#fbf8f1;border-radius:6px;padding:10px 14px;margin:14px 0;font-size:14px}
+.note b{color:var(--accent)}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 6px;font-size:13.5px}
+.flow span{border:1px solid var(--line);background:#f8f6f0;border-radius:8px;padding:6px 12px}
+.flow i{font-style:normal;color:var(--mute)}
+.c{display:inline-block;border:1px solid;border-radius:3px;padding:0 6px;font-size:12.5px;line-height:1.6;font-weight:600;white-space:nowrap}
+.c.b{color:var(--blue);border-color:var(--blue);background:#f3f7ff}.c.g{color:var(--green);border-color:var(--green);background:#f1faf4}.c.r{color:var(--red);border-color:var(--red);background:#fff7f7}.c.k{color:#666;border-color:#999;background:#f4f4f4}
+kbd{font:inherit;font-size:12.5px;border:1px solid #b9b4a8;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#fff}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}nav.toc{position:static;max-height:none;padding-bottom:0}main{padding:26px 20px 36px}figure.s img{width:100%}}
+@media print{
+  @page{size:A4;margin:16mm 15mm}
+  body{background:#fff;font-size:10.5pt}
+  .wrap{display:block;max-width:none;padding:0}
+  nav.toc{position:static;max-height:none;padding:0 0 10mm;page-break-after:always}
+  main{border:0;margin:0;padding:0}
+  h2{page-break-after:avoid;margin-top:26pt}
+  h3{page-break-after:avoid}figure,table,.note{page-break-inside:avoid}
+  figure img{width:auto;max-width:100%;max-height:150mm;margin:0 auto}figure.s img{width:auto;max-width:58%}figcaption{text-align:center}
+  main>h1{margin-top:0}
+  a{color:inherit;text-decoration:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="目次">
+ <b>ちれきくん 操作マニュアル</b>
+ <a href="#s1">1. ちれきくんでできること</a>
+ <a href="#s2">2. 開き方とログイン</a>
+ <a href="#s3">3. デモを見る</a>
+ <a href="#s4">4. 新しい調査を始める</a>
+ <a href="#s5">5. レポート画面の見方</a>
+ <a href="#s6">6. 色の意味（青・緑・赤）</a>
+ <a href="#s7">7. 右側の4つのタブ</a>
+ <a class="s" href="#s71">確認</a><a class="s" href="#s72">判断</a><a class="s" href="#s73">出典</a><a class="s" href="#s74">資料</a>
+ <a href="#s8">8. 自動で入る情報</a>
+ <a href="#s9">9. AIの下読み</a>
+ <a href="#s10">10. 保存する</a>
+ <a href="#s11">11. プレビューと共有リンク</a>
+ <a href="#s12">12. 印刷する・Wordで保存する</a>
+ <a href="#s13">13. 設定と法令・条例の画面</a>
+ <a href="#s14">14. 困ったとき</a>
+ <a href="#s15">15. 現在の制約</a>
+</nav>
+<main>
+<h1>ちれきくん 操作マニュアル</h1>
+<p class="lead">地歴調査レポートを、資料の共有から印刷まで進めるための手引きです。</p>
+<p class="meta">対象：地歴調査を担当する方　／　{{date}} 時点の試作版の画面にもとづいています。画面の文言は今後変わることがあります。</p>
+
+<h2 id="s1" class="first">1. ちれきくんでできること</h2>
+<p>対象地と目的を入れて、手元の資料を共有すると、既往の報告書と同じ体裁の地歴調査報告書の下書きができます。人が見るのは、確認が必要な点だけです。</p>
+<div class="flow"><span>ログイン</span><i>→</i><span>新しい調査を始める</span><i>→</i><span>資料を共有</span><i>→</i><span>レポートができる</span><i>→</i><span>確認して直す</span><i>→</i><span>保存・共有・印刷</span></div>
+<ul>
+ <li>登記簿、地図、聴取記録などの資料から、地番ごとの履歴表、年次表、所見までを組み立てます。</li>
+ <li>住所から、照合する法令と地域の条例を選び、どの条項に当たるかを判定します。</li>
+ <li>資料がまだ無い土地でも、公開データで分かる範囲を先に作り、足りない項目を色分けして示します。</li>
+ <li>作ったレポートは、保存、プレビュー、リンクでの共有、PDFとしての印刷ができます。</li>
+</ul>
+
+<h2 id="s2">2. 開き方とログイン</h2>
+<p><b>開き方</b>：<code>index.html</code> をブラウザ（Chrome、Edge、Safari など）で開きます。Webに置いてある場合は、そのURLを開きます。地図や写真を表示するため、インターネットにつながっている必要があります。</p>
+<p><b>ログイン</b>：開くたびに、必ずログイン画面から始まります。メールアドレスとパスワードを入れて <span class="btn">ログイン</span> を押します。メールアドレスは前回の値が入っています。</p>
+{{img:login|ログイン画面}}
+<ul>
+ <li><span class="btn">デモ用アカウントで入る</span>：入力せずに入ります。</li>
+ <li><span class="btn">デモ① …</span> <span class="btn">デモ② …</span>：入力なしで、操作の流れを自動で再生します（3章）。</li>
+</ul>
+<div class="note"><b>試作版の注意</b>　ログインはまだ認証サーバーにつないでいません。メールアドレスの形式が合っていれば入れます。案件のデータは、その端末のブラウザに保存されます。</div>
+<p><b>画面の上の帯</b>：<span class="btn">案件</span>（案件の一覧）、<span class="btn">法令・条例</span>、<span class="btn">設定</span> を切り替えます。<span class="btn">マニュアル</span> でこの手引きが開きます。右端の <span class="btn">ログアウト</span> でログイン画面に戻ります。</p>
+{{img:cases|案件の一覧。案件ごとに、所見、条例、人の確認が要る件数が並びます}}
+<p>案件の一覧には、既往の報告書から作ったサンプルが4件入っています。行を押すと、その案件のレポートが開きます。</p>
+
+<h2 id="s3">3. デモを見る</h2>
+<p>入力せずに、ログインからレポートができるまでの流れを見られます。ログイン画面と案件の一覧に、2つのデモのボタンがあります。画面下の黒い帯に説明が出ます。途中でやめるときは、帯の <span class="btn">停止</span> を押します。</p>
+<table>
+ <tr><th>デモ</th><th>内容</th><th>時間</th></tr>
+ <tr><td class="nw">デモ①<br>資料あり</td><td>登記簿、地図、聴取記録など9点の資料を共有して、レポートを作ります。資料の読み取り結果には、記録済みのデータを使います。</td><td class="nw">約80秒</td></tr>
+ <tr><td class="nw">デモ②<br>資料なし</td><td>過去の報告書も資料も無い土地を、何も入れずに作ります。公開データで取得できるものはその場で取得し、足りない項目を色分けして示します。</td><td class="nw">約90秒</td></tr>
+</table>
+<p>デモで作った案件は、そのまま触って確かめられます。</p>
+
+<h2 id="s4">4. 新しい調査を始める</h2>
+<p>案件の一覧の <span class="btn">新しい調査を始める</span> を押します。入力は3つのまとまりです。試すだけなら、右上の <span class="btn">入力例を入れる</span> で、対象地・要望・資料9点がまとめて入ります。</p>
+{{img:new|新しい調査の入力画面（入力例を入れた状態）}}
+<h3>① 対象地</h3>
+<ul>
+ <li><b>所在</b>：町丁目まで入れます（例：東京都葛飾区金町六丁目）。入れた時点で、その地域で照合する条例が下に表示されます。</li>
+ <li><b>地番</b>：複数あるときは「、」で区切ります。後から足せます。</li>
+ <li><b>敷地面積</b>：㎡で入れます。法令・条例の面積要件の判定に使います。</li>
+ <li><span class="btn">位置を確認</span>：地図が出ます。ピンを動かして、番地の位置に合わせます。位置図、地下水の流向、旧版地形図、空中写真は、この位置をもとに作ります。</li>
+</ul>
+<h3>② 目的と条件</h3>
+<ul>
+ <li><b>目的</b>を4つから選びます：土地の売買・仕入れ前の確認／開発・建替え（土地の形質変更あり）／工場・事業場の廃止／行政からの調査の求め。</li>
+ <li>「開発・建替え」を選ぶと、<b>形質変更を行う面積</b>の欄が出ます。</li>
+ <li><b>要望・気になる点</b>：自由に書きます（例：昭和30年代に工場があったと聞いている）。</li>
+ <li><b>調査期間</b>：分かっていれば入れます。後からレポート上でも入れられます。</li>
+</ul>
+<h3>③ 資料を共有</h3>
+<p>PDFや画像を、枠の中にまとめてドロップするか、枠を押して選びます。登記簿謄本、公図、住宅地図、地形図、空中写真、聴取記録、過去の報告書などです。種類はファイル名から自動で判別し、一覧で確認できます。資料がまだ無くても進められます。</p>
+<h3>作成する</h3>
+<p><span class="btn">レポートを作成する</span> を押すと、進み具合が順に表示され、終わるとレポートの画面に移ります。</p>
+{{img:proc|作成中の画面。資料の判別、読み取り、法令・条例の照合、地下水流向の推定などが順に進みます}}
+<div class="note"><b>資料の読み取りについて</b>　資料の中身の読み取りには、AIの接続が必要です（9章、13章）。接続していない場合、資料は添付として登録され、章立てと法令・条例の判定、公開データで分かる範囲が作られます。</div>
+
+<h2 id="s5">5. レポート画面の見方</h2>
+<p>画面は3つに分かれています。左が目次、中央が紙面、右が確認などのタブです。</p>
+{{img:report|レポートの画面。左：目次、中央：紙面（A4のページ単位）、右：確認などのタブ}}
+<h3>上の帯のボタン</h3>
+{{img:head|レポート画面の上の帯}}
+<table>
+ <tr><th>ボタン</th><th>働き</th></tr>
+ <tr><td>案件一覧</td><td>案件の一覧に戻ります。</td></tr>
+ <tr><td>保存</td><td>いまの内容を版として残します（10章）。</td></tr>
+ <tr><td>プレビュー</td><td>紙面だけの閲覧用の画面に移ります（11章）。</td></tr>
+ <tr><td>確認用／提出用</td><td>印刷とWordに出す内容を切り替えます（12章）。</td></tr>
+ <tr><td>Wordで保存</td><td>Wordで開けるファイルを保存します。</td></tr>
+ <tr><td>PDFで出力</td><td>印刷の画面を開きます。PDFとして保存できます。</td></tr>
+</table>
+<h3>紙面</h3>
+<ul>
+ <li>体裁と章立ては、既往の報告書と同じです：表紙、目次、1 調査概要、2 履歴調査、3 結果まとめ。所見が「否定できない」のときは、4〜6章が続きます。</li>
+ <li>その後ろに<b>付録</b>が付きます：適用条項の判定、対象物質の選定根拠、出典一覧。</li>
+ <li>左の目次を押すと、その場所へ移動します。</li>
+</ul>
+<h3>本文を直す</h3>
+<p>紙面の文章や表の中は、押すとその場で直せます。直した内容は、欄を離れたときに自動で保存されます。所見の文章を手で直した場合、その文章が優先されます。</p>
+<h3>根拠の札</h3>
+<p>見出しや脚注の横の小さな札（「原本 p.7」「添付(一般)A 登記簿謄本 p.2」など）は、その記載の根拠になった資料とページです。「資料」タブにそのPDFを入れておくと、札を押してそのページを表示できます。札は画面だけに出て、印刷には出ません。</p>
+{{img:sec22|2.2 登記簿謄本による履歴調査。見出しの横に根拠の札が付きます}}
+
+<h2 id="s6">6. 色の意味（青・緑・赤）</h2>
+<p>まだ埋まっていない項目は、<b>誰が何をすれば埋まるか</b>で色分けして示します。枠、表の中の文字、表紙の札、紙面の上の一覧が、すべて同じ色分けです。</p>
+<table>
+ <tr><th>色</th><th>意味</th><th>主な項目</th><th>埋め方</th></tr>
+ <tr><td><span class="c b">青</span></td><td>有料の資料</td><td>登記簿謄本（地目・所有者を含む）、公図、住宅地図</td><td>資料を取得して、「資料」タブに入れます。</td></tr>
+ <tr><td><span class="c g">緑</span></td><td>APIで取得できる</td><td>地形・地質の記述、指定区域の有無、自然由来・埋立の情報、年次表の「判読前」</td><td>システム側で取得・下書きできる項目です。対応状況は枠の中の「今後」に書いてあります。「判読前」は、AIを接続すると下読みが入ります。</td></tr>
+ <tr><td><span class="c r">赤</span></td><td>人の作業</td><td>ヒアリング、現地踏査、特定施設の届出（行政への照会）、調査期間の記入、「要確認」の確認、AI判読案の採用</td><td>聴取・踏査・照会を行い、記録を「資料」タブに入れるか、紙面に直接書き込みます。</td></tr>
+ <tr><td><span class="c k">灰</span></td><td>資料が存在しない</td><td>その年代の地形図・空中写真が無い箇所</td><td>作業は不要です。</td></tr>
+</table>
+{{img:gapbar|資料なしで作った案件。紙面の上に、未取得の項目の一覧と色ごとの件数が出ます。項目名を押すと、その場所へ移動します}}
+<p>枠の中には、<b>取得先</b>（どこで手に入るか）、<b>共有すると</b>（報告書のどこが埋まるか）、<b>今後</b>（この先の自動化の見込み）が書いてあります。</p>
+{{img:sec11|1.1 の表。特定施設は赤（行政への照会）、指定区域は緑、地目・所有者は青}}
+{{img:blue|2.2。登記簿謄本は有料の資料なので、青い枠で取得先を示します}}
+<ul>
+ <li>表紙の右上には「下書き　未取得 ○件」と、色ごとの件数の札が付きます。</li>
+ <li>資料が入ると、該当する枠は消えます。</li>
+ <li>登記簿と、住宅地図・地形図がどちらも無い間は、所見は<b>「保留」</b>になります。根拠が無いまま「低い」とは出しません。</li>
+</ul>
+
+<h2 id="s7">7. 右側の4つのタブ</h2>
+<h3 id="s71">確認</h3>
+<p>人の目が必要な点だけが並びます。読み取りに自信がない箇所、資料どうしの食い違い、未記入の項目、確認が要る判定です。</p>
+<ul>
+ <li><span class="btn">該当箇所へ</span>：紙面のその場所へ移動します。</li>
+ <li><span class="btn">確認済みにする</span>：確認が済んだ項目を消します。タブの数字は、残りの件数です。</li>
+ <li><span class="btn">p.◯</span>：根拠のページを表示します。</li>
+</ul>
+<h3 id="s72">判断</h3>
+{{img:judge|「判断」タブ|s}}
+<table>
+ <tr><th>項目</th><th>できること</th></tr>
+ <tr><td>調査の目的</td><td>目的と、形質変更の有無・面積を変えます。変えると、適用条項を判定し直します。</td></tr>
+ <tr><td>適用条項</td><td>法令と条例の各条が該当するかを一覧で見ます。</td></tr>
+ <tr><td>懸念となる利用履歴</td><td>資料から拾った利用履歴を、汚染のおそれとして扱うかを決めます。手で足すこともできます。</td></tr>
+ <tr><td>所見</td><td>判定の結果を見ます。<span class="btn">所見の文章を判定から書き直す</span> で、手直しした文章を判定どおりに戻せます。</td></tr>
+ <tr><td>試料採取等対象物質</td><td>対象物質を選びます（所見が「否定できない」のとき）。</td></tr>
+ <tr><td>おそれの区分（筆ごと）</td><td>筆ごとに、おそれが無い・少ない・比較的多いを決めます。</td></tr>
+ <tr><td>条例に基づく確認結果</td><td>条例の台帳・区域の確認結果を入れます。</td></tr>
+</table>
+<p>ここで切り替えると、所見と4〜6章を組み直します。</p>
+<h3 id="s73">出典</h3>
+<p>レポートで使った出典の一覧です。法令・条例は、公式サイトのURLと確認日が付きます。出典には<b>等級</b>が付きます。</p>
+<table>
+ <tr><th>等級</th><th>内容</th></tr>
+ <tr><td>1　公式</td><td>法令、自治体の公表、国土地理院、登記簿、行政回答</td></tr>
+ <tr><td>2　公的資料の転載</td><td>旧版地形図の閲覧サイト（今昔マップ on the web）など。原本は公的資料です。</td></tr>
+ <tr><td>3　民間・Web</td><td>企業サイト、報道など</td></tr>
+ <tr><td>4　AIの推定</td><td>地形図・写真の判読案、文章の下書き</td></tr>
+</table>
+<p>所見の根拠に使うのは、等級1・2と、担当者が採用した等級3です。等級4は、担当者が採用するまで使いません。</p>
+<h3 id="s74">資料</h3>
+{{img:docs|「資料」タブ|s}}
+<ul>
+ <li>共有した資料の一覧です。資料を<b>後から足す</b>ときも、ここに入れます。足しても、手で直した所見や判断は残ります。</li>
+ <li><span class="btn">この案件をファイルに保存</span>：案件を1つのファイルに書き出します（10章）。</li>
+ <li><span class="btn">この案件を削除</span>：2回押すと削除します。</li>
+ <li><b>保存した版</b>：「保存」で残した版の一覧です。<span class="btn">この版に戻す</span> で戻せます。</li>
+</ul>
+
+<h2 id="s8">8. 自動で入る情報</h2>
+<p>位置が決まっていれば、資料を共有しなくても、次の情報が入ります。</p>
+<table>
+ <tr><th>情報</th><th>入る場所</th><th>もとになるもの</th></tr>
+ <tr><td>位置図</td><td>図1.7-1</td><td>国土地理院の地図</td></tr>
+ <tr><td>治水地形分類図と地下水の流向</td><td>2.1、図2.1</td><td>国土地理院。流向は、周囲200mの標高差からの推定です。平坦な土地では「特定できず」になります。</td></tr>
+ <tr><td>旧版地形図</td><td>2.3 の表、図2.3-1</td><td>今昔マップ on the web（国土地理院の旧版地形図を複製したもの）。首都圏・中京圏・京阪神圏など15地域が対象で、範囲外の土地には入りません。</td></tr>
+ <tr><td>年代別の空中写真</td><td>2.3 の表、図2.3-2</td><td>国土地理院（1945年頃から最新まで8年代）</td></tr>
+ <tr><td>適用する法令・条例と条項の判定</td><td>1.4、付録1</td><td>公式サイトで確認した法令・条例の登録情報（31自治体）</td></tr>
+ <tr><td>行政の照会窓口</td><td>2.4.3 の枠の中</td><td>条例の登録情報</td></tr>
+ <tr><td>指定区域の有無</td><td>1.1、2.4.3</td><td>東京都と名古屋市の公表台帳。台帳を組み込んだ版（index.local.html）で入ります。</td></tr>
+</table>
+{{img:sec23|2.3 の年次表。旧版地形図と空中写真を年代順に並べます。用途の欄は、判読が済むまで「判読前」です}}
+{{img:figs|図2.3-1 旧版地形図。赤い丸が対象地の代表点です。収録の無い年代は灰色の枠になります}}
+<div class="note"><b>指定区域の照合の注意</b>　照合は町丁目単位です。同じ町丁目か、町丁目の代表点どうしで1.5km以内の区域を拾い、該当があれば「要確認（周辺に6件）」のように示します。対象地が区域に含まれるか、1.0km圏内かは、台帳の図面で確認してください。「なし」の場合も、提出前に公表ページで最新の指定状況を確認してください。</div>
+
+<h2 id="s9">9. AIの下読み</h2>
+<p>AI（Claude）を接続すると、次のことができます。接続の方法は13章にあります。</p>
+<ul>
+ <li><b>資料の読み取り</b>：共有したPDF・画像から、登記の履歴、地図の年次、聴取内容などを読み取ります。</li>
+ <li><b>旧版地形図・空中写真の下読み</b>：対象地と周辺の用途を読み、2.3 の表に「判読案」を入れます。資料なしで作成したときは自動で行い、後からは表の下の <span class="btn">AIで下読みする</span> で行えます。</li>
+</ul>
+<p>判読案には「AI判読案」の札と、確からしさ（高・中・低）が付きます。内容を確かめてから、<span class="btn">判読案を利用履歴表に採用する</span> を押してください。採用すると通常の年次表になり、文言を直せます。<b>採用するまで、利用履歴にも所見にも使いません。</b></p>
+<div class="note"><b>注意</b>　AIの読み取りは下書きです。必ず原資料と照合してください。空中写真だけでは所見を出さず、「保留」のままにします。</div>
+
+<h2 id="s10">10. 保存する</h2>
+<table>
+ <tr><th>方法</th><th>内容</th></tr>
+ <tr><td>自動保存</td><td>紙面を直したり、判断を切り替えたりするたびに保存されます。操作は要りません。</td></tr>
+ <tr><td><span class="btn">保存</span></td><td>その時点の内容を<b>版</b>として残します。「資料」タブの「保存した版」から、直前5版まで戻せます。大きく直す前に押しておくと安心です。</td></tr>
+ <tr><td>ファイルに保存</td><td>「資料」タブの <span class="btn">この案件をファイルに保存</span> で、案件を1つのファイルに書き出します。案件の一覧の <span class="btn">ファイルから開く</span> で読み込めます。別の端末への受け渡しと、控えに使います。</td></tr>
+</table>
+<div class="note"><b>保存先</b>　案件は、その端末のそのブラウザに保存されます。別の端末や別のブラウザからは見えません。ブラウザのデータを消すと案件も消えるので、大事な案件はファイルに保存しておいてください。</div>
+
+<h2 id="s11">11. プレビューと共有リンク</h2>
+<p>上の帯の <span class="btn">プレビュー</span> を押すと、紙面だけの閲覧用の画面になります。編集はできません。確認用と提出用を切り替えて見られます。<span class="btn">編集に戻る</span> で元の画面に戻ります。</p>
+{{img:preview|プレビューの画面}}
+<h3>共有リンク</h3>
+<p>プレビューの <span class="btn">共有リンクをコピー</span> を押すと、レビューしてもらうためのリンクができ、コピーされます。メールやチャットに貼って送ります。</p>
+{{img:share|共有リンクを作ったところ}}
+<ul>
+ <li>受け取った人がリンクを開くと、まずログイン画面が出ます。ログインすると、プレビューが開き、印刷もできます。編集はできません。</li>
+ <li>案件の内容は、リンクそのものの中に入っています。サーバーには保存されません。</li>
+ <li>リンクは、作った時点の内容です。後で直した場合は、リンクを作り直して送ってください。</li>
+</ul>
+<div class="note"><b>注意</b>　リンクを知っている人は、誰でも内容を見られます。登記名義人などを含む案件では、送り先に注意してください。また、<code>index.html</code> を端末のファイルとして開いている場合、リンクは他の人の端末では開けません。Webに置いた版で作ってください。</div>
+
+<h2 id="s12">12. 印刷する・Wordで保存する</h2>
+<h3>出力の種類を選ぶ</h3>
+<table>
+ <tr><th>種類</th><th>内容</th><th>使いどころ</th></tr>
+ <tr><td>確認用</td><td>色つきの枠、表紙の「下書き」の札、付録を付けて出します。</td><td>社内の確認、依頼主と「何が足りないか」を共有するとき</td></tr>
+ <tr><td>提出用</td><td>色つきの枠・下書きの札・仮の文言・付録を外します。色つきの「未確認」は黒字に戻ります。</td><td>提出する報告書</td></tr>
+</table>
+<p>提出用に切り替えたとき、未取得の項目が残っていれば、件数を知らせます。</p>
+<h3>PDFとして印刷する</h3>
+<ol>
+ <li>レポート画面の <span class="btn">PDFで出力</span>、またはプレビューの <span class="btn">PDFとして印刷</span> を押します。図の読み込みを待ってから、ブラウザの印刷の画面が開きます。</li>
+ <li>送信先（プリンター）に <b>「PDFに保存」</b> を選びます。</li>
+ <li>用紙はA4、余白は「なし」または「既定」、<b>「背景のグラフィック」をオン</b>にします（表の灰色や色つきの枠が出ます）。</li>
+ <li>保存します。ページの割り方は、画面と同じです。</li>
+</ol>
+<h3>Wordで保存する</h3>
+<p><span class="btn">Wordで保存</span> で、Wordで開けるファイルを保存します。体裁はWordで調整してください。地図と写真の図はWordには入りません。</p>
+
+<h2 id="s13">13. 設定と法令・条例の画面</h2>
+<h3>設定</h3>
+{{img:settings|設定の画面}}
+<table>
+ <tr><th>項目</th><th>内容</th></tr>
+ <tr><td>調査機関</td><td>名称、指定番号、所在地、電話番号。新しく作る報告書の表紙と 1.6 に入ります。</td></tr>
+ <tr><td>資料の読み取り（AI）</td><td>Claude のAPIキーとモデルを登録します。<span class="btn">接続を保存する</span> を押すと「接続済み」になります。</td></tr>
+ <tr><td>データ</td><td><span class="btn">サンプル案件を初期状態に戻す</span>、<span class="btn">ログアウト</span>。</td></tr>
+</table>
+<h3>APIキーの用意</h3>
+<ol>
+ <li>Claude Console（platform.claude.com）でアカウントを作ります。claude.ai の契約とは別です。</li>
+ <li>支払い方法を登録し、利用枠を購入します。</li>
+ <li>「API Keys」でキーを作成します。表示は作成時の一度だけです。</li>
+ <li>設定の「Claude APIキー」に貼り付けて、<span class="btn">接続を保存する</span> を押します。</li>
+</ol>
+<p>キーは、その端末のブラウザにだけ保存されます。費用は使った分だけかかります。手順や画面の名称は変わることがあるので、Console の案内に従ってください。</p>
+<h3>法令・条例</h3>
+<p>登録している国の法令・通知と、地域の条例を確認できます。条文の要旨、面積などの要件、公式サイトのURL、確認日が並びます。都道府県で絞り込めます。</p>
+{{img:laws|法令・条例の画面}}
+
+<h2 id="s14">14. 困ったとき</h2>
+<table>
+ <tr><th>こんなとき</th><th>確かめること</th></tr>
+ <tr><td>地図や写真が出ない</td><td>インターネットにつながっているかを確かめます。写真のない年代は、灰色の枠で「整備されていない」と出ます。</td></tr>
+ <tr><td>位置図の場所がずれている</td><td>町丁目の代表点を表示しています。新しい調査の画面で <span class="btn">位置を確認</span> を押し、ピンを動かして合わせます。</td></tr>
+ <tr><td>所見が「保留」のまま</td><td>登記簿か、住宅地図・地形図が入ると判定します。空中写真だけでは判定しません。</td></tr>
+ <tr><td>色つきの枠を消したい</td><td>資料を「資料」タブに入れるか、紙面に書き込みます。提出するときは、出力を「提出用」にすると枠は出ません。</td></tr>
+ <tr><td>資料を入れても読み取られない</td><td>設定で、AIが「接続済み」になっているかを確かめます。</td></tr>
+ <tr><td>印刷で色や表の灰色が出ない</td><td>印刷の画面で「背景のグラフィック」をオンにします。</td></tr>
+ <tr><td>共有リンクが開けない</td><td>リンクが途中で切れていないかを確かめます。端末のファイルから作ったリンクは、他の端末では開けません。</td></tr>
+ <tr><td>直す前の状態に戻したい</td><td>「資料」タブの「保存した版」から戻します。「保存」を押した時点にだけ戻せます。</td></tr>
+ <tr><td>案件が見当たらない</td><td>案件は、作った端末のブラウザに保存されています。別の端末・別のブラウザでは見えません。ファイルに保存してあれば、<span class="btn">ファイルから開く</span> で読み込めます。</td></tr>
+ <tr><td>ログイン画面に戻りたい</td><td>右上の <span class="btn">ログアウト</span> を押します。開き直しても、ログイン画面から始まります。</td></tr>
+</table>
+
+<h2 id="s15">15. 現在の制約</h2>
+<p>試作版のため、次の点にご注意ください。</p>
+<ul>
+ <li><b>ログイン</b>：認証サーバーにつないでいません。利用者ごとの権限の管理はまだありません。</li>
+ <li><b>保存</b>：その端末のブラウザの中だけです。複数人での同時編集や、サーバーでの共有保存はまだありません。</li>
+ <li><b>AIの読み取り</b>：実際の資料での読み取りの精度は、まだ確認できていません。結果は必ず原資料と照合してください。</li>
+ <li><b>図</b>：地番図（図1.7-2）と区分図（図6.3）は、公図がもとになるため、差し込みの枠だけです。位置図は国土地理院の地図です。</li>
+ <li><b>指定区域の照合</b>：東京都と名古屋市のみで、町丁目単位です。両自治体ともサイト掲載情報の利用に条件があるため、台帳の写しは手元用の版にだけ入れています。本番で使う前に、各自治体の担当課に条件を確認してください。</li>
+ <li><b>旧版地形図</b>：今昔マップ on the web の収録範囲の土地だけです。同サイトの条件に従い、図と出典に名称を表示しています。</li>
+ <li><b>有料の資料と人の作業</b>：登記簿謄本、公図、住宅地図の取得、ヒアリング、現地踏査、行政への照会は、これまでどおり担当者が行います。</li>
+</ul>
+<p class="meta">ちれきくん 操作マニュアル　{{date}}</p>
+</main>
+</div>
+</body>
+</html>
