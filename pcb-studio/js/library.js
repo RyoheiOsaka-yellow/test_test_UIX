@@ -161,6 +161,7 @@ const HEIGHTS = {
 };
 function build(p) {
   const H = HEIGHTS[p.id]; if (H) { p.ht = H[0]; p.htOk = H[1]; }
+  p.ht0 = p.ht; p.htOk0 = !!p.htOk;   // 手入力で上書きしたときに戻せるよう、既定値を控えておく
   const f = p.family;
   if (f === 'gpu') p.pads = fpBGA(p.w, p.h);
   else if (f === 'vram') { p.w = 12; p.h = 14; p.pads = fpBGA(12, 14); }

@@ -262,11 +262,13 @@ dialog textarea { height: 180px; font: 11px var(--mono); margin: 8px 0; }
       <div class="two" id="cStepBox" hidden>
         <div><label class="fl" for="cMem">メモリ上の下面 <span id="cMemV" class="num">2.1 mm</span></label><input type="range" id="cMem" min="1.2" max="12" step="0.1" value="2.1"></div>
         <div><label class="fl" for="cVrm">VRM 上の下面 <span id="cVrmV" class="num">2.4 mm</span></label><input type="range" id="cVrm" min="1.2" max="12" step="0.1" value="2.4"></div>
+        <div><label class="fl" for="cInd">インダクタ上の下面 <span id="cIndV" class="num">5.3 mm</span></label><input type="range" id="cInd" min="1.2" max="14" step="0.1" value="5.3"></div>
       </div>
       <div class="two">
         <label class="ck" for="cBack" style="align-self:end"><input type="checkbox" id="cBack">裏面にバックプレート</label>
         <div><label class="fl" for="cBackGap">基板からの距離 <span id="cBackGapV" class="num">3.0 mm</span></label><input type="range" id="cBackGap" min="0.6" max="6" step="0.1" value="3"></div>
       </div>
+      <label class="ck" for="cHeat"><input type="checkbox" id="cHeat">部品を温度の概算で色分け（青 40℃ 〜 赤 110℃）</label>
       <div id="coolInfo"></div>
     </section>
     <section><details><summary>ネット一覧<span class="n" id="netN"></span></summary><input type="search" id="netq" placeholder="ネット名で絞り込み" aria-label="ネットを検索"><div id="nets"></div></details></section>

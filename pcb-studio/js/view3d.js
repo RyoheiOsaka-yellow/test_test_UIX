@@ -170,7 +170,8 @@ export class View3D {
     this.cool = null; this.fans = []; this.coolInfo = info; this.dirty = true;
     if (!info) return;
     const g = this.cool = new THREE.Group(), r = info.rect, y1 = T + info.top, top = y1 + info.fin;
-    const alu = (o, c = 0xc3cad1) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.75, roughness: 0.35, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
+    const fade = this.heat ? 0.3 : 1;   // 温度の色分け中は、下の部品が見えるように薄くする
+    const alu = (o, c = 0xc3cad1) => new THREE.MeshStandardMaterial({ color: c, metalness: 0.75, roughness: 0.35, transparent: true, opacity: o * fade, depthWrite: false, side: THREE.DoubleSide });
     // ベースプレート：2mm の升目のうち、切り欠きにかからない所だけ上下の面を張る
     const P = [], st = 2, cut = (x, z) => info.cuts.some(q => x + st > q.x0 && x < q.x1 && z + st > q.y0 && z < q.y1);
     for (let z = r.y0; z < r.y1 - 0.01; z += st) for (let x = r.x0; x < r.x1 - 0.01; x += st) {
@@ -187,11 +188,11 @@ export class View3D {
       const bp = new THREE.Mesh(new THREE.BoxGeometry(this.board.w - 2, 1.5, this.board.h - 2), alu(0.32, 0x8d949b)); bp.position.set(this.board.w / 2, -T - info.back - 0.75, this.board.h / 2); g.add(bp);
     }
     // フィン
-    const n = Math.floor((r.x1 - r.x0) / 2.6), fins = new THREE.InstancedMesh(new THREE.BoxGeometry(0.35, info.fin, r.y1 - r.y0), alu(0.16), n), M = new THREE.Matrix4();
-    for (let i = 0; i < n; i++) { M.makeTranslation(r.x0 + 1.3 + i * 2.6, y1 + info.fin / 2, (r.y0 + r.y1) / 2); fins.setMatrixAt(i, M); }
+    const n = Math.floor((r.x1 - r.x0) / 2), fins = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, info.fin, r.y1 - r.y0), alu(0.13), n), M = new THREE.Matrix4();
+    for (let i = 0; i < n; i++) { M.makeTranslation(r.x0 + 1 + i * 2, y1 + info.fin / 2, (r.y0 + r.y1) / 2); fins.setMatrixAt(i, M); }
     fins.frustumCulled = false; g.add(fins);
     // ファン
-    const L = r.x1 - r.x0, rad = Math.min((r.y1 - r.y0) / 2 - 2, L / info.fans / 2 - 3), dark = (o) => new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6, transparent: true, opacity: o, depthWrite: false, side: THREE.DoubleSide });
+    const L = r.x1 - r.x0, rad = Math.min((r.y1 - r.y0) / 2 - 2, L / info.fans / 2 - 3), dark = (o) => new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6, transparent: true, opacity: o * fade, depthWrite: false, side: THREE.DoubleSide });
     for (let i = 0; i < info.fans; i++) {
       const f = new THREE.Group(); f.position.set(r.x0 + L * (i + 0.5) / info.fans, top + 7.5, (r.y0 + r.y1) / 2);
       const ring = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, 14, 48, 1, true), dark(0.45)); g.add(ring); ring.position.copy(f.position);
@@ -285,7 +286,9 @@ export class View3D {
       const g = b.group(c.group), w = B.x1 - B.x0, d = B.y1 - B.y0;
       const real = this.style === 'real', shell = real && (f === 'dp' || f === 'hdmi');
       const glassy = !real && ((c.fixed && f !== 'gpu') || c.part.pads.length > 60);
-      if (real && hg === c.group && g) col.set(g.color).convertSRGBToLinear();   // 凡例で選んだグループは色で示す
+      const heatT = this.heat && this.heat.get(c);
+      if (this.heat) { if (heatT == null) col.set(0x3a3f45); else { const t = Math.max(0, Math.min(1, (heatT - 40) / 70)); col.setHSL(0.66 * (1 - t), 0.85, 0.5); } col.convertSRGBToLinear(); }   // 温度で色分け（40℃=青 〜 110℃=赤）
+      else if (real && hg === c.group && g) col.set(g.color).convertSRGBToLinear();   // 凡例で選んだグループは色で示す
       else if (real) col.set(realColor(c.part)).convertSRGBToLinear();
       else if (c.fixed && f !== 'gpu') col.copy(grey);
       else col.set(g ? g.color : '#9aa3ad').convertSRGBToLinear().lerp(dark, 0.12);

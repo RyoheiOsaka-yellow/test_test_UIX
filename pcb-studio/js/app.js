@@ -7,7 +7,7 @@ import { draw, toWorld, flipOf } from './render.js';
 import { exportKicad, importKicad, kicadProject, packPart, unpackPart } from './kicad.js';
 import { planePlan } from './planes.js';
 import { electrical } from './electrical.js';
-import { coolerCheck, recommend, CEM, PLATE_T } from './cooler.js';
+import { coolerCheck, recommend, CEM, LIMIT } from './cooler.js';
 import { View3D, heightOf } from './view3d.js';
 
 const $ = id => document.getElementById(id);
@@ -18,7 +18,7 @@ const S = {
   board: null, router: null, view: { x: 0, y: 0, z: 3, flip: 1 }, cw: 0, ch: 0, dpr: 1,
   sel: new Set(), hiNet: null, hiGroup: null, layerVis: [true, true, true, true],
   show: { rats: true, zones: true, flow: !matchMedia('(prefers-reduced-motion: reduce)').matches, pvias: true, far: true, labels: true }, style: 'real', finish: 'black', xray: false, time: 0,
-  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true, step: false, mem: 2.1, vrm: 2.4, backOn: false, back: 3 }, coolInfo: null,
+  cool: { on: false, base: 3.2, fin: 28, fans: 3, cut: true, step: false, mem: 2.1, vrm: 2.4, ind: 5.3, backOn: false, back: 3, heat: false }, coolInfo: null,
   rats: [], zones: [], regions: null, issues: [], ghost: null, wire: null, marquee: null, hoverPad: null,
 };
 let tool = 'select', dirty = true, liveRoute = true, pinNet = null, pinGroup = null;
@@ -33,6 +33,9 @@ let undo = [], run = null, playing = false, speed = 1, t0 = 0, elapsed = 0;
 
 // ───────── 基板の入れ替え・再計算 ─────────
 function setBoard(b, route = true) {
+  // 高さの手入力は基板ごとに持つ：いったん既定に戻してから、この基板の値を当てる
+  for (const p of PARTS) { p.ht = p.ht0; p.htOk = p.htOk0; p.htUser = false; }
+  for (const [id, v] of Object.entries((b.meta && b.meta.heights) || {})) if (PART[id]) { PART[id].ht = v; PART[id].htUser = true; }
   dropRec(); S.board = b; S.sel.clear(); S.hiNet = pinNet = null; S.hiGroup = pinGroup = null; S.ghost = null; S.wire = null;
   S.router = new Router(b); S.router.restoreManual(b.manual);
   man = null; resume = null; document.body.classList.remove('resume', 'mid');
@@ -43,7 +46,7 @@ function refresh() {
   S.rats = S.show.rats ? ratsnest(S.board) : []; S.zones = v3on ? [] : zones(); dirty = true;
   if (v3on) { let t = 0, r = 0; for (const n of S.board.nets.values()) if (n.cls !== 'plane' && n.pins.length > 1) { t++; if (n.route && n.route.segs.length) r++; } v3.pour = t ? r / t : 0; }
 }
-function refreshAll() { refresh(); renderInspector(); renderStats(); renderNets(); renderLegend(); renderBom(); renderGuide(); if (v3on) { v3.setBoard(S.board, S); v3.setCooler(S.cool.on ? S.coolInfo : null); } }
+function refreshAll() { refresh(); renderInspector(); renderStats(); renderNets(); renderLegend(); renderBom(); renderGuide(); if (v3on) { v3.heat = S.cool.on && S.cool.heat && S.coolInfo ? S.coolInfo.heat.T : null; v3.setBoard(S.board, S); v3.setCooler(S.cool.on ? S.coolInfo : null); } }
 function zones() {
   const b = S.board, out = [];
   const gpu = b.comps.find(c => c.part.family === 'gpu');
@@ -643,7 +646,7 @@ function renderInspector() {
   let h = sel.length > 1 ? `<div class="ih">${sel.length} 個を選択</div>` : `<div class="ih"><span class="pn">${esc(c.ref)}</span> ${esc(p.pn)} <span class="badge ${p.ok ? 'ok' : 'un'}">${p.ok ? '出典確認' : '未確認'}</span></div>`;
   if (sel.length === 1) {
     const g = S.board.group(c.group);
-    h += `<dl><dt>品名</dt><dd>${esc(p.mfr)}・${esc(p.name)}</dd><dt>パッケージ</dt><dd>${esc(p.pkg)}</dd><dt>仕様</dt><dd>${esc(p.spec)}</dd><dt>高さ</dt><dd>${heightOf(p).toFixed(2)} mm（${p.htOk ? '出典確認' : '概算'}）</dd>
+    h += `<dl><dt>品名</dt><dd>${esc(p.mfr)}・${esc(p.name)}</dd><dt>パッケージ</dt><dd>${esc(p.pkg)}</dd><dt>仕様</dt><dd>${esc(p.spec)}</dd><dt>高さ</dt><dd><input type="number" id="htIn" value="${heightOf(p).toFixed(2)}" min="0.1" max="40" step="0.05" aria-label="部品の高さ (mm)" style="width:5.2em"> mm（${p.htUser ? '手入力' : p.htOk ? '出典確認' : '概算'}）${p.htUser ? ' <button class="mini" data-act="htReset">既定に戻す</button>' : ''}</dd>
       <dt>搭載例</dt><dd>${esc(p.seen)}</dd><dt>位置</dt><dd class="num">X ${c.x.toFixed(1)} / Y ${c.y.toFixed(1)} mm・${c.rot}°・${c.side === 'T' ? '表面' : '裏面'}</dd>
       <dt>グループ</dt><dd>${g ? esc(g.label) : '-'}</dd></dl>${p.note ? `<p class="dim">${esc(p.note)}</p>` : ''}`;
   }
@@ -726,14 +729,19 @@ function renderCool() {
   if (!k) { el.innerHTML = '<p class="dim">GPU のある基板で使えます。</p>'; return; }
   const pill = (ok, t) => `<span class="pill ${ok ? 'good' : 'bad'}">${t}</span>`, pad = (q, name) => q ? `<tr><th>${name}</th><td>${q.n} 個・隙間 ${q.min.toFixed(1)}${q.max - q.min > 0.05 ? '〜' + q.max.toFixed(1) : ''} mm ${pill(!q.bad, q.bad ? 'パッドでは届かない' : 'サーマルパッドで接触')}</td></tr>` : '';
   el.innerHTML = `<table><tr><th>干渉</th><td>${k.hits.length} 個 ${pill(!k.hits.length, k.hits.length ? '要対応' : 'なし')}</td></tr>
-    <tr><th>下面の高さ</th><td class="num">${S.cool.step ? `全体 ${k.und.base.toFixed(1)}・メモリ ${k.und.mem.toFixed(1)}・VRM ${k.und.vrm.toFixed(1)} mm` : `${k.und.base.toFixed(1)} mm（段差なし）`}</td></tr>
+    <tr><th>下面の高さ</th><td class="num">${S.cool.step ? `全体 ${k.und.base.toFixed(1)}・メモリ ${k.und.mem.toFixed(1)}・VRM ${k.und.vrm.toFixed(1)}・インダクタ ${k.und.ind.toFixed(1)} mm` : `${k.und.base.toFixed(1)} mm（段差なし）`}</td></tr>
     <tr><th>切り欠き</th><td>${k.cuts.length} か所・面積の ${k.cutPct.toFixed(0)}%（うちコネクタ ${k.cuts.filter(q => q.access).length}）</td></tr>
-    ${pad(k.vram, 'メモリ')}${pad(k.drmos, 'DrMOS')}
+    ${pad(k.vram, 'メモリ')}${pad(k.drmos, 'DrMOS')}${pad(k.ind, 'インダクタ')}
     <tr><th>GPU 受熱面</th><td>${k.und.base - k.gpuTop > 0.05 ? `銅の台座 ${(k.und.base - k.gpuTop).toFixed(1)} mm` : '直接接触'}</td></tr>
     <tr><th>部品面の高さ</th><td>${k.front.toFixed(1)} mm ＝ ${k.slots} スロット<br><span class="dim">規格の上限：2 スロット ${CEM.primary[1].toFixed(2)}、3 スロット ${CEM.primary[2].toFixed(2)} mm</span></td></tr>
     <tr><th>裏面</th><td>部品の最大 ${k.maxB.toFixed(2)} mm${k.backOn ? `・バックプレートまで ${k.back.toFixed(1)} mm ${pill(!k.hitsB.length, k.hitsB.length ? `干渉 ${k.hitsB.length} 個` : '干渉なし')}` : ''}<br>
       張り出し ${k.rear.toFixed(1)} mm ${pill(k.rear <= CEM.secondary, k.rear <= CEM.secondary ? '規格内' : `規格 ${CEM.secondary} mm を超過`)}</td></tr>
     <tr><th>カード全厚</th><td>${k.thickness.toFixed(1)} mm</td></tr></table>
+    <div class="sub">熱の概算（ケース内 ${k.heat.amb}℃）</div>
+    <table><tr><th>発熱</th><td>合計 ${k.heat.Q.toFixed(0)} W（うち VRM の損失 ${k.heat.loss.toFixed(0)} W）</td></tr>
+    <tr><th>ヒートシンク</th><td>フィン面積 ${k.heat.A.toFixed(2)} m²・熱抵抗 ${k.heat.Rsink.toFixed(3)} K/W → ベースプレート ${k.heat.tBase.toFixed(0)}℃</td></tr>
+    ${[['gpu', 'GPU'], ['vram', 'メモリ（最高）'], ['drmos', 'DrMOS（最高）'], ['ind', 'インダクタ（最高）']].map(([key, name]) => k.heat[key] == null ? '' : `<tr><th>${name}</th><td>${k.heat[key].toFixed(0)}℃ ${pill(k.heat[key] <= LIMIT[key], k.heat[key] <= LIMIT[key] ? `目安 ${LIMIT[key]}℃ 以内` : `目安 ${LIMIT[key]}℃ を超過`)}</td></tr>`).join('')}
+    ${k.heat.open ? `<tr><th>非接触</th><td>${k.heat.open} 個がベースプレートに触れていません（切り欠きの中、または隙間が 3mm 超）</td></tr>` : ''}</table>
     <p class="dim">${k.unknown ? `高さが概算のままの部品が ${k.unknown} 種あります（部品を選ぶと確認状況が出ます）。` : '対象の部品はすべて出典で確認した高さです。'}規格値は PCIe CEM 4.0 によります。裏面がこれを超えると隣のスロットに張り出します。</p>`;
 }
 function focusAt(x, y, z) { S.view.x = x; S.view.y = y; if (z) S.view.z = z; if (v3on) v3.focus(x, y, Math.max(60, Math.min(v3.dist, 2600 / (z || 9)))); dirty = true; }
@@ -813,8 +821,8 @@ document.addEventListener('click', e => {
   else if (t.id === 'cAuto') { // 段差のおすすめ値を入れる
     const r = recommend(S.board); Object.assign(S.cool, r, { step: true, on: true });
     $('cOn').checked = $('cStep').checked = true; $('cStepBox').hidden = false;
-    for (const [id, key] of [['cBase', 'base'], ['cMem', 'mem'], ['cVrm', 'vrm']]) { $(id).value = S.cool[key]; $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; }
-    refreshAll(); toast(`段差を設定：全体 ${r.base}・メモリ ${r.mem}・VRM ${r.vrm} mm`);
+    for (const [id, key] of [['cBase', 'base'], ['cMem', 'mem'], ['cVrm', 'vrm'], ['cInd', 'ind']]) { $(id).value = S.cool[key]; $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; }
+    refreshAll(); toast(`段差を設定：全体 ${r.base}・メモリ ${r.mem}・VRM ${r.vrm}・インダクタ ${r.ind} mm`);
   }
   else if (t.id === 'btnAdopt') adopt();
   else if (t.id === 'btnResume') { if (resume && !run) { const info = resume; play(continueRun(info)); } }
@@ -824,6 +832,7 @@ document.addEventListener('click', e => {
     t.textContent = replay ? '⏸' : '▶';
   }
   else if (d.act === 'rot') rotateSel(); else if (d.act === 'flip') flipSel(); else if (d.act === 'del') deleteSel();
+  else if (d.act === 'htReset') { const p = [...S.sel][0].part; p.ht = p.ht0; p.htOk = p.htOk0; p.htUser = false; if (S.board.meta.heights) delete S.board.meta.heights[p.id]; refreshAll(); }
   else if (d.act === 'lock') { for (const c of S.sel) c.fixed = !c.fixed; renderInspector(); }
   else if (t.id === 'btnUndo') doUndo();
   else if (t.id === 'btnRedo') doRedo();
@@ -858,6 +867,11 @@ document.addEventListener('change', e => {
   else if (t.id === 'live') liveRoute = t.checked;
   else if (t.id === 'oRegions') opts.regions = t.checked; else if (t.id === 'oPack') opts.pack = t.checked; else if (t.id === 'oTune') opts.tune = t.checked; else if (t.id === 'oStep') opts.step = t.checked;
   else if (t.id === 'oEffort') opts.effort = parseFloat(t.value);
+  else if (t.id === 'htIn') { // 高さの手入力（同じ型番の部品すべてに効く）
+    const p = [...S.sel][0].part, v = parseFloat(t.value);
+    if (v > 0 && v <= 40) { p.ht = v; p.htUser = true; (S.board.meta.heights = S.board.meta.heights || {})[p.id] = v; refreshAll(); toast(`${p.pn} の高さを ${v} mm にしました（この基板に保存されます）`); }
+  }
+  else if (t.id === 'cHeat') { S.cool.heat = t.checked; refreshAll(); }
   else if (t.id === 'cOn') { S.cool.on = t.checked; refreshAll(); }
   else if (t.id === 'cCut') { S.cool.cut = t.checked; refreshAll(); }
   else if (t.id === 'cStep') { S.cool.step = t.checked; $('cStepBox').hidden = !t.checked; refreshAll(); }
@@ -868,7 +882,7 @@ document.addEventListener('change', e => {
 });
 $('libq').addEventListener('input', renderLibrary);
 $('netq').addEventListener('input', renderNets);
-for (const [id, key] of [['cBase', 'base'], ['cFin', 'fin'], ['cMem', 'mem'], ['cVrm', 'vrm'], ['cBackGap', 'back']]) $(id).addEventListener('input', e => { S.cool[key] = parseFloat(e.target.value); $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; if (S.cool.on) { renderStats(); if (v3on) v3.setCooler(S.coolInfo); dirty = true; } });
+for (const [id, key] of [['cBase', 'base'], ['cFin', 'fin'], ['cMem', 'mem'], ['cVrm', 'vrm'], ['cInd', 'ind'], ['cBackGap', 'back']]) $(id).addEventListener('input', e => { S.cool[key] = parseFloat(e.target.value); $(id + 'V').textContent = S.cool[key].toFixed(1) + ' mm'; if (S.cool.on) { renderStats(); if (v3on) { v3.heat = S.cool.heat && S.coolInfo ? S.coolInfo.heat.T : null; v3.setCooler(S.coolInfo); } dirty = true; } });
 $('seek').addEventListener('input', e => { if (rec && !run) { replay = false; $('btnReplay').textContent = '▶'; showFrame(+e.target.value); } });
 $('explode').addEventListener('input', e => { if (v3) { v3.explode = parseFloat(e.target.value); v3.sync(); } });
 document.addEventListener('keydown', e => {
