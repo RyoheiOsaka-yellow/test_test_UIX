@@ -199,6 +199,8 @@ function reviewItems(c){
     l.rows.filter(r=>r.flag).forEach(r=>add('warn','登記簿',`${l.chiban} ${r.date}：${r.flag}`,'sec-22',l.ref));});
   (c.corps||[]).filter(x=>x.flag).forEach(x=>add('warn','法人',`${x.name}：${x.flag}`,'sec-22',x.ref));
   (c.hearing||[]).filter(h=>h.flag).forEach(h=>add('bad','ヒアリング',h.flag,'sec-24',h.ref));
+  const gws=gwSetup(c);if(gws.i){if(!gws.soilKnown)add('warn','地下水の到達距離','帯水層の土質が未設定のため、過小に算出しないよう「礫」で計算している。柱状図などで土質を確認し、「判断」で選ぶ。','sec-gw');
+    if(!gws.iManual)add('warn','地下水の到達距離',`動水勾配（${gwFrac(gws.i)}）は標高からの概算。地形図の等高線か、地下水位の測定結果で確認し、必要なら「判断」で入れ直す。`,'sec-gw');}
   const za=c.regs&&c.regs.zoneAuto;if(za)add('warn','指定区域',za.hits.length?`公表台帳の写し（${za.checkedOn}取得）との自動照合で、指定区域が${[za.hits.filter(h=>h.same).length?'同じ町丁目に'+za.hits.filter(h=>h.same).length+'件':'',za.hits.filter(h=>!h.same).length?'周辺に'+za.hits.filter(h=>!h.same).length+'件':''].filter(Boolean).join('、')}ある。対象地が区域に含まれるか、1.0km圏内かを台帳の図面で確認し、2.4.3 の「要確認」を書き換える。`:`指定区域「なし」は、公表台帳の写し（${za.checkedOn}取得）との自動照合による。提出前に、${za.name}の公表ページで最新の指定状況を確認する。`,'sec-243');
   const s=c.site||{};const sum=(s.parcels||[]).reduce((a,p)=>a+(+p.chiseki||0),0);
   if((s.parcels||[]).length&&(s.parcels||[]).every(p=>+p.chiseki>0)&&Math.abs(sum-(+s.area||0))>0.01)add('bad','地積',`筆一覧の合計 ${sum.toFixed(2)}㎡ と敷地面積 ${s.area}㎡ が一致しない。`,'sec-11');
@@ -234,6 +236,7 @@ function sourcesOf(c){
   if(g.suidaku&&g.suidaku.src)push('行政照会','水質汚濁防止法・下水道法の特定施設の届出',`${g.suidaku.src}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'、'+g.gesui.src:''}${g.suidaku.date?'（'+g.suidaku.date+'照会）':''}`,'',true);
   if(g.zoneSrc)push('行政公表','土壌汚染対策法に基づく区域の指定状況',g.zoneAuto?`${g.zoneSrc}。公表台帳の写しとの自動照合`:g.zoneSrc,g.zoneAuto?g.zoneAuto.url:'',true,g.zoneAuto?g.zoneAuto.checkedOn:undefined);
   push('公的地図','治水地形分類図・地理院タイル','国土交通省国土地理院 電子国土web',DATASRC[0].url,true);
+  if(gwSetup(c).i)push('計算ツール',`${GW_TOOL.org}「${GW_TOOL.name}」`,'2次元平面のドメニコ解析式。土質・物質のパラメーターは同ツールの値',GW_TOOL.url,true,GW_TOOL.checkedOn,1);
   if(c.site.kj)push('旧版地形図','今昔マップ on the web（時系列地形図閲覧サイト）',`埼玉大学教育学部 谷謙二（人文地理学研究室）。国土地理院発行の旧版地形図を複製したタイル（${c.site.kj.name}）`,'https://ktgis.net/kjmapw/',false,today10(),2);
   if(c.photoRead)push('AI判読案','旧版地形図・空中写真の用途の読み取り',`AIによる下読み（${c.photoRead.at}）。担当者が採用した行だけを利用履歴に使う`,'',false,undefined,4);
   const used=[...new Set(openConcerns(c).map(x=>INDBY[x.industry]).filter(i=>i&&i.src.type!=='none'))];

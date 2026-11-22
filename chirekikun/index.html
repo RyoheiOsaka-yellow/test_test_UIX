@@ -230,11 +230,13 @@ h1,h2,h3{text-wrap:balance}
 .paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
 .paper [id]{scroll-margin-top:130px}
 .gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #333;background:#fff;color:#222;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.8}.gapbar b{margin-right:6px}.gapbar .cnt{font-weight:700;margin-right:10px;white-space:nowrap}.gapbar div{margin-top:2px}.gapbar a{margin-right:12px;white-space:nowrap}.gapbar .lg{font-size:11px;color:#555}.gapbar i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:currentColor;vertical-align:baseline}
+.paper table.gwc{table-layout:auto;margin:4px 0 12px}.paper .gwc th{width:8.5em}.paper table.gwt{table-layout:auto;margin:4px 0 6px}.paper .gwt td{padding:2px 6px}.paper .gwt td.r{text-align:right;white-space:nowrap}.paper .gwt td.b{font-weight:700}.paper .gwt th{line-height:1.35}
 .paper table.znt{width:calc(100% - 3.2em);margin:6px 0 16px 1.6em;table-layout:auto}.paper .znt td{padding:3px 6px}.paper .znt th:nth-child(3){width:5em}.paper .znt th:nth-child(4){width:9.5em}.paper .znt th:nth-child(5){width:11em}.paper .kh{margin-top:.6em}.paper .zn{margin-top:-10px}
 .paper .src .tr{font-size:7pt;border:1px solid #000;padding:0 4px;margin-left:8px;white-space:nowrap}
 .sharednote{border:1px solid var(--line2);background:var(--sunk);border-radius:8px;padding:8px 11px;color:var(--ink)!important}
 .savest{font-size:11px;color:var(--mute);white-space:nowrap}.pvw{padding:20px 16px 90px}.pvh .tag{white-space:nowrap}
 .urlbox{max-width:210mm;margin:0 auto 12px;border:1px solid var(--line2);background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px}.urlbox textarea{width:100%;height:64px;margin-top:6px;font:11px var(--f-mono);border:1px solid var(--line2);border-radius:6px;padding:6px;box-sizing:border-box;word-break:break-all}
+.gwf{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}.gwf label{font-size:11px;color:var(--mute);display:block;margin-bottom:2px}.gwf select,.gwf input{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--line2);border-radius:6px;font:inherit;font-size:12.5px;background:var(--surface)}.gwr{font-size:12px;line-height:1.7;margin:6px 0}.gwr b{font-family:var(--f-mono)}
 .ver{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:6px 0;border-bottom:1px dotted var(--line2);font-size:12px}.ver span{color:var(--ink2)}
 .paper .aiv{display:inline-block;margin-left:5px;color:#d0021b;border:1px solid #d0021b;background:#fff7f7;font-size:6.5pt;line-height:1.5;padding:0 3px;white-space:nowrap;vertical-align:middle}
 .paper .scr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0 1em;font-family:var(--f-body)}.paper .scr .scn{font-size:11px;color:var(--mute)}
@@ -813,6 +815,8 @@ function reviewItems(c){
     l.rows.filter(r=>r.flag).forEach(r=>add('warn','登記簿',`${l.chiban} ${r.date}：${r.flag}`,'sec-22',l.ref));});
   (c.corps||[]).filter(x=>x.flag).forEach(x=>add('warn','法人',`${x.name}：${x.flag}`,'sec-22',x.ref));
   (c.hearing||[]).filter(h=>h.flag).forEach(h=>add('bad','ヒアリング',h.flag,'sec-24',h.ref));
+  const gws=gwSetup(c);if(gws.i){if(!gws.soilKnown)add('warn','地下水の到達距離','帯水層の土質が未設定のため、過小に算出しないよう「礫」で計算している。柱状図などで土質を確認し、「判断」で選ぶ。','sec-gw');
+    if(!gws.iManual)add('warn','地下水の到達距離',`動水勾配（${gwFrac(gws.i)}）は標高からの概算。地形図の等高線か、地下水位の測定結果で確認し、必要なら「判断」で入れ直す。`,'sec-gw');}
   const za=c.regs&&c.regs.zoneAuto;if(za)add('warn','指定区域',za.hits.length?`公表台帳の写し（${za.checkedOn}取得）との自動照合で、指定区域が${[za.hits.filter(h=>h.same).length?'同じ町丁目に'+za.hits.filter(h=>h.same).length+'件':'',za.hits.filter(h=>!h.same).length?'周辺に'+za.hits.filter(h=>!h.same).length+'件':''].filter(Boolean).join('、')}ある。対象地が区域に含まれるか、1.0km圏内かを台帳の図面で確認し、2.4.3 の「要確認」を書き換える。`:`指定区域「なし」は、公表台帳の写し（${za.checkedOn}取得）との自動照合による。提出前に、${za.name}の公表ページで最新の指定状況を確認する。`,'sec-243');
   const s=c.site||{};const sum=(s.parcels||[]).reduce((a,p)=>a+(+p.chiseki||0),0);
   if((s.parcels||[]).length&&(s.parcels||[]).every(p=>+p.chiseki>0)&&Math.abs(sum-(+s.area||0))>0.01)add('bad','地積',`筆一覧の合計 ${sum.toFixed(2)}㎡ と敷地面積 ${s.area}㎡ が一致しない。`,'sec-11');
@@ -848,6 +852,7 @@ function sourcesOf(c){
   if(g.suidaku&&g.suidaku.src)push('行政照会','水質汚濁防止法・下水道法の特定施設の届出',`${g.suidaku.src}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'、'+g.gesui.src:''}${g.suidaku.date?'（'+g.suidaku.date+'照会）':''}`,'',true);
   if(g.zoneSrc)push('行政公表','土壌汚染対策法に基づく区域の指定状況',g.zoneAuto?`${g.zoneSrc}。公表台帳の写しとの自動照合`:g.zoneSrc,g.zoneAuto?g.zoneAuto.url:'',true,g.zoneAuto?g.zoneAuto.checkedOn:undefined);
   push('公的地図','治水地形分類図・地理院タイル','国土交通省国土地理院 電子国土web',DATASRC[0].url,true);
+  if(gwSetup(c).i)push('計算ツール',`${GW_TOOL.org}「${GW_TOOL.name}」`,'2次元平面のドメニコ解析式。土質・物質のパラメーターは同ツールの値',GW_TOOL.url,true,GW_TOOL.checkedOn,1);
   if(c.site.kj)push('旧版地形図','今昔マップ on the web（時系列地形図閲覧サイト）',`埼玉大学教育学部 谷謙二（人文地理学研究室）。国土地理院発行の旧版地形図を複製したタイル（${c.site.kj.name}）`,'https://ktgis.net/kjmapw/',false,today10(),2);
   if(c.photoRead)push('AI判読案','旧版地形図・空中写真の用途の読み取り',`AIによる下読み（${c.photoRead.at}）。担当者が採用した行だけを利用履歴に使う`,'',false,undefined,4);
   const used=[...new Set(openConcerns(c).map(x=>INDBY[x.industry]).filter(i=>i&&i.src.type!=='none'))];
@@ -856,6 +861,117 @@ function sourcesOf(c){
   S.forEach(x=>{if(!x.tier)x.tier=x.own?0:x.verified?1:0;});
   return S;
 }
+
+/* ══════════ 地下水汚染が到達し得る距離 ══════════
+   環境省「地下水汚染が到達し得る距離の計算ツール（令和3年4月1日以降の基準が適用される場合）」と同じ計算を行う。
+   出典：https://www.env.go.jp/water/dojo/law/kaisei2009.html（ツール本体：/content/900540073.xlsx、マニュアル：/content/900540079.pdf）
+   ・計算式：2次元平面のドメニコ解析式（汚染源の中心線上 y=0、経過時間100年）
+       C(x,t)=Cgw × exp{x/(2αx)·(1−√(1+4λαx/v))} × erfc{(x−v·t/R·√(1+4λαx/v))/(2√(αx·v·t/R))}/2 × erf{Sw/(4√(αy·x))}
+       v=k·i/ne（実流速）、R=1+Kd·ρd/ne（遅延係数）、λ=ln2/半減期、Kd=Koc×foc（Kdの設定が無い物質）
+   ・到達距離：C が地下水基準以下になる最小の x。ツールと同じ手順（10万m→1万m→1,000m→100m→10m→1m刻み）で探す。
+   ・ランク別到達距離：100m以下は10m単位、500m以下は50m単位、それを超えると100m単位に切り上げ。
+   ・パラメーターは、ツールの「パラメーター 一覧表」の値。tests/gw.js が、ツール本体で再計算した値と照合する。 */
+const GW_TOOL={name:'地下水汚染が到達し得る距離の計算ツール（令和3年4月1日以降の基準が適用される場合）',org:'環境省',url:'https://www.env.go.jp/water/dojo/law/kaisei2009.html',manual:'https://www.env.go.jp/content/900540079.pdf',checkedOn:'2026-11-22'};
+/* 土質：透水係数 k(m/s)、有効間隙率 ne、間隙率 n、乾燥土壌密度 ρd(t/m3)＝土粒子密度2.7×(1−n)、有機性炭素含有率 foc(g/g) */
+const GW_SOILS=[
+ {id:'gravel',name:'礫',k:1e-3,ne:0.2,n:0.4,rd:1.62,foc:0.0005,ex:'玉石、礫（粗礫、中礫、細礫を含む）'},
+ {id:'sandgravel',name:'砂礫',k:1e-4,ne:0.2,n:0.4,rd:1.62,foc:0.0005,ex:'砂礫、礫質土'},
+ {id:'sand',name:'砂',k:3e-5,ne:0.3,n:0.4,rd:1.62,foc:0.001,ex:'砂質土、砂（細砂、中砂、粗砂を含む）'},
+ {id:'ash',name:'火山灰質土',k:1e-5,ne:0.2,n:0.6,rd:1.08,foc:0.01,ex:'関東ローム、火山灰質粘性土、凝灰質シルト'},
+ {id:'siltsand',name:'シルト質砂',k:1e-6,ne:0.15,n:0.45,rd:1.485,foc:0.001,ex:'シルト、粘性土、有機質土、シルト質砂'},
+];
+/* 物質：sub＝本システムの物質ID、tool＝ツール上の物質名、Sw 汚染源幅(m)、Cgw 汚染源の地下水濃度(mg/L)、Kd(L/kg。0はKoc×focで求める)、
+   half 半減期(年。0は分解なし)、Koc(L/kg)、ax・ay 縦・横分散長(m)、std 地下水基準(mg/L)、gen 一般値(m) */
+const GW_SUBS=[
+ {sub:'VC',tool:'クロロエチレン',sw:10,cgw:100,kd:0,half:7.9,koc:19,ax:100,ay:10,std:0.002,gen:1000},
+ {sub:'DCM',tool:'ジクロロメタン',sw:10,cgw:100,kd:0,half:4.5,koc:12,ax:100,ay:10,std:0.02,gen:1000},
+ {sub:'CCl4',tool:'四塩化炭素',sw:10,cgw:100,kd:0,half:4.5,koc:49,ax:100,ay:10,std:0.002,gen:1000},
+ {sub:'12DCA',tool:'1,2-ジクロロエタン',sw:10,cgw:100,kd:0,half:2,koc:17,ax:100,ay:10,std:0.004,gen:1000},
+ {sub:'11DCE',tool:'1,1-ジクロロエチレン',sw:10,cgw:100,kd:0,half:7.9,koc:35,ax:100,ay:10,std:0.1,gen:1000},
+ {sub:'12DCE',tool:'シス-1,2-ジクロロエチレン',sw:10,cgw:100,kd:0,half:7.9,koc:36,ax:100,ay:10,std:0.04,gen:1000},
+ {sub:'',tool:'トランス-1,2-ジクロロエチレン',sw:10,cgw:100,kd:0,half:7.9,koc:36,ax:100,ay:10,std:0.04,gen:1000},
+ {sub:'111TCA',tool:'1,1,1-トリクロロエタン',sw:10,cgw:100,kd:0,half:2,koc:81,ax:100,ay:10,std:1,gen:1000},
+ {sub:'112TCA',tool:'1,1,2-トリクロロエタン',sw:10,cgw:100,kd:0,half:2,koc:50,ax:100,ay:10,std:0.006,gen:1000},
+ {sub:'TCE',tool:'トリクロロエチレン',sw:10,cgw:100,kd:0,half:7.9,koc:68,ax:100,ay:10,std:0.01,gen:1000},
+ {sub:'PCE',tool:'テトラクロロエチレン',sw:10,cgw:100,kd:0,half:7.9,koc:160,ax:100,ay:10,std:0.01,gen:1000},
+ {sub:'13DCP',tool:'1,3-ジクロロプロペン',sw:10,cgw:100,kd:0,half:0.03,koc:46,ax:100,ay:10,std:0.002,gen:1000},
+ {sub:'BZ',tool:'ベンゼン',sw:10,cgw:100,kd:0,half:2,koc:59,ax:100,ay:10,std:0.01,gen:1000},
+ {sub:'Pb',tool:'鉛',sw:5,cgw:10,kd:10,half:0,koc:0,ax:8,ay:0.8,std:0.01,gen:80},
+ {sub:'Cd',tool:'カドミウム',sw:5,cgw:10,kd:11,half:0,koc:0,ax:8,ay:0.8,std:0.003,gen:80},
+ {sub:'Hg',tool:'水銀',sw:5,cgw:10,kd:7.9,half:0,koc:0,ax:8,ay:0.8,std:0.0005,gen:80},
+ {sub:'As',tool:'砒素',sw:5,cgw:10,kd:4,half:0,koc:0,ax:25,ay:2.5,std:0.01,gen:250},
+ {sub:'Cr6',tool:'六価クロム',sw:5,cgw:30,kd:1,half:0,koc:0,ax:50,ay:5,std:0.05,gen:500},
+ {sub:'F',tool:'ふっ素',sw:5,cgw:30,kd:1,half:0,koc:0,ax:25,ay:2.5,std:0.8,gen:250},
+ {sub:'B',tool:'ほう素',sw:5,cgw:30,kd:0.1,half:0,koc:0,ax:25,ay:2.5,std:1,gen:250},
+ {sub:'Se',tool:'セレン',sw:5,cgw:10,kd:5,half:0,koc:0,ax:8,ay:0.8,std:0.01,gen:80},
+ {sub:'CN',tool:'シアン',sw:5,cgw:100,kd:9.9,half:0,koc:0,ax:8,ay:0.8,std:0.1,gen:80},
+ {sub:'SIM',tool:'シマジン',sw:5,cgw:10,kd:0,half:0.49,koc:300,ax:8,ay:0.8,std:0.003,gen:80},
+ {sub:'THI',tool:'チウラム',sw:5,cgw:10,kd:0,half:0.19,koc:670,ax:8,ay:0.8,std:0.006,gen:80},
+ {sub:'TBC',tool:'チオベンカルブ',sw:5,cgw:10,kd:0,half:0.22,koc:900,ax:8,ay:0.8,std:0.02,gen:80},
+ {sub:'PCB',tool:'PCB',sw:5,cgw:10,kd:0,half:0,koc:250000,ax:8,ay:0.8,std:0.0005,gen:80},
+ {sub:'OP',tool:'有機リン',sw:5,cgw:10,kd:0,half:0.16,koc:650,ax:8,ay:0.8,std:0.1,gen:80},
+];
+const GW_YEARS=100;          /* 評価する経過時間（年） */
+const GW_MIN_I=1/10000;      /* 標高差が無い場合に入力する動水勾配（マニュアル 1-2-3(4)） */
+
+/* 誤差関数。|x|<3 は級数、それ以上は連分数（相補誤差関数）で、倍精度の範囲で求める */
+function gwErfc(x){
+  if(x<0)return 2-gwErfc(-x);
+  if(x<3){let sum=x,term=x,n=0;while(Math.abs(term)>1e-17*Math.abs(sum)&&n<200){n++;term*=-x*x/n;sum+=term/(2*n+1);}return 1-2/Math.sqrt(Math.PI)*sum;}
+  if(x>27)return 0;
+  /* erfc(x)=exp(−x²)/(x√π)·1/(1+1/(2x²)/(1+2/(2x²)/(1+…))) */
+  let f=0;for(let k=60;k>=1;k--)f=k/2/(x+f);
+  return Math.exp(-x*x)/Math.sqrt(Math.PI)/(x+f);
+}
+const gwErf=x=>1-gwErfc(x);
+
+/* 土質・物質・動水勾配から、計算に使う量をそろえる */
+function gwParams(sub,soil,i){
+  const kd=sub.kd||sub.koc*soil.foc;const ky=soil.k*86400*365;const v=ky*i/soil.ne;const R=1+kd*soil.rd/soil.ne;
+  const lam=sub.half?Math.LN2/sub.half:0;const s=Math.sqrt(1+4*lam*sub.ax/v);
+  return {kd,ky,v,R,lam,s};
+}
+/* 汚染源から下流 x(m) の地点の、t 年後の地下水濃度(mg/L) */
+function gwConc(sub,p,x,t){
+  const a=p.v*t/p.R;
+  return sub.cgw*Math.exp(x/(2*sub.ax)*(1-p.s))*gwErfc((x-a*p.s)/(2*Math.sqrt(sub.ax*a)))/2*gwErf(sub.sw/(4*Math.sqrt(sub.ay*x)));
+}
+/* ランク別到達距離（ツールの丸め方） */
+function gwRank(d){if(!isFinite(d))return Infinity;const up=(v,m)=>Math.ceil(v/m-1e-9)*m;return d>500?up(d,100):d>100?up(d/5,10)*5:up(d,10);}
+/* 到達距離：ツールと同じ段階的な探索。返り値 d は m（1,000,000m を超えるときは Infinity） */
+function gwReach(sub,soil,i){
+  if(!(i>0))return null;
+  const p=gwParams(sub,soil,i);const ok=x=>gwConc(sub,p,x,GW_YEARS)<=sub.std;const BIG=1000000;
+  const first=xs=>{const hit=xs.filter(ok);return hit.length?Math.min.apply(null,hit):BIG;};
+  const seq=(n,f)=>Array.from({length:n},(_,k)=>f(k));
+  const k1=first(seq(10,k=>100000*(k+1)));
+  const u=first(seq(9,k=>k1-100000+10000*(k+1)));
+  const ad=first(seq(10,k=>u-10000+1000*(k+1)));
+  const an=first(seq(10,k=>ad-100*k));
+  const ax=first(seq(10,k=>an-10*k));
+  let x=ax+5;const last=[x];for(let k=1;k<21;k++){x=x-1>0?x-1:0.1;last.push(x);}
+  const bi=first(last);const d=bi>=BIG?Infinity:bi;
+  return {d,rank:gwRank(d),v:p.v,R:p.R,kd:p.kd,lam:p.lam,conc:isFinite(d)?gwConc(sub,p,d,GW_YEARS):null};
+}
+/* 案件の条件（土質・動水勾配）をそろえる。土質が不明なら、過小に算出しないよう「礫」（マニュアル 1-2-3(3)）。
+   動水勾配は、指定が無ければ標高（国土地理院 標高API）から求めた地形の勾配。標高差が無ければ 1/10,000 */
+function gwSetup(c){
+  const g=c.gw||{};const e=(c.site||{}).gwElev;
+  const soil=GW_SOILS.find(x=>x.id===g.soil)||GW_SOILS[0];
+  let i=null,iSrc='';
+  if(+g.i>0){i=+g.i;iSrc='担当者の入力';}
+  else if(e&&isFinite(e.drop)&&e.r>0){const raw=e.drop/e.r;i=raw>GW_MIN_I?raw:GW_MIN_I;
+    iSrc=raw>GW_MIN_I?`標高からの概算（対象地 ${e.elev.toFixed(1)}m、${e.r}m先の最も低い地点との標高差 ${e.drop.toFixed(1)}m）`:'周囲との標高差がほぼ無いため、1/10,000（計算ツールのマニュアルの扱い）';}
+  return {soil,soilKnown:!!g.soil,i,iSrc,iManual:+g.i>0};
+}
+/* 案件の物質ごとの到達距離。対象物質が選ばれていればその物質、無ければ全物質 */
+function gwTable(c){
+  const st=gwSetup(c);if(!st.i)return {st,rows:[]};
+  const sel=new Set(c.substances||[]);const list=GW_SUBS.filter(s=>s.sub&&(!sel.size||sel.has(s.sub)));
+  return {st,all:!sel.size,rows:list.map(s=>{const r=gwReach(s,st.soil,st.i);return {s,r,use:isFinite(r.rank)&&r.rank<=s.gen?r.rank:s.gen,over:!(r.rank<=s.gen)};})};
+}
+const gwFmt=d=>isFinite(d)?(d<1?String(d):Math.round(d).toLocaleString('ja-JP')):'1,000,000超';
+const gwFrac=i=>i>=0.1?i.toFixed(2):'1/'+Math.round(1/i).toLocaleString('ja-JP');
 
 /* ══════════ レポート描画 ══════════
    エコ・テック様の地歴調査報告書（Drive「エコテック地歴調査報告書」）の紙面に合わせる。
@@ -905,7 +1021,8 @@ function tocOf(c){
    ['sec-2','２．履歴調査',0],['sec-21','2.1　地形・地質及び地下水概要',1],['sec-211','2.1.1　地形・地質概要',2],['sec-212','2.1.2　地下水概要',2],['sec-22','2.2　登記簿謄本による履歴調査',1],['sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',1],['sec-24','2.4　ヒアリング調査及び現地踏査',1],['sec-241','2.4.1　ヒアリング調査',2],['sec-242','2.4.2　現地踏査',2],['sec-243','2.4.3　公的機関の環境情報',2],
    ['sec-3','３．結果まとめ',0]];
   if(neg)t.push(['sec-4','４．試料採取等対象物質の選定',0],['sec-5','５．汚染のおそれの由来に応じた区分',0],['sec-51','5.1　基本的な考え方',1],['sec-52','5.2　汚染のおそれの由来の判断',1],['sec-6','６．土壌汚染のおそれの区分の分類',0],['sec-61','6.1　基本的な考え方',1],['sec-62','6.2　汚染のおそれが生じた場所の位置',1],['sec-63','6.3　土壌汚染のおそれの区分の分類',1]);
-  t.push(['sec-app1','付録１　適用条項の判定',0]);if(neg)t.push(['sec-app2','付録２　対象物質の選定根拠',0]);t.push(['sec-src',`付録${neg?'３':'２'}　出典一覧`,0]);
+  const ZN='０１２３４５６';let an=1;t.push(['sec-app1','付録１　適用条項の判定',0]);if(neg)t.push(['sec-app2',`付録${ZN[++an]}　対象物質の選定根拠`,0]);
+  if(gwSetup(c).i)t.push(['sec-gw',`付録${ZN[++an]}　地下水汚染が到達し得る距離`,0]);t.push(['sec-src',`付録${ZN[++an]}　出典一覧`,0]);
   return t;
 }
 
@@ -1109,6 +1226,7 @@ function renderReport(c){
   }
 
   /* 付録（原本にない、本システムの判定と出典） */
+  const ZN='０１２３４５６';let apn=neg?2:1;
   sheet('app');
   add(H('h2','sec-app1','付録１　適用条項の判定'));
   add(`<div class="pos" contenteditable="false"><p class="in1 ti">${esc(positionText(c))}</p>
@@ -1116,8 +1234,24 @@ function renderReport(c){
    ${ords.filter(o=>(o.extraSubstances||[]).length).map(o=>`<p class="in1">※ ${esc(o.name.replace(/（.*?）/g,''))}は、法の特定有害物質26物質に加えて「${esc(o.extraSubstances.map(x=>x.replace(/（.*$/,'')).join('、'))}」を対象とする。</p>`).join('')}${ords.filter(o=>o.desk&&o.rules.length).slice(0,1).map(o=>`<p class="in1 sm">窓口：${esc((o.desk||'').slice(0,110))}</p>`).join('')}</div>`);
   if(neg){add(H('h2','sec-app2','付録２　対象物質の選定根拠'));
     add(`<div class="why" contenteditable="false">${openConcerns(c).map(x=>{const i=INDBY[x.industry];return i?`<p class="in1">・${esc(x.use)}（${esc(i.label)}）<br>${esc(i.why)}<br><span class="sm">根拠：${esc(i.src.type==='none'?'未登録（担当者の選定）':i.src.cite)}</span>${i.official?`<br><span class="sm">公式統計：${esc(i.official.text)}</span>`:''}</p>`:'';}).join('')||'<p class="in1">懸念として扱う利用履歴は登録されていません。</p>'}</div>`);}
+  /* 付録：地下水汚染が到達し得る距離（環境省の計算ツールと同じ計算） */
+  const GWT=gwTable(c);
+  if(GWT.rows.length){const st=GWT.st;const sup=n=>String(n).replace(/-/g,'⁻').replace(/\d/g,d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+    const kTxt=k=>{const e=Math.floor(Math.log10(k)+1e-9);return `${+(k/Math.pow(10,e)).toFixed(2)}×10${sup(e)}`;};
+    const vv=st.soil.k*86400*365*st.i/st.soil.ne;
+    sheet('app');
+    add(H('h2','sec-gw',`付録${ZN[++apn]}　地下水汚染が到達し得る距離`));
+    add(`<p class="in1 ti" contenteditable="false">${GW_TOOL.org}「地下水汚染が到達し得る距離の計算ツール」と同じ計算（2次元平面のドメニコ解析式）により、調査対象地に汚染源があると仮定した場合に、${GW_YEARS}年後に地下水汚染が到達し得る距離を物質ごとに求めた。入力した土質と動水勾配が一様に連続するものとした場合の値であり、調査対象地に汚染があることを示すものではない。</p>`);
+    add(`<p class="tt b" contenteditable="false">計算の条件</p>`);add(`<table class="reg gwc" contenteditable="false"><tbody>
+      <tr><th>帯水層の土質</th><td>${esc(st.soil.name)}（透水係数 ${kTxt(st.soil.k)} m/s、有効間隙率 ${st.soil.ne}）</td><td>${st.soilKnown?'担当者の選択':'<span class="ngv lg human">土質が未設定のため、過小に算出しないよう「礫」で計算。柱状図などで確認して選び直す</span>'}</td></tr>
+      <tr><th>動水勾配</th><td>${gwFrac(st.i)}（${(+st.i.toPrecision(3))} m/m）</td><td>${esc(st.iSrc)}${st.iManual?'':'<span class="aiv">自動推定・要確認</span>'}</td></tr>
+      <tr><th>地下水の実流速</th><td>${vv>=10?vv.toFixed(1):+vv.toPrecision(3)} m/年</td><td>透水係数×動水勾配÷有効間隙率</td></tr>
+      <tr><th>経過時間</th><td>${GW_YEARS}年</td><td>計算ツールの設定</td></tr></tbody></table>`);
+    add(`<p class="tt b" contenteditable="false">物質ごとの到達距離${GWT.all?'（試料採取等対象物質が未選定のため、全物質）':'（試料採取等対象物質）'}</p>`);
+    add(`<table class="reg gwt" contenteditable="false"><thead><tr><th>特定有害物質</th><th>地下水基準<br>(mg/L)</th><th>遅延係数</th><th>${GW_YEARS}年後の<br>到達距離(m)</th><th>ランク別<br>到達距離(m)</th><th>一般値<br>(m)</th><th>判断の目安<br>(m)</th></tr></thead><tbody>${GWT.rows.map(x=>`<tr><td>${esc(SUBBY[x.s.sub].name)}</td><td class="r">${x.s.std}</td><td class="r">${x.r.R<10?x.r.R.toFixed(2):x.r.R<1000?x.r.R.toFixed(1):Math.round(x.r.R).toLocaleString('ja-JP')}</td><td class="r">${gwFmt(x.r.d)}</td><td class="r">${gwFmt(x.r.rank)}</td><td class="r">概ね ${x.s.gen.toLocaleString('ja-JP')}</td><td class="r b">${gwFmt(x.use)}${x.over?'（一般値）':''}</td></tr>`).join('')}</tbody></table>`);
+    add(`<p class="in1 sm" contenteditable="false">※ ランク別到達距離は、到達距離を100m以下は10m単位、500m以下は50m単位、それを超える場合は100m単位に切り上げた値（計算ツールの表示）。<br>※ 判断の目安は、ランク別到達距離が一般値を超える場合に一般値とした値。計算ツールによる到達距離が一般値を超える場合は、一般値を参考にして判断することが適当とされている（平成31年3月1日 環水大土発第1903015号）。<br>※ 1,2-ジクロロエチレンは、計算ツールのシス体のパラメーターによる（トランス体も同じ値）。</p>`);}
   sheet('app');
-  add(H('h2','sec-src',`付録${neg?'３':'２'}　出典一覧`));
+  add(H('h2','sec-src',`付録${ZN[++apn]}　出典一覧`));
   add('<p class="in1 sm" contenteditable="false">出典の等級：1＝公式（法令、自治体の公表、国土地理院、登記簿、行政回答）／2＝公的資料の転載／3＝民間・Web／4＝AIの推定。所見の根拠に使うのは、等級1・2と、担当者が採用した等級3。</p>');
   add(`<div class="srcs" contenteditable="false">${S.map(x=>`<div class="src"><span class="n">${x.n}</span><div>${esc(x.title)}<span class="k">（${esc(x.kind)}）</span>${x.tier?`<span class="tr">等級${x.tier} ${TIERS[x.tier]}</span>`:''}${x.verified?(x.url?'<span class="ok">公式出典で確認</span>':''):x.own?'<span class="ng">社内の既往報告書</span>':x.tier?'':'<span class="ng">出典未確認</span>'}<br>${esc(x.detail||'')}${x.url?`<br><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url)}</a>`:''}${x.checkedOn&&x.url?`　${esc(x.checkedOn)} 確認`:''}</div></div>`).join('')}</div>`);
 
@@ -1582,7 +1716,8 @@ async function runCreate(d){
     mark('land','run');await tick(200);mark('land','ok',c.land.length?`${c.land.length}筆・${c.land.reduce((a,l)=>a+l.rows.length,0)}行`:'登記簿の共有待ち');
     mark('law','run');finalizeCase(c);await tick(200);const os=ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.length);mark('law','ok',`土壌汚染対策法${os.length?'＋'+os.map(o=>o.name.replace(/（.*?）/g,'')).join('、'):''}`);
     mark('gw','run');
-    if(c.site.lat&&!c.site.gwText){try{const g=await estimateGW(c.site.lat,c.site.lng);if(g){c.site.gwDir=g.dir||'';c.site.gwElev=g;
+    if(c.site.lat&&c.site.gwText){try{const g=await estimateGW(c.site.lat,c.site.lng);if(g)c.site.gwElev=g;}catch(e){}mark('gw','ok','資料の記載を採用（標高は到達距離の計算に使用）');}
+    else if(c.site.lat){try{const g=await estimateGW(c.site.lat,c.site.lng);if(g){c.site.gwDir=g.dir||'';c.site.gwElev=g;
         c.site.gwText=g.dir?`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高と比較すると${g.dir}方向が約${g.drop.toFixed(1)}m低い。このことから調査対象地における地下水の流向は、概ね${g.dir}向きの流向が推定される。ただし、調査対象地における局所的な地下水の流れについては、調査対象地及び隣接地の地下構造物等にも影響されることに注意が必要となる。`
           :`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高差は${Math.max(0,g.drop).toFixed(1)}mとほぼ平坦である。地形からは流向を特定できないため、周辺の河川・海域の位置関係から判断する必要がある。`;mark('gw','ok',g.dir?`${g.dir}向き（標高差 ${g.drop.toFixed(1)}m）`:'平坦のため特定できず');}else mark('gw','skip','標高を取得できず');}catch(e){mark('gw','skip','標高APIに接続できず');}}
     else mark('gw',c.site.gwText?'ok':'skip',c.site.gwText?'資料の記載を採用':'位置が未設定');
@@ -1683,7 +1818,10 @@ function drawSide(keep){
      <div class="jg"><h3>所見</h3><p class="vd"><span class="lvl ${lvlCls(c.verdict.level)}">${esc(c.verdict.level)}</span> 懸念の扱いを変えると所見・4～6章を組み直します。</p><button class="btn mini" type="button" id="j-redo">所見の文章を判定から書き直す</button></div>
      ${c.verdict.level==='否定できない'?`<div class="jg"><h3>試料採取等対象物質</h3>${[1,2,3].map(k=>`<div class="sk"><small>${KIND[k]}</small>${SUB.filter(s=>s.k===k).map(s=>`<button type="button" class="sb2 ${sel.has(s.id)?'on':''}" data-s="${s.id}">${s.name.replace(/及びその化合物|化合物/,'')}</button>`).join('')}</div>`).join('')}</div>
      <div class="jg"><h3>おそれの区分（筆ごと）</h3>${(all.length?all:['敷地全域']).map(p=>{const cur=cl.high.includes(p)?'high':cl.none.includes(p)?'none':'low';return `<div class="cp"><span>${esc(p)}</span><select data-p="${esc(p)}"><option value="none" ${cur==='none'?'selected':''}>おそれがない</option><option value="low" ${cur==='low'?'selected':''}>おそれが少ない</option><option value="high" ${cur==='high'?'selected':''}>比較的多い</option></select></div>`;}).join('')}</div>`:''}
-     <div class="jg"><h3>条例に基づく確認結果</h3>${ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.some(r=>r.trigger==='ledger'||r.trigger==='zone')).map(o=>{const rec=c.regs.ord.find(x=>x.name===o.name||o.name.indexOf(x.name)===0);const r=o.rules.find(r=>r.trigger==='ledger'||r.trigger==='zone');return `<div class="cp"><span>${esc(o.name.replace(/（.*?）/g,''))}<small>${esc(r.heading||r.art)}</small></span><select data-o="${esc(o.name)}" data-item="${esc(r.heading||'台帳・区域')}"><option value="">未確認</option><option ${rec&&rec.v==='なし'?'selected':''}>なし</option><option ${rec&&rec.v==='あり'?'selected':''}>あり</option></select></div>`;}).join('')||'<p class="mute">この地域に、台帳・区域の確認を要する条例の登録はありません。</p>'}</div>`;
+     <div class="jg"><h3>条例に基づく確認結果</h3>${ordFor(c.site.pref,c.site.city).filter(o=>o.rules&&o.rules.some(r=>r.trigger==='ledger'||r.trigger==='zone')).map(o=>{const rec=c.regs.ord.find(x=>x.name===o.name||o.name.indexOf(x.name)===0);const r=o.rules.find(r=>r.trigger==='ledger'||r.trigger==='zone');return `<div class="cp"><span>${esc(o.name.replace(/（.*?）/g,''))}<small>${esc(r.heading||r.art)}</small></span><select data-o="${esc(o.name)}" data-item="${esc(r.heading||'台帳・区域')}"><option value="">未確認</option><option ${rec&&rec.v==='なし'?'selected':''}>なし</option><option ${rec&&rec.v==='あり'?'selected':''}>あり</option></select></div>`;}).join('')||'<p class="mute">この地域に、台帳・区域の確認を要する条例の登録はありません。</p>'}</div>
+     <div class="jg"><h3>地下水の到達距離</h3>${(()=>{const st=gwSetup(c);const tb=gwTable(c);const mx=tb.rows.length?tb.rows.reduce((a,b)=>b.use>a.use?b:a):null;
+       return `<p class="vd">環境省の計算ツールと同じ計算で、100年後に地下水汚染が到達し得る距離を付録に出します。</p><div class="gwf"><div><label for="g-soil">帯水層の土質</label><select id="g-soil"><option value="">不明（礫で計算）</option>${GW_SOILS.map(x=>`<option value="${x.id}" ${c.gw&&c.gw.soil===x.id?'selected':''}>${x.name}</option>`).join('')}</select></div><div><label for="g-i">動水勾配（m/m）</label><input id="g-i" inputmode="decimal" placeholder="${st.i&&!st.iManual?'自動：'+gwFrac(st.i):'例：0.005 または 1/200'}" value="${c.gw&&c.gw.i?esc(String(c.gw.iText||c.gw.i)):''}"></div></div>
+       <p class="gwr">${st.i?`土質：${esc(st.soil.name)}（${esc(st.soil.ex)}）<br>動水勾配：<b>${gwFrac(st.i)}</b>　${esc(st.iSrc)}${mx?`<br>判断の目安が最も大きい物質：${esc(SUBBY[mx.s.sub].name)} <b>${gwFmt(mx.use)}m</b>`:''}`:'対象地の位置が未設定のため、動水勾配を入れると計算します。'}</p>${st.i?'<button type="button" class="lnk" id="g-go">付録の表を見る</button>':''}`;})()}</div>`;
     const redo=(full,force)=>{
       if(full){const v=verdictOf(c);const changed=!c.verdict||c.verdict.level!==v.level;
         /* 所見の文章：手で直してあれば、判定（低い／否定できない）が変わらない限り残す */
@@ -1701,6 +1839,10 @@ function drawSide(keep){
       if(c.substancesManual){const i=INDBY[$('j-ind').value];c.substances=SUB.filter(s=>c.substances.includes(s.id)||i.subs.includes(s.id)).map(s=>s.id);}redo(true);};
     side.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const id=b.dataset.s;const i=c.substances.indexOf(id);if(i>=0)c.substances.splice(i,1);else c.substances.push(id);c.substances=SUB.filter(s=>c.substances.includes(s.id)).map(s=>s.id);c.substancesManual=true;redo();});
     side.querySelectorAll('select[data-p]').forEach(sl=>sl.onchange=()=>{const p=sl.dataset.p;['none','low','high'].forEach(k=>{cl[k]=cl[k].filter(x=>x!==p);});cl[sl.value].push(p);redo();});
+    const gwSave=()=>{const raw=$('g-i').value.trim();let v=0;const m=raw.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);if(m)v=+m[1]/+m[2];else if(raw)v=+raw;
+      if(raw&&!(v>0&&v<=1)){toast('動水勾配は、0より大きく1以下の数値か、1/200 のような分数で入れてください');return;}
+      c.gw={soil:$('g-soil').value,i:v||0,iText:v?raw:''};c.updated=today();saveCases();drawPaper();drawSide(true);};
+    $('g-soil').onchange=gwSave;$('g-i').onchange=gwSave;if($('g-go'))$('g-go').onclick=()=>{const el=document.getElementById('sec-gw');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});};
     side.querySelectorAll('select[data-o]').forEach(sl=>sl.onchange=()=>{const n=sl.dataset.o;c.regs.ord=c.regs.ord.filter(x=>!(x.name===n||n.indexOf(x.name)===0));if(sl.value)c.regs.ord.push({name:n.replace(/（.*?）/g,''),item:sl.dataset.item,v:sl.value});redo();});
   }else if(ST.tab==='src'){
     const S=sourcesOf(c);const J=judge(c).filter(r=>r.src==='条例');

@@ -46,6 +46,7 @@ const root = path.resolve(__dirname, '..');
   await to('sec-22'); await shot('blue');
   await to('sec-23'); await shot('sec23');
   await to('sec-23f'); await p.waitForTimeout(2500); await shot('figs');
+  await to('sec-gw'); await shot('gw');
   // 設定、法令・条例
   await p.evaluate(() => window.scrollTo(0, 0));
   await p.click('#top .nav button[data-r=settings]'); await p.waitForTimeout(500); await shot('settings');

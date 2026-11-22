@@ -46,7 +46,8 @@ function tocOf(c){
    ['sec-2','２．履歴調査',0],['sec-21','2.1　地形・地質及び地下水概要',1],['sec-211','2.1.1　地形・地質概要',2],['sec-212','2.1.2　地下水概要',2],['sec-22','2.2　登記簿謄本による履歴調査',1],['sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',1],['sec-24','2.4　ヒアリング調査及び現地踏査',1],['sec-241','2.4.1　ヒアリング調査',2],['sec-242','2.4.2　現地踏査',2],['sec-243','2.4.3　公的機関の環境情報',2],
    ['sec-3','３．結果まとめ',0]];
   if(neg)t.push(['sec-4','４．試料採取等対象物質の選定',0],['sec-5','５．汚染のおそれの由来に応じた区分',0],['sec-51','5.1　基本的な考え方',1],['sec-52','5.2　汚染のおそれの由来の判断',1],['sec-6','６．土壌汚染のおそれの区分の分類',0],['sec-61','6.1　基本的な考え方',1],['sec-62','6.2　汚染のおそれが生じた場所の位置',1],['sec-63','6.3　土壌汚染のおそれの区分の分類',1]);
-  t.push(['sec-app1','付録１　適用条項の判定',0]);if(neg)t.push(['sec-app2','付録２　対象物質の選定根拠',0]);t.push(['sec-src',`付録${neg?'３':'２'}　出典一覧`,0]);
+  const ZN='０１２３４５６';let an=1;t.push(['sec-app1','付録１　適用条項の判定',0]);if(neg)t.push(['sec-app2',`付録${ZN[++an]}　対象物質の選定根拠`,0]);
+  if(gwSetup(c).i)t.push(['sec-gw',`付録${ZN[++an]}　地下水汚染が到達し得る距離`,0]);t.push(['sec-src',`付録${ZN[++an]}　出典一覧`,0]);
   return t;
 }
 
@@ -250,6 +251,7 @@ function renderReport(c){
   }
 
   /* 付録（原本にない、本システムの判定と出典） */
+  const ZN='０１２３４５６';let apn=neg?2:1;
   sheet('app');
   add(H('h2','sec-app1','付録１　適用条項の判定'));
   add(`<div class="pos" contenteditable="false"><p class="in1 ti">${esc(positionText(c))}</p>
@@ -257,8 +259,24 @@ function renderReport(c){
    ${ords.filter(o=>(o.extraSubstances||[]).length).map(o=>`<p class="in1">※ ${esc(o.name.replace(/（.*?）/g,''))}は、法の特定有害物質26物質に加えて「${esc(o.extraSubstances.map(x=>x.replace(/（.*$/,'')).join('、'))}」を対象とする。</p>`).join('')}${ords.filter(o=>o.desk&&o.rules.length).slice(0,1).map(o=>`<p class="in1 sm">窓口：${esc((o.desk||'').slice(0,110))}</p>`).join('')}</div>`);
   if(neg){add(H('h2','sec-app2','付録２　対象物質の選定根拠'));
     add(`<div class="why" contenteditable="false">${openConcerns(c).map(x=>{const i=INDBY[x.industry];return i?`<p class="in1">・${esc(x.use)}（${esc(i.label)}）<br>${esc(i.why)}<br><span class="sm">根拠：${esc(i.src.type==='none'?'未登録（担当者の選定）':i.src.cite)}</span>${i.official?`<br><span class="sm">公式統計：${esc(i.official.text)}</span>`:''}</p>`:'';}).join('')||'<p class="in1">懸念として扱う利用履歴は登録されていません。</p>'}</div>`);}
+  /* 付録：地下水汚染が到達し得る距離（環境省の計算ツールと同じ計算） */
+  const GWT=gwTable(c);
+  if(GWT.rows.length){const st=GWT.st;const sup=n=>String(n).replace(/-/g,'⁻').replace(/\d/g,d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[d]);
+    const kTxt=k=>{const e=Math.floor(Math.log10(k)+1e-9);return `${+(k/Math.pow(10,e)).toFixed(2)}×10${sup(e)}`;};
+    const vv=st.soil.k*86400*365*st.i/st.soil.ne;
+    sheet('app');
+    add(H('h2','sec-gw',`付録${ZN[++apn]}　地下水汚染が到達し得る距離`));
+    add(`<p class="in1 ti" contenteditable="false">${GW_TOOL.org}「地下水汚染が到達し得る距離の計算ツール」と同じ計算（2次元平面のドメニコ解析式）により、調査対象地に汚染源があると仮定した場合に、${GW_YEARS}年後に地下水汚染が到達し得る距離を物質ごとに求めた。入力した土質と動水勾配が一様に連続するものとした場合の値であり、調査対象地に汚染があることを示すものではない。</p>`);
+    add(`<p class="tt b" contenteditable="false">計算の条件</p>`);add(`<table class="reg gwc" contenteditable="false"><tbody>
+      <tr><th>帯水層の土質</th><td>${esc(st.soil.name)}（透水係数 ${kTxt(st.soil.k)} m/s、有効間隙率 ${st.soil.ne}）</td><td>${st.soilKnown?'担当者の選択':'<span class="ngv lg human">土質が未設定のため、過小に算出しないよう「礫」で計算。柱状図などで確認して選び直す</span>'}</td></tr>
+      <tr><th>動水勾配</th><td>${gwFrac(st.i)}（${(+st.i.toPrecision(3))} m/m）</td><td>${esc(st.iSrc)}${st.iManual?'':'<span class="aiv">自動推定・要確認</span>'}</td></tr>
+      <tr><th>地下水の実流速</th><td>${vv>=10?vv.toFixed(1):+vv.toPrecision(3)} m/年</td><td>透水係数×動水勾配÷有効間隙率</td></tr>
+      <tr><th>経過時間</th><td>${GW_YEARS}年</td><td>計算ツールの設定</td></tr></tbody></table>`);
+    add(`<p class="tt b" contenteditable="false">物質ごとの到達距離${GWT.all?'（試料採取等対象物質が未選定のため、全物質）':'（試料採取等対象物質）'}</p>`);
+    add(`<table class="reg gwt" contenteditable="false"><thead><tr><th>特定有害物質</th><th>地下水基準<br>(mg/L)</th><th>遅延係数</th><th>${GW_YEARS}年後の<br>到達距離(m)</th><th>ランク別<br>到達距離(m)</th><th>一般値<br>(m)</th><th>判断の目安<br>(m)</th></tr></thead><tbody>${GWT.rows.map(x=>`<tr><td>${esc(SUBBY[x.s.sub].name)}</td><td class="r">${x.s.std}</td><td class="r">${x.r.R<10?x.r.R.toFixed(2):x.r.R<1000?x.r.R.toFixed(1):Math.round(x.r.R).toLocaleString('ja-JP')}</td><td class="r">${gwFmt(x.r.d)}</td><td class="r">${gwFmt(x.r.rank)}</td><td class="r">概ね ${x.s.gen.toLocaleString('ja-JP')}</td><td class="r b">${gwFmt(x.use)}${x.over?'（一般値）':''}</td></tr>`).join('')}</tbody></table>`);
+    add(`<p class="in1 sm" contenteditable="false">※ ランク別到達距離は、到達距離を100m以下は10m単位、500m以下は50m単位、それを超える場合は100m単位に切り上げた値（計算ツールの表示）。<br>※ 判断の目安は、ランク別到達距離が一般値を超える場合に一般値とした値。計算ツールによる到達距離が一般値を超える場合は、一般値を参考にして判断することが適当とされている（平成31年3月1日 環水大土発第1903015号）。<br>※ 1,2-ジクロロエチレンは、計算ツールのシス体のパラメーターによる（トランス体も同じ値）。</p>`);}
   sheet('app');
-  add(H('h2','sec-src',`付録${neg?'３':'２'}　出典一覧`));
+  add(H('h2','sec-src',`付録${ZN[++apn]}　出典一覧`));
   add('<p class="in1 sm" contenteditable="false">出典の等級：1＝公式（法令、自治体の公表、国土地理院、登記簿、行政回答）／2＝公的資料の転載／3＝民間・Web／4＝AIの推定。所見の根拠に使うのは、等級1・2と、担当者が採用した等級3。</p>');
   add(`<div class="srcs" contenteditable="false">${S.map(x=>`<div class="src"><span class="n">${x.n}</span><div>${esc(x.title)}<span class="k">（${esc(x.kind)}）</span>${x.tier?`<span class="tr">等級${x.tier} ${TIERS[x.tier]}</span>`:''}${x.verified?(x.url?'<span class="ok">公式出典で確認</span>':''):x.own?'<span class="ng">社内の既往報告書</span>':x.tier?'':'<span class="ng">出典未確認</span>'}<br>${esc(x.detail||'')}${x.url?`<br><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url)}</a>`:''}${x.checkedOn&&x.url?`　${esc(x.checkedOn)} 確認`:''}</div></div>`).join('')}</div>`);
 
