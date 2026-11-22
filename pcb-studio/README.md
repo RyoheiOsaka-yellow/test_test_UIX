@@ -71,6 +71,7 @@ cd pcb-studio && python3 -m http.server 8765
 | `js/router.js` | 自動配線、等長化、プレーン接続ビア |
 | `js/planes.js` | 電源レールの領域と層構成の計画 |
 | `js/electrical.js` | 電源経路の概算 |
+| `js/cooler.js` | 冷却機構との干渉チェック |
 | `js/placer.js` | 散布・焼きなまし・重なり解消 |
 | `js/render.js` | Canvas 描画、3D 用テクスチャ |
 | `js/view3d.js` | 3D 表示 |
