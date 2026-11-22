@@ -164,11 +164,24 @@ function renderReport(c){
   /* 2.3 */
   sheet();
   add(H('h3','sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',note(G.maps?'':attNote(c,/地図|地形図|空中写真/)||'添付資料(一般)C「地形図・住宅地図」、添付資料(一般)D「空中写真」を参照。')+' '+ev(c,c.mapsRef)));
-  if(maps.length)add(`<p class="in1 ti">地形図・住宅地図・空中写真によって、${esc(maps[0].w)}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
-  add(maps.length?`<p class="tt b">地形図・住宅地図・空中写真による対象地の利用履歴</p><table class="mapt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="yr">${m.y} 年　(${esc(m.w)})</td><td>${E(`maps.${i}.use`,esc(m.use))}</td><td>${E(`maps.${i}.around`,esc(m.around))}</td><td>${esc(m.src)}</td></tr>`).join('')}</tbody></table>`:miss(G.maps)+(s.lat?`<p class="tt b">国土地理院の空中写真（年代別）：取得済み・判読前</p><table class="mapt"><thead><tr><th>撮影年代</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${GSI_PHOTOS.map(p=>`<tr><td class="yr">${p[2]}</td><td><span class="ngv">判読前</span></td><td><span class="ngv">判読前</span></td><td>国土地理院 空中写真${p[3]?'（'+p[3]+'）':''}</td></tr>`).join('')}</tbody></table><p class="in1 sm">写真は次ページの図2.3に掲載。用途の判読は、住宅地図・地形図とあわせて担当者が行う。</p>`:''));
+  const pr=c.photoRead;const prRow=l=>pr&&pr.rows.find(r=>r.layer===l);
+  const aiTag='<span class="aiv">AI判読案</span>';
+  if(maps.length){
+    if(G.maps)add(miss(G.maps));
+    add(`<p class="in1 ti">${G.maps?'空中写真':'地形図・住宅地図・空中写真'}によって、${esc(maps[0].w)}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
+    add(`<p class="tt b">地形図・住宅地図・空中写真による対象地の利用履歴</p><table class="mapt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="yr">${m.y} 年　(${esc(m.w)})</td><td>${E(`maps.${i}.use`,esc(m.use))}</td><td>${E(`maps.${i}.around`,esc(m.around))}</td><td>${esc(m.src)}</td></tr>`).join('')}</tbody></table>`);
+    if(maps.some(m=>m.ai))add('<p class="in1 sm">空中写真の行は、AIによる判読案を担当者が確認して採用したもの。撮影年は年代の幅で示している。</p>');
+  }else{
+    add(miss(G.maps));
+    if(s.lat){
+      add(`<p class="tt b">国土地理院の空中写真（年代別）：${pr?'AIによる判読案（担当者の確認前）':'取得済み・判読前'}</p><table class="mapt"><thead><tr><th>撮影年代</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${GSI_PHOTOS.map(p=>{const r=prRow(p[0]);return `<tr><td class="yr">${p[2]}</td><td>${r?esc(r.site)+aiTag:pr?'<span class="ngv">写真なし</span>':'<span class="ngv">判読前</span>'}</td><td>${r?esc(r.around):pr?'':'<span class="ngv">判読前</span>'}</td><td>国土地理院 空中写真${p[3]?'（'+p[3]+'）':''}</td></tr>`;}).join('')}</tbody></table>`);
+      if(pr)add(`<p class="in1 sm">判読案は、写真から読み取れる範囲をAIが下読みしたもの（${esc(pr.at)}）。確からしさ：${pr.rows.map(r=>esc(r.era.replace(/年～.*$/,'年～'))+' '+esc(r.conf)).join('、')}。${pr.summary?'<br>移り変わりの要約（AI判読案）：'+esc(pr.summary):''}</p>`);
+      add(`<p class="in1 sm">写真は次ページの図2.3に掲載。用途の判読は、住宅地図・地形図とあわせて担当者が確定する。</p><p class="scr" contenteditable="false"><button type="button" class="btn mini" data-act="photo-read">${pr?'AIで下読みをやり直す':'AIで下読みする'}</button>${pr?'<button type="button" class="btn mini" data-act="photo-adopt">判読案を利用履歴表に採用する</button>':''}<span class="scn">${pr?'採用すると、通常の年次表として編集できます。':'国土地理院の写真をAIが読み、対象地と周辺の用途の案を入れます。'}</span></p>`);
+    }
+  }
   add((c.mapNotes||[]).map((n,i)=>`<div class="num"><span>${'１２３４５６７８９'[i]||i+1}）</span>${P('mapNotes.'+i,n)}</div>`).join(''));
 
-  if(!maps.length&&s.lat){sheet('figs');mark('sec-23f');
+  if((!maps.length||maps.every(isPhoto))&&s.lat){sheet('figs');mark('sec-23f');
     add(`<p class="fc" id="sec-23f" style="margin-bottom:8px">図 2.3　年代別の空中写真（調査対象地とその周辺）${note('出典：国土地理院 地理院タイル（年代別の写真）。撮影年月日は、国土地理院「地図・空中写真閲覧サービス」で特定する。')}</p><div class="phg" contenteditable="false">${GSI_PHOTOS.map(p=>`<figure class="ph">${tileFig(s.lat,s.lng,p[0],p[1],17,{w:250,h:168,nx:1,ny:1,r:10,mini:true})}<span class="nop">この年代の写真は整備されていない</span><figcaption>${p[2]}${p[3]?'（'+p[3]+'）':''}</figcaption></figure>`).join('')}</div>`);}
   /* 2.4.1・2.4.2 */
   sheet();

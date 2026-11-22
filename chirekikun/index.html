@@ -223,6 +223,11 @@ h1,h2,h3{text-wrap:balance}
 .paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
 .paper [id]{scroll-margin-top:130px}
 .gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
+.paper .aiv{display:inline-block;margin-left:5px;color:#d0021b;border:1px solid #d0021b;background:#fff7f7;font-size:6.5pt;line-height:1.5;padding:0 3px;white-space:nowrap;vertical-align:middle}
+.paper .scr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0 1em;font-family:var(--f-body)}.paper .scr .scn{font-size:11px;color:var(--mute)}
+/* 提出用の出力：赤枠・下書きの札・付録を外し、赤字は黒に戻す */
+.paper.submit .ngv,.paper.submit .aiv{color:#000;border:0;background:none;padding:0}.paper.submit .aiv{display:none}.paper.submit .shoken.pend,.paper.submit .shoken.pend .sh,.paper.submit .shoken.pend .shh{border-color:#000;color:#000}.paper.submit .shoken.pend .sht{color:#000}.paper.submit .ph .nop{border-color:#000;color:#000;background:#fff}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:980px;overflow:hidden;background:var(--surface)}.seg button{border:0;background:none;padding:7px 13px;font:inherit;font-size:12px;color:var(--mute);cursor:pointer}.seg button.on{background:var(--ink);color:var(--bg,#fff)}
 /* 付録（原本にない部分）と、画面でだけ見せる札 */
 .paper .sheet.app .sbody{font-size:9.5pt}.paper .pos,.paper .why,.paper .srcs{margin:.6em 0 0}.paper .why p{margin-top:.8em}.paper table.jt{font-size:7.5pt;margin-top:10px}.paper .jt th:nth-child(1){width:6%}.paper .jt th:nth-child(2){width:17%}.paper .jt th:nth-child(3){width:21%}.paper .jt th:nth-child(4){width:11%}.paper .jt td.b{font-weight:700}
 .paper .unv{font-family:var(--f-body);font-size:9px;color:#9a6a12;border:1px solid #d8b860;border-radius:3px;padding:0 4px;margin-left:5px;white-space:nowrap}
@@ -264,7 +269,7 @@ h1,h2,h3{text-wrap:balance}
   #printarea{display:block;width:210mm;margin:0}
   #printarea .sheet{margin:0;border:0;box-shadow:none;min-height:0;height:296.6mm;overflow:visible;break-after:page;page-break-after:always}
   #printarea .sheet:last-child{break-after:auto;page-break-after:auto}
-  #printarea .ev,#printarea .evs,#printarea .unv,#printarea .todo{display:none!important}
+  #printarea .ev,#printarea .evs,#printarea .unv,#printarea .todo,#printarea .scr{display:none!important}
   #printarea tr,#printarea .shoken,#printarea .tview{break-inside:avoid;page-break-inside:avoid}
 }
 
@@ -632,7 +637,7 @@ function selectSubstances(c){
 }
 function openConcerns(c){return (c.concerns||[]).filter(x=>!x.resolved);}
 /* 年代別の空中写真（国土地理院 地理院タイル）。位置が分かれば、資料の共有なしで取得できる */
-const GSI_PHOTOS=[['ort_USA10','png','1945年～1950年','米軍撮影'],['ort_old10','png','1961年～1969年',''],['gazo1','jpg','1974年～1978年',''],['gazo2','jpg','1979年～1983年',''],['gazo3','jpg','1984年～1986年',''],['gazo4','jpg','1987年～1990年',''],['ort','jpg','2007年以降','オルソ画像'],['seamlessphoto','jpg','最新','全国最新写真']];
+const GSI_PHOTOS=[['ort_USA10','png','1945年～1950年','米軍撮影',1945,'昭和20年～25年'],['ort_old10','png','1961年～1969年','',1961,'昭和36年～44年'],['gazo1','jpg','1974年～1978年','',1974,'昭和49年～53年'],['gazo2','jpg','1979年～1983年','',1979,'昭和54年～58年'],['gazo3','jpg','1984年～1986年','',1984,'昭和59年～61年'],['gazo4','jpg','1987年～1990年','',1987,'昭和62年～平成2年'],['ort','jpg','2007年以降','オルソ画像',2007,'平成19年以降'],['seamlessphoto','jpg','最新','全国最新写真',0,'最新']];
 /* 未取得の項目：何が無いか、どこで取得できるか、共有すると報告書のどこが埋まるか。本文では赤枠で示す */
 function gapsOf(c){
   const s=c.site||{},g=c.regs||{},out=[];const has=re=>(c.docs||[]).some(d=>re.test(d.kind||''));
@@ -642,7 +647,7 @@ function gapsOf(c){
   if(!(c.land||[]).length)add('land','sec-22','登記簿謄本（土地・建物・閉鎖登記簿、旧土地台帳）','法務局の窓口、または登記情報提供サービス（一般財団法人 民事法務協会）','2.2 の地番ごとの履歴表、地番の変遷、建物・法人の抽出、1.1 の地目・所有者');
   if(!has(/公図/)&&!c.source)add('kozu','sec-172','公図','法務局の窓口、または登記情報提供サービス（一般財団法人 民事法務協会）','図1.7-2 調査対象地地番図、6.3 の区分図');
   if(!s.geoText)add('geo','sec-211','地形・地質の記述','下の治水地形分類図（国土地理院）と、表層地質図（産業技術総合研究所 地質図Navi 等）を読んで記入','2.1.1 地形・地質概要');
-  if(!(c.maps||[]).length)add('maps','sec-23','住宅地図・旧版地形図','住宅地図は国立国会図書館・都道府県立図書館の所蔵または発行元、旧版地形図は国土地理院の謄本交付','2.3 の年次ごとの利用履歴表（対象地用途・周辺地の土地利用）と、利用履歴からの懸念の抽出');
+  if(!(c.maps||[]).some(m=>!isPhoto(m)))add('maps','sec-23','住宅地図・旧版地形図','住宅地図は国立国会図書館・都道府県立図書館の所蔵または発行元、旧版地形図は国土地理院の謄本交付','2.3 の年次ごとの利用履歴表（対象地用途・周辺地の土地利用）と、利用履歴からの懸念の抽出');
   if(!(c.hearing||[]).length)add('hearing','sec-241','ヒアリングの記録','土地所有者・管理者・近隣住民への聴取（聴取調査票）','2.4.1 の聴取内容、懸念のある利用履歴の確定・解消');
   if(!c.siteVisit)add('visit','sec-242','現地踏査の記録','現地で土地の使用状況、漏洩の痕跡・変色・臭気を確認し、写真を記録','2.4.2 の踏査結果、添付資料（現地踏査写真）');
   if(!(g.suidaku&&g.suidaku.v)||!(g.gesui&&g.gesui.v))add('fac','sec-243','特定施設の届出の有無（水質汚濁防止法・下水道法）','所管行政への照会（'+dk+'）。下水道法は下水道管理者','1.1 の特定施設の有無、2.4.3（1）、適用条項の判定（法第3条）');
@@ -651,11 +656,12 @@ function gapsOf(c){
   return out;
 }
 /* 履歴を判断できる資料が1点も無いときは、所見を出さずに保留にする */
-const hasHistory=c=>!!((c.land||[]).length||(c.maps||[]).length||(c.corps||[]).length||(c.concerns||[]).length);
+const isPhoto=m=>/空中写真/.test((m&&m.src)||'');
+const hasHistory=c=>!!((c.land||[]).length||(c.maps||[]).some(m=>!isPhoto(m))||(c.corps||[]).length);
 const lvlCls=lv=>lv==='低い'?'low':lv==='否定できない'?'high':'none';
 function verdictOf(c){
   const open=openConcerns(c);
-  if(!open.length&&!hasHistory(c))return {level:'保留',headline:'資料の取得後に判定する。',text:'登記簿謄本と住宅地図・地形図がいずれも未取得のため、土壌汚染の可能性は判定していない。資料を共有すると、利用履歴に基づいて所見を組み立てる。'};
+  if(!open.length&&!hasHistory(c))return {level:'保留',headline:'資料の取得後に判定する。',text:'登記簿謄本と住宅地図・地形図がいずれも未取得のため（空中写真の判読だけでは判定しない）、土壌汚染の可能性は判定していない。資料を共有すると、利用履歴に基づいて所見を組み立てる。'};
   if(!open.length){const res=(c.concerns||[]).filter(x=>x.resolved&&(!x.pending||x.resolveNote));
     return {level:'低い',headline:'土壌汚染の可能性は低いと判断する。',text:'対象地における製造事業等の利用履歴及び「土壌汚染対策法」に規定する特定有害物質の使用等'+(res.length?`に関する履歴事項は無かったが、過去に${res.map(x=>x.use).join('、')}の利用が確認された。しかしながら、${res.map(x=>x.resolveNote||'有害物質の使用は確認されなかった').join('。また、')}ことから、土壌汚染の可能性は低いものと判断する。`:'は確認されなかった。よって、土壌汚染の可能性は低いものと判断する。')};}
   const parts=open.map(x=>`${x.period?x.period+'に':''}${x.use}としての利用履歴がある事が${x.basis}にて確認が取れた`);
@@ -925,11 +931,24 @@ function renderReport(c){
   /* 2.3 */
   sheet();
   add(H('h3','sec-23','2.3　地形図・住宅地図・空中写真による履歴調査',note(G.maps?'':attNote(c,/地図|地形図|空中写真/)||'添付資料(一般)C「地形図・住宅地図」、添付資料(一般)D「空中写真」を参照。')+' '+ev(c,c.mapsRef)));
-  if(maps.length)add(`<p class="in1 ti">地形図・住宅地図・空中写真によって、${esc(maps[0].w)}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
-  add(maps.length?`<p class="tt b">地形図・住宅地図・空中写真による対象地の利用履歴</p><table class="mapt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="yr">${m.y} 年　(${esc(m.w)})</td><td>${E(`maps.${i}.use`,esc(m.use))}</td><td>${E(`maps.${i}.around`,esc(m.around))}</td><td>${esc(m.src)}</td></tr>`).join('')}</tbody></table>`:miss(G.maps)+(s.lat?`<p class="tt b">国土地理院の空中写真（年代別）：取得済み・判読前</p><table class="mapt"><thead><tr><th>撮影年代</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${GSI_PHOTOS.map(p=>`<tr><td class="yr">${p[2]}</td><td><span class="ngv">判読前</span></td><td><span class="ngv">判読前</span></td><td>国土地理院 空中写真${p[3]?'（'+p[3]+'）':''}</td></tr>`).join('')}</tbody></table><p class="in1 sm">写真は次ページの図2.3に掲載。用途の判読は、住宅地図・地形図とあわせて担当者が行う。</p>`:''));
+  const pr=c.photoRead;const prRow=l=>pr&&pr.rows.find(r=>r.layer===l);
+  const aiTag='<span class="aiv">AI判読案</span>';
+  if(maps.length){
+    if(G.maps)add(miss(G.maps));
+    add(`<p class="in1 ti">${G.maps?'空中写真':'地形図・住宅地図・空中写真'}によって、${esc(maps[0].w)}まで遡及した調査の結果を「地形図・住宅地図・空中写真による調査対象地の利用履歴」に示す。</p>`);
+    add(`<p class="tt b">地形図・住宅地図・空中写真による対象地の利用履歴</p><table class="mapt"><thead><tr><th>地図年次</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${maps.map((m,i)=>`<tr><td class="yr">${m.y} 年　(${esc(m.w)})</td><td>${E(`maps.${i}.use`,esc(m.use))}</td><td>${E(`maps.${i}.around`,esc(m.around))}</td><td>${esc(m.src)}</td></tr>`).join('')}</tbody></table>`);
+    if(maps.some(m=>m.ai))add('<p class="in1 sm">空中写真の行は、AIによる判読案を担当者が確認して採用したもの。撮影年は年代の幅で示している。</p>');
+  }else{
+    add(miss(G.maps));
+    if(s.lat){
+      add(`<p class="tt b">国土地理院の空中写真（年代別）：${pr?'AIによる判読案（担当者の確認前）':'取得済み・判読前'}</p><table class="mapt"><thead><tr><th>撮影年代</th><th>対象地用途</th><th>周辺地の土地利用</th><th>根拠資料</th></tr></thead><tbody>${GSI_PHOTOS.map(p=>{const r=prRow(p[0]);return `<tr><td class="yr">${p[2]}</td><td>${r?esc(r.site)+aiTag:pr?'<span class="ngv">写真なし</span>':'<span class="ngv">判読前</span>'}</td><td>${r?esc(r.around):pr?'':'<span class="ngv">判読前</span>'}</td><td>国土地理院 空中写真${p[3]?'（'+p[3]+'）':''}</td></tr>`;}).join('')}</tbody></table>`);
+      if(pr)add(`<p class="in1 sm">判読案は、写真から読み取れる範囲をAIが下読みしたもの（${esc(pr.at)}）。確からしさ：${pr.rows.map(r=>esc(r.era.replace(/年～.*$/,'年～'))+' '+esc(r.conf)).join('、')}。${pr.summary?'<br>移り変わりの要約（AI判読案）：'+esc(pr.summary):''}</p>`);
+      add(`<p class="in1 sm">写真は次ページの図2.3に掲載。用途の判読は、住宅地図・地形図とあわせて担当者が確定する。</p><p class="scr" contenteditable="false"><button type="button" class="btn mini" data-act="photo-read">${pr?'AIで下読みをやり直す':'AIで下読みする'}</button>${pr?'<button type="button" class="btn mini" data-act="photo-adopt">判読案を利用履歴表に採用する</button>':''}<span class="scn">${pr?'採用すると、通常の年次表として編集できます。':'国土地理院の写真をAIが読み、対象地と周辺の用途の案を入れます。'}</span></p>`);
+    }
+  }
   add((c.mapNotes||[]).map((n,i)=>`<div class="num"><span>${'１２３４５６７８９'[i]||i+1}）</span>${P('mapNotes.'+i,n)}</div>`).join(''));
 
-  if(!maps.length&&s.lat){sheet('figs');mark('sec-23f');
+  if((!maps.length||maps.every(isPhoto))&&s.lat){sheet('figs');mark('sec-23f');
     add(`<p class="fc" id="sec-23f" style="margin-bottom:8px">図 2.3　年代別の空中写真（調査対象地とその周辺）${note('出典：国土地理院 地理院タイル（年代別の写真）。撮影年月日は、国土地理院「地図・空中写真閲覧サービス」で特定する。')}</p><div class="phg" contenteditable="false">${GSI_PHOTOS.map(p=>`<figure class="ph">${tileFig(s.lat,s.lng,p[0],p[1],17,{w:250,h:168,nx:1,ny:1,r:10,mini:true})}<span class="nop">この年代の写真は整備されていない</span><figcaption>${p[2]}${p[3]?'（'+p[3]+'）':''}</figcaption></figure>`).join('')}</div>`);}
   /* 2.4.1・2.4.2 */
   sheet();
@@ -1023,8 +1042,9 @@ async function aiDetect(){
   if(/^https?:$/.test(location.protocol))try{const r=await fetch('/api/claude',{method:'GET'});if(r.ok){const j=await r.json().catch(()=>null);if(j&&j.ok){AI.mode='proxy';return AI.mode;}}}catch(e){}
   AI.mode=(store.get('apiKey')||'')?'key':'none';return AI.mode;
 }
-async function aiCall(content,maxTokens){
+async function aiCall(content,maxTokens,opt){
   const body={model:store.get('model')||AI.model,max_tokens:maxTokens||16000,fallbacks:'default',messages:[{role:'user',content}]};
+  if(opt&&opt.effort)body.output_config={effort:opt.effort};
   let r;
   if(AI.mode==='proxy')r=await fetch('/api/claude',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
   else if(AI.mode==='key')r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':store.get('apiKey'),'anthropic-version':'2023-06-01','anthropic-beta':'server-side-fallback-2026-07-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
@@ -1133,6 +1153,53 @@ async function estimateGW(lat,lng){
   const low=ok.reduce((a,b)=>b.e<a.e?b:a);const drop=e0-low.e;
   /* 200mで1m未満の標高差は平坦とみなし、流向を決めない（低地・埋立地では地形だけで決められない） */
   return {elev:e0,dir:drop>=1.0?low.n:null,drop,r,samples:out};
+}
+
+/* ══════════ 空中写真の下読み（AI判読案） ══════════
+   国土地理院の年代別の空中写真を、対象地を中心に1枚の画像にまとめてClaudeに渡し、用途の読み取り案を受け取る。
+   結果は「判読案」として表に出し、担当者が採用するまで利用履歴・所見には使わない。 */
+async function photoImage(lat,lng,layer,ext,z){
+  const n=Math.pow(2,z),x=(lng+180)/360*n,y=(1-Math.asinh(Math.tan(lat*Math.PI/180))/Math.PI)/2*n,tx=Math.floor(x),ty=Math.floor(y);
+  const W=512,H=512,cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');g.fillStyle='#ddd';g.fillRect(0,0,W,H);
+  const ox=W/2-(256+(x-tx)*256),oy=H/2-(256+(y-ty)*256);
+  const load=(i,j)=>new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>res({i,j,im});im.onerror=()=>res({i,j,im:null});im.src=`https://cyberjapandata.gsi.go.jp/xyz/${layer}/${z}/${tx+i}/${ty+j}.${ext}`;});
+  const jobs=[];for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++)jobs.push(load(i,j));
+  const tiles=await Promise.all(jobs);if(!tiles.find(t=>t.i===0&&t.j===0).im)return null;
+  tiles.forEach(t=>{if(t.im)g.drawImage(t.im,ox+(t.i+1)*256,oy+(t.j+1)*256);});
+  g.strokeStyle='#e60012';g.lineWidth=3;g.beginPath();g.arc(W/2,H/2,20,0,Math.PI*2);g.stroke();
+  return cv.toDataURL('image/jpeg',0.88).split(',')[1];
+}
+const PHOTO_PROMPT=`あなたは土壌汚染対策法に基づく地歴調査の担当者の下読み役です。国土地理院の年代別の空中写真を、古い順に渡しました。各写真の中心の赤い丸が調査対象地の代表点です（敷地の境界は示していません。丸の中とそのすぐ外側を対象地として読んでください）。写真1枚は一辺およそ500mです。
+写真ごとに、写真から見て取れることだけを書いてください。
+- site：対象地の土地利用（例：田、畑、空地、住宅、低層の建物、大きな屋根の建物（工場・倉庫の可能性）、駐車場、資材置場）。25字以内。
+- around：周辺の土地利用。35字以内。
+- conf：判読の確からしさ。「高」「中」「低」のいずれか。
+- note：そう読んだ根拠と、写真では分からない点。60字以内。
+業種や事業者名は写真からは分からないので書かないでください。工場・給油所などに見える形状は「〜の可能性」と書いてください。解像度や影で読めないときは site を「判読不能」としてください。
+最後に summary として、年代を通した土地利用の移り変わりを120字以内でまとめてください。
+次のJSONだけを返してください（説明文・コードフェンス不要）。n は写真の番号です。
+{"photos":[{"n":1,"site":"","around":"","conf":"","note":""}],"summary":""}`;
+async function aiReadPhotos(c,onStep){
+  const s=c.site||{};if(!s.lat)throw new Error('対象地の位置が未設定です');
+  const got=[];
+  for(const p of GSI_PHOTOS){if(onStep)onStep(`写真を取得中　${p[2]}`);const b=await photoImage(s.lat,s.lng,p[0],p[1],17);if(b)got.push({p,b});}
+  if(!got.length)throw new Error('この地点の空中写真を取得できませんでした');
+  const content=[];got.forEach((g,i)=>{content.push({type:'text',text:`写真${i+1}：撮影年代 ${g.p[2]}${g.p[3]?'（'+g.p[3]+'）':''}`});content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:g.b}});});
+  content.push({type:'text',text:PHOTO_PROMPT});
+  if(onStep)onStep(`${got.length}年代の写真を判読中`);
+  const {text,usage}=await aiCall(content,8000,{effort:'high'});
+  const m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('判読結果を解釈できませんでした');
+  const j=JSON.parse(m[0]);const cut=(v,n)=>String(v==null?'':v).replace(/\s+/g,' ').trim().slice(0,n);
+  const rows=got.map((g,i)=>{const r=(j.photos||[]).find(x=>+x.n===i+1)||(j.photos||[])[i]||{};return {layer:g.p[0],era:g.p[2],site:cut(r.site,40)||'判読不能',around:cut(r.around,60),conf:/^(高|中|低)$/.test(r.conf)?r.conf:'低',note:cut(r.note,120)};});
+  c.photoRead={at:new Date().toISOString().slice(0,10),rows,summary:cut(j.summary,240),usage,adopted:false};
+  return c.photoRead;
+}
+/* 判読案を利用履歴表に採用する（担当者の操作）。以後は通常の年次表として編集できる */
+function adoptPhotoRead(c){
+  const pr=c.photoRead;if(!pr||!pr.rows.length)return 0;const year=new Date().getFullYear();let n=0;
+  pr.rows.filter(r=>r.site&&r.site!=='判読不能').forEach(r=>{const p=GSI_PHOTOS.find(x=>x[0]===r.layer);if(!p)return;const y=p[4]||year;const src=`空中写真（国土地理院 ${p[2]}${p[3]?'・'+p[3]:''}）`;
+    if(c.maps.some(m=>m.src===src))return;c.maps.push({y,w:p[4]?p[5]:toWareki(new Date()).replace(/年.*$/,'年'),use:r.site,around:r.around,src,ai:true});n++;});
+  c.maps.sort((a,b)=>a.y-b.y);pr.adopted=true;return n;
 }
 
 /* ══════════ デモ ══════════
@@ -1380,7 +1447,7 @@ function blankCase(d){
 }
 async function runCreate(d){
   const c=blankCase(d);const files=ST.files.slice();const canRead=f=>!!f.demo||AI.mode!=='none';const useAI=files.some(canRead);const allDemo=files.length>0&&files.every(f=>f.demo);
-  const steps=[['docs','資料の種類を判別',files.length?`${files.length}点`:'資料なし'],['read','資料を読み取り',useAI?`0 / ${files.length}`:files.length?'未接続のため添付として登録':'—'],['land','地番ごとの履歴を整理',''],['law','法令・条例を照合',''],['gw','地下水流向を推定',''],['draft','所見の下書き','']];
+  const steps=[['docs','資料の種類を判別',files.length?`${files.length}点`:'資料なし'],['read','資料を読み取り',useAI?`0 / ${files.length}`:files.length?'未接続のため添付として登録':'—'],['land','地番ごとの履歴を整理',''],['law','法令・条例を照合',''],['gw','地下水流向を推定','']].concat(AI.mode!=='none'&&d.lat&&!files.length?[['photo','空中写真を下読み（AI）','']]:[],[['draft','所見の下書き','']]);
   $('view').innerHTML=`<div class="wrap narrow"><div class="proc"><h1>レポートを作成しています</h1><p class="sub">${esc(c.title)}</p><div class="psteps">${steps.map(s=>`<div class="ps" id="ps-${s[0]}"><i></i><b>${s[1]}</b><span>${s[2]}</span></div>`).join('')}</div><div class="err" id="p-err"></div></div></div>`;
   const mark=(id,state,txt)=>{const e=$('ps-'+id);if(!e)return;e.className='ps '+state;if(txt!=null)e.querySelector('span').textContent=txt;};
   const tick=ms=>new Promise(r=>setTimeout(r,ms));
@@ -1403,6 +1470,7 @@ async function runCreate(d){
         c.site.gwText=g.dir?`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高と比較すると${g.dir}方向が約${g.drop.toFixed(1)}m低い。このことから調査対象地における地下水の流向は、概ね${g.dir}向きの流向が推定される。ただし、調査対象地における局所的な地下水の流れについては、調査対象地及び隣接地の地下構造物等にも影響されることに注意が必要となる。`
           :`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高差は${Math.max(0,g.drop).toFixed(1)}mとほぼ平坦である。地形からは流向を特定できないため、周辺の河川・海域の位置関係から判断する必要がある。`;mark('gw','ok',g.dir?`${g.dir}向き（標高差 ${g.drop.toFixed(1)}m）`:'平坦のため特定できず');}else mark('gw','skip','標高を取得できず');}catch(e){mark('gw','skip','標高APIに接続できず');}}
     else mark('gw',c.site.gwText?'ok':'skip',c.site.gwText?'資料の記載を採用':'位置が未設定');
+    if($('ps-photo')){mark('photo','run');try{await aiReadPhotos(c,s=>mark('photo','run',s));mark('photo','ok',`${c.photoRead.rows.length}年代の判読案`);}catch(e){mark('photo','skip','下読みできず：'+e.message);}}
     mark('draft','run');await tick(250);mark('draft','ok',c.verdict?`所見：${c.verdict.level}`:'');
     if(allDemo||(DEMO.on&&!files.length)){c.demo=true;c.demoKind=files.length?'files':'nofile';ST.cases=ST.cases.filter(x=>!x.demo||(x.demoKind||'files')!==c.demoKind);}
     ST.cases.unshift(c);saveCases();ST.files=[];ST.draft=null;await tick(350);ST.tab='review';go('case',c.id);toast('レポートを作成しました。右の「確認」に、人の目が必要な点だけを出しています');
@@ -1416,11 +1484,13 @@ function viewCase(v){
   if(!c.verdict)c.verdict=verdictOf(c);
   const lv=c.verdict.level;
   v.innerHTML=`<div class="ws-head"><div class="wh-in"><button class="btn mini" id="c-back" type="button">案件一覧</button><div class="wt"><h1>${esc(c.title)}</h1><span class="lvl ${lvlCls(lv)}">${esc(lv)}</span>${c.sample?'<span class="tag">サンプル</span>':''}</div>
-    <div class="wa"><button class="btn" id="c-word" type="button">Wordで保存</button><button class="btn pri" id="c-pdf" type="button">PDFで出力</button></div></div></div>
+    <div class="wa"><div class="seg" id="c-mode" role="group" aria-label="出力の種類"><button type="button" data-m="check" title="赤枠（未取得の注記）と付録を付けて出力します">確認用</button><button type="button" data-m="submit" title="赤枠・下書きの札・付録を外して出力します">提出用</button></div><button class="btn" id="c-word" type="button">Wordで保存</button><button class="btn pri" id="c-pdf" type="button">PDFで出力</button></div></div></div>
    <div class="ws"><nav class="ws-toc" id="c-toc" aria-label="目次"></nav><div class="ws-paper"><div class="gapbar" id="c-gaps" hidden></div><article class="paper" id="paper"></article></div>
     <aside class="ws-side"><div class="tabs2" role="tablist">${[['review','確認'],['judge','判断'],['src','出典'],['docs','資料']].map(t=>`<button type="button" role="tab" data-t="${t[0]}" class="${ST.tab===t[0]?'on':''}">${t[1]}<i id="tb-${t[0]}"></i></button>`).join('')}</div><div class="side-body" id="side"></div></aside></div>`;
   $('c-back').onclick=()=>go('cases');
-  $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
+  const segDraw=()=>$('c-mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===(ST.outMode||'check')));segDraw();
+  $('c-mode').querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.outMode=b.dataset.m;segDraw();const n=gapsOf(c).length;toast(ST.outMode==='submit'?`提出用：赤枠と付録を外して出力します${n?`（未取得の項目が${n}件残っています）`:''}`:'確認用：赤枠と付録を付けて出力します');});
+  $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;forOutput($('printarea'));$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
     const imgs=[...$('printarea').querySelectorAll('img')].filter(i=>!i.complete);const b=$('c-pdf');
     if(!imgs.length){window.print();return;}
     b.disabled=true;b.textContent='図を読み込み中…';
@@ -1469,6 +1539,11 @@ function drawPaper(){
   document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();const el=document.getElementById(a.dataset.go);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
   p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();if(el.dataset.ph!=null&&(!val||val===el.dataset.ph)){el.textContent=el.dataset.ph;return;}setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
   p.querySelectorAll('.ev').forEach(el=>el.onclick=()=>openPage(c,+el.dataset.p||1,el.dataset.doc));
+  p.querySelectorAll('[data-act=photo-read]').forEach(b=>b.onclick=async()=>{
+    if(AI.mode==='none'){toast('AIが未接続です。「設定」でAPIキーを登録するか、サーバー経由の接続にすると下読みできます');return;}
+    b.disabled=true;const t0=b.textContent;try{await aiReadPhotos(c,s=>{b.textContent=s+'…';});c.updated=today();saveCases();drawPaper();drawSide(true);toast('空中写真の判読案を入れました。内容を確認して、採用するかを決めてください');}
+    catch(e){b.disabled=false;b.textContent=t0;toast('下読みに失敗しました：'+e.message);}});
+  p.querySelectorAll('[data-act=photo-adopt]').forEach(b=>b.onclick=()=>{const n=adoptPhotoRead(c);finalizeCase(c,true);c.updated=today();saveCases();drawPaper();drawSide(true);toast(`判読案を${n}行、利用履歴表に採用しました。表の文言はその場で直せます`);});
 }
 function drawSide(keep){
   const c=curCase();const R=reviewItems(c);const open=R.filter(r=>!r.done&&r.sev!=='info');
@@ -1531,9 +1606,14 @@ function drawSide(keep){
     $('d-del').onclick=()=>{const b=$('d-del');if(b.dataset.arm){ST.cases=ST.cases.filter(x=>x.id!==c.id);saveCases();go('cases');toast('案件を削除しました');}else{b.dataset.arm='1';b.textContent='もう一度押すと削除します';b.classList.add('danger');}};
   }
 }
+/* 出力の種類に合わせて紙面の写しを整える。提出用は、赤枠・下書きの札・仮の文言・付録を外す */
+function forOutput(el){const sub=ST.outMode==='submit';el.classList.toggle('submit',sub);if(!sub)return;
+  el.querySelectorAll('.miss,.draft,.ngp,.sheet.app,.scr').forEach(e=>e.remove());
+  el.querySelectorAll('.toc a').forEach(a=>{if(/^sec-(app|src)/.test(a.dataset.go||''))a.remove();});
+  el.querySelectorAll('.ngv').forEach(e=>{if(e.querySelector('[data-ph]'))e.remove();});}
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type+';charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportWord(c){
-  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.phg,.todo,.pno,.toc i,.toc b').forEach(e=>e.remove());
+  const body=$('paper').cloneNode(true);forOutput(body);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.phg,.todo,.scr,.pno,.toc i,.toc b').forEach(e=>e.remove());
   const css='body{font-family:"ＭＳ ゴシック","MS Gothic","BIZ UDGothic",sans-serif;font-size:10.5pt;line-height:1.7}h2{font-size:11.5pt;font-weight:normal;margin:20pt 0 0}h3,h4{font-size:10.5pt;font-weight:normal;margin:16pt 0 0 7pt}p{margin:0}.in1{margin-left:10pt}.in2,.in3,.law{margin-left:33pt}.hang{margin-left:44pt;text-indent:-10pt}.ti{text-indent:10pt}.sp{margin-top:9pt}table{border-collapse:collapse;width:100%;margin:6pt 0 9pt}th,td{border:1px solid #000;padding:2pt 5pt;font-size:8pt;vertical-align:middle;font-weight:normal}th{background:#d9d9d9;text-align:center}td.c,td.v{text-align:center}.yn td{border:0;border-top:1px solid #000}.std td,.std th{font-size:7.5pt}.sheet{page-break-after:always}.cover{text-align:center;font-size:16pt}.ct{margin-top:90pt}.ct2{margin-top:180pt}.cd{margin-top:120pt}.co{margin-top:120pt}.tc,.fc,.tcap,.atth{text-align:center}.toc a{display:block;color:#000;text-decoration:none}.toc a.l1,.toc a.l2{margin-left:11pt;font-size:9.5pt}.shoken{border:1.5pt solid #000}.sh{background:#bfbfbf;text-align:center;font-weight:bold}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt;font-size:9.5pt}.fnotes{font-size:8pt;border-top:1px solid #000;margin-top:12pt;padding-top:3pt}.fnotes sup{font-size:6pt}sup.fnr{font-size:6.5pt}.figbox{border:1px solid #000;padding:60pt 10pt;text-align:center;font-size:8.5pt;color:#777}.srcs,.sm{font-size:8pt}.miss{border:1.5pt solid #d0021b;color:#a30015;padding:6pt;font-size:8.5pt;margin:8pt 0}.miss b{background:#d0021b;color:#fff}.ngv,.ngp,.draft{color:#d0021b}svg{display:none}';
   download(`${c.title}_地歴調査報告書.doc`,`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>${css}</style></head><body>${body.innerHTML}</body></html>`,'application/msword');
   toast('Word形式で保存しました（体裁はWordで調整できます）');

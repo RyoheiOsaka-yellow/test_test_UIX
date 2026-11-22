@@ -210,6 +210,11 @@ h1,h2,h3{text-wrap:balance}
 .paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
 .paper [id]{scroll-margin-top:130px}
 .gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
+.paper .aiv{display:inline-block;margin-left:5px;color:#d0021b;border:1px solid #d0021b;background:#fff7f7;font-size:6.5pt;line-height:1.5;padding:0 3px;white-space:nowrap;vertical-align:middle}
+.paper .scr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0 1em;font-family:var(--f-body)}.paper .scr .scn{font-size:11px;color:var(--mute)}
+/* 提出用の出力：赤枠・下書きの札・付録を外し、赤字は黒に戻す */
+.paper.submit .ngv,.paper.submit .aiv{color:#000;border:0;background:none;padding:0}.paper.submit .aiv{display:none}.paper.submit .shoken.pend,.paper.submit .shoken.pend .sh,.paper.submit .shoken.pend .shh{border-color:#000;color:#000}.paper.submit .shoken.pend .sht{color:#000}.paper.submit .ph .nop{border-color:#000;color:#000;background:#fff}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:980px;overflow:hidden;background:var(--surface)}.seg button{border:0;background:none;padding:7px 13px;font:inherit;font-size:12px;color:var(--mute);cursor:pointer}.seg button.on{background:var(--ink);color:var(--bg,#fff)}
 /* 付録（原本にない部分）と、画面でだけ見せる札 */
 .paper .sheet.app .sbody{font-size:9.5pt}.paper .pos,.paper .why,.paper .srcs{margin:.6em 0 0}.paper .why p{margin-top:.8em}.paper table.jt{font-size:7.5pt;margin-top:10px}.paper .jt th:nth-child(1){width:6%}.paper .jt th:nth-child(2){width:17%}.paper .jt th:nth-child(3){width:21%}.paper .jt th:nth-child(4){width:11%}.paper .jt td.b{font-weight:700}
 .paper .unv{font-family:var(--f-body);font-size:9px;color:#9a6a12;border:1px solid #d8b860;border-radius:3px;padding:0 4px;margin-left:5px;white-space:nowrap}
@@ -251,6 +256,6 @@ h1,h2,h3{text-wrap:balance}
   #printarea{display:block;width:210mm;margin:0}
   #printarea .sheet{margin:0;border:0;box-shadow:none;min-height:0;height:296.6mm;overflow:visible;break-after:page;page-break-after:always}
   #printarea .sheet:last-child{break-after:auto;page-break-after:auto}
-  #printarea .ev,#printarea .evs,#printarea .unv,#printarea .todo{display:none!important}
+  #printarea .ev,#printarea .evs,#printarea .unv,#printarea .todo,#printarea .scr{display:none!important}
   #printarea tr,#printarea .shoken,#printarea .tview{break-inside:avoid;page-break-inside:avoid}
 }

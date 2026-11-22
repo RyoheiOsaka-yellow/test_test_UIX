@@ -124,7 +124,7 @@ function blankCase(d){
 }
 async function runCreate(d){
   const c=blankCase(d);const files=ST.files.slice();const canRead=f=>!!f.demo||AI.mode!=='none';const useAI=files.some(canRead);const allDemo=files.length>0&&files.every(f=>f.demo);
-  const steps=[['docs','資料の種類を判別',files.length?`${files.length}点`:'資料なし'],['read','資料を読み取り',useAI?`0 / ${files.length}`:files.length?'未接続のため添付として登録':'—'],['land','地番ごとの履歴を整理',''],['law','法令・条例を照合',''],['gw','地下水流向を推定',''],['draft','所見の下書き','']];
+  const steps=[['docs','資料の種類を判別',files.length?`${files.length}点`:'資料なし'],['read','資料を読み取り',useAI?`0 / ${files.length}`:files.length?'未接続のため添付として登録':'—'],['land','地番ごとの履歴を整理',''],['law','法令・条例を照合',''],['gw','地下水流向を推定','']].concat(AI.mode!=='none'&&d.lat&&!files.length?[['photo','空中写真を下読み（AI）','']]:[],[['draft','所見の下書き','']]);
   $('view').innerHTML=`<div class="wrap narrow"><div class="proc"><h1>レポートを作成しています</h1><p class="sub">${esc(c.title)}</p><div class="psteps">${steps.map(s=>`<div class="ps" id="ps-${s[0]}"><i></i><b>${s[1]}</b><span>${s[2]}</span></div>`).join('')}</div><div class="err" id="p-err"></div></div></div>`;
   const mark=(id,state,txt)=>{const e=$('ps-'+id);if(!e)return;e.className='ps '+state;if(txt!=null)e.querySelector('span').textContent=txt;};
   const tick=ms=>new Promise(r=>setTimeout(r,ms));
@@ -147,6 +147,7 @@ async function runCreate(d){
         c.site.gwText=g.dir?`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高と比較すると${g.dir}方向が約${g.drop.toFixed(1)}m低い。このことから調査対象地における地下水の流向は、概ね${g.dir}向きの流向が推定される。ただし、調査対象地における局所的な地下水の流れについては、調査対象地及び隣接地の地下構造物等にも影響されることに注意が必要となる。`
           :`調査対象地の標高は約${g.elev.toFixed(1)}mであり、周囲${g.r}mの標高差は${Math.max(0,g.drop).toFixed(1)}mとほぼ平坦である。地形からは流向を特定できないため、周辺の河川・海域の位置関係から判断する必要がある。`;mark('gw','ok',g.dir?`${g.dir}向き（標高差 ${g.drop.toFixed(1)}m）`:'平坦のため特定できず');}else mark('gw','skip','標高を取得できず');}catch(e){mark('gw','skip','標高APIに接続できず');}}
     else mark('gw',c.site.gwText?'ok':'skip',c.site.gwText?'資料の記載を採用':'位置が未設定');
+    if($('ps-photo')){mark('photo','run');try{await aiReadPhotos(c,s=>mark('photo','run',s));mark('photo','ok',`${c.photoRead.rows.length}年代の判読案`);}catch(e){mark('photo','skip','下読みできず：'+e.message);}}
     mark('draft','run');await tick(250);mark('draft','ok',c.verdict?`所見：${c.verdict.level}`:'');
     if(allDemo||(DEMO.on&&!files.length)){c.demo=true;c.demoKind=files.length?'files':'nofile';ST.cases=ST.cases.filter(x=>!x.demo||(x.demoKind||'files')!==c.demoKind);}
     ST.cases.unshift(c);saveCases();ST.files=[];ST.draft=null;await tick(350);ST.tab='review';go('case',c.id);toast('レポートを作成しました。右の「確認」に、人の目が必要な点だけを出しています');
@@ -160,11 +161,13 @@ function viewCase(v){
   if(!c.verdict)c.verdict=verdictOf(c);
   const lv=c.verdict.level;
   v.innerHTML=`<div class="ws-head"><div class="wh-in"><button class="btn mini" id="c-back" type="button">案件一覧</button><div class="wt"><h1>${esc(c.title)}</h1><span class="lvl ${lvlCls(lv)}">${esc(lv)}</span>${c.sample?'<span class="tag">サンプル</span>':''}</div>
-    <div class="wa"><button class="btn" id="c-word" type="button">Wordで保存</button><button class="btn pri" id="c-pdf" type="button">PDFで出力</button></div></div></div>
+    <div class="wa"><div class="seg" id="c-mode" role="group" aria-label="出力の種類"><button type="button" data-m="check" title="赤枠（未取得の注記）と付録を付けて出力します">確認用</button><button type="button" data-m="submit" title="赤枠・下書きの札・付録を外して出力します">提出用</button></div><button class="btn" id="c-word" type="button">Wordで保存</button><button class="btn pri" id="c-pdf" type="button">PDFで出力</button></div></div></div>
    <div class="ws"><nav class="ws-toc" id="c-toc" aria-label="目次"></nav><div class="ws-paper"><div class="gapbar" id="c-gaps" hidden></div><article class="paper" id="paper"></article></div>
     <aside class="ws-side"><div class="tabs2" role="tablist">${[['review','確認'],['judge','判断'],['src','出典'],['docs','資料']].map(t=>`<button type="button" role="tab" data-t="${t[0]}" class="${ST.tab===t[0]?'on':''}">${t[1]}<i id="tb-${t[0]}"></i></button>`).join('')}</div><div class="side-body" id="side"></div></aside></div>`;
   $('c-back').onclick=()=>go('cases');
-  $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
+  const segDraw=()=>$('c-mode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===(ST.outMode||'check')));segDraw();
+  $('c-mode').querySelectorAll('button').forEach(b=>b.onclick=()=>{ST.outMode=b.dataset.m;segDraw();const n=gapsOf(c).length;toast(ST.outMode==='submit'?`提出用：赤枠と付録を外して出力します${n?`（未取得の項目が${n}件残っています）`:''}`:'確認用：赤枠と付録を付けて出力します');});
+  $('c-pdf').onclick=()=>{$('printarea').innerHTML=$('paper').innerHTML;forOutput($('printarea'));$('printarea').querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
     const imgs=[...$('printarea').querySelectorAll('img')].filter(i=>!i.complete);const b=$('c-pdf');
     if(!imgs.length){window.print();return;}
     b.disabled=true;b.textContent='図を読み込み中…';
@@ -213,6 +216,11 @@ function drawPaper(){
   document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();const el=document.getElementById(a.dataset.go);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
   p.querySelectorAll('[data-path]').forEach(el=>el.addEventListener('blur',()=>{const val=el.innerText.replace(/ /g,' ').trim();if(el.dataset.ph!=null&&(!val||val===el.dataset.ph)){el.textContent=el.dataset.ph;return;}setPath(c,el.dataset.path,val);if(el.dataset.path.indexOf('verdict.')===0)c.verdictEdited=true;c.updated=today();saveCases();drawSide(true);}));
   p.querySelectorAll('.ev').forEach(el=>el.onclick=()=>openPage(c,+el.dataset.p||1,el.dataset.doc));
+  p.querySelectorAll('[data-act=photo-read]').forEach(b=>b.onclick=async()=>{
+    if(AI.mode==='none'){toast('AIが未接続です。「設定」でAPIキーを登録するか、サーバー経由の接続にすると下読みできます');return;}
+    b.disabled=true;const t0=b.textContent;try{await aiReadPhotos(c,s=>{b.textContent=s+'…';});c.updated=today();saveCases();drawPaper();drawSide(true);toast('空中写真の判読案を入れました。内容を確認して、採用するかを決めてください');}
+    catch(e){b.disabled=false;b.textContent=t0;toast('下読みに失敗しました：'+e.message);}});
+  p.querySelectorAll('[data-act=photo-adopt]').forEach(b=>b.onclick=()=>{const n=adoptPhotoRead(c);finalizeCase(c,true);c.updated=today();saveCases();drawPaper();drawSide(true);toast(`判読案を${n}行、利用履歴表に採用しました。表の文言はその場で直せます`);});
 }
 function drawSide(keep){
   const c=curCase();const R=reviewItems(c);const open=R.filter(r=>!r.done&&r.sev!=='info');
@@ -275,9 +283,14 @@ function drawSide(keep){
     $('d-del').onclick=()=>{const b=$('d-del');if(b.dataset.arm){ST.cases=ST.cases.filter(x=>x.id!==c.id);saveCases();go('cases');toast('案件を削除しました');}else{b.dataset.arm='1';b.textContent='もう一度押すと削除します';b.classList.add('danger');}};
   }
 }
+/* 出力の種類に合わせて紙面の写しを整える。提出用は、赤枠・下書きの札・仮の文言・付録を外す */
+function forOutput(el){const sub=ST.outMode==='submit';el.classList.toggle('submit',sub);if(!sub)return;
+  el.querySelectorAll('.miss,.draft,.ngp,.sheet.app,.scr').forEach(e=>e.remove());
+  el.querySelectorAll('.toc a').forEach(a=>{if(/^sec-(app|src)/.test(a.dataset.go||''))a.remove();});
+  el.querySelectorAll('.ngv').forEach(e=>{if(e.querySelector('[data-ph]'))e.remove();});}
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type+';charset=utf-8'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportWord(c){
-  const body=$('paper').cloneNode(true);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.phg,.todo,.pno,.toc i,.toc b').forEach(e=>e.remove());
+  const body=$('paper').cloneNode(true);forOutput(body);body.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));body.querySelectorAll('.evs,.ev,.unv,.tfig,.phg,.todo,.scr,.pno,.toc i,.toc b').forEach(e=>e.remove());
   const css='body{font-family:"ＭＳ ゴシック","MS Gothic","BIZ UDGothic",sans-serif;font-size:10.5pt;line-height:1.7}h2{font-size:11.5pt;font-weight:normal;margin:20pt 0 0}h3,h4{font-size:10.5pt;font-weight:normal;margin:16pt 0 0 7pt}p{margin:0}.in1{margin-left:10pt}.in2,.in3,.law{margin-left:33pt}.hang{margin-left:44pt;text-indent:-10pt}.ti{text-indent:10pt}.sp{margin-top:9pt}table{border-collapse:collapse;width:100%;margin:6pt 0 9pt}th,td{border:1px solid #000;padding:2pt 5pt;font-size:8pt;vertical-align:middle;font-weight:normal}th{background:#d9d9d9;text-align:center}td.c,td.v{text-align:center}.yn td{border:0;border-top:1px solid #000}.std td,.std th{font-size:7.5pt}.sheet{page-break-after:always}.cover{text-align:center;font-size:16pt}.ct{margin-top:90pt}.ct2{margin-top:180pt}.cd{margin-top:120pt}.co{margin-top:120pt}.tc,.fc,.tcap,.atth{text-align:center}.toc a{display:block;color:#000;text-decoration:none}.toc a.l1,.toc a.l2{margin-left:11pt;font-size:9.5pt}.shoken{border:1.5pt solid #000}.sh{background:#bfbfbf;text-align:center;font-weight:bold}.shh{text-align:center;font-weight:bold;padding:6pt}.sht{padding:6pt;font-size:9.5pt}.fnotes{font-size:8pt;border-top:1px solid #000;margin-top:12pt;padding-top:3pt}.fnotes sup{font-size:6pt}sup.fnr{font-size:6.5pt}.figbox{border:1px solid #000;padding:60pt 10pt;text-align:center;font-size:8.5pt;color:#777}.srcs,.sm{font-size:8pt}.miss{border:1.5pt solid #d0021b;color:#a30015;padding:6pt;font-size:8.5pt;margin:8pt 0}.miss b{background:#d0021b;color:#fff}.ngv,.ngp,.draft{color:#d0021b}svg{display:none}';
   download(`${c.title}_地歴調査報告書.doc`,`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>${css}</style></head><body>${body.innerHTML}</body></html>`,'application/msword');
   toast('Word形式で保存しました（体裁はWordで調整できます）');
