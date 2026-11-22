@@ -13,7 +13,7 @@ def load(name):
     return json.loads(p.read_text(encoding='utf-8')) if p.exists() else None
 
 
-def registry_js():
+def registry_js(with_zones=False):
     out = []
     laws = load('laws.json')
     if laws:
@@ -21,7 +21,7 @@ def registry_js():
     ords = load('ordinances.json')
     if ords:
         out.append('ORD=' + json.dumps(ords, ensure_ascii=False) + ';')
-    zones = load('zones.json')
+    zones = load('zones.json') if with_zones else None
     if zones:
         out.append('ZONES=' + json.dumps(zones, ensure_ascii=False, separators=(',', ':')) + ';')
     ind = load('industry.json')
@@ -31,13 +31,21 @@ def registry_js():
     return '\n'.join(out)
 
 
-js = '\n'.join((src / f).read_text(encoding='utf-8') for f in ['data.js', 'samples.js', 'engine.js', 'report.js', 'ai.js', 'demo.js'])
-js += '\n/* ── registry（公式出典の調査結果） ── */\n' + registry_js() + '\n'
-js += (src / 'ui.js').read_text(encoding='utf-8')
-html = (src / 'index.tpl.html').read_text(encoding='utf-8')
-html = html.replace('/*{{CSS}}*/', (src / 'styles.css').read_text(encoding='utf-8')).replace('/*{{JS}}*/', js)
-(root / 'index.html').write_text(html, encoding='utf-8')
-print('built index.html', len(html), 'bytes')
+def build(name, with_zones):
+    js = '\n'.join((src / f).read_text(encoding='utf-8') for f in ['data.js', 'samples.js', 'engine.js', 'report.js', 'ai.js', 'demo.js'])
+    js += '\n/* ── registry（公式出典の調査結果） ── */\n' + registry_js(with_zones) + '\n'
+    js += (src / 'ui.js').read_text(encoding='utf-8')
+    html = (src / 'index.tpl.html').read_text(encoding='utf-8')
+    html = html.replace('/*{{CSS}}*/', (src / 'styles.css').read_text(encoding='utf-8')).replace('/*{{JS}}*/', js)
+    (root / name).write_text(html, encoding='utf-8')
+    print('built', name, len(html), 'bytes')
+
+
+# index.html には、指定区域の公表台帳の写し（registry/zones.json）を入れない（自治体サイトの利用条件のため、リポジトリに含めない）。
+# 手元に zones.json があるときは、台帳を埋め込んだ index.local.html を別に作る（.gitignore 済み）。
+build('index.html', False)
+if (reg / 'zones.json').exists():
+    build('index.local.html', True)
 
 
 def patch_screening():

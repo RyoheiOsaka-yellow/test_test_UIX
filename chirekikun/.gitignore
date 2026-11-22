@@ -1,0 +1,5 @@
+
+# 指定区域の公表台帳の写し（自治体サイトの利用条件のため、利用する側の環境で取得する。tools/fetch_zones.py）
+registry/zones.json
+registry/zones_cache/
+index.local.html

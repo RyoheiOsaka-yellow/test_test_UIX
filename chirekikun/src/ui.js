@@ -351,6 +351,7 @@ $('logo').onclick=()=>go('cases');
 $('demo-stop').onclick=()=>{if(DEMO.on)DEMO.abort=true;else demoEnd();};
 if(ST.user){loadCases();ST.route='cases';aiDetect().then(()=>{if(ST.route==='new')render();});}
 render();
+if(/^https?:$/.test(location.protocol)&&!ZONES.rows.length)fetch('registry/zones.json').then(r=>r.ok?r.json():null).then(j=>{if(j&&j.rows)ZONES=j;}).catch(()=>{});
 if(location.hash==='#demo')setTimeout(runDemo,500);
 if(location.hash==='#demo2')setTimeout(()=>runDemo('nofile'),500);
 window.addEventListener('resize',fitPaper);

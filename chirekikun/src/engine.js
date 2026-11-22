@@ -44,7 +44,7 @@ let ZONES={checkedOn:'',sources:[],rows:[]};
 const KAN1='〇一二三四五六七八九';
 const numKan=n=>n<10?KAN1[n]:n<20?'十'+(n%10?KAN1[n%10]:''):n<100?KAN1[Math.floor(n/10)]+'十'+(n%10?KAN1[n%10]:''):String(n);
 const normTown=t=>String(t||'').replace(/[\s　]/g,'').replace(/[０-９]/g,d=>String.fromCharCode(d.charCodeAt(0)-65248)).replace(/(\d+)丁目/g,(m,n)=>numKan(+n)+'丁目').replace(/[ケｹ]/g,'ヶ').replace(/大字|字/g,'');
-const zoneSource=s=>(ZONES.sources||[]).find(x=>x.pref===s.pref&&(!x.cities||x.cities.includes(s.city))&&!(x.exclude||[]).includes(s.city))||null;
+const zoneSource=s=>(ZONES.sources||[]).find(x=>x.pref===s.pref&&(!x.cities||x.cities.some(c=>(s.city||'').indexOf(c)===0))&&!(x.exclude||[]).some(c=>(s.city||'').indexOf(c)===0))||null;
 /* 対象地と同じ町丁目、または町丁目の代表点どうしで1.5km以内の指定区域を拾う（1.0km圏の判定に、町丁目の広がり0.5kmの余裕を見る） */
 function zoneCheck(c){
   const s=c.site||{};const src=zoneSource(s);if(!src)return null;const tn=normTown(s.town);
@@ -61,6 +61,8 @@ function applyZoneCheck(c){
   const pick=f=>z.hits.filter(h=>f==='art6'?h.k==='6':f==='art11jin'?h.k==='11'&&!/自然|埋立/.test(h.sub||''):f==='art11shizen'?h.k==='11'&&/自然/.test(h.sub||''):h.k==='11'&&/埋立/.test(h.sub||''));
   empty.forEach(f=>{const hs=pick(f);g[f]=hs.length?`要確認（${hs.some(h=>h.same)?'同じ町丁目':'周辺'}に${hs.length}件）`:'なし';});
   if(!g.zoneSrc)g.zoneSrc=`${z.src.name}（${z.src.updated||z.checkedOn+'取得'}）`;if(!g.radius&&z.geo)g.radius='半径1.0km圏内';
+  const oz=ordFor(c.site.pref,c.site.city).find(o=>(o.rules||[]).some(r=>r.trigger==='zone'));
+  if(z.src.ord&&oz&&!(g.ord||[]).some(x=>x.name===oz.name||oz.name.indexOf(x.name)===0)&&!z.hits.some(h=>h.k==='ord')){const r=oz.rules.find(r=>r.trigger==='zone');(g.ord=g.ord||[]).push({name:oz.name.replace(/（.*?）/g,''),item:r.heading||'台帳・区域',v:'なし',auto:true});}
   g.zoneAuto={checkedOn:z.checkedOn,src:z.src.id,name:z.src.name,url:z.src.url,updated:z.src.updated||'',geo:z.geo,filled:empty,
     hits:z.hits.map(h=>({k:h.k,sub:h.sub||'',city:h.city,town:h.town,lot:h.lot||'',no:h.no||'',date:h.date||'',same:h.same,d:h.d==null?null:Math.round(h.d*10)/10}))};
   return g.zoneAuto;
@@ -112,7 +114,7 @@ function judge(c){
     rq.formChange?`形質変更面積 ${fmtArea(ch)}㎡（敷地 ${fmtArea(area)}㎡）`:`敷地面積 ${fmtArea(area)}㎡。形質変更を行う場合は面積を入力して再判定`,'art4');
   L('第5条第1項','土壌汚染により健康被害が生ずるおそれがある土地の調査命令',rq.purpose==='order'?['maybe','命令の有無を確認']:['no','命令なし'],'都道府県知事等の命令による調査','art5');
   L('第14条第1項','自主調査の結果による区域指定の申請',rq.purpose==='sale'||rq.purpose==='develop'?['info','任意で申請可']:['info','—'],'法に基づかない調査で基準不適合が判明した場合、所有者等は区域指定を申請できる。本地歴調査はその前段。','art14');
-  L('第6条・第11条','要措置区域・形質変更時要届出区域の指定',inZone?['yes','区域内']:!(g.art6||g.art11jin)?['todo','未確認']:['no','指定なし'],g.zoneSrc?`確認先：${g.zoneSrc}${g.radius?'、'+g.radius:''}`:'区域指定の公表資料を確認','art6');
+  L('第6条・第11条','要措置区域・形質変更時要届出区域の指定',inZone?['yes','区域内']:!(g.art6||g.art11jin)?['todo','未確認']:[g.art6,g.art11jin,g.art11shizen,g.art11umetate].some(v=>/要確認/.test(v||''))?['maybe','周辺に指定区域・要確認']:['no','指定なし'],g.zoneSrc?`確認先：${g.zoneSrc}${g.radius?'、'+g.radius:''}`:'区域指定の公表資料を確認','art6');
   ordFor(s.pref,s.city).forEach(o=>(o.rules||[]).filter(r=>r.judge!==false).forEach(r=>{
     let st,why;const rec=(g.ord||[]).find(x=>x.name&&o.name.indexOf(x.name.replace(/（.*$/,''))===0||x.name===o.name);
     if(r.trigger==='area'){const th=+r.threshold||0,th2=+r.threshold2||0;const site=r.areaBasis==='site';const val=site?area:ch;
