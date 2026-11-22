@@ -70,7 +70,12 @@ export class View3D {
   updateCam() {
     const c = this.cam, t = this.target, ce = Math.cos(this.el);
     c.position.set(t.x + this.dist * ce * Math.sin(this.az), t.y + this.dist * Math.sin(this.el), t.z + this.dist * ce * Math.cos(this.az));
-    c.up.set(0, 1, 0); c.lookAt(t); c.updateMatrixWorld();
+    c.up.set(0, 1, 0); c.lookAt(t);
+    // 奥行きの精度：手前の描画限界を基板のすぐ手前まで寄せる。固定値のままだと、基板表面と配線の層（0.01mm 差）が
+    // 区別できず、視点を動かすたびにちらつく
+    const R = this.board ? Math.hypot(this.board.w, this.board.h) + 80 : 400, near = Math.max(2, this.dist - R), far = this.dist + R * 12;
+    if (Math.abs(c.near - near) > near * 0.02 || Math.abs(c.far - far) > far * 0.02) { c.near = near; c.far = far; c.updateProjectionMatrix(); }
+    c.updateMatrixWorld();
   }
   aim(sx, sy) { this.updateCam(); this.ray.setFromCamera({ x: sx / this.w * 2 - 1, y: -(sy / this.h) * 2 + 1 }, this.cam); }
   // 画面上の点にある部品
@@ -101,7 +106,7 @@ export class View3D {
     const W = b.w, H = b.gridH;
     this.sc = Math.max(3, Math.min(8, Math.floor(4096 / Math.max(W, H))));                    // 内層
     this.scOut = Math.max(3, Math.min(16, Math.floor(this.maxTex / Math.max(W, H))));     // 表裏は高精細に
-    this.slabMat = new THREE.MeshStandardMaterial({ color: 0xb9a468, roughness: 0.85, transparent: true });   // 断面は FR-4 の色
+    this.slabMat = new THREE.MeshStandardMaterial({ color: 0xb9a468, roughness: 0.85, transparent: true, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 });   // 断面は FR-4 の色
     const slab = new THREE.Mesh(new THREE.BoxGeometry(W, 2 * T - 0.04, b.h), this.slabMat); slab.position.set(W / 2, 0, b.h / 2); slab.castShadow = true; this.root.add(slab);
     if (b.tab) { // カードエッジ：キー溝（x0+11〜13）を避けて 2 枚に分ける
       const t = b.tab;
