@@ -210,6 +210,7 @@ h1,h2,h3{text-wrap:balance}
 .paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
 .paper [id]{scroll-margin-top:130px}
 .gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
+.paper table.znt{width:calc(100% - 3.2em);margin:6px 0 16px 1.6em;table-layout:auto}.paper .zn{margin-top:-10px}
 .paper .aiv{display:inline-block;margin-left:5px;color:#d0021b;border:1px solid #d0021b;background:#fff7f7;font-size:6.5pt;line-height:1.5;padding:0 3px;white-space:nowrap;vertical-align:middle}
 .paper .scr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0 1em;font-family:var(--f-body)}.paper .scr .scn{font-size:11px;color:var(--mute)}
 /* 提出用の出力：赤枠・下書きの札・付録を外し、赤字は黒に戻す */

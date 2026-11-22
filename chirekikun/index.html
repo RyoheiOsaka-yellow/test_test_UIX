@@ -223,6 +223,7 @@ h1,h2,h3{text-wrap:balance}
 .paper .ph .tfig.none{visibility:hidden}.paper .ph .tfig.none~.nop{display:flex}
 .paper [id]{scroll-margin-top:130px}
 .gapbar{max-width:210mm;box-sizing:border-box;margin:0 auto 12px;border:1.5px solid #d0021b;background:#fff7f7;color:#a30015;border-radius:8px;padding:9px 13px;font-size:12.5px;line-height:1.7}.gapbar b{margin-right:6px}.gapbar div{margin-top:2px}.gapbar a{color:#a30015;margin-right:12px;white-space:nowrap}
+.paper table.znt{width:calc(100% - 3.2em);margin:6px 0 16px 1.6em;table-layout:auto}.paper .zn{margin-top:-10px}
 .paper .aiv{display:inline-block;margin-left:5px;color:#d0021b;border:1px solid #d0021b;background:#fff7f7;font-size:6.5pt;line-height:1.5;padding:0 3px;white-space:nowrap;vertical-align:middle}
 .paper .scr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0 1em;font-family:var(--f-body)}.paper .scr .scn{font-size:11px;color:var(--mute)}
 /* 提出用の出力：赤枠・下書きの札・付録を外し、赤字は黒に戻す */
@@ -636,6 +637,34 @@ function selectSubstances(c){
   return {ids:SUB.filter(s=>ids.has(s.id)).map(s=>s.id),extra:[...extra]};
 }
 function openConcerns(c){return (c.concerns||[]).filter(x=>!x.resolved);}
+/* ══ 指定区域の公表台帳（自治体が公表している一覧の写し）との照合 ══
+   ZONES は tools/fetch_zones.py が公式ページから取得して作る（registry/zones.json）。
+   行：s=出典ID、k=区域の種類（6=要措置区域、11=形質変更時要届出区域、ord=条例の区域）、sub=細分、city・town・lot=所在地、no=指定番号、date=指定年月日、lat・lng=町丁目の代表点 */
+let ZONES={checkedOn:'',sources:[],rows:[]};
+const KAN1='〇一二三四五六七八九';
+const numKan=n=>n<10?KAN1[n]:n<20?'十'+(n%10?KAN1[n%10]:''):n<100?KAN1[Math.floor(n/10)]+'十'+(n%10?KAN1[n%10]:''):String(n);
+const normTown=t=>String(t||'').replace(/[\s　]/g,'').replace(/[０-９]/g,d=>String.fromCharCode(d.charCodeAt(0)-65248)).replace(/(\d+)丁目/g,(m,n)=>numKan(+n)+'丁目').replace(/[ケｹ]/g,'ヶ').replace(/大字|字/g,'');
+const zoneSource=s=>(ZONES.sources||[]).find(x=>x.pref===s.pref&&(!x.cities||x.cities.includes(s.city))&&!(x.exclude||[]).includes(s.city))||null;
+/* 対象地と同じ町丁目、または町丁目の代表点どうしで1.5km以内の指定区域を拾う（1.0km圏の判定に、町丁目の広がり0.5kmの余裕を見る） */
+function zoneCheck(c){
+  const s=c.site||{};const src=zoneSource(s);if(!src)return null;const tn=normTown(s.town);
+  const km=(a,b,c2,d)=>{const p=Math.PI/180;return Math.hypot((d-b)*p*Math.cos((a+c2)/2*p),(c2-a)*p)*6371;};
+  const hits=[];ZONES.rows.forEach(r=>{if(r.s!==src.id)return;const same=r.city===s.city&&normTown(r.town)===tn;const d=s.lat&&r.lat?km(s.lat,s.lng,r.lat,r.lng):null;if(same||(d!=null&&d<=1.5))hits.push({...r,same,d});});
+  hits.sort((a,b)=>(b.same-a.same)||((a.d||0)-(b.d||0)));
+  return {src,checkedOn:ZONES.checkedOn,geo:!!s.lat,hits};
+}
+/* 未記入の欄だけを台帳との照合結果で埋める。人や行政回答が入れた値は変えない */
+function applyZoneCheck(c){
+  const g=c.regs||(c.regs={ord:[]});if(g.zoneAuto&&g.zoneAuto.checkedOn===ZONES.checkedOn)return g.zoneAuto;
+  const empty=['art6','art11jin','art11shizen','art11umetate'].filter(f=>!g[f]);if(!empty.length)return null;
+  const z=zoneCheck(c);if(!z)return null;
+  const pick=f=>z.hits.filter(h=>f==='art6'?h.k==='6':f==='art11jin'?h.k==='11'&&!/自然|埋立/.test(h.sub||''):f==='art11shizen'?h.k==='11'&&/自然/.test(h.sub||''):h.k==='11'&&/埋立/.test(h.sub||''));
+  empty.forEach(f=>{const hs=pick(f);g[f]=hs.length?`要確認（${hs.some(h=>h.same)?'同じ町丁目':'周辺'}に${hs.length}件）`:'なし';});
+  if(!g.zoneSrc)g.zoneSrc=`${z.src.name}（${z.src.updated||z.checkedOn+'取得'}）`;if(!g.radius&&z.geo)g.radius='半径1.0km圏内';
+  g.zoneAuto={checkedOn:z.checkedOn,src:z.src.id,name:z.src.name,url:z.src.url,updated:z.src.updated||'',geo:z.geo,filled:empty,
+    hits:z.hits.map(h=>({k:h.k,sub:h.sub||'',city:h.city,town:h.town,lot:h.lot||'',no:h.no||'',date:h.date||'',same:h.same,d:h.d==null?null:Math.round(h.d*10)/10}))};
+  return g.zoneAuto;
+}
 /* 年代別の空中写真（国土地理院 地理院タイル）。位置が分かれば、資料の共有なしで取得できる */
 const GSI_PHOTOS=[['ort_USA10','png','1945年～1950年','米軍撮影',1945,'昭和20年～25年'],['ort_old10','png','1961年～1969年','',1961,'昭和36年～44年'],['gazo1','jpg','1974年～1978年','',1974,'昭和49年～53年'],['gazo2','jpg','1979年～1983年','',1979,'昭和54年～58年'],['gazo3','jpg','1984年～1986年','',1984,'昭和59年～61年'],['gazo4','jpg','1987年～1990年','',1987,'昭和62年～平成2年'],['ort','jpg','2007年以降','オルソ画像',2007,'平成19年以降'],['seamlessphoto','jpg','最新','全国最新写真',0,'最新']];
 /* 未取得の項目：何が無いか、どこで取得できるか、共有すると報告書のどこが埋まるか。本文では赤枠で示す */
@@ -725,6 +754,7 @@ function reviewItems(c){
     l.rows.filter(r=>r.flag).forEach(r=>add('warn','登記簿',`${l.chiban} ${r.date}：${r.flag}`,'sec-22',l.ref));});
   (c.corps||[]).filter(x=>x.flag).forEach(x=>add('warn','法人',`${x.name}：${x.flag}`,'sec-22',x.ref));
   (c.hearing||[]).filter(h=>h.flag).forEach(h=>add('bad','ヒアリング',h.flag,'sec-24',h.ref));
+  const za=c.regs&&c.regs.zoneAuto;if(za)add('warn','指定区域',za.hits.length?`公表台帳の写し（${za.checkedOn}取得）との自動照合で、${za.hits.some(h=>h.same)?'同じ町丁目':'周辺'}に指定区域が${za.hits.length}件ある。対象地が区域に含まれるか、1.0km圏内かを台帳の図面で確認し、2.4.3 の「要確認」を書き換える。`:`指定区域「なし」は、公表台帳の写し（${za.checkedOn}取得）との自動照合による。提出前に、${za.name}の公表ページで最新の指定状況を確認する。`,'sec-243');
   const s=c.site||{};const sum=(s.parcels||[]).reduce((a,p)=>a+(+p.chiseki||0),0);
   if((s.parcels||[]).length&&(s.parcels||[]).every(p=>+p.chiseki>0)&&Math.abs(sum-(+s.area||0))>0.01)add('bad','地積',`筆一覧の合計 ${sum.toFixed(2)}㎡ と敷地面積 ${s.area}㎡ が一致しない。`,'sec-11');
   const maps=resolveSame(c.maps);let asc=0,wa=0;maps.forEach((m,i)=>{if(i&&m.y<maps[i-1].y)asc++;const wy=waToYear(m.w);if(wy&&wy!==m.y)wa++;});
@@ -757,7 +787,7 @@ function sourcesOf(c){
   ordFor(c.site.pref,c.site.city).forEach(o=>push('条例',o.name,`${o.numberShort||o.number||''}${(o.lastAmendedShort||o.lastAmended)?'（最終改正：'+(o.lastAmendedShort||o.lastAmended)+'）':''}`,(o.rules.find(r=>r.url)||{}).url||(o.pages&&o.pages[0]&&o.pages[0].url)||'',ordVerified(o),o.checkedOn));
   const g=c.regs||{};
   if(g.suidaku&&g.suidaku.src)push('行政照会','水質汚濁防止法・下水道法の特定施設の届出',`${g.suidaku.src}${g.gesui&&g.gesui.src&&g.gesui.src!=='同上'?'、'+g.gesui.src:''}${g.suidaku.date?'（'+g.suidaku.date+'照会）':''}`,'',true);
-  if(g.zoneSrc)push('行政公表','土壌汚染対策法に基づく区域の指定状況',g.zoneSrc,'',true);
+  if(g.zoneSrc)push('行政公表','土壌汚染対策法に基づく区域の指定状況',g.zoneAuto?`${g.zoneSrc}。公表台帳の写しとの自動照合`:g.zoneSrc,g.zoneAuto?g.zoneAuto.url:'',true,g.zoneAuto?g.zoneAuto.checkedOn:undefined);
   push('公的地図','治水地形分類図・地理院タイル','国土交通省国土地理院 電子国土web',DATASRC[0].url,true);
   const used=[...new Set(openConcerns(c).map(x=>INDBY[x.industry]).filter(i=>i&&i.src.type!=='none'))];
   used.forEach(i=>{const n=push(i.src.type==='moe'?'環境省資料':'社内実績',`業種と特定有害物質：${i.label}`,i.src.cite,i.src.type==='moe'&&i.official?i.official.url:'',i.src.type==='moe',LAWS.checkedOn);S[n-1].own=i.src.type==='eco';
@@ -965,6 +995,8 @@ function renderReport(c){
   add(`<table class="yn"><tr><td>１）</td><td>水質汚濁防止法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${ngv(g.suidaku&&g.suidaku.v)}</td></tr><tr><td>２）</td><td>下水道法に基づく特定施設のうち特定有害物質を使用している施設</td><td>：${ngv(g.gesui&&g.gesui.v)}</td></tr></table>`);
   add(`<p class="in1">（2）土壌・地下水汚染情報</p>${G.zone?miss(G.zone):`<p class="in3 ti">調査対象地及び周辺${g.radius?'（調査対象地から'+esc(g.radius)+'）':''}における土壌汚染対策法第6条及び第11条${(g.ord||[]).length?'、並びに'+g.ord.map(o=>esc(o.name)).join('、'):''}に基づく指定区域の有無について、${esc(g.zoneSrc||'（確認先）')}で確認した。</p>`}`);
   add(`<table class="yn">${[['土壌汚染対策法第6条に基づく要措置区域',g.art6],['土壌汚染対策法第11条に基づく形質変更時要届出区域（人為等由来）',g.art11jin],['土壌汚染対策法第11条に基づく形質変更時要届出区域（自然由来）',g.art11shizen],['土壌汚染対策法第11条に基づく形質変更時要届出区域（水面埋立て土砂由来）',g.art11umetate]].concat((g.ord||[]).map(o=>[`${o.name}${/条例に基づく/.test(o.item)?'':'に基づく'}${o.item.replace(/^条例に基づく/,'に基づく')}`,o.v])).map((r,i)=>`<tr><td>${'１２３４５６７８'[i]}）</td><td>${esc(r[0])}</td><td>：${ngv(r[1])}</td></tr>`).join('')}</table>`);
+  const za=g.zoneAuto;
+  if(za)add(`<p class="in3 sm zn" contenteditable="false">※ 上記は、公表台帳の写し（${esc(za.checkedOn)}取得${za.updated?'、公表ページの更新日 '+esc(za.updated):''}）との自動照合による<span class="aiv">自動照合・要確認</span>。${za.geo?'町丁目の代表点どうしの距離で1.5km以内（1.0km圏に町丁目の広がりの余裕を加えた範囲）と、同じ町丁目の指定区域を拾っている。':'位置が未設定のため、同じ町丁目の指定区域だけを拾っている。'}</p>${za.hits.length?`<table class="reg znt"><thead><tr><th>区域の種類</th><th>所在地</th><th>指定番号</th><th>指定年月日</th><th>対象地との関係</th></tr></thead><tbody>${za.hits.slice(0,12).map(h=>`<tr><td>${h.k==='6'?'要措置区域':h.k==='11'?'形質変更時要届出区域':'条例の区域'}${h.sub?'（'+esc(h.sub)+'）':''}</td><td>${esc(h.city+h.town)}${h.lot?' '+esc(h.lot):''}</td><td class="c">${esc(h.no)}</td><td class="c">${esc(h.date)}</td><td>${h.same?'同じ町丁目':''}${h.d!=null?(h.same?'・':'')+'代表点間 約'+h.d.toFixed(1)+'km':''}</td></tr>`).join('')}</tbody></table>${za.hits.length>12?`<p class="in3 sm">ほか${za.hits.length-12}件（付録の出典の公表ページを参照）。</p>`:''}`:''}`);
   add(`<p class="in1">（3）自然由来または公有水面等に関しての情報</p>${miss(G.natural)}${PP('regs.natural',g.natural,'（自然由来・公有水面埋立に関する情報を記入）','in3 ti')}`);
   add(H('h2','sec-3','３．結果まとめ',' '+ev(c,v.ref)));
   add(`<p class="in1">各種資料による利用履歴の調査結果は以下のとおりである。</p><div class="shoken${v.level==='保留'?' pend':''}"><div class="sh">所　見</div><div class="shh">${E('verdict.headline',esc(v.headline))}</div><div class="sht" data-path="verdict.text" contenteditable="true" spellcheck="false">${esc(v.text).replace(/(土壌汚染の(?:可能性|おそれ)[^。、]*と判断(?:する|した|される)。)\s*$/,'<u>$1</u>')}</div></div>`);
@@ -1099,7 +1131,7 @@ function mergePart(c,part,docId){
   if(part.site){fill(c.site,part.site,['pref','city','town','jusho','chibanLabel','area','areaNote','geoText','gwText','gwDir','landform']);
     (part.site.parcels||[]).forEach(p=>{if(!c.site.parcels.some(q=>q.chiban===p.chiban))c.site.parcels.push(p);});}
   if(part.meta){if(part.meta.title&&!c.titleLocked)c.title=part.meta.title.replace(/\s*地歴調査.*$/,'');fill(c,part.meta,['reportDate','period']);}
-  if(part.regs){const g=c.regs;['suidaku','gesui'].forEach(k=>{if(part.regs[k]&&!g[k])g[k]=part.regs[k];});fill(g,part.regs,['zoneSrc','radius','art6','art11jin','art11shizen','art11umetate','haiki','natural']);(part.regs.ord||[]).forEach(o=>{if(!g.ord.some(x=>x.name===o.name))g.ord.push(o);});if(part.regs.p)g.ref=ref(part.regs.p);}
+  if(part.regs){const g=c.regs;if(part.regs.art6||part.regs.art11jin){(g.zoneAuto&&g.zoneAuto.filled||[]).forEach(f=>{delete g[f];});if(g.zoneAuto){delete g.zoneSrc;delete g.radius;}delete g.zoneAuto;}['suidaku','gesui'].forEach(k=>{if(part.regs[k]&&!g[k])g[k]=part.regs[k];});fill(g,part.regs,['zoneSrc','radius','art6','art11jin','art11shizen','art11umetate','haiki','natural']);(part.regs.ord||[]).forEach(o=>{if(!g.ord.some(x=>x.name===o.name))g.ord.push(o);});if(part.regs.p)g.ref=ref(part.regs.p);}
   (part.land||[]).forEach(l=>{c.land.push({chiban:l.chiban,chimoku:l.chimoku,note:l.note,ref:ref(l.p),rows:l.rows||[]});});
   (part.lineage||[]).forEach(e=>{if(!c.lineage.some(x=>x.date===e.date&&x.type===e.type))c.lineage.push(e);});
   (part.buildings||[]).forEach(b=>c.buildings.push({...b,ref:ref(b.p)}));
@@ -1115,6 +1147,7 @@ function mergePart(c,part,docId){
 /* 結合後の仕上げ：年次順、懸念の抽出、所見・物質・区分。
    keep=true は既存の案件に資料を足したとき。人が決めた懸念の扱い・所見の文章・物質・区分は残し、新しく見つかった分だけ足す。 */
 function finalizeCase(c,keep){
+  if(!c.sample&&!c.source)applyZoneCheck(c);
   c.maps.sort((a,b)=>a.y-b.y);
   c.site.area=c.site.area||c.site.parcels.reduce((a,p)=>a+(+p.chiseki||0),0);
   if(!c.site.chibanLabel&&c.site.parcels.length)c.site.chibanLabel=`${c.site.pref}${c.site.city}${c.site.town} ${c.site.parcels[0].chiban}${c.site.parcels.length>1?' 他':''}`;

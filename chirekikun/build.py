@@ -21,6 +21,9 @@ def registry_js():
     ords = load('ordinances.json')
     if ords:
         out.append('ORD=' + json.dumps(ords, ensure_ascii=False) + ';')
+    zones = load('zones.json')
+    if zones:
+        out.append('ZONES=' + json.dumps(zones, ensure_ascii=False, separators=(',', ':')) + ';')
     ind = load('industry.json')
     if ind:
         out.append('(function(){const add=' + json.dumps(ind, ensure_ascii=False) +

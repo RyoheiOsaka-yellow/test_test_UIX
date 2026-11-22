@@ -1,5 +1,5 @@
 // 空中写真のAI下読みと、出力の切り替え（確認用／提出用）の確認
-// APIは模擬応答に差し替える（--live を付けると実際のAPIに送る。APIキーは環境の中継で付与される想定）
+// APIは模擬応答に差し替える。--live を付けると実際のAPIに送る（環境変数 ANTHROPIC_API_KEY を使う）
 // 使い方: node tests/photo-ai.js index.html [出力先dir] [--live]
 const { chromium } = require('playwright');
 const path = require('path');
@@ -22,7 +22,8 @@ const fs = require('fs');
   await p.goto('file://' + path.resolve(process.argv[2]));
   await p.click('#l-demo');
   await p.waitForTimeout(400);
-  await p.evaluate(async () => { store.set('apiKey', 'sk-ant-dummy-key-replaced-by-proxy'); await aiDetect(); });
+  if (live && !process.env.ANTHROPIC_API_KEY) { console.log('ANTHROPIC_API_KEY が未設定のため、--live は実行できません'); await b.close(); process.exit(2); }
+  await p.evaluate(async k => { store.set('apiKey', k); await aiDetect(); }, live ? process.env.ANTHROPIC_API_KEY : 'sk-ant-mock');
   // 資料なしで作成（デモ②と同じ入力）。作成の途中で空中写真の下読みが走る
   await p.evaluate(() => { ST.files = []; ST.draft = Object.assign({ geoTitle: '' }, DEMO2_INPUT); go('new'); });
   await p.click('#n-run');

@@ -64,7 +64,7 @@ function mergePart(c,part,docId){
   if(part.site){fill(c.site,part.site,['pref','city','town','jusho','chibanLabel','area','areaNote','geoText','gwText','gwDir','landform']);
     (part.site.parcels||[]).forEach(p=>{if(!c.site.parcels.some(q=>q.chiban===p.chiban))c.site.parcels.push(p);});}
   if(part.meta){if(part.meta.title&&!c.titleLocked)c.title=part.meta.title.replace(/\s*地歴調査.*$/,'');fill(c,part.meta,['reportDate','period']);}
-  if(part.regs){const g=c.regs;['suidaku','gesui'].forEach(k=>{if(part.regs[k]&&!g[k])g[k]=part.regs[k];});fill(g,part.regs,['zoneSrc','radius','art6','art11jin','art11shizen','art11umetate','haiki','natural']);(part.regs.ord||[]).forEach(o=>{if(!g.ord.some(x=>x.name===o.name))g.ord.push(o);});if(part.regs.p)g.ref=ref(part.regs.p);}
+  if(part.regs){const g=c.regs;if(part.regs.art6||part.regs.art11jin){(g.zoneAuto&&g.zoneAuto.filled||[]).forEach(f=>{delete g[f];});if(g.zoneAuto){delete g.zoneSrc;delete g.radius;}delete g.zoneAuto;}['suidaku','gesui'].forEach(k=>{if(part.regs[k]&&!g[k])g[k]=part.regs[k];});fill(g,part.regs,['zoneSrc','radius','art6','art11jin','art11shizen','art11umetate','haiki','natural']);(part.regs.ord||[]).forEach(o=>{if(!g.ord.some(x=>x.name===o.name))g.ord.push(o);});if(part.regs.p)g.ref=ref(part.regs.p);}
   (part.land||[]).forEach(l=>{c.land.push({chiban:l.chiban,chimoku:l.chimoku,note:l.note,ref:ref(l.p),rows:l.rows||[]});});
   (part.lineage||[]).forEach(e=>{if(!c.lineage.some(x=>x.date===e.date&&x.type===e.type))c.lineage.push(e);});
   (part.buildings||[]).forEach(b=>c.buildings.push({...b,ref:ref(b.p)}));
@@ -80,6 +80,7 @@ function mergePart(c,part,docId){
 /* 結合後の仕上げ：年次順、懸念の抽出、所見・物質・区分。
    keep=true は既存の案件に資料を足したとき。人が決めた懸念の扱い・所見の文章・物質・区分は残し、新しく見つかった分だけ足す。 */
 function finalizeCase(c,keep){
+  if(!c.sample&&!c.source)applyZoneCheck(c);
   c.maps.sort((a,b)=>a.y-b.y);
   c.site.area=c.site.area||c.site.parcels.reduce((a,p)=>a+(+p.chiseki||0),0);
   if(!c.site.chibanLabel&&c.site.parcels.length)c.site.chibanLabel=`${c.site.pref}${c.site.city}${c.site.town} ${c.site.parcels[0].chiban}${c.site.parcels.length>1?' 他':''}`;
