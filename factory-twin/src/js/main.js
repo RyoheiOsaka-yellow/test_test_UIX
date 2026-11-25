@@ -2617,6 +2617,7 @@ function updateMovers(dt){
   movers.forEach(m=>{
     m.mesh.visible=playing;
     if(!playing) return;
+    if(m.legs){ twinTourStep(m,dt); return; }
     const lift=m.mesh.userData.lift, cargo=m.mesh.userData.cargo;
     if(m.state==="dwell"){
       // 端点で一旦停止して荷役（フォーク昇降+荷の積み下ろし）
