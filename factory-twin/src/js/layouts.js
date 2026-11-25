@@ -105,6 +105,36 @@ const DRAWING_LAYOUTS={
    ...drawTankQuad("T-",[104,103,102,101],18.0,2.4,1.32,.84,.76,"current"),
    ...["硬化剤タンク 1","硬化剤タンク 2","硬化剤タンク 3","硬化剤タンク 4"].map((n,i)=>["TNK",n,["硬化剤T-"+(i+1)],[7.9,9.6,7.9,9.6][i],[0.8,0.8,2.35,2.35][i],1.36,1.36,2.9,{only:"plan",sys:"ワニス"}]),
   ],
+  // 周辺物（原料・製品・空缶・ラック等）。図面に記載はなく、配置は仮定。設備ではないので台帳・実績とは連動しないが、通路判定の障害物には含める。
+  // [種類, 名称, x, z, w, d, h, 柄, only]
+  props:[
+   // 北壁沿い: 顔料棚・原料ラック
+   ...[-19.6,-17.6,-15.6].map((x,i)=>["SHL","顔料棚 "+(i+1),x,-18.4,1.8,.6,1.9]),
+   ...[0.5,3.4,6.3,9.2,12.1].map((x,i)=>["RCK","原料ラック "+(i+1),x,-18.3,2.6,1.1,3.2]),
+   // 北側通路の南寄り: 原料袋・フレコン・ドラム（架台への投入待ち）
+   ...[2.0,3.5,5.0,6.5,8.0,9.5].map((x,i)=>["BAG",["酸化チタン","KC-1000","ソフトン","炭カル","タルク","体質顔料"][i],x,-9.3,1.15,1.1,1.2]),
+   ...[11.2,12.6].map((x,i)=>["FRC","フレコン "+(i+1),x,-9.3,1.0,1.0,1.3]),
+   ...[-11.0,-9.6,-8.2].map((x,i)=>["DRM",["樹脂ドラム","溶剤ドラム","添加剤ドラム"][i],x,-9.3,1.2,1.2,1.0]),
+   ...[-7.2,-6.2,-5.2,-3.2,-2.2].map((x,i)=>["PTK","缶釜 "+[35,20,15,10,5][i]+"缶",x,-15.4,.5+(4-i)*.07,.5+(4-i)*.07,.55+(4-i)*.06]),
+   ...[19.6,19.6,19.6].map((x,i)=>["FRC","顔料フレコン "+(i+1),x,-12.6+i*1.3,1.0,1.0,1.3,null,"current"]),
+   ...[17.6,17.6].map((x,i)=>["FRC","投入待ちフレコン "+(i+1),x,-11.4+i*1.3,1.0,1.0,1.3,null,"plan"]),
+   ["IBC","IBCコンテナ 1",-20.2,-16.2,1.2,1.0,1.2],["IBC","IBCコンテナ 2",-20.2,-14.9,1.2,1.0,1.2],
+   // 充填機まわり: 空缶・充填済み
+   ...[-12.6,-11.3].map((x,i)=>["CAN","空缶（充填待ち）",x,10.4,1.2,1.0,1.4,"silver","current"]),
+   ...[4.6,6.0,7.4].map((x,i)=>["CAN","空缶（充填待ち）",x,11.2,1.2,1.0,1.4,"silver"]),   // 充填機の通路を塞がない位置
+   // 南西: 製品ブロック
+   ...[-20.2,-18.7,-17.2,-15.7].map((x,i)=>["CAN",["製品（ハードライン）","製品（橙縞）","製品（フォルティス）","製品（緑市松）"][i],x,10.6,1.25,1.05,1.4,["tiger","orangeStripe","blueCheck","greenCheck"][i]]),
+   ...[-20.2,-18.7,-17.2].map((x,i)=>["CAN",["製品（EPO缶）","製品（溶剤缶）","製品（フォルティス）"][i],x,12.2,1.25,1.05,1.4,["grayGreen","gray","blueCheck"][i]]),
+   // 南壁沿い（現状のみ。変更案では調色エリアになる）
+   ...[-7.5,-6.0,-4.5,-3.0,-1.5,0.0].map((x,i)=>["CAN",["製品（緑市松）","製品（ハードライン）","製品（橙縞）","製品（フォルティス）","製品（EPO缶）","製品（銀缶）"][i],x,17.9,1.25,1.05,1.4,["greenCheck","tiger","orangeStripe","blueCheck","grayGreen","silver"][i],"current"]),
+   ["NST","ネステナー 1",2.2,17.8,1.4,1.1,1.9,null,"current"],["NST","ネステナー 2",3.9,17.8,1.4,1.1,1.9,null,"current"],
+   ["RCK","製品ラック",7.0,17.9,2.6,1.1,3.2,null,"current"],
+   // 南東: 製品ドラム・IBC・ネステナー
+   ["DRM","製品ドラム 1",16.4,9.6,1.2,1.2,1.0],["DRM","製品ドラム 2",17.9,9.6,1.2,1.2,1.0],
+   ["IBC","IBCコンテナ 3",19.6,9.6,1.2,1.0,1.2],["NST","ネステナー 3",20.4,11.6,1.1,1.4,1.9],
+   ["CAN","製品（出荷待ち）",11.4,12.0,1.25,1.05,1.4,"tiger"],["CAN","製品（出荷待ち）",12.9,12.0,1.25,1.05,1.4,"blueCheck"],
+   ["FEX","消火栓",-21.2,5.6,.45,.8,1.1],["FEX","消火栓",21.2,-7.6,.45,.8,1.1],["FEX","消火栓",-12.5,18.5,.8,.45,1.1,null,"current"],
+  ],
   // 室・階段（通行不可の構造物）。[名称, x, z, w, d, h, only]
   rooms:[["事務所",-17.4,16.5,5.9,4.9,2.7],["WC",19.5,15.6,4.0,3.6,2.7],["調色事務所",-11.3,16.5,5.8,4.9,2.7,"plan"],
          ["制御盤設置スペース",18.6,-16.4,5.8,4.7,2.2,"plan"],["衝立",9.8,16.7,0.12,4.6,1.8,"plan"]],
@@ -151,6 +181,8 @@ function makeDrawingCtx(b,scen){
   c.drawing={layout:L,scen,unassigned,
     obstacles:[...L.rooms.filter(r=>!r[6]||r[6]===scen).map(r=>({name:r[0],x:r[1],z:r[2],w:r[3],d:r[4],h:r[5]})),
                ...L.stairs.filter(s=>!s[4]||s[4]===scen).map(s=>({name:"階段",x:s[0],z:s[1],w:s[2],d:s[3],h:DRAW_DECK_H}))]};
+  c.drawing.props=L.props.filter(q=>!q[8]||q[8]===scen);
+  for(const [pr,name,x,z,w,d,h] of c.drawing.props) if(pr!=='FEX') c.drawing.obstacles.push({name,x,z,w,d,h});
   for(let x=L.deck.x0;x<=L.deck.x1+.01;x+=L.deck.pitch)for(const z of L.deck.rows)c.drawing.obstacles.push({name:"架台柱",x,z,w:.25,d:.25,h:DRAW_DECK_H});   // 架台の柱は最初から障害物に含める
   return c;
 }
@@ -177,6 +209,18 @@ function twinStructure(b,ic,groups){
   for(const zn of L.zones.filter(z=>!z[6]||z[6]===scen)){const [name,x,z,w,d,col]=zn;const p=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:zn[6]?.22:.07,depthWrite:false}));p.rotation.x=-Math.PI/2;p.position.set(x,.018,z);zones.add(p);
     const e=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(w,d)),new THREE.LineBasicMaterial({color:col}));e.rotation.x=-Math.PI/2;e.position.set(x,.03,z);zones.add(e);
     v3FloorLabel(zones,name,x,z+d/2+.45,.11,zn[6]?'#ffd98a':'#b8d3ce');}
+  // 周辺物（原料・製品・空缶・ラック等）— 初期イメージの密度に合わせる
+  const propG=new THREE.Group();propG.name='twin-props';intGroup.add(propG);
+  for(const [proc,name,x,z,w,d,h,variant] of ic.drawing.props){
+    const g=makeEquipment({proc,name,x,z,w,d,h,variant:variant||null,num:null,kv:null});g.position.set(x,0,z);propG.add(g);
+  }
+  for(const [t,x,z] of [['原料・資材（仮置き）',5.5,-7.9],['顔料棚',-17.6,-17.4],['原料ラック',6.3,-16.9],['製品（出荷待ち）',-18.0,13.6],['空缶',6.0,12.3]])v3FloorLabel(zones,t,x,z,.09,'#b8d3ce');
+  // 架台上の配管ラック（製品・原料=赤、冷却水=青、エア=灰）と各設備への立下り。経路・口径は仮定。
+  const pipeY=H+2.35, px0=dk.x0+.3, px1=dk.x1-.3, pz=dk.rows[1];
+  [[0xb5382e,.055,-.24],[0x3d7fc4,.045,0],[0xa9b2b6,.035,.2]].forEach(([col,r,dz])=>{const m=v3Beam(mezzanine,[px0,pipeY,pz+dz],[px1,pipeY,pz+dz],r,col);m.material.metalness=.3;});
+  for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch){v3Beam(mezzanine,[x,H,pz],[x,pipeY+.15,pz],.05,0x5d737b);v3Box(mezzanine,.9,.06,.08,x,pipeY-.12,pz,0x5d737b);}
+  for(const it of ic.items.filter(i=>i.proc==='TNK'||(i.proc==='MILL'))){const top=Math.max(it.h+.25,H+.4);v3Beam(mezzanine,[it.x,pipeY,pz-.24],[it.x,pipeY,it.z],.03,0xb5382e);v3Beam(mezzanine,[it.x,pipeY,it.z],[it.x,top,it.z],.03,0xb5382e);}
+  v3Beam(mezzanine,[px1,pipeY,pz],[ic.W/2-.3,pipeY,pz],.055,0xb5382e);v3Beam(mezzanine,[px0,pipeY,pz],[-ic.W/2+.3,pipeY,pz],.045,0x3d7fc4);
   // 柱スパンの寸法線（図面の通り芯）
   let gx=-ic.W/2;for(const [i,s] of [1.5,6,6,6,6,6,6,6].entries()){v3FloorLabel(zones,(s*1000).toLocaleString(),gx+s/2,-ic.D/2-.9,.07,'#9fb6bd');gx+=s;v3Box(zones,.04,.01,.8,gx,.02,-ic.D/2-.6,0x9fb6bd);}
 }
