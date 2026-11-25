@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>内部3D・稼働検討 v6 | FLOW·LAB 3D — 加須工場 外観精緻化モデル v4.1</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22cc; --line:#30363d; --txt:#e6edf3; --sub:#9da7b3;
+          --good:#3fb950; --bad:#f85149; --acc:#58a6ff; --warn:#d29922; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--txt);
+              font-family:-apple-system,"Helvetica Neue","Hiragino Kaku Gothic ProN",Meiryo,sans-serif; overflow:hidden; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  .panel { position:absolute; background:var(--panel); backdrop-filter:blur(8px);
+           border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:13px; }
+  .btn { background:#21262d; color:var(--txt); border:1px solid var(--line);
+         border-radius:7px; padding:6px 10px; cursor:pointer; font-size:12px; }
+  .btn:hover { border-color:var(--acc); }
+  .btn.on { background:var(--acc); color:#06101f; border-color:var(--acc); font-weight:700; }
+  .btn:disabled { opacity:.4; cursor:default; }
+
+  #nav { top:12px; left:12px; display:flex; gap:6px; align-items:center; max-width:46vw; flex-wrap:wrap; }
+  #crumb { font-size:12px; color:var(--sub); padding:0 4px; }
+  #crumb b { color:var(--txt); }
+
+  #tools { top:12px; left:50%; transform:translateX(-50%); display:flex; gap:6px; align-items:center; }
+  #bimTools { top:56px; left:12px; display:flex; gap:6px; align-items:center; }
+  #nav { z-index:20; }
+
+  #stats { top:12px; right:12px; width:248px; max-height:calc(100vh - 24px); overflow:auto; }
+  #legend { max-height:66px; overflow-y:auto; }
+  #stats h3 { margin:0 0 8px; font-size:13px; color:var(--sub); font-weight:600; }
+  .row { display:flex; justify-content:space-between; align-items:baseline; margin:5px 0; }
+  .row .v { font-variant-numeric:tabular-nums; font-weight:700; }
+  .delta { font-size:11px; margin-left:6px; }
+  .up { color:var(--good); } .down { color:var(--bad); }
+  .sep { height:1px; background:var(--line); margin:9px 0; }
+  .hl { font-size:15px; }
+  label.fld { display:flex; justify-content:space-between; align-items:center; color:var(--sub); font-size:12px; margin:6px 0; }
+  label.fld input { width:74px; background:#0d1117; color:var(--txt); border:1px solid var(--line);
+           border-radius:6px; padding:3px 6px; text-align:right; font-size:12px; }
+
+  #play { bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:8px; align-items:center; }
+  #play .big { font-size:15px; padding:8px 16px; }
+
+
+  #hint { bottom:16px; right:12px; width:224px; color:var(--sub); font-size:11px; line-height:1.65; }
+  kbd { background:#21262d; border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:10px; }
+
+  #layers { top:104px; left:12px; width:216px; display:none; }
+  #layers h3 { margin:0 0 6px; font-size:12px; color:var(--sub); font-weight:600; }
+  #layers label { display:flex; align-items:center; gap:6px; font-size:11px; margin:3px 0; cursor:pointer; }
+  #layers .cnt { margin-left:auto; color:var(--sub); font-size:10px; }
+  #mepProp { display:none; top:104px; left:236px; width:236px; font-size:12px; }
+  #mepProp h4 { margin:0 0 6px; font-size:13px; }
+  #mepProp .kv { display:flex; justify-content:space-between; margin:3px 0; color:var(--sub); }
+  #mepProp .kv b { color:var(--txt); font-weight:600; }
+  #clashPanel { display:none; top:60px; right:548px; width:256px; max-height:52vh; overflow:auto; font-size:12px; }
+  #clashPanel .ci { padding:5px 7px; border:1px solid var(--line); border-radius:6px; margin:5px 0; cursor:pointer; }
+  #clashPanel .ci:hover { border-color:var(--bad); }
+  #photoPanel { bottom:16px; left:12px; width:240px; display:none; }
+  #photoPanel h3 { margin:0 0 6px; font-size:12px; color:var(--sub); font-weight:600; }
+  #photoThumbs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; max-height:34vh; overflow-y:auto; }
+  #photoThumbs img { width:100%; border-radius:6px; cursor:pointer; border:1px solid var(--line); display:block; }
+  #photoThumbs img:hover { border-color:var(--acc); }
+  #lightbox { position:fixed; inset:0; background:rgba(4,8,14,.88); display:none;
+              align-items:center; justify-content:center; z-index:100; cursor:zoom-out; }
+  #lightbox img { max-width:92vw; max-height:92vh; border-radius:8px; box-shadow:0 12px 48px rgba(0,0,0,.7); }
+  .pToggle { position:absolute; top:4px; right:5px; width:18px; height:18px; line-height:15px;
+    text-align:center; background:#21262d; border:1px solid var(--line); border-radius:5px;
+    cursor:pointer; font-size:11px; color:var(--sub); z-index:6; user-select:none; }
+  .pToggle:hover { border-color:var(--acc); color:var(--txt); }
+  .panel.collapsed { padding:4px 28px 4px 10px !important; min-width:0 !important; width:auto !important; }
+  .panel.collapsed > *:not(.pToggle):not(.pTitle) { display:none !important; }
+  .pTitle { display:none; font-size:11px; color:var(--sub); white-space:nowrap; }
+  .panel.collapsed > .pTitle { display:inline-block; }
+  #anaPanel { display:none; top:12px; right:272px; width:268px; max-height:86vh; overflow:auto; font-size:12px; }
+  #anaPanel h3 { margin:0 0 6px; font-size:13px; color:var(--sub); font-weight:600; }
+  #anaPanel .ci { padding:5px 7px; border:1px solid var(--line); border-radius:6px; margin:5px 0; }
+  .kv2 { font-size:11px; color:var(--sub); margin:4px 0; }
+  .anaBar { height:5px; background:#21262d; border-radius:3px; margin-top:4px; }
+  .anaBar div { height:100%; background:var(--acc); border-radius:3px; }
+  .anaRow { cursor:pointer; }
+  .anaRow:hover { border-color:var(--acc); }
+  #schPanel { display:none; position:fixed; left:50%; top:70px; transform:translateX(-50%);
+    width:620px; max-width:92vw; max-height:80vh; overflow:auto; z-index:45; }
+  #schPanel svg { width:100%; background:#0f141a; border:1px solid var(--line); border-radius:8px; }
+  #toast { position:absolute; bottom:74px; left:50%; transform:translateX(-50%); background:#21262d;
+          border:1px solid var(--line); border-radius:8px; padding:8px 14px; font-size:12px; opacity:0;
+          transition:opacity .3s; pointer-events:none; z-index:60; max-width:70vw; text-align:center; }
+  #toast.show { opacity:1; }
+  .swatch { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+  /* ---- 追加UI: ブランド / ツールチップ / ミニマップ / ツアー / スプラッシュ ---- */
+  #brand { font-weight:800; letter-spacing:.05em; color:var(--acc); font-size:13px; padding:0 8px 0 2px; white-space:nowrap; }
+  #brand b { color:var(--txt); font-weight:800; }
+  .vsep { width:1px; height:18px; background:var(--line); margin:0 3px; }
+  #tip { position:fixed; pointer-events:none; background:rgba(13,17,23,.94); border:1px solid var(--line);
+         border-radius:8px; padding:7px 10px; font-size:12px; display:none; z-index:70; max-width:280px;
+         box-shadow:0 8px 22px rgba(0,0,0,.5); line-height:1.5; }
+  #tip b { display:block; font-size:13px; margin-bottom:2px; }
+  #tip .sub { color:var(--sub); font-size:11px; }
+  #tip .tag { display:inline-block; font-size:10px; padding:0 5px; border-radius:4px; background:#21262d; margin-right:5px; color:var(--txt); }
+  #mini { margin-top:6px; }
+  #mini h3 { margin:0 0 4px; font-size:11px; color:var(--sub); font-weight:600; display:flex; justify-content:space-between; }
+  #mini h3 span:last-child { color:var(--txt); max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #miniCvs { display:block; width:224px; height:140px; border-radius:6px; background:#0b0f14; cursor:crosshair; }
+  #hint { width:300px; }
+  #tourCap { display:none; position:fixed; top:62px; left:50%; transform:translateX(-50%); z-index:55;
+             background:rgba(13,17,23,.93); border:1px solid var(--acc); border-radius:12px; padding:10px 16px 12px;
+             width:580px; max-width:90vw; box-shadow:0 10px 30px rgba(0,0,0,.55); backdrop-filter:blur(8px); }
+  #tourCap .step { color:var(--acc); font-size:11px; font-weight:700; letter-spacing:.06em; }
+  #tourCap .ttl { font-size:16px; font-weight:700; margin:3px 0 2px; }
+  #tourCap .txt { font-size:12px; color:var(--sub); line-height:1.55; }
+  #tourCap .bar { height:3px; background:#21262d; border-radius:2px; margin-top:9px; overflow:hidden; }
+  #tourCap .bar i { display:block; height:100%; background:var(--acc); width:0; }
+  #splash { position:fixed; inset:0; background:#0d1117; z-index:200; display:flex; flex-direction:column;
+            align-items:center; justify-content:center; gap:10px; transition:opacity .55s; }
+  #splash.out { opacity:0; pointer-events:none; }
+  #splash .logo { font-size:30px; font-weight:800; letter-spacing:.1em; color:var(--acc); }
+  #splash .logo b { color:var(--txt); }
+  #splash .sub { color:var(--sub); font-size:13px; }
+  #splash .bar { width:240px; height:3px; background:#21262d; border-radius:2px; overflow:hidden; margin-top:10px; }
+  #splash .bar i { display:block; height:100%; width:40%; background:var(--acc); animation:ld 1.1s infinite ease-in-out; }
+  @keyframes ld { 0%{transform:translateX(-100%)} 100%{transform:translateX(260%)} }
+
+/* Precision workspace — additive controls for the existing factory model */
+:root{--acc:#66dcc7;--panel:rgba(14,24,32,.95);--line:#30424c;--sub:#a6b7c2}
+#nav{top:12px;left:16px;max-width:calc(100vw - 310px);height:48px;padding:10px 16px;flex-wrap:nowrap}
+#brand{letter-spacing:.1em;margin-right:10px;color:#66dcc7;white-space:nowrap}
+#tools{top:70px;left:16px;transform:none;max-width:calc(100vw - 332px);flex-wrap:nowrap;overflow-x:auto;height:42px;white-space:nowrap} #tools .btn{flex-shrink:0}
+#bimTools{top:119px;left:16px;max-width:calc(100vw - 332px);flex-wrap:nowrap;overflow-x:auto;height:46px;white-space:nowrap} #bimTools .btn{flex-shrink:0}
+#stats{right:16px;top:12px;width:278px;max-height:calc(100vh - 230px)}
+#layers{top:170px;left:16px} #mepProp{top:170px;left:240px}
+#clashPanel{top:170px;right:310px} #hint{right:16px;bottom:16px;width:278px}
+#photoPanel{max-height:40vh} body.precision-open #photoPanel{left:326px;width:210px} #selPanel{max-width:calc(100vw - 640px);flex-wrap:wrap}
+#precision{position:absolute;top:178px;left:16px;bottom:88px;width:296px;padding:0;z-index:24;overflow:hidden;display:flex;flex-direction:column}
+#precision[hidden]{display:none} #precision header{padding:16px 16px 12px;border-bottom:1px solid var(--line)}
+#precision header small{color:#66dcc7;letter-spacing:.15em;font-size:9px} #precision h2{font-size:18px;margin:5px 0 10px}
+#precision select,#precision input,#precision textarea{background:#101b24;color:var(--txt);border:1px solid #364b58;border-radius:6px;padding:8px;width:100%;font:inherit;min-width:0}
+#precision select:focus,#precision input:focus,#precision textarea:focus{outline:2px solid #66dcc7;outline-offset:1px}
+#precision nav{display:flex;border-bottom:1px solid var(--line);padding:0 8px}
+#precision nav button{flex:1;border:0;border-radius:0;background:none;padding:12px 0;color:var(--sub);cursor:pointer;font-size:12px}
+#precision nav button[aria-selected=true]{color:#66dcc7;border-bottom:2px solid #66dcc7}
+#precisionBody{overflow:auto;padding:14px;flex:1;font-size:12px;line-height:1.65}
+.p-muted{color:var(--sub);font-size:11px;line-height:1.65} .p-chip{display:inline-block;border:1px solid #47605b;border-radius:4px;padding:1px 5px;font-size:10px;color:#81ddc9}
+.p-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.p-grid label{font-size:10px;color:var(--sub)}
+.p-asset{width:100%;text-align:left;padding:10px;margin-top:6px;background:#162630;border:1px solid #2e424d;border-radius:7px;color:var(--txt);cursor:pointer;line-height:1.6}
+.p-asset:hover,.p-asset.selected{border-color:#66dcc7;background:#1a353b}.p-asset small{color:#a6b7c2;font-size:10px}.p-asset strong{display:block;font-size:12px;font-weight:500}
+.p-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0}.p-kpis>div{background:#172a33;border-radius:6px;padding:8px}.p-kpis b{display:block;font-size:20px}.p-kpis small{font-size:9px;color:var(--sub)}
+.p-note{border-left:2px solid #e0ae58;background:#252820;padding:9px 10px;color:#d2c9ae;font-size:11px;margin:10px 0}
+.p-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.p-actions .btn{flex:1;white-space:nowrap}
+.p-empty{padding:15px 0;color:var(--sub)}#precisionFooter{padding:9px 14px;border-top:1px solid var(--line);font-size:10px;color:var(--sub)}
+#viewBadge{position:absolute;bottom:20px;left:16px;font-size:10px;letter-spacing:.04em;color:#afc2cd;max-width:300px;line-height:1.7;pointer-events:none}
+#qualityNote{color:#decba2;font-size:10px;line-height:1.6;border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+body.precision-open #layers{left:326px}body.precision-open #mepProp{left:550px}
+@media(max-width:1150px){#nav #crumb{display:none}#tools,#bimTools{right:310px;max-width:none}#tools{gap:4px}#tools .btn,#bimTools .btn{font-size:10px;padding:5px 7px}#precision{top:180px}#hint{font-size:10px}#selPanel{left:auto;right:310px;transform:none;max-width:calc(100vw - 640px)}}
+@media(max-width:850px){#stats{display:none}#hint{display:none}#tools,#bimTools{right:12px;max-width:none}#nav{max-width:calc(100vw - 32px);right:16px}#precision{width:270px}#selPanel{right:12px;max-width:calc(100vw - 300px)}#play{left:auto;right:12px;transform:none}#viewBadge{max-width:250px}#bimTools{top:123px}#tools{top:72px}}
+@media(max-height:700px){#precision{bottom:76px}#precision header{padding:10px 14px}#precision h2{font-size:15px}#precisionBody{padding:10px}#stats{max-height:calc(100vh - 175px)}#hint{display:none}}
+
+#v3Bar{position:absolute;left:326px;bottom:82px;display:flex;align-items:center;gap:6px;z-index:27;padding:8px 10px;max-width:calc(100vw - 636px);flex-wrap:wrap}
+#v3BarLabel{font-size:10px;color:#a9c2bb;margin-left:4px}
+#v3SectionCard{position:absolute;right:16px;top:330px;width:278px;z-index:29;padding:14px;line-height:1.7;font-size:12px;max-height:calc(100vh - 430px);overflow:auto}
+#v3SectionCard[hidden]{display:none}#v3SectionCard h3{font-size:15px;margin:5px 0 8px}#v3SectionCard ol{padding-left:20px;color:#bdd1cf}#v3SectionCard input{width:100%;accent-color:#66dcc7}
+.v3-layer{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #2a424a}.v3-layer input{width:auto!important;accent-color:#66dcc7}
+.v3-stage{border-left:2px solid #65c8b7;padding:8px 12px;background:#152e32;color:#c6ded7;line-height:1.7;font-size:11px}
+#precision nav button{font-size:11px}#v3Chapter{font-size:9px;letter-spacing:.1em;color:#6addc3}
+body.v3-walk #v3BarLabel{color:#e2cf93}body.v3-walk #app{cursor:crosshair}
+@media(max-width:1100px){#v3Bar{max-width:calc(100vw - 346px);right:16px;bottom:70px}#v3BarLabel{display:none}#v3SectionCard{top:365px;max-height:calc(100vh - 450px)}}
+@media(max-width:850px){#v3Bar{left:296px;max-width:calc(100vw - 310px);bottom:78px}#v3SectionCard{right:12px;width:235px;top:180px;max-height:calc(100vh - 300px)}#v3Bar .btn{font-size:10px}body.precision-open #photoPanel{display:none}}
+
+body.v3-section #stats{display:none}body.v3-section #v3SectionCard{top:180px;max-height:calc(100vh - 310px)}
+
+
+.v4-tabs{display:flex;gap:5px;margin-bottom:12px}.v4-tabs .btn{flex:1;padding:7px 4px;font-size:11px}.v4-detail{padding:12px;margin-top:12px;background:#203333;border:1px solid #476458;border-radius:8px}.v4-detail ul{padding-left:16px;color:#ecc18b;font-size:11px}.v4-detail li{margin:5px 0}
+#v4Status{position:absolute;right:16px;bottom:215px;width:278px;font-size:10px;color:#dfbe82;padding:8px 10px;z-index:22}
+#precision h2{font-size:16px}#precision nav button{font-size:10px}#v4LinkForm label{display:block;margin-top:7px}#v4Links{max-height:260px;overflow:auto;margin-top:10px}#precision details{margin:12px 0}
+@media(max-width:850px){#v4Status{bottom:130px;right:12px;width:230px;max-width:calc(100vw - 310px)}}
+
+#exToolbar{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:28;display:flex;gap:8px;background:rgba(19,40,39,.94)}#exToolbar[hidden]{display:none}
+body.exterior-focus #stats,body.exterior-focus #hint,body.exterior-focus #v3Bar,body.exterior-focus #v4Status,body.exterior-focus #play{display:none}
+body.exterior-focus #tools,body.exterior-focus #bimTools{max-width:calc(100vw - 32px)}
+#precision nav button{font-size:10px;white-space:nowrap}body.exterior-focus #precision{background:rgba(17,39,38,.94);border-color:#50766a}body.exterior-focus #viewBadge{color:#e3e9df;bottom:20px}
+@media(max-width:850px){#exToolbar{left:auto;right:12px;bottom:15px;transform:none;max-width:calc(100vw - 310px);flex-wrap:wrap;gap:5px}#exToolbar .btn{font-size:10px}}
+#pdApp{position:fixed;inset:0;z-index:10000;background:#f3f5f0;color:#183b35;font-family:Inter,'Noto Sans JP',system-ui,sans-serif;overflow:auto;font-size:13px;line-height:1.65}#pdApp[hidden]{display:none}#pdApp *{box-sizing:border-box}#pdApp button,#pdApp select,#pdApp input{font:inherit}#pdApp button{cursor:pointer}#pdApp header{display:flex;align-items:center;justify-content:space-between;padding:19px 32px;border-bottom:1px solid #d8e0d8;background:#fff;gap:20px}#pdApp h1{font-size:19px;margin:0;letter-spacing:.04em}#pdApp .pd-eyebrow{font-size:10px;font-weight:700;letter-spacing:.16em;color:#698078}#pdApp .pd-wrap{max-width:1600px;padding:22px 32px 40px;margin:auto}#pdApp .pd-intro{display:flex;justify-content:space-between;align-items:end;margin-bottom:20px;gap:24px}#pdApp h2{font-size:29px;line-height:1.35;margin:6px 0 8px;font-weight:600}#pdApp h3{font-size:16px;margin:0 0 14px}#pdApp p{margin:8px 0}#pdApp .pd-muted{color:#627b72;font-size:12px}#pdApp .pd-note{padding:12px 16px;border-left:3px solid #b99c62;background:#f4efe3;font-size:12px;color:#645736;margin:14px 0}#pdApp nav{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px}#pdApp button{border:1px solid #cdd8cf;background:#fff;color:#224c40;border-radius:7px;padding:8px 15px}#pdApp button.active,#pdApp .pd-primary{background:#214f42;border-color:#214f42;color:#fff}#pdApp .pd-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}#pdApp .pd-kpi{background:white;border:1px solid #dce4dc;border-radius:10px;padding:18px 20px}#pdApp .pd-kpi b{display:block;font-size:30px;line-height:1.4;font-weight:550;letter-spacing:-.035em}#pdApp .pd-kpi small{font-size:11px;color:#75867b}#pdApp .pd-card{background:#fff;border:1px solid #dce4dc;border-radius:10px;padding:22px;margin-bottom:18px}#pdApp .pd-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(310px,1fr);gap:18px;align-items:start}#pdApp .pd-controls{display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin-bottom:15px}#pdApp label{display:flex;flex-direction:column;gap:5px;color:#526e60;font-size:11px}#pdApp select,#pdApp input{border:1px solid #c9d5cc;border-radius:6px;padding:7px 10px;background:#fff;color:#214b3e;max-width:100%}#pdApp input{width:95px}#pdApp table{width:100%;border-collapse:collapse;font-size:12px}#pdApp th{color:#657d70;background:#f5f7f2;font-size:11px;font-weight:600;text-align:left;padding:10px}#pdApp td{padding:10px;border-bottom:1px solid #edf0e9;vertical-align:top}#pdApp td.num,#pdApp th.num{text-align:right;font-variant-numeric:tabular-nums}#pdApp .pd-scroll{overflow:auto;max-height:510px}#pdApp .pd-scroll thead{position:sticky;top:0}#pdApp .pd-badge{display:inline-block;padding:2px 8px;background:#e8f0e8;color:#34664c;border-radius:30px;font-size:10px}#pdApp .pd-map{width:100%;display:block;min-height:350px;max-height:600px;background:#f8f9f4;border-radius:8px}#pdApp .pd-map text{font-family:system-ui,sans-serif;pointer-events:none}#pdApp .pd-map [data-area]{cursor:pointer}#pdApp .pd-map [data-area]:hover{stroke:#19483c;stroke-width:1}#pdApp .pd-map .pd-trace{fill:none;stroke:#c17449;stroke-width:.45;opacity:.35}#pdApp .pd-bar{height:7px;background:#d9e9da;border-radius:8px;overflow:hidden;margin:5px 0}#pdApp .pd-bar i{height:100%;background:#588768;display:block}#pdApp .pd-good{color:#276342}#pdApp .pd-bad{color:#b16b3c}#pdApp .pd-actions{display:flex;flex-wrap:wrap;gap:8px}#pdApp .pd-sourceimg{width:100%;border:1px solid #dce4dc;border-radius:6px}#pdApp .pd-help{margin-top:16px;border-top:1px solid #e3e8de;padding-top:12px;font-size:12px}#pdApp .pd-help summary{cursor:pointer;font-weight:600}#pdOpen{position:fixed;right:18px;top:18px;z-index:10001;background:#eaf1e7;border:1px solid #49775c;color:#234e3e;padding:9px 17px;border-radius:7px;cursor:pointer;font-weight:700}body:has(#pdApp:not([hidden])) #pdOpen{display:none}#pdApp .pd-empty{padding:35px;text-align:center;color:#758578}#pdApp .pd-foot{font-size:11px;color:#738379;margin-top:12px}#pdApp .pd-check{display:flex;align-items:center;flex-direction:row;gap:7px}#pdApp .pd-check input{width:auto}#pdApp .pd-split{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:1000px){#pdApp .pd-grid{grid-template-columns:1fr}#pdApp .pd-wrap{padding:18px}#pdApp header{padding:15px 18px}#pdApp .pd-kpis{grid-template-columns:repeat(2,1fr)}#pdApp .pd-intro{display:block}#pdApp h2{font-size:24px}}@media(max-width:650px){#pdApp .pd-split{grid-template-columns:1fr}#pdApp .pd-card{padding:14px}#pdApp .pd-kpi{padding:12px}#pdApp .pd-kpi b{font-size:25px}#pdApp header{align-items:start}#pdApp .pd-map{min-height:260px}}
+
+body.pd-source-view .panel,body.pd-source-view #precision,body.pd-source-view #hint,body.pd-source-view #v3Bar,body.pd-source-view #exToolbar,body.pd-source-view #v4Status,body.pd-source-view #selPanel,body.pd-source-view #viewBadge{display:none!important}#pdSpatialCaption{position:fixed;left:24px;bottom:25px;z-index:10002;background:#173d35eb;padding:14px 20px;border-radius:9px;color:#e8efe2;font:13px/1.6 system-ui;max-width:600px}#pdSpatialCaption[hidden]{display:none}
+#simShell{position:fixed;inset:0;z-index:12000;pointer-events:none;color:#233d35;font:12px/1.55 system-ui,sans-serif}#simShell[hidden]{display:none}#simShell *{box-sizing:border-box}#simShell button,#simShell input,#simShell select{font:inherit}#simShell button{cursor:pointer;border:1px solid #c8d4c8;border-radius:6px;background:#fff;color:#2b5546;padding:7px 10px}#simShell button.on,#simShell .sim-primary{background:#255a46;color:#fff;border-color:#255a46}#simShell input,#simShell select{background:#fff;border:1px solid #c9d5c8;border-radius:5px;padding:6px;color:#284c3d;max-width:100%}#simShell input[type=number]{width:79px}#simShell input[type=range]{padding:0;accent-color:#b47540}#simShell label{display:flex;gap:5px;flex-direction:column;font-size:11px;color:#687f6d}#simShell .sim-top{position:absolute;left:0;right:0;top:0;height:69px;display:flex;justify-content:space-between;align-items:center;padding:12px 22px;background:#f8faf3f5;border-bottom:1px solid #d2ddcc;pointer-events:auto;gap:14px}#simShell .sim-top strong{font-size:17px}#simShell .sim-small{font-size:10px;color:#748773}#simShell .sim-actions{display:flex;gap:5px;flex-wrap:wrap}#simShell .sim-side{position:absolute;top:83px;bottom:111px;background:#f9fbf5f5;border:1px solid #d0dbcc;border-radius:10px;padding:16px;overflow:auto;pointer-events:auto;scrollbar-width:thin}#simShell .sim-left{left:14px;width:282px}#simShell .sim-right{right:14px;width:342px}#simShell h3{margin:0 0 10px;font-size:14px}#simShell h4{margin:14px 0 7px;font-size:12px}#simShell p{margin:7px 0}#simShell .sim-note{padding:9px 10px;background:#f1eadb;color:#7c6544;border-left:3px solid #b68a52;margin:10px 0;font-size:11px}#simShell .sim-fields{display:flex;flex-wrap:wrap;gap:9px;margin:10px 0}#simShell .sim-check{display:flex;flex-direction:row;align-items:center;gap:6px}#simShell .sim-separator{border-top:1px solid #dfe7d9;margin-top:14px;padding-top:14px}#simShell .sim-result{padding:12px 0;border-bottom:1px solid #e1e8dc}#simShell .sim-result b{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;display:block;color:#294e3b}#simShell .sim-result.bad b{color:#b47341}#simShell .sim-pair{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#6b806a}#simShell .sim-bar{height:6px;background:#dce5d3;border-radius:5px;margin-top:7px;overflow:hidden}#simShell .sim-bar i{display:block;background:#6b9171;height:100%}#simShell .sim-bottom{position:absolute;bottom:16px;left:310px;right:370px;padding:12px 18px;background:#fbfcf6ed;border:1px solid #c9d6c1;border-radius:9px;pointer-events:auto;min-height:79px}#simShell .sim-bottom input[type=range]{width:100%;height:10px}#simShell .sim-clock{font-size:20px;font-variant-numeric:tabular-nums;font-weight:600}#simShell .sim-hint{position:absolute;top:85px;left:310px;right:370px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}#simShell .sim-hint span{background:#eaf2e3e8;border:1px solid #c5d6bb;border-radius:20px;padding:4px 10px;color:#557049;font-size:11px}#simShell table{font-size:11px;width:100%;border-collapse:collapse}#simShell th{text-align:left;color:#75856d;font-weight:500}#simShell td{padding:7px 2px;border-bottom:1px solid #e2e9dc}#simShell td.num{text-align:right;font-variant-numeric:tabular-nums}#simShell details summary{cursor:pointer;font-weight:600;color:#426345;margin:10px 0}#simShell .sim-edge{padding:9px 0;border-bottom:1px solid #e0e9d8}#simShell .sim-edge b{font-size:12px;font-weight:550}#simShell .sim-edge button{font-size:10px;padding:3px 6px}#simShell .sim-legend{margin-top:8px;color:#74886b;font-size:11px}
+body.sim-active .panel,body.sim-active #precision,body.sim-active #hint,body.sim-active #v3Bar,body.sim-active #exToolbar,body.sim-active #v4Status,body.sim-active #selPanel,body.sim-active #viewBadge,body.sim-active #pdOpen,body.sim-active #tip,body.sim-active #toast{display:none!important}
+@media(max-width:1150px){#simShell .sim-left{width:235px}#simShell .sim-right{width:300px}#simShell .sim-bottom,#simShell .sim-hint{left:260px;right:325px}#simShell .sim-top strong{font-size:14px}}@media(max-width:850px){#simShell .sim-side{top:50%;bottom:107px;width:calc(50% - 21px);padding:10px}#simShell .sim-left{left:14px}#simShell .sim-right{right:14px}#simShell .sim-bottom{left:14px;right:14px;bottom:10px}#simShell .sim-hint{left:14px;right:14px;top:75px}#simShell .sim-top{padding:10px;height:64px}#simShell .sim-top strong{font-size:12px}#simShell .sim-top button{font-size:10px}}
+
+/* ---- 分析基盤パネル ---- */
+#twinPanel{top:12px;right:12px;bottom:12px;width:408px;z-index:40;display:flex;flex-direction:column;padding:0;overflow:hidden}
+#twinPanel.closed{display:none}
+#twinPanel header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+#twinPanel header b{font-size:13px;letter-spacing:.04em}
+#twinBody{overflow:auto;padding:12px 14px 18px;font-size:12px;line-height:1.6}
+#twinBody h3{margin:2px 0 10px;font-size:17px}#twinBody h4{margin:16px 0 6px;font-size:12px;color:var(--sub);font-weight:600;border-top:1px solid var(--line);padding-top:10px}
+.tw-eyebrow{font-size:10px;letter-spacing:.08em;color:var(--acc)}
+.tw-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
+.tw-kpi{background:#0d1117aa;border:1px solid var(--line);border-radius:8px;padding:7px 8px;min-width:0}
+.tw-kpi small{display:block;color:var(--sub);font-size:10px}.tw-kpi b{display:block;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}.tw-kpi span{display:block;color:var(--sub);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tw-t{width:100%;border-collapse:collapse;font-size:11.5px}.tw-t th{color:var(--sub);font-weight:500;text-align:left;padding:3px 4px;border-bottom:1px solid var(--line);font-size:10.5px}
+.tw-t td{padding:4px;border-bottom:1px solid #30363d77}.tw-t .n{text-align:right;font-variant-numeric:tabular-nums}
+.tw-click{cursor:pointer}.tw-click:hover td{background:#58a6ff22}
+.tw-note{color:var(--sub);font-size:11px;margin:6px 0}.tw-mute{color:var(--sub)}.tw-good{color:var(--good)}.tw-bad{color:var(--bad)}
+.tw-warn{border-left:3px solid var(--warn);background:#d2992218;padding:8px 10px;border-radius:0 6px 6px 0;font-size:11px;margin:8px 0}.tw-warn ul{margin:4px 0 0;padding-left:16px}
+.tw-seg{display:flex;gap:6px;margin:4px 0 6px}.tw-seg .btn{flex:1}.tw-check{display:flex;gap:6px;align-items:center;color:var(--sub);font-size:11.5px;margin:4px 0 8px}
+.tw-card{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin:5px 0;font-size:11.5px}.tw-foot{display:flex;gap:6px;margin-top:16px}.tw-foot .btn{flex:1}
+body.twin-open #stats,body.twin-open #hint,body.twin-open #v4Status{display:none!important}
+body.twin-open #pdOpen{display:none}
+body.sim-active #twinPanel{display:none}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<aside id="precision" class="panel" aria-label="工場精緻化ワークスペース">
+<header><small>4.1 / EXTERIOR EDITION</small><h2>設備のつながりを、見える形に。</h2><select id="pBuilding" aria-label="表示する建屋"></select></header>
+<nav aria-label="精緻化メニュー"><button data-p-tab="exterior" aria-selected="false">外観</button><button data-p-tab="space" aria-selected="false">空間</button><button data-p-tab="engineering" aria-selected="false">接続・動線</button><button data-p-tab="assets" aria-selected="true">設備台帳</button><button data-p-tab="inspect" aria-selected="false">設備詳細</button><button data-p-tab="review" aria-selected="false">配置検証</button></nav>
+<div id="precisionBody"></div><footer id="precisionFooter">概念モデル · 実測図面と設備仕様で更新可能</footer></aside>
+<div id="v3Bar" class="panel"><button id="v3Overview" class="btn">全景</button><button id="v3Walk" class="btn">作業者視点</button><button id="v3Section" class="btn" disabled>設備断面</button><span id="v3BarLabel">1 unit = 1 m · 推定モデル</span></div><div id="v3SectionCard" class="panel" hidden></div><div id="exToolbar" class="panel"><button id="exAll" class="btn">全景</button><button id="exGate" class="btn">正門</button><button id="exWh" class="btn">出荷倉庫</button><button id="exTanks" class="btn">タンク</button><button id="exSunset" class="btn">昼・夕景</button></div><div id="v4Status" class="panel"></div><div id="viewBadge">FLOW·LAB / CONNECTED EDITION V4<br>既存モデル＋詳細部品・設備属性・保守スペース</div>
+
+
+<aside id="twinPanel" class="panel" aria-label="分析基盤"><header><b>分析基盤 / ANALYTICS</b><button class="btn" id="twinClose" style="padding:2px 9px">✕</button></header><div id="twinBody"></div></aside>
+<div id="nav" class="panel">
+  <span id="brand">FLOW·LAB <b>3D</b></span>
+  <button class="btn" data-cam="top" title="1キー">俯瞰</button>
+  <button class="btn" data-cam="iso" title="2キー">斜め</button>
+  <button class="btn" data-cam="eye" title="3キー">視点</button>
+  <span id="crumb">敷地全体</span>
+  <button class="btn" id="backBtn" style="display:none">← 敷地へ戻る</button>
+  <button class="btn on" id="twinBtn" title="生産・工数・設備データと3Dを連動表示">分析基盤</button>
+</div>
+
+<div id="tools" class="panel">
+  <button id="moveBtn" class="btn">移動モード</button>
+  <button id="congBtn" class="btn">混雑表示</button>
+  <button id="baseBtn" class="btn">基準を記録</button>
+  <button id="ghostBtn" class="btn">基準を重ねる</button>
+  <button id="optBtn" class="btn" disabled>自動最適化 β</button>
+  <button id="anaBtn" class="btn">生産性分析</button>
+</div>
+
+<div id="bimTools" class="panel">
+  <button id="precisionBtn" class="btn on">設備ワークスペース</button>
+  <button id="detailBtn" class="btn on">詳細部品</button>
+  <button id="clearanceBtn" class="btn">保守余白</button>
+  <button id="labelsBtn" class="btn on">名称</button>
+  <button id="bimBtn" class="btn">BIM表示</button>
+  <button id="clashBtn" class="btn" disabled>干渉チェック</button>
+  <button id="drawBtn" class="btn">図面モード</button>
+  <button id="schBtn" class="btn" disabled>系統図</button>
+  <span class="vsep"></span>
+  <button id="shBtn" class="btn" title="太陽光の落影 ON/OFF">影</button>
+  <button id="tourBtn" class="btn" title="Tキー: 主要機能を自動でめぐるガイドツアー">▶ ガイドツアー</button>
+  <button id="shotBtn" class="btn" title="現在の画面をPNGで保存">📷 保存</button>
+</div>
+
+<div id="stats" class="panel">
+  <h3 id="statsTitle">評価指標（SLP）— 敷地全体</h3>
+  <div class="row"><span>搬送距離 / 日</span><span><span class="v" id="mDist">–</span> m<span class="delta" id="dDist"></span></span></div>
+  <div class="row"><span>動線交差</span><span><span class="v" id="mCross">–</span><span class="delta" id="dCross"></span></span></div>
+  <div class="row"><span>最長動線</span><span><span class="v" id="mLong">–</span> m<span class="delta" id="dLong"></span></span></div>
+  <div class="sep"></div>
+  <div class="row hl"><span>全体 移動工数 / 日</span><span><span class="v" id="mHours">–</span> 人時<span class="delta" id="dHours"></span></span></div>
+  <div style="font-size:10px;color:var(--sub);line-height:1.5">敷地(ﾌｫｰｸﾘﾌﾄ7km/h)＋全建屋内(徒歩4km/h)の合計。配置を動かすと即再計算。</div>
+  <div class="sep"></div>
+  <label class="fld">敷地の東西 幅(m)<input id="sw" type="number" value="260" min="80" max="600" step="10"></label>
+  <div id="qualityNote">仮定値による比較試算。建屋・設備・距離をメートル座標で統一。工数は成立経路の移動時間のみ。未到達の搬送・荷役・待ちは除外。</div><div id="mini"><h3><span>ミニマップ（クリックで移動）</span><span id="miniLbl"></span></h3><canvas id="miniCvs"></canvas></div>
+  <div id="legend" style="font-size:11px;color:var(--sub);margin-top:6px;line-height:1.8"></div>
+</div>
+
+<div id="play" class="panel">
+  <button class="btn big" id="playBtn">▶ 稼働再生</button>
+  <span id="playLbl" style="color:var(--sub);font-size:11px">フォークリフトが建屋間を搬送</span>
+</div>
+
+<div id="hint" class="panel">
+  <kbd>左ドラッグ</kbd> 回転 / <kbd>右ドラッグ</kbd> 移動 / <kbd>ホイール</kbd> ズーム<br>
+  <kbd>ダブルクリック</kbd> 建屋の中に入る / 「BIM表示」で設備・配管を可視化<br>
+  <kbd>B</kbd>BIM <kbd>P</kbd>再生 <kbd>M</kbd>移動 <kbd>C</kbd>混雑 <kbd>T</kbd>ツアー <kbd>O</kbd>自動回転 <kbd>1-3</kbd>視点 <kbd>Esc</kbd>戻る<br>
+  建屋内: 設備をクリックで選択・ドラッグで移動 / <kbd>R</kbd>回転 <kbd>Del</kbd>削除 矢印キー微調整。敷地: 「移動モード」で建屋をドラッグ<br>
+  <div style="margin-top:6px;display:flex;gap:6px">
+    <button class="btn" id="expBtn">配置を書出</button>
+    <button class="btn" id="impBtn">読込</button>
+    <input type="file" id="impFile" accept=".json" style="display:none">
+  </div>
+</div>
+
+<div id="selPanel" style="display:none;position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:30;background:rgba(22,27,34,.94);border:1px solid #30363d;border-radius:12px;padding:10px 14px;display:none;gap:10px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+  <span id="selName" style="font-weight:700"></span>
+  <span id="selSize" style="color:#8b949e;font-size:12px"></span>
+  <button class="btn" id="rotBtn" title="Rキー">⟳ 90°回転</button>
+  <button class="btn" id="dupBtn">⧉ 複製</button>
+  <button class="btn" id="delBtn" title="Deleteキー" style="color:#ff7b72">削除</button>
+  <button class="btn" id="selCloseBtn">✕</button>
+</div>
+<div id="layers" class="panel"><h3>MEP系統レイヤー</h3><div id="layerList"></div></div>
+<div id="mepProp" class="panel"><div id="mepPropBody"></div><button class="btn" id="mepPropClose" style="margin-top:8px;width:100%">閉じる</button></div>
+<div id="clashPanel" class="panel"><h3 style="margin:0 0 4px;font-size:12px;color:var(--sub);display:flex;justify-content:space-between;align-items:center">干渉チェック結果<button class="btn" id="clashClose" style="padding:1px 7px">✕</button></h3><div id="clashList"></div></div>
+<div id="schPanel" class="panel">
+  <h3 style="display:flex;justify-content:space-between;align-items:center;margin:0 0 6px;font-size:13px;color:var(--sub)">
+    配管・ダクト 単線系統図<button class="btn" id="schClose" style="padding:1px 7px">✕</button></h3>
+  <div id="schBody"></div>
+  <div style="font-size:10px;color:var(--sub);margin-top:4px">行クリックで系統の表示/非表示を切替（3D表示と連動）</div>
+</div>
+<div id="anaPanel" class="panel">
+  <h3>生産性分析</h3>
+  <div id="anaBody"></div>
+  <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+    <button class="btn" id="anaSugBtn">改善提案を計算</button>
+    <button class="btn" id="anaDockBtn">搬入出口の最適化</button>
+  </div>
+  <div id="anaSug"></div>
+</div>
+<div id="photoPanel" class="panel"><h3>現地写真（クリックで拡大）</h3><div id="photoThumbs"></div></div>
+<div id="lightbox"><img id="lightboxImg" alt=""></div>
+<div id="toast"></div>
+<div id="tip"></div>
+<div id="tourCap">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span class="step" id="tcStep"></span>
+    <span style="display:flex;gap:6px"><button class="btn" id="tcNext" style="padding:2px 8px">次へ ›</button><button class="btn" id="tcStop" style="padding:2px 8px">停止</button></span>
+  </div>
+  <div class="ttl" id="tcTtl"></div><div class="txt" id="tcTxt"></div>
+  <div class="bar"><i id="tcBar"></i></div>
+</div>
+<div id="splash"><div class="logo">FLOW·LAB <b>3D</b></div><div class="sub">アトミクス加須工場 — 全体シミュレーション + BIM/MEP を読み込み中…</div><div class="bar"><i></i></div></div>
+
+<script>
+setTimeout(function(){
+ if(window.__kz)return;
+ var s=document.getElementById('splash');if(!s)return;
+ s.innerHTML='<div class="logo">FLOW·LAB <b>3D</b></div><div class="sub" style="max-width:560px;text-align:center;line-height:1.8">3D表示の読み込みを完了できませんでした。<br>インターネット接続とWebGL対応ブラウザーを確認し、再読み込みしてください。<br>このHTMLはThree.jsの読み込みにCDNへの接続を使用します。</div><button class="btn" onclick="location.reload()">再読み込み</button>';
+},20000);
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+
+@@INCLUDE parts/pd_markup.html@@<script id="pdData" type="application/json">@@INCLUDE data/pdData.json@@</script><script>@@INCLUDE js/pd.js@@</script>
+<div id="simShell" hidden></div><script id="simReplayData" type="application/json">@@INCLUDE data/simReplayData.json@@</script><script>@@INCLUDE js/sim.js@@</script><script id="twinAnalytics" type="application/json">@@INCLUDE data/analytics.json@@</script><script type="module">@@INCLUDE js/main.js@@</script>
+</body>
+</html>
