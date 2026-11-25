@@ -70,20 +70,43 @@ function twinTourStep(m,dt){
   const c=clampC(ctx,wToC(ctx,p.x)), r=clampR(ctx,wToR(ctx,p.z)), k=c+','+r; ctx.cong.set(k,(ctx.cong.get(k)||0)+dt*m.reps*.2);
 }
 // ---- 敷地 ----
-function twinDock(b){
-  // 建屋の荷捌き点: 構内中央（ヤード）に向いた辺の外側
-  const yard={x:15,z:-20}, dx=yard.x-b.x, dz=yard.z-b.z, off=4.5;
-  if(Math.abs(dx)/b.w>Math.abs(dz)/b.d) return {x:b.x+Math.sign(dx)*(b.w/2+off), z:b.z+Math.max(-b.d/2+3,Math.min(b.d/2-3,dz*.25))};
-  return {x:b.x+Math.max(-b.w/2+3,Math.min(b.w/2-3,dx*.25)), z:b.z+Math.sign(dz||1)*(b.d/2+off)};
+// 敷地の移動体用の通路格子（2.5m）。建屋のまわり1mを不可とし、建屋間の通路（幅5m以上）を通れるようにする。
+let twinSiteNavCache=null;
+function twinSiteNav(){
+  const key=siteCtx.items.map(i=>[i.x,i.z,i.w,i.d].join(',')).join('|')+SITE_W;
+  if(twinSiteNavCache&&twinSiteNavCache.key===key) return twinSiteNavCache;
+  const cell=2.5,W=siteCtx.W,D=siteCtx.D,cols=Math.ceil(W/cell),rows=Math.ceil(D/cell),occ=new Uint8Array(cols*rows),pad=1.0;
+  for(const it of siteCtx.items){ if(it.noOcc) continue;
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const x=-W/2+(c+.5)*cell,z=-D/2+(r+.5)*cell;if(Math.abs(x-it.x)<it.w/2+pad+cell*.3&&Math.abs(z-it.z)<it.d/2+pad+cell*.3)occ[r*cols+c]=1;} }
+  return twinSiteNavCache={key,W,D,cell,cols,rows,occ,pad};
 }
-const twinSiteGrid=()=>({W:siteCtx.W,D:siteCtx.D,cell:siteCtx.cell,cols:siteCtx.cols,rows:siteCtx.rows,occ:siteCtx.occ});
+function twinFreeCell(g,p){
+  const c0=Math.max(0,Math.min(g.cols-1,Math.floor((p.x+g.W/2)/g.cell))),r0=Math.max(0,Math.min(g.rows-1,Math.floor((p.z+g.D/2)/g.cell)));
+  for(let rad=0;rad<14;rad++)for(let dc=-rad;dc<=rad;dc++)for(let dr=-rad;dr<=rad;dr++){ if(Math.max(Math.abs(dc),Math.abs(dr))!==rad) continue; const c=c0+dc,r=r0+dr; if(c<0||r<0||c>=g.cols||r>=g.rows) continue; if(!g.occ[r*g.cols+c]) return r*g.cols+c; }
+  return r0*g.cols+c0;
+}
+function twinSiteRoute(a,b){
+  const g=twinSiteNav(), path=v4Search(g,[twinFreeCell(g,a)],[twinFreeCell(g,b)]);
+  if(!path||path.length<2) return {pts:[a,b],len:Math.hypot(a.x-b.x,a.z-b.z),ok:false};
+  const pts=[a,...path.slice(1,-1),b]; let len=0; for(let i=1;i<pts.length;i++) len+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z);
+  return {pts,len,ok:true};
+}
+function twinDock(b){
+  // 建屋の荷捌き点: 4辺の外側の候補のうち、構内中央（ヤード）まで実際に走って最も近い側。
+  const yard={x:15,z:-20}, off=4.5, g=twinSiteNav(), cx=Math.max(-b.w/2+3,Math.min(b.w/2-3,(yard.x-b.x)*.25)), cz=Math.max(-b.d/2+3,Math.min(b.d/2-3,(yard.z-b.z)*.25));
+  const cands=[{x:b.x-b.w/2-off,z:b.z+cz},{x:b.x+b.w/2+off,z:b.z+cz},{x:b.x+cx,z:b.z-b.d/2-off},{x:b.x+cx,z:b.z+b.d/2+off}]
+    .filter(p=>Math.abs(p.x)<siteCtx.W/2-3&&Math.abs(p.z)<siteCtx.D/2-3)
+    .filter(p=>!g.occ[Math.floor((p.z+g.D/2)/g.cell)*g.cols+Math.floor((p.x+g.W/2)/g.cell)])
+    .map(p=>({p,r:twinSiteRoute(p,yard)})).filter(x=>x.r.ok).sort((x,y)=>x.r.len-y.r.len);
+  return cands.length?cands[0].p:{x:b.x,z:b.z-b.d/2-off};
+}
+const twinDockCache=new Map();
+const twinSiteGrid=twinSiteNav;
 function twinSiteLeg(a,b,loaded,label,dwell,radius=4){
-  const path=astar(siteCtx,a.x,a.z,b.x,b.z);
-  const pts=(path&&path.length>1)?[a,...path.slice(1,-1).map(([x,z])=>({x,z})),b]:[a,b];
-  return {...twinPath(pts,twinSiteGrid(),radius),loaded,label,dwell};
+  return {...twinPath(twinSiteRoute(a,b).pts,twinSiteNav(),radius),loaded,label,dwell};
 }
 function twinSiteMovers(){
-  const B=id=>siteCtx.items.find(i=>i.id===id), D=id=>twinDock(B(id));
+  twinDockCache.clear(); const B=id=>siteCtx.items.find(i=>i.id===id), D=id=>{ if(!twinDockCache.has(id)) twinDockCache.set(id,twinDock(B(id))); return twinDockCache.get(id); };
   const wh=B('whGen'), berth={x:wh.x-8,z:wh.z-wh.d/2-5};          // 出荷トラックの着車位置（出荷倉庫の正門側）
   // リフト1: 原料・資材（倉庫 → 生産棟）
   const t1=[['whNew','paint1','原料'],['hazA','paint1','溶剤・樹脂'],['hazB','paint2','溶剤・樹脂'],['whNew','paint2','原料'],['hazNew','varnish','原料']];

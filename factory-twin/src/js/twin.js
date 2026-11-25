@@ -231,5 +231,6 @@ document.getElementById('twinClose').onclick=()=>{twinState.open=false; twinRend
 const twinTip=document.createElement('div'); twinTip.id='twinTip'; document.body.appendChild(twinTip);
 twinBody.addEventListener('mousemove',e=>{const g=e.target.closest('[data-tip]'); if(!g){twinTip.style.display='none';return;} twinTip.textContent=g.dataset.tip; twinTip.style.display='block'; twinTip.style.left=Math.min(innerWidth-270,e.clientX+12)+'px'; twinTip.style.top=(e.clientY+14)+'px';});
 twinBody.addEventListener('mouseleave',()=>twinTip.style.display='none');
+window.__twinMovers=()=>movers.map(m=>({x:m.mesh.position.x,z:m.mesh.position.z,li:m.li,s:m.s,len:m.len,n:m.legs?.length,st:m.state,sp:m.speed,a:m.curve&&m.curve.getPointAt(0).toArray().map(v=>Math.round(v)),b:m.curve&&m.curve.getPointAt(1).toArray().map(v=>Math.round(v))}));
 window.__twin={data:TWIN,state:twinState,setScenario:setLayoutScenario,compare:twinCompare,layouts:layoutCtxs,render:twinRender};
 window.__twinReady=true; twinSync();
