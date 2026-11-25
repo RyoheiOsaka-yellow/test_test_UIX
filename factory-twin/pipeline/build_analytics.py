@@ -330,12 +330,74 @@ def main():
         dept_labor.append(dict(dept=d, days=len(ls), roster=ls[-1]["roster"] if ls else None, avg_headcount=r1(S(ls, "headcount") / n, 2),
                                overtime_hours=r1(S(ls, "overtime_hours"), 1), support_in_days=r1(S(ls, "support_in"), 1),
                                support_out_days=r1(S(ls, "support_out"), 1), absent_days=r1(S(ls, "absent"), 1)))
-    analytics = dict(
+    # --- 人員の試算: 日別の直接工数（生産データ）× 日別の出勤人数（日報） ---
+    UNITS = [("1B仕込み・調合", "1B", ("prep_min", "mix_min")), ("1B充填", "1B", ("fill_min",)), ("2B", "2B", ("total_min",)), ("ワニス", "ワニス", ("total_min",))]
+    def pct(v, q):
+        v = sorted(v); 
+        if not v: return None
+        k = (len(v) - 1) * q; f = int(k); c = min(f + 1, len(v) - 1); return v[f] + (v[c] - v[f]) * (k - f)
+    daily_rows, staffing = [], []
+    by_unit_day = {}
+    for dept, line, keys in UNITS:
+        dm = collections.defaultdict(float)
+        for b in batches:
+            if b["line"] == line and b["date"]: dm[b["date"]] += sum(b[k] or 0 for k in keys)
+        rows = []
+        for l in labor:
+            if l["dept"] != dept or not l["headcount"]: continue
+            d = dm.get(l["date"], 0.0)
+            avail = l["headcount"] * 480 + (l["overtime_hours"] or 0) * 60
+            rows.append(dict(dept=dept, date=l["date"], headcount=l["headcount"], overtime_hours=l["overtime_hours"] or 0, direct_min=round(d),
+                             direct_per_person=round(d / l["headcount"], 1), direct_ratio=round(d / avail * 100, 1),
+                             support_in=l["support_in"] or 0, support_out=l["support_out"] or 0, absent=l["absent"] or 0))
+        daily_rows += rows; by_unit_day[dept] = {r["date"]: r for r in rows}
+        dens = [r["direct_per_person"] for r in rows if r["direct_min"] > 0]
+        p50, p75, p90 = pct(dens, .5), pct(dens, .75), pct(dens, .9)
+        def need(r, dn): return r["direct_min"] / dn if dn else 0
+        act = [r for r in rows if r["direct_min"] > 0]
+        surplus75 = [r["headcount"] - need(r, p75) for r in act]
+        def over(minus, dn): return sum(1 for r in act if r["headcount"] - minus > 0 and r["direct_min"] / (r["headcount"] - minus) > dn) / max(1, len(act)) * 100
+        swap = sum(min(r["support_in"], r["support_out"]) for r in rows)
+        staffing.append(dict(dept=dept, days=len(rows), roster=next((l["roster"] for l in labor if l["dept"] == dept), None),
+                             avg_headcount=r1(statistics.mean(r["headcount"] for r in rows), 2),
+                             direct_pp_median=r1(p50, 0), direct_pp_p75=r1(p75, 0), direct_pp_p90=r1(p90, 0),
+                             direct_ratio_avg=r1(statistics.mean(r["direct_ratio"] for r in act), 1),
+                             need_at_p75=r1(statistics.mean(need(r, p75) for r in act), 2), surplus_at_p75=r1(statistics.mean(surplus75), 2),
+                             days_surplus_1plus=r1(sum(1 for x in surplus75 if x >= 1) / max(1, len(act)) * 100, 0),
+                             over_p90_now=r1(over(0, p90), 0), over_p90_minus1=r1(over(1, p90), 0),
+                             support_in=r1(sum(r["support_in"] for r in rows), 1), support_out=r1(sum(r["support_out"] for r in rows), 1), swap_days=r1(swap, 1),
+                             overtime_hours=r1(sum(r["overtime_hours"] for r in rows), 1),
+                             hist=[sum(1 for x in dens if lo <= x < lo + 60) for lo in range(0, 480, 60)]))
+    write_csv("staffing_daily.csv", daily_rows)
+    # 工程をまとめて持った場合（プール）: 各工程をその工程の繁忙日ペース（P90）でこなす前提で、必要人数を日別に合算
+    SU = {x["dept"]: x for x in staffing}
+    def pool_of(name, depts):
+        days = sorted(set.intersection(*[set(by_unit_day[d]) for d in depts])); rows = []
+        for date in days:
+            rs = [by_unit_day[d][date] for d in depts]
+            rows.append(dict(head=sum(r["headcount"] for r in rs), need=sum(r["direct_min"] / SU[d]["direct_pp_p90"] for r, d in zip(rs, depts)), loads=[r["direct_min"] for r in rs]))
+        act = [r for r in rows if r["need"] > 0]; n = max(1, len(act))
+        sep = sum(1 for date in days if any(by_unit_day[d][date]["headcount"] - 1 > 0 and by_unit_day[d][date]["direct_min"] / (by_unit_day[d][date]["headcount"] - 1) > SU[d]["direct_pp_p90"] for d in depts[:1])) / n * 100
+        corr = None
+        if len(depts) == 2:
+            try: corr = round(statistics.correlation([r["loads"][0] for r in act], [r["loads"][1] for r in act]), 2)
+            except Exception: pass
+        return dict(name=name, depts=depts, days=len(act), avg_head=r1(statistics.mean(r["head"] for r in act), 2), avg_need=r1(statistics.mean(r["need"] for r in act), 2),
+                    p90_need=r1(pct([r["need"] for r in act], .9), 2), correlation=corr,
+                    short_now=r1(sum(1 for r in act if r["need"] > r["head"]) / n * 100, 0),
+                    short_minus1=r1(sum(1 for r in act if r["need"] > r["head"] - 1) / n * 100, 0),
+                    short_minus2=r1(sum(1 for r in act if r["need"] > r["head"] - 2) / n * 100, 0))
+    pooled = [pool_of("第二工場に集約（2B＋ワニス）", ["2B", "ワニス"]), pool_of("第一ペイント（仕込み・調合＋充填）", ["1B仕込み・調合", "1B充填"]),
+              pool_of("4工程すべて", ["1B仕込み・調合", "1B充填", "2B", "ワニス"])]
+    for x in pooled: print("POOL", x)
+    for st in staffing: print("STAFF", {k: v for k, v in st.items() if k != "hist"}, st["hist"])
+    analytics = dict(staffing=staffing, pooled=pooled,
         version=1, generated=datetime.date.today().isoformat(),
         period=dict(production=[months[0], months[-1]], color=color_sum["period"]),
         notes=["生産・日報は2025/9〜2026/3、位置トラッキングは2026/7〜8、色補正は2026/10。期間が重ならないため日単位の突合は不可。",
                "担当者は匿名ID化。日報の備考欄（氏名）は取り込んでいない。",
                "直接工数は生産データの工程別合計分（入力率97〜100%）。細目（洗浄・調色など）は入力率が低く参考値。",
+               "人員試算の「繁忙日ペース」は各工程の1人あたり直接工数の上位10%日（P90）。記録外の作業（段取り・搬送・洗浄など）は直接工数に比例すると仮定している。",
                "調色工場の色補正記録は開始〜終了の経過時間で、並行作業と待ちを含む。工数には換算していない（調色の直接工数は未入力のまま）。"],
         counts=dict(batches=len(batches), fills=len(fills), labor_days=len(labor), equipment=len(equip), color_jobs=len(color), monthly=len(monthly), people=len(_people)),
         line_total=line_total, line_month=line_month, dept_labor=dept_labor, monthly=monthly,

@@ -98,6 +98,25 @@ function twinInterBuilding(){
   ${twinTable(['建屋の組合せ','工程','回/日','現状 分/日','移設後 分/日'],top.map(p=>twinRow([te(nm(p.a)+' ⇄ '+nm(p.b)),te(p.group),tn(p.n),tn(p.before),`<span class="${p.after<=p.before?'tw-good':'tw-bad'}">${tn(p.after)}</span>`])))}
   <p class="tw-note">回数は位置トラッキング（2026/7〜8、工程ごと4〜7 ID日）の建屋間移動を人員数に換算。距離は建屋代表点間の直線×迂回係数${simCfg.detour}、歩行${simCfg.speed}m/分。移設先の代表点は実測再生画面でドラッグして変更できます。</p>`;
 }
+
+// ---- 2名削減の原資（日別の直接工数 × 日別の出勤人数） ----
+function twinStaffing(){
+  const S=TWIN.staffing, P=TWIN.pooled, sur=S.reduce((a,x)=>a+x.surplus_at_p75,0), all=P.find(x=>x.depts.length===4), p2=P[0], p1=P[1];
+  const roster=S.reduce((a,x)=>a+x.roster,0)+(TWIN.dept_labor.find(d=>d.dept==='調色')?.roster||0);
+  const swap=S.reduce((a,x)=>a+x.swap_days,0), days=Math.max(...S.map(x=>x.days));
+  const pc=(v,warn=20)=>`<span class="${v<=10?'tw-good':v>=warn?'tw-bad':''}">${tn(v)}%</span>`;
+  return `<h4>2名削減の原資（試算）</h4>
+  <div class="tw-kpis">${twinKpi('平準化で出る余力',tn(sur,1)+' 名分','繁忙日並みの密度なら')}${twinKpi('工程別に1名ずつ減らす','不足日 '+tn(Math.min(...S.map(x=>x.over_p90_minus1)))+'〜'+tn(Math.max(...S.map(x=>x.over_p90_minus1)))+'%','単独では厳しい')}${twinKpi('4工程を兼務で−2名','不足日 '+tn(all.short_minus2)+'%','残業で吸収できる水準')}</div>
+  ${twinHBars(S.map(x=>({label:x.dept,a:x.avg_headcount,b:x.need_at_p75})),{unit:'名',aName:'平均出勤',bName:'必要人数（繁忙日ペース換算）',dec:1})}
+  <div class="tw-warn"><b>原資は移動時間ではなく、日ごとの仕事量のばらつきにあります。</b>直接工数は日によって大きく振れ、忙しい日のペースで均せば合計 約${tn(sur,1)}名分の余力があります。ただし工程ごとに1名減らすと、忙しい日に足りなくなります。<b>工程をまたいで人を融通（兼務）できる範囲を広げるほど、同じ2名削減でも不足日が減ります。</b></div>
+  <h5>工程ごとに単独で1名減らした場合</h5>
+  ${twinTable(['工程','平均出勤','直接工数/人 中央値','繁忙日ペース','今の不足日','−1名の不足日'],S.map(x=>twinRow([te(x.dept),tn(x.avg_headcount,1),tn(x.direct_pp_median)+'分',tn(x.direct_pp_p90)+'分',pc(x.over_p90_now),pc(x.over_p90_minus1)])))}
+  <h5>工程をまとめて持った場合（兼務）</h5>
+  ${twinTable(['まとめ方','平均出勤','必要人数 平均','−1名の不足日','−2名の不足日'],P.map(x=>twinRow([te(x.name),tn(x.avg_head,1),tn(x.avg_need,1),pc(x.short_minus1),pc(x.short_minus2,30)])))}
+  <p class="tw-note">不足日 = その日の直接工数を、各工程の繁忙日ペース（1人あたり直接工数の上位10%日）でこなしても人数が足りない日の割合。2Bとワニスは忙しい日がほぼ重ならない（相関 ${tn(p2.correlation,2)}）ため、第二工場への集約で融通が効きます。仕込み・調合と充填は連動（相関 ${tn(p1.correlation,2)}）するので効果は小さめです。</p>
+  <p class="tw-note"><b>応援の実態</b>: 同じ日に「応援に出す」と「応援を受ける」が両方ある入れ替わりが ${tn(swap)} 人日（${tn(days)}稼働日で1日あたり約${tn(swap/days,1)}人）。ワニスは在籍${tn(S.find(x=>x.dept==='ワニス').roster)}名のうち約1名がほぼ毎日ほかの工程へ出ており、兼務はすでに一部で行われています。移設はこれを同じ建屋内の動きに変える効果があります。</p>
+  <p class="tw-note"><b>前提と限界</b>: 記録されている直接工数（就業時間の31〜76%）に、記録外の作業が比例すると仮定。調色は日別の工数記録がないため未算入。日報の在籍は合計${tn(roster)}名（仕込み・調合6、充填6、2B 3、ワニス2、調色5）で、共有コメントの24名（充填10、調色3）と内訳が合いません。</p>`;
+}
 // ---- 各ビューの中身 ----
 function twinSiteView(){
   const A=TWIN, prod=A.monthly.filter(m=>m.metric==='生産トン数'&&m.category==='合計');
@@ -111,6 +130,7 @@ function twinSiteView(){
   <h4>ライン別（行をクリックで建屋内部へ）</h4>
   ${twinTable(['ライン','バッチ/日','出来高 t','kg/人時','記録直接工数/就業','収率%'],lt.map(l=>twinRow([`<b>${te(l.line)}</b>`,tn(l.batches_per_day,1),tn(l.output_t),tn(l.kg_per_labor_hour),tn(l.direct_min_day/(l.avg_headcount*480)*100,0)+'%',tn(l.yield_pct,1)],`class="tw-click" data-tw-enter="${TWIN_BLD[l.line]}"`)))}
   <p class="tw-note">「記録直接工数/就業」= 生産データの工程別合計分 ÷（平均人数×8h）。残りは記録外（段取り・搬送・待ち・洗浄など）で、動線改善の余地を測る母数になります。</p>
+  ${twinStaffing()}
   ${twinInterBuilding()}
   <h4>月次 計画と実績（トン）</h4>
   ${twinCols(prod.map(m=>({label:m.month.slice(5).replace(/^0/,'')+'月',value:m.actual,ref:m.plan})),{unit:'t',name:'生産実績',refName:'計画'})}
