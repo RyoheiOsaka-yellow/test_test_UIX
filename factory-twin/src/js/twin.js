@@ -174,7 +174,7 @@ function twinBuildingView(b){
   const used=A.equipment_usage.filter(u=>u.line===line).slice(0,14);
   const linked=!!ctx.drawing;
   return `<div class="tw-eyebrow">建屋内部 / ライン ${te(line)}</div><h3>${te(b.name)}</h3>
-  <div class="tw-kpis">${twinKpi('バッチ',tn(T.batches_per_day,1)+' 件/日',tn(T.batches)+' 件')}${twinKpi('出来高/人時',tn(T.kg_per_labor_hour)+' kg','平均 '+tn(T.avg_headcount,1)+' 名')}${twinKpi('直接工数',tn(T.direct_min_day)+' 分/日','仕込'+tn(T.prep_min_day)+'・調合'+tn(T.mix_min_day)+'・充填'+tn(T.fill_min_day))}</div>
+  <div class="tw-kpis">${twinKpi('バッチ',tn(T.batches_per_day,1)+' 件/日',tn(T.batches)+' 件')}${twinKpi('出来高/人時',tn(T.kg_per_labor_hour)+' kg','平均 '+tn(T.avg_headcount,1)+' 名')}${twinKpi('直接工数',tn(T.direct_min_day)+' 分/日','仕'+tn(T.prep_min_day)+' 調'+tn(T.mix_min_day)+' 充'+tn(T.fill_min_day))}</div>
   ${layoutCtxs[b.id]?twinLayoutBlock(b.id):'<p class="tw-note">この建屋は図面未入手のため内部は仮配置です。KPIはライン単位で表示し、設備単位の連動は行いません。</p><label class="tw-check"><input type="checkbox" id="twLook" '+(twinLook==="photo"?"checked":"")+'> 写真調の質感（緑の床・明るい照明）</label>'}
   <h4>月次推移（出来高 t）</h4>
   ${twinCols(M.map(m=>({label:m.month.slice(5).replace(/^0/,'')+'月',value:m.output_t,ref:null})),{unit:'t',name:'出来高',refName:'—'}).replace(/<span><i class="line".*?<\/span>/,'')}
@@ -190,7 +190,7 @@ function twinEquipmentView(it){
   const ledger=A.ledger.filter(e=>tags.includes(e.tag)&&(e.category==='充填機')===(it.proc==='FIL')&&(it.proc==='FIL'||e.building===(TWIN_BLD[line]||ctx.id)));
   const routes=ctx.routes.filter(r=>r.fromId===it.assetId||r.toId===it.assetId);
   const b=usage.reduce((a,u)=>a+u.batches,0), t=usage.reduce((a,u)=>a+u.output_t,0), mn=usage.reduce((a,u)=>a+u.minutes,0);
-  if(!tags.length) return `<div class="tw-eyebrow">設備</div><h3>${te(it.name)}</h3><p class="tw-note">この設備は仮配置（図面未入手の建屋）で、設備番号が未設定です。台帳・生産データとの連動は図面入手後に対応します。</p><button class="btn" id="twBack">建屋の分析へ戻る</button>`;
+  if(!tags.length) return `<div class="tw-eyebrow">設備</div><h3>${te(it.name)}</h3><p class="tw-note">${layoutCtxs[ctx.id]?'初期イメージ（仮配置）の設備には設備番号がありません。分析基盤の「内部の配置」で「図面 現状」または「図面 変更案」に切り替えると、設備番号で台帳・生産実績と連動します。':'この設備は仮配置（図面未入手の建屋）で、設備番号が未設定です。台帳・生産データとの連動は図面入手後に対応します。'}</p><button class="btn" id="twBack">建屋の分析へ戻る</button>`;
   return `<div class="tw-eyebrow">設備 / ${te(line)} / 設備番号 ${te(tags.join('・'))}</div><h3>${te(it.name)}</h3>
   <div class="tw-kpis">${twinKpi('使用バッチ',tn(b)+' 件',A.period.production.join('〜'))}${twinKpi('通過量',tn(t,1)+' t','')}${twinKpi('工程時間',tn(mn/60,0)+' h','記録分の合計')}</div>
   ${usage.length?`<p class="tw-note">役割: ${te(usage.flatMap(u=>Object.entries(u.roles).map(([k,v])=>k+' '+v+'件')).join('、'))}<br>主な製品: ${te([...new Set(usage.flatMap(u=>u.top_products))].slice(0,4).join(' / '))}</p>`:'<p class="tw-note">生産データ上の使用記録はありません（期間内に未使用、または記録が設備番号で残っていない設備）。</p>'}

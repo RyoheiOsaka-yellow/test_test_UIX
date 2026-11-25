@@ -4157,7 +4157,7 @@ function refreshPrecision(){
  pAllContexts().forEach(ensureAssetIds);if(selected&&!ctx.items.includes(selected))selected=null;
  const sel=document.getElementById('pBuilding');sel.innerHTML='<option value="site">敷地全体 / SITE OVERVIEW</option>'+siteCtx.items.filter(i=>i.enter).map(i=>`<option value="${pe(i.id)}">${pe(i.name)}</option>`).join('');sel.value=ctx.id;
  precisionState.issues=pCheck(ctx);pOverlay();pRender();
- document.getElementById('viewBadge').textContent=ctx.kind==='site'?'FLOW·LAB / CONNECTED EDITION V4 · 建屋を選んで内部へ':ctx.label+' · 寸法は推定 / 稼働アニメーションは説明用';
+ document.getElementById('viewBadge').textContent=ctx.kind==='site'?'FLOW·LAB / CONNECTED EDITION V4 · 建屋を選んで内部へ':ctx.label+(ctx.drawing?' · 設備位置は図面260925 / 高さ・周辺物・荷役点は仮定':layoutCtxs[ctx.id]?' · 建屋寸法は図面 / 内部は初期イメージ（仮配置）':' · 内部は仮配置（図面未入手）')+' / 人とリフトの動きは説明用';
  document.getElementById('clearanceBtn').disabled=ctx.kind==='site';
 }
 document.getElementById('pBuilding').onchange=e=>{precisionState.search='';pSetTab('assets');if(e.target.value==='site')exitBuilding();else enterBuilding(siteCtx.items.find(b=>b.id===e.target.value));};

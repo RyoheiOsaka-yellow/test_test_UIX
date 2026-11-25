@@ -187,7 +187,7 @@ function twinInteriorMovers(){
     const stops=order.slice(0,8).flatMap(r=>{const a=byId[r.fromId],z=byId[r.toId];return [{item:a,loaded:false,label:'リフト 空荷 → '+nm(a),dwell:2.4},{item:z,loaded:true,label:'リフト '+(z.proc==='OUT'?'製品 → 搬出口':a.proc==='IN'?'原料 → '+nm(z):nm(a)+' → '+nm(z)),dwell:2.8}];});
     let legs=legsOf(stops,gF,1.1); if(legs.length<stops.length*.7) legs=legsOf(stops,g,.9);   // 幅が足りず届かない所は人用の通路で代替
     if(legs.length>1){ const f=makeForklift(true); f.scale.setScalar(.42);
-      twinAddTour(f,legs,{speed:2.0,acc:1.6,turn:1.7,pivot:true,dwell:2.6,label:true,tagScale:.5,tagY:5.4,reps:3}); }
+      twinAddTour(f,legs,{speed:2.0,acc:1.6,turn:1.7,pivot:true,dwell:2.6,label:true,tagScale:Math.max(.2,Math.min(.5,Math.min(c.W,c.D)/70)),tagY:5.4,reps:3}); }
   }
 }
 function rebuildMovers(){
