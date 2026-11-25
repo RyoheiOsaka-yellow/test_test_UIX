@@ -53,6 +53,47 @@ function twinDrawOverlay(){
   lg.position.set(0,6.5,-ctx.D/2-1); twinOverlay.add(lg);
 }
 
+
+// ---- グラフ部品（配色は検証済みの2系列: 青=実績/現状、橙=比較対象。文字は本文色のみ） ----
+const TW_C1='#338ced', TW_C2='#e76624';
+const twinLegend=items=>`<div class="tw-legend">${items.map(([c,t,kind])=>`<span><i class="${kind||''}" style="background:${c}"></i>${te(t)}</span>`).join('')}</div>`;
+function twinCols(data,{unit='',h=120,refName='計画',name='実績'}={}){
+  // 縦棒（実績）＋横線マーカー（計画）。data:[{label,value,ref}]
+  const W=372,padL=30,padB=18,padT=8,max=Math.max(...data.map(d=>Math.max(d.value||0,d.ref||0)))*1.08||1,bw=(W-padL-6)/data.length,y=v=>padT+(h-padT-padB)*(1-v/max);
+  const ticks=[0,.5,1].map(f=>Math.round(max/1.08*f));
+  return twinLegend([[TW_C1,name],['var(--sub)',refName,'line']])+`<svg class="tw-chart" viewBox="0 0 ${W} ${h}" role="img" aria-label="${te(name)}と${te(refName)}">
+  ${ticks.map(t=>`<line x1="${padL}" x2="${W}" y1="${y(t)}" y2="${y(t)}" class="tw-grid"/><text x="${padL-4}" y="${y(t)+3}" text-anchor="end" class="tw-ax">${tn(t)}</text>`).join('')}
+  ${data.map((d,i)=>{const x=padL+i*bw+bw*.2,w=bw*.6,yy=y(d.value||0),r=Math.min(4,w/2,(h-padB-yy));
+    return `<g data-tip="${te(d.label)}｜${te(name)} ${tn(d.value)}${unit}${d.ref!=null?' / '+te(refName)+' '+tn(d.ref)+unit+'（'+tn(d.value/d.ref*100,0)+'%）':''}"><rect x="${padL+i*bw}" y="${padT}" width="${bw}" height="${h-padT-padB}" fill="transparent"/>
+    <path d="M${x},${h-padB}V${yy+r}q0,${-r} ${r},${-r}h${w-2*r}q${r},0 ${r},${r}V${h-padB}z" fill="${TW_C1}"/>
+    ${d.ref!=null?`<line x1="${x-3}" x2="${x+w+3}" y1="${y(d.ref)}" y2="${y(d.ref)}" stroke="var(--txt)" stroke-width="2"/>`:''}
+    <text x="${x+w/2}" y="${h-5}" text-anchor="middle" class="tw-ax">${te(d.label)}</text></g>`;}).join('')}</svg>`;
+}
+function twinHBars(rows,{unit='',aName='現状',bName=null,dec=0}={}){
+  // 横棒。rows:[{label,a,b}]。bName があれば2系列。
+  const W=372,padL=92,rowH=bName?30:20,H=rows.length*rowH+4,max=Math.max(...rows.flatMap(r=>[r.a||0,r.b||0]))||1,sc=v=>(W-padL-46)*v/max;
+  const bar=(x,y,w,hh,c)=>{const r=Math.min(4,hh/2,w);return `<path d="M${x},${y}h${Math.max(0,w-r)}q${r},0 ${r},${r}v${hh-2*r}q0,${r} ${-r},${r}h${-Math.max(0,w-r)}z" fill="${c}"/>`;};
+  return (bName?twinLegend([[TW_C1,aName],[TW_C2,bName]]):'')+`<svg class="tw-chart" viewBox="0 0 ${W} ${H}" role="img">
+  ${rows.map((r,i)=>{const y=i*rowH+3,hh=bName?10:12;
+    return `<g data-tip="${te(r.label)}｜${te(aName)} ${tn(r.a,dec)}${unit}${bName?' / '+te(bName)+' '+tn(r.b,dec)+unit:''}"><rect x="0" y="${y-3}" width="${W}" height="${rowH}" fill="transparent"/>
+    <text x="${padL-6}" y="${y+(bName?14:10)}" text-anchor="end" class="tw-lb">${te(r.label)}</text>
+    ${bar(padL,y,sc(r.a||0),hh,TW_C1)}<text x="${padL+sc(r.a||0)+4}" y="${y+hh-1}" class="tw-ax">${tn(r.a,dec)}</text>
+    ${bName?bar(padL,y+hh+2,sc(r.b||0),hh,TW_C2)+`<text x="${padL+sc(r.b||0)+4}" y="${y+2*hh+1}" class="tw-ax">${tn(r.b,dec)}</text>`:''}</g>`;}).join('')}</svg>`;
+}
+// ---- 建屋間の移動（位置トラッキング実測 × 工程人員）と、ワニス・調色を第二工場へ移した場合 ----
+function twinInterBuilding(){
+  const r=simCore.evaluate(simCfg), A=simCore.A, nm=id=>({paint1:'第一',paint2:'第二',varnish:'ワニス',tint:'調色',lab:'研究棟',office:'事務所',whGen:'一般倉庫',whNew:'新一般倉庫',hazNew:'新危険物',hazA:'危険物A',hazB:'危険物B',parking:'駐車場',waste:'廃材'}[id]||id);
+  const pairs=new Map();
+  for(const e of r.edges){ const a=A[e.from].building,b=A[e.to].building; if(a===b) continue; const k=[a,b].sort().join('|')+'|'+e.group; const p=pairs.get(k)||{a:[a,b].sort()[0],b:[a,b].sort()[1],group:e.group,n:0,before:0,after:0}; p.n+=e.beforeCount; p.before+=e.beforeMinutes; p.after+=e.afterMinutes; pairs.set(k,p); }
+  const top=[...pairs.values()].sort((x,y)=>Math.abs(y.after-y.before)-Math.abs(x.after-x.before)).slice(0,8);
+  const need=(r.current-r.goal)*simCfg.hours*60;
+  return `<h4>建屋間の移動と移設の影響（実測 × 人員${r.current}名）</h4>
+  <div class="tw-kpis">${twinKpi('移動時間 現状',tn(r.beforeMinutes)+' 分/日','6工程の合計')}${twinKpi('ワニス・調色を第二へ',tn(r.afterMinutes)+' 分/日',(r.gain>=0?'−':'＋')+tn(Math.abs(r.gain))+' 分/日')}${twinKpi(`${r.current-r.goal}名削減に必要`,tn(need)+' 分/日','= '+(r.current-r.goal)+'名×'+simCfg.hours+'h')}</div>
+  ${twinHBars(r.rows.map(x=>({label:x.group,a:x.beforeMinutes,b:x.afterMinutes})),{unit:'分/日',aName:'現状',bName:'移設後'})}
+  <div class="tw-warn"><b>移設だけでは移動時間は${r.gain>=0?'減りますが':'減らず、むしろ増えます'}</b>（${r.gain>=0?'−':'＋'}${tn(Math.abs(r.gain))}分/日）。主因は下表の上位の組合せです。${r.current-r.goal}名削減（${tn(need)}分/日）の原資は、移動時間ではなく、応援の解消・工程の兼務・段取りの共通化で作る必要があります。</div>
+  ${twinTable(['建屋の組合せ','工程','回/日','現状 分/日','移設後 分/日'],top.map(p=>twinRow([te(nm(p.a)+' ⇄ '+nm(p.b)),te(p.group),tn(p.n),tn(p.before),`<span class="${p.after<=p.before?'tw-good':'tw-bad'}">${tn(p.after)}</span>`])))}
+  <p class="tw-note">回数は位置トラッキング（2026/7〜8、工程ごと4〜7 ID日）の建屋間移動を人員数に換算。距離は建屋代表点間の直線×迂回係数${simCfg.detour}、歩行${simCfg.speed}m/分。移設先の代表点は実測再生画面でドラッグして変更できます。</p>`;
+}
 // ---- 各ビューの中身 ----
 function twinSiteView(){
   const A=TWIN, prod=A.monthly.filter(m=>m.metric==='生産トン数'&&m.category==='合計');
@@ -62,10 +103,13 @@ function twinSiteView(){
   const lt=A.line_total, labor=lt.reduce((a,l)=>a+l.labor_hours,0), out=lt.reduce((a,l)=>a+l.output_t,0);
   return `<div class="tw-eyebrow">工場全体 / ${A.period.production[0]}〜${A.period.production[1]}</div><h3>加須工場 生産実績</h3>
   <div class="tw-kpis">${twinKpi('生産トン数（7か月）',tn(ta)+' t','計画比 '+tn(ta/tp*100,1)+'%')}${twinKpi('製造バッチ',tn(A.counts.batches)+' 件','1B・2B・ワニス')}${twinKpi('出来高 / 人時',tn(out*1000/labor,0)+' kg','3ライン合計')}</div>
+  <p class="tw-note">前提（共有コメント）: 生産人員24名 = ワニス2・仕込み3・調合3・充填10・2B 3・調色3。ワニスと調色を第二工場へ移し2名削減する計画。フォークリフト担当2名は別枠。</p>
   <h4>ライン別（行をクリックで建屋内部へ）</h4>
   ${twinTable(['ライン','バッチ/日','出来高 t','kg/人時','記録直接工数/就業','収率%'],lt.map(l=>twinRow([`<b>${te(l.line)}</b>`,tn(l.batches_per_day,1),tn(l.output_t),tn(l.kg_per_labor_hour),tn(l.direct_min_day/(l.avg_headcount*480)*100,0)+'%',tn(l.yield_pct,1)],`class="tw-click" data-tw-enter="${TWIN_BLD[l.line]}"`)))}
   <p class="tw-note">「記録直接工数/就業」= 生産データの工程別合計分 ÷（平均人数×8h）。残りは記録外（段取り・搬送・待ち・洗浄など）で、動線改善の余地を測る母数になります。</p>
+  ${twinInterBuilding()}
   <h4>月次 計画と実績（トン）</h4>
+  ${twinCols(prod.map(m=>({label:m.month.slice(5).replace(/^0/,'')+'月',value:m.actual,ref:m.plan})),{unit:'t',name:'生産実績',refName:'計画'})}
   ${twinTable(['月','生産 計画','生産 実績','達成率','出荷 実績','在庫 実績'],prod.map(m=>twinRow([m.month.slice(2),tn(m.plan),tn(m.actual),`<span class="${m.actual>=m.plan?'tw-good':'tw-bad'}">${tn(m.actual/m.plan*100,0)}%</span>`,tn(ship[m.month]?.actual),tn(stock[m.month]?.actual)])))}
   <h4>部門別の人員（日報）</h4>
   ${twinTable(['部門','在籍','平均出勤','残業 h','応援受 人日','応援出 人日'],A.dept_labor.map(d=>twinRow([te(d.dept),tn(d.roster),tn(d.avg_headcount,1),tn(d.overtime_hours),tn(d.support_in_days),tn(d.support_out_days)])))}
@@ -105,9 +149,11 @@ function twinBuildingView(b){
   return `<div class="tw-eyebrow">建屋内部 / ライン ${te(line)}</div><h3>${te(b.name)}</h3>
   <div class="tw-kpis">${twinKpi('バッチ',tn(T.batches_per_day,1)+' 件/日',tn(T.batches)+' 件')}${twinKpi('出来高/人時',tn(T.kg_per_labor_hour)+' kg','平均 '+tn(T.avg_headcount,1)+' 名')}${twinKpi('直接工数',tn(T.direct_min_day)+' 分/日','仕込'+tn(T.prep_min_day)+'・調合'+tn(T.mix_min_day)+'・充填'+tn(T.fill_min_day))}</div>
   ${linked?twinLayoutBlock(b.id):'<p class="tw-note">この建屋は図面未入手のため内部は仮配置です。KPIはライン単位で表示し、設備単位の連動は行いません。</p>'}
-  <h4>月次推移</h4>
+  <h4>月次推移（出来高 t）</h4>
+  ${twinCols(M.map(m=>({label:m.month.slice(5).replace(/^0/,'')+'月',value:m.output_t,ref:null})),{unit:'t',name:'出来高',refName:'—'}).replace(/<span><i class="line".*?<\/span>/,'')}
   ${twinTable(['月','バッチ','出来高 t','kg/人時','充填 実績/標準','残業 h'],M.map(m=>twinRow([m.month.slice(2),tn(m.batches),tn(m.output_t),tn(m.kg_per_labor_hour),m.fill_actual_vs_std==null?'—':tn(m.fill_actual_vs_std,0)+'%',tn(m.overtime_hours)])))}
-  <h4>稼働の多い設備（${linked?'クリックで3D上の設備へ':'設備番号'}）</h4>
+  <h4>稼働の多い設備（${linked?'表の行クリックで3D上の設備へ':'設備番号'}）</h4>
+  ${twinHBars(used.slice(0,8).map(u=>({label:u.tag+(u.kind==='fill'?'（充填）':''),a:u.batches})),{unit:'バッチ',aName:'使用バッチ'})}
   ${twinTable(['設備番号','役割','バッチ','出来高 t','台帳'],used.map(u=>twinRow([`<b>${te(u.tag)}</b>`,te(Object.keys(u.roles).join('・')),tn(u.batches),tn(u.output_t),u.in_ledger?'あり':'<span class="tw-mute">未照合</span>'],linked?`class="tw-click" data-tw-tag="${te(u.tag)}" data-tw-kind="${u.kind}"`:'')))}`;
 }
 function twinEquipmentView(it){
@@ -154,5 +200,8 @@ document.getElementById('twinClose').onclick=()=>{twinState.open=false; twinRend
   simCore.defaults.direct={...direct}; simCfg.direct={...direct};
   try{ simResult=simCore.evaluate(simCfg); }catch(e){ console.warn('direct labour init',e); }
 }
+const twinTip=document.createElement('div'); twinTip.id='twinTip'; document.body.appendChild(twinTip);
+twinBody.addEventListener('mousemove',e=>{const g=e.target.closest('[data-tip]'); if(!g){twinTip.style.display='none';return;} twinTip.textContent=g.dataset.tip; twinTip.style.display='block'; twinTip.style.left=Math.min(innerWidth-270,e.clientX+12)+'px'; twinTip.style.top=(e.clientY+14)+'px';});
+twinBody.addEventListener('mouseleave',()=>twinTip.style.display='none');
 window.__twin={data:TWIN,state:twinState,setScenario:setLayoutScenario,compare:twinCompare,layouts:layoutCtxs,render:twinRender};
 window.__twinReady=true; twinSync();

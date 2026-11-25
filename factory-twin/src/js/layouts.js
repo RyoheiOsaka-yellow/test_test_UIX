@@ -15,6 +15,14 @@ const DRAWING_LAYOUTS={
   scenarios:{current:"現状（図面260925）",plan:"変更案（図面260925・未確定）"},
   // [proc, 名称, 設備番号(別名可), x, z, w, d, h, {only, sys, note}]
   items:[
+   // --- 荷役（位置は仮定。図面に記載なし）: リフトは 搬入口→原料置場、製品仮置き→搬出口 ---
+   ["IN","搬入口（位置は仮定）",["IN"],-21.2,-12.0,0.6,3.2,0.3,{sys:"リフト",note:"図面に開口の記載なし"}],
+   ["BAG","原料パレット置場 1（仮定）",["RAW-1"],-17.0,-13.2,1.3,1.1,1.2,{sys:"リフト"}],
+   ["BAG","原料パレット置場 2（仮定）",["RAW-2"],-15.2,-13.2,1.3,1.1,1.2,{sys:"リフト"}],
+   ["DRM","樹脂・溶剤ドラム置場（仮定）",["RAW-3"],-13.3,-13.2,1.3,1.1,1.0,{sys:"リフト"}],
+   ["CAN","製品パレット仮置き 1（仮定）",["FG-1"],11.2,9.6,1.4,1.1,1.3,{sys:"リフト"}],
+   ["CAN","製品パレット仮置き 2（仮定）",["FG-2"],13.2,9.6,1.4,1.1,1.3,{sys:"リフト"}],
+   ["OUT","搬出口（位置は仮定）",["OUT"],15.5,18.7,3.2,0.6,0.3,{sys:"リフト",note:"図面に開口の記載なし"}],
    // --- 北側通路ゾーン ---
    ["MILL","ADミル",["ADミル","AD-1"],-8.4,-17.5,1.5,1.0,1.5,{}],
    ["DSP","ディスパー D-136 (7.5kW)",["D-136"],-5.8,-17.6,1.0,1.7,2.6,{}],
@@ -118,7 +126,7 @@ function makeDrawingCtx(b,scen){
   const items=L.items.filter(e=>!e[8]?.only||e[8].only===scen).map(([proc,name,tags,x,z,w,d,h,o={}])=>({
     assetId:b.id+"-"+twinSlug(tags[0]), tag:tags[0], tags, sys:o.sys||"2B", evidence:"imported",
     maintenance:0.6, notes:(o.note?o.note+"。":"")+"位置は図面260925の読図。高さ・外形は仮定。", proc, name, x, z, w, d, h, bw:w, bd:d, rot:0,
-    color:PROC_COLOR[proc]||0x9da7b3, fixed:false, noOcc:!!o.noOcc, variant:null, num:(tags[0].match(/[A-Z]+-?\d+$/)||[null])[0], kv:o.sys==="ワニス"?"green":"pink" }));
+    color:PROC_COLOR[proc]||0x9da7b3, fixed:proc==='IN'||proc==='OUT', noOcc:!!o.noOcc, variant:proc==='CAN'?'silver':null, num:(tags[0].match(/[A-Z]+-?\d+$/)||[null])[0], kv:o.sys==="ワニス"?"green":"pink" }));
   // 工程フロー = 生産データの実バッチ頻度（回/稼働日）。設備番号で両端が特定できたものだけ経路化する。
   const find=t=>items.find(i=>i.tags.includes(t));
   const agg=new Map(), unassigned=[];
@@ -131,6 +139,14 @@ function makeDrawingCtx(b,scen){
     const k=a.assetId+">"+z.assetId; const e=agg.get(k)||{a,z,n:0,line:f.line}; e.n+=f.per_day; agg.set(k,e);
   }
   const flows=[...agg.values()].map(e=>["#"+e.a.assetId,"#"+e.z.assetId,e.n,e.line]);
+  // 工程の入口・出口を荷役点につなぐ（原料置場→最初の設備、充填機→製品仮置き）。回数は実バッチ頻度の差し引き。
+  const net=new Map(); for(const e of agg.values()){ const k=e.line; net.set(e.a,[(net.get(e.a)?.[0]||0)+e.n,k]); net.set(e.z,[(net.get(e.z)?.[0]||0)-e.n,k]); }
+  const raws=items.filter(i=>/^RAW-/.test(i.tag)), fgs=items.filter(i=>/^FG-/.test(i.tag)), near=(list,it)=>list.reduce((b,x)=>Math.hypot(x.x-it.x,x.z-it.z)<Math.hypot(b.x-it.x,b.z-it.z)?x:b,list[0]);
+  for(const [it,[n,line]] of net){ if(n>.02&&raws.length) flows.push(["#"+near(raws,it).assetId,"#"+it.assetId,n,line]); else if(n<-.02&&fgs.length) flows.push(["#"+it.assetId,"#"+near(fgs,it).assetId,-n,line]); }
+  // リフト便（仮定）: 出来高 ÷ 稼働日 ≒ 1日あたりのパレット数（1パレット≒1tで概算）
+  const T=l=>TWIN.line_total.find(x=>x.line===l), pal=Math.max(1,Math.round(T("2B").output_t/T("2B").work_days+(scen==="plan"?T("ワニス").output_t/T("ワニス").work_days:0)));
+  const inn=items.find(i=>i.proc==="IN"), out=items.find(i=>i.proc==="OUT");
+  if(inn&&out&&raws.length&&fgs.length){ raws.forEach(r=>flows.push(["#"+inn.assetId,"#"+r.assetId,pal/raws.length,"リフト"])); fgs.forEach(f=>flows.push(["#"+f.assetId,"#"+out.assetId,pal/fgs.length,"リフト"])); }
   const c=newCtx(b.id,"interior",b.w*INT_SCALE,b.d*INT_SCALE,0.4,0.05,items,flows,b.name);
   c.drawing={layout:L,scen,unassigned,
     obstacles:[...L.rooms.filter(r=>!r[6]||r[6]===scen).map(r=>({name:r[0],x:r[1],z:r[2],w:r[3],d:r[4],h:r[5]})),
@@ -146,7 +162,8 @@ for(const id of Object.keys(DRAWING_LAYOUTS)){
 // 図面ベース建屋の構造物（架台・階段・室・ゾーン）を描く
 function twinStructure(b,ic,groups){
   const L=ic.drawing.layout, scen=ic.drawing.scen, {mezzanine,zones,walls}=groups, dk=L.deck, H=DRAW_DECK_H;
-  const deckMat=new THREE.MeshStandardMaterial({color:0x8fa3a8,roughness:.6,metalness:.5,transparent:true,opacity:.16,depthWrite:false});
+  const deckMat=new THREE.MeshStandardMaterial({color:0x9aa5a6,roughness:.5,metalness:.65,transparent:true,opacity:.30,depthWrite:false});
+  for(const [x,z,w,d] of [[(dk.x0+dk.x1)/2,dk.rows[0]-.55,dk.x1-dk.x0+1.3,.1],[(dk.x0+dk.x1)/2,dk.rows[2]+.55,dk.x1-dk.x0+1.3,.1],[dk.x0-.6,(dk.rows[0]+dk.rows[2])/2,.1,dk.rows[2]-dk.rows[0]+1.2],[dk.x1+.6,(dk.rows[0]+dk.rows[2])/2,.1,dk.rows[2]-dk.rows[0]+1.2]])v3Box(zones,w,.012,d,x,.02,z,0xe2c23a);
   const deck=new THREE.Mesh(new THREE.BoxGeometry(dk.x1-dk.x0,.08,dk.rows[2]-dk.rows[0]),deckMat);deck.position.set((dk.x0+dk.x1)/2,H,(dk.rows[0]+dk.rows[2])/2);mezzanine.add(deck);
   for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch)for(const z of dk.rows){v3Box(mezzanine,.2,H,.2,x,H/2,z,0x5d737b);v3.obstacles.push({x,z,w:.3,d:.3,layer:'mezzanine'});ic.drawing.obstacles.some(o=>o.col&&o.x===x&&o.z===z)||ic.drawing.obstacles.push({name:"架台柱",col:true,x,z,w:.25,d:.25,h:H});}
   for(const z of dk.rows)v3Box(mezzanine,dk.x1-dk.x0,.22,.14,(dk.x0+dk.x1)/2,H-.11,z,0x6f858c);

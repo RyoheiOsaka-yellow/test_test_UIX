@@ -211,6 +211,10 @@ body.sim-active .panel,body.sim-active #precision,body.sim-active #hint,body.sim
 .tw-card{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin:5px 0;font-size:11.5px}.tw-foot{display:flex;gap:6px;margin-top:16px}.tw-foot .btn{flex:1}
 body.twin-open #stats,body.twin-open #hint,body.twin-open #v4Status{display:none!important}
 body.twin-open #pdOpen{display:none}
+.tw-chart{width:100%;height:auto;display:block;margin:4px 0 2px}.tw-grid{stroke:#30363d;stroke-width:1}.tw-ax{fill:var(--sub);font-size:9.5px;font-variant-numeric:tabular-nums}.tw-lb{fill:var(--txt);font-size:10.5px}
+.tw-legend{display:flex;gap:12px;font-size:10.5px;color:var(--sub);margin:2px 0}.tw-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}.tw-legend i.line{height:2px;width:14px;vertical-align:3px;border-radius:0}
+.tw-chart g:hover path{filter:brightness(1.25)}
+#twinTip{position:fixed;z-index:60;display:none;max-width:250px;background:#0d1117;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--txt);pointer-events:none}
 body.sim-active #twinPanel{display:none}
 </style>
 </head>
@@ -876,6 +880,14 @@ const DRAWING_LAYOUTS={
   scenarios:{current:"現状（図面260925）",plan:"変更案（図面260925・未確定）"},
   // [proc, 名称, 設備番号(別名可), x, z, w, d, h, {only, sys, note}]
   items:[
+   // --- 荷役（位置は仮定。図面に記載なし）: リフトは 搬入口→原料置場、製品仮置き→搬出口 ---
+   ["IN","搬入口（位置は仮定）",["IN"],-21.2,-12.0,0.6,3.2,0.3,{sys:"リフト",note:"図面に開口の記載なし"}],
+   ["BAG","原料パレット置場 1（仮定）",["RAW-1"],-17.0,-13.2,1.3,1.1,1.2,{sys:"リフト"}],
+   ["BAG","原料パレット置場 2（仮定）",["RAW-2"],-15.2,-13.2,1.3,1.1,1.2,{sys:"リフト"}],
+   ["DRM","樹脂・溶剤ドラム置場（仮定）",["RAW-3"],-13.3,-13.2,1.3,1.1,1.0,{sys:"リフト"}],
+   ["CAN","製品パレット仮置き 1（仮定）",["FG-1"],11.2,9.6,1.4,1.1,1.3,{sys:"リフト"}],
+   ["CAN","製品パレット仮置き 2（仮定）",["FG-2"],13.2,9.6,1.4,1.1,1.3,{sys:"リフト"}],
+   ["OUT","搬出口（位置は仮定）",["OUT"],15.5,18.7,3.2,0.6,0.3,{sys:"リフト",note:"図面に開口の記載なし"}],
    // --- 北側通路ゾーン ---
    ["MILL","ADミル",["ADミル","AD-1"],-8.4,-17.5,1.5,1.0,1.5,{}],
    ["DSP","ディスパー D-136 (7.5kW)",["D-136"],-5.8,-17.6,1.0,1.7,2.6,{}],
@@ -979,7 +991,7 @@ function makeDrawingCtx(b,scen){
   const items=L.items.filter(e=>!e[8]?.only||e[8].only===scen).map(([proc,name,tags,x,z,w,d,h,o={}])=>({
     assetId:b.id+"-"+twinSlug(tags[0]), tag:tags[0], tags, sys:o.sys||"2B", evidence:"imported",
     maintenance:0.6, notes:(o.note?o.note+"。":"")+"位置は図面260925の読図。高さ・外形は仮定。", proc, name, x, z, w, d, h, bw:w, bd:d, rot:0,
-    color:PROC_COLOR[proc]||0x9da7b3, fixed:false, noOcc:!!o.noOcc, variant:null, num:(tags[0].match(/[A-Z]+-?\d+$/)||[null])[0], kv:o.sys==="ワニス"?"green":"pink" }));
+    color:PROC_COLOR[proc]||0x9da7b3, fixed:proc==='IN'||proc==='OUT', noOcc:!!o.noOcc, variant:proc==='CAN'?'silver':null, num:(tags[0].match(/[A-Z]+-?\d+$/)||[null])[0], kv:o.sys==="ワニス"?"green":"pink" }));
   // 工程フロー = 生産データの実バッチ頻度（回/稼働日）。設備番号で両端が特定できたものだけ経路化する。
   const find=t=>items.find(i=>i.tags.includes(t));
   const agg=new Map(), unassigned=[];
@@ -992,6 +1004,14 @@ function makeDrawingCtx(b,scen){
     const k=a.assetId+">"+z.assetId; const e=agg.get(k)||{a,z,n:0,line:f.line}; e.n+=f.per_day; agg.set(k,e);
   }
   const flows=[...agg.values()].map(e=>["#"+e.a.assetId,"#"+e.z.assetId,e.n,e.line]);
+  // 工程の入口・出口を荷役点につなぐ（原料置場→最初の設備、充填機→製品仮置き）。回数は実バッチ頻度の差し引き。
+  const net=new Map(); for(const e of agg.values()){ const k=e.line; net.set(e.a,[(net.get(e.a)?.[0]||0)+e.n,k]); net.set(e.z,[(net.get(e.z)?.[0]||0)-e.n,k]); }
+  const raws=items.filter(i=>/^RAW-/.test(i.tag)), fgs=items.filter(i=>/^FG-/.test(i.tag)), near=(list,it)=>list.reduce((b,x)=>Math.hypot(x.x-it.x,x.z-it.z)<Math.hypot(b.x-it.x,b.z-it.z)?x:b,list[0]);
+  for(const [it,[n,line]] of net){ if(n>.02&&raws.length) flows.push(["#"+near(raws,it).assetId,"#"+it.assetId,n,line]); else if(n<-.02&&fgs.length) flows.push(["#"+it.assetId,"#"+near(fgs,it).assetId,-n,line]); }
+  // リフト便（仮定）: 出来高 ÷ 稼働日 ≒ 1日あたりのパレット数（1パレット≒1tで概算）
+  const T=l=>TWIN.line_total.find(x=>x.line===l), pal=Math.max(1,Math.round(T("2B").output_t/T("2B").work_days+(scen==="plan"?T("ワニス").output_t/T("ワニス").work_days:0)));
+  const inn=items.find(i=>i.proc==="IN"), out=items.find(i=>i.proc==="OUT");
+  if(inn&&out&&raws.length&&fgs.length){ raws.forEach(r=>flows.push(["#"+inn.assetId,"#"+r.assetId,pal/raws.length,"リフト"])); fgs.forEach(f=>flows.push(["#"+f.assetId,"#"+out.assetId,pal/fgs.length,"リフト"])); }
   const c=newCtx(b.id,"interior",b.w*INT_SCALE,b.d*INT_SCALE,0.4,0.05,items,flows,b.name);
   c.drawing={layout:L,scen,unassigned,
     obstacles:[...L.rooms.filter(r=>!r[6]||r[6]===scen).map(r=>({name:r[0],x:r[1],z:r[2],w:r[3],d:r[4],h:r[5]})),
@@ -1007,7 +1027,8 @@ for(const id of Object.keys(DRAWING_LAYOUTS)){
 // 図面ベース建屋の構造物（架台・階段・室・ゾーン）を描く
 function twinStructure(b,ic,groups){
   const L=ic.drawing.layout, scen=ic.drawing.scen, {mezzanine,zones,walls}=groups, dk=L.deck, H=DRAW_DECK_H;
-  const deckMat=new THREE.MeshStandardMaterial({color:0x8fa3a8,roughness:.6,metalness:.5,transparent:true,opacity:.16,depthWrite:false});
+  const deckMat=new THREE.MeshStandardMaterial({color:0x9aa5a6,roughness:.5,metalness:.65,transparent:true,opacity:.30,depthWrite:false});
+  for(const [x,z,w,d] of [[(dk.x0+dk.x1)/2,dk.rows[0]-.55,dk.x1-dk.x0+1.3,.1],[(dk.x0+dk.x1)/2,dk.rows[2]+.55,dk.x1-dk.x0+1.3,.1],[dk.x0-.6,(dk.rows[0]+dk.rows[2])/2,.1,dk.rows[2]-dk.rows[0]+1.2],[dk.x1+.6,(dk.rows[0]+dk.rows[2])/2,.1,dk.rows[2]-dk.rows[0]+1.2]])v3Box(zones,w,.012,d,x,.02,z,0xe2c23a);
   const deck=new THREE.Mesh(new THREE.BoxGeometry(dk.x1-dk.x0,.08,dk.rows[2]-dk.rows[0]),deckMat);deck.position.set((dk.x0+dk.x1)/2,H,(dk.rows[0]+dk.rows[2])/2);mezzanine.add(deck);
   for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch)for(const z of dk.rows){v3Box(mezzanine,.2,H,.2,x,H/2,z,0x5d737b);v3.obstacles.push({x,z,w:.3,d:.3,layer:'mezzanine'});ic.drawing.obstacles.some(o=>o.col&&o.x===x&&o.z===z)||ic.drawing.obstacles.push({name:"架台柱",col:true,x,z,w:.25,d:.25,h:H});}
   for(const z of dk.rows)v3Box(mezzanine,dk.x1-dk.x0,.22,.14,(dk.x0+dk.x1)/2,H-.11,z,0x6f858c);
@@ -2908,11 +2929,11 @@ function v3BuildStructure(b,ic){
  // Perimeter wall segments with real openings at the ends of the pedestrian aisle.
  const walkX=W*.40,doorWidth=2.0;
  for(const sign of [-1,1]){
-  v3Box(walls,.16,H,D,sign*(W/2),H/2,0,0x647a82);
+  {const wm=v3Box(walls,.16,H,D,sign*(W/2),H/2,0,0xffffff);wm.material=twinWallMat(D,H);const dado=v3Box(walls,.2,1.1,D,sign*(W/2),.55,0,0x3b4f8f);dado.material.roughness=.8;}
   const left=walkX-doorWidth/2+W/2,right=W/2-walkX-doorWidth/2;
-  v3Box(walls,left,H,.16,-W/2+left/2,H/2,sign*D/2,0x768a8d);
-  if(right>0)v3Box(walls,right,H,.16,W/2-right/2,H/2,sign*D/2,0x768a8d);
-  v3Box(walls,doorWidth,H-2.4,.16,walkX,(H+2.4)/2,sign*D/2,0x768a8d);
+  v3Box(walls,left,H,.16,-W/2+left/2,H/2,sign*D/2,0xd6dad3);
+  if(right>0)v3Box(walls,right,H,.16,W/2-right/2,H/2,sign*D/2,0xd6dad3);
+  v3Box(walls,doorWidth,H-2.4,.16,walkX,(H+2.4)/2,sign*D/2,0xd6dad3);
   v3Box(walls,doorWidth+.16,.12,.18,walkX,2.42,sign*D/2,0xced7cf);
   const exit=makeLabel('出入口（仮）',.09,'#80e4b4');exit.position.set(walkX,2.9,sign*(D/2-.16));walls.add(exit);
   for(let i=0;i<bays;i++){
@@ -2957,11 +2978,36 @@ function v3BuildStructure(b,ic){
  for(let i=0;i<=bays;i++)v3FloorLabel(zones,String(i+1).padStart(2,'0'),-W/2+1.0,-D/2+i*bay,.06,'#a8b6bc');
  return groups;
 }
+
+// ---- 内部の質感（現地写真ベース: 緑塗装の床・波板の壁・蛍光灯の明るさ） ----
+function twinFloorMat(W,D){
+  const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
+  x.fillStyle='#6f9480';x.fillRect(0,0,512,512);
+  const rng=sRand('floor');for(let i=0;i<2600;i++){const a=rng()*.10;x.fillStyle=rng()<.5?`rgba(20,45,35,${a})`:`rgba(190,215,200,${a*.7})`;const s=1+rng()*5;x.fillRect(rng()*512,rng()*512,s*(1+rng()*3),s);}
+  for(let i=0;i<26;i++){x.fillStyle=`rgba(120,128,120,${.05+rng()*.10})`;x.beginPath();x.ellipse(rng()*512,rng()*512,8+rng()*40,5+rng()*22,rng()*3,0,6.3);x.fill();}   // 塗装の摩耗・汚れ
+  x.strokeStyle='rgba(25,50,40,.35)';x.lineWidth=1.5;for(let i=0;i<=2;i++){x.beginPath();x.moveTo(i*256,0);x.lineTo(i*256,512);x.moveTo(0,i*256);x.lineTo(512,i*256);x.stroke();}   // 目地
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(W/6,D/6);t.anisotropy=8;
+  return new THREE.MeshStandardMaterial({map:t,roughness:.62,metalness:.05});
+}
+function twinWallMat(len,H){
+  const c=document.createElement('canvas');c.width=256;c.height=256;const x=c.getContext('2d');
+  for(let i=0;i<256;i++){const v=205+Math.round(22*Math.sin(i/256*Math.PI*2*16));x.fillStyle=`rgb(${v},${v+2},${v-4})`;x.fillRect(i,0,1,256);}   // 波板
+  x.fillStyle='rgba(90,95,85,.10)';for(let i=0;i<40;i++)x.fillRect(Math.random()*256,Math.random()*256,2,30+Math.random()*80);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(len/3,1);
+  return [new THREE.MeshStandardMaterial({map:t,roughness:.85}),new THREE.MeshStandardMaterial({map:t,roughness:.85}),...[0,1,2,3].map(()=>new THREE.MeshStandardMaterial({color:0xcfd4cc,roughness:.9}))];
+}
+function twinInteriorLight(){
+  if(drawMode) return;
+  scene.background=new THREE.Color(0xb9c4c6); scene.fog=new THREE.Fog(0xb9c4c6,160,520);
+  ambL.intensity=.55; hemiL.intensity=.85; hemiL.color.set(0xf4f7ff); hemiL.groundColor.set(0x7d8f84); dir.intensity=1.0; dir2.intensity=.3;
+}
 function buildInteriorScene(b){
  v3ClearSection();clearGroup(intGroup);spinDiscs.length=0;hoistAnims.length=0;evAnims.length=0;craneAnims.length=0;
  const ic=interiorCtxs.get(b.id),W=ic.W,D=ic.D;
- const floor=new THREE.Mesh(new THREE.PlaneGeometry(W+.6,D+.6),new THREE.MeshStandardMaterial({color:drawMode?0xe1e6e3:0x34494b,roughness:.92}));floor.rotation.x=-Math.PI/2;intGroup.add(floor);
- const grid=new THREE.GridHelper(Math.max(W,D),Math.round(Math.max(W,D)),drawMode?0xb2c1bb:0x46645e,drawMode?0xd2ddd5:0x3b5550);grid.position.y=.008;intGroup.add(grid);
+ const floor=new THREE.Mesh(new THREE.PlaneGeometry(W+.6,D+.6),drawMode?new THREE.MeshStandardMaterial({color:0xe1e6e3,roughness:.92}):twinFloorMat(W,D));floor.rotation.x=-Math.PI/2;intGroup.add(floor);
+ const apron=new THREE.Mesh(new THREE.PlaneGeometry(W+40,D+40),new THREE.MeshStandardMaterial({color:drawMode?0xeef1ee:0x8f9a8c,roughness:1}));apron.rotation.x=-Math.PI/2;apron.position.y=-.06;intGroup.add(apron);
+ const grid=new THREE.GridHelper(Math.max(W,D),Math.round(Math.max(W,D)),drawMode?0xb2c1bb:0x2f6a52,drawMode?0xd2ddd5:0x3a7a60);grid.position.y=.008;grid.material.transparent=true;grid.material.opacity=drawMode?.8:.22;intGroup.add(grid);
+ twinInteriorLight();
  v3BuildStructure(b,ic);
  ic.items.forEach((it,i)=>{
   const g=makeEquipment({...it,w:it.bw??it.w,d:it.bd??it.d});g.rotation.y=-(it.rot||0)*Math.PI/2;g.position.set(it.x,0,it.z);g.userData.idx=i;g.traverse(o=>o.userData.idx=i);
@@ -3103,7 +3149,7 @@ function makeTruck(label){
   const lbl=makeLabel(label,0.5,"#9fdcff"); lbl.position.set(0,4.4,0); g.add(lbl);
   return g;
 }
-function rebuildMovers(){
+function rebuildMoversLegacy(){
   movers.forEach(m=>{ scene.remove(m.mesh); m.mesh.traverse(o=>{o.geometry?.dispose();o.material?.dispose();}); });
   movers=[];
   const isSite = ctx.kind==="site";
@@ -3138,6 +3184,157 @@ function rebuildMovers(){
     });
   }
 }
+// ================= 稼働再生：人とフォークリフトの動き（実態ベース） =================
+// 敷地: リフト2台（担当2名）。①原料・資材を倉庫→生産棟へ ②製品を生産棟→出荷倉庫（塗料置き場）→トラックバースへ。
+//       歩行者は位置トラッキング実測の建屋間移動（多い順）を再現。
+// 内部: 作業者は工程人員の人数だけ配置し、工程順（仕込→分散→調合→充填）に設備間を歩く。
+//       リフトは 搬入口→原料置場、製品置場→搬出口 を巡回。
+const TWIN_GROUP_COLOR={'ワニス':0xcb9f51,'仕込み':0x6d9ca2,'調合':0x8d82b7,'充填':0x72a76c,'2B':0xd08660,'調色':0xc0779e,'物流':0x6888ab,'管理':0x929a8a,'生産管理':0x63988d};
+const TWIN_STAFF={paint1:[['仕込み',3],['調合',3],['充填',10]],paint2:[['2B',3]],varnish:[['ワニス',2]],tint:[['調色',3]]};
+const TWIN_PLAN_EXTRA=[['ワニス',2],['調色',3]];   // 変更案で第二工場へ移る工程
+function twinTint(g,col){ g.traverse(o=>{ if(o.isMesh&&o.material.color.getHex()===0xffd479){ o.material=o.material.clone(); o.material.color.setHex(col); } }); return g; }
+function twinCurve(pts,y=0){
+  const v=[]; for(const p of pts){ const q=new THREE.Vector3(p.x,y,p.z); if(!v.length||v[v.length-1].distanceToSquared(q)>1e-4) v.push(q); }
+  if(v.length<2) v.push(v[0].clone().add(new THREE.Vector3(.05,0,0)));
+  // 格子経路の角を残しつつ滑らかに（間引き）
+  const thin=v.filter((p,i)=>i===0||i===v.length-1||i%3===0);
+  const c=new THREE.CatmullRomCurve3(thin,false,'centripetal',.25); return {curve:c,len:Math.max(.1,c.getLength())};
+}
+function twinSetLeg(m,i){
+  m.li=i; const L=m.legs[i]; m.curve=L.curve; m.len=L.len; m.t=0; m.dir=1; m.state='go'; m.dwellDur=L.dwell??m.baseDwell;
+  const cg=m.mesh.userData.cargo; if(cg) cg.visible=!!L.loaded;
+  if(m.tag&&L.label!==m.tagText){ m.mesh.remove(m.tag); m.tag.material.map?.dispose(); m.tag=makeLabel(L.label,m.tagScale,L.loaded?'#ffd27a':'#b9c7d1'); m.tag.position.y=m.tagY; m.mesh.add(m.tag); m.tagText=L.label; }
+}
+function twinNextLeg(m){ twinSetLeg(m,(m.li+1)%m.legs.length); }
+function twinAddTour(mesh,legs,o){
+  mesh.visible=false; applyShadows(mesh); scene.add(mesh);
+  const m={mesh,legs,li:0,t:0,dir:1,state:'go',dwell:0,toggled:false,speed:o.speed,reps:o.reps||1,phase:Math.random()*6,baseDwell:o.dwell||1.5,dwellDur:o.dwell||1.5,
+           tag:null,tagText:null,tagScale:o.tagScale||.5,tagY:o.tagY||5};
+  if(o.label){ m.tag=makeLabel('',m.tagScale); mesh.add(m.tag); }
+  twinSetLeg(m,0); m.t=o.start||0; movers.push(m); return m;
+}
+// ---- 敷地 ----
+function twinDock(b){
+  // 建屋の荷捌き点: 構内中央（ヤード）に向いた辺の外側
+  const yard={x:15,z:-20}, dx=yard.x-b.x, dz=yard.z-b.z, off=4.5;
+  if(Math.abs(dx)/b.w>Math.abs(dz)/b.d) return {x:b.x+Math.sign(dx)*(b.w/2+off), z:b.z+Math.max(-b.d/2+3,Math.min(b.d/2-3,dz*.25))};
+  return {x:b.x+Math.max(-b.w/2+3,Math.min(b.w/2-3,dx*.25)), z:b.z+Math.sign(dz||1)*(b.d/2+off)};
+}
+function twinSiteLeg(a,b,loaded,label,dwell){
+  const path=astar(siteCtx,a.x,a.z,b.x,b.z);
+  const pts=(path&&path.length>1)?[a,...path.slice(1,-1).map(([x,z])=>({x,z})),b]:[a,b];
+  return {...twinCurve(pts,0),loaded,label,dwell};
+}
+function twinSiteMovers(){
+  const B=id=>siteCtx.items.find(i=>i.id===id), D=id=>twinDock(B(id));
+  const wh=B('whGen'), berth={x:wh.x-8,z:wh.z-wh.d/2-5};          // 出荷トラックの着車位置（出荷倉庫の正門側）
+  const job=(from,to,what)=>[from,to,what];
+  // リフト1: 原料・資材（倉庫 → 生産棟）
+  const t1=[['whNew','paint1','原料'],['hazA','paint1','溶剤・樹脂'],['hazB','paint2','溶剤・樹脂'],['whNew','paint2','原料'],['hazNew','varnish','原料']];
+  // リフト2: 製品（生産棟 → 出荷倉庫＝塗料置き場 → 出荷）
+  const t2=[['paint1','whGen','製品'],['whGen','@berth','出荷'],['paint2','whGen','製品'],['paint1','whGen','製品'],['whGen','@berth','出荷'],['tint','whGen','調色品'],['varnish','whGen','製品']];
+  const P=id=>id==='@berth'?berth:D(id), N=id=>id==='@berth'?'トラック':B(id).name.replace(/ .*/,'');
+  [[t1,'リフト1'],[t2,'リフト2']].forEach(([jobs,name],fi)=>{
+    const legs=[]; let pos=P(jobs[jobs.length-1][1]);
+    for(const [from,to,what] of jobs){
+      legs.push(twinSiteLeg(pos,P(from),false,`${name} 空荷 → ${N(from)}`,2.2));
+      legs.push(twinSiteLeg(P(from),P(to),true,`${name} ${what} → ${N(to)}`,2.6)); pos=P(to);
+    }
+    twinAddTour(makeForklift(true),legs,{speed:9,dwell:2.4,label:true,tagScale:.55,tagY:5.6,start:fi*.3,reps:6});
+  });
+  // 歩行者: 位置トラッキング実測の建屋間移動（回/ID日 × 人員）の多い組合せ
+  const PD=window.__factoryProductivity?.data; if(!PD) return;
+  const A=Object.fromEntries(PD.areas.map(a=>[a.id,a])), staff={...Object.fromEntries(PD.staff.map(s=>[s.group,s.current])),'物流':2,'生産管理':1,'管理':1};
+  const days={}, od=new Map();
+  for(const r of PD.daily){ if(!r.eligible) continue; days[r.group]=(days[r.group]||0)+1;
+    for(const o of r.od){ const a=A[o.from]?.building,b=A[o.to]?.building; if(!a||!b||a===b||!B(a)||!B(b)) continue;
+      const k=[r.group,...[a,b].sort()].join('|'); od.set(k,(od.get(k)||0)+o.count); } }
+  const pairs=[...od.entries()].map(([k,n])=>{const [g,a,b]=k.split('|');return {g,a,b,perDay:n/days[g]*(staff[g]||1)};}).sort((x,y)=>y.perDay-x.perDay).slice(0,12);
+  pairs.forEach((p,i)=>{
+    const a=D(p.a), b=D(p.b), o=(i%3-1)*1.2, leg=twinSiteLeg({x:a.x+o,z:a.z+o},{x:b.x+o,z:b.z+o},false,'',1.5), back={...twinCurve(leg.curve.getPoints(40).reverse().map(v=>({x:v.x,z:v.z})),0),dwell:1.5};
+    const w=twinTint(makeWorker(),TWIN_GROUP_COLOR[p.g]||0x9aa); w.scale.setScalar(.62);
+    twinAddTour(w,[leg,back],{speed:3.2,dwell:1.5,start:(i*.37)%1,reps:p.perDay/10});
+  });
+}
+// ---- 建屋内部 ----
+function twinInteriorMovers(){
+  const c=ctx, g=c.nav; if(!g) return;
+  const LOGI=new Set(['IN','OUT','CAN','NST','DRM','BAG','FRC','IBC','RCK']);
+  const byId=Object.fromEntries(c.items.map(i=>[i.assetId,i]));
+  const ok=c.routes.filter(r=>!r.blocked&&r.pts.length>1&&byId[r.fromId]&&byId[r.toId]);
+  const isFork=r=>c.drawing? r.line==='リフト' : (['IN','OUT'].includes(r.fk)||['IN','OUT'].includes(r.tk)||(LOGI.has(r.fk)&&LOGI.has(r.tk)));
+  const walk=ok.filter(r=>!isFork(r)), fork=ok.filter(isFork);
+  const link=(a,b)=>{ if(a===b) return null; const p=v4Search(g,v4Access(g,a),v4Access(g,b)); return p&&p.length>1?p:[{x:a.x,z:a.z},{x:b.x,z:b.z}]; };
+  const tourOf=(routes,rng,n,loadedFn,labelFn,dwell)=>{
+    const legs=[]; if(!routes.length) return legs;
+    const tot=routes.reduce((a,r)=>a+r.reps,0), pick=(list,t)=>{let x=rng()*t;for(const r of list){x-=r.reps;if(x<=0)return r;}return list[list.length-1];};
+    let cur=pick(routes,tot); const first=cur;
+    for(let i=0;i<n;i++){
+      legs.push({...twinCurve(cur.pts),loaded:loadedFn(cur),label:labelFn(cur),dwell:dwell[0]+rng()*dwell[1]});
+      const nexts=routes.filter(r=>r.fromId===cur.toId&&r!==cur);
+      let nx=nexts.length&&rng()<.8?pick(nexts,nexts.reduce((a,r)=>a+r.reps,0)):pick(routes,tot);
+      if(i===n-1) nx=first;
+      if(nx.fromId!==cur.toId){ const p=link(byId[cur.toId],byId[nx.fromId]); if(p) legs.push({...twinCurve(p),loaded:false,label:labelFn(null,byId[nx.fromId]),dwell:.4}); }
+      cur=nx;
+    }
+    return legs;
+  };
+  // 作業者: 工程人員の人数ぶん
+  let staff=(TWIN_STAFF[c.id]||[['',2]]).slice(); if(c.drawing?.scen==='plan') staff=staff.concat(TWIN_PLAN_EXTRA);
+  let wi=0;
+  for(const [grp,n] of staff){
+    const pool=c.drawing? walk.filter(r=>(r.line||'2B')===(grp==='調色'?'調色':grp)) : walk;
+    const use=pool.length?pool:(grp==='調色'&&c.drawing? [] : walk);
+    for(let k=0;k<n;k++,wi++){
+      const rng=sRand(c.id+grp+k);
+      let legs=tourOf(use,rng,7,()=>false,()=>'' ,[2.5,4]);
+      if(!legs.length&&grp==='調色'&&c.drawing){   // 調色は実績フローが無いので、調色エリア内（ディスパー⇔充填機）を巡回
+        const ts=c.items.filter(i=>i.sys==='調色'); if(ts.length>1){ const seq=[...ts].sort(()=>rng()-.5).slice(0,5); seq.push(seq[0]);
+          for(let j=1;j<seq.length;j++){ const p=link(seq[j-1],seq[j]); if(p) legs.push({...twinCurve(p),loaded:false,label:'',dwell:3+rng()*4}); } }
+      }
+      if(!legs.length) continue;
+      const w=twinTint(makeWorker(),TWIN_GROUP_COLOR[grp]||0xffd479); w.scale.setScalar(.54);
+      twinAddTour(w,legs,{speed:1.3,dwell:3,start:rng()*.9,reps:1});
+    }
+  }
+  // フォークリフト: 搬入口→原料置場、製品置場→搬出口
+  if(fork.length){
+    const order=[...fork].sort((a,b)=>(a.fk==='IN'||byId[a.fromId]?.proc==='IN'?-1:1)-(b.fk==='IN'||byId[b.fromId]?.proc==='IN'?-1:1));
+    const legs=[]; order.forEach((r,i)=>{
+      const prev=order[(i+order.length-1)%order.length];
+      if(prev.toId!==r.fromId){ const p=link(byId[prev.toId],byId[r.fromId]); if(p) legs.push({...twinCurve(p),loaded:false,label:'リフト 空荷',dwell:1.2}); }
+      const toIt=byId[r.toId]; legs.push({...twinCurve(r.pts),loaded:true,label:'リフト '+(toIt.proc==='OUT'?'製品 → 搬出':'→ '+toIt.name.replace(/（.*/,'')),dwell:2.4});
+    });
+    const f=makeForklift(true); f.scale.setScalar(.42);
+    twinAddTour(f,legs,{speed:2.2,dwell:2.2,label:true,tagScale:.5,tagY:5.4,reps:3});
+  }
+}
+function rebuildMovers(){
+  movers.forEach(m=>{ scene.remove(m.mesh); m.mesh.traverse(o=>{o.geometry?.dispose();o.material?.dispose?.();}); });
+  movers=[];
+  try{ if(ctx.kind==='site') twinSiteMovers(); else twinInteriorMovers(); }catch(e){ console.warn('movers',e); }
+  if(ctx.kind==='site'){   // 入出荷トラック（正門⇔出荷倉庫・原料倉庫）
+    const gate=siteCtx.items.find(i=>i.id==='gate');
+    [['whGen','出荷便',t=>[t.x-8,t.z-t.d/2-9]],['whNew','原料便',t=>[t.x+t.w/2+4,t.z]]].forEach(([tid,label,dockOf],ti)=>{
+      const tgt=siteCtx.items.find(i=>i.id===tid); if(!gate||!tgt) return;
+      const [dx2,dz2]=dockOf(tgt), path=astar(siteCtx,gate.x,gate.z+6,dx2,dz2); if(!path||path.length<2) return;
+      const curve=new THREE.CatmullRomCurve3(path.map(([x,z])=>new THREE.Vector3(x,0,z)),false,'centripetal');
+      const tk2=makeTruck(label); tk2.visible=false; applyShadows(tk2); scene.add(tk2);
+      movers.push({mesh:tk2,curve,len:curve.getLength(),t:0.15+ti*0.4,speed:10,reps:4,dir:1,state:'go',dwell:0,toggled:false,dwellDur:9});
+    });
+  }
+}
+// ---- 内部の見え方: 手前の壁を自動で隠す（カットアウェイ）・ラベルは近距離のみ ----
+function twinViewTick(){
+  if(ctx.kind!=='interior') return;
+  const W=ctx.W, D=ctx.D, cam=camera.position, walls=v3.groups.walls;
+  if(walls&&v3.layers.walls&&!v3.walk) for(const o of walls.children){
+    const p=o.position, side=Math.abs(p.x)>=W/2-.4, end=Math.abs(p.z)>=D/2-.4;
+    o.visible=!((side&&Math.sign(p.x)*cam.x>W*.2)||(end&&!side&&Math.sign(p.z)*cam.z>D*.2));
+  } else if(walls&&v3.walk) for(const o of walls.children) o.visible=true;
+  if(precisionState.labels){ const lim=v3.walk?9:Math.max(16,Math.min(30,camState.dist*.75)); for(const it of ctx.items){ const l=it.mesh?.children.find(ch=>ch.userData.precisionLabel); if(l) l.visible=(it===selected)||cam.distanceTo(it.mesh.position)<lim; } }
+}
+
 const _dum=new THREE.Object3D();
 function updateMovers(dt){
   movers.forEach(m=>{
@@ -3149,8 +3346,9 @@ function updateMovers(dt){
       m.dwell+=dt;
       const ph=Math.min(1, m.dwell/m.dwellDur);
       if(lift) lift.position.y = -0.24*(ph<0.5? ph*2 : (1-ph)*2);
-      if(cargo && ph>=0.5 && !m.toggled){ cargo.visible=(m.dir===-1); m.toggled=true; }
+      if(cargo && ph>=0.5 && !m.toggled){ cargo.visible=m.legs? !!m.legs[(m.li+1)%m.legs.length].loaded : (m.dir===-1); m.toggled=true; }
       if(m.dwell>=m.dwellDur){
+        if(m.legs){ if(lift) lift.position.y=0; m.dwell=0; m.toggled=false; twinNextLeg(m); return; }
         m.state="go"; m.dir*=-1; m.dwell=0; m.toggled=false;
         if(lift) lift.position.y=0;
       }
@@ -3248,7 +3446,7 @@ function enterBuilding(b){
   buildSnapGrid();
   fitShadow();
   removeGhost();
-  camGoal.target.set(0,2,0); camGoal.dist=Math.max(ic.W,ic.D)*0.85; camGoal.pitch=0.95; camGoal.yaw=0.4;
+  camGoal.target.set(0,2,0); camGoal.dist=Math.max(ic.W,ic.D)*0.95; camGoal.pitch=0.82; camGoal.yaw=ic.drawing?1.25:0.4;
   document.getElementById("crumb").innerHTML="敷地全体 › <b>"+b.name+"</b>";
   document.getElementById("backBtn").style.display="";
   document.getElementById("optBtn").disabled=false;
@@ -4291,7 +4489,7 @@ function buildSiteScene(){
 }
 function exLight(){
  if(drawMode){setSky(true);ambL.intensity=.75;hemiL.intensity=.85;dir.intensity=.75;return;}
- if(ctx.kind!=='site'){setSky(false);ambL.intensity=.30;hemiL.intensity=.55;hemiL.color.setHex(0x9fb8d8);hemiL.groundColor.setHex(0x2a2f36);dir.color.setHex(0xfff1dc);dir.intensity=1.35;dir.position.set(120,260,80);dir2.intensity=.22;renderer.toneMappingExposure=1.12;return;}
+ if(ctx.kind!=='site'){setSky(false);dir.color.setHex(0xfff6e8);dir.position.set(120,260,80);renderer.toneMappingExposure=1.05;twinInteriorLight();return;}   // 内部は昼光＋蛍光灯の明るさ（現地写真ベース）
  const p={day:{top:0x7ea7bd,mid:0xc8d6ce,ground:0x9ca993,sun:0xfff0d5,position:[-110,210,-135],intensity:2.15,ambient:.60,hemi:1.05,exposure:1.12},late:{top:0x899bab,mid:0xdecbb1,ground:0xa79a80,sun:0xffc58b,position:[-200,90,-100],intensity:2.0,ambient:.48,hemi:.85,exposure:1.18},dusk:{top:0x263e57,mid:0x6d848e,ground:0x4f655d,sun:0xecc397,position:[-200,35,80],intensity:.65,ambient:.35,hemi:.68,exposure:1.32}}[exterior.light];
  skyMat.uniforms.top.value.setHex(p.top);skyMat.uniforms.mid.value.setHex(p.mid);skyMat.uniforms.bot.value.setHex(p.ground);scene.background=new THREE.Color(p.mid);scene.fog=new THREE.Fog(p.mid,350,1150);ambL.intensity=p.ambient;hemiL.intensity=p.hemi;hemiL.color.setHex(0xd5e4e6);hemiL.groundColor.setHex(p.ground);dir.color.setHex(p.sun);dir.position.set(...p.position);dir.intensity=p.intensity;dir2.intensity=.18;renderer.toneMappingExposure=p.exposure;
  siteGroup.traverse(o=>{const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)if(m?.userData.exGlow)m.emissiveIntensity=exterior.light==='dusk'?.85:0;});dirtyShadow();
@@ -4318,7 +4516,7 @@ function exRender(){
 function exInit(){for(const [id,view] of [['exAll','overall'],['exGate','gate'],['exWh','warehouse'],['exTanks','tanks']])document.getElementById(id).onclick=()=>exCamera(view);document.getElementById('exSunset').onclick=()=>{exterior.light=exterior.light==='dusk'?'day':'dusk';exSync();};}
 
 // ================= V3 spatial model =================
-const v3={layers:{frame:true,walls:false,roof:false,mezzanine:true,zones:true},groups:{},obstacles:[],walk:false,walkPos:new THREE.Vector3(),keys:new Set(),section:null,sectionObject:null,sectionSpin:null,fill:.48,routes:true};
+const v3={layers:{frame:true,walls:true,roof:false,mezzanine:true,zones:true},groups:{},obstacles:[],walk:false,walkPos:new THREE.Vector3(),keys:new Set(),section:null,sectionObject:null,sectionSpin:null,fill:.48,routes:true};
 const V3_SECTION_TYPES=new Set(['TNK','KVT','DSP','PTK','MILL','FIL']);
 function v3ExportView(){return {layers:{...v3.layers},routes:v3.routes};}
 function v3ImportView(p){for(const k of Object.keys(v3.layers))if(typeof p?.layers?.[k]==='boolean')v3.layers[k]=p.layers[k];if(typeof p?.routes==='boolean')v3.routes=p.routes;}
@@ -4478,7 +4676,7 @@ function v4Search(g,starts,ends){
  }return null;
 }
 function v4Compute(c){
- const rec=v4Ensure(c),g=v4NavGrid(c,rec.vehicle.width,rec.vehicle.margin);c.cols=g.cols;c.rows=g.rows;c.occ=g.occ;c.cell=g.cell;c.routes=[];c.pipeTransfers=[];
+ const rec=v4Ensure(c),g=v4NavGrid(c,rec.vehicle.width,rec.vehicle.margin);c.nav=g;c.cols=g.cols;c.rows=g.rows;c.occ=g.occ;c.cell=g.cell;c.routes=[];c.pipeTransfers=[];
  for(const [fk,tk,reps,fline] of c.flows){const a=flowEnds(c,fk),b=flowEnds(c,tk),n=Math.max(a.length,b.length,1);for(let j=0;j<n;j++){
   const src=a[j%a.length],dst=b[j%b.length];const pipe=src&&dst?rec.links.find(l=>l.enabled&&l.from.assetId===src.assetId&&l.to.assetId===dst.assetId&&l.from.portId==='out'&&l.to.portId==='feed'):null;if(pipe){const p=v4PipePath(c,pipe);c.pipeTransfers.push({fromId:src.assetId,toId:dst.assetId,reps:reps/n,linkId:pipe.id,error:p.error||null,len:p.len??null});continue;}let pts=src&&dst?v4Search(g,v4Access(g,src),v4Access(g,dst)):null;
   const blocked=!pts;pts=pts||[];if(pts.length===1)pts.push({...pts[0],x:pts[0].x+.00001});let len=0;for(let k=1;k<pts.length;k++)len+=Math.hypot(pts[k].x-pts[k-1].x,pts[k].z-pts[k-1].z);
@@ -4738,7 +4936,7 @@ setTimeout(hideSplash, 2500);   // 非表示タブ等でrAFが止まっていて
 renderer.setAnimationLoop(()=>{
   const now=performance.now(); const dt=Math.min(0.05,(now-prev)/1000); prev=now;
   if(autoOrbit) camGoal.yaw+=dt*0.07;
-  v3Tick(dt); applyCam(); updateMovers(dt); window.__factorySim?.tick(dt);
+  v3Tick(dt); applyCam(); updateMovers(dt); if((frameNo&7)===0) twinViewTick(); window.__factorySim?.tick(dt);
   if(playing!==prevPlaying){ prevPlaying=playing; shadowDirty=true; }
   if(shadowsOn && (shadowDirty || (playing && frameNo%3===0) || frameNo%45===0)){
     renderer.shadowMap.needsUpdate=true; shadowDirty=false;
@@ -4952,6 +5150,47 @@ function twinDrawOverlay(){
   lg.position.set(0,6.5,-ctx.D/2-1); twinOverlay.add(lg);
 }
 
+
+// ---- グラフ部品（配色は検証済みの2系列: 青=実績/現状、橙=比較対象。文字は本文色のみ） ----
+const TW_C1='#338ced', TW_C2='#e76624';
+const twinLegend=items=>`<div class="tw-legend">${items.map(([c,t,kind])=>`<span><i class="${kind||''}" style="background:${c}"></i>${te(t)}</span>`).join('')}</div>`;
+function twinCols(data,{unit='',h=120,refName='計画',name='実績'}={}){
+  // 縦棒（実績）＋横線マーカー（計画）。data:[{label,value,ref}]
+  const W=372,padL=30,padB=18,padT=8,max=Math.max(...data.map(d=>Math.max(d.value||0,d.ref||0)))*1.08||1,bw=(W-padL-6)/data.length,y=v=>padT+(h-padT-padB)*(1-v/max);
+  const ticks=[0,.5,1].map(f=>Math.round(max/1.08*f));
+  return twinLegend([[TW_C1,name],['var(--sub)',refName,'line']])+`<svg class="tw-chart" viewBox="0 0 ${W} ${h}" role="img" aria-label="${te(name)}と${te(refName)}">
+  ${ticks.map(t=>`<line x1="${padL}" x2="${W}" y1="${y(t)}" y2="${y(t)}" class="tw-grid"/><text x="${padL-4}" y="${y(t)+3}" text-anchor="end" class="tw-ax">${tn(t)}</text>`).join('')}
+  ${data.map((d,i)=>{const x=padL+i*bw+bw*.2,w=bw*.6,yy=y(d.value||0),r=Math.min(4,w/2,(h-padB-yy));
+    return `<g data-tip="${te(d.label)}｜${te(name)} ${tn(d.value)}${unit}${d.ref!=null?' / '+te(refName)+' '+tn(d.ref)+unit+'（'+tn(d.value/d.ref*100,0)+'%）':''}"><rect x="${padL+i*bw}" y="${padT}" width="${bw}" height="${h-padT-padB}" fill="transparent"/>
+    <path d="M${x},${h-padB}V${yy+r}q0,${-r} ${r},${-r}h${w-2*r}q${r},0 ${r},${r}V${h-padB}z" fill="${TW_C1}"/>
+    ${d.ref!=null?`<line x1="${x-3}" x2="${x+w+3}" y1="${y(d.ref)}" y2="${y(d.ref)}" stroke="var(--txt)" stroke-width="2"/>`:''}
+    <text x="${x+w/2}" y="${h-5}" text-anchor="middle" class="tw-ax">${te(d.label)}</text></g>`;}).join('')}</svg>`;
+}
+function twinHBars(rows,{unit='',aName='現状',bName=null,dec=0}={}){
+  // 横棒。rows:[{label,a,b}]。bName があれば2系列。
+  const W=372,padL=92,rowH=bName?30:20,H=rows.length*rowH+4,max=Math.max(...rows.flatMap(r=>[r.a||0,r.b||0]))||1,sc=v=>(W-padL-46)*v/max;
+  const bar=(x,y,w,hh,c)=>{const r=Math.min(4,hh/2,w);return `<path d="M${x},${y}h${Math.max(0,w-r)}q${r},0 ${r},${r}v${hh-2*r}q0,${r} ${-r},${r}h${-Math.max(0,w-r)}z" fill="${c}"/>`;};
+  return (bName?twinLegend([[TW_C1,aName],[TW_C2,bName]]):'')+`<svg class="tw-chart" viewBox="0 0 ${W} ${H}" role="img">
+  ${rows.map((r,i)=>{const y=i*rowH+3,hh=bName?10:12;
+    return `<g data-tip="${te(r.label)}｜${te(aName)} ${tn(r.a,dec)}${unit}${bName?' / '+te(bName)+' '+tn(r.b,dec)+unit:''}"><rect x="0" y="${y-3}" width="${W}" height="${rowH}" fill="transparent"/>
+    <text x="${padL-6}" y="${y+(bName?14:10)}" text-anchor="end" class="tw-lb">${te(r.label)}</text>
+    ${bar(padL,y,sc(r.a||0),hh,TW_C1)}<text x="${padL+sc(r.a||0)+4}" y="${y+hh-1}" class="tw-ax">${tn(r.a,dec)}</text>
+    ${bName?bar(padL,y+hh+2,sc(r.b||0),hh,TW_C2)+`<text x="${padL+sc(r.b||0)+4}" y="${y+2*hh+1}" class="tw-ax">${tn(r.b,dec)}</text>`:''}</g>`;}).join('')}</svg>`;
+}
+// ---- 建屋間の移動（位置トラッキング実測 × 工程人員）と、ワニス・調色を第二工場へ移した場合 ----
+function twinInterBuilding(){
+  const r=simCore.evaluate(simCfg), A=simCore.A, nm=id=>({paint1:'第一',paint2:'第二',varnish:'ワニス',tint:'調色',lab:'研究棟',office:'事務所',whGen:'一般倉庫',whNew:'新一般倉庫',hazNew:'新危険物',hazA:'危険物A',hazB:'危険物B',parking:'駐車場',waste:'廃材'}[id]||id);
+  const pairs=new Map();
+  for(const e of r.edges){ const a=A[e.from].building,b=A[e.to].building; if(a===b) continue; const k=[a,b].sort().join('|')+'|'+e.group; const p=pairs.get(k)||{a:[a,b].sort()[0],b:[a,b].sort()[1],group:e.group,n:0,before:0,after:0}; p.n+=e.beforeCount; p.before+=e.beforeMinutes; p.after+=e.afterMinutes; pairs.set(k,p); }
+  const top=[...pairs.values()].sort((x,y)=>Math.abs(y.after-y.before)-Math.abs(x.after-x.before)).slice(0,8);
+  const need=(r.current-r.goal)*simCfg.hours*60;
+  return `<h4>建屋間の移動と移設の影響（実測 × 人員${r.current}名）</h4>
+  <div class="tw-kpis">${twinKpi('移動時間 現状',tn(r.beforeMinutes)+' 分/日','6工程の合計')}${twinKpi('ワニス・調色を第二へ',tn(r.afterMinutes)+' 分/日',(r.gain>=0?'−':'＋')+tn(Math.abs(r.gain))+' 分/日')}${twinKpi(`${r.current-r.goal}名削減に必要`,tn(need)+' 分/日','= '+(r.current-r.goal)+'名×'+simCfg.hours+'h')}</div>
+  ${twinHBars(r.rows.map(x=>({label:x.group,a:x.beforeMinutes,b:x.afterMinutes})),{unit:'分/日',aName:'現状',bName:'移設後'})}
+  <div class="tw-warn"><b>移設だけでは移動時間は${r.gain>=0?'減りますが':'減らず、むしろ増えます'}</b>（${r.gain>=0?'−':'＋'}${tn(Math.abs(r.gain))}分/日）。主因は下表の上位の組合せです。${r.current-r.goal}名削減（${tn(need)}分/日）の原資は、移動時間ではなく、応援の解消・工程の兼務・段取りの共通化で作る必要があります。</div>
+  ${twinTable(['建屋の組合せ','工程','回/日','現状 分/日','移設後 分/日'],top.map(p=>twinRow([te(nm(p.a)+' ⇄ '+nm(p.b)),te(p.group),tn(p.n),tn(p.before),`<span class="${p.after<=p.before?'tw-good':'tw-bad'}">${tn(p.after)}</span>`])))}
+  <p class="tw-note">回数は位置トラッキング（2026/7〜8、工程ごと4〜7 ID日）の建屋間移動を人員数に換算。距離は建屋代表点間の直線×迂回係数${simCfg.detour}、歩行${simCfg.speed}m/分。移設先の代表点は実測再生画面でドラッグして変更できます。</p>`;
+}
 // ---- 各ビューの中身 ----
 function twinSiteView(){
   const A=TWIN, prod=A.monthly.filter(m=>m.metric==='生産トン数'&&m.category==='合計');
@@ -4961,10 +5200,13 @@ function twinSiteView(){
   const lt=A.line_total, labor=lt.reduce((a,l)=>a+l.labor_hours,0), out=lt.reduce((a,l)=>a+l.output_t,0);
   return `<div class="tw-eyebrow">工場全体 / ${A.period.production[0]}〜${A.period.production[1]}</div><h3>加須工場 生産実績</h3>
   <div class="tw-kpis">${twinKpi('生産トン数（7か月）',tn(ta)+' t','計画比 '+tn(ta/tp*100,1)+'%')}${twinKpi('製造バッチ',tn(A.counts.batches)+' 件','1B・2B・ワニス')}${twinKpi('出来高 / 人時',tn(out*1000/labor,0)+' kg','3ライン合計')}</div>
+  <p class="tw-note">前提（共有コメント）: 生産人員24名 = ワニス2・仕込み3・調合3・充填10・2B 3・調色3。ワニスと調色を第二工場へ移し2名削減する計画。フォークリフト担当2名は別枠。</p>
   <h4>ライン別（行をクリックで建屋内部へ）</h4>
   ${twinTable(['ライン','バッチ/日','出来高 t','kg/人時','記録直接工数/就業','収率%'],lt.map(l=>twinRow([`<b>${te(l.line)}</b>`,tn(l.batches_per_day,1),tn(l.output_t),tn(l.kg_per_labor_hour),tn(l.direct_min_day/(l.avg_headcount*480)*100,0)+'%',tn(l.yield_pct,1)],`class="tw-click" data-tw-enter="${TWIN_BLD[l.line]}"`)))}
   <p class="tw-note">「記録直接工数/就業」= 生産データの工程別合計分 ÷（平均人数×8h）。残りは記録外（段取り・搬送・待ち・洗浄など）で、動線改善の余地を測る母数になります。</p>
+  ${twinInterBuilding()}
   <h4>月次 計画と実績（トン）</h4>
+  ${twinCols(prod.map(m=>({label:m.month.slice(5).replace(/^0/,'')+'月',value:m.actual,ref:m.plan})),{unit:'t',name:'生産実績',refName:'計画'})}
   ${twinTable(['月','生産 計画','生産 実績','達成率','出荷 実績','在庫 実績'],prod.map(m=>twinRow([m.month.slice(2),tn(m.plan),tn(m.actual),`<span class="${m.actual>=m.plan?'tw-good':'tw-bad'}">${tn(m.actual/m.plan*100,0)}%</span>`,tn(ship[m.month]?.actual),tn(stock[m.month]?.actual)])))}
   <h4>部門別の人員（日報）</h4>
   ${twinTable(['部門','在籍','平均出勤','残業 h','応援受 人日','応援出 人日'],A.dept_labor.map(d=>twinRow([te(d.dept),tn(d.roster),tn(d.avg_headcount,1),tn(d.overtime_hours),tn(d.support_in_days),tn(d.support_out_days)])))}
@@ -5004,9 +5246,11 @@ function twinBuildingView(b){
   return `<div class="tw-eyebrow">建屋内部 / ライン ${te(line)}</div><h3>${te(b.name)}</h3>
   <div class="tw-kpis">${twinKpi('バッチ',tn(T.batches_per_day,1)+' 件/日',tn(T.batches)+' 件')}${twinKpi('出来高/人時',tn(T.kg_per_labor_hour)+' kg','平均 '+tn(T.avg_headcount,1)+' 名')}${twinKpi('直接工数',tn(T.direct_min_day)+' 分/日','仕込'+tn(T.prep_min_day)+'・調合'+tn(T.mix_min_day)+'・充填'+tn(T.fill_min_day))}</div>
   ${linked?twinLayoutBlock(b.id):'<p class="tw-note">この建屋は図面未入手のため内部は仮配置です。KPIはライン単位で表示し、設備単位の連動は行いません。</p>'}
-  <h4>月次推移</h4>
+  <h4>月次推移（出来高 t）</h4>
+  ${twinCols(M.map(m=>({label:m.month.slice(5).replace(/^0/,'')+'月',value:m.output_t,ref:null})),{unit:'t',name:'出来高',refName:'—'}).replace(/<span><i class="line".*?<\/span>/,'')}
   ${twinTable(['月','バッチ','出来高 t','kg/人時','充填 実績/標準','残業 h'],M.map(m=>twinRow([m.month.slice(2),tn(m.batches),tn(m.output_t),tn(m.kg_per_labor_hour),m.fill_actual_vs_std==null?'—':tn(m.fill_actual_vs_std,0)+'%',tn(m.overtime_hours)])))}
-  <h4>稼働の多い設備（${linked?'クリックで3D上の設備へ':'設備番号'}）</h4>
+  <h4>稼働の多い設備（${linked?'表の行クリックで3D上の設備へ':'設備番号'}）</h4>
+  ${twinHBars(used.slice(0,8).map(u=>({label:u.tag+(u.kind==='fill'?'（充填）':''),a:u.batches})),{unit:'バッチ',aName:'使用バッチ'})}
   ${twinTable(['設備番号','役割','バッチ','出来高 t','台帳'],used.map(u=>twinRow([`<b>${te(u.tag)}</b>`,te(Object.keys(u.roles).join('・')),tn(u.batches),tn(u.output_t),u.in_ledger?'あり':'<span class="tw-mute">未照合</span>'],linked?`class="tw-click" data-tw-tag="${te(u.tag)}" data-tw-kind="${u.kind}"`:'')))}`;
 }
 function twinEquipmentView(it){
@@ -5053,6 +5297,9 @@ document.getElementById('twinClose').onclick=()=>{twinState.open=false; twinRend
   simCore.defaults.direct={...direct}; simCfg.direct={...direct};
   try{ simResult=simCore.evaluate(simCfg); }catch(e){ console.warn('direct labour init',e); }
 }
+const twinTip=document.createElement('div'); twinTip.id='twinTip'; document.body.appendChild(twinTip);
+twinBody.addEventListener('mousemove',e=>{const g=e.target.closest('[data-tip]'); if(!g){twinTip.style.display='none';return;} twinTip.textContent=g.dataset.tip; twinTip.style.display='block'; twinTip.style.left=Math.min(innerWidth-270,e.clientX+12)+'px'; twinTip.style.top=(e.clientY+14)+'px';});
+twinBody.addEventListener('mouseleave',()=>twinTip.style.display='none');
 window.__twin={data:TWIN,state:twinState,setScenario:setLayoutScenario,compare:twinCompare,layouts:layoutCtxs,render:twinRender};
 window.__twinReady=true; twinSync();
 

@@ -2349,11 +2349,11 @@ function v3BuildStructure(b,ic){
  // Perimeter wall segments with real openings at the ends of the pedestrian aisle.
  const walkX=W*.40,doorWidth=2.0;
  for(const sign of [-1,1]){
-  v3Box(walls,.16,H,D,sign*(W/2),H/2,0,0x647a82);
+  {const wm=v3Box(walls,.16,H,D,sign*(W/2),H/2,0,0xffffff);wm.material=twinWallMat(D,H);const dado=v3Box(walls,.2,1.1,D,sign*(W/2),.55,0,0x3b4f8f);dado.material.roughness=.8;}
   const left=walkX-doorWidth/2+W/2,right=W/2-walkX-doorWidth/2;
-  v3Box(walls,left,H,.16,-W/2+left/2,H/2,sign*D/2,0x768a8d);
-  if(right>0)v3Box(walls,right,H,.16,W/2-right/2,H/2,sign*D/2,0x768a8d);
-  v3Box(walls,doorWidth,H-2.4,.16,walkX,(H+2.4)/2,sign*D/2,0x768a8d);
+  v3Box(walls,left,H,.16,-W/2+left/2,H/2,sign*D/2,0xd6dad3);
+  if(right>0)v3Box(walls,right,H,.16,W/2-right/2,H/2,sign*D/2,0xd6dad3);
+  v3Box(walls,doorWidth,H-2.4,.16,walkX,(H+2.4)/2,sign*D/2,0xd6dad3);
   v3Box(walls,doorWidth+.16,.12,.18,walkX,2.42,sign*D/2,0xced7cf);
   const exit=makeLabel('出入口（仮）',.09,'#80e4b4');exit.position.set(walkX,2.9,sign*(D/2-.16));walls.add(exit);
   for(let i=0;i<bays;i++){
@@ -2398,11 +2398,36 @@ function v3BuildStructure(b,ic){
  for(let i=0;i<=bays;i++)v3FloorLabel(zones,String(i+1).padStart(2,'0'),-W/2+1.0,-D/2+i*bay,.06,'#a8b6bc');
  return groups;
 }
+
+// ---- 内部の質感（現地写真ベース: 緑塗装の床・波板の壁・蛍光灯の明るさ） ----
+function twinFloorMat(W,D){
+  const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
+  x.fillStyle='#6f9480';x.fillRect(0,0,512,512);
+  const rng=sRand('floor');for(let i=0;i<2600;i++){const a=rng()*.10;x.fillStyle=rng()<.5?`rgba(20,45,35,${a})`:`rgba(190,215,200,${a*.7})`;const s=1+rng()*5;x.fillRect(rng()*512,rng()*512,s*(1+rng()*3),s);}
+  for(let i=0;i<26;i++){x.fillStyle=`rgba(120,128,120,${.05+rng()*.10})`;x.beginPath();x.ellipse(rng()*512,rng()*512,8+rng()*40,5+rng()*22,rng()*3,0,6.3);x.fill();}   // 塗装の摩耗・汚れ
+  x.strokeStyle='rgba(25,50,40,.35)';x.lineWidth=1.5;for(let i=0;i<=2;i++){x.beginPath();x.moveTo(i*256,0);x.lineTo(i*256,512);x.moveTo(0,i*256);x.lineTo(512,i*256);x.stroke();}   // 目地
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(W/6,D/6);t.anisotropy=8;
+  return new THREE.MeshStandardMaterial({map:t,roughness:.62,metalness:.05});
+}
+function twinWallMat(len,H){
+  const c=document.createElement('canvas');c.width=256;c.height=256;const x=c.getContext('2d');
+  for(let i=0;i<256;i++){const v=205+Math.round(22*Math.sin(i/256*Math.PI*2*16));x.fillStyle=`rgb(${v},${v+2},${v-4})`;x.fillRect(i,0,1,256);}   // 波板
+  x.fillStyle='rgba(90,95,85,.10)';for(let i=0;i<40;i++)x.fillRect(Math.random()*256,Math.random()*256,2,30+Math.random()*80);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(len/3,1);
+  return [new THREE.MeshStandardMaterial({map:t,roughness:.85}),new THREE.MeshStandardMaterial({map:t,roughness:.85}),...[0,1,2,3].map(()=>new THREE.MeshStandardMaterial({color:0xcfd4cc,roughness:.9}))];
+}
+function twinInteriorLight(){
+  if(drawMode) return;
+  scene.background=new THREE.Color(0xb9c4c6); scene.fog=new THREE.Fog(0xb9c4c6,160,520);
+  ambL.intensity=.55; hemiL.intensity=.85; hemiL.color.set(0xf4f7ff); hemiL.groundColor.set(0x7d8f84); dir.intensity=1.0; dir2.intensity=.3;
+}
 function buildInteriorScene(b){
  v3ClearSection();clearGroup(intGroup);spinDiscs.length=0;hoistAnims.length=0;evAnims.length=0;craneAnims.length=0;
  const ic=interiorCtxs.get(b.id),W=ic.W,D=ic.D;
- const floor=new THREE.Mesh(new THREE.PlaneGeometry(W+.6,D+.6),new THREE.MeshStandardMaterial({color:drawMode?0xe1e6e3:0x34494b,roughness:.92}));floor.rotation.x=-Math.PI/2;intGroup.add(floor);
- const grid=new THREE.GridHelper(Math.max(W,D),Math.round(Math.max(W,D)),drawMode?0xb2c1bb:0x46645e,drawMode?0xd2ddd5:0x3b5550);grid.position.y=.008;intGroup.add(grid);
+ const floor=new THREE.Mesh(new THREE.PlaneGeometry(W+.6,D+.6),drawMode?new THREE.MeshStandardMaterial({color:0xe1e6e3,roughness:.92}):twinFloorMat(W,D));floor.rotation.x=-Math.PI/2;intGroup.add(floor);
+ const apron=new THREE.Mesh(new THREE.PlaneGeometry(W+40,D+40),new THREE.MeshStandardMaterial({color:drawMode?0xeef1ee:0x8f9a8c,roughness:1}));apron.rotation.x=-Math.PI/2;apron.position.y=-.06;intGroup.add(apron);
+ const grid=new THREE.GridHelper(Math.max(W,D),Math.round(Math.max(W,D)),drawMode?0xb2c1bb:0x2f6a52,drawMode?0xd2ddd5:0x3a7a60);grid.position.y=.008;grid.material.transparent=true;grid.material.opacity=drawMode?.8:.22;intGroup.add(grid);
+ twinInteriorLight();
  v3BuildStructure(b,ic);
  ic.items.forEach((it,i)=>{
   const g=makeEquipment({...it,w:it.bw??it.w,d:it.bd??it.d});g.rotation.y=-(it.rot||0)*Math.PI/2;g.position.set(it.x,0,it.z);g.userData.idx=i;g.traverse(o=>o.userData.idx=i);
@@ -2544,7 +2569,7 @@ function makeTruck(label){
   const lbl=makeLabel(label,0.5,"#9fdcff"); lbl.position.set(0,4.4,0); g.add(lbl);
   return g;
 }
-function rebuildMovers(){
+function rebuildMoversLegacy(){
   movers.forEach(m=>{ scene.remove(m.mesh); m.mesh.traverse(o=>{o.geometry?.dispose();o.material?.dispose();}); });
   movers=[];
   const isSite = ctx.kind==="site";
@@ -2579,6 +2604,7 @@ function rebuildMovers(){
     });
   }
 }
+@@INCLUDE js/movers.js@@
 const _dum=new THREE.Object3D();
 function updateMovers(dt){
   movers.forEach(m=>{
@@ -2590,8 +2616,9 @@ function updateMovers(dt){
       m.dwell+=dt;
       const ph=Math.min(1, m.dwell/m.dwellDur);
       if(lift) lift.position.y = -0.24*(ph<0.5? ph*2 : (1-ph)*2);
-      if(cargo && ph>=0.5 && !m.toggled){ cargo.visible=(m.dir===-1); m.toggled=true; }
+      if(cargo && ph>=0.5 && !m.toggled){ cargo.visible=m.legs? !!m.legs[(m.li+1)%m.legs.length].loaded : (m.dir===-1); m.toggled=true; }
       if(m.dwell>=m.dwellDur){
+        if(m.legs){ if(lift) lift.position.y=0; m.dwell=0; m.toggled=false; twinNextLeg(m); return; }
         m.state="go"; m.dir*=-1; m.dwell=0; m.toggled=false;
         if(lift) lift.position.y=0;
       }
@@ -2689,7 +2716,7 @@ function enterBuilding(b){
   buildSnapGrid();
   fitShadow();
   removeGhost();
-  camGoal.target.set(0,2,0); camGoal.dist=Math.max(ic.W,ic.D)*0.85; camGoal.pitch=0.95; camGoal.yaw=0.4;
+  camGoal.target.set(0,2,0); camGoal.dist=Math.max(ic.W,ic.D)*0.95; camGoal.pitch=0.82; camGoal.yaw=ic.drawing?1.25:0.4;
   document.getElementById("crumb").innerHTML="敷地全体 › <b>"+b.name+"</b>";
   document.getElementById("backBtn").style.display="";
   document.getElementById("optBtn").disabled=false;
@@ -3707,7 +3734,7 @@ function buildSiteScene(){
 }
 function exLight(){
  if(drawMode){setSky(true);ambL.intensity=.75;hemiL.intensity=.85;dir.intensity=.75;return;}
- if(ctx.kind!=='site'){setSky(false);ambL.intensity=.30;hemiL.intensity=.55;hemiL.color.setHex(0x9fb8d8);hemiL.groundColor.setHex(0x2a2f36);dir.color.setHex(0xfff1dc);dir.intensity=1.35;dir.position.set(120,260,80);dir2.intensity=.22;renderer.toneMappingExposure=1.12;return;}
+ if(ctx.kind!=='site'){setSky(false);dir.color.setHex(0xfff6e8);dir.position.set(120,260,80);renderer.toneMappingExposure=1.05;twinInteriorLight();return;}   // 内部は昼光＋蛍光灯の明るさ（現地写真ベース）
  const p={day:{top:0x7ea7bd,mid:0xc8d6ce,ground:0x9ca993,sun:0xfff0d5,position:[-110,210,-135],intensity:2.15,ambient:.60,hemi:1.05,exposure:1.12},late:{top:0x899bab,mid:0xdecbb1,ground:0xa79a80,sun:0xffc58b,position:[-200,90,-100],intensity:2.0,ambient:.48,hemi:.85,exposure:1.18},dusk:{top:0x263e57,mid:0x6d848e,ground:0x4f655d,sun:0xecc397,position:[-200,35,80],intensity:.65,ambient:.35,hemi:.68,exposure:1.32}}[exterior.light];
  skyMat.uniforms.top.value.setHex(p.top);skyMat.uniforms.mid.value.setHex(p.mid);skyMat.uniforms.bot.value.setHex(p.ground);scene.background=new THREE.Color(p.mid);scene.fog=new THREE.Fog(p.mid,350,1150);ambL.intensity=p.ambient;hemiL.intensity=p.hemi;hemiL.color.setHex(0xd5e4e6);hemiL.groundColor.setHex(p.ground);dir.color.setHex(p.sun);dir.position.set(...p.position);dir.intensity=p.intensity;dir2.intensity=.18;renderer.toneMappingExposure=p.exposure;
  siteGroup.traverse(o=>{const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)if(m?.userData.exGlow)m.emissiveIntensity=exterior.light==='dusk'?.85:0;});dirtyShadow();
@@ -3734,7 +3761,7 @@ function exRender(){
 function exInit(){for(const [id,view] of [['exAll','overall'],['exGate','gate'],['exWh','warehouse'],['exTanks','tanks']])document.getElementById(id).onclick=()=>exCamera(view);document.getElementById('exSunset').onclick=()=>{exterior.light=exterior.light==='dusk'?'day':'dusk';exSync();};}
 
 // ================= V3 spatial model =================
-const v3={layers:{frame:true,walls:false,roof:false,mezzanine:true,zones:true},groups:{},obstacles:[],walk:false,walkPos:new THREE.Vector3(),keys:new Set(),section:null,sectionObject:null,sectionSpin:null,fill:.48,routes:true};
+const v3={layers:{frame:true,walls:true,roof:false,mezzanine:true,zones:true},groups:{},obstacles:[],walk:false,walkPos:new THREE.Vector3(),keys:new Set(),section:null,sectionObject:null,sectionSpin:null,fill:.48,routes:true};
 const V3_SECTION_TYPES=new Set(['TNK','KVT','DSP','PTK','MILL','FIL']);
 function v3ExportView(){return {layers:{...v3.layers},routes:v3.routes};}
 function v3ImportView(p){for(const k of Object.keys(v3.layers))if(typeof p?.layers?.[k]==='boolean')v3.layers[k]=p.layers[k];if(typeof p?.routes==='boolean')v3.routes=p.routes;}
@@ -3894,7 +3921,7 @@ function v4Search(g,starts,ends){
  }return null;
 }
 function v4Compute(c){
- const rec=v4Ensure(c),g=v4NavGrid(c,rec.vehicle.width,rec.vehicle.margin);c.cols=g.cols;c.rows=g.rows;c.occ=g.occ;c.cell=g.cell;c.routes=[];c.pipeTransfers=[];
+ const rec=v4Ensure(c),g=v4NavGrid(c,rec.vehicle.width,rec.vehicle.margin);c.nav=g;c.cols=g.cols;c.rows=g.rows;c.occ=g.occ;c.cell=g.cell;c.routes=[];c.pipeTransfers=[];
  for(const [fk,tk,reps,fline] of c.flows){const a=flowEnds(c,fk),b=flowEnds(c,tk),n=Math.max(a.length,b.length,1);for(let j=0;j<n;j++){
   const src=a[j%a.length],dst=b[j%b.length];const pipe=src&&dst?rec.links.find(l=>l.enabled&&l.from.assetId===src.assetId&&l.to.assetId===dst.assetId&&l.from.portId==='out'&&l.to.portId==='feed'):null;if(pipe){const p=v4PipePath(c,pipe);c.pipeTransfers.push({fromId:src.assetId,toId:dst.assetId,reps:reps/n,linkId:pipe.id,error:p.error||null,len:p.len??null});continue;}let pts=src&&dst?v4Search(g,v4Access(g,src),v4Access(g,dst)):null;
   const blocked=!pts;pts=pts||[];if(pts.length===1)pts.push({...pts[0],x:pts[0].x+.00001});let len=0;for(let k=1;k<pts.length;k++)len+=Math.hypot(pts[k].x-pts[k-1].x,pts[k].z-pts[k-1].z);
@@ -4154,7 +4181,7 @@ setTimeout(hideSplash, 2500);   // 非表示タブ等でrAFが止まっていて
 renderer.setAnimationLoop(()=>{
   const now=performance.now(); const dt=Math.min(0.05,(now-prev)/1000); prev=now;
   if(autoOrbit) camGoal.yaw+=dt*0.07;
-  v3Tick(dt); applyCam(); updateMovers(dt); window.__factorySim?.tick(dt);
+  v3Tick(dt); applyCam(); updateMovers(dt); if((frameNo&7)===0) twinViewTick(); window.__factorySim?.tick(dt);
   if(playing!==prevPlaying){ prevPlaying=playing; shadowDirty=true; }
   if(shadowsOn && (shadowDirty || (playing && frameNo%3===0) || frameNo%45===0)){
     renderer.shadowMap.needsUpdate=true; shadowDirty=false;
