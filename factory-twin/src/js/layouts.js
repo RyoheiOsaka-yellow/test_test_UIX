@@ -12,7 +12,7 @@ function drawTankQuad(prefix,nums,cx,cz,dia,dx,dz,only,sys){
 const DRAWING_LAYOUTS={
  paint2:{
   source:"図面 260925（第二現状 / 第二変更レイアウト）",
-  scenarios:{current:"現状（図面260925）",plan:"変更案（図面260925・未確定）"},
+  scenarios:{concept:"初期イメージ（仮配置）",current:"図面 現状（260925）",plan:"図面 変更案（260925・未確定）"},
   // [proc, 名称, 設備番号(別名可), x, z, w, d, h, {only, sys, note}]
   items:[
    // --- 荷役（位置は仮定。図面に記載なし）: リフトは 搬入口→原料置場、製品仮置き→搬出口 ---
@@ -151,13 +151,14 @@ function makeDrawingCtx(b,scen){
   c.drawing={layout:L,scen,unassigned,
     obstacles:[...L.rooms.filter(r=>!r[6]||r[6]===scen).map(r=>({name:r[0],x:r[1],z:r[2],w:r[3],d:r[4],h:r[5]})),
                ...L.stairs.filter(s=>!s[4]||s[4]===scen).map(s=>({name:"階段",x:s[0],z:s[1],w:s[2],d:s[3],h:DRAW_DECK_H}))]};
+  for(let x=L.deck.x0;x<=L.deck.x1+.01;x+=L.deck.pitch)for(const z of L.deck.rows)c.drawing.obstacles.push({name:"架台柱",x,z,w:.25,d:.25,h:DRAW_DECK_H});   // 架台の柱は最初から障害物に含める
   return c;
 }
 function flowEnds(c,key){ return key[0]==="#" ? c.items.filter(i=>i.assetId===key.slice(1)) : c.items.filter(i=>i.proc===key); }
 for(const id of Object.keys(DRAWING_LAYOUTS)){
   const b=siteCtx.items.find(i=>i.id===id); if(!b) continue;
-  layoutState[id]="current"; layoutCtxs[id]={current:makeDrawingCtx(b,"current"),plan:makeDrawingCtx(b,"plan")};
-  interiorCtxs.set(id,layoutCtxs[id].current);
+  // 既定は初期イメージ（従来の仮配置）。図面ベースの現状／変更案は切替で表示。
+  layoutState[id]="concept"; layoutCtxs[id]={concept:interiorCtxs.get(id),current:makeDrawingCtx(b,"current"),plan:makeDrawingCtx(b,"plan")};
 }
 // 図面ベース建屋の構造物（架台・階段・室・ゾーン）を描く
 function twinStructure(b,ic,groups){
@@ -165,7 +166,7 @@ function twinStructure(b,ic,groups){
   const deckMat=new THREE.MeshStandardMaterial({color:0x9aa5a6,roughness:.5,metalness:.65,transparent:true,opacity:.30,depthWrite:false});
   for(const [x,z,w,d] of [[(dk.x0+dk.x1)/2,dk.rows[0]-.55,dk.x1-dk.x0+1.3,.1],[(dk.x0+dk.x1)/2,dk.rows[2]+.55,dk.x1-dk.x0+1.3,.1],[dk.x0-.6,(dk.rows[0]+dk.rows[2])/2,.1,dk.rows[2]-dk.rows[0]+1.2],[dk.x1+.6,(dk.rows[0]+dk.rows[2])/2,.1,dk.rows[2]-dk.rows[0]+1.2]])v3Box(zones,w,.012,d,x,.02,z,0xe2c23a);
   const deck=new THREE.Mesh(new THREE.BoxGeometry(dk.x1-dk.x0,.08,dk.rows[2]-dk.rows[0]),deckMat);deck.position.set((dk.x0+dk.x1)/2,H,(dk.rows[0]+dk.rows[2])/2);mezzanine.add(deck);
-  for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch)for(const z of dk.rows){v3Box(mezzanine,.2,H,.2,x,H/2,z,0x5d737b);v3.obstacles.push({x,z,w:.3,d:.3,layer:'mezzanine'});ic.drawing.obstacles.some(o=>o.col&&o.x===x&&o.z===z)||ic.drawing.obstacles.push({name:"架台柱",col:true,x,z,w:.25,d:.25,h:H});}
+  for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch)for(const z of dk.rows){v3Box(mezzanine,.2,H,.2,x,H/2,z,0x5d737b);v3.obstacles.push({x,z,w:.3,d:.3,layer:'mezzanine'});}
   for(const z of dk.rows)v3Box(mezzanine,dk.x1-dk.x0,.22,.14,(dk.x0+dk.x1)/2,H-.11,z,0x6f858c);
   for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch)v3Box(mezzanine,.12,.2,dk.rows[2]-dk.rows[0],x,H-.1,(dk.rows[0]+dk.rows[2])/2,0x6f858c);
   const rail=(a,c)=>{for(const y of [H+.55,H+1.1])v3Beam(mezzanine,[a[0],y,a[1]],[c[0],y,c[1]],.022,0xdbc251);};

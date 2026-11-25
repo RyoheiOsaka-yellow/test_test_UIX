@@ -124,7 +124,7 @@ function twinSiteView(){
   <p class="tw-note">補正1回ごとに調色時間が約25〜30分延びています。調色を第二工場へ寄せる場合、測色・補正の往復距離が効きます。</p>`;
 }
 function twinLayoutBlock(id){
-  const L=DRAWING_LAYOUTS[id], cur=layoutState[id], cmp=twinState.compare=twinCompare(id);
+  const L=DRAWING_LAYOUTS[id], cur=layoutState[id], cmp=twinState.compare=twinCompare(id), isDraw=!!ctx.drawing;
   const mins=d=>d/SPEED.interior*60;
   const lines=[...new Set([...Object.keys(cmp.current.by),...Object.keys(cmp.plan.by)])];
   const rows=lines.map(k=>{const a=cmp.current.by[k],b=cmp.plan.by[k];
@@ -133,9 +133,12 @@ function twinLayoutBlock(id){
   for(const [k,e] of Object.entries(cmp.common)){const d=e.plan-e.current;rows.push(twinRow([te(k)+' 共通'+e.n+'経路',tn(e.current),tn(e.plan),`<span class="${d<=0?'tw-good':'tw-bad'}">${d>0?'+':''}${tn(d)}</span>`,tn(mins(e.current),1),tn(mins(e.plan),1)]));}
   const un=s=>Object.entries(cmp[s].un).map(([k,v])=>`${te(k)} ${tn(v.n,2)}回/日`).join('、')||'なし';
   const lost=(cmp.plan.un['2B']?.list||[]).filter(f=>!(cmp.current.un['2B']?.list||[]).includes(f)).sort((a,b)=>b.batches-a.batches).slice(0,6);
-  return `<h4>レイアウト比較（${te(L.source)}）</h4>
+  return `<h4>内部の配置（切替）</h4>
   <div class="tw-seg">${Object.entries(L.scenarios).map(([k,v])=>`<button class="btn ${cur===k?'on':''}" data-tw-scen="${k}">${te(v)}</button>`).join('')}</div>
-  <label class="tw-check"><input type="checkbox" id="twDiff" ${twinState.diff?'checked':''}> 差分を3Dに重ねる（追加=緑 / 撤去=橙）</label>
+  <p class="tw-note">${isDraw?'図面どおりの設備位置です。設備番号で台帳・生産実績と連動します。':'初期イメージは検討用の仮配置です。図面どおりの位置と設備番号連動は「図面 現状／変更案」で見られます。'}</p>
+  <label class="tw-check"><input type="checkbox" id="twLook" ${twinLook==='photo'?'checked':''}> 写真調の質感（緑の床・明るい照明・写真ベースの設備形状）</label>
+  ${isDraw?`<label class="tw-check"><input type="checkbox" id="twDiff" ${twinState.diff?'checked':''}> 現状と変更案の差分を3Dに重ねる（追加=緑 / 撤去=橙）</label>`:''}
+  <h4>図面 現状と変更案の比較（${te(L.source)}）</h4>
   ${twinTable(['対象ライン','現状 m/日','変更案 m/日','差','現状 分/日','変更案 分/日'],rows)}
   <p class="tw-note">距離 = 設備間の歩行経路長 × 実バッチ頻度（生産データ ${TWIN.period.production[0]}〜${TWIN.period.production[1]}）× 往復。設備を動かすと即時に再計算します。「共通」行は両案で両端の設備が図面にある経路だけの比較です。ワニスの現状はワニス工場内のため、この建屋では比較対象外です。</p>
   <div class="tw-warn"><b>経路化できないフロー</b><br>現状: ${un('current')}<br>変更案: ${un('plan')}
@@ -152,7 +155,7 @@ function twinBuildingView(b){
   const linked=!!ctx.drawing;
   return `<div class="tw-eyebrow">建屋内部 / ライン ${te(line)}</div><h3>${te(b.name)}</h3>
   <div class="tw-kpis">${twinKpi('バッチ',tn(T.batches_per_day,1)+' 件/日',tn(T.batches)+' 件')}${twinKpi('出来高/人時',tn(T.kg_per_labor_hour)+' kg','平均 '+tn(T.avg_headcount,1)+' 名')}${twinKpi('直接工数',tn(T.direct_min_day)+' 分/日','仕込'+tn(T.prep_min_day)+'・調合'+tn(T.mix_min_day)+'・充填'+tn(T.fill_min_day))}</div>
-  ${linked?twinLayoutBlock(b.id):'<p class="tw-note">この建屋は図面未入手のため内部は仮配置です。KPIはライン単位で表示し、設備単位の連動は行いません。</p>'}
+  ${layoutCtxs[b.id]?twinLayoutBlock(b.id):'<p class="tw-note">この建屋は図面未入手のため内部は仮配置です。KPIはライン単位で表示し、設備単位の連動は行いません。</p><label class="tw-check"><input type="checkbox" id="twLook" '+(twinLook==="photo"?"checked":"")+'> 写真調の質感（緑の床・明るい照明）</label>'}
   <h4>月次推移（出来高 t）</h4>
   ${twinCols(M.map(m=>({label:m.month.slice(5).replace(/^0/,'')+'月',value:m.output_t,ref:null})),{unit:'t',name:'出来高',refName:'—'}).replace(/<span><i class="line".*?<\/span>/,'')}
   ${twinTable(['月','バッチ','出来高 t','kg/人時','充填 実績/標準','残業 h'],M.map(m=>twinRow([m.month.slice(2),tn(m.batches),tn(m.output_t),tn(m.kg_per_labor_hour),m.fill_actual_vs_std==null?'—':tn(m.fill_actual_vs_std,0)+'%',tn(m.overtime_hours)])))}
@@ -190,6 +193,7 @@ function twinRender(){
   twinBody.querySelectorAll('[data-tw-scen]').forEach(b=>b.onclick=()=>setLayoutScenario(currentBuilding.id,b.dataset.twScen));
   twinBody.querySelectorAll('[data-tw-tag]').forEach(r=>r.onclick=()=>{const it=ctx.items.find(i=>i.tags?.includes(r.dataset.twTag)&&(r.dataset.twKind==='fill')===(i.proc==='FIL')); if(it){ select(it); camGoal.target.set(it.x,1.2,it.z); camGoal.dist=Math.min(camGoal.dist,16); } else toast(r.dataset.twTag+' はこのレイアウト図面に記載がありません');});
   const d=document.getElementById('twDiff'); if(d) d.onchange=()=>{twinState.diff=d.checked; twinDrawOverlay();};
+  const lk=document.getElementById('twLook'); if(lk) lk.onchange=()=>{ twinLook=lk.checked?'photo':'classic'; v3.layers.walls=twinLook==='photo'; if(currentBuilding){ select(null); buildInteriorScene(currentBuilding); recomputeActive(); } };
   const bk=document.getElementById('twBack'); if(bk) bk.onclick=()=>select(null);
   document.getElementById('twSim').onclick=()=>simOpen();
   document.getElementById('twDash').onclick=()=>document.getElementById('pdOpen').click();

@@ -2419,8 +2419,10 @@ function twinWallMat(len,H){
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(len/3,1);
   return [new THREE.MeshStandardMaterial({map:t,roughness:.85}),new THREE.MeshStandardMaterial({map:t,roughness:.85}),...[0,1,2,3].map(()=>new THREE.MeshStandardMaterial({color:0xcfd4cc,roughness:.9}))];
 }
+let twinLook='classic';   // 'classic'=初期の見た目（既定） / 'photo'=写真調
 function twinInteriorLight(){
   if(drawMode) return;
+  if(twinLook!=='photo'){ scene.environment=null; ambL.intensity=.30; hemiL.intensity=.55; hemiL.color.setHex(0x9fb8d8); hemiL.groundColor.setHex(0x2a2f36); dir.color.setHex(0xfff1dc); dir.intensity=1.35; dir2.intensity=.22; renderer.toneMappingExposure=1.12; return; }
   scene.background=new THREE.Color(0xb9c4c6); scene.fog=new THREE.Fog(0xb9c4c6,160,520);
   if(!twinEnv){ const pm=new THREE.PMREMGenerator(renderer); twinEnv=pm.fromScene(new RoomEnvironment(),.04).texture; pm.dispose(); }
   scene.environment=twinEnv; scene.environmentIntensity=.22;   // ステンレスの映り込み用
@@ -2429,14 +2431,14 @@ function twinInteriorLight(){
 function buildInteriorScene(b){
  v3ClearSection();clearGroup(intGroup);spinDiscs.length=0;hoistAnims.length=0;evAnims.length=0;craneAnims.length=0;
  const ic=interiorCtxs.get(b.id),W=ic.W,D=ic.D;
- const floor=new THREE.Mesh(new THREE.PlaneGeometry(W+.6,D+.6),drawMode?new THREE.MeshStandardMaterial({color:0xe1e6e3,roughness:.92}):twinFloorMat(W,D));floor.rotation.x=-Math.PI/2;intGroup.add(floor);
- const apron=new THREE.Mesh(new THREE.PlaneGeometry(W+40,D+40),new THREE.MeshStandardMaterial({color:drawMode?0xeef1ee:0x8f9a8c,roughness:1}));apron.rotation.x=-Math.PI/2;apron.position.y=-.06;intGroup.add(apron);
- const grid=new THREE.GridHelper(Math.max(W,D),Math.round(Math.max(W,D)),drawMode?0xb2c1bb:0x2f6a52,drawMode?0xd2ddd5:0x3a7a60);grid.position.y=.008;grid.material.transparent=true;grid.material.opacity=drawMode?.8:.22;intGroup.add(grid);
+ const floor=new THREE.Mesh(new THREE.PlaneGeometry(W+.6,D+.6),drawMode?new THREE.MeshStandardMaterial({color:0xe1e6e3,roughness:.92}):twinLook==='photo'?twinFloorMat(W,D):new THREE.MeshStandardMaterial({color:0x34494b,roughness:.92}));floor.rotation.x=-Math.PI/2;intGroup.add(floor);
+ const apron=new THREE.Mesh(new THREE.PlaneGeometry(W+40,D+40),new THREE.MeshStandardMaterial({color:drawMode?0xeef1ee:0x8f9a8c,roughness:1}));apron.rotation.x=-Math.PI/2;apron.position.y=-.06;apron.visible=drawMode||twinLook==='photo';intGroup.add(apron);
+ const grid=new THREE.GridHelper(Math.max(W,D),Math.round(Math.max(W,D)),drawMode?0xb2c1bb:twinLook==='photo'?0x2f6a52:0x46645e,drawMode?0xd2ddd5:twinLook==='photo'?0x3a7a60:0x3b5550);grid.position.y=.008;grid.material.transparent=true;grid.material.opacity=(!drawMode&&twinLook==='photo')?.22:1;intGroup.add(grid);
  twinInteriorLight();
  v3BuildStructure(b,ic);
  ic.items.forEach((it,i)=>{
-  const g=(ic.drawing&&twinShape(it,ic))||makeEquipment({...it,w:it.bw??it.w,d:it.bd??it.d});g.rotation.y=-(it.rot||0)*Math.PI/2;g.position.set(it.x,0,it.z);g.userData.idx=i;g.traverse(o=>o.userData.idx=i);
-  const lbl=makeLabel(ic.drawing?it.name.replace(/^(調合タンク|ディスパー|可搬タンク|可搬ディスパー|スパイクミル) /,''):it.name,ic.drawing?.085:.13);lbl.position.y=it.h+(ic.drawing?.45:.65);lbl.userData.precisionLabel=true;lbl.visible=precisionState.labels;g.add(lbl);intGroup.add(g);it.mesh=g;
+  const g=(ic.drawing&&twinLook==='photo'&&twinShape(it,ic))||makeEquipment({...it,w:it.bw??it.w,d:it.bd??it.d});g.rotation.y=-(it.rot||0)*Math.PI/2;g.position.set(it.x,0,it.z);g.userData.idx=i;g.traverse(o=>o.userData.idx=i);
+  const shortLbl=ic.drawing&&twinLook==='photo';const lbl=makeLabel(shortLbl?it.name.replace(/^(調合タンク|ディスパー|可搬タンク|可搬ディスパー|スパイクミル) /,''):it.name,shortLbl?.085:.13);lbl.position.y=it.h+(shortLbl?.45:.65);lbl.userData.precisionLabel=true;lbl.visible=precisionState.labels;g.add(lbl);intGroup.add(g);it.mesh=g;
  });
  for(const it of ic.items.filter(i=>['DSP','FIL'].includes(i.proc)).slice(0,3)){const w=makeWorker();w.scale.setScalar(.54);w.position.set(it.x+it.w/2+.5,0,it.z);intGroup.add(w);}
  applyShadows(intGroup);v3ApplyLayers();updateMEPScene();
@@ -2721,7 +2723,7 @@ function enterBuilding(b){
   buildSnapGrid();
   fitShadow();
   removeGhost();
-  camGoal.target.set(0,2,0); camGoal.dist=Math.max(ic.W,ic.D)*0.95; camGoal.pitch=0.82; camGoal.yaw=ic.drawing?1.25:0.4;
+  camGoal.target.set(0,2,0); camGoal.dist=Math.max(ic.W,ic.D)*0.85; camGoal.pitch=0.95; camGoal.yaw=ic.drawing?1.25:0.4;
   document.getElementById("crumb").innerHTML="敷地全体 › <b>"+b.name+"</b>";
   document.getElementById("backBtn").style.display="";
   document.getElementById("optBtn").disabled=false;
@@ -3767,7 +3769,7 @@ function exRender(){
 function exInit(){for(const [id,view] of [['exAll','overall'],['exGate','gate'],['exWh','warehouse'],['exTanks','tanks']])document.getElementById(id).onclick=()=>exCamera(view);document.getElementById('exSunset').onclick=()=>{exterior.light=exterior.light==='dusk'?'day':'dusk';exSync();};}
 
 // ================= V3 spatial model =================
-const v3={layers:{frame:true,walls:true,roof:false,mezzanine:true,zones:true},groups:{},obstacles:[],walk:false,walkPos:new THREE.Vector3(),keys:new Set(),section:null,sectionObject:null,sectionSpin:null,fill:.48,routes:true};
+const v3={layers:{frame:true,walls:false,roof:false,mezzanine:true,zones:true},groups:{},obstacles:[],walk:false,walkPos:new THREE.Vector3(),keys:new Set(),section:null,sectionObject:null,sectionSpin:null,fill:.48,routes:true};
 const V3_SECTION_TYPES=new Set(['TNK','KVT','DSP','PTK','MILL','FIL']);
 function v3ExportView(){return {layers:{...v3.layers},routes:v3.routes};}
 function v3ImportView(p){for(const k of Object.keys(v3.layers))if(typeof p?.layers?.[k]==='boolean')v3.layers[k]=p.layers[k];if(typeof p?.routes==='boolean')v3.routes=p.routes;}
@@ -3890,8 +3892,8 @@ function v4PipePath(c,link){
  let len=0;for(let i=1;i<pts.length;i++)len+=pts[i].distanceTo(pts[i-1]);return {a,b,ap,bp,pts,len,sys:ap.sys};
 }
 function v4Ensure(c){
- ensureAssetIds(c);if(v4.records[c.id])return v4.records[c.id];
- const b=siteCtx.items.find(i=>i.id===c.id),r={vehicle:c.drawing?{width:.6,margin:.10}:{width:1.2,margin:.20},links:[],services:{}};v4.records[c.id]=r;
+ ensureAssetIds(c);const rk=c.drawing?c.id+'#draw':c.id;if(v4.records[rk])return v4.records[rk];   // 図面配置は仮配置と車両条件・接続を共有しない
+ const b=siteCtx.items.find(i=>i.id===c.id),r={vehicle:c.drawing?{width:.6,margin:.10}:{width:1.2,margin:.20},links:[],services:{}};v4.records[rk]=r;
  if(c.kind==='interior'&&!c.drawing)for(const [fk,tk] of c.flows){if(!V4_PROCESS.has(fk)||!V4_PROCESS.has(tk)||fk===tk)continue;const a=c.items.filter(i=>i.proc===fk),d=c.items.filter(i=>i.proc===tk);for(let j=0;j<Math.max(a.length,d.length);j++){if(!a.length||!d.length)continue;const link={id:c.id+'-L'+String(r.links.length+1).padStart(3,'0'),from:{assetId:a[j%a.length].assetId,portId:'out'},to:{assetId:d[j%d.length].assetId,portId:'feed'},height:Math.max((b?.h||8)*.65,a[j%a.length].h+1,d[j%d.length].h+1),enabled:true,installedLength:null};const p=v4PipePath(c,link);if(!p.error)link.installedLength=p.len;r.links.push(link);}}
  return r;
 }
@@ -3963,7 +3965,7 @@ function v4Draw(){
  if(v4.showService&&selected){const r=v4.serviceResults.find(s=>s.it===selected);if(r){const col=r.issues.length?0xe8a359:0x66dcc7;const size=r.box.getSize(new THREE.Vector3()),mid=r.box.getCenter(new THREE.Vector3());const m=new THREE.Mesh(new THREE.BoxGeometry(size.x,size.y,size.z),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.10,depthWrite:false}));m.position.copy(mid);v4Group.add(m);const wire=new THREE.Box3Helper(r.box,col);v4Group.add(wire);}}
 }
 function v4Sync(){if(ctx.kind==='interior'){v4.pipeResults=v4EvaluatePipes(ctx);v4.serviceResults=v4ServiceResults(ctx);}else{v4.pipeResults=[];v4.serviceResults=[];}v4Draw();const n=document.getElementById('v4Status');n.textContent=ctx.kind==='interior'?`到達不可 ${ctx.m.blocked||0}件 / 配管確認 ${v4.pipeResults.filter(p=>p.issues.length).length}件`:'敷地全体の物流は従来の概算モデル';if(precisionState.tab==='engineering')v4Render();}
-function v4Export(){return {version:1,records:JSON.parse(JSON.stringify(v4.records))};}
+function v4Export(){return {version:1,records:JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(v4.records).filter(([k])=>!k.includes('#')))))};}
 function v4Validate(data){if(!data.v4)return;const p=data.v4;if(p.version!==1||!p.records||Array.isArray(p.records)||typeof p.records!=='object')throw Error('v4接続データが不正です');
  for(const [id,r] of Object.entries(p.records)){if(!interiorCtxs.has(id)&&id!=='site')throw Error('v4建屋IDが不正です');if(!r.vehicle||!Number.isFinite(r.vehicle.width)||r.vehicle.width<.4||r.vehicle.width>4||!Number.isFinite(r.vehicle.margin)||r.vehicle.margin<0||r.vehicle.margin>1.5)throw Error('車両条件が範囲外です');if(!Array.isArray(r.links)||r.links.length>500)throw Error('接続配列が不正です');const ids=new Set();for(const l of r.links){if(typeof l.id!=='string'||ids.has(l.id)||!l.from||!l.to||typeof l.from.assetId!=='string'||typeof l.to.assetId!=='string'||typeof l.from.portId!=='string'||typeof l.to.portId!=='string'||typeof l.enabled!=='boolean'||!Number.isFinite(l.height)||l.height<.5||l.height>30||(l.installedLength!==null&&(!Number.isFinite(l.installedLength)||l.installedLength<0||l.installedLength>10000)))throw Error('接続属性が不正です');ids.add(l.id);}if(!r.services||Array.isArray(r.services)||typeof r.services!=='object')throw Error('保守設定が不正です');for(const a of Object.values(r.services)){if(!['work','panel','pull','lift'].includes(a.mode)||!['front','back','left','right'].includes(a.side)||!['depth','width','height'].every(k=>Number.isFinite(a[k])&&a[k]>=.2&&a[k]<=10))throw Error('保守空間の設定が不正です');}}
 }

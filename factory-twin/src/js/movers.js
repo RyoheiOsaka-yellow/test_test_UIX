@@ -148,5 +148,5 @@ function twinViewTick(){
   } else if(walls&&v3.walk) for(const o of walls.children) o.visible=true;
   // 視点が屋根トラスの高さに近いときは、トラス・母屋・照明を隠して視界を確保
   const fr=v3.groups.frame, H=currentBuilding?.h||10; if(fr){ const high=!v3.walk&&cam.y>H-4; for(const o of fr.children) if(o.position.y>H-1.2) o.visible=!high; }
-  if(precisionState.labels){ const lim=v3.walk?9:Math.max(16,Math.min(30,camState.dist*.75)); for(const it of ctx.items){ const l=it.mesh?.children.find(ch=>ch.userData.precisionLabel); if(l) l.visible=(it===selected)||cam.distanceTo(it.mesh.position)<lim; } }
+  if(precisionState.labels&&twinLook==='photo'){ const lim=v3.walk?9:Math.max(16,Math.min(30,camState.dist*.75)); for(const it of ctx.items){ const l=it.mesh?.children.find(ch=>ch.userData.precisionLabel); if(l) l.visible=(it===selected)||cam.distanceTo(it.mesh.position)<lim; } }
 }

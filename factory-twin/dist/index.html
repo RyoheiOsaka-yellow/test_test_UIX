@@ -207,7 +207,7 @@ body.sim-active .panel,body.sim-active #precision,body.sim-active #hint,body.sim
 .tw-click{cursor:pointer}.tw-click:hover td{background:#58a6ff22}
 .tw-note{color:var(--sub);font-size:11px;margin:6px 0}.tw-mute{color:var(--sub)}.tw-good{color:var(--good)}.tw-bad{color:var(--bad)}
 .tw-warn{border-left:3px solid var(--warn);background:#d2992218;padding:8px 10px;border-radius:0 6px 6px 0;font-size:11px;margin:8px 0}.tw-warn ul{margin:4px 0 0;padding-left:16px}
-.tw-seg{display:flex;gap:6px;margin:4px 0 6px}.tw-seg .btn{flex:1}.tw-check{display:flex;gap:6px;align-items:center;color:var(--sub);font-size:11.5px;margin:4px 0 8px}
+.tw-seg{display:flex;gap:6px;margin:4px 0 6px;flex-wrap:wrap}.tw-seg .btn{flex:1 1 30%;padding:6px 4px;font-size:11px}.tw-check{display:flex;gap:6px;align-items:center;color:var(--sub);font-size:11.5px;margin:4px 0 8px}
 .tw-card{border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin:5px 0;font-size:11.5px}.tw-foot{display:flex;gap:6px;margin-top:16px}.tw-foot .btn{flex:1}
 body.twin-open #stats,body.twin-open #hint,body.twin-open #v4Status{display:none!important}
 body.twin-open #pdOpen{display:none}
@@ -878,7 +878,7 @@ function drawTankQuad(prefix,nums,cx,cz,dia,dx,dz,only,sys){
 const DRAWING_LAYOUTS={
  paint2:{
   source:"図面 260925（第二現状 / 第二変更レイアウト）",
-  scenarios:{current:"現状（図面260925）",plan:"変更案（図面260925・未確定）"},
+  scenarios:{concept:"初期イメージ（仮配置）",current:"図面 現状（260925）",plan:"図面 変更案（260925・未確定）"},
   // [proc, 名称, 設備番号(別名可), x, z, w, d, h, {only, sys, note}]
   items:[
    // --- 荷役（位置は仮定。図面に記載なし）: リフトは 搬入口→原料置場、製品仮置き→搬出口 ---
@@ -1017,13 +1017,14 @@ function makeDrawingCtx(b,scen){
   c.drawing={layout:L,scen,unassigned,
     obstacles:[...L.rooms.filter(r=>!r[6]||r[6]===scen).map(r=>({name:r[0],x:r[1],z:r[2],w:r[3],d:r[4],h:r[5]})),
                ...L.stairs.filter(s=>!s[4]||s[4]===scen).map(s=>({name:"階段",x:s[0],z:s[1],w:s[2],d:s[3],h:DRAW_DECK_H}))]};
+  for(let x=L.deck.x0;x<=L.deck.x1+.01;x+=L.deck.pitch)for(const z of L.deck.rows)c.drawing.obstacles.push({name:"架台柱",x,z,w:.25,d:.25,h:DRAW_DECK_H});   // 架台の柱は最初から障害物に含める
   return c;
 }
 function flowEnds(c,key){ return key[0]==="#" ? c.items.filter(i=>i.assetId===key.slice(1)) : c.items.filter(i=>i.proc===key); }
 for(const id of Object.keys(DRAWING_LAYOUTS)){
   const b=siteCtx.items.find(i=>i.id===id); if(!b) continue;
-  layoutState[id]="current"; layoutCtxs[id]={current:makeDrawingCtx(b,"current"),plan:makeDrawingCtx(b,"plan")};
-  interiorCtxs.set(id,layoutCtxs[id].current);
+  // 既定は初期イメージ（従来の仮配置）。図面ベースの現状／変更案は切替で表示。
+  layoutState[id]="concept"; layoutCtxs[id]={concept:interiorCtxs.get(id),current:makeDrawingCtx(b,"current"),plan:makeDrawingCtx(b,"plan")};
 }
 // 図面ベース建屋の構造物（架台・階段・室・ゾーン）を描く
 function twinStructure(b,ic,groups){
@@ -1031,7 +1032,7 @@ function twinStructure(b,ic,groups){
   const deckMat=new THREE.MeshStandardMaterial({color:0x9aa5a6,roughness:.5,metalness:.65,transparent:true,opacity:.30,depthWrite:false});
   for(const [x,z,w,d] of [[(dk.x0+dk.x1)/2,dk.rows[0]-.55,dk.x1-dk.x0+1.3,.1],[(dk.x0+dk.x1)/2,dk.rows[2]+.55,dk.x1-dk.x0+1.3,.1],[dk.x0-.6,(dk.rows[0]+dk.rows[2])/2,.1,dk.rows[2]-dk.rows[0]+1.2],[dk.x1+.6,(dk.rows[0]+dk.rows[2])/2,.1,dk.rows[2]-dk.rows[0]+1.2]])v3Box(zones,w,.012,d,x,.02,z,0xe2c23a);
   const deck=new THREE.Mesh(new THREE.BoxGeometry(dk.x1-dk.x0,.08,dk.rows[2]-dk.rows[0]),deckMat);deck.position.set((dk.x0+dk.x1)/2,H,(dk.rows[0]+dk.rows[2])/2);mezzanine.add(deck);
-  for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch)for(const z of dk.rows){v3Box(mezzanine,.2,H,.2,x,H/2,z,0x5d737b);v3.obstacles.push({x,z,w:.3,d:.3,layer:'mezzanine'});ic.drawing.obstacles.some(o=>o.col&&o.x===x&&o.z===z)||ic.drawing.obstacles.push({name:"架台柱",col:true,x,z,w:.25,d:.25,h:H});}
+  for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch)for(const z of dk.rows){v3Box(mezzanine,.2,H,.2,x,H/2,z,0x5d737b);v3.obstacles.push({x,z,w:.3,d:.3,layer:'mezzanine'});}
   for(const z of dk.rows)v3Box(mezzanine,dk.x1-dk.x0,.22,.14,(dk.x0+dk.x1)/2,H-.11,z,0x6f858c);
   for(let x=dk.x0;x<=dk.x1+.01;x+=dk.pitch)v3Box(mezzanine,.12,.2,dk.rows[2]-dk.rows[0],x,H-.1,(dk.rows[0]+dk.rows[2])/2,0x6f858c);
   const rail=(a,c)=>{for(const y of [H+.55,H+1.1])v3Beam(mezzanine,[a[0],y,a[1]],[c[0],y,c[1]],.022,0xdbc251);};
@@ -3116,8 +3117,10 @@ function twinWallMat(len,H){
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(len/3,1);
   return [new THREE.MeshStandardMaterial({map:t,roughness:.85}),new THREE.MeshStandardMaterial({map:t,roughness:.85}),...[0,1,2,3].map(()=>new THREE.MeshStandardMaterial({color:0xcfd4cc,roughness:.9}))];
 }
+let twinLook='classic';   // 'classic'=初期の見た目（既定） / 'photo'=写真調
 function twinInteriorLight(){
   if(drawMode) return;
+  if(twinLook!=='photo'){ scene.environment=null; ambL.intensity=.30; hemiL.intensity=.55; hemiL.color.setHex(0x9fb8d8); hemiL.groundColor.setHex(0x2a2f36); dir.color.setHex(0xfff1dc); dir.intensity=1.35; dir2.intensity=.22; renderer.toneMappingExposure=1.12; return; }
   scene.background=new THREE.Color(0xb9c4c6); scene.fog=new THREE.Fog(0xb9c4c6,160,520);
   if(!twinEnv){ const pm=new THREE.PMREMGenerator(renderer); twinEnv=pm.fromScene(new RoomEnvironment(),.04).texture; pm.dispose(); }
   scene.environment=twinEnv; scene.environmentIntensity=.22;   // ステンレスの映り込み用
@@ -3126,14 +3129,14 @@ function twinInteriorLight(){
 function buildInteriorScene(b){
  v3ClearSection();clearGroup(intGroup);spinDiscs.length=0;hoistAnims.length=0;evAnims.length=0;craneAnims.length=0;
  const ic=interiorCtxs.get(b.id),W=ic.W,D=ic.D;
- const floor=new THREE.Mesh(new THREE.PlaneGeometry(W+.6,D+.6),drawMode?new THREE.MeshStandardMaterial({color:0xe1e6e3,roughness:.92}):twinFloorMat(W,D));floor.rotation.x=-Math.PI/2;intGroup.add(floor);
- const apron=new THREE.Mesh(new THREE.PlaneGeometry(W+40,D+40),new THREE.MeshStandardMaterial({color:drawMode?0xeef1ee:0x8f9a8c,roughness:1}));apron.rotation.x=-Math.PI/2;apron.position.y=-.06;intGroup.add(apron);
- const grid=new THREE.GridHelper(Math.max(W,D),Math.round(Math.max(W,D)),drawMode?0xb2c1bb:0x2f6a52,drawMode?0xd2ddd5:0x3a7a60);grid.position.y=.008;grid.material.transparent=true;grid.material.opacity=drawMode?.8:.22;intGroup.add(grid);
+ const floor=new THREE.Mesh(new THREE.PlaneGeometry(W+.6,D+.6),drawMode?new THREE.MeshStandardMaterial({color:0xe1e6e3,roughness:.92}):twinLook==='photo'?twinFloorMat(W,D):new THREE.MeshStandardMaterial({color:0x34494b,roughness:.92}));floor.rotation.x=-Math.PI/2;intGroup.add(floor);
+ const apron=new THREE.Mesh(new THREE.PlaneGeometry(W+40,D+40),new THREE.MeshStandardMaterial({color:drawMode?0xeef1ee:0x8f9a8c,roughness:1}));apron.rotation.x=-Math.PI/2;apron.position.y=-.06;apron.visible=drawMode||twinLook==='photo';intGroup.add(apron);
+ const grid=new THREE.GridHelper(Math.max(W,D),Math.round(Math.max(W,D)),drawMode?0xb2c1bb:twinLook==='photo'?0x2f6a52:0x46645e,drawMode?0xd2ddd5:twinLook==='photo'?0x3a7a60:0x3b5550);grid.position.y=.008;grid.material.transparent=true;grid.material.opacity=(!drawMode&&twinLook==='photo')?.22:1;intGroup.add(grid);
  twinInteriorLight();
  v3BuildStructure(b,ic);
  ic.items.forEach((it,i)=>{
-  const g=(ic.drawing&&twinShape(it,ic))||makeEquipment({...it,w:it.bw??it.w,d:it.bd??it.d});g.rotation.y=-(it.rot||0)*Math.PI/2;g.position.set(it.x,0,it.z);g.userData.idx=i;g.traverse(o=>o.userData.idx=i);
-  const lbl=makeLabel(ic.drawing?it.name.replace(/^(調合タンク|ディスパー|可搬タンク|可搬ディスパー|スパイクミル) /,''):it.name,ic.drawing?.085:.13);lbl.position.y=it.h+(ic.drawing?.45:.65);lbl.userData.precisionLabel=true;lbl.visible=precisionState.labels;g.add(lbl);intGroup.add(g);it.mesh=g;
+  const g=(ic.drawing&&twinLook==='photo'&&twinShape(it,ic))||makeEquipment({...it,w:it.bw??it.w,d:it.bd??it.d});g.rotation.y=-(it.rot||0)*Math.PI/2;g.position.set(it.x,0,it.z);g.userData.idx=i;g.traverse(o=>o.userData.idx=i);
+  const shortLbl=ic.drawing&&twinLook==='photo';const lbl=makeLabel(shortLbl?it.name.replace(/^(調合タンク|ディスパー|可搬タンク|可搬ディスパー|スパイクミル) /,''):it.name,shortLbl?.085:.13);lbl.position.y=it.h+(shortLbl?.45:.65);lbl.userData.precisionLabel=true;lbl.visible=precisionState.labels;g.add(lbl);intGroup.add(g);it.mesh=g;
  });
  for(const it of ic.items.filter(i=>['DSP','FIL'].includes(i.proc)).slice(0,3)){const w=makeWorker();w.scale.setScalar(.54);w.position.set(it.x+it.w/2+.5,0,it.z);intGroup.add(w);}
  applyShadows(intGroup);v3ApplyLayers();updateMEPScene();
@@ -3456,7 +3459,7 @@ function twinViewTick(){
   } else if(walls&&v3.walk) for(const o of walls.children) o.visible=true;
   // 視点が屋根トラスの高さに近いときは、トラス・母屋・照明を隠して視界を確保
   const fr=v3.groups.frame, H=currentBuilding?.h||10; if(fr){ const high=!v3.walk&&cam.y>H-4; for(const o of fr.children) if(o.position.y>H-1.2) o.visible=!high; }
-  if(precisionState.labels){ const lim=v3.walk?9:Math.max(16,Math.min(30,camState.dist*.75)); for(const it of ctx.items){ const l=it.mesh?.children.find(ch=>ch.userData.precisionLabel); if(l) l.visible=(it===selected)||cam.distanceTo(it.mesh.position)<lim; } }
+  if(precisionState.labels&&twinLook==='photo'){ const lim=v3.walk?9:Math.max(16,Math.min(30,camState.dist*.75)); for(const it of ctx.items){ const l=it.mesh?.children.find(ch=>ch.userData.precisionLabel); if(l) l.visible=(it===selected)||cam.distanceTo(it.mesh.position)<lim; } }
 }
 
 const _dum=new THREE.Object3D();
@@ -3570,7 +3573,7 @@ function enterBuilding(b){
   buildSnapGrid();
   fitShadow();
   removeGhost();
-  camGoal.target.set(0,2,0); camGoal.dist=Math.max(ic.W,ic.D)*0.95; camGoal.pitch=0.82; camGoal.yaw=ic.drawing?1.25:0.4;
+  camGoal.target.set(0,2,0); camGoal.dist=Math.max(ic.W,ic.D)*0.85; camGoal.pitch=0.95; camGoal.yaw=ic.drawing?1.25:0.4;
   document.getElementById("crumb").innerHTML="敷地全体 › <b>"+b.name+"</b>";
   document.getElementById("backBtn").style.display="";
   document.getElementById("optBtn").disabled=false;
@@ -4641,7 +4644,7 @@ function exRender(){
 function exInit(){for(const [id,view] of [['exAll','overall'],['exGate','gate'],['exWh','warehouse'],['exTanks','tanks']])document.getElementById(id).onclick=()=>exCamera(view);document.getElementById('exSunset').onclick=()=>{exterior.light=exterior.light==='dusk'?'day':'dusk';exSync();};}
 
 // ================= V3 spatial model =================
-const v3={layers:{frame:true,walls:true,roof:false,mezzanine:true,zones:true},groups:{},obstacles:[],walk:false,walkPos:new THREE.Vector3(),keys:new Set(),section:null,sectionObject:null,sectionSpin:null,fill:.48,routes:true};
+const v3={layers:{frame:true,walls:false,roof:false,mezzanine:true,zones:true},groups:{},obstacles:[],walk:false,walkPos:new THREE.Vector3(),keys:new Set(),section:null,sectionObject:null,sectionSpin:null,fill:.48,routes:true};
 const V3_SECTION_TYPES=new Set(['TNK','KVT','DSP','PTK','MILL','FIL']);
 function v3ExportView(){return {layers:{...v3.layers},routes:v3.routes};}
 function v3ImportView(p){for(const k of Object.keys(v3.layers))if(typeof p?.layers?.[k]==='boolean')v3.layers[k]=p.layers[k];if(typeof p?.routes==='boolean')v3.routes=p.routes;}
@@ -4764,8 +4767,8 @@ function v4PipePath(c,link){
  let len=0;for(let i=1;i<pts.length;i++)len+=pts[i].distanceTo(pts[i-1]);return {a,b,ap,bp,pts,len,sys:ap.sys};
 }
 function v4Ensure(c){
- ensureAssetIds(c);if(v4.records[c.id])return v4.records[c.id];
- const b=siteCtx.items.find(i=>i.id===c.id),r={vehicle:c.drawing?{width:.6,margin:.10}:{width:1.2,margin:.20},links:[],services:{}};v4.records[c.id]=r;
+ ensureAssetIds(c);const rk=c.drawing?c.id+'#draw':c.id;if(v4.records[rk])return v4.records[rk];   // 図面配置は仮配置と車両条件・接続を共有しない
+ const b=siteCtx.items.find(i=>i.id===c.id),r={vehicle:c.drawing?{width:.6,margin:.10}:{width:1.2,margin:.20},links:[],services:{}};v4.records[rk]=r;
  if(c.kind==='interior'&&!c.drawing)for(const [fk,tk] of c.flows){if(!V4_PROCESS.has(fk)||!V4_PROCESS.has(tk)||fk===tk)continue;const a=c.items.filter(i=>i.proc===fk),d=c.items.filter(i=>i.proc===tk);for(let j=0;j<Math.max(a.length,d.length);j++){if(!a.length||!d.length)continue;const link={id:c.id+'-L'+String(r.links.length+1).padStart(3,'0'),from:{assetId:a[j%a.length].assetId,portId:'out'},to:{assetId:d[j%d.length].assetId,portId:'feed'},height:Math.max((b?.h||8)*.65,a[j%a.length].h+1,d[j%d.length].h+1),enabled:true,installedLength:null};const p=v4PipePath(c,link);if(!p.error)link.installedLength=p.len;r.links.push(link);}}
  return r;
 }
@@ -4837,7 +4840,7 @@ function v4Draw(){
  if(v4.showService&&selected){const r=v4.serviceResults.find(s=>s.it===selected);if(r){const col=r.issues.length?0xe8a359:0x66dcc7;const size=r.box.getSize(new THREE.Vector3()),mid=r.box.getCenter(new THREE.Vector3());const m=new THREE.Mesh(new THREE.BoxGeometry(size.x,size.y,size.z),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.10,depthWrite:false}));m.position.copy(mid);v4Group.add(m);const wire=new THREE.Box3Helper(r.box,col);v4Group.add(wire);}}
 }
 function v4Sync(){if(ctx.kind==='interior'){v4.pipeResults=v4EvaluatePipes(ctx);v4.serviceResults=v4ServiceResults(ctx);}else{v4.pipeResults=[];v4.serviceResults=[];}v4Draw();const n=document.getElementById('v4Status');n.textContent=ctx.kind==='interior'?`到達不可 ${ctx.m.blocked||0}件 / 配管確認 ${v4.pipeResults.filter(p=>p.issues.length).length}件`:'敷地全体の物流は従来の概算モデル';if(precisionState.tab==='engineering')v4Render();}
-function v4Export(){return {version:1,records:JSON.parse(JSON.stringify(v4.records))};}
+function v4Export(){return {version:1,records:JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(v4.records).filter(([k])=>!k.includes('#')))))};}
 function v4Validate(data){if(!data.v4)return;const p=data.v4;if(p.version!==1||!p.records||Array.isArray(p.records)||typeof p.records!=='object')throw Error('v4接続データが不正です');
  for(const [id,r] of Object.entries(p.records)){if(!interiorCtxs.has(id)&&id!=='site')throw Error('v4建屋IDが不正です');if(!r.vehicle||!Number.isFinite(r.vehicle.width)||r.vehicle.width<.4||r.vehicle.width>4||!Number.isFinite(r.vehicle.margin)||r.vehicle.margin<0||r.vehicle.margin>1.5)throw Error('車両条件が範囲外です');if(!Array.isArray(r.links)||r.links.length>500)throw Error('接続配列が不正です');const ids=new Set();for(const l of r.links){if(typeof l.id!=='string'||ids.has(l.id)||!l.from||!l.to||typeof l.from.assetId!=='string'||typeof l.to.assetId!=='string'||typeof l.from.portId!=='string'||typeof l.to.portId!=='string'||typeof l.enabled!=='boolean'||!Number.isFinite(l.height)||l.height<.5||l.height>30||(l.installedLength!==null&&(!Number.isFinite(l.installedLength)||l.installedLength<0||l.installedLength>10000)))throw Error('接続属性が不正です');ids.add(l.id);}if(!r.services||Array.isArray(r.services)||typeof r.services!=='object')throw Error('保守設定が不正です');for(const a of Object.values(r.services)){if(!['work','panel','pull','lift'].includes(a.mode)||!['front','back','left','right'].includes(a.side)||!['depth','width','height'].every(k=>Number.isFinite(a[k])&&a[k]>=.2&&a[k]<=10))throw Error('保守空間の設定が不正です');}}
 }
@@ -5346,7 +5349,7 @@ function twinSiteView(){
   <p class="tw-note">補正1回ごとに調色時間が約25〜30分延びています。調色を第二工場へ寄せる場合、測色・補正の往復距離が効きます。</p>`;
 }
 function twinLayoutBlock(id){
-  const L=DRAWING_LAYOUTS[id], cur=layoutState[id], cmp=twinState.compare=twinCompare(id);
+  const L=DRAWING_LAYOUTS[id], cur=layoutState[id], cmp=twinState.compare=twinCompare(id), isDraw=!!ctx.drawing;
   const mins=d=>d/SPEED.interior*60;
   const lines=[...new Set([...Object.keys(cmp.current.by),...Object.keys(cmp.plan.by)])];
   const rows=lines.map(k=>{const a=cmp.current.by[k],b=cmp.plan.by[k];
@@ -5355,9 +5358,12 @@ function twinLayoutBlock(id){
   for(const [k,e] of Object.entries(cmp.common)){const d=e.plan-e.current;rows.push(twinRow([te(k)+' 共通'+e.n+'経路',tn(e.current),tn(e.plan),`<span class="${d<=0?'tw-good':'tw-bad'}">${d>0?'+':''}${tn(d)}</span>`,tn(mins(e.current),1),tn(mins(e.plan),1)]));}
   const un=s=>Object.entries(cmp[s].un).map(([k,v])=>`${te(k)} ${tn(v.n,2)}回/日`).join('、')||'なし';
   const lost=(cmp.plan.un['2B']?.list||[]).filter(f=>!(cmp.current.un['2B']?.list||[]).includes(f)).sort((a,b)=>b.batches-a.batches).slice(0,6);
-  return `<h4>レイアウト比較（${te(L.source)}）</h4>
+  return `<h4>内部の配置（切替）</h4>
   <div class="tw-seg">${Object.entries(L.scenarios).map(([k,v])=>`<button class="btn ${cur===k?'on':''}" data-tw-scen="${k}">${te(v)}</button>`).join('')}</div>
-  <label class="tw-check"><input type="checkbox" id="twDiff" ${twinState.diff?'checked':''}> 差分を3Dに重ねる（追加=緑 / 撤去=橙）</label>
+  <p class="tw-note">${isDraw?'図面どおりの設備位置です。設備番号で台帳・生産実績と連動します。':'初期イメージは検討用の仮配置です。図面どおりの位置と設備番号連動は「図面 現状／変更案」で見られます。'}</p>
+  <label class="tw-check"><input type="checkbox" id="twLook" ${twinLook==='photo'?'checked':''}> 写真調の質感（緑の床・明るい照明・写真ベースの設備形状）</label>
+  ${isDraw?`<label class="tw-check"><input type="checkbox" id="twDiff" ${twinState.diff?'checked':''}> 現状と変更案の差分を3Dに重ねる（追加=緑 / 撤去=橙）</label>`:''}
+  <h4>図面 現状と変更案の比較（${te(L.source)}）</h4>
   ${twinTable(['対象ライン','現状 m/日','変更案 m/日','差','現状 分/日','変更案 分/日'],rows)}
   <p class="tw-note">距離 = 設備間の歩行経路長 × 実バッチ頻度（生産データ ${TWIN.period.production[0]}〜${TWIN.period.production[1]}）× 往復。設備を動かすと即時に再計算します。「共通」行は両案で両端の設備が図面にある経路だけの比較です。ワニスの現状はワニス工場内のため、この建屋では比較対象外です。</p>
   <div class="tw-warn"><b>経路化できないフロー</b><br>現状: ${un('current')}<br>変更案: ${un('plan')}
@@ -5374,7 +5380,7 @@ function twinBuildingView(b){
   const linked=!!ctx.drawing;
   return `<div class="tw-eyebrow">建屋内部 / ライン ${te(line)}</div><h3>${te(b.name)}</h3>
   <div class="tw-kpis">${twinKpi('バッチ',tn(T.batches_per_day,1)+' 件/日',tn(T.batches)+' 件')}${twinKpi('出来高/人時',tn(T.kg_per_labor_hour)+' kg','平均 '+tn(T.avg_headcount,1)+' 名')}${twinKpi('直接工数',tn(T.direct_min_day)+' 分/日','仕込'+tn(T.prep_min_day)+'・調合'+tn(T.mix_min_day)+'・充填'+tn(T.fill_min_day))}</div>
-  ${linked?twinLayoutBlock(b.id):'<p class="tw-note">この建屋は図面未入手のため内部は仮配置です。KPIはライン単位で表示し、設備単位の連動は行いません。</p>'}
+  ${layoutCtxs[b.id]?twinLayoutBlock(b.id):'<p class="tw-note">この建屋は図面未入手のため内部は仮配置です。KPIはライン単位で表示し、設備単位の連動は行いません。</p><label class="tw-check"><input type="checkbox" id="twLook" '+(twinLook==="photo"?"checked":"")+'> 写真調の質感（緑の床・明るい照明）</label>'}
   <h4>月次推移（出来高 t）</h4>
   ${twinCols(M.map(m=>({label:m.month.slice(5).replace(/^0/,'')+'月',value:m.output_t,ref:null})),{unit:'t',name:'出来高',refName:'—'}).replace(/<span><i class="line".*?<\/span>/,'')}
   ${twinTable(['月','バッチ','出来高 t','kg/人時','充填 実績/標準','残業 h'],M.map(m=>twinRow([m.month.slice(2),tn(m.batches),tn(m.output_t),tn(m.kg_per_labor_hour),m.fill_actual_vs_std==null?'—':tn(m.fill_actual_vs_std,0)+'%',tn(m.overtime_hours)])))}
@@ -5412,6 +5418,7 @@ function twinRender(){
   twinBody.querySelectorAll('[data-tw-scen]').forEach(b=>b.onclick=()=>setLayoutScenario(currentBuilding.id,b.dataset.twScen));
   twinBody.querySelectorAll('[data-tw-tag]').forEach(r=>r.onclick=()=>{const it=ctx.items.find(i=>i.tags?.includes(r.dataset.twTag)&&(r.dataset.twKind==='fill')===(i.proc==='FIL')); if(it){ select(it); camGoal.target.set(it.x,1.2,it.z); camGoal.dist=Math.min(camGoal.dist,16); } else toast(r.dataset.twTag+' はこのレイアウト図面に記載がありません');});
   const d=document.getElementById('twDiff'); if(d) d.onchange=()=>{twinState.diff=d.checked; twinDrawOverlay();};
+  const lk=document.getElementById('twLook'); if(lk) lk.onchange=()=>{ twinLook=lk.checked?'photo':'classic'; v3.layers.walls=twinLook==='photo'; if(currentBuilding){ select(null); buildInteriorScene(currentBuilding); recomputeActive(); } };
   const bk=document.getElementById('twBack'); if(bk) bk.onclick=()=>select(null);
   document.getElementById('twSim').onclick=()=>simOpen();
   document.getElementById('twDash').onclick=()=>document.getElementById('pdOpen').click();
