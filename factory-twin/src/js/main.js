@@ -4350,3 +4350,4 @@ window.__factorySim={open:simOpen,close:simClose,tick:simTick,core:simCore,get c
 // 起動時は従来3D（敷地全景）を表示。FLOW LAB 6.0 は「実測再生」ボタンから開く。
 document.getElementById('pdApp').hidden=true;
 @@INCLUDE js/twin.js@@
+@@INCLUDE js/demo.js@@

@@ -217,6 +217,22 @@ body.twin-open #pdOpen{display:none}
 .tw-chart g:hover path{filter:brightness(1.25)}
 #twinTip{position:fixed;z-index:60;display:none;max-width:250px;background:#0d1117;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--txt);pointer-events:none}
 body.sim-active #twinPanel{display:none}
+
+/* ---- 自動説明 ---- */
+#demoCard{position:fixed;left:16px;bottom:16px;width:min(560px,calc(100vw - 32px));z-index:2147483000;background:#0f1722f2;border:1px solid #58a6ff;border-radius:12px;padding:14px 16px 12px;color:#e6edf3;box-shadow:0 12px 40px #000a;font-size:13px}
+#demoCard .d-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+#demoCard .d-step{font-size:11px;color:#9da7b3;font-variant-numeric:tabular-nums}#demoCard .d-ttl{font-size:16px;font-weight:700;margin:2px 0 6px}
+#demoCard .d-txt{line-height:1.75;font-size:13.5px;min-height:5.2em}
+#demoCard .d-bar{height:3px;background:#30363d;border-radius:2px;margin:10px 0 8px;overflow:hidden}#demoCard .d-bar i{display:block;height:100%;width:0;background:#58a6ff}
+#demoCard .d-ctl{display:flex;gap:6px;flex-wrap:wrap}#demoCard .d-ctl .btn{padding:5px 10px}#demoCard .d-ctl .d-stop{margin-left:auto}
+body.demo-on #precision,body.demo-on #hint,body.demo-on #stats,body.demo-on #bimTools,body.demo-on #tools,body.demo-on #v3Bar,body.demo-on #exToolbar,body.demo-on #photoPanel,body.demo-on #v4Status,body.demo-on #viewBadge,body.demo-on #pdOpen,body.demo-on #tourCard{display:none!important}
+body.sim-active #demoCard{left:50%;transform:translateX(-50%);bottom:122px;width:min(520px,calc(100vw - 700px))}
+#demoIntro{position:fixed;inset:0;z-index:2147483001;background:#0d1117d9;display:flex;align-items:center;justify-content:center}
+#demoIntro[hidden]{display:none}
+#demoIntro .box{width:min(520px,calc(100vw - 32px));background:#161b22;border:1px solid #30363d;border-radius:14px;padding:26px 28px;color:#e6edf3;text-align:center}
+#demoIntro h2{margin:0 0 8px;font-size:20px}#demoIntro p{color:#9da7b3;font-size:13px;line-height:1.8;margin:0 0 18px}
+#demoIntro .btn{display:block;width:100%;padding:11px;font-size:14px;margin-top:8px}
+.demo-flash{outline:2px solid #58a6ff;outline-offset:4px;border-radius:4px;transition:outline-color .4s}
 </style>
 </head>
 <body>
@@ -228,6 +244,10 @@ body.sim-active #twinPanel{display:none}
 <div id="v3Bar" class="panel"><button id="v3Overview" class="btn">全景</button><button id="v3Walk" class="btn">作業者視点</button><button id="v3Section" class="btn" disabled>設備断面</button><span id="v3BarLabel">1 unit = 1 m · 推定モデル</span></div><div id="v3SectionCard" class="panel" hidden></div><div id="exToolbar" class="panel"><button id="exAll" class="btn">全景</button><button id="exGate" class="btn">正門</button><button id="exWh" class="btn">出荷倉庫</button><button id="exTanks" class="btn">タンク</button><button id="exSunset" class="btn">昼・夕景</button></div><div id="v4Status" class="panel"></div><div id="viewBadge">FLOW·LAB / CONNECTED EDITION V4<br>既存モデル＋詳細部品・設備属性・保守スペース</div>
 
 
+<div id="demoCard" hidden><div class="d-head"><span class="d-step"></span><span class="d-step">自動説明</span></div><div class="d-ttl"></div><div class="d-txt"></div><div class="d-bar"><i></i></div>
+<div class="d-ctl"><button class="btn d-prev">◀ 前へ</button><button class="btn d-pause">一時停止</button><button class="btn d-next">次へ ▶</button><button class="btn d-voice" title="読み上げ（対応ブラウザのみ）">🔊 音声</button><button class="btn d-stop">✕ 終了</button></div></div>
+<div id="demoIntro" hidden><div class="box"><h2>加須工場 デジタルツイン 自動説明</h2><p>画面を自動で操作しながら、主な機能と分析結果を順にご説明します（約6分・18場面）。<br>途中で一時停止・前後への移動・終了ができます。終了後は自由に操作できます。</p>
+<button class="btn on" id="demoGoVoice">▶ 説明を開始（音声あり）</button><button class="btn" id="demoGo">▶ 説明を開始（音声なし・字幕のみ）</button><button class="btn" id="demoSkip" style="border:none;background:none;color:#9da7b3">説明を見ずに自分で操作する</button></div></div>
 <aside id="twinPanel" class="panel" aria-label="分析基盤"><header><b>分析基盤 / ANALYTICS</b><button class="btn" id="twinClose" style="padding:2px 9px">✕</button></header><div id="twinBody"></div></aside>
 <div id="nav" class="panel">
   <span id="brand">FLOW·LAB <b>3D</b></span>
@@ -236,6 +256,7 @@ body.sim-active #twinPanel{display:none}
   <button class="btn" data-cam="eye" title="3キー">視点</button>
   <span id="crumb">敷地全体</span>
   <button class="btn" id="backBtn" style="display:none">← 敷地へ戻る</button>
+  <button class="btn" id="demoBtn" title="画面を自動で操作しながら、機能と分析結果を順に説明します">▶ 自動説明</button>
   <button class="btn on" id="twinBtn" title="生産・工数・設備データと3Dを連動表示">分析基盤</button>
 </div>
 
