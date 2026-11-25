@@ -1,6 +1,7 @@
 
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 window.__kzT0=performance.now();
 
 // ================= 基本セットアップ =================
@@ -2400,9 +2401,11 @@ function v3BuildStructure(b,ic){
 }
 
 // ---- 内部の質感（現地写真ベース: 緑塗装の床・波板の壁・蛍光灯の明るさ） ----
+@@INCLUDE js/shapes.js@@
+let twinEnv=null;
 function twinFloorMat(W,D){
   const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
-  x.fillStyle='#6f9480';x.fillRect(0,0,512,512);
+  x.fillStyle='#55806a';x.fillRect(0,0,512,512);
   const rng=sRand('floor');for(let i=0;i<2600;i++){const a=rng()*.10;x.fillStyle=rng()<.5?`rgba(20,45,35,${a})`:`rgba(190,215,200,${a*.7})`;const s=1+rng()*5;x.fillRect(rng()*512,rng()*512,s*(1+rng()*3),s);}
   for(let i=0;i<26;i++){x.fillStyle=`rgba(120,128,120,${.05+rng()*.10})`;x.beginPath();x.ellipse(rng()*512,rng()*512,8+rng()*40,5+rng()*22,rng()*3,0,6.3);x.fill();}   // 塗装の摩耗・汚れ
   x.strokeStyle='rgba(25,50,40,.35)';x.lineWidth=1.5;for(let i=0;i<=2;i++){x.beginPath();x.moveTo(i*256,0);x.lineTo(i*256,512);x.moveTo(0,i*256);x.lineTo(512,i*256);x.stroke();}   // 目地
@@ -2419,7 +2422,9 @@ function twinWallMat(len,H){
 function twinInteriorLight(){
   if(drawMode) return;
   scene.background=new THREE.Color(0xb9c4c6); scene.fog=new THREE.Fog(0xb9c4c6,160,520);
-  ambL.intensity=.55; hemiL.intensity=.85; hemiL.color.set(0xf4f7ff); hemiL.groundColor.set(0x7d8f84); dir.intensity=1.0; dir2.intensity=.3;
+  if(!twinEnv){ const pm=new THREE.PMREMGenerator(renderer); twinEnv=pm.fromScene(new RoomEnvironment(),.04).texture; pm.dispose(); }
+  scene.environment=twinEnv; scene.environmentIntensity=.22;   // ステンレスの映り込み用
+  ambL.intensity=.34; hemiL.intensity=.55; hemiL.color.set(0xf4f7ff); hemiL.groundColor.set(0x7d8f84); dir.intensity=1.0; dir2.intensity=.3;
 }
 function buildInteriorScene(b){
  v3ClearSection();clearGroup(intGroup);spinDiscs.length=0;hoistAnims.length=0;evAnims.length=0;craneAnims.length=0;
@@ -2430,8 +2435,8 @@ function buildInteriorScene(b){
  twinInteriorLight();
  v3BuildStructure(b,ic);
  ic.items.forEach((it,i)=>{
-  const g=makeEquipment({...it,w:it.bw??it.w,d:it.bd??it.d});g.rotation.y=-(it.rot||0)*Math.PI/2;g.position.set(it.x,0,it.z);g.userData.idx=i;g.traverse(o=>o.userData.idx=i);
-  const lbl=makeLabel(it.name,.13);lbl.position.y=it.h+.65;lbl.userData.precisionLabel=true;lbl.visible=precisionState.labels;g.add(lbl);intGroup.add(g);it.mesh=g;
+  const g=(ic.drawing&&twinShape(it,ic))||makeEquipment({...it,w:it.bw??it.w,d:it.bd??it.d});g.rotation.y=-(it.rot||0)*Math.PI/2;g.position.set(it.x,0,it.z);g.userData.idx=i;g.traverse(o=>o.userData.idx=i);
+  const lbl=makeLabel(ic.drawing?it.name.replace(/^(調合タンク|ディスパー|可搬タンク|可搬ディスパー|スパイクミル) /,''):it.name,ic.drawing?.085:.13);lbl.position.y=it.h+(ic.drawing?.45:.65);lbl.userData.precisionLabel=true;lbl.visible=precisionState.labels;g.add(lbl);intGroup.add(g);it.mesh=g;
  });
  for(const it of ic.items.filter(i=>['DSP','FIL'].includes(i.proc)).slice(0,3)){const w=makeWorker();w.scale.setScalar(.54);w.position.set(it.x+it.w/2+.5,0,it.z);intGroup.add(w);}
  applyShadows(intGroup);v3ApplyLayers();updateMEPScene();
@@ -3735,6 +3740,7 @@ function buildSiteScene(){
 function exLight(){
  if(drawMode){setSky(true);ambL.intensity=.75;hemiL.intensity=.85;dir.intensity=.75;return;}
  if(ctx.kind!=='site'){setSky(false);dir.color.setHex(0xfff6e8);dir.position.set(120,260,80);renderer.toneMappingExposure=1.05;twinInteriorLight();return;}   // 内部は昼光＋蛍光灯の明るさ（現地写真ベース）
+ scene.environment=null;
  const p={day:{top:0x7ea7bd,mid:0xc8d6ce,ground:0x9ca993,sun:0xfff0d5,position:[-110,210,-135],intensity:2.15,ambient:.60,hemi:1.05,exposure:1.12},late:{top:0x899bab,mid:0xdecbb1,ground:0xa79a80,sun:0xffc58b,position:[-200,90,-100],intensity:2.0,ambient:.48,hemi:.85,exposure:1.18},dusk:{top:0x263e57,mid:0x6d848e,ground:0x4f655d,sun:0xecc397,position:[-200,35,80],intensity:.65,ambient:.35,hemi:.68,exposure:1.32}}[exterior.light];
  skyMat.uniforms.top.value.setHex(p.top);skyMat.uniforms.mid.value.setHex(p.mid);skyMat.uniforms.bot.value.setHex(p.ground);scene.background=new THREE.Color(p.mid);scene.fog=new THREE.Fog(p.mid,350,1150);ambL.intensity=p.ambient;hemiL.intensity=p.hemi;hemiL.color.setHex(0xd5e4e6);hemiL.groundColor.setHex(p.ground);dir.color.setHex(p.sun);dir.position.set(...p.position);dir.intensity=p.intensity;dir2.intensity=.18;renderer.toneMappingExposure=p.exposure;
  siteGroup.traverse(o=>{const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)if(m?.userData.exGlow)m.emissiveIntensity=exterior.light==='dusk'?.85:0;});dirtyShadow();

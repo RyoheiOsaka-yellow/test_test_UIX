@@ -91,6 +91,10 @@ function twinInterBuilding(){
   <div class="tw-kpis">${twinKpi('移動時間 現状',tn(r.beforeMinutes)+' 分/日','6工程の合計')}${twinKpi('ワニス・調色を第二へ',tn(r.afterMinutes)+' 分/日',(r.gain>=0?'−':'＋')+tn(Math.abs(r.gain))+' 分/日')}${twinKpi(`${r.current-r.goal}名削減に必要`,tn(need)+' 分/日','= '+(r.current-r.goal)+'名×'+simCfg.hours+'h')}</div>
   ${twinHBars(r.rows.map(x=>({label:x.group,a:x.beforeMinutes,b:x.afterMinutes})),{unit:'分/日',aName:'現状',bName:'移設後'})}
   <div class="tw-warn"><b>移設だけでは移動時間は${r.gain>=0?'減りますが':'減らず、むしろ増えます'}</b>（${r.gain>=0?'−':'＋'}${tn(Math.abs(r.gain))}分/日）。主因は下表の上位の組合せです。${r.current-r.goal}名削減（${tn(need)}分/日）の原資は、移動時間ではなく、応援の解消・工程の兼務・段取りの共通化で作る必要があります。</div>
+  <h4>調色⇄研究棟（資材の取りに行き）を減らせた場合</h4>
+  ${twinTable(['資材の置き方','移設後 分/日','現状との差','人員換算'],[[0,'今のまま研究棟へ取りに行く'],[.5,'往復を半分に（まとめ取り）'],[1,'資材を移設先に置く（往復なし）']].map(([k,l])=>{const x=simCore.evaluate({...simCfg,researchReduction:k});return twinRow([l,tn(x.afterMinutes),`<span class="${x.gain>=0?'tw-good':'tw-bad'}">${x.gain>=0?'−':'＋'}${tn(Math.abs(x.gain))}</span>`,(x.gain>=0?'−':'＋')+tn(Math.abs(x.gain)/(simCfg.hours*60),2)+'名'])}))}
+  <p class="tw-note">調色と研究棟の往復は資材を取りに行くため（確認済み）。移設と同時に資材の置場を調色の近くへ移せば、移動時間は現状より減ります。それでも2名分（${tn(need)}分/日）には届きません。</p>
+  <h4>影響の大きい建屋の組合せ</h4>
   ${twinTable(['建屋の組合せ','工程','回/日','現状 分/日','移設後 分/日'],top.map(p=>twinRow([te(nm(p.a)+' ⇄ '+nm(p.b)),te(p.group),tn(p.n),tn(p.before),`<span class="${p.after<=p.before?'tw-good':'tw-bad'}">${tn(p.after)}</span>`])))}
   <p class="tw-note">回数は位置トラッキング（2026/7〜8、工程ごと4〜7 ID日）の建屋間移動を人員数に換算。距離は建屋代表点間の直線×迂回係数${simCfg.detour}、歩行${simCfg.speed}m/分。移設先の代表点は実測再生画面でドラッグして変更できます。</p>`;
 }

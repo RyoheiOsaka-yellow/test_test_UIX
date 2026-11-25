@@ -144,7 +144,9 @@ function twinViewTick(){
   const W=ctx.W, D=ctx.D, cam=camera.position, walls=v3.groups.walls;
   if(walls&&v3.layers.walls&&!v3.walk) for(const o of walls.children){
     const p=o.position, side=Math.abs(p.x)>=W/2-.4, end=Math.abs(p.z)>=D/2-.4;
-    o.visible=!((side&&Math.sign(p.x)*cam.x>W*.2)||(end&&!side&&Math.sign(p.z)*cam.z>D*.2));
+    o.visible=!((side&&Math.sign(p.x)*cam.x>W/2-10)||(end&&!side&&Math.sign(p.z)*cam.z>D/2-10));   // 視点側（外側または壁際10m以内）の壁を隠す
   } else if(walls&&v3.walk) for(const o of walls.children) o.visible=true;
+  // 視点が屋根トラスの高さに近いときは、トラス・母屋・照明を隠して視界を確保
+  const fr=v3.groups.frame, H=currentBuilding?.h||10; if(fr){ const high=!v3.walk&&cam.y>H-4; for(const o of fr.children) if(o.position.y>H-1.2) o.visible=!high; }
   if(precisionState.labels){ const lim=v3.walk?9:Math.max(16,Math.min(30,camState.dist*.75)); for(const it of ctx.items){ const l=it.mesh?.children.find(ch=>ch.userData.precisionLabel); if(l) l.visible=(it===selected)||cam.distanceTo(it.mesh.position)<lim; } }
 }
