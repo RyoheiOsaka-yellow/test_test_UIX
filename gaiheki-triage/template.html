@@ -55,10 +55,19 @@ ul,ol{list-style:none}
 /* 1 取り込み */
 #v-upload{max-width:640px;margin:6vh auto 0;display:grid;gap:22px}
 #v-upload h2{font-family:var(--f-display);font-size:26px;font-weight:900;line-height:1.35;text-wrap:balance;word-break:auto-phrase}
+.dz{display:grid;gap:4px;justify-items:center;text-align:center;width:100%;padding:28px 16px;border:2px dashed var(--ink3);border-radius:14px;color:var(--ink2);font-size:12px;transition:background .15s,border-color .15s}
+.dz b{font-size:15px;color:var(--ink)}
+.dz:hover,.dz.over{background:var(--surface);border-color:var(--accent)}
 .files{display:grid;gap:1px;background:var(--line);border-radius:14px;overflow:hidden}
-.file{background:var(--surface);padding:16px 18px;display:grid;gap:2px}
+.files:empty{display:none}
+.file{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center}
 .file b{word-break:break-all}
-.file small{color:var(--ink2);font-size:12px}
+.file small{color:var(--ink2);font-size:12px;grid-column:1}
+.file .rm{grid-row:1 / span 2;grid-column:2;color:var(--ink3);font-size:18px;width:32px;height:32px;border-radius:8px}
+.file .rm:hover{background:var(--surface2);color:var(--ink)}
+.file .up{grid-column:1 / -1;height:3px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:6px}
+.file .up i{display:block;height:100%;background:var(--accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
 .go{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 #v-upload .note{font-size:12px;color:var(--ink2)}
 
@@ -111,13 +120,16 @@ ul,ol{list-style:none}
 .viewer{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:16px;align-items:start}
 .shots{display:grid;gap:8px;min-width:0}
 .photo{position:relative;background:var(--photo-bg);border-radius:10px;overflow:hidden;aspect-ratio:4/3;max-width:100%}
-.photo img{width:100%;height:100%;object-fit:contain;display:block}
+.photo img{width:100%;height:100%;object-fit:contain;display:block;cursor:zoom-in}
+.zoom{position:absolute;right:8px;top:8px;font-size:11px;font-weight:500;padding:3px 10px;border-radius:4px;background:rgba(10,14,18,.72);color:#fff}
+.zoom:hover{background:rgba(10,14,18,.9)}
 .tag{position:absolute;left:8px;top:8px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;background:rgba(10,14,18,.72);color:#fff}
 .photo .na{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,18,.6);color:#fff;font-weight:700;text-align:center;font-size:13px}
 .photo .na small{display:block;font-weight:400;opacity:.85}
 .box{position:absolute;border:2px solid var(--c);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.45);cursor:pointer;transition:background .15s}
 .box.low{border-style:dashed}
 .box b{position:absolute;left:-2px;top:-2px;background:var(--c);color:#10161d;font:600 11px var(--f-mono);min-width:18px;height:18px;display:grid;place-items:center;border-radius:3px 0 3px 0}
+.box.big b{width:auto;padding:0 7px;height:22px;font-size:12px;white-space:nowrap}
 .box.hot{background:color-mix(in srgb,var(--c) 28%,transparent)}
 .thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .thumb{position:relative;border-radius:7px;overflow:hidden;background:var(--photo-bg);aspect-ratio:4/3;opacity:.75}
@@ -161,6 +173,24 @@ details[open] summary::after{content:"閉じる"}
 .acts .ret{color:var(--ret)}
 .done{display:flex;justify-content:space-between;align-items:center;font-weight:700;color:var(--auto)} .done.ret{color:var(--ret)}
 
+/* 拡大表示 */
+.lb{position:fixed;inset:0;z-index:50;background:rgba(7,10,14,.92);color:#fff;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.lb header{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;font-size:13px}
+.lb header b{margin-right:auto;font-family:var(--f-display);font-size:15px}
+.lb .lbtn{color:#fff;background:rgba(255,255,255,.12);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500}
+.lb .lbtn:hover{background:rgba(255,255,255,.22)}
+.lb .lbtn[aria-pressed="false"]{opacity:.6}
+.lb .mid{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;min-height:0}
+.lb .nav{width:44px;height:44px;border-radius:50%;font-size:20px;padding:0}
+.lb .nav:disabled{opacity:.2;cursor:default}
+.lb .frame{position:relative;aspect-ratio:4/3;width:min(100%,calc((100vh - 190px)*4/3));margin:0 auto;background:#000;border-radius:8px;overflow:hidden}
+.lb .frame img{width:100%;height:100%;object-fit:contain;display:block}
+.lb footer{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;font-size:12px;min-height:22px;color:rgba(255,255,255,.85)}
+.lb footer span{display:inline-flex;align-items:center;gap:6px}
+.lb footer .n{display:inline-grid}
+@media (max-width:760px){.lb .mid{gap:6px} .lb .nav{width:30px;height:30px;font-size:16px}}
+
 /* 自動化マップ */
 .map{display:grid;gap:14px;grid-template-columns:repeat(4,minmax(0,1fr));align-items:start}
 .col{padding:18px;display:grid;gap:12px;align-content:start}
@@ -196,14 +226,11 @@ details[open] summary::after{content:"閉じる"}
 
   <main id="v-upload">
     <h2>台帳と写真を読み込み、人が見るべきものだけを選り分けます</h2>
-    <div class="files">
-      <div class="file"><b>建物写真確認台帳_20261116_1709.xlsx</b>
-        <small><span class="num" data-n="rows"></span> 棟・写真 <span class="num" data-n="photos"></span> 枚（外壁・外壁目地の ▲ ×、築13〜14年）</small></div>
-      <div class="file"><b>建物不具合写真（参考）.xlsx</b>
-        <small>見本写真 <span class="num">64</span> 枚・5分類（AIの判定基準に使用）</small></div>
-    </div>
-    <div class="go"><button class="btn primary big" id="start">検知を開始</button><button class="btn quiet" id="skip0">結果だけ見る</button></div>
-    <p class="note">このデモでは <span class="num" id="nB"></span> 棟・<span class="num" id="nP"></span> 枚を抽出して実行します。</p>
+    <button class="dz" id="dz"><b>台帳（xlsx）と写真をここにドロップ</b><span>またはクリックして選択</span></button>
+    <input type="file" id="fileIn" multiple hidden accept=".xlsx,.xls,.zip,image/*">
+    <div class="files" id="files"></div>
+    <div class="go"><button class="btn primary big" id="start" disabled>検知を開始</button><button class="btn" id="sample">サンプルの台帳を使う</button><button class="btn quiet" id="skip0">結果だけ見る</button></div>
+    <p class="note" id="upNote"></p>
   </main>
 
   <main id="v-scan" hidden>
@@ -229,6 +256,11 @@ details[open] summary::after{content:"閉じる"}
     </div>
     <div class="map" id="map" hidden></div>
   </main>
+  <div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="写真の拡大表示">
+    <header><b id="lbTitle"></b><span class="num" id="lbCount"></span><button class="lbtn" id="lbBoxes" aria-pressed="true">検知枠</button><button class="lbtn" id="lbClose">閉じる</button></header>
+    <div class="mid"><button class="lbtn nav" id="lbPrev" aria-label="前の写真">‹</button><div class="frame" id="lbFrame"></div><button class="lbtn nav" id="lbNext" aria-label="次の写真">›</button></div>
+    <footer id="lbFoot"></footer>
+  </div>
   <p class="foot">プロトタイプ：検知枠・確信度・仕分け理由は事前に作成したサンプルです。</p>
 </div>
 
@@ -257,18 +289,48 @@ function show(v) {
   window.scrollTo(0, 0);
 }
 const jdg = (j) => `<span class="jdg ${j === '×' ? 'x' : (j === '○' || j === '◎') ? 'o' : ''}">${esc(j)}</span>`;
-function boxes(p, hot) {
+function boxes(p, hot, big) {
   return p.dets.map(d => {
     const [x, y, w, h] = d.box;
-    return `<button class="box ${d.conf < TH ? 'low' : ''} ${hot === d.id ? 'hot' : ''}" data-det="${d.id}" style="--c:var(--c-${d.c});left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%" aria-label="${esc(d.t)}"><b>${d.id}</b></button>`;
+    return `<button class="box ${big ? 'big' : ''} ${d.conf < TH ? 'low' : ''} ${hot === d.id ? 'hot' : ''}" data-det="${d.id}" style="--c:var(--c-${d.c});left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%" aria-label="${esc(d.t)}"><b>${big ? `${d.id} ${CAT[d.c]} ${Math.round(d.conf * 100)}%` : d.id}</b></button>`;
   }).join('');
 }
 
 /* 1 取り込み */
+const ups = []; let upTimer = null;
+const SAMPLE = [
+  { name: '建物写真確認台帳_20261116_1709.xlsx', size: 59210270, done: () => `${fmt(S.rows)} 棟・写真 ${fmt(S.photos)} 枚（外壁・外壁目地の ▲ ×、築13〜14年）` },
+  { name: '建物不具合写真（参考）.xlsx', size: 8623846, done: () => '見本写真 64 枚・5分類（AIの判定基準に使用）' },
+];
+const mb = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const kindOf = (n) => /台帳/.test(n) ? '台帳として認識' : /参考|不具合|見本/.test(n) ? '見本写真として認識' : /\.(jpe?g|png|heic|webp)$/i.test(n) ? '写真として認識' : /\.zip$/i.test(n) ? '写真フォルダとして認識' : 'ファイル';
+function addUploads(list) {
+  list.forEach(f => { if (!ups.some(u => u.name === f.name)) ups.push({ name: f.name, size: f.size, done: f.done || (() => `${mb(f.size)}・${kindOf(f.name)}`), pct: 0 }); });
+  renderUploads();
+  clearInterval(upTimer);
+  upTimer = setInterval(() => {
+    ups.forEach(u => { if (u.pct < 100) u.pct = Math.min(100, u.pct + 4 + Math.random() * 9); });
+    renderUploads(); if (ups.every(u => u.pct >= 100)) clearInterval(upTimer);
+  }, 90);
+}
+function renderUploads() {
+  $('#files').innerHTML = ups.map((u, i) => `<div class="file"><b>${esc(u.name)}</b><small>${u.pct < 100 ? `読み込み中… ${Math.round(u.pct)}%` : u.done()}</small>
+    <button class="rm" data-rm="${i}" aria-label="${esc(u.name)} を取り除く">×</button>${u.pct < 100 ? `<div class="up"><i style="width:${u.pct}%"></i></div>` : ''}</div>`).join('');
+  const ready = ups.length > 0 && ups.every(u => u.pct >= 100);
+  $('#start').disabled = !ready; $('#sample').hidden = ups.some(u => u.name === SAMPLE[0].name);
+  $('#upNote').textContent = ups.length ? `デモのため、ファイルの中身は送信も解析もされません。検知は同梱のサンプル ${B.length} 棟・${B.reduce((a, b) => a + b.photos.length, 0)} 枚で実行します。` : 'ファイルを追加するか、サンプルの台帳を使って始めます。';
+}
 function initUpload() {
-  document.querySelectorAll('[data-n]').forEach(e => e.textContent = fmt(S[e.dataset.n]));
-  $('#nB').textContent = B.length; $('#nP').textContent = B.reduce((a, b) => a + b.photos.length, 0);
+  const dz = $('#dz'), inp = $('#fileIn');
+  dz.onclick = () => inp.click();
+  inp.onchange = () => { addUploads([...inp.files]); inp.value = ''; };
+  ['dragenter', 'dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('over'); }));
+  dz.addEventListener('drop', e => addUploads([...e.dataTransfer.files]));
+  $('#files').onclick = (e) => { const r = e.target.closest('[data-rm]'); if (r) { ups.splice(+r.dataset.rm, 1); renderUploads(); } };
+  $('#sample').onclick = () => addUploads(SAMPLE);
   $('#start').onclick = runScan; $('#skip0').onclick = openSort;
+  renderUploads();
 }
 
 /* 2 検知 */
@@ -353,7 +415,7 @@ function renderDetail() {
       <p>${esc(b.office)}・${esc(b.struct)}・築${esc(b.age)}・前回 ${jdg(b.prev)} → 今回 ${jdg(b.now)}</p></div>
     <div class="viewer">
       <div class="shots">
-        <div class="photo"><img src="${p.src}" alt="${SLOT[p.slot]}"><span class="tag">${SLOT[p.slot]}</span>
+        <div class="photo"><img src="${p.src}" alt="${SLOT[p.slot]}"><span class="tag">${SLOT[p.slot]}</span><button class="zoom" data-zoom>拡大</button>
           ${p.kind === 'na' ? `<div class="na"><div>外壁の写真ではありません<small>「${esc(p.label)}」と判定し、検知から除外</small></div></div>` : boxes(p, state.hot)}</div>
         <div class="thumbs">${b.photos.map((x, i) => `<button class="thumb ${x.kind === 'na' ? 'dim' : ''}" aria-pressed="${i === state.photo}" data-pi="${i}"><img src="${x.src}" alt="${SLOT[x.slot]}">${x.kind === 'na' ? `<span>対象外・${esc(x.label)}</span>` : ''}</button>`).join('')}</div>
       </div>
@@ -397,10 +459,31 @@ function select(no, quiet) {
 function move(dir) { const items = by(state.bucket), n = items[items.findIndex(b => b.no === state.no) + dir]; if (n) { select(n.no); const c = $(`.row[data-no="${n.no}"]`); if (c) c.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }
 function setView(map) { $('#desk').hidden = map; $('#map').hidden = !map; $('#swMap').textContent = map ? '← 仕分けに戻る' : '自動化マップ'; }
 
+/* 拡大表示 */
+let lbBoxes = true, lbFrom = null;
+function renderLb() {
+  const b = cur(), p = b.photos[state.photo];
+  $('#lbTitle').textContent = `${b.name}・${SLOT[p.slot]}${p.kind === 'na' ? '（対象外：' + p.label + '）' : ''}`;
+  $('#lbCount').textContent = `${state.photo + 1} / ${b.photos.length}`;
+  $('#lbFrame').innerHTML = `<img src="${p.src}" alt="${SLOT[p.slot]}">${lbBoxes ? boxes(p, state.hot, true) : ''}`;
+  $('#lbFoot').innerHTML = p.dets.length ? p.dets.map(d => `<span style="--c:var(--c-${d.c})"><span class="n">${d.id}</span>${esc(d.t)}</span>`).join('') : '<span>この写真に検知はありません</span>';
+  $('#lbBoxes').setAttribute('aria-pressed', lbBoxes); $('#lbBoxes').hidden = !p.dets.length;
+  $('#lbPrev').disabled = state.photo === 0; $('#lbNext').disabled = state.photo === b.photos.length - 1;
+}
+function openLb() { lbFrom = document.activeElement; $('#lb').hidden = false; renderLb(); $('#lbClose').focus(); }
+function closeLb() { $('#lb').hidden = true; renderDetail(); if (lbFrom && lbFrom.isConnected) lbFrom.focus(); }
+function lbMove(d) { const n = state.photo + d; if (n < 0 || n >= cur().photos.length) return; state.photo = n; state.hot = null; renderLb(); }
+function initLb() {
+  $('#lbClose').onclick = closeLb; $('#lbPrev').onclick = () => lbMove(-1); $('#lbNext').onclick = () => lbMove(1);
+  $('#lbBoxes').onclick = () => { lbBoxes = !lbBoxes; renderLb(); };
+  $('#lb').onclick = (e) => { if (e.target.id === 'lb' || e.target.classList.contains('mid')) return closeLb(); const t = e.target.closest('[data-det]'); if (t) { state.hot = +t.dataset.det; renderLb(); } };
+}
+
 function initSort() {
   $('#tabs').onclick = (e) => { const t = e.target.closest('.tab'); if (!t) return; state.bucket = t.dataset.k; select(by(state.bucket)[0].no, true); setView(false); renderSort(); };
   $('#list').onclick = (e) => { const c = e.target.closest('.row'); if (c) select(+c.dataset.no); };
   $('#v-sort').addEventListener('click', (e) => {
+    if (e.target.closest('[data-zoom]') || e.target.matches('.photo img')) return openLb();
     const t = e.target.closest('[data-det]'); if (t) return setHot(+t.dataset.det);
     const th = e.target.closest('.thumb'); if (th) { state.photo = +th.dataset.pi; state.hot = null; return renderDetail(); }
     const a = e.target.closest('[data-act]'); if (a) return act(a.dataset.act);
@@ -408,6 +491,10 @@ function initSort() {
   });
   $('#v-sort').addEventListener('keydown', (e) => { const t = e.target.closest('.pin'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setHot(+t.dataset.det); } });
   document.addEventListener('keydown', (e) => {
+    if (!$('#lb').hidden) {
+      if (e.key === 'Escape') closeLb(); else if (e.key === 'ArrowLeft') lbMove(-1); else if (e.key === 'ArrowRight') lbMove(1);
+      return;
+    }
     if ($('#v-sort').hidden || !$('#map').hidden || e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
     if (k === 'j' || e.key === 'ArrowDown') { e.preventDefault(); move(1); }
@@ -454,5 +541,5 @@ function renderMap() {
   $('#map').innerHTML = cols.map(([k, t, d, items]) => `<section class="panel col b-${k}"><h3><i class="dot"></i>${t}</h3><p>${d}</p><ul>${items.map(i => `<li><b>${i[0]}</b><small>${i[1]}</small>${i[2]}</li>`).join('')}</ul></section>`).join('');
 }
 
-initUpload(); initSort(); show('upload');
+initUpload(); initSort(); initLb(); show('upload');
 </script>
