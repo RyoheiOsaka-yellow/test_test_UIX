@@ -55,9 +55,6 @@ ul,ol{list-style:none}
 /* 1 取り込み */
 #v-upload{max-width:640px;margin:6vh auto 0;display:grid;gap:22px}
 #v-upload h2{font-family:var(--f-display);font-size:26px;font-weight:900;line-height:1.35;text-wrap:balance;word-break:auto-phrase}
-.dz{display:grid;gap:4px;justify-items:center;text-align:center;width:100%;padding:28px 16px;border:2px dashed var(--ink3);border-radius:14px;color:var(--ink2);font-size:12px;transition:background .15s,border-color .15s}
-.dz b{font-size:15px;color:var(--ink)}
-.dz:hover,.dz.over{background:var(--surface);border-color:var(--accent)}
 .files{display:grid;gap:1px;background:var(--line);border-radius:14px;overflow:hidden}
 .files:empty{display:none}
 .file{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center}
@@ -67,9 +64,7 @@ ul,ol{list-style:none}
 .file .rm:hover{background:var(--surface2);color:var(--ink)}
 .file .up{grid-column:1 / -1;height:3px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:6px}
 .file .up i{display:block;height:100%;background:var(--accent)}
-#dzNote{margin-top:-12px}
-#dzNote.flash{animation:flash 1.2s ease-out}
-@keyframes flash{0%,40%{color:var(--ret);font-weight:700}}
+.btn:disabled{opacity:.4;cursor:not-allowed}
 .go{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 #v-upload .note{font-size:12px;color:var(--ink2)}
 
@@ -228,8 +223,6 @@ details[open] summary::after{content:"閉じる"}
 
   <main id="v-upload">
     <h2>台帳と写真を読み込み、人が見るべきものだけを選り分けます</h2>
-    <button class="dz" id="dz"><b>台帳（xlsx / xls）と写真をここにドロップ</b><span>またはクリックして選択</span></button>
-    <p class="note" id="dzNote">※ プロトタイプのため、実際にはアップロードできません。下のサンプルデータで実行します。</p>
     <div class="files">
       <div class="file"><b>建物写真確認台帳_20261116_1709.xlsx</b>
         <small><span class="num" data-n="rows"></span> 棟・写真 <span class="num" data-n="photos"></span> 枚（外壁・外壁目地の ▲ ×、築13〜14年）</small></div>
@@ -307,11 +300,6 @@ function boxes(p, hot, big) {
 function initUpload() {
   document.querySelectorAll('[data-n]').forEach(e => e.textContent = fmt(S[e.dataset.n]));
   $('#nB').textContent = B.length; $('#nP').textContent = B.reduce((a, b) => a + b.photos.length, 0);
-  const dz = $('#dz'), warn = () => { const n = $('#dzNote'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); };
-  dz.onclick = warn;
-  ['dragenter', 'dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('over'); }));
-  ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('over'); }));
-  dz.addEventListener('drop', warn);
   $('#start').onclick = runScan; $('#skip0').onclick = openSort;
 }
 
