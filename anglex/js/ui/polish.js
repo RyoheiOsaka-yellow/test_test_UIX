@@ -63,6 +63,7 @@ export function openCommandPalette(app) { if (document.querySelector('.cmdk-back
     { label: '検査記録シート PDF', group: '帳票', sub: '寸法・穴・溶接・表面処理・ミルシート台帳', run: () => import('./inspection.js').then(x => x.exportInspectionPDF(app)) },
     { label: '検査記録シート Excel', group: '帳票', sub: '実測値を入力して返してもらう', run: () => import('./inspection.js').then(x => x.exportInspectionXLSX(app)) },
     { label: '強度計算', group: '確認', sub: '配管の重さと地震の力で、部材・アンカー・ボルト・溶接を照査（参考値）', run: () => import('./strength.js').then(x => x.openStrength(app)) },
+    { label: '計算書と比べる（強度計算）', group: '確認', sub: '手計算や社内の計算書の検定比を読み込んで、1 行ずつ比べる。ダミーでも試せる', run: () => import('./strength.js').then(x => x.openCompare(app)) },
     { label: '強度計算の条件', group: '設定', sub: '耐震クラス・設置階・配管の中身・支持間隔・許容値（この案件）', run: () => import('./strength.js').then(x => x.strengthSettingsDialog(app)) },
     { label: '強度計算書を書き出す（PDF）', group: '書き出し', sub: '条件・荷重・部材と接合の照査・支持点の反力', run: () => import('./strength.js').then(x => x.exportStrengthPdf(app)) },
     { label: '検査の許容差', group: '設定', sub: '長さ・穴位置・穴径・溶接脚長の許容差（この案件）', run: () => import('./inspection.js').then(x => x.tolerancesDialog(app)) },

@@ -12,17 +12,21 @@
 |---|---|
 | 骨組み | 部材（形鋼・角形鋼管・平鋼・吊ボルト）の図心を通る線から、節点と要素を自動で作る。接している部材は剛接合。アンカーで締め付けた点は固定、吊ボルトの上端はピン |
 | 荷重 | 長期: 配管（管 + 中身 + 保温）× 支持間隔 + 部材の自重。短期: 地震の水平（管軸方向・管軸直角）と鉛直（上・下）の組合せ 8 通り。水平震度は耐震クラスと設置階の表か、直接指定 |
-| 解析 | 直接剛性法（1 節点 6 自由度、要素は 3 次元のはり）。山形鋼は断面の主軸で解く（設定で JIS の表の軸にもできる） |
+| 解析 | 直接剛性法（1 節点 6 自由度、要素は 3 次元のはり）。山形鋼は断面の主軸で解く（一覧の上の切り替えで JIS の表の軸にもできる） |
 | 部材の照査 | 圧縮＋曲げ・引張＋曲げ（σc/fc + σb/fb ≤ 1）、せん断（ねじりを含む）、たわみ（L/300、片持ち L/250）、細長比。短期の許容は長期の 1.5 倍 |
-| 接合の照査 | アンカー（引抜と本体の引張・せん断）、ボルト、U ボルト、隅肉溶接（のど断面の線の群として、力とモーメントから最大の応力） |
+| 接合の照査 | アンカー（引抜、本体の引張・せん断、コンクリートのコーン状破壊）、ベースプレートの曲げ、ボルト、U ボルト、隅肉溶接（のど断面の線の群として、力とモーメントから最大の応力） |
 | 出力 | 一覧（検定比と判定）、内訳（式と数値）、3D の札、強度計算書（PDF）、Excel |
 
+- **すぐ切り替える条件（11/26 追加）**: 一覧の上に 3 つの切り替え（山形鋼の曲げの軸、吊ボルトの金具に水平の地震力をかけるか、地震時に負担する配管の長さ）。選ぶとその場で計算し直し、案件に保存する。
+- **直し方の候補**: 検定比 0.8 以上の金具には、決め手になっている所を 1 段上げる案（形鋼を 1 つ上のサイズへ、アンカーを太く・本数を増やす、ベース板を厚く、溶接の脚長を上げる、その組合せ）を、検定比・重さ・金額の差つきで出す。「この案にする」で金具の仕様が変わる（元に戻すで取り消せる）。0.8 未満でも「余裕を増やす候補を見る」で出せる。
+- **広げた計算**: アンカーの引張によるコンクリートのコーン状破壊（φ × 0.31√Fc × Ac、となりのアンカー・へりあきとの重なりを簡易に低減）、ベースプレートの曲げ（アンカーの引張で片持ちに曲がると仮定）、配管のほかの荷重（機器・ダクト・ケーブルラックなど。金具ごとに重さ・載せる部材・位置を指定。`inst.params.stLoads`）。
+- **計算書と比べる**: 手計算や社内の計算書の検定比を Excel で読み込み、符号・部位・項目が同じ行どうしを比べる（一致 5% 以内・近い 15% 以内・要確認・判定が逆）。ひな形とダミーの計算書を書き出せる。「ダミーで試す」は、手計算でよく使う前提（山形鋼は JIS の表の軸、座屈長さ係数 1.0）で作った値と比べる。ダミーであることは画面と計算書に必ず出す。結果は `project.strengthRef` に保存。
 - 計算は `js/bim/strength.js`（画面に依存しない）、画面は `js/ui/strength.js`。条件は案件ごとに `project.strength` に保存する。
 - 吊ボルトで吊る金具は、初期設定では水平の地震力をかけない（別の耐震支持・振れ止めで受ける前提）。条件の画面で変えられ、かけると NG と理由が出る。
 - 初期値（震度の表、ボルト・アンカーの許容値、支持間隔の目安）は目安。公開資料で確かめられたのは一部だけなので、社内の基準と照らして条件の画面で書き換える（`docs/OPEN_ITEMS.md` の C5・C6）。
-- 計算していないもの: バンド・サドルなど帯板の金具そのもの、ベースプレートの曲げ、コンクリート側の破壊、穴による断面欠損、局部座屈、疲労、熱による伸び、配管そのものの応力。
+- 計算していないもの: バンド・サドルなど帯板の金具そのもの、コンクリートのせん断側の破壊、ベースプレートの支圧、穴による断面欠損、局部座屈、疲労、熱による伸び、配管そのものの応力。
 - 結果は参考値。設計者の確認が必要。画面と計算書に、仮定と計算していないものを毎回並べて出す。
-- テスト: `dev/flows/ux32.js`（26 項目）。骨組みの解析は片持ちはり・門形ラーメンの閉じた式と、断面性能は JIS の表と、部品からの自動モデル化は手計算（M/Z、PL³/3EI、M·d/Σd²）と比べる。
+- テスト: `dev/flows/ux32.js`（26 項目）と `dev/flows/ux33.js`（19 項目。追加分）。骨組みの解析は片持ちはり・門形ラーメンの閉じた式と、断面性能は JIS の表と、部品からの自動モデル化は手計算（M/Z、PL³/3EI、M·d/Σd²）と比べる。
 - 以前からある「シミュレータ」（`js/bim/solver.js`）の簡易な目安は、そのまま残している。
 
 ## マニュアルと操作ガイド（v1 / v2 / v3、11/18）
@@ -515,7 +519,7 @@ node dev/app-shot.mjs out.png dev/flows/estimate.js             # UI フロー
 
 ### オフライン版のライブラリ取得（vendor/、git 管理外）
 ```bash
-cd anglex/vendor && for u in "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js" "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.min.js" "https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js" "https://cdn.jsdelivr.net/npm/harfbuzzjs@0.4.6/hb-subset.wasm" "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs" "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs" "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr"; do f=$(echo "$u" | sed 's#https://##; s#[/@]#_#g'); curl -sSL -o "$f" "$u"; done; cd .. && python3 tools/vendor_three.py
+cd anglex/vendor && for u in "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js" "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.esm.min.js" "https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js" "https://cdn.jsdelivr.net/npm/harfbuzzjs@0.4.6/hb-subset.wasm" "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs" "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs" "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr"; do f=$(echo "$u" | sed 's#https://##; s#[/@]#_#g'); curl -sSL -o "$f" "$u"; done; mkdir -p three/build && curl -sSL -o three/build/three.core.js "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.core.js"; cd .. && python3 tools/vendor_three.py
 # OCR（Tesseract.js）: 本体・worker・コア（wasm 同梱 .wasm.js）・英語データ（fast）を vendor/tesseract/ へ
 mkdir -p vendor/tesseract && cd vendor/tesseract && for u in "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js" "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-simd-lstm.wasm.js" "https://tessdata.projectnaptha.com/4.0.0_fast/eng.traineddata.gz" "https://tessdata.projectnaptha.com/4.0.0_fast/jpn.traineddata.gz"; do curl -sSL -o "$(basename "$u")" "$u"; done; cd ../..
 ```

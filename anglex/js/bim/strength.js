@@ -16,13 +16,14 @@ export const DEFAULTS = {
   span: null, seismicSpan: null,                                               // 支持間隔 m（null = 呼び径ごとの標準）、地震時に負担する配管長さ m（null = 支持間隔と同じ）
   F: 235, E: 205000, G: 79000, Fsus: 205, Esus: 193000,                        // SS400（t ≤ 40）と SUS304 の基準強度
   deflLimit: 300, deflLimitCant: 250, kFactor: null,                           // たわみ制限 L/300（片持ち L/250）、座屈長さ係数（null = 自動）
-  angleMethod: 'principal',                                                    // 山形鋼の曲げ: principal = 主軸で計算（安全側）、geometric = JIS の表の軸（手計算と同じ）
+  angleMethod: 'principal',                                                    // 山形鋼の曲げ: principal = 断面の主軸で計算（厳密）、geometric = JIS の表の軸（手計算と同じ）
   boltFt: 176, boltFs: 101,                                                    // ボルトの短期許容 引張・せん断 N/mm²（SS400）。長期は 1/1.5
   anchorShort: { M8: 3.0, M10: 3.8, M12: 6.7, M16: 9.2, M20: 12.0, M24: 12.0 }, // あと施工アンカー（金属拡張・おねじ形）短期許容引抜 kN。長期は 1/1.5
+  Fc: 18, anchorEmbed: { M8: 40, M10: 45, M12: 60, M16: 70, M20: 90, M24: 100 }, edgeDist: null, coneCheck: true, plateCheck: true, // コンクリートの設計基準強度 N/mm²、アンカーの有効埋込み長さ mm、へりあき mm（null = 十分にある）
   weldF: 235,                                                                  // 隅肉溶接の基準強度（母材 SS400）
 };
 export const stdSpan = n => n <= 25 ? 1.8 : n <= 40 ? 2.0 : n <= 50 ? 2.5 : n <= 80 ? 3.0 : n <= 100 ? 4.0 : 5.0; // 呼び径ごとの支持間隔の目安 m
-export function settingsOf(project) { const s = { ...DEFAULTS, ...(project?.strength || {}) }; s.anchorShort = { ...DEFAULTS.anchorShort, ...(project?.strength?.anchorShort || {}) }; return s; }
+export function settingsOf(project) { const s = { ...DEFAULTS, ...(project?.strength || {}) }; s.anchorShort = { ...DEFAULTS.anchorShort, ...(project?.strength?.anchorShort || {}) }; s.anchorEmbed = { ...DEFAULTS.anchorEmbed, ...(project?.strength?.anchorEmbed || {}) }; return s; }
 export function khOf(s) { if (!s.seismic) return 0; if (s.khManual != null && s.khManual !== '') return +s.khManual; return (KS_TABLE[s.seismicClass]?.[s.floor] ?? 1.0) * (s.zone || 1); }
 export const g0 = 9.80665;
 
@@ -137,7 +138,7 @@ function segSeg(a0, a1, b0, b1) {
 const ptSeg = (p, a, b) => { const d = sub(b, a); const L2 = dot(d, d) || 1; const t = Math.min(1, Math.max(0, dot(sub(p, a), d) / L2)); const q = add(a, mul(d, t)); return { t: t * Math.sqrt(L2), dist: len(sub(p, q)), q }; };
 
 // ---------- 部品の一覧 → 骨組み ----------
-export function buildFrame(parts, s, { up = [0, 1, 0] } = {}) {
+export function buildFrame(parts, s, { up = [0, 1, 0], extra = [] } = {}) {
   const warnings = []; const mem = [];
   parts.forEach((pt, idx) => {
     if (pt.ref) return;
@@ -177,6 +178,10 @@ export function buildFrame(parts, s, { up = [0, 1, 0] } = {}) {
   for (const g of supportsRaw) g.p = g.t === 0 ? g.m.p0 : g.t === g.m.L ? g.m.p1 : mk(g.m, g.t, 'sup');
   // 配管の荷重点
   const pipes = []; parts.forEach((pt, idx) => { if (pt.kind !== 'pipe' || !pt.ref || !pt.pl) return; const ez = pt.pl.basis[2]; const c = add(pt.pl.pos, mul(ez, (pt.length || 0) / 2)); const nr = nearest(c); if (!nr) return; const t = snap(nr.m, nr.t, null); const mass = pipeMass(pt, s); pipes.push({ idx, part: pt, c, axis: ez, m: nr.m, ecc: nr.dist, p: t === 0 ? nr.m.p0 : t === nr.m.L ? nr.m.p1 : mk(nr.m, t, 'load'), ...mass }); });
+  // 配管のほかの荷重（機器・ダクト・ケーブルラックなど）。載せる部材と位置（0〜1）を指定。部材の指定がなければ、配管が載る部材か、いちばん長い横の部材
+  const extras = []; for (const x of extra || []) { const kg = +x.kg; if (!(kg > 0)) continue; const m = mem.find(q => q.idx === x.partIndex) || pipes[0]?.m || mem.filter(q => !q.rod).sort((a, b) => (Math.abs(dot(a.d, up)) < 0.5 ? b.L : 0) - (Math.abs(dot(b.d, up)) < 0.5 ? a.L : 0) || b.L - a.L)[0] || mem[0]; const t = snap(m, Math.min(1, Math.max(0, x.pos ?? 0.5)) * m.L, null); extras.push({ name: x.name || '追加の荷重', kg, m, p: t === 0 ? m.p0 : t === m.L ? m.p1 : mk(m, t, 'load'), W: kg * g0 }); }
+  // 同じ部材の同じ位置（2 mm 以内）に置いた点は 1 つの節点にまとめる（配管と追加の荷重が同じ位置にあると、長さ 0 の要素ができて骨組みが切れるのを防ぐ）
+  for (const m of mem) { const mine = pts.filter(q => q.m === m).sort((x, y) => x.t - y.t); for (let k = 1; k < mine.length; k++) if (mine[k].t - mine[k - 1].t < 2) union(mine[k], mine[k - 1]); }
   // 節点と要素
   const nodes = [], nodeOf = new Map(); const groupPos = new Map(); for (const q of pts) { const gi = find(pts.indexOf(q)); const pos = add(q.m.a, mul(q.m.d, q.t)); const g = groupPos.get(gi) || { sum: [0, 0, 0], n: 0, mid: null }; g.sum = add(g.sum, pos); g.n++; if (q.t > 0 && q.t < q.m.L && !q.m.rod) g.mid = g.mid || pos; groupPos.set(gi, g); }
   const nodeFor = q => { const gi = find(pts.indexOf(q)); if (!nodeOf.has(gi)) { const g = groupPos.get(gi); nodeOf.set(gi, nodes.length); nodes.push(g.mid || mul(g.sum, 1 / g.n)); } return nodeOf.get(gi); };
@@ -186,12 +191,12 @@ export function buildFrame(parts, s, { up = [0, 1, 0] } = {}) {
       for (let q = 1; q <= nsub; q++) { let nd; if (q === nsub) nd = B.nd; else { nd = nodes.length; nodes.push(add(nodes[A.nd], mul(sub(nodes[B.nd], nodes[A.nd]), q / nsub))); } m.elems.push(elems.length); elems.push({ i: prev, j: nd, A: m.sec.A, Iu: m.sec.Iu, Iv: m.sec.Iv, J: m.sec.J, E: m.E, G: m.G, eu: m.eu, mem: m }); m.nodes.push({ nd, t: A.t + (B.t - A.t) * q / nsub }); prev = nd; } }
     if (!m.elems.length) warnings.push(`${m.name}: 長さが短すぎるため計算から外しました`); }
   const supports = new Map(), supInfo = []; for (const g of supportsRaw) { const nd = nodeFor(g.p); const type = g.kind === 'anchor' || g.kind === 'hole' || g.kind === 'assumed' ? 'fixed' : 'pinned'; /* アンカーで面に締め付けた点は固定、吊ボルトの上端はピン */ const prev = supInfo.find(x => x.nd === nd); if (prev) { prev.items.push(...g.items); if (type === 'fixed' || prev.items.length >= 2 && prev.kind !== 'rod') { prev.type = 'fixed'; supports.set(nd, 'fixed'); } continue; } supports.set(nd, type); supInfo.push({ nd, type, kind: g.kind, items: [...g.items], m: g.m }); }
-  for (const p of pipes) p.nd = nodeFor(p.p);
+  for (const p of pipes) p.nd = nodeFor(p.p); for (const x of extras) x.nd = nodeFor(x.p);
   // 部材の端が「自由」か（片持ち）
   const useCount = new Map(); for (const e of elems) for (const nd of [e.i, e.j]) useCount.set(nd, (useCount.get(nd) || 0) + 1);
   for (const m of mem) { if (!m.nodes.length) continue; const n0 = m.nodes[0].nd, n1 = m.nodes[m.nodes.length - 1].nd; m.free0 = useCount.get(n0) === 1 && !supports.has(n0); m.free1 = useCount.get(n1) === 1 && !supports.has(n1); m.cant = m.free0 !== m.free1; m.vertical = Math.abs(dot(m.d, up)) > 0.9; }
   const hasBrace = mem.some(m => !m.rod && Math.abs(dot(m.d, up)) > 0.25 && Math.abs(dot(m.d, up)) < 0.9);
-  return { mem, nodes, elems, supports, supInfo, pipes, warnings, assumed, hasBrace, up };
+  return { mem, nodes, elems, supports, supInfo, pipes, extras, warnings, assumed, hasBrace, up };
 }
 
 // ---------- 留め具の群（アンカー・ボルト）: 群の中心にはたらく力 F とモーメント M から、1 本ごとの引張・せん断を出す ----------
@@ -208,8 +213,8 @@ function boltCheck(T, Q, As, ft, fs) { const tau = Q / As, sig = Math.max(0, T) 
 
 // ---------- 1 つの支持金具を計算する ----------
 export function analyzeParts(parts, settings, opts = {}) {
-  const s = settings; const fr = buildFrame(parts, s, opts); if (fr.empty) return { empty: true, ok: true, ratio: 0, items: [], members: [], connections: [], warnings: fr.warnings, loads: { pipes: [], total: 0, self: 0 } };
-  const { mem, nodes, elems, supports, supInfo, pipes, up } = fr; const N = nodes.length * 6; const warnings = [...fr.warnings];
+  const s = settings; const fr = buildFrame(parts, s, opts); if (fr.empty) return { empty: true, ok: true, ratio: 0, items: [], members: [], connections: [], warnings: fr.warnings, loads: { pipes: [], extras: [], extra: 0, pipe: 0, total: 0, self: 0 } };
+  const { mem, nodes, elems, supports, supInfo, pipes, extras, up } = fr; const N = nodes.length * 6; const warnings = [...fr.warnings];
   const hung = mem.some(m => m.rod); const lateral = !(hung && !s.rodSeismic); /* 吊ボルトで吊る金具は、設定で指定しない限り水平の地震力をかけない（別の耐震支持で受ける前提） */
   const KH = khOf(s), KV = KH * (s.kvRatio ?? 0.5);
   // 水平の 2 方向: 管軸方向 h1 と管軸直角 h2
@@ -218,6 +223,7 @@ export function analyzeParts(parts, settings, opts = {}) {
   const G = new Float64Array(N), E1 = new Float64Array(N), E2 = new Float64Array(N), EV = new Float64Array(N); const put = (V, nd, dir, mag) => { for (let q = 0; q < 3; q++) V[nd * 6 + q] += dir[q] * mag; };
   let self = 0; for (const e of elems) { const L = len(sub(nodes[e.j], nodes[e.i])); const w = e.A * L * 7.85e-6 * g0 * (e.mem.F === s.Fsus ? 7.93 / 7.85 : 1); self += w; for (const nd of [e.i, e.j]) { put(G, nd, up, -w / 2); put(E1, nd, h1, KH * w / 2); put(E2, nd, h2, KH * w / 2); put(EV, nd, up, KV * w / 2); } }
   let Wp = 0, Wps = 0; for (const p of pipes) { Wp += p.W; Wps += p.Ws; put(G, p.nd, up, -p.W); put(E1, p.nd, h1, KH * p.Ws); put(E2, p.nd, h2, KH * p.Ws); put(EV, p.nd, up, KV * p.Ws); }
+  let Wx = 0; for (const x of extras) { Wx += x.W; put(G, x.nd, up, -x.W); put(E1, x.nd, h1, KH * x.W); put(E2, x.nd, h2, KH * x.W); put(EV, x.nd, up, KV * x.W); }
   const sol = solveFrame3D({ nodes, elems, supports, loads: [G, E1, E2, EV] });
   // 組合せ: 長期 = G、短期 = G ± 水平 ± 鉛直
   const cases = [{ key: 'L', name: '長期（常時）', term: 'long', c: [1, 0, 0, 0] }];
@@ -263,10 +269,19 @@ export function analyzeParts(parts, settings, opts = {}) {
   for (const sp of supInfo) { const pos = nodes[sp.nd]; const Rl = reaction(cases[0], sp.nd); supOut.push({ pos: pos.map(r1), type: sp.type, kind: sp.kind, n: sp.items.length, R: Rl.map((v, q) => q < 3 ? r2(v / 1000) : r3(v / 1e6)) });
     if (sp.kind !== 'anchor' || !sp.items.length) continue; const pts = sp.items.map(a => a.pt.pl.pos); const M0 = sp.items[0].pt.M || 'M12'; const th = threadArea(M0); let axis = sp.items[0].pt.pl.basis[2]; const gc = mul(pts.reduce((a, b) => add(a, b), [0, 0, 0]), 1 / pts.length); if (dot(axis, sub(centroid, gc)) < 0) axis = mul(axis, -1); /* 軸は「コンクリートから構造物へ」向き */
     const TaS = s.anchorShort[anchorKey(M0)] ?? 3.8; let wT = null, wQ = null;
+    const key = anchorKey(M0); const le = s.anchorEmbed[key] ?? 60; const Ac0 = Math.PI * le * (le + th.d); const rproj = Math.sqrt(Ac0 / Math.PI); let wC = null, wP = null;
+    // ベースプレート: 支持点の近くの板（アンカー穴のある板）
+    const plate = s.plateCheck ? parts.filter(pt => pt.kind === 'plate' && !pt.ref && pt.pl && (pt.holes || []).some(hh => hh.kind === 'anchor')).map(pt => { const pp = parseSpec(pt.spec); const [ex, , ez] = pt.pl.basis; const w = pp?.w || 0, hh = pp?.h || pt.length || 0; return { pt, pp, w, hh, c: add(pt.pl.pos, add(mul(ex, w / 2), mul(ez, hh / 2))) }; }).filter(q => q.pp?.t > 0).sort((x, y) => len(sub(x.c, gc)) - len(sub(y.c, gc)))[0] : null; const plateOk = plate && len(sub(plate.c, gc)) < Math.max(plate.w, plate.hh, 120);
+    const secS = sp.m.sec; const hmin = secS.round ? secS.R : Math.min(Math.max(...secS.pts.map(q => Math.abs(q[0]))), Math.max(...secS.pts.map(q => Math.abs(q[1]))));
     for (const c of liveCases) { const R = reaction(c, sp.nd); const F = mul(R.slice(0, 3), -1); /* アンカーにかかる力 = −反力 */ const Mn = mul(R.slice(3), -1); const Mc = add(Mn, cross(sub(pos, gc), F)); const mult = c.term === 'short' ? 1 : 1 / 1.5;
-      for (const b of groupForces(pts, axis, F, Mc)) { const Ta = TaS * 1000 * mult; const bc = boltCheck(b.T, b.Q, th.As, s.boltFt * mult, s.boltFs * mult); const rT = Math.max(Math.max(0, b.T) / Ta, bc.rTens); if (!wT || rT > wT.ratio) wT = { ratio: rT, T: b.T, Ta, c, bc }; if (!wQ || bc.rShear > wQ.ratio) wQ = { ratio: bc.rShear, Q: b.Q, c, bc, fs: s.boltFs * mult }; } }
+      for (const b of groupForces(pts, axis, F, Mc)) { const Ta = TaS * 1000 * mult;
+        if (b.T > 1 && s.coneCheck) { let k = 1; const near2 = pts.map((q, qi) => qi === b.i ? Infinity : len(sub(q, pts[b.i]))).sort((x, y) => x - y).slice(0, 2); for (const d of near2) if (d < 2 * rproj) k *= 0.5 * (1 + d / (2 * rproj)); if (s.edgeDist > 0 && s.edgeDist < rproj) k *= 0.5 * (1 + s.edgeDist / rproj); k = Math.max(0.25, k); const Tc = (c.term === 'short' ? 2 / 3 : 1 / 3) * 0.31 * Math.sqrt(s.Fc) * Ac0 * k; const r = b.T / Tc; if (!wC || r > wC.ratio) wC = { ratio: r, T: b.T, Tc, k, c }; }
+        if (b.T > 1 && plateOk) { const ap = pts[b.i]; const dAxis = ptSeg(ap, sp.m.a, sp.m.b).dist; const e = Math.max(10, dAxis - hmin); const beff = Math.max(20, Math.min(2 * e + th.d, Math.min(plate.w, plate.hh) || 2 * e + th.d)); const sig = 6 * b.T * e / (beff * plate.pp.t ** 2); const lim = sp.m.F / 1.3 * (c.term === 'short' ? 1.5 : 1); const r = sig / lim; if (!wP || r > wP.ratio) wP = { ratio: r, sig, lim, e, beff, T: b.T, c }; }
+ const bc = boltCheck(b.T, b.Q, th.As, s.boltFt * mult, s.boltFs * mult); const rT = Math.max(Math.max(0, b.T) / Ta, bc.rTens); if (!wT || rT > wT.ratio) wT = { ratio: rT, T: b.T, Ta, c, bc }; if (!wQ || bc.rShear > wQ.ratio) wQ = { ratio: bc.rShear, Q: b.Q, c, bc, fs: s.boltFs * mult }; } }
     const label = `アンカー ${th.name} ×${pts.length}`; const first = sp.items[0].idx;
     if (wT) connections.push(push({ scope: 'anchor', partIndex: first, part: label, kind: 'anchorT', term: wT.c.term, label: '引抜', value: r2(Math.max(0, wT.T) / 1000), unit: 'kN/本', limit: r2(wT.Ta / 1000), ratio: wT.ratio, caseName: wT.c.name, detail: `許容引抜 ${r2(wT.Ta / 1000)} kN（${wT.c.term === 'short' ? '短期' : '長期 = 短期 ÷ 1.5'}、あと施工 金属拡張 おねじ形の目安）。ボルト本体は σ = ${r1(wT.bc.sig)} ≤ fts = ${r1(wT.bc.fts)} N/mm²` }));
+    if (wC) connections.push(push({ scope: 'anchor', partIndex: first, part: label, kind: 'anchorCone', term: wC.c.term, label: 'コンクリートのコーン状破壊', value: r2(wC.T / 1000), unit: 'kN/本', limit: r2(wC.Tc / 1000), ratio: wC.ratio, caseName: wC.c.name, detail: `許容 = φ × 0.31√Fc × Ac × 低減 = ${wC.c.term === 'short' ? '2/3' : '1/3'} × 0.31√${s.Fc} × ${Math.round(Ac0)} mm² × ${r2(wC.k)}（有効埋込み ${le} mm、Ac = π·le·(le + d)。となりのアンカー${s.edgeDist > 0 ? '・へりあき' : ''}と重なる分を低減）` }));
+    if (wP) connections.push(push({ scope: 'plate', partIndex: parts.indexOf(plate.pt), part: `${plate.pt.name || 'ベースプレート'} t${plate.pp.t}`, kind: 'basePlate', term: wP.c.term, label: 'ベースプレートの曲げ', value: r1(wP.sig), unit: 'N/mm²', limit: r1(wP.lim), ratio: wP.ratio, caseName: wP.c.name, detail: `M = T × e = ${r2(wP.T / 1000)} kN × ${r1(wP.e)} mm、有効幅 ${r1(wP.beff)} mm、σ = 6M/(b·t²)、許容 F/1.3${wP.c.term === 'short' ? ' × 1.5' : ''}（アンカーの引張で板が片持ちに曲がると仮定）` }));
     if (wQ && wQ.Q > 1) connections.push(push({ scope: 'anchor', partIndex: first, part: label, kind: 'anchorQ', term: wQ.c.term, label: 'せん断', value: r1(wQ.bc.tau), unit: 'N/mm²', limit: r1(wQ.fs), ratio: wQ.ratio, caseName: wQ.c.name, detail: `Q = ${r2(wQ.Q / 1000)} kN/本、有効断面積 ${r1(th.As)} mm²` })); }
   // ---- 部材の端の力（接合の照査に使う）----
   const memberEnd = (p, maxD = 120) => { let best = null; for (const m of mem) { if (!m.elems.length || m.rod) continue; for (const [end, pos, ei, key] of [[0, m.a, m.elems[0], 'i'], [1, m.b, m.elems[m.elems.length - 1], 'j']]) { const d = len(sub(pos, p)); if (d < (best?.d ?? maxD)) best = { m, end, ei, key, d, nd: end ? m.nodes[m.nodes.length - 1].nd : m.nodes[0].nd }; } } return best; };
@@ -301,7 +316,7 @@ export function analyzeParts(parts, settings, opts = {}) {
   if (lateralNote.length) { const onlyRods = mem.every(m => m.rod) || mem.some(m => m.rod); push({ scope: 'system', partIndex: mem[0].idx, part: '全体', kind: 'unstable', term: 'short', label: `水平の地震力（${lateralNote.join('・')}）`, value: 0, unit: '', limit: 0, ratio: 1.01, caseName: '短期', detail: onlyRods ? '吊ボルトだけでは水平力を受けられません。振れ止め（斜材・ブレース）か、別の耐震支持が必要です' : 'この向きの水平力を受ける部材・支持がありません。斜材や支持点を足してください' }); warnings.push(`${lateralNote.join('・')}の水平力に対して不安定です`); }
   const pipeOut = pipes.map(p => { const u = sol.unstable[0] ? [0, 0, 0] : disp(cases[0], p.nd).slice(0, 3); return { nominal: p.nominal, kgm: r2(p.kgm), steel: r2(p.steel), fluid: r2(p.fluid), insul: r2(p.insul), span: p.span, sspan: p.sspan, W: Math.round(p.W), Ws: Math.round(p.Ws), on: p.m.name, ecc: r1(p.ecc), disp: r2(len(u)) }; });
   const worst = items.slice().sort((a, b) => b.ratio - a.ratio)[0] || null; const ratio = worst ? worst.ratio : 0;
-  return { ok: ratio <= 1, ratio, worst, items, members, connections, supports: supOut, warnings, assumed: fr.assumed, KH, KV, lateral, hung, cases: cases.map(c => c.name), loads: { pipes: pipeOut, pipe: Math.round(Wp), pipeSeismic: Math.round(Wps), self: Math.round(self), total: Math.round(Wp + self) }, model: { nodes: nodes.length, elems: elems.length, supports: supInfo.length } };
+  return { ok: ratio <= 1, ratio, worst, items, members, connections, supports: supOut, warnings, assumed: fr.assumed, KH, KV, lateral, hung, cases: cases.map(c => c.name), loads: { pipes: pipeOut, pipe: Math.round(Wp), pipeSeismic: Math.round(Wps), self: Math.round(self), extra: Math.round(Wx), extras: extras.map(x => ({ name: x.name, kg: x.kg, W: Math.round(x.W), on: x.m.name, partIndex: x.m.idx })), total: Math.round(Wp + self + Wx) }, model: { nodes: nodes.length, elems: elems.length, supports: supInfo.length } };
 }
 function inv3(m) { const [a, b, c] = m[0], [d, e, f] = m[1], [g, h, i] = m[2]; const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g; const det = a * A + b * B + c * C; if (!(Math.abs(det) > 1e-9)) return null; return [[A / det, (c * h - b * i) / det, (b * f - c * e) / det], [B / det, (a * i - c * g) / det, (c * d - a * f) / det], [C / det, (b * g - a * h) / det, (a * e - b * d) / det]]; }
 const mulM = (m, v) => [dot(m[0], v), dot(m[1], v), dot(m[2], v)];
@@ -314,11 +329,14 @@ export function assumptionsText(s) { const KH = khOf(s);
     `荷重（長期）: 配管 = （管 + ${s.contents === 'empty' ? '中身なし' : s.contents === 'custom' ? `中身 ${s.contentsDensity} kg/m³` : '満水'} + 保温 ${s.insulDensity} kg/m³）× 支持間隔${s.span > 0 ? ` ${s.span} m` : '（呼び径ごとの目安: 25A まで 1.8 m、40A まで 2.0 m、50A 2.5 m、80A まで 3.0 m、100A 4.0 m、それ以上 5.0 m）'}。部材の自重を含みます（板・ボルトの重さは含みません）`,
     s.seismic ? `荷重（短期）: 地震 = 設計用水平震度 KH = ${r2(KH)}${s.khManual != null && s.khManual !== '' ? '（直接指定）' : `（耐震クラス ${s.seismicClass}・${{ top: '上層階・屋上', mid: '中間階', low: '1 階・地階' }[s.floor]}、地域係数 ${s.zone}）`}、鉛直 KV = KH × ${s.kvRatio}。水平は管軸方向と管軸直角方向を別々にかけ、鉛直の上下と組み合わせています。地震時に負担する配管長さは${s.seismicSpan > 0 ? ` ${s.seismicSpan} m` : '支持間隔と同じ'}` : '荷重（短期）: 地震は計算していません',
     `部材: 許容応力度設計（SS400 F = ${s.F} N/mm²。長期 引張・曲げ F/1.5、せん断 F/1.5√3、圧縮は細長比による低減、短期は 1.5 倍）。溝形・H 形の強軸まわりの曲げは横座屈による低減を入れています`,
-    s.angleMethod === 'geometric' ? '山形鋼の曲げ: JIS の表と同じ軸（脚に平行な軸）で計算しています（手計算の慣例。主軸で計算するより応力が小さく出ます）' : '山形鋼の曲げ: 断面の主軸で計算しています（脚に平行な軸で計算する手計算より、応力が大きく出ます。安全側）',
+    s.angleMethod === 'geometric' ? '山形鋼の曲げ: JIS の表と同じ軸（脚に平行な軸）で計算しています（手計算の慣例）。断面の主軸で計算する場合とは、結果が変わります' : '山形鋼の曲げ: 断面の主軸で計算しています（山形鋼は脚に平行な軸が主軸ではないため）。脚に平行な軸で計算する手計算とは、結果が変わります',
     `座屈長さ: ${s.kFactor > 0 ? `係数 ${s.kFactor}（指定）` : '片持ち 2.0、斜材のない骨組みの柱 1.5、そのほか 1.0'} × 部材の長さ。たわみ制限 L/${s.deflLimit}（片持ち L/${s.deflLimitCant}）`,
     `ボルト・U ボルト・吊ボルト: 有効断面積で計算。短期許容 引張 ${s.boltFt}・せん断 ${s.boltFs} N/mm²（長期は 1/1.5）、引張とせん断の組合せは fts = min(ft, 1.4ft − 1.6τ)`,
     `アンカー: 短期許容引抜 ${Object.entries(s.anchorShort).map(([k, v]) => `${k} ${v}`).join('、')} kN（あと施工 金属拡張 おねじ形の目安。長期は 1/1.5）。コンクリートの強度・厚さ・へりあき・施工の条件で変わるので、メーカーの値で確かめてください`,
     `溶接: 隅肉。のど厚 0.7 × 脚長、長期許容 ${r1(s.weldF / (1.5 * Math.sqrt(3)))} N/mm²（短期 1.5 倍）。溶接の群の図心まわりで、力とモーメントから最大の応力を出しています`,
-    '計算していないもの: バンド・サドルなど帯板の金具そのもの、ベースプレートの曲げ、コンクリート側の破壊（コーン破壊・へりあき）、穴による断面の欠損、局部座屈、疲労、熱による伸び、配管そのものの応力、建物側の強度',
+    `コンクリート: アンカーの引張によるコーン状破壊を、許容 = φ × 0.31√Fc × Ac（Fc = ${s.Fc} N/mm²、φ は短期 2/3・長期 1/3、Ac = π·le·(le + d)、有効埋込み ${Object.entries(s.anchorEmbed).map(([k, v]) => `${k} ${v}`).join('、')} mm）で照査。となりのアンカー${s.edgeDist > 0 ? `とへりあき ${s.edgeDist} mm` : ''}で投影面積が重なる分は簡易に低減しています${s.edgeDist > 0 ? '' : '（へりあきは十分にあると仮定）'}`,
+    'ベースプレート: アンカーの引張で、柱の縁からアンカーまでを片持ちとして曲がると仮定（有効幅 = 2e + アンカー径、許容 F/1.3、短期 1.5 倍）。圧縮側の支圧は見ていません',
+    '配管のほかの荷重（機器・ダクト・ケーブルラックなど）は、金具ごとに重さ・載せる部材・位置を指定して足せます。地震時は同じ震度をかけます',
+    '計算していないもの: バンド・サドルなど帯板の金具そのもの、コンクリートのせん断側の破壊（へりあき方向）、ベースプレートの支圧、穴による断面の欠損、局部座屈、疲労、熱による伸び、配管そのものの応力、建物側の強度',
     'この結果は参考値です。設計者による確認と、適用する基準・指針との照合が必要です',
   ]; }
