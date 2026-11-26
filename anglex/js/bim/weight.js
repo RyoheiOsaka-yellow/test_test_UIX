@@ -1,12 +1,12 @@
 // 重量・表面積・めっき付着量・溶接金属量の計算（JIS 単位質量優先、穴控除、めっき質量加算）
-import { parseSpec, sectionProps, decompose, assignHoles, holeArea, holePerimeter, cutDepth, sectionCentroid } from '../geo/profiles.js';
+import { parseSpec, sectionProps, decompose, assignHoles, holeArea, holePerimeter, cutDepth, sectionCentroid, assignNotches, plateOutline } from '../geo/profiles.js';
 import { boltMass } from '../geo/fasteners.js';
 import { GALV, DENSITY, UBOLTS, BOLTS } from '../data/sections.js';
 
 export const KG = v => Math.round(v * 1000) / 1000;
 
 // 部材（形鋼・板・管）: 生材質量、穴控除、表面積、めっき質量
-export function memberWeight({ spec, length, holes = [], finish = 'HDZ', material = 'SS400', cuts = null }) {
+export function memberWeight({ spec, length, holes = [], finish = 'HDZ', material = 'SS400', cuts = null, notches = null }) {
   const p = typeof spec === 'string' ? parseSpec(spec) : spec; if (!p) return null;
   const sp = sectionProps(p); const L = length || (p.kind === 'PL' ? (p.h || 0) : 0);
   const rho = DENSITY[material] || DENSITY.SS400;
@@ -16,21 +16,24 @@ export function memberWeight({ spec, length, holes = [], finish = 'HDZ', materia
   // 斜め切り: 落とす体積 = 断面積 × 図心での深さ（始端 + 終端）。深さは断面内で直線的に変わるので、図心での値が平均になる
   let cutLen = 0; if (cuts && L > 0) { const d = cutDepth(p, cuts); const [cx, cy] = sectionCentroid(p); cutLen = (d.s ? d.s(cx, cy) : 0) + (d.e ? d.e(cx, cy) : 0); if (cutLen > 0) gross *= Math.max(0, 1 - cutLen / L); }
   // 表面積（mm2）: 板構成から 2×面積 + 周長×厚（端面）、管は内外周×L
-  let area = 0, holeVol = 0, holeCount = 0, slotCount = 0;
+  let area = 0, holeVol = 0, holeCount = 0, slotCount = 0, notchCount = 0, notchVol = 0, notchLen = 0;
   if (p.kind === 'PIPE' || p.kind === 'RB') {
     area = p.kind === 'RB' ? Math.PI * p.d * L + 2 * Math.PI * p.d * p.d / 4 : Math.PI * p.od * L + Math.PI * (p.od - 2 * p.t) * L + 2 * Math.PI * (p.od * p.od - Math.pow(p.od - 2 * p.t, 2)) / 4;
   } else {
-    const plates = decompose(p, L); assignHoles(plates, holes);
+    const plates = decompose(p, L); assignHoles(plates, holes); if (notches?.length) assignNotches(plates, notches);
     for (const pl of plates) {
       area += 2 * pl.w * pl.h + 2 * (pl.w + pl.h) * pl.t;
+      // 切欠き・面取り: 板の外形から減った面積 × 板厚を引く。切り口の長さは加工費の目安に使う
+      if (pl.notches?.length) { const ol = plateOutline(pl.w, pl.h, pl.notches); let a2 = 0, per = 0; for (let i = 0; i < ol.length; i++) { const [x1, y1] = ol[i], [x2, y2] = ol[(i + 1) % ol.length]; a2 += x1 * y2 - x2 * y1; per += Math.hypot(x2 - x1, y2 - y1); } const cut = Math.max(0, pl.w * pl.h - Math.abs(a2) / 2); notchVol += cut * pl.t; area -= 2 * cut; notchCount += pl.notches.length; notchLen += Math.max(0, per - 2 * (pl.w + pl.h) + pl.notches.length * 0) + 0; }
       for (const h of pl.holes) { const a = holeArea(h); holeVol += a * pl.t; area += -2 * a + holePerimeter(h) * pl.t; if (h.slot && h.slot.len > h.d) slotCount++; else holeCount++; }
     }
   }
   const holeDeduct = holeVol * rho / 1e6; // kg
-  const net = Math.max(0, gross - holeDeduct);
+  const notchDeduct = notchVol * rho / 1e6; /* 切欠きで減る重さ kg */
+  const net = Math.max(0, gross - holeDeduct - notchDeduct);
   const gpm2 = GALV[finish] ?? (finish && finish.startsWith('HDZ') ? GALV.HDZ55 : 0);
   const zinc = area / 1e6 * gpm2 / 1000; // m2 × g/m2 → g → kg
-  return { profile: p, props: sp, length: L, gross: KG(gross), holeDeduct: KG(holeDeduct), net: KG(net), areaM2: Math.round(area / 1e6 * 10000) / 10000, zinc: KG(zinc), total: KG(net + zinc), holeCount, slotCount, finish, source: sp.source, cutLen: Math.round(cutLen * 10) / 10 };
+  return { profile: p, props: sp, length: L, gross: KG(gross), holeDeduct: KG(holeDeduct), net: KG(net), areaM2: Math.round(area / 1e6 * 10000) / 10000, zinc: KG(zinc), total: KG(net + zinc), holeCount, slotCount, notchCount, notchDeduct: KG(notchDeduct), finish, source: sp.source, cutLen: Math.round(cutLen * 10) / 10 };
 }
 // 溶接: 隅肉 脚長 s, 長さ L（mm）, 両側なら ×2。余盛り 10%
 export function weldWeight({ type = 'fillet', size = 6, length = 0, sides = 1 }) {

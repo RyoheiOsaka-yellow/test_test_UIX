@@ -1,7 +1,10 @@
 // 原価・見積エンジン: 材料費（kg単価）+ 加工費（切断・穴・溶接・曲げ・組立）+ 表面処理（めっき kg単価 / 塗装 m2）+ 副資材 + 管理費・利益
 import { summarize } from './weight.js';
 import { parseSpec } from '../geo/profiles.js';
+import { applyFab, parseFab } from './fab.js';
 
+// 加工の詳細の単価の初期値（¥/か所）。サンプルの値で、単価マスタに fab があればそちらを使う
+export const FAB_RATE = { notch: 380, v: 420, rect: 450, u: 480, arc: 520, slit: 350, cope: 500, chamfer: 180, scallop: 260, round: 220, miter: 300, bevel: 350, bend: 600, nut: 280, mark: 80, grind: 150, tap: 150, csink: 90, cbore: 140 };
 export const DEFAULT_RATES = {
   version: 1, currency: 'JPY',
   steel: { SS400: 145, SUS304: 680, SGP: 185, STK400: 170, PVC: 95, ZAM: 190 },           // ¥/kg（材料）
@@ -22,7 +25,7 @@ export const DEFAULT_RATES = {
 };
 const r1 = v => Math.round(v);
 function cutClass(spec) { const p = parseSpec(spec); if (!p) return 'small'; const h = p.kind === 'L' ? Math.max(p.A, p.B) : p.kind === 'C' || p.kind === 'H' || p.kind === 'LC' ? p.H : p.kind === 'SQ' ? Math.max(p.A, p.B) : p.kind === 'PIPE' ? p.od : p.kind === 'FB' ? p.w : p.kind === 'PL' ? Math.max(p.w || 0, p.h || 0) : 50; return h <= 50 ? 'small' : h <= 100 ? 'medium' : 'large'; }
-function holeRate(h, R) { if (h.slot && h.slot.len > h.d) return R.hole.slot; return h.d <= 13 ? R.hole.d13 : h.d <= 20 ? R.hole.d20 : R.hole.d30; }
+function holeRate(h, R) { if (h.rect || (h.slot && h.slot.len > h.d)) return R.hole.slot; return h.d <= 13 ? R.hole.d13 : h.d <= 20 ? R.hole.d20 : R.hole.d30; }
 function weldRate(size, type, R) { if (type === 'butt') return R.weldPer100mm.butt; const keys = Object.keys(R.weldPer100mm).filter(k => !isNaN(+k)).map(Number).sort((a, b) => a - b); let k = keys[keys.length - 1]; for (const s of keys) if (size <= s) { k = s; break; } return R.weldPer100mm[k]; }
 
 // parts → 原価内訳
@@ -36,7 +39,9 @@ export function costParts(parts, R = DEFAULT_RATES) {
       if (it.ref) continue; const w = it.detail; const matKey = it.material === 'SUS304' ? 'SUS304' : it.spec?.startsWith('SGP') || it.spec?.startsWith('PIPE') ? 'SGP' : it.spec?.startsWith('VP') ? 'PVC' : 'SS400';
       const mat = w.net * (R.steel[matKey] || R.steel.SS400) * R.scrapFactor * q; c.material += mat;
       const cuts = (it.kind === 'plate' ? 4 : 2) * q; const cutC = cuts * R.cut[cutClass(it.spec)]; c.cut += cutC;
-      let holeC = 0; for (const h of it.holes || []) holeC += holeRate(h, R) * q; c.hole += holeC;
+      let holeC = 0; for (const h of it.holes || []) holeC += (holeRate(h, R) + (h.kind === 'tap' ? FAB_RATE.tap : h.kind === 'csink' ? FAB_RATE.csink : h.kind === 'cbore' ? FAB_RATE.cbore : 0)) * q; c.hole += holeC;
+      // 加工の詳細: 切欠き・面取りは 1 か所ごと、開先・曲げ・溶接ナットなどは指示ごとの目安（単価マスタに無い場合の初期値）
+      let fabC = 0; for (const nn of it.notches || []) fabC += ((R.fab || FAB_RATE)[nn.kind] ?? FAB_RATE[nn.kind] ?? FAB_RATE.notch) * q; for (const mk of it.marks || []) fabC += ((R.fab || FAB_RATE)[mk.kind] ?? FAB_RATE[mk.kind] ?? 0) * q; c.cut += fabC; c.fab = (c.fab || 0) + fabC;
       const bends = (it.pattern === 'drainpan' ? 4 : 0) * q; c.bend += bends * R.bend;
       if (it.finish && it.finish.startsWith('HDZ')) galvKg += w.net * q; else if (it.finish === 'EZ') ezKg += w.net * q; else if (it.finish === 'PAINT') paintM2 += w.areaM2 * q;
       steelParts += q; c.lines.push({ name: it.name, kind: it.kind, qty: q, mass: it.mass, material: r1(mat), cut: cutC, hole: holeC, finish: it.finish });
@@ -61,10 +66,10 @@ export function costParts(parts, R = DEFAULT_RATES) {
 // モデル全体 → 見積明細（インスタンス単位）。同一タイプ・同一パラメータは数量まとめ
 export function estimateModel(model, R = DEFAULT_RATES) {
   const lines = []; const groups = new Map();
-  for (const inst of model.instances) { const t = model.getType(inst.typeId); const fam = model.familyOf(inst); const p = model.resolved(inst); const key = t.id + JSON.stringify(p); if (!groups.has(key)) groups.set(key, { typeId: t.id, typeName: t.name, family: fam.name, familyId: fam.id, params: p, marks: [], insts: [] }); const g = groups.get(key); g.marks.push(inst.mark); g.insts.push(inst.id); }
+  for (const inst of model.instances) { const t = model.getType(inst.typeId); const fam = model.familyOf(inst); const p = model.resolved(inst); const fab = parseFab(inst).map(({ id, ...f }) => f); /* 金具ごとに足した加工（穴・切欠きなど）。同じ加工の金具だけをまとめる */ const key = t.id + JSON.stringify(p) + (fab.length ? '|fab:' + JSON.stringify(fab) : ''); if (!groups.has(key)) groups.set(key, { typeId: t.id, typeName: t.name, family: fam.name, familyId: fam.id, params: p, fab, marks: [], insts: [] }); const g = groups.get(key); g.marks.push(inst.mark); g.insts.push(inst.id); }
   // 接合（インスタンス間）
   const jointParts = model.joints.flatMap(j => j.parts || []);
-  for (const g of groups.values()) { const fam = model.familyOf(model.getInstance(g.insts[0])); const parts = fam.parts(g.params, { model }); const c = costParts(parts, R); lines.push({ id: 'ln_' + g.typeId + '_' + g.marks[0], typeId: g.typeId, desc: g.typeName, family: g.family, familyId: g.familyId, marks: g.marks, qty: g.insts.length, unit: '台', spec: specSummary(fam, g.params), mass: c.weight.total, unitCost: c.factoryPrice, cost: c, amount: c.factoryPrice * g.insts.length }); }
+  for (const g of groups.values()) { const fam = model.familyOf(model.getInstance(g.insts[0])); const parts = fam.parts(g.params, { model }); if (g.fab?.length) { try { applyFab(parts, g.fab); } catch (e) { console.warn('fab', e); } } const c = costParts(parts, R); lines.push({ id: 'ln_' + g.typeId + '_' + g.marks[0], typeId: g.typeId, desc: g.typeName, family: g.family, familyId: g.familyId, marks: g.marks, qty: g.insts.length, unit: '台', spec: specSummary(fam, g.params), mass: c.weight.total, unitCost: c.factoryPrice, cost: c, amount: c.factoryPrice * g.insts.length }); }
   if (jointParts.length) { const c = costParts(jointParts, R); lines.push({ id: 'ln_joints', desc: '現場/工場 接合（溶接・ボルト）', family: '接合', marks: model.joints.map(j => j.label || j.type), qty: 1, unit: '式', spec: `${model.joints.length} 箇所`, mass: c.weight.total, unitCost: c.factoryPrice, cost: c, amount: c.factoryPrice }); }
   const subtotal = lines.reduce((s, l) => s + l.amount, 0);
   return { lines, subtotal: Math.max(subtotal, lines.length ? R.minOrder : 0), rates: R, totalMass: Math.round(lines.reduce((s, l) => s + l.mass * l.qty, 0) * 100) / 100 };

@@ -125,12 +125,14 @@ export function assignHoles(plates, holes = []) {
     const pl = plates.find(q => q.name === h.face) || plates[0]; if (!pl) continue;
     const [u, v] = pl.map(h.z, h.s);
     if (u < 0 || v < 0 || u > pl.w || v > pl.h) continue; // 中心が板の外にある穴は形状にしない（板の外に穴の縁だけが浮いた形になるのを防ぐ。NC・IFC の書出しでは除外数を警告する）
-    pl.holes.push({ u, v, d: h.d, slot: h.slot ? { len: h.slot.len, ang: h.slot.dir === 's' ? Math.PI / 2 : 0 } : null, id: h.id, kind: h.kind || (h.slot ? 'slot' : 'round') });
+    const zAlongU = Math.abs(pl.map(h.z + 1, h.s)[0] - u) > 0.5; /* この板では、長さ方向が u か v か。長穴・角穴の向きを長さ方向（z）・幅方向（s）で正しく置く */ const alongU = (h.slot?.dir === 's') ? !zAlongU : zAlongU;
+    pl.holes.push({ u, v, d: h.d, slot: h.slot ? { len: h.slot.len, ang: alongU ? 0 : Math.PI / 2 } : null, rect: h.rect ? { w: zAlongU ? h.rect.w : h.rect.h, h: zAlongU ? h.rect.h : h.rect.w } : null, id: h.id, kind: h.kind || (h.slot ? 'slot' : 'round') });
   }
 }
 
 function holePath(h) {
   const path = new THREE.Path();
+  if (h.rect) { const a = h.rect.w / 2, b = h.rect.h / 2; path.moveTo(h.u - a, h.v - b); path.lineTo(h.u + a, h.v - b); path.lineTo(h.u + a, h.v + b); path.lineTo(h.u - a, h.v + b); path.closePath(); return path; } // 角穴・窓抜き
   if (h.slot && h.slot.len > h.d) { // 長穴: 両端半円 + 直線
     const r = h.d / 2, half = (h.slot.len - h.d) / 2, a = h.slot.ang;
     const c = Math.cos(a), s = Math.sin(a);
@@ -141,8 +143,8 @@ function holePath(h) {
   } else path.absarc(h.u, h.v, h.d / 2, 0, Math.PI * 2, false);
   return path;
 }
-export function holeArea(h) { const r = h.d / 2; return h.slot && h.slot.len > h.d ? Math.PI * r * r + (h.slot.len - h.d) * h.d : Math.PI * r * r; }
-export function holePerimeter(h) { const r = h.d / 2; return h.slot && h.slot.len > h.d ? 2 * Math.PI * r + 2 * (h.slot.len - h.d) : 2 * Math.PI * r; }
+export function holeArea(h) { if (h.rect) return h.rect.w * h.rect.h; const r = h.d / 2; return h.slot && h.slot.len > h.d ? Math.PI * r * r + (h.slot.len - h.d) * h.d : Math.PI * r * r; }
+export function holePerimeter(h) { if (h.rect) return 2 * (h.rect.w + h.rect.h); const r = h.d / 2; return h.slot && h.slot.len > h.d ? 2 * Math.PI * r + 2 * (h.slot.len - h.d) : 2 * Math.PI * r; }
 
 // 板 → メッシュ
 // 板の外形（切欠きつき）。切欠きは「両端が板の縁に乗った折れ線」で、縁を反時計回りにたどりながら差し込む。重なる切欠きは後のものを捨てる

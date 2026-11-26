@@ -1,5 +1,6 @@
 // BIM モデル: ファミリ → タイプ → インスタンス（Revit 流）。レベル・通り芯・接合・ビュー・集計を保持。Undo/Redo・シリアライズ対応
 import { FAMILIES, familyById } from './families.js';
+import { applyFab, parseFab } from './fab.js';
 import { resolveParams } from './params.js';
 
 let seq = 0; export const uid = (p = 'id') => `${p}_${Date.now().toString(36)}${(seq++).toString(36)}`;
@@ -53,5 +54,5 @@ export class Model extends Emitter {
   serialize() { return JSON.parse(JSON.stringify({ name: this.name, levels: this.levels, grids: this.grids, types: this.types, instances: this.instances, joints: this.joints, refs: this.refs.map(r => ({ ...r, object: undefined })), meta: this.meta })); }
   load(d) { this.name = d.name || this.name; this.levels = d.levels || this.levels; this.grids = d.grids || this.grids; this.types = d.types || []; this.instances = d.instances || []; this.joints = d.joints || []; this.refs = d.refs || []; this.meta = d.meta || this.meta; }
   // ---- 集計用: 全インスタンスの部品展開 ----
-  explodeParts(buildFn) { const rows = []; for (const inst of this.instances) { const fam = this.familyOf(inst); const p = this.resolved(inst); const parts = fam.parts(p, { inst, model: this }); for (const pt of parts) rows.push({ ...pt, instId: inst.id, mark: inst.mark, typeName: this.getType(inst.typeId).name, family: fam.name }); } return rows; }
+  explodeParts(buildFn) { const rows = []; for (const inst of this.instances) { const fam = this.familyOf(inst); const p = this.resolved(inst); const parts = fam.parts(p, { inst, model: this }); if (inst.params?.fab) { try { applyFab(parts, parseFab(inst)); } catch (e) { console.warn('fab', e); } } /* 金具ごとに足した加工（穴・切欠き）を、重さと数量に入れる */ for (const pt of parts) rows.push({ ...pt, instId: inst.id, mark: inst.mark, typeName: this.getType(inst.typeId).name, family: fam.name }); } return rows; }
 }
