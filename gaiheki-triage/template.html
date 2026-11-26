@@ -67,7 +67,9 @@ ul,ol{list-style:none}
 .file .rm:hover{background:var(--surface2);color:var(--ink)}
 .file .up{grid-column:1 / -1;height:3px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:6px}
 .file .up i{display:block;height:100%;background:var(--accent)}
-.btn:disabled{opacity:.4;cursor:not-allowed}
+#dzNote{margin-top:-12px}
+#dzNote.flash{animation:flash 1.2s ease-out}
+@keyframes flash{0%,40%{color:var(--ret);font-weight:700}}
 .go{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 #v-upload .note{font-size:12px;color:var(--ink2)}
 
@@ -226,11 +228,16 @@ details[open] summary::after{content:"閉じる"}
 
   <main id="v-upload">
     <h2>台帳と写真を読み込み、人が見るべきものだけを選り分けます</h2>
-    <button class="dz" id="dz"><b>台帳（xlsx）と写真をここにドロップ</b><span>またはクリックして選択</span></button>
-    <input type="file" id="fileIn" multiple hidden accept=".xlsx,.xls,.zip,image/*">
-    <div class="files" id="files"></div>
-    <div class="go"><button class="btn primary big" id="start" disabled>検知を開始</button><button class="btn" id="sample">サンプルの台帳を使う</button><button class="btn quiet" id="skip0">結果だけ見る</button></div>
-    <p class="note" id="upNote"></p>
+    <button class="dz" id="dz"><b>台帳（xlsx / xls）と写真をここにドロップ</b><span>またはクリックして選択</span></button>
+    <p class="note" id="dzNote">※ プロトタイプのため、実際にはアップロードできません。下のサンプルデータで実行します。</p>
+    <div class="files">
+      <div class="file"><b>建物写真確認台帳_20261116_1709.xlsx</b>
+        <small><span class="num" data-n="rows"></span> 棟・写真 <span class="num" data-n="photos"></span> 枚（外壁・外壁目地の ▲ ×、築13〜14年）</small></div>
+      <div class="file"><b>建物不具合写真（参考）.xlsx</b>
+        <small>見本写真 <span class="num">64</span> 枚・5分類（AIの判定基準に使用）</small></div>
+    </div>
+    <div class="go"><button class="btn primary big" id="start">検知を開始</button><button class="btn quiet" id="skip0">結果だけ見る</button></div>
+    <p class="note">このデモでは <span class="num" id="nB"></span> 棟・<span class="num" id="nP"></span> 枚を抽出して実行します。</p>
   </main>
 
   <main id="v-scan" hidden>
@@ -297,40 +304,15 @@ function boxes(p, hot, big) {
 }
 
 /* 1 取り込み */
-const ups = []; let upTimer = null;
-const SAMPLE = [
-  { name: '建物写真確認台帳_20261116_1709.xlsx', size: 59210270, done: () => `${fmt(S.rows)} 棟・写真 ${fmt(S.photos)} 枚（外壁・外壁目地の ▲ ×、築13〜14年）` },
-  { name: '建物不具合写真（参考）.xlsx', size: 8623846, done: () => '見本写真 64 枚・5分類（AIの判定基準に使用）' },
-];
-const mb = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
-const kindOf = (n) => /台帳/.test(n) ? '台帳として認識' : /参考|不具合|見本/.test(n) ? '見本写真として認識' : /\.(jpe?g|png|heic|webp)$/i.test(n) ? '写真として認識' : /\.zip$/i.test(n) ? '写真フォルダとして認識' : 'ファイル';
-function addUploads(list) {
-  list.forEach(f => { if (!ups.some(u => u.name === f.name)) ups.push({ name: f.name, size: f.size, done: f.done || (() => `${mb(f.size)}・${kindOf(f.name)}`), pct: 0 }); });
-  renderUploads();
-  clearInterval(upTimer);
-  upTimer = setInterval(() => {
-    ups.forEach(u => { if (u.pct < 100) u.pct = Math.min(100, u.pct + 4 + Math.random() * 9); });
-    renderUploads(); if (ups.every(u => u.pct >= 100)) clearInterval(upTimer);
-  }, 90);
-}
-function renderUploads() {
-  $('#files').innerHTML = ups.map((u, i) => `<div class="file"><b>${esc(u.name)}</b><small>${u.pct < 100 ? `読み込み中… ${Math.round(u.pct)}%` : u.done()}</small>
-    <button class="rm" data-rm="${i}" aria-label="${esc(u.name)} を取り除く">×</button>${u.pct < 100 ? `<div class="up"><i style="width:${u.pct}%"></i></div>` : ''}</div>`).join('');
-  const ready = ups.length > 0 && ups.every(u => u.pct >= 100);
-  $('#start').disabled = !ready; $('#sample').hidden = ups.some(u => u.name === SAMPLE[0].name);
-  $('#upNote').textContent = ups.length ? `デモのため、ファイルの中身は送信も解析もされません。検知は同梱のサンプル ${B.length} 棟・${B.reduce((a, b) => a + b.photos.length, 0)} 枚で実行します。` : 'ファイルを追加するか、サンプルの台帳を使って始めます。';
-}
 function initUpload() {
-  const dz = $('#dz'), inp = $('#fileIn');
-  dz.onclick = () => inp.click();
-  inp.onchange = () => { addUploads([...inp.files]); inp.value = ''; };
+  document.querySelectorAll('[data-n]').forEach(e => e.textContent = fmt(S[e.dataset.n]));
+  $('#nB').textContent = B.length; $('#nP').textContent = B.reduce((a, b) => a + b.photos.length, 0);
+  const dz = $('#dz'), warn = () => { const n = $('#dzNote'); n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); };
+  dz.onclick = warn;
   ['dragenter', 'dragover'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.remove('over'); }));
-  dz.addEventListener('drop', e => addUploads([...e.dataTransfer.files]));
-  $('#files').onclick = (e) => { const r = e.target.closest('[data-rm]'); if (r) { ups.splice(+r.dataset.rm, 1); renderUploads(); } };
-  $('#sample').onclick = () => addUploads(SAMPLE);
+  dz.addEventListener('drop', warn);
   $('#start').onclick = runScan; $('#skip0').onclick = openSort;
-  renderUploads();
 }
 
 /* 2 検知 */
