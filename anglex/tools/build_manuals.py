@@ -5,7 +5,7 @@
       撮影フォルダを省くと、docs/spec/img/manual/ にある前回の写真（jpg）と印の位置を使う
 出力:
   docs/spec/manual_v1.html …（印刷用。写真は docs/spec/img/manual/。PDF は node dev/render-docs.mjs manual_v1.html …）
-  docs/guide/ANGLEX_v1_操作ガイド.html …（写真を埋め込んだ 1 ファイル。ブラウザで開いて、手順を送りながら見る）
+  docs/guide/ANGLEX_v1.1_操作ガイド.html …（写真を埋め込んだ 1 ファイル。ブラウザで開いて、手順を送りながら見る）
 使い方: python3 tools/build_manuals.py [--shots <撮影フォルダ>]
 """
 import sys, json, base64, html, io, pathlib, datetime
@@ -195,7 +195,7 @@ def guide(V):
     D.update({'faq': COMMON_FAQ, 'marks': marks, 'img': imgs, 'first': first})
     page = (GUIDE_HTML.replace('__TITLE__', esc(f'{V["name"]} 操作ガイド')).replace('__NAME__', esc(V['name'])).replace('__SUB__', esc(V['sub'])).replace('__ACCENT__', V['accent'])
             .replace('__DATA__', json.dumps(D, ensure_ascii=False).replace('</', '<\\/')))
-    p = GUIDE / f'ANGLEX_{ver}_操作ガイド.html'; p.write_text(page, encoding='utf-8'); return p
+    p = GUIDE / f'ANGLEX_v{V.get("ver", ver[1:])}_操作ガイド.html'; p.write_text(page, encoding='utf-8'); return p  # 版つきの名前（ANGLEX_v1.1_操作ガイド.html）
 
 
 for V in VERSIONS:

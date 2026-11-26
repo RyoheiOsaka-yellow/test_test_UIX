@@ -30,9 +30,13 @@
 - **ほかの部材へ写す**: 同じ種類の断面の部品（ほかの金具も含む）へ、加工をまとめて写す。位置の決め方は 3 つ（近い方の端からの距離を保つ・始端から同じ距離・鏡写し）。同じ名前・同じサイズの部品には、はじめから印が付く。
 - **工場のデータと見積へ**: 切欠き・面取りは、NC（DSTV）では面の外形（AK）に、角穴は内側の輪郭（IK）に入る。IFC では開口（多角形の押し出し）になる。重さは切欠きの分だけ減り、見積には加工の費用（切欠き・曲げ・開先・タップなど 1 か所ごと。初期値は `js/bim/cost.js` の `FAB_RATE`、サンプルの値）と穴の数が入る。加工が違う金具は、見積の行を分ける。
 - 外部ツールでの確認: `ANGLEX_PY=<venv>/bin/python node dev/verify-external.mjs`。加工を足した部材で、IfcOpenShell のスキーマ検証・形状生成、切欠きの開口で減る体積と 3D の形の一致（`dev/external/ifc_openings.py`、CGAL のエンジン）、DSTV の外形の点の一致（Rust の dstv crate）を見る。
+- **曲げた後の姿**: 曲げ線（「曲げ（曲げ線）」や「V カット曲げ」の型）を入れた部品には、展開図の下に「曲げた後の姿」が出る。横から見た線、区間の長さ、曲げた後の外形の寸法を確かめられる。「3D を曲げた後の形にする」で、その部品を曲げた形で 3D に出す（V 字切欠きは閉じて、角が合わさる）。曲げは、曲げ線のある面の板厚の中心を軸に折った形（内側の丸みと伸びは見ていない）。展開図・NC・重さ・強度計算は、曲げる前の平らな形のまま。形は `js/geo/profiles.js` の `bendFrames`・`buildBentMember`・`bentInfo`。
+- **加工の単価**: 「加工の単価」で、切欠き・曲げ・開先・タップなど 19 項目の 1 か所ごとの単価を案件ごとに決める（`project.rates.fab`）。初期値はサンプルの値。
+- **型の共有**: 「型に保存」の置き場所を、この案件（`project.fabTemplates`。案件を開く人みんなが使える）か、自分（このブラウザ）から選ぶ。「型の管理」で、案件と自分の間で写す・消す・ファイル（JSON）に書き出す・読み込む。ほかの PC・営業所へはファイルで渡す。
+- 道具は 4 つの組（穴 / 切欠き / 角・端 / 曲げ・指示）に分けて、選んだ組だけを並べる。
 - データは金具ごとの `inst.params.fab`（JSON）。形と文は `js/bim/fab.js`、板の外形は `js/geo/profiles.js` の `plateOutline`、画面は `js/ui/fab.js`。
 - 穴は部品の穴に足すので、穴の数・穴あけの費用・NC の穴にそのまま入る。
-- テスト: `dev/flows/ux34.js`（19 項目）と `dev/flows/ux36.js`（20 項目）。切欠きで減る面積・体積・重さを手計算と比べる。
+- テスト: `dev/flows/ux34.js`（19 項目）、`dev/flows/ux36.js`（21 項目）、`dev/flows/ux37.js`（13 項目）。切欠きで減る面積・体積・重さ、曲げた後の外形を手計算と比べる。
 
 ## 3D の操作のなめらかさ（11/26、v1・v2・v3 共通の 3D）
 
@@ -72,9 +76,11 @@
 
 | 版 | 画面（1 ファイル） | マニュアル（印刷向け PDF） | 操作ガイド（手順を送って見る HTML） |
 |---|---|---|---|
-| v1（リボン型） | `dist/ANGLEX_v1.html` | `docs/pdf/ANGLEX_v1_マニュアル.pdf` | `docs/guide/ANGLEX_v1_操作ガイド.html` |
-| v2（5 つの手順） | `dist/ANGLEX_v2.html` | `docs/pdf/ANGLEX_v2_マニュアル.pdf` | `docs/guide/ANGLEX_v2_操作ガイド.html` |
-| v3（空気のような画面） | `dist/ANGLEX_v3.html` | `docs/pdf/ANGLEX_v3_マニュアル.pdf` | `docs/guide/ANGLEX_v3_操作ガイド.html` |
+| v1.1（リボン型） | `dist/ANGLEX_v1.1.html` | `docs/pdf/ANGLEX_v1.1_マニュアル.pdf` | `docs/guide/ANGLEX_v1.1_操作ガイド.html` |
+| v2.1（5 つの手順） | `dist/ANGLEX_v2.1.html` | `docs/pdf/ANGLEX_v2.1_マニュアル.pdf` | `docs/guide/ANGLEX_v2.1_操作ガイド.html` |
+| v3.1（空気のような画面） | `dist/ANGLEX_v3.1.html` | `docs/pdf/ANGLEX_v3.1_マニュアル.pdf` | `docs/guide/ANGLEX_v3.1_操作ガイド.html` |
+
+- v1.1・v2.1・v3.1 で、強度計算（一覧・条件の切り替え・直し方の候補・計算書との突き合わせ・3D の札）と、加工の詳細（道具・型・写し・曲げた後の姿・指示書）の章を足した。これまでの v1・v2・v3 のマニュアルと操作ガイドは、そのまま残してある。
 
 - 本文は `tools/manual_content.py`（やりたいこと → 手順 → 写真の番号）。写真は実際の画面を撮ったもの。
 - 撮り直し: `node dev/manual-shots.mjs v1 <撮影フォルダ>`（v2・v3 も同じ）。写真と、番号の位置（`<版>_marks.json`）ができる。

@@ -7,4 +7,5 @@ export const distName = (k, suffix = '') => `ANGLEX_v${VERSION[k]}${suffix}.html
 export function applyVersion() { const k = uiKey(); document.title = `ANGLEX ${verLabel(k)} — Fabrication Intelligence`; document.body.dataset.ver = VERSION[k];
   const set = (sel, text) => { for (const el of document.querySelectorAll(sel)) el.textContent = text; }; const other = k === 'v2' ? 'v1' : 'v2';
   if (k !== 'v3') { set('#btnSwitchUI, #smSwitchUI', `⇄ UI ${verLabel(other)}`); set('#btnToV3', `✦ ${verLabel('v3')}`); }
-  for (const el of document.querySelectorAll('.brand-sub, .sm-sub')) if (!/v\d+\.\d+/.test(el.textContent)) el.textContent = `${el.textContent.trim()} · ${verLabel(k)}`; }
+  for (const el of document.querySelectorAll('.brand-sub, .sm-sub')) if (!/v\d+\.\d+/.test(el.textContent)) { const t = el.textContent.trim(); el.textContent = /·\s*BIM$/.test(t) ? t.replace(/·\s*BIM$/, '· ' + verLabel(k)) : `${t} · ${verLabel(k)}`; } /* 上の帯は幅がきついので、「· BIM」を版に置き換えて長さを変えない */
+  for (const el of document.querySelectorAll('#btnSwitchUI, #btnToV3, #smSwitchUI')) el.style.whiteSpace = 'nowrap'; }

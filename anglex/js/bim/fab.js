@@ -58,11 +58,14 @@ const sAxis = (p, face) => p.kind === 'L' ? (face === 'A' ? 'x' : 'y') : ['web',
 // 加工の位置（札・3D で寄るとき用）
 export function featureAnchor(f, fi) { const K = FAB_KINDS[f.kind]; const e = f.edge === 's0' ? fi.s0 : fi.s1; const z = K.fields.includes('end') ? (f.end === 'end' ? fi.L : 0) : num(f.z, fi.L / 2); const s = K.fields.includes('s') ? num(f.s, (fi.s0 + fi.s1) / 2) : K.fields.includes('edge') ? e : (fi.s0 + fi.s1) / 2; return { z, s }; }
 // 部品の一覧に、加工を反映する
-export function applyFab(parts, feats) { for (const f of feats) { const pt = parts[f.pi]; if (!pt || pt.ref || !['member', 'plate'].includes(pt.kind)) continue; const p = parseSpec(pt.spec); if (!p) continue; const fi = faceInfo(p, pt.length)[f.face]; if (!fi) continue; const K = FAB_KINDS[f.kind];
+export function applyFab(parts, feats, { bent = [] } = {}) { for (const f of feats) { const pt = parts[f.pi]; if (!pt || pt.ref || !['member', 'plate'].includes(pt.kind)) continue; const p = parseSpec(pt.spec); if (!p) continue; const fi = faceInfo(p, pt.length)[f.face]; if (!fi) continue; const K = FAB_KINDS[f.kind];
     if (K.geo === 'hole') { const d = f.kind === 'tap' ? (TAP_DRILL[f.M] || 6.8) : f.kind === 'window' ? Math.min(num(f.w, 40), num(f.hh, 20)) : clamp(num(f.dia, 12), 1, 200); const h = { face: f.face, z: clamp(num(f.z, 0), 0, fi.L), s: clamp(num(f.s, 0), fi.s0, fi.s1), d, kind: ['tap', 'slot', 'window', 'vent', 'csink', 'cbore'].includes(f.kind) ? f.kind : 'round', fab: f.id }; if (f.kind === 'slot') h.slot = { len: Math.max(d, num(f.len, d * 2)), dir: f.dir === 's' ? 's' : 'z' }; if (f.kind === 'tap') h.M = f.M; if (f.kind === 'window') h.rect = { w: clamp(num(f.w, 40), 2, fi.L), h: clamp(num(f.hh, 20), 2, fi.s1 - fi.s0) }; if (f.kind === 'csink' || f.kind === 'cbore') { h.cd = num(f.cd, d * 2); if (f.kind === 'cbore') h.dep = num(f.dep, 5); } (pt.holes ||= []).push(h); }
     else if (K.geo === 'cut') { const k = Math.tan(clamp(num(f.ang, 45), -70, 70) * Math.PI / 180); const ax = sAxis(p, f.face); pt.cuts = mergeCuts(pt.cuts, { [f.end === 'end' ? 'e' : 's']: { kx: ax === 'x' ? k : 0, ky: ax === 'y' ? k : 0 } }); (pt.marks ||= []).push({ ...f }); }
     else if (K.geo === 'notch') { const pts = notchPoints(f, fi); if (pts) (pt.notches ||= []).push({ face: f.face, pts, closed: notchClosed(f, fi, 2), kind: f.kind, label: K.label, fab: f.id }); }
-    else (pt.marks ||= []).push({ ...f }); } return parts; }
+    else { (pt.marks ||= []).push({ ...f }); if (f.kind === 'bend') (pt.bends ||= []).push({ z: num(f.z, 0), ang: num(f.ang, 90), face: f.face }); } }
+  for (const pi of bent || []) if (parts[pi]?.bends?.length) parts[pi].bentView = true; /* 曲げた姿で 3D に出す部品 */ return parts; }
+// 曲げた姿で見せる部品の番号（金具ごとの params.fabBent）
+export function parseBent(inst) { try { const v = JSON.parse(inst?.params?.fabBent || '[]'); return Array.isArray(v) ? v.filter(Number.isInteger) : []; } catch { return []; } }
 // 指示書に書く 1 行
 export function describeFab(f, fi) { const K = FAB_KINDS[f.kind]; const face = FACE_LABEL[f.face] || f.face; const edge = f.edge === 's0' ? '手前の縁（s = ' + r1(fi.s0) + '）' : '先の縁（s = ' + r1(fi.s1) + '）'; const end = f.end === 'end' ? '終端' : '始端'; const at = `始端から ${r1(num(f.z, 0))} mm`;
   switch (f.kind) {

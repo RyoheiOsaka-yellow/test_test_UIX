@@ -25,6 +25,36 @@ const underlay = () => page.evaluate(() => { document.getElementById('shotBg')?.
 const closeAll = () => page.evaluate(() => { document.querySelectorAll('.modal-back,.cmdk-back,.v3-pop').forEach(m => m.remove()); });
 const fit = () => page.evaluate(() => { app.select?.(null); app.viewer.fit(undefined, 1.3, { animate: false }); });
 
+// 強度計算と加工の詳細（v1.1・v2.1・v3.1 で共通の画面）。門型架台 MF-1 を使う
+async function extraShots() {
+  await closeAll(); await page.evaluate(() => { document.querySelectorAll('.cmdk-back,.guide-ov').forEach(m => m.remove()); document.getElementById('v3Sheet')?.classList.remove('in'); app.project.strength = null; app.project.strengthRef = null; }); await fit(); await wait(700);
+  const mf = await page.evaluate(() => app.model.instances.find(x => app.model.familyOf(x).id === 'portal_frame').id);
+  // 強度計算の一覧
+  await page.evaluate(async id => { const U = await import('./js/ui/strength.js'); U.openStrength(app, { instId: id }); }, mf); await page.waitForSelector('.st-modal .st-list tbody tr'); await wait(600);
+  await shot('strength', [[1, '#stVerdict', '判定（OK か、NG が何件か）'], [2, '#stMax', 'いちばん厳しい所の検定比（1.00 以下で OK）'], [3, '#stQuick', '条件の切り替え（山形鋼の軸・吊りの金具の地震・負担する配管の長さ）'], [4, '.st-list', '金具ごとの検定比と判定。押すと下に内訳'], [5, '#stFix', '直し方の候補（検定比・重さ・金額の差）'], [6, '#stCmp', '計算書と比べる'], [7, '#stPdf', '強度計算書（PDF）']]);
+  await closeAll();
+  // NG を 3D に（地震時に負担する配管の長さを 12 m にして、NG を出す）
+  await page.evaluate(async () => { const U = await import('./js/ui/strength.js'); app.project.strength = { seismicSpan: 12 }; U.showStrengthLabels(app); app.select?.(null); }); await fit(); await wait(1400);
+  await page.evaluate(() => { const ng = [...document.querySelectorAll('.v-label.alert')].find(e => /強度 NG/.test(e.textContent)); if (ng) ng.id = 'shotNgFlag'; const a = document.querySelector('.v-label.st-lbl.ng'); if (a) a.id = 'shotNgLbl'; const b = document.querySelector('.v-label.st-lbl.ok, .v-label.st-lbl.warn'); if (b) b.id = 'shotOkLbl'; });
+  await shot('strength3d', [[1, '#shotNgLbl', '判定の札（赤は NG。押すと内訳が開く）'], [2, '#shotOkLbl', '緑は OK。部品も検定比で色分けされる'], [3, '#shotNgFlag', 'NG の場所の旗（確認リストにも入る）']]);
+  await page.evaluate(async () => { const U = await import('./js/ui/strength.js'); U.clearStrengthLabels(app); app.project.strength = null; app.drawLevels?.(); });
+  // 加工の詳細: 梁に寄って、加工を置く
+  await page.evaluate(async id => { const U = await import('./js/ui/fab.js'); app.select?.(id); U.openFabEditor(app, { instId: id }); }, mf); await page.waitForSelector('#fabSvg'); await wait(900); await page.selectOption('#fabPart', { index: 2 }); await wait(1000);
+  const put = async (tool, fx, fy) => { await page.evaluate(k => app.fab.pickTool(k), tool); await wait(200); const b = await (await page.$('#fabSvg')).boundingBox(); await page.mouse.click(b.x + b.width * fx, b.y + b.height * fy); await wait(700); };
+  await put('hole', 0.24, 0.5); await put('window', 0.5, 0.5); await put('cope', 0.12, 0.42); await put('scallop', 0.9, 0.56);
+  await page.evaluate(() => { app.fab.sel = null; app.fab.grp = 0; app.fab.render(); }); await wait(500);
+  await shot('fab', [[1, '#fabPart', '加工する部品'], [2, '#fabFaces', '面（脚 A・脚 B、ウェブ・フランジなど）'], [3, '#fabGroups', '道具の組（穴 / 切欠き / 角・端 / 曲げ・指示）'], [4, '#fabTools', '道具: 押してから、図の置きたい所を押す'], [5, '#fabSvg', '面の展開図（ホイールで拡大。置いた加工はつまんで動かせる）'], [6, '#fabList', '加工の一覧（押すと図と 3D がその加工に寄る）'], [7, '#fabPdf', '指示書に書き出す（PDF）']]);
+  // 型から足す → V カット曲げを 2 か所
+  await page.evaluate(id => { app.model.updateInstance(id, { params: { fab: '[]', fabBent: '[]' } }); app.rebuildInstance(app.model.getInstance(id)); app.isolatePart({ instId: id, index: app.fab.pi }); app.fab.sel = null; app.fab.render(); }, mf); await wait(600);
+  for (const x of [0.36, 0.64]) { await page.selectOption('#fabTpl', 'vbend'); await wait(300); const b = await (await page.$('#fabSvg')).boundingBox(); await page.mouse.click(b.x + b.width * x, b.y + b.height * 0.45); await wait(700); }
+  await page.evaluate(() => { app.fab.sel = null; app.fab.render(); document.querySelector('.fab-body').scrollTop = 0; }); await wait(500);
+  await shot('fabtpl', [[1, '#fabTpl', '型から足す（V カット曲げ・ボルト穴 2 個並びなど）'], [2, '#fabSaveTpl', '型に保存（この案件 / 自分）'], [3, '#fabCopy', 'ほかの部材へ写す'], [4, '#fabRatesBtn', '加工の単価'], [5, '#fabSvg', 'V 字切欠きが 2 か所に入った展開図']]);
+  // 曲げた後の姿
+  await page.click('#fabBentBtn'); await wait(1600); await page.evaluate(() => { document.getElementById('fabBent').scrollIntoView({ block: 'center' }); }); await wait(500);
+  await shot('fabbent', [[1, '#fabBent', '曲げた後の姿: 横から見た線・区間の長さ・外形の寸法'], [2, '#fabBentBtn', '3D を曲げた後の形にする（もう一度押すと戻る）'], [3, '#fabPdf', '指示書には、曲げた後の図と寸法も入る']]);
+  await page.evaluate(async id => { const U = await import('./js/ui/fab.js'); U.closeFabEditor(app); app.model.updateInstance(id, { params: { fab: '[]', fabBent: '[]' } }); app.rebuildInstance(app.model.getInstance(id)); app.select?.(null); }, mf); await wait(400);
+}
+
 if (ver === 'v1') {
   await fit(); await wait(800);
   await shot('main', [[1, '.topbar', '上の帯: 案件名・利用者・保存・画面の切り替え'], [2, '.ribbon', 'リボン: 機能のボタン（タブで切り替え）'], [3, '.side.left', 'プロジェクトブラウザ: 部材の一覧'], [4, '#viewport', '3D の画面'], [5, '.side.right', 'プロパティ: 選んだ部材の値'], [6, '#instrBox', '加工指示の入力欄'], [7, '.statusbar', '状態行: 部材の数・質量'], [8, '#btnParts', '部材を選ぶ（どこからでも開ける）']]);
@@ -42,6 +72,7 @@ if (ver === 'v1') {
   await page.click('#btnOrder'); await page.waitForSelector('.modal.order .order-step'); await wait(600); await shot('order', [[1, '.order-steps', '依頼から納品までの 9 段階'], [2, '.order-pane', 'いまの段階の確認と、次の一手'], [3, '.modal.order .tabs', '工場・変更と履歴・書類・全案件']]); await closeAll();
   await page.evaluate(() => document.getElementById('btnFormats').click()); await wait(1200); await shot('formats', [[1, '.modal-back .modal', '書き出しの形式（21 種類）と、読み込める形式（24 種類）']]); await closeAll();
   await page.keyboard.press('Control+k'); await page.waitForSelector('.cmdk input'); await page.keyboard.type('見積'); await wait(500); await shot('cmdk', [[1, '.cmdk input', 'やりたいことを言葉で探す'], [2, '.cmdk-row', 'Enter で実行']]); await page.keyboard.press('Escape');
+  await extraShots();
 }
 if (ver === 'v2') {
   await page.evaluate(() => { localStorage.removeItem('anglex.v3.in'); app.shell.showView('signin'); }); await wait(800);
@@ -58,6 +89,7 @@ if (ver === 'v2') {
   await page.evaluate(() => document.getElementById('btnDemoModel').click()); await wait(2500); await page.evaluate(() => { app.shell.maxStep = 5; app.shell.goStep(4); app.select(null); app.viewer.fit(undefined, 1.3, { animate: false }); }); await wait(1500);
   await shot('step4', [[1, '.d3-toolbar', '道具: 配置・加工・表示・書出し・作業'], [2, '#d3stage', '3D の画面'], [3, '.detail-top, .detail-title', '選んだ部材の詳しい値'], [4, '#btnToQuote', '概算見積へ']]);
   await page.evaluate(() => app.shell.goStep(5)); await wait(1500); await shot('step5', [[1, '#estHost', '見積: A社 → B社 → C社 の受け渡しと出力'], [2, '.wf-step[data-step="5"]', '手順 5: 概算見積']]);
+  await page.evaluate(() => app.shell.goStep(4)); await wait(1200); await extraShots();
 }
 if (ver === 'v3') {
   await page.waitForSelector('.v3-entry[data-view="signin"].in'); await wait(1500);
@@ -76,6 +108,7 @@ if (ver === 'v3') {
   await shot('estimate', [[1, '#v3EstTotal', '見積の金額'], [2, '[data-k="margin"]', '利益のつまみ'], [3, '.v3-bar', '内訳の帯'], [4, '.v3-row', '明細（押すとその部材へ）'], [5, '[data-act="est-pdf"]', '見積書 PDF']]);
   await page.keyboard.press('Escape'); await wait(400); await page.keyboard.press('t'); await page.waitForSelector('#v3Sheet.in [data-fac]'); await wait(500);
   await shot('factory', [[1, '[data-fac]', '送り先（加工内容に合う順）'], [2, '[data-pack]', '送るもの（押して選ぶ）'], [3, '.v3-field', '納期・ひとこと'], [4, '[data-act="pack"]', 'まとめて ZIP にする']]); await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape'); await wait(500); await page.evaluate(() => document.getElementById('shotBg')?.remove()); await extraShots();
   await page.evaluate(() => document.getElementById('shotBg')?.remove());
 }
 fs.writeFileSync(path.join(out, `${ver}_marks.json`), JSON.stringify(meta, null, 1)); console.log('done', ver, Object.keys(meta).length);

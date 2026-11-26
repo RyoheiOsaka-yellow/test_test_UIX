@@ -232,6 +232,31 @@ export function buildMember(opts) {
   return g;
 }
 
+// ---- 曲げた後の姿 ----
+// 面の幅方向（s）が断面の x か y か。曲げ線はこの向きに走り、曲げの軸になる
+export const faceAxis = (p, face) => p.kind === 'L' ? (face === 'A' ? 'x' : 'y') : ['web', 'left', 'right'].includes(face) ? 'y' : 'x';
+// 切欠きの折れ線を、長さ方向の範囲 [za, zb] で切り取り、z を za だけずらす（区間ごとに部材を作るとき用）
+export function clipNotchZ(pts, za, zb) { const out = []; const inside = z => z >= za - 1e-6 && z <= zb + 1e-6; const cut = (a, b, zc) => { const k = (zc - a[0]) / (b[0] - a[0]); return [zc, a[1] + (b[1] - a[1]) * k]; };
+  for (let i = 0; i < pts.length; i++) { const a = pts[i]; if (inside(a[0])) out.push(a); const b = pts[i + 1]; if (!b) break; for (const zc of (a[0] < b[0] ? [za, zb] : [zb, za])) if ((a[0] - zc) * (b[0] - zc) < 0) out.push(cut(a, b, zc)); }
+  return out.length >= 2 ? out.map(([z, s]) => [Math.min(zb - za, Math.max(0, z - za)), s]) : null; }
+// 曲げ線（z の小さい順）ごとに、その先の区間を回す。戻り値: 区間 [{ z0, z1, M }]（M は「曲げる前の座標 → 曲げた後の座標」）
+// 曲げの軸は、曲げ線のある面の板厚の中心を通り、幅方向に走る。角度が正なら、断面のもう一方の脚がある側へ曲げる（V 字切欠きが閉じる向き）
+export function bendFrames(p, L, bends) { const bs = (bends || []).filter(b => b.z > 0.5 && b.z < L - 0.5 && Math.abs(b.ang) > 0.1).sort((a, b) => a.z - b.z); const segs = []; let T = new THREE.Matrix4(); let z0 = 0;
+  for (const b of bs) { segs.push({ z0, z1: b.z, M: T.clone() }); const ax = faceAxis(p, b.face); const fi = faceInfo(p, L)[b.face]; const piv = fi ? facePoint(p, L, b.face, b.z, (fi.s0 + fi.s1) / 2) : new THREE.Vector3(0, 0, b.z); const a = ax === 'y' ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0); const phi = THREE.MathUtils.degToRad(b.ang) * (ax === 'y' ? 1 : -1);
+    const R = new THREE.Matrix4().makeTranslation(piv.x, piv.y, piv.z).multiply(new THREE.Matrix4().makeRotationAxis(a, phi)).multiply(new THREE.Matrix4().makeTranslation(-piv.x, -piv.y, -piv.z)); T = T.clone().multiply(R); z0 = b.z; }
+  segs.push({ z0, z1: L, M: T.clone() }); return segs; }
+// 曲げた後の寸法: 区間の長さ、外形の箱（部材の座標）、横から見た線（曲げの軸がそろっているとき）
+export function bentInfo(spec, L, bends) { const p = typeof spec === 'string' ? parseSpec(spec) : spec; if (!p) return null; const segs = bendFrames(p, L, bends); if (segs.length < 2) return null; const bx = sectionBox(p); const [cx, cy] = sectionCentroid(p); const box = new THREE.Box3(); const v = new THREE.Vector3(); const path = [];
+  const axes = new Set((bends || []).map(b => faceAxis(p, b.face)));
+  for (const s of segs) { for (const x of [bx.x0, bx.x1]) for (const y of [bx.y0, bx.y1]) for (const z of [s.z0, s.z1]) box.expandByPoint(v.set(x, y, z).applyMatrix4(s.M)); const a = new THREE.Vector3(cx, cy, s.z0).applyMatrix4(s.M), b = new THREE.Vector3(cx, cy, s.z1).applyMatrix4(s.M); const ax = [...axes][0]; const P = q => ax === 'y' ? [q.z, q.x] : [q.z, q.y]; if (!path.length) path.push(P(a)); path.push(P(b)); }
+  const size = box.getSize(new THREE.Vector3()); return { segments: segs.map(s => Math.round((s.z1 - s.z0) * 10) / 10), size: [size.x, size.y, size.z].map(q => Math.round(q * 10) / 10), min: [box.min.x, box.min.y, box.min.z], path: axes.size === 1 ? path : null, angles: segs.slice(1).map((_, i) => (bends || []).filter(b => b.z > 0.5 && b.z < L - 0.5).sort((a, b) => a.z - b.z)[i]?.ang ?? 0) }; }
+// 曲げた姿の部材: 曲げ線で区間に分け、区間ごとに作ってつなぐ。穴は中心のある区間に、切欠きは区間の境目で切り分ける
+export function buildBentMember(opts, bends) { const p = typeof opts.spec === 'string' ? parseSpec(opts.spec) : opts.spec; const L = opts.length || 1000; const segs = p ? bendFrames(p, L, bends) : []; if (!p || segs.length < 2 || p.kind === 'PIPE' || p.kind === 'RB') return buildMember(opts);
+  const g = new THREE.Group(); g.name = p.label + '（曲げ後）'; g.userData.profile = p; g.userData.length = L; g.userData.plates = []; g.userData.bent = true; const cuts = parseCuts(opts.cuts);
+  segs.forEach((s, k) => { const len = s.z1 - s.z0; if (!(len > 0.5)) return; const holes = (opts.holes || []).filter(h => h.z >= s.z0 && (h.z < s.z1 || (k === segs.length - 1 && h.z <= s.z1))).map(h => ({ ...h, z: h.z - s.z0 })); const notches = (opts.notches || []).map(n => { const pts = clipNotchZ(n.pts, s.z0, s.z1); return pts ? { ...n, pts } : null; }).filter(Boolean);
+    const c = cuts ? { ...(k === 0 && cuts.s ? { s: cuts.s } : {}), ...(k === segs.length - 1 && cuts.e ? { e: cuts.e } : {}) } : null; const m = buildMember({ ...opts, length: len, holes, notches, cuts: c && (c.s || c.e) ? c : null }); m.matrixAutoUpdate = false; m.matrix.copy(s.M).multiply(new THREE.Matrix4().makeTranslation(0, 0, s.z0)); m.userData.segment = k; g.add(m); });
+  return g; }
+
 // 断面 2D 輪郭（図面用 SVG / DXF 用）
 export function sectionOutline(p) {
   switch (p.kind) {

@@ -63,6 +63,8 @@ export function openCommandPalette(app) { if (document.querySelector('.cmdk-back
     { label: '検査記録シート PDF', group: '帳票', sub: '寸法・穴・溶接・表面処理・ミルシート台帳', run: () => import('./inspection.js').then(x => x.exportInspectionPDF(app)) },
     { label: '検査記録シート Excel', group: '帳票', sub: '実測値を入力して返してもらう', run: () => import('./inspection.js').then(x => x.exportInspectionXLSX(app)) },
     { label: '加工の詳細を足す・直す', group: '加工', sub: '選んだ部材に寄って、穴・V 字や角の切欠き・面取り・スカラップ・開先を図の上で足す', run: () => import('./fab.js').then(x => x.openFabEditor(app)) },
+    { label: '加工の単価', group: '設定', sub: '切欠き・曲げ・開先・タップなど、加工 1 か所ごとの単価（この案件）', run: () => import('./fab.js').then(x => x.fabRatesDialog(app)) },
+    { label: '加工の型の管理', group: '加工', sub: '保存した型を、案件で共有する・ファイルで書き出す・読み込む', run: () => import('./fab.js').then(x => x.openTemplateManager(app)) },
     { label: '加工の指示書を書き出す（PDF）', group: '書き出し', sub: '足した加工を、部品ごとの展開図と一覧にする', run: () => import('./fab.js').then(x => x.exportFabSheet(app)) },
     { label: '強度計算', group: '確認', sub: '配管の重さと地震の力で、部材・アンカー・ボルト・溶接を照査（参考値）', run: () => import('./strength.js').then(x => x.openStrength(app)) },
     { label: '計算書と比べる（強度計算）', group: '確認', sub: '手計算や社内の計算書の検定比を読み込んで、1 行ずつ比べる。ダミーでも試せる', run: () => import('./strength.js').then(x => x.openCompare(app)) },
