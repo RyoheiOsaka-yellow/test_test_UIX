@@ -1,5 +1,6 @@
 // 帳票: 見積書 / 重量計算書 / 加工指示書 / 集計表 を CSV・XLSX（数式入り）・PDF（日本語埋込）で書き出す
 import { toast, download, csv, fmt } from './common.js';
+import { fabSections } from './fab.js';
 import { downloadPdf, loadXLSX } from './pdfgen.js';
 import * as WF from '../core/workflow.js';
 import { summarize, memberWeight } from '../bim/weight.js';
@@ -108,6 +109,7 @@ export async function exportWorkOrderPDF(app, est) {
       sections.push({ heading: `${l.desc}　${l.marks.join(' ')}　数量 ${l.qty} ${l.unit}`, kv: [['ファミリ', fam.name], ['パラメータ', Object.entries(p).filter(([k]) => !k.startsWith('__')).map(([k, v]) => `${k}=${v}`).join('  ')], ['質量', `${s.total} kg（鋼材 ${s.steelNet} / めっき ${s.zinc} / ボルト ${s.fasteners} / 溶接 ${s.welds}）`], ['穴', `丸穴 ${s.holeCount} / 長穴 ${s.slotCount}`], ['溶接', Object.values(welds).map(x => `${x.g || ''} ${x.t === 'butt' ? '突合せ' : '隅肉'} ▷${x.s} L=${Math.round(x.L)}（${x.n}箇所）`).join(' / ') || '—'], ['ボルト類', Object.entries(fast).map(([k, v]) => `${k} ×${v.n}${v.site ? '（現場）' : ''}`).join(' / ') || '—']] });
       if (shot) sections.push({ image: { dataUrl: shot, w: 300 } });
       sections.push(...explodedSections(app, inst)); }
+    for (const inst of app.model.instances) sections.push(...await fabSections(app, inst)); /* 部材ごとに足した加工（穴・切欠き・面取りなど）の展開図と一覧 */
     sections.push(...reviewSections(app, est));
     await downloadPdf(`${est.no}_加工指示書.pdf`, { title: '加工指示書', subtitle: `${est.no}  ${est.projectName}`, meta: [['作成', new Date().toLocaleDateString('ja-JP')], ['溶接記号', 'JIS Z 3021'], ['穴位置', '各面の端部基準（z: 長さ方向, s: 幅方向）'], ['仕上げ', '記載の通り']], sections, footer: 'ANGLEX 加工指示書' }); t.remove(); toast('加工指示書 PDF を書き出しました', 'ok'); } catch (e) { t.remove(); console.error(e); toast('PDF 生成に失敗: ' + e.message, 'bad', 6000); }
 }

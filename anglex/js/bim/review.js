@@ -8,7 +8,9 @@ import { faceWidths } from '../import/nc1.js';
 // 穴の位置（インスタンス座標）: 面→板ローカル (u,v) → 部品座標 → 配置
 export function holePos(pt, h) { try { const sp = parseSpec(pt.spec); if (!sp) return null; const plates = decompose(sp, pt.length); const pl = plates.find(q => q.name === h.face) || plates[0]; if (!pl) return null; const [u, v] = pl.map(h.z, h.s); const loc = new THREE.Vector3(u, v, pl.t / 2).applyMatrix4(pl.M); return new THREE.Vector3(...xform(pt.pl, [loc.x, loc.y, loc.z])); } catch { return null; } }
 
-export const REVIEW_KINDS = { weld: '溶接', hole: '穴あけ', anchor: 'アンカー', ubolt: 'Uボルト', rod: '吊ボルト', finish: '仕上げ', origin: '図面根拠', risk: 'リスク要因', length: '寸法' };
+export const REVIEW_KINDS = { weld: '溶接', hole: '穴あけ', anchor: 'アンカー', ubolt: 'Uボルト', rod: '吊ボルト', finish: '仕上げ', origin: '図面根拠', risk: 'リスク要因', length: '寸法', strength: '強度' };
+// ほかの機能が確認事項を足すための口（強度計算の NG など）。fn(inst, parts) → 項目の配列
+export const extraChecks = [];
 // チェックリスト生成（parts = app.instanceParts(inst)）
 export function buildChecklist(inst, parts, { importOnly = true } = {}) {
   const items = []; const V = a => new THREE.Vector3(...a); const imported = inst.source === 'import';
@@ -24,6 +26,7 @@ export function buildChecklist(inst, parts, { importOnly = true } = {}) {
   const fin = parts.find(p => p.finish && !p.ref && p.kind !== 'weld'); if (fin) items.push({ id: 'finish', kind: 'finish', label: `仕上げ ${fin.finish}`, need: 'めっき/塗装の仕様を確認', mustCheck: imported });
   if (inst.status !== 'confirmed') items.push({ id: 'origin', kind: 'origin', label: `図面根拠: ${inst.status === 'inferred' ? '推論（ルール推定）' : '要判断'}${inst.name ? ' — ' + inst.name : ''}`, need: '図面・注記で寸法と仕様を裏付ける', mustCheck: true });
   if (inst.reviewReasons?.length) for (const r of inst.reviewReasons) items.push({ id: 'risk:' + r.slice(0, 24), kind: 'risk', label: r, need: 'リスク行列の主因。根拠を追加して確信度を上げる', mustCheck: true });
+  for (const fn of extraChecks) { try { items.push(...(fn(inst, parts) || [])); } catch (e) { console.warn('extra check', e); } }
   for (const it of items) { const st = inst.review?.[it.id]; it.status = st?.status || ((it.always || (importOnly ? (imported ? it.mustCheck : it.kind === 'weld') : it.mustCheck)) ? 'open' : 'ok'); it.note = st?.note || ''; it.at = st?.at || null; }
   return items;
 }

@@ -124,7 +124,7 @@ export function pipeMass(part, s) {
   const steel = isVP ? Math.PI / 4 * (od * od - di * di) * 1e-6 * 1430 : (tbl?.w ?? Math.PI / 4 * (od * od - di * di) * 1e-6 * 7850);
   const rho = s.contents === 'empty' ? 0 : s.contents === 'custom' ? (+s.contentsDensity || 0) : 1000; const fluid = Math.PI / 4 * di * di * 1e-6 * rho;
   const ins = +part.insul || 0; const insul = ins > 0 ? Math.PI / 4 * ((od + 2 * ins) ** 2 - od * od) * 1e-6 * (+s.insulDensity || 0) : 0;
-  const span = s.span > 0 ? +s.span : stdSpan(num); const sspan = s.seismicSpan > 0 ? +s.seismicSpan : span;
+  const span = (s.span > 0 ? +s.span : stdSpan(num)) * (s.spanK > 0 ? +s.spanK : 1); const sspan = s.seismicSpan > 0 ? +s.seismicSpan : span; /* spanK: この金具だけ支持間隔を詰める（直し方の候補） */
   const kgm = steel + fluid + insul; return { nominal: num + 'A', od, kgm, steel, fluid, insul, span, sspan, W: kgm * span * g0, Ws: kgm * sspan * g0 };
 }
 

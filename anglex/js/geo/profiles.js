@@ -145,8 +145,22 @@ export function holeArea(h) { const r = h.d / 2; return h.slot && h.slot.len > h
 export function holePerimeter(h) { const r = h.d / 2; return h.slot && h.slot.len > h.d ? 2 * Math.PI * r + 2 * (h.slot.len - h.d) : 2 * Math.PI * r; }
 
 // 板 → メッシュ
+// 板の外形（切欠きつき）。切欠きは「両端が板の縁に乗った折れ線」で、縁を反時計回りにたどりながら差し込む。重なる切欠きは後のものを捨てる
+export function plateOutline(w, h, notches = []) {
+  const P = 2 * (w + h), e = 0.02; const par = ([u, v]) => Math.abs(v) < e ? u : Math.abs(u - w) < e ? w + v : Math.abs(v - h) < e ? w + h + (w - u) : Math.abs(u) < e ? 2 * w + h + (h - v) : null;
+  const ev = []; for (const pts of notches) { if (!pts || pts.length < 2) continue; let a = par(pts[0]), b = par(pts[pts.length - 1]); if (a == null || b == null) continue; let q = pts, fwd = ((b - a) % P + P) % P; if (fwd > P / 2) { q = pts.slice().reverse(); a = b; fwd = P - fwd; } if (fwd < 0.05) continue; const hit = ev.some(k => [0, P, -P].some(o => a + o < k.b - e && k.a < a + fwd + o - e)); if (!hit) ev.push({ a, b: a + fwd, pts: q }); }
+  const covered = c => ev.some(k => [0, P].some(o => c + o > k.a + e && c + o < k.b - e));
+  const items = [[0, [0, 0]], [w, [w, 0]], [w + h, [w, h]], [2 * w + h, [0, h]]].filter(([c]) => !covered(c)).map(([c, pt]) => ({ t: c, pts: [pt] })).concat(ev.map(k => ({ t: k.a, pts: k.pts }))).sort((x, y) => x.t - y.t);
+  const out = []; for (const it of items) for (const pt of it.pts) { const l = out[out.length - 1]; if (!l || Math.hypot(l[0] - pt[0], l[1] - pt[1]) > 0.01) out.push(pt); } if (out.length > 1 && Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) < 0.01) out.pop(); return out;
+}
+// 切欠きを板へ割り当て  notch: { face, pts: [[z, s], ...] }（部材の面の座標。両端は面の縁の上）
+export function assignNotches(plates, notches = []) { for (const n of notches) { const pl = plates.find(q => q.name === n.face) || plates[0]; if (!pl || !n.pts) continue; (pl.notches ||= []).push(n.pts.map(([z, s]) => { const [u, v] = pl.map(z, s); return [Math.min(pl.w, Math.max(0, u)), Math.min(pl.h, Math.max(0, v))]; })); } }
+// 面ごとの寸法（加工の位置決め用）: s の範囲（s0〜s1）と長さ。s は「穴の位置 s」と同じ測り方
+export function faceInfo(p, L) { const out = {}; if (!p || p.kind === 'PIPE' || p.kind === 'RB') return out; for (const pl of decompose(p, L)) { const o = pl.map(0, 0), ds = pl.map(0, 1), dz = pl.map(1, 0); const si = Math.abs(ds[0] - o[0]) > 0.5 ? 0 : 1; const dim = si === 0 ? pl.w : pl.h; const zdim = si === 0 ? pl.h : pl.w; out[pl.name] = { s0: -o[si], s1: dim - o[si], L: Math.abs(dz[1 - si] - o[1 - si]) > 0.5 ? zdim : L, t: pl.t }; } return out; }
+// 面の上の点（z, s）→ 部材ローカルの座標（札・カメラ用）
+export function facePoint(p, L, face, z, s) { const pl = decompose(p, L).find(q => q.name === face); if (!pl) return null; const [u, v] = pl.map(z, s); return new THREE.Vector3(u, v, pl.t / 2).applyMatrix4(pl.M); }
 function plateMesh(pl, material, lod) {
-  const shape = new THREE.Shape(); shape.moveTo(0, 0); shape.lineTo(pl.w, 0); shape.lineTo(pl.w, pl.h); shape.lineTo(0, pl.h); shape.closePath();
+  const shape = new THREE.Shape(); const ol = pl.notches?.length ? plateOutline(pl.w, pl.h, pl.notches) : [[0, 0], [pl.w, 0], [pl.w, pl.h], [0, pl.h]]; shape.moveTo(ol[0][0], ol[0][1]); for (let i = 1; i < ol.length; i++) shape.lineTo(ol[i][0], ol[i][1]); shape.closePath();
   for (const h of pl.holes) shape.holes.push(holePath(h));
   const bev = lod >= 400 && pl.t >= 2 ? Math.min(0.45, pl.t * 0.12) : 0;
   const geo = new THREE.ExtrudeGeometry(shape, { depth: pl.t - 2 * bev, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelOffset: -bev, bevelSegments: 1, curveSegments: lod >= 400 ? 24 : 12 });
@@ -205,7 +219,7 @@ export function buildMember(opts) {
     else g.add(pipeMesh(p, L, mat, lod));
     g.userData.plates = []; if (opts.cuts) applyCuts(g, p, L, opts.cuts); return g;
   }
-  const plates = decompose(p, L); assignHoles(plates, opts.holes || []);
+  const plates = decompose(p, L); assignHoles(plates, opts.holes || []); if (opts.notches?.length) assignNotches(plates, opts.notches);
   for (const pl of plates) g.add(plateMesh(pl, mat, lod));
   if (lod >= 300) {
     const sp = sectionProps(p);
