@@ -119,7 +119,8 @@ for no, (bucket, why, photos) in A.items():
     for i, col in enumerate((14, 15, 16)):
         if col in imgs[no] and i < len(photos):
             p = dict(photos[i]); p['slot'] = i; p['src'] = uri(imgs[no][col]); ph.append(p)
-    blds.append(dict(no=no, area=r[1], office=r[2], cd=r[4], struct=nk(r[5]), name=nk(r[6]),
+    # 建物名・建物CDはマスクして出力する
+    blds.append(dict(no=no, area=r[1], office=r[2], cd=str(r[4])[:3] + '\u2022' * 6, struct=nk(r[5]), name=f'物件 {no:04d}',
                      built=r[7].strftime('%Y/%m'), age=r[8], flagFade=bool(r[10]),
                      now=r[11], prev=r[12], comment=str(r[13]), bucket=bucket, why=why, photos=ph))
 blds.sort(key=lambda b: (ORDER.index(b['bucket']), b['no']))
