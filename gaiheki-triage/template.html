@@ -2,323 +2,234 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-/* layout: 点検台帳の作業机。上に工程バー、左に仕分けトレイ(一覧)、中央に写真と配置図、右に照合と判断。 */
+/* layout: 3つの面だけ。左=物件の列、中央=写真と場所、右=判断。枠と色は最小限、色が付くのは状態と検知だけ。 */
 :root{
-  --bg:#edf0f4; --surface:#ffffff; --surface2:#f5f7fa; --ink:#15212e; --ink2:#566676; --ink3:#8593a1; --line:#d6dce4;
-  --accent:#2b3fbf; --accent-ink:#ffffff; --accent-soft:#e6e9fb;
-  --auto:#0b7f63; --auto-bg:#e0f3ed; --human:#a86200; --human-bg:#fbefd9; --other:#56677a; --other-bg:#e7ebf0; --ret:#b92e49; --ret-bg:#fae4e8;
+  --bg:#edf0f4; --surface:#ffffff; --surface2:#f3f5f8; --ink:#15212e; --ink2:#5b6a79; --ink3:#93a0ad; --line:#dfe4ea;
+  --accent:#2b3fbf; --accent-ink:#ffffff;
+  --auto:#0b7f63; --human:#a86200; --other:#56677a; --ret:#b92e49;
   --photo-bg:#10161d;
   --c-fade:#ffb020; --c-crack:#ff4d6d; --c-lift:#b78cff; --c-joint:#2fd6c0; --c-jointcut:#4da3ff; --c-ext:#e8e8e8; --c-stain:#a5d65c;
   --f-display:"Zen Kaku Gothic New","Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
   --f-body:"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
-  --shadow:0 1px 2px rgba(21,33,46,.06),0 6px 20px rgba(21,33,46,.06);
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#0e141b; --surface:#17202a; --surface2:#1d2833; --ink:#e7edf3; --ink2:#a3b1bf; --ink3:#74838f; --line:#2b3846;
-  --accent:#93a4ff; --accent-ink:#0e141b; --accent-soft:#222c55;
-  --auto:#45d1ab; --auto-bg:#12332c; --human:#f3b352; --human-bg:#3a2c12; --other:#a6b6c6; --other-bg:#232f3b; --ret:#ff8399; --ret-bg:#3d1a23;
-  --photo-bg:#070a0e; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3); color-scheme:dark } }
+  --bg:#0e141b; --surface:#17202a; --surface2:#1e2934; --ink:#e7edf3; --ink2:#a3b1bf; --ink3:#6f7e8b; --line:#273341;
+  --accent:#93a4ff; --accent-ink:#0e141b;
+  --auto:#45d1ab; --human:#f3b352; --other:#a6b6c6; --ret:#ff8399; --photo-bg:#070a0e; color-scheme:dark } }
 :root[data-theme="dark"]{
-  --bg:#0e141b; --surface:#17202a; --surface2:#1d2833; --ink:#e7edf3; --ink2:#a3b1bf; --ink3:#74838f; --line:#2b3846;
-  --accent:#93a4ff; --accent-ink:#0e141b; --accent-soft:#222c55;
-  --auto:#45d1ab; --auto-bg:#12332c; --human:#f3b352; --human-bg:#3a2c12; --other:#a6b6c6; --other-bg:#232f3b; --ret:#ff8399; --ret-bg:#3d1a23;
-  --photo-bg:#070a0e; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3); color-scheme:dark }
+  --bg:#0e141b; --surface:#17202a; --surface2:#1e2934; --ink:#e7edf3; --ink2:#a3b1bf; --ink3:#6f7e8b; --line:#273341;
+  --accent:#93a4ff; --accent-ink:#0e141b;
+  --auto:#45d1ab; --human:#f3b352; --other:#a6b6c6; --ret:#ff8399; --photo-bg:#070a0e; color-scheme:dark }
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.6;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
-button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
-button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+button:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,p,ul,ol{margin:0;padding:0}
+ul,ol{list-style:none}
 .num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
-.wrap{max-width:1380px;margin:0 auto}
+.wrap{max-width:1320px;margin:0 auto}
+.muted{color:var(--ink2)}
+.label{font-size:12px;color:var(--ink2);font-weight:500}
+.b-auto{--k:var(--auto)} .b-human{--k:var(--human)} .b-other{--k:var(--other)} .b-ret{--k:var(--ret)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--k);flex:none;display:inline-block}
+.panel{background:var(--surface);border-radius:14px}
 
-/* top bar */
-.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;padding-block:16px 14px}
-.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
-.brand h1{font-family:var(--f-display);font-weight:900;font-size:20px;margin:0;letter-spacing:.02em}
-.brand span{color:var(--ink2);font-size:12px}
-.steps{display:flex;gap:4px;list-style:none;margin:0;padding:0}
-.steps li{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;color:var(--ink3);font-size:13px;font-weight:500}
-.steps li i{font-style:normal;font-family:var(--f-mono);font-size:11px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;border:1px solid currentColor}
-.steps li.on{background:var(--ink);color:var(--bg)}
-.steps li.done{color:var(--ink)}
-.steps li.done i{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.demo-tag{font-size:11px;color:var(--ink2);border:1px dashed var(--ink3);border-radius:4px;padding:2px 8px}
+.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 20px;padding-block:18px 16px}
+.top h1{font-family:var(--f-display);font-weight:900;font-size:18px;letter-spacing:.02em;margin-right:auto}
+.steps{display:flex;gap:8px;font-size:12px;color:var(--ink3)}
+.steps li+li::before{content:"›";margin-right:8px}
+.steps li.on{color:var(--ink);font-weight:700}
+.steps li.done{color:var(--ink2)}
 
-.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;font-weight:700;font-size:13px;border:1px solid var(--line);background:var(--surface);white-space:nowrap}
-.btn:hover{border-color:var(--ink3)}
-.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.btn.big{padding:14px 26px;font-size:15px;border-radius:10px}
-.btn.ok{background:var(--auto);border-color:var(--auto);color:var(--surface)}
-.btn.ret{color:var(--ret);border-color:var(--ret)}
-.btn kbd{font-family:var(--f-mono);font-size:10px;padding:1px 5px;border-radius:4px;border:1px solid currentColor;opacity:.7}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px}
-.eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:9px;font-weight:700;font-size:13px;background:var(--surface2);white-space:nowrap}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.big{padding:14px 28px;font-size:15px}
+.btn.quiet{background:none;color:var(--ink2);padding:8px 10px;font-weight:500}
+.btn.quiet:hover{color:var(--ink)}
+.btn kbd{font:500 10px var(--f-mono);opacity:.65}
 
-/* ── 1 取り込み ── */
-#v-upload{display:grid;gap:20px;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);align-items:start}
-.drop{padding:24px;border:2px dashed var(--ink3);border-radius:16px;background:var(--surface);display:grid;gap:16px}
-.drop h2{font-family:var(--f-display);font-size:24px;font-weight:900;margin:0;text-wrap:balance}
-.drop p{margin:0;color:var(--ink2)}
-.file{display:grid;grid-template-columns:44px minmax(0,1fr);gap:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)}
-.file .ico{width:44px;height:52px;border-radius:6px;background:var(--auto);color:var(--surface);display:grid;place-items:end center;font:600 10px var(--f-mono);padding-bottom:6px}
-.file b{display:block;word-break:break-all}
-.file small{color:var(--ink2)}
-.sheets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.sheets span{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--surface);border:1px solid var(--line)}
-.go{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
-.go small{color:var(--ink2)}
-.side{display:grid;gap:16px}
-.side .panel{padding:18px}
-.side h3{font-family:var(--f-display);font-size:15px;margin:4px 0 12px}
-.funnel{display:grid;gap:6px}
-.funnel div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;font-size:12px}
-.funnel .bar{height:22px;border-radius:4px;background:var(--accent-soft);position:relative;min-width:0}
-.funnel .bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:4px;min-width:3px}
-.funnel .bar span{position:absolute;left:8px;top:2px;font-size:11px;white-space:nowrap;color:var(--ink)}
-.funnel div:first-child .bar span{color:var(--accent-ink)}
-.lanes-preview{display:grid;gap:8px}
-.lp{display:grid;grid-template-columns:10px minmax(0,1fr);gap:10px;font-size:13px}
-.lp i{border-radius:3px}
-.lp small{display:block;color:var(--ink2);font-size:12px}
+/* 1 取り込み */
+#v-upload{max-width:640px;margin:6vh auto 0;display:grid;gap:22px}
+#v-upload h2{font-family:var(--f-display);font-size:26px;font-weight:900;line-height:1.35;text-wrap:balance;word-break:auto-phrase}
+.files{display:grid;gap:1px;background:var(--line);border-radius:14px;overflow:hidden}
+.file{background:var(--surface);padding:16px 18px;display:grid;gap:2px}
+.file b{word-break:break-all}
+.file small{color:var(--ink2);font-size:12px}
+.go{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+#v-upload .note{font-size:12px;color:var(--ink2)}
 
-/* ── 2 検知 ── */
-#v-scan{display:grid;gap:20px;grid-template-columns:260px minmax(0,1fr) 300px;align-items:start}
-.pipe{padding:18px;display:grid;gap:14px}
-.pipe ol{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.pipe li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;color:var(--ink3);font-size:13px}
-.pipe li i{width:18px;height:18px;border-radius:50%;border:2px solid currentColor;margin-top:2px}
-.pipe li.run{color:var(--ink)}
-.pipe li.run i{border-color:var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
-.pipe li.fin{color:var(--ink)}
-.pipe li.fin i{background:var(--auto);border-color:var(--auto)}
-.pipe li small{display:block;color:var(--ink2);font-family:var(--f-mono);font-size:11px;min-height:1.5em}
-@keyframes spin{to{transform:rotate(360deg)}}
-.scanner{padding:18px;display:grid;gap:12px}
+/* 2 検知 */
+#v-scan{max-width:980px;margin:0 auto;display:grid;gap:16px;grid-template-columns:minmax(0,1fr) 240px;align-items:start}
+.scanner{padding:16px;display:grid;gap:12px}
 .scan-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline}
-.scan-head b{font-family:var(--f-display);font-size:16px}
-.stage{position:relative;background:var(--photo-bg);border-radius:10px;overflow:hidden;aspect-ratio:4/3;max-width:100%;max-height:56vh;margin:0 auto;width:100%}
+.scan-head b{font-family:var(--f-display);font-size:15px}
+.stage{position:relative;background:var(--photo-bg);border-radius:10px;overflow:hidden;aspect-ratio:4/3;width:100%;max-height:58vh;margin:0 auto}
 .stage img{width:100%;height:100%;object-fit:contain;display:block}
-.scanline{position:absolute;left:0;right:0;height:22%;top:-22%;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--c-joint) 35%,transparent));border-bottom:2px solid var(--c-joint);animation:scan 1.1s linear infinite;pointer-events:none}
+.scanline{position:absolute;left:0;right:0;height:18%;top:-18%;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--c-joint) 30%,transparent));border-bottom:2px solid var(--c-joint);animation:scan 1.1s linear infinite;pointer-events:none}
 @keyframes scan{to{top:100%}}
-.prog{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.prog{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
 .prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .15s linear}
-.lanes{display:grid;gap:10px}
-.lane{padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;gap:8px}
-.lane header{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px}
-.lane header .num{font-size:22px}
-.lane .chips{display:flex;flex-wrap:wrap;gap:4px;min-height:30px}
-.lane .chips img{width:38px;height:29px;object-fit:cover;border-radius:3px;animation:pop .3s ease-out}
-@keyframes pop{from{transform:scale(.3) translateY(-10px);opacity:0}}
-.b-auto{--k:var(--auto);--kb:var(--auto-bg)} .b-human{--k:var(--human);--kb:var(--human-bg)} .b-other{--k:var(--other);--kb:var(--other-bg)} .b-ret{--k:var(--ret);--kb:var(--ret-bg)}
-.lane{border-left:5px solid var(--k)} .lane header span:first-child{color:var(--k)}
+.scan-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--ink2)}
+.lanes{display:grid;gap:8px}
+.lane{padding:12px 14px;display:grid;gap:8px}
+.lane header{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
+.lane header .num{margin-left:auto;font-size:18px}
+.lane .chips{display:flex;flex-wrap:wrap;gap:3px;min-height:26px}
+.lane .chips img{width:32px;height:24px;object-fit:cover;border-radius:3px;animation:pop .3s ease-out}
+@keyframes pop{from{transform:scale(.3) translateY(-8px);opacity:0}}
 
-/* ── 3 仕分け ── */
-.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
-.tab{text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:grid;gap:2px;position:relative;min-width:0}
-.tab .lbl{font-weight:700;font-size:13px;color:var(--k);display:flex;align-items:center;gap:6px}
-.tab .lbl::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--k);flex:none}
-.tab .cnt{font-family:var(--f-mono);font-size:28px;font-weight:600;line-height:1.1}
-.tab .cnt small{font-size:12px;color:var(--ink2);font-weight:400;font-family:var(--f-body)}
-.tab .sub{font-size:11px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tab[aria-selected="true"]{background:var(--kb);border-color:var(--k);box-shadow:inset 0 -3px 0 var(--k)}
-.subbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:14px;font-size:12px;color:var(--ink2)}
-.split{flex:1 1 240px;height:8px;border-radius:4px;display:flex;overflow:hidden;gap:2px;min-width:0}
-.split i{background:var(--k)}
-.viewsw{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
-.viewsw button{padding:6px 12px;font-size:12px;font-weight:700;color:var(--ink2)}
-.viewsw button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+/* 3 仕分け */
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-bottom:14px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:var(--surface);border-radius:12px}
+.tab{display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:9px;font-size:13px;font-weight:500;color:var(--ink2)}
+.tab .num{font-weight:600;color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.tab[aria-selected="true"] .num{color:var(--bg)}
+.bar .rev{margin-left:auto;font-size:12px;color:var(--ink2)}
 
-.desk{display:grid;grid-template-columns:300px minmax(0,1fr) 340px;gap:14px;align-items:start}
-.list{display:grid;gap:8px;max-height:calc(100vh - 40px);overflow:auto;padding:2px;align-content:start}
-.list .bulk{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--ink2);padding:0 2px}
-.card{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--surface);text-align:left;width:100%;position:relative}
-.card img{width:64px;height:48px;object-fit:cover;border-radius:6px;background:var(--photo-bg)}
-.card b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card .meta{font-size:11px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card .cm{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card[aria-current="true"]{border-color:var(--k);background:var(--kb);box-shadow:inset 4px 0 0 var(--k)}
-.card .st{position:absolute;right:8px;top:8px;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--auto);color:var(--surface)}
-.card .st.ret{background:var(--ret)}
-.jdg{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:4px;font-size:12px;font-weight:700;background:var(--human-bg);color:var(--human);vertical-align:middle}
-.jdg.x{background:var(--ret-bg);color:var(--ret)} .jdg.o{background:var(--auto-bg);color:var(--auto)}
+.desk{display:grid;grid-template-columns:264px minmax(0,1fr) 332px;gap:14px;align-items:start}
+.list{padding:6px;display:grid;gap:2px;max-height:calc(100vh - 32px);overflow:auto;align-content:start}
+.list .lhead{display:flex;justify-content:space-between;align-items:center;padding:4px 8px 4px 10px;min-height:36px;font-size:12px;color:var(--ink2)}
+.row{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;text-align:left;width:100%}
+.row:hover{background:var(--surface2)}
+.row img{width:52px;height:39px;object-fit:cover;border-radius:5px;background:var(--photo-bg);display:block}
+.row b{display:block;font-size:13px;line-height:1.4}
+.row span.cm{display:block;font-size:12px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row[aria-current="true"]{background:var(--surface2);box-shadow:inset 3px 0 0 var(--ink)}
+.row.decided{opacity:.55}
+.row .st{font-size:11px;font-weight:700;color:var(--auto)} .row .st.ret{color:var(--ret)}
+.jdg{font-weight:700;color:var(--human)} .jdg.x{color:var(--ret)} .jdg.o{color:var(--auto)}
 
-.center{display:grid;gap:14px;min-width:0}
-.bhead{padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center}
-.bhead h2{font-family:var(--f-display);font-weight:900;font-size:20px;margin:0;flex:1 1 220px;min-width:0;text-wrap:balance}
-.bhead h2 small{display:block;font:400 12px var(--f-body);color:var(--ink2)}
-.kv{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--ink2)}
-.kv b{color:var(--ink);font-weight:500}
-.trans{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)}
-.viewer{padding:14px;display:grid;gap:12px;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.work{padding:18px;display:grid;gap:16px;min-width:0}
+.bhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+.bhead h2{font-family:var(--f-display);font-weight:900;font-size:20px}
+.bhead p{font-size:12px;color:var(--ink2)}
+.viewer{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:16px;align-items:start}
+.shots{display:grid;gap:8px;min-width:0}
 .photo{position:relative;background:var(--photo-bg);border-radius:10px;overflow:hidden;aspect-ratio:4/3;max-width:100%}
 .photo img{width:100%;height:100%;object-fit:contain;display:block}
-.photo .tag,.stage .tag{position:absolute;left:8px;top:8px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(10,14,18,.78);color:#fff}
-.photo .na{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,18,.55);color:#fff;font-weight:700;text-align:center;font-size:13px}
+.tag{position:absolute;left:8px;top:8px;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;background:rgba(10,14,18,.72);color:#fff}
+.photo .na{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,14,18,.6);color:#fff;font-weight:700;text-align:center;font-size:13px}
 .photo .na small{display:block;font-weight:400;opacity:.85}
-.box{position:absolute;border:2px solid var(--c);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.5);cursor:pointer;padding:0;transition:background .15s}
+.box{position:absolute;border:2px solid var(--c);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.45);cursor:pointer;transition:background .15s}
 .box.low{border-style:dashed}
-.box b{position:absolute;left:-2px;top:-2px;transform:translateY(-100%);background:var(--c);color:#10161d;font:600 11px var(--f-mono);padding:0 5px;border-radius:3px 3px 0 0;white-space:nowrap}
-.box.flip b{top:-2px;transform:none;border-radius:3px 0 3px 0}
-.box.hot{background:color-mix(in srgb,var(--c) 30%,transparent)}
-.thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;grid-column:1}
-.thumb{position:relative;border-radius:8px;overflow:hidden;border:2px solid transparent;padding:0;background:var(--photo-bg);aspect-ratio:4/3}
+.box b{position:absolute;left:-2px;top:-2px;background:var(--c);color:#10161d;font:600 11px var(--f-mono);min-width:18px;height:18px;display:grid;place-items:center;border-radius:3px 0 3px 0}
+.box.hot{background:color-mix(in srgb,var(--c) 28%,transparent)}
+.thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.thumb{position:relative;border-radius:7px;overflow:hidden;background:var(--photo-bg);aspect-ratio:4/3;opacity:.75}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.thumb.dim img{opacity:.4;filter:grayscale(1)}
-.thumb[aria-pressed="true"]{border-color:var(--accent)}
-.thumb span{position:absolute;left:0;right:0;bottom:0;font-size:10px;padding:2px 6px;background:rgba(10,14,18,.75);color:#fff;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.thumb em{position:absolute;right:4px;top:4px;font:600 10px var(--f-mono);background:#fff;color:#10161d;border-radius:999px;padding:0 6px;font-style:normal}
-.plan{grid-column:2;grid-row:1 / span 2;display:grid;gap:8px;align-content:start;min-width:0}
-.plan svg{width:100%;height:auto;display:block;background:var(--surface2);border-radius:10px;border:1px solid var(--line)}
-.plan svg text{font-family:var(--f-body);fill:var(--ink2);font-size:11px}
-.plan .pin{cursor:pointer}
-.plan .pin text{fill:#10161d;font:600 11px var(--f-mono)}
-.plan .pin.hot circle{stroke:var(--ink);stroke-width:3}
+.thumb.dim img{opacity:.35;filter:grayscale(1)}
+.thumb[aria-pressed="true"]{opacity:1;outline:2px solid var(--ink);outline-offset:1px}
+.thumb span{position:absolute;left:0;right:0;bottom:0;font-size:10px;padding:2px 6px;background:rgba(10,14,18,.72);color:#fff;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plan{display:grid;gap:8px;align-content:start;min-width:0}
+.plan svg{width:100%;height:auto;display:block;background:var(--surface2);border-radius:10px}
+.plan svg text{font-family:var(--f-body);fill:var(--ink2);font-size:13px}
+.pin{cursor:pointer}
+.plan svg .pin text{fill:#10161d;font:600 13px var(--f-mono)}
+.pin.hot circle{stroke:var(--ink);stroke-width:3}
 .unk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--ink2)}
-.unk button{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--ink3);border-radius:999px;padding:1px 9px 1px 2px;font-size:11px}
-.unk button i,.find i{width:18px;height:18px;border-radius:50%;background:var(--c);color:#10161d;display:inline-grid;place-items:center;font:600 10px var(--f-mono);font-style:normal;flex:none}
-.unk button.hot{border-style:solid;border-color:var(--ink)}
-.hint{font-size:11px;color:var(--ink3);margin:0}
+.n{width:18px;height:18px;border-radius:50%;background:var(--c);color:#10161d;display:inline-grid;place-items:center;font:600 10px var(--f-mono);flex:none}
+.unk button.hot .n{box-shadow:0 0 0 2px var(--ink)}
 
-.right{display:grid;gap:14px;min-width:0}
-.right .panel{padding:14px 16px;display:grid;gap:10px}
-.verdict{background:var(--kb);border-color:var(--k)}
-.verdict h3{margin:0;font-family:var(--f-display);font-size:16px;color:var(--k)}
-.why{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:13px}
-.why li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px}
-.why li::before{content:"";width:8px;height:8px;border-radius:50%;margin:7px 0 0 4px;background:var(--ink3)}
-.why li.ok::before{background:var(--auto)} .why li.warn::before{background:var(--human)} .why li.ng::before{background:var(--ret)}
-.cmt{font-size:15px;font-weight:700;padding:8px 12px;border-left:3px solid var(--ink3);background:var(--surface2);border-radius:0 6px 6px 0;word-break:break-all}
-.cmt.empty{color:var(--ret);border-color:var(--ret)}
-.find{display:grid;gap:6px;list-style:none;margin:0;padding:0}
-.find li{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px;padding:4px 6px;border-radius:6px;cursor:pointer}
-.find li.hot{background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line)}
-.find li span small{display:block;color:var(--ink2)}
-.conf{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11px}
-.conf u{width:44px;height:5px;border-radius:3px;background:var(--line);display:block;position:relative;overflow:hidden;text-decoration:none}
-.conf u::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--w);background:var(--ink)}
-.conf.low{color:var(--human)} .conf.low u::after{background:var(--human)}
-.wb{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
-.wb button{border:1px solid var(--line);border-radius:6px;padding:6px 2px;font-size:10px;line-height:1.3;display:grid;gap:2px;justify-items:center;background:var(--surface2);color:var(--ink2);min-width:0}
-.wb button b{font-size:15px;color:var(--ink3)}
-.wb button[aria-pressed="true"]{background:var(--surface);border-color:var(--ink);color:var(--ink)}
-.wb button[aria-pressed="true"] b{color:var(--ink)}
-.wb button.ed{box-shadow:inset 0 -3px 0 var(--human)}
-.acts{display:flex;flex-wrap:wrap;gap:8px}
-.acts .btn{flex:1 1 auto;justify-content:center}
-.done-note{font-size:12px;font-weight:700;color:var(--auto)}
-.done-note.ret{color:var(--ret)}
+.judge{padding:18px;display:grid;gap:16px;min-width:0}
+.judge .status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--k)}
+.judge h3{font-family:var(--f-display);font-size:16px;font-weight:700;line-height:1.5;word-break:auto-phrase}
+.more{display:grid;gap:4px;font-size:12px;color:var(--ink2)}
+.more li{padding-left:12px;position:relative}
+.more li::before{content:"";position:absolute;left:0;top:.75em;width:4px;height:4px;border-radius:50%;background:var(--ink3)}
+.sec{display:grid;gap:8px;padding-top:14px;border-top:1px solid var(--line)}
+.cmt{font-size:15px;font-weight:700;word-break:break-all}
+.cmt.empty{color:var(--ret)}
+.find{display:grid;gap:2px}
+.find li{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px;padding:5px 6px;margin-inline:-6px;border-radius:7px;cursor:pointer}
+.find li:hover,.find li.hot{background:var(--surface2)}
+.find small{display:block;color:var(--ink2);font-size:11px}
+.conf{font:500 12px var(--f-mono)} .conf.low{color:var(--human)}
+details summary{cursor:pointer;font-size:12px;color:var(--ink2);font-weight:500;list-style:none;display:flex;justify-content:space-between;gap:8px}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"修正する";color:var(--accent);font-weight:700}
+details[open] summary::after{content:"閉じる"}
+.wb{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.wb button{padding:5px 10px;border-radius:999px;font-size:12px;background:var(--surface2);color:var(--ink3)}
+.wb button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.wbsum{color:var(--ink);font-weight:700}
+.acts{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:8px}
+.acts .ret{color:var(--ret)}
+.done{display:flex;justify-content:space-between;align-items:center;font-weight:700;color:var(--auto)} .done.ret{color:var(--ret)}
 
 /* 自動化マップ */
 .map{display:grid;gap:14px;grid-template-columns:repeat(4,minmax(0,1fr));align-items:start}
-.col{padding:16px;display:grid;gap:12px;border-top:5px solid var(--k);align-content:start}
-.col h3{margin:0;font-family:var(--f-display);font-size:16px;color:var(--k)}
-.col>p{margin:0;font-size:12px;color:var(--ink2)}
-.col ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.col li{font-size:13px;padding-top:10px;border-top:1px solid var(--line);display:grid;gap:2px}
+.col{padding:18px;display:grid;gap:12px;align-content:start}
+.col h3{font-family:var(--f-display);font-size:16px;display:flex;align-items:center;gap:8px}
+.col>p{font-size:12px;color:var(--ink2)}
+.col ul{display:grid;gap:10px}
+.col li{font-size:13px;padding-top:10px;border-top:1px solid var(--line);display:grid;gap:1px}
 .col li small{color:var(--ink2);font-size:12px}
-.col li .num{font-size:12px;color:var(--k);font-weight:600}
-.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--ink2)}
-.legend span{display:inline-flex;align-items:center;gap:5px}
-.legend i{width:10px;height:10px;border-radius:2px;background:var(--c);border:1px solid rgba(0,0,0,.25)}
+.col li .num{font-size:12px;color:var(--ink2)}
 
-@media (max-width:1100px){
-  .desk{grid-template-columns:260px minmax(0,1fr)} .right{grid-column:1 / -1;grid-template-columns:repeat(2,minmax(0,1fr))} .right .acts-p{grid-column:1 / -1}
-  #v-scan{grid-template-columns:minmax(0,1fr) 260px} .pipe{grid-column:1 / -1} .pipe ol{grid-template-columns:repeat(3,minmax(0,1fr))}
+.foot{margin-top:20px;font-size:11px;color:var(--ink3);text-align:center}
+
+@media (max-width:1080px){
+  .desk{grid-template-columns:240px minmax(0,1fr)} .judge{grid-column:1 / -1}
   .map{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:760px){
-  #v-upload,#v-scan,.desk,.right,.map{grid-template-columns:minmax(0,1fr)}
-  .pipe ol{grid-template-columns:minmax(0,1fr)}
-  .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .list{max-height:none;grid-auto-flow:column;grid-auto-columns:230px;overflow-x:auto;grid-template-rows:auto}
-  .list .bulk{display:none}
-  .viewer{grid-template-columns:minmax(0,1fr)} .plan{grid-column:1;grid-row:auto}
-  .steps li span{display:none} .steps li.on span{display:inline}
+  .desk,.map,#v-scan,.viewer{grid-template-columns:minmax(0,1fr)}
+  .list{max-height:none;grid-auto-flow:column;grid-auto-columns:200px;overflow-x:auto}
+  .list .lhead{display:none}
+  .lanes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bar .rev{margin-left:0}
+  #v-upload{margin-top:8px} #v-upload h2{font-size:22px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1>外壁写真 仕分けデスク</h1><span>建物点検 53期 第3回（8/21–10/20）</span></div>
-    <ol class="steps" id="steps">
-      <li data-s="upload"><i>1</i><span>取り込み</span></li>
-      <li data-s="scan"><i>2</i><span>自動検知</span></li>
-      <li data-s="sort"><i>3</i><span>仕分け・確認</span></li>
-    </ol>
-    <span class="demo-tag">プロトタイプ：判定結果は事前作成のサンプル</span>
+    <h1>外壁写真 仕分けデスク</h1>
+    <ol class="steps" id="steps"><li>取り込み</li><li>自動検知</li><li>仕分け・確認</li></ol>
   </header>
 
-  <!-- 1 取り込み -->
   <main id="v-upload">
-    <section class="drop">
-      <div>
-        <div class="eyebrow">取り込み済み（ダミー）</div>
-        <h2>台帳と写真を読み込んで、確認が必要なものだけを人に回します</h2>
-      </div>
-      <div class="file"><div class="ico">XLSX</div><div>
-        <b>建物写真確認台帳_20261116_1709.xlsx</b>
-        <small><span class="num">56.5 MB</span>・台帳 <span class="num" data-n="rows"></span> 棟・埋め込み写真 <span class="num" data-n="photos"></span> 枚</small>
-        <div class="sheets"><span>写真確認一覧</span><span>集計</span><span>Sheet1（抽出条件）</span><span>規則外ファイル</span></div>
-      </div></div>
-      <div class="file"><div class="ico">XLSX</div><div>
-        <b>建物不具合写真（参考）.xlsx</b>
-        <small><span class="num">8.2 MB</span>・判定の見本写真 <span class="num">64</span> 枚（AIの判定基準として使用）</small>
-        <div class="sheets"><span>退色・変色 18</span><span>ヒビ・ひび・割れ 12</span><span>浮き・反り・膨れ 8</span><span>目地劣化 10</span><span>目地切れ・変形 16</span></div>
-      </div></div>
-      <div class="go">
-        <button class="btn primary big" id="start">検知を開始</button>
-        <button class="btn" id="skip0">結果だけ見る</button>
-        <small>このデモでは <b class="num" id="nB"></b> 棟・<b class="num" id="nP"></b> 枚を抽出して実行します</small>
-      </div>
-    </section>
-    <aside class="side">
-      <div class="panel">
-        <div class="eyebrow">台帳の抽出条件（Sheet1より）</div>
-        <h3>外壁・外壁目地の ▲ × のみ、築13〜14年</h3>
-        <div class="funnel" id="funnel"></div>
-      </div>
-      <div class="panel">
-        <div class="eyebrow">仕分け先</div>
-        <h3>4つのトレイに振り分けます</h3>
-        <div class="lanes-preview" id="lp"></div>
-      </div>
-    </aside>
+    <h2>台帳と写真を読み込み、人が見るべきものだけを選り分けます</h2>
+    <div class="files">
+      <div class="file"><b>建物写真確認台帳_20261116_1709.xlsx</b>
+        <small><span class="num" data-n="rows"></span> 棟・写真 <span class="num" data-n="photos"></span> 枚（外壁・外壁目地の ▲ ×、築13〜14年）</small></div>
+      <div class="file"><b>建物不具合写真（参考）.xlsx</b>
+        <small>見本写真 <span class="num">64</span> 枚・5分類（AIの判定基準に使用）</small></div>
+    </div>
+    <div class="go"><button class="btn primary big" id="start">検知を開始</button><button class="btn quiet" id="skip0">結果だけ見る</button></div>
+    <p class="note">このデモでは <span class="num" id="nB"></span> 棟・<span class="num" id="nP"></span> 枚を抽出して実行します。</p>
   </main>
 
-  <!-- 2 検知 -->
   <main id="v-scan" hidden>
-    <section class="panel pipe">
-      <div class="eyebrow">処理の流れ</div>
-      <ol id="pipe"></ol>
-      <button class="btn" id="skip1">スキップして結果へ</button>
-    </section>
     <section class="panel scanner">
-      <div class="scan-head"><b id="scName">準備中…</b><span class="num" id="scCount"></span></div>
+      <div class="scan-head"><b id="scName">準備中…</b><span class="num muted" id="scCount"></span></div>
       <div class="stage"><img id="scImg" alt=""><div id="scBoxes"></div><div class="scanline"></div></div>
       <div class="prog"><i id="scProg"></i></div>
-      <div class="legend" id="legend1"></div>
+      <div class="scan-foot"><span id="scStep"></span><button class="btn quiet" id="skip1">スキップ</button></div>
     </section>
     <section class="lanes" id="lanes"></section>
   </main>
 
-  <!-- 3 仕分け -->
   <main id="v-sort" hidden>
-    <div class="tabs" id="tabs" role="tablist"></div>
-    <div class="subbar">
-      <div class="split" id="split"></div>
-      <span id="revProg"></span>
-      <div class="viewsw"><button id="swDesk" aria-pressed="true">仕分け結果</button><button id="swMap" aria-pressed="false">自動化マップ</button></div>
+    <div class="bar">
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <span class="rev" id="rev"></span>
+      <button class="btn quiet" id="swMap">自動化マップ</button>
     </div>
     <div class="desk" id="desk">
-      <nav class="list" id="list" aria-label="物件一覧"></nav>
-      <section class="center" id="center"></section>
-      <aside class="right" id="right"></aside>
+      <nav class="panel list" id="list" aria-label="物件一覧"></nav>
+      <section class="panel work" id="work"></section>
+      <aside class="panel judge" id="judge"></aside>
     </div>
     <div class="map" id="map" hidden></div>
   </main>
+  <p class="foot">プロトタイプ：検知枠・確信度・仕分け理由は事前に作成したサンプルです。</p>
 </div>
 
 <script>
@@ -328,29 +239,20 @@ const el = (h) => { const t = document.createElement('template'); t.innerHTML = 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (n) => Number(n).toLocaleString('ja-JP');
 const TH = 0.75;
-const BK = {
-  auto:  { name: 'AI判定済み', sub: '写真の検知とコメントが一致。台帳へ自動記入', verdict: 'AIで判定できました' },
-  human: { name: '人の目で確認', sub: '確信度不足・不一致・×判定', verdict: '人の目で確認が必要です' },
-  other: { name: '対象外・その他', sub: '5分類外・集計除外・工事中', verdict: '外壁5分類の対象外です' },
-  ret:   { name: 'データ不備・差し戻し', sub: 'コメント未入力・接写なし・マスタ不整合', verdict: '入力に不備があります' },
-};
-const ORDER = ['auto', 'human', 'other', 'ret'];
-const CAT = {
-  fade: '退色・変色', crack: 'ヒビ・ひび・割れ', lift: '浮き・反り・膨れ', joint: '目地劣化', jointcut: '目地切れ・変形',
-  ext: '付帯部・その他', stain: '汚れ・コケ・白華',
-};
+const BK = { human: '人の目で確認', auto: 'AI判定済み', other: '対象外', ret: '差し戻し' };
+const ORDER = ['human', 'auto', 'other', 'ret'];
+const CAT = { fade: '退色・変色', crack: 'ヒビ・割れ', lift: '浮き・反り・膨れ', joint: '目地劣化', jointcut: '目地切れ・変形', ext: '付帯部・その他', stain: '汚れ・コケ・白華' };
 const FIVE = ['fade', 'crack', 'lift', 'joint', 'jointcut'];
 const SLOT = ['建物外観', 'その他 写真1', 'その他 写真2'];
 const FACE = { N: '北面', S: '南面', E: '東面', W: '西面', SW: '南西角', gable: '妻面', unit102: '102号室前' };
 const S = DATA.stats, B = DATA.b;
 B.forEach(b => { let n = 0; b.photos.forEach((p, pi) => p.dets.forEach(d => { d.id = ++n; d.pi = pi; })); b.dets = b.photos.flatMap(p => p.dets); });
 const by = (k) => B.filter(b => b.bucket === k);
-const state = { bucket: 'human', no: null, photo: 0, hot: null, dec: {}, edit: {} };
+const state = { bucket: 'human', no: null, photo: 0, hot: null, dec: {}, edit: {}, fixOpen: false };
 
-/* ── 共通 ── */
 function show(v) {
-  ['upload', 'scan', 'sort'].forEach(k => { $('#v-' + k).hidden = k !== v; });
-  const idx = ['upload', 'scan', 'sort'].indexOf(v);
+  const vs = ['upload', 'scan', 'sort'], idx = vs.indexOf(v);
+  vs.forEach(k => { $('#v-' + k).hidden = k !== v; });
   [...$('#steps').children].forEach((li, i) => { li.className = i === idx ? 'on' : i < idx ? 'done' : ''; });
   window.scrollTo(0, 0);
 }
@@ -358,204 +260,153 @@ const jdg = (j) => `<span class="jdg ${j === '×' ? 'x' : (j === '○' || j === 
 function boxes(p, hot) {
   return p.dets.map(d => {
     const [x, y, w, h] = d.box;
-    return `<button class="box ${d.conf < TH ? 'low' : ''} ${y < .12 ? 'flip' : ''} ${hot === d.id ? 'hot' : ''}" data-det="${d.id}" style="--c:var(--c-${d.c});left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%" aria-label="${esc(d.t)}"><b>${d.id} ${CAT[d.c]} ${Math.round(d.conf * 100)}%</b></button>`;
+    return `<button class="box ${d.conf < TH ? 'low' : ''} ${hot === d.id ? 'hot' : ''}" data-det="${d.id}" style="--c:var(--c-${d.c});left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%" aria-label="${esc(d.t)}"><b>${d.id}</b></button>`;
   }).join('');
 }
-const legend = () => Object.keys(CAT).map(k => `<span style="--c:var(--c-${k})"><i></i>${CAT[k]}</span>`).join('');
 
-/* ── 1 取り込み ── */
+/* 1 取り込み */
 function initUpload() {
   document.querySelectorAll('[data-n]').forEach(e => e.textContent = fmt(S[e.dataset.n]));
   $('#nB').textContent = B.length; $('#nP').textContent = B.reduce((a, b) => a + b.photos.length, 0);
-  const f = [['建物外観の点検結果（外壁・外壁目地）', S.funnel[0]], ['汚れ・コケ・雑草・虫や鳥類・エアコン等を除外', S.funnel[1]], ['築15年未満', S.funnel[2]], ['築13〜14年（今回の台帳）', S.funnel[3]]];
-  $('#funnel').innerHTML = f.map(([t, n]) => `<div><div class="bar"><i style="width:${n / f[0][1] * 100}%"></i><span>${t}</span></div><b class="num">${fmt(n)}</b></div>`).join('');
-  $('#lp').innerHTML = ORDER.map(k => `<div class="lp b-${k}"><i style="background:var(--k)"></i><div><b>${BK[k].name}</b><small>${BK[k].sub}</small></div></div>`).join('');
-  $('#start').onclick = runScan;
-  $('#skip0').onclick = () => openSort();
+  $('#start').onclick = runScan; $('#skip0').onclick = openSort;
 }
 
-/* ── 2 検知 ── */
+/* 2 検知 */
 let scanTimer = null;
 function runScan() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return openSort();
   show('scan');
-  const nP = B.reduce((a, b) => a + b.photos.length, 0);
-  const steps = [
-    ['シート構造を解析', () => '4シート・列25'],
-    ['埋め込み写真を抽出', (t) => fmt(Math.round(S.photos * t)) + ' 枚'],
-    ['台帳の行と写真を紐付け', (t) => fmt(Math.round(S.rows * t)) + ' 棟（建物外観／その他1／その他2）'],
-    ['見本64枚と照合して不具合を検知', (t) => Math.round(nP * t) + ' / ' + nP + ' 枚'],
-    ['BKコメント・前回判定と照合', (t) => Math.round(B.length * t) + ' / ' + B.length + ' 棟'],
-    ['4つのトレイへ仕分け', (t) => t >= 1 ? '完了' : ''],
-  ];
-  $('#pipe').innerHTML = steps.map(s => `<li><i></i><div>${s[0]}<small></small></div></li>`).join('');
-  const lis = [...$('#pipe').children];
-  const setStep = (i, t) => { lis[i].className = t >= 1 ? 'fin' : 'run'; $('small', lis[i]).textContent = steps[i][1](t); };
-  $('#legend1').innerHTML = legend();
-  $('#lanes').innerHTML = ORDER.map(k => `<div class="lane b-${k}" data-k="${k}"><header><span>${BK[k].name}</span><span class="num">0</span></header><div class="chips"></div></div>`).join('');
-  const order = [...B].sort((a, b) => a.no - b.no);
-  const seq = order.flatMap(b => b.photos.map((p, i) => ({ b, p, last: i === b.photos.length - 1 })));
-  const pre = 24; let tick = 0, done = 0;
+  $('#lanes').innerHTML = ORDER.map(k => `<div class="panel lane b-${k}" data-k="${k}"><header><i class="dot"></i>${BK[k]}<span class="num">0</span></header><div class="chips"></div></div>`).join('');
+  const seq = [...B].sort((a, b) => a.no - b.no).flatMap(b => b.photos.map((p, i) => ({ b, p, last: i === b.photos.length - 1 })));
+  const pre = 20; let tick = 0;
   clearInterval(scanTimer);
   scanTimer = setInterval(() => {
     tick++;
     if (tick <= pre) {
       const t = tick / pre;
-      setStep(0, Math.min(1, t * 3)); if (t > .33) setStep(1, Math.min(1, (t - .33) * 3)); if (t > .66) setStep(2, Math.min(1, (t - .66) * 3));
-      $('#scName').textContent = '台帳を読み込み中…'; $('#scProg').style.width = (t * 12) + '%';
-      return;
+      $('#scName').textContent = '台帳を読み込み中…';
+      $('#scStep').textContent = t < .5 ? `写真を抽出 ${fmt(Math.round(S.photos * t * 2))} 枚` : `台帳の行と紐付け ${fmt(Math.round(S.rows * (t - .5) * 2))} 棟`;
+      $('#scProg').style.width = (t * 12) + '%'; return;
     }
     const i = tick - pre - 1;
     if (i >= seq.length) {
-      clearInterval(scanTimer); setStep(3, 1); setStep(4, 1); setStep(5, 1);
-      $('#scName').textContent = '仕分けが完了しました'; setTimeout(() => { if (!$('#v-scan').hidden) openSort(); }, 900); return;
+      clearInterval(scanTimer); $('#scName').textContent = '仕分けが完了しました'; $('#scStep').textContent = '';
+      setTimeout(() => { if (!$('#v-scan').hidden) openSort(); }, 900); return;
     }
     const { b, p, last } = seq[i];
-    $('#scImg').src = p.src; $('#scBoxes').innerHTML = p.kind === 'na' ? `<span class="tag">対象外：${esc(p.label)}（検知から除外）</span>` : boxes(p);
-    $('#scName').textContent = `No.${b.no} ${b.name}・${SLOT[p.slot]}`;
-    $('#scCount').textContent = `${i + 1} / ${seq.length} 枚`;
+    $('#scImg').src = p.src;
+    $('#scBoxes').innerHTML = p.kind === 'na' ? `<span class="tag">対象外：${esc(p.label)}</span>` : boxes(p);
+    $('#scName').textContent = `${b.name}・${SLOT[p.slot]}`;
+    $('#scCount').textContent = `${i + 1} / ${seq.length}`;
+    $('#scStep').textContent = '見本写真・BKコメントと照合して仕分け中';
     $('#scProg').style.width = (12 + (i + 1) / seq.length * 88) + '%';
-    setStep(3, (i + 1) / seq.length);
     if (last) {
-      done++; setStep(4, done / B.length); setStep(5, done / B.length * .99);
       const lane = $(`.lane[data-k="${b.bucket}"]`);
       $('.num', lane).textContent = +$('.num', lane).textContent + 1;
-      $('.chips', lane).appendChild(el(`<img src="${b.photos[0].src}" alt="" title="${esc(b.name)}">`));
+      $('.chips', lane).appendChild(el(`<img src="${b.photos[0].src}" alt="">`));
     }
   }, 130);
   $('#skip1').onclick = () => { clearInterval(scanTimer); openSort(); };
 }
 
-/* ── 3 仕分け ── */
-function openSort() { show('sort'); state.no = by(state.bucket)[0].no; renderSort(); }
+/* 3 仕分け */
+function openSort() { show('sort'); select(by(state.bucket)[0].no, true); renderSort(); }
 const cur = () => B.find(b => b.no === state.no);
-function wbVals(b) {  // 台帳「AI診断」列へ書き戻す値
-  if (state.edit[b.no]) return state.edit[b.no];
-  const v = {}; FIVE.forEach(c => { v[c] = b.dets.some(d => d.c === c && d.conf >= TH); }); return v;
-}
+const baseVals = (b) => Object.fromEntries(FIVE.map(c => [c, b.dets.some(d => d.c === c && d.conf >= TH)]));
+const wbVals = (b) => state.edit[b.no] || baseVals(b);
 function renderSort() {
-  $('#tabs').innerHTML = ORDER.map(k => `<button class="tab b-${k}" role="tab" aria-selected="${state.bucket === k}" data-k="${k}">
-    <span class="lbl">${BK[k].name}</span><span class="cnt">${by(k).length}<small> 棟</small></span><span class="sub">${BK[k].sub}</span></button>`).join('');
-  $('#split').innerHTML = ORDER.map(k => `<i class="b-${k}" style="flex:${by(k).length}" title="${BK[k].name}"></i>`).join('');
-  const hs = by('human'), hd = hs.filter(b => state.dec[b.no]).length;
-  const autoN = by('auto').length;
-  $('#revProg').innerHTML = `目視確認 <b class="num">${hd} / ${hs.length}</b> 件完了・人が見る必要があるのは全体の <b class="num">${Math.round((B.length - autoN - by('other').length) / B.length * 100)}%</b>`;
+  $('#tabs').innerHTML = ORDER.map(k => `<button class="tab b-${k}" role="tab" aria-selected="${state.bucket === k}" data-k="${k}"><i class="dot"></i>${BK[k]}<span class="num">${by(k).length}</span></button>`).join('');
+  const hs = by('human');
+  $('#rev').innerHTML = `目視確認 <b class="num">${hs.filter(b => state.dec[b.no]).length} / ${hs.length}</b>`;
   renderList(); renderDetail();
 }
 function renderList() {
-  const items = by(state.bucket);
-  const bulk = state.bucket === 'auto' ? `<button class="btn" id="bulk">${items.length}件を一括承認</button>` : '';
-  $('#list').className = 'list b-' + state.bucket;
-  $('#list').innerHTML = `<div class="bulk"><span>${items.length} 棟・No.順</span>${bulk}</div>` + items.map(b => {
+  const items = by(state.bucket), left = items.filter(b => !state.dec[b.no]).length;
+  $('#list').innerHTML = `<div class="lhead"><span>${items.length} 棟</span>${state.bucket === 'auto' && left ? `<button class="btn quiet" id="bulk">まとめて確定</button>` : ''}</div>` + items.map(b => {
     const d = state.dec[b.no];
-    return `<button class="card" data-no="${b.no}" aria-current="${b.no === state.no}">
-      <img src="${b.photos[0].src}" alt="">
-      <div><b>${esc(b.name)}</b><div class="meta">No.${b.no}・${esc(b.office)}・${jdg(b.prev)}→${jdg(b.now)}</div>
-      <div class="cm">${b.comment === '0' ? '（コメント未入力）' : esc(b.comment)}</div></div>
-      ${d ? `<span class="st ${d === 'ret' ? 'ret' : ''}">${d === 'ret' ? '差し戻し' : d === 'fix' ? '修正済み' : '承認'}</span>` : ''}</button>`;
+    return `<button class="row ${d ? 'decided' : ''}" data-no="${b.no}" aria-current="${b.no === state.no}"><img src="${b.photos[0].src}" alt="">
+      <span><b>${esc(b.name)}</b><span class="cm">${b.comment === '0' ? 'コメント未入力' : esc(b.comment)}</span></span>
+      ${d ? `<span class="st ${d === 'ret' ? 'ret' : ''}">${d === 'ret' ? '差戻' : '済'}</span>` : jdg(b.now)}</button>`;
   }).join('');
   if ($('#bulk')) $('#bulk').onclick = () => { items.forEach(b => state.dec[b.no] = state.dec[b.no] || 'ok'); renderSort(); };
 }
 function planSVG(b) {
-  const X0 = 60, X1 = 240, Y0 = 52, Y1 = 118, pos = { N: [150, Y0], S: [150, Y1], E: [X1, 85], W: [X0, 85], SW: [X0, Y1], gable: [X1, 85], unit102: [X0 + 180 * 1.5 / 4, Y1] };
+  const X0 = 50, X1 = 250, Y0 = 44, Y1 = 116, pos = { N: [150, Y0], S: [150, Y1], E: [X1, 80], W: [X0, 80], SW: [X0, Y1], gable: [X1, 80], unit102: [X0 + 200 * 1.5 / 4, Y1] };
   const used = {};
   const pins = b.dets.filter(d => d.face).map(d => {
     let [x, y] = pos[d.face]; const n = used[d.face] = (used[d.face] || 0) + 1;
-    if (n > 1) { if (d.face === 'N' || d.face === 'S') x += (n - 1) * 24; else y -= (n - 1) * 24; }
+    if (n > 1) { if (d.face === 'N' || d.face === 'S') x += (n - 1) * 26; else y -= (n - 1) * 26; }
     return `<g class="pin ${state.hot === d.id ? 'hot' : ''}" data-det="${d.id}" tabindex="0" role="button" aria-label="${esc(FACE[d.face] + ' ' + d.t)}">
-      <circle cx="${x}" cy="${y}" r="10" fill="var(--c-${d.c})" stroke="var(--surface)" stroke-width="2"/><text x="${x}" y="${y + 4}" text-anchor="middle">${d.id}</text></g>`;
+      <circle cx="${x}" cy="${y}" r="12" fill="var(--c-${d.c})" stroke="var(--surface2)" stroke-width="2"/><text x="${x}" y="${y + 4.5}" text-anchor="middle">${d.id}</text></g>`;
   }).join('');
-  const units = [1, 2, 3].map(i => `<line x1="${X0 + 45 * i}" y1="${Y0}" x2="${X0 + 45 * i}" y2="${Y1}" stroke="var(--line)" stroke-dasharray="3 3"/>`).join('');
-  const labs = [101, 102, 103, 104].map((u, i) => `<text x="${X0 + 22.5 + 45 * i}" y="${Y0 + 14}" text-anchor="middle" style="font-size:9px">${u}</text>`).join('');
-  return `<svg viewBox="0 0 300 170" role="img" aria-label="建物の模式配置図">
-    <rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}" fill="var(--surface)" stroke="var(--ink2)" stroke-width="2"/>${units}${labs}
-    <text x="150" y="30" text-anchor="middle">北面</text><text x="150" y="146" text-anchor="middle">南面（玄関側）</text>
-    <text x="34" y="89" text-anchor="middle">西</text><text x="266" y="89" text-anchor="middle">東</text>
-    <text x="34" y="103" text-anchor="middle" style="font-size:9px">妻面</text><text x="266" y="103" text-anchor="middle" style="font-size:9px">妻面</text>
-    <g transform="translate(276,26)"><path d="M0 10 L5 -8 L10 10 L5 6 Z" fill="var(--ink2)"/><text x="5" y="-11" text-anchor="middle" style="font-size:9px">N</text></g>${pins}</svg>`;
+  return `<svg viewBox="14 8 272 148" role="img" aria-label="建物の模式配置図">
+    <rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}" rx="2" fill="var(--surface)" stroke="var(--ink3)" stroke-width="1.5"/>
+    <text x="150" y="26" text-anchor="middle">北</text><text x="150" y="146" text-anchor="middle">南</text>
+    <text x="26" y="84" text-anchor="middle">西</text><text x="274" y="84" text-anchor="middle">東</text>${pins}</svg>`;
 }
 function renderDetail() {
   const b = cur(); if (!b) return;
   const p = b.photos[state.photo] || b.photos[0];
-  const naCount = b.photos.filter(x => x.kind === 'na').length;
-  const changed = b.prev !== b.now;
-  const unk = b.dets.filter(d => !d.face);
-  $('#center').innerHTML = `
-    <div class="panel bhead">
-      <h2>${esc(b.name)}<small>No.${b.no}・建物CD <span class="num">${esc(b.cd)}</span></small></h2>
-      <div class="kv"><span>営業所 <b>${esc(b.area)}／${esc(b.office)}</b></span><span>構造 <b>${esc(b.struct)}</b></span><span>完成 <b class="num">${b.built}</b>（築${esc(b.age)}）</span></div>
-      <div class="trans">前回 ${jdg(b.prev)} → 今回 ${jdg(b.now)}${changed ? ' <b>判定が変化</b>' : ''}</div>
-    </div>
-    <div class="panel viewer">
-      <div class="photo" id="photo"><img src="${p.src}" alt="${SLOT[p.slot]}">
-        <span class="tag">${SLOT[p.slot]}・${p.kind === 'close' ? '接写' : p.kind === 'wide' ? '全景・中距離' : '対象外'}</span>
-        ${p.kind === 'na' ? `<div class="na"><div>外壁の写真ではありません<small>AIが「${esc(p.label)}」と判定し、検知対象から除外</small></div></div>` : boxes(p, state.hot)}
+  const unk = b.dets.filter(d => !d.face), located = b.dets.length - unk.length;
+  $('#work').innerHTML = `
+    <div class="bhead"><h2>${esc(b.name)}</h2>
+      <p>${esc(b.office)}・${esc(b.struct)}・築${esc(b.age)}・前回 ${jdg(b.prev)} → 今回 ${jdg(b.now)}</p></div>
+    <div class="viewer">
+      <div class="shots">
+        <div class="photo"><img src="${p.src}" alt="${SLOT[p.slot]}"><span class="tag">${SLOT[p.slot]}</span>
+          ${p.kind === 'na' ? `<div class="na"><div>外壁の写真ではありません<small>「${esc(p.label)}」と判定し、検知から除外</small></div></div>` : boxes(p, state.hot)}</div>
+        <div class="thumbs">${b.photos.map((x, i) => `<button class="thumb ${x.kind === 'na' ? 'dim' : ''}" aria-pressed="${i === state.photo}" data-pi="${i}"><img src="${x.src}" alt="${SLOT[x.slot]}">${x.kind === 'na' ? `<span>対象外・${esc(x.label)}</span>` : ''}</button>`).join('')}</div>
       </div>
-      <div class="plan">
-        <div class="eyebrow">写真と場所の紐付け</div>
-        ${planSVG(b)}
-        ${unk.length ? `<div class="unk"><span>位置の記載なし</span>${unk.map(d => `<button data-det="${d.id}" class="${state.hot === d.id ? 'hot' : ''}" style="--c:var(--c-${d.c})"><i>${d.id}</i>${CAT[d.c]}</button>`).join('')}</div>` : ''}
-        <p class="hint">方位・部屋番号はBKコメントから抽出。台帳に図面や撮影位置がないため、建物形状は模式図です。</p>
+      <div class="plan"><span class="label">場所${located ? '' : '（コメントに記載なし）'}</span>${planSVG(b)}
+        ${unk.length && located ? `<div class="unk"><span>位置不明</span>${unk.map(d => `<button data-det="${d.id}" class="${state.hot === d.id ? 'hot' : ''}" style="--c:var(--c-${d.c})"><span class="n">${d.id}</span></button>`).join('')}</div>` : ''}
+        <span class="label" style="font-weight:400">コメントの方位から配置した模式図です。</span>
       </div>
-      <div class="thumbs">${b.photos.map((x, i) => `<button class="thumb ${x.kind === 'na' ? 'dim' : ''}" aria-pressed="${i === state.photo}" data-pi="${i}">
-        <img src="${x.src}" alt=""><span>${SLOT[x.slot]}${x.kind === 'na' ? '・' + esc(x.label) : ''}</span>${x.dets.length ? `<em>${x.dets.length}</em>` : ''}</button>`).join('')}</div>
-    </div>
-    <div class="legend">${legend()}<span>破線の枠＝確信度${TH * 100}%未満</span></div>`;
-
-  const auto = [];
-  if (naCount) auto.push(['info', `対象外の写真 ${naCount} 枚を自動で除外`]);
-  if (changed) auto.push(['warn', `前回 ${b.prev} → 今回 ${b.now} に判定が変化`]);
-  if (b.flagFade) auto.push([b.dets.some(d => d.c === 'fade') ? 'ok' : 'warn', '台帳の「変色・退色」フラグ（手入力）' + (b.dets.some(d => d.c === 'fade') ? 'とAI検知が一致' : 'あり。AIは退色を検知せず')]);
-  if (b.struct === '#N/A' && b.bucket !== 'ret') auto.push(['warn', '構造区分が #N/A（建物マスタと不整合）']);
-  const v = wbVals(b), ed = !!state.edit[b.no], d = state.dec[b.no];
-  const base = {}; FIVE.forEach(c => base[c] = b.dets.some(x => x.c === c && x.conf >= TH));
-  $('#right').className = 'right b-' + b.bucket;
-  $('#right').innerHTML = `
-    <div class="panel verdict"><div class="eyebrow">仕分け結果：${BK[b.bucket].name}</div><h3>${BK[b.bucket].verdict}</h3>
-      <ul class="why">${[...b.why, ...auto].map(w => `<li class="${w[0]}">${esc(w[1])}</li>`).join('')}</ul></div>
-    <div class="panel"><div class="eyebrow">BKコメント（現地入力）</div>
-      <div class="cmt ${b.comment === '0' ? 'empty' : ''}">${b.comment === '0' ? '0（未入力）' : esc(b.comment)}</div>
-      <div class="eyebrow">AIの検知（写真）</div>
-      ${b.dets.length ? `<ul class="find">${b.dets.map(x => `<li data-det="${x.id}" class="${state.hot === x.id ? 'hot' : ''}" style="--c:var(--c-${x.c})"><i>${x.id}</i>
-        <span>${esc(x.t)}<small>${CAT[x.c]}・${SLOT[b.photos[x.pi].slot]}${x.face ? '・' + FACE[x.face] : ''}</small></span>
-        <span class="conf ${x.conf < TH ? 'low' : ''}"><u style="--w:${x.conf * 100}%"></u>${Math.round(x.conf * 100)}%</span></li>`).join('')}</ul>` : '<p class="hint">不具合の検知はありません。</p>'}
-    </div>
-    <div class="panel acts-p"><div class="eyebrow">台帳「AI診断」列に書き戻す値${ed ? '（人が修正）' : ''}</div>
-      <div class="wb">${FIVE.map(c => `<button data-cat="${c}" aria-pressed="${v[c]}" class="${v[c] !== base[c] ? 'ed' : ''}"><b>${v[c] ? '●' : '－'}</b>${CAT[c].replace(/・/g, '・<wbr>')}</button>`).join('')}</div>
-      <p class="hint">押すと値を修正できます。${b.bucket === 'other' ? '付帯部などは5分類に含めず別集計します。' : ''}</p>
-      ${d ? `<div class="done-note ${d === 'ret' ? 'ret' : ''}">${d === 'ret' ? '現地へ差し戻しました' : d === 'fix' ? '修正して確定しました' : 'AI判定どおり確定しました'} <button class="btn" data-act="undo" style="margin-left:8px;padding:3px 10px">取り消す</button></div>` : `
-      <div class="acts"><button class="btn ok" data-act="ok">${ed ? '修正して確定' : b.bucket === 'ret' ? 'このまま確定' : 'AI判定どおり確定'} <kbd>A</kbd></button>
-      <button class="btn ret" data-act="ret">現地へ差し戻し <kbd>R</kbd></button></div>`}
-      <p class="hint">↑↓ または J / K で前後の物件へ移動</p>
     </div>`;
+
+  const extra = b.why.slice(1).map(w => w[1]);
+  if (b.prev !== b.now) extra.push(`前回 ${b.prev} から今回 ${b.now} に判定が変化`);
+  if (b.struct === '#N/A' && b.bucket !== 'ret') extra.push('構造区分が #N/A（建物マスタと不整合）');
+  const v = wbVals(b), ed = !!state.edit[b.no], d = state.dec[b.no], on = FIVE.filter(c => v[c]);
+  $('#judge').className = 'panel judge b-' + b.bucket;
+  $('#judge').innerHTML = `
+    <div style="display:grid;gap:8px"><div class="status"><i class="dot"></i>${BK[b.bucket]}</div>
+      <h3>${esc(b.why[0][1])}</h3>
+      ${extra.length ? `<ul class="more">${extra.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}</div>
+    <div class="sec"><span class="label">現地コメント</span><div class="cmt ${b.comment === '0' ? 'empty' : ''}">${b.comment === '0' ? '未入力（0）' : esc(b.comment)}</div></div>
+    <div class="sec"><span class="label">AIの検知</span>
+      ${b.dets.length ? `<ul class="find">${b.dets.map(x => `<li data-det="${x.id}" class="${state.hot === x.id ? 'hot' : ''}" style="--c:var(--c-${x.c})"><span class="n">${x.id}</span>
+        <span>${esc(x.t)}<small>${CAT[x.c]}${x.face ? '・' + FACE[x.face] : ''}</small></span><span class="conf ${x.conf < TH ? 'low' : ''}">${Math.round(x.conf * 100)}%</span></li>`).join('')}</ul>` : '<span class="muted">検知なし</span>'}</div>
+    <div class="sec"><details ${state.fixOpen || ed ? 'open' : ''}><summary><span>台帳に記入：<span class="wbsum">${on.length ? on.map(c => CAT[c]).join('、') : 'なし'}</span>${ed ? '（修正済み）' : ''}</span></summary>
+      <div class="wb">${FIVE.map(c => `<button data-cat="${c}" aria-pressed="${v[c]}">${CAT[c]}</button>`).join('')}</div></details></div>
+    ${d ? `<div class="done ${d === 'ret' ? 'ret' : ''}"><span>${d === 'ret' ? '現地へ差し戻しました' : d === 'fix' ? '修正して確定しました' : '確定しました'}</span><button class="btn quiet" data-act="undo">取り消す</button></div>`
+        : `<div class="acts"><button class="btn primary" data-act="ok">${ed ? '修正して確定' : '確定'} <kbd>A</kbd></button><button class="btn ret" data-act="ret">差し戻し <kbd>R</kbd></button></div>`}`;
+  $('#judge details').ontoggle = (e) => { state.fixOpen = e.target.open; };
 }
-function setHot(id, jump) {
-  const b = cur(), d = b.dets.find(x => x.id === id);
-  state.hot = id;
-  if (d && jump) state.photo = d.pi;
-  renderDetail();
-}
+function setHot(id) { const d = cur().dets.find(x => x.id === id); state.hot = id; if (d) state.photo = d.pi; renderDetail(); }
 function act(a) {
   const b = cur();
   if (a === 'undo') delete state.dec[b.no];
-  else if (a === 'ret') state.dec[b.no] = 'ret';
-  else state.dec[b.no] = state.edit[b.no] ? 'fix' : 'ok';
-  if (a !== 'undo') { const items = by(state.bucket), nx = items.find(x => !state.dec[x.no]); if (nx) select(nx.no, true); }
+  else { state.dec[b.no] = a === 'ret' ? 'ret' : state.edit[b.no] ? 'fix' : 'ok'; const nx = by(state.bucket).find(x => !state.dec[x.no]); if (nx) select(nx.no, true); }
   renderSort();
 }
-function select(no, quiet) { state.no = no; state.photo = 0; state.hot = null; const b = cur(); const i = b.photos.findIndex(p => p.dets.length); if (i > 0) state.photo = i; if (!quiet) { renderList(); renderDetail(); } }
-function move(dir) { const items = by(state.bucket), i = items.findIndex(b => b.no === state.no), n = items[i + dir]; if (n) { select(n.no); const c = $(`.card[data-no="${n.no}"]`); if (c) c.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }
+function select(no, quiet) {
+  state.no = no; state.hot = null; state.fixOpen = false;
+  const i = cur().photos.findIndex(p => p.dets.length); state.photo = i > 0 ? i : 0;
+  if (!quiet) { renderList(); renderDetail(); }
+}
+function move(dir) { const items = by(state.bucket), n = items[items.findIndex(b => b.no === state.no) + dir]; if (n) { select(n.no); const c = $(`.row[data-no="${n.no}"]`); if (c) c.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } }
+function setView(map) { $('#desk').hidden = map; $('#map').hidden = !map; $('#swMap').textContent = map ? '← 仕分けに戻る' : '自動化マップ'; }
 
 function initSort() {
-  $('#tabs').onclick = (e) => { const t = e.target.closest('.tab'); if (!t) return; state.bucket = t.dataset.k; select(by(state.bucket)[0].no, true); setView('desk'); renderSort(); };
-  $('#list').onclick = (e) => { const c = e.target.closest('.card'); if (c) select(+c.dataset.no); };
+  $('#tabs').onclick = (e) => { const t = e.target.closest('.tab'); if (!t) return; state.bucket = t.dataset.k; select(by(state.bucket)[0].no, true); setView(false); renderSort(); };
+  $('#list').onclick = (e) => { const c = e.target.closest('.row'); if (c) select(+c.dataset.no); };
   $('#v-sort').addEventListener('click', (e) => {
-    const t = e.target.closest('[data-det]'); if (t) return setHot(+t.dataset.det, true);
+    const t = e.target.closest('[data-det]'); if (t) return setHot(+t.dataset.det);
     const th = e.target.closest('.thumb'); if (th) { state.photo = +th.dataset.pi; state.hot = null; return renderDetail(); }
     const a = e.target.closest('[data-act]'); if (a) return act(a.dataset.act);
-    const c = e.target.closest('[data-cat]'); if (c) { const b = cur(); const v = { ...wbVals(b) }; v[c.dataset.cat] = !v[c.dataset.cat]; state.edit[b.no] = v; delete state.dec[b.no]; renderSort(); }
+    const c = e.target.closest('[data-cat]'); if (c) { const b = cur(), v = { ...wbVals(b) }; v[c.dataset.cat] = !v[c.dataset.cat]; const same = FIVE.every(k => v[k] === baseVals(b)[k]); if (same) delete state.edit[b.no]; else state.edit[b.no] = v; state.fixOpen = true; delete state.dec[b.no]; renderSort(); }
   });
-  $('#v-sort').addEventListener('keydown', (e) => { const t = e.target.closest('.pin'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setHot(+t.dataset.det, true); } });
+  $('#v-sort').addEventListener('keydown', (e) => { const t = e.target.closest('.pin'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setHot(+t.dataset.det); } });
   document.addEventListener('keydown', (e) => {
     if ($('#v-sort').hidden || !$('#map').hidden || e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
@@ -564,46 +415,43 @@ function initSort() {
     else if (k === 'a' && !state.dec[state.no]) act('ok');
     else if (k === 'r' && !state.dec[state.no]) act('ret');
   });
-  $('#swDesk').onclick = () => setView('desk'); $('#swMap').onclick = () => setView('map');
+  $('#swMap').onclick = () => setView($('#map').hidden);
   renderMap();
 }
-function setView(v) { $('#desk').hidden = v !== 'desk'; $('#map').hidden = v !== 'map'; $('#swDesk').setAttribute('aria-pressed', v === 'desk'); $('#swMap').setAttribute('aria-pressed', v === 'map'); }
 function renderMap() {
-  const n = (k) => `<span class="num">台帳 ${fmt(S.rows)} 棟中 ${fmt(S[k] || 0)} 件</span>`;
+  const n = (k) => `<span class="num">${fmt(S[k] || 0)} 件 / ${fmt(S.rows)} 棟</span>`, kw = (k) => `<span class="num">コメント該当 ${fmt(S[k])} 件</span>`;
   const cols = [
-    ['auto', '自動でできる', 'ルールと照合だけで完結。人の確認は不要', [
-      ['台帳の行と写真の紐付け', `埋め込み写真 ${fmt(S.photos)} 枚をセル位置から行に対応付け`, ''],
-      ['BKコメント未入力の検出', '「0」や空欄を差し戻し対象に', n('noComment')],
+    ['auto', '自動でできる', 'ルールと照合だけで完結', [
+      ['台帳の行と写真の紐付け', `写真 ${fmt(S.photos)} 枚をセル位置から対応付け`, ''],
+      ['コメント未入力の検出', '「0」や空欄', n('noComment')],
       ['建物マスタ不整合の検出', '構造区分が #N/A', n('structNA')],
-      ['前回判定との差分', '前回 ○・◎ から ▲・× に悪化した物件', n('worsened')],
-      ['写真枚数の不足', '「その他 写真2」がなし', n('twoPhotos')],
-      ['5分類外コメントの振り分け', '水切り・モール・幕板、汚れ・コケ・白華などだけの記載', n('outOfFive')],
-      ['対象外写真の除外', '駐車場・植栽・掲示板・ゴミ置場などを検知対象から外す', ''],
+      ['前回判定からの悪化', '○・◎ → ▲・×', n('worsened')],
+      ['写真枚数の不足', '「その他 写真2」なし', n('twoPhotos')],
+      ['5分類外の振り分け', '水切り・モール、汚れ・コケ・白華などのみ', n('outOfFive')],
+      ['対象外写真の除外', '駐車場・植栽・掲示板など', ''],
     ]],
-    ['auto', 'AIで判定できる', '接写があり確信度75%以上なら自動記入。コメントとの一致も確認', [
-      ['目地切れ・変形', '破断や隙間は形がはっきりしており接写なら高精度', `<span class="num">コメント該当 ${fmt(S.kw_jointcut)} 件</span>`],
-      ['ヒビ・ひび・割れ', '接写のクラック・欠け。柄の強い外壁材は精度が落ちる', `<span class="num">コメント該当 ${fmt(S.kw_crack)} 件</span>`],
-      ['目地劣化', 'シーリングの痩せ・ひび', `<span class="num">コメント該当 ${fmt(S.kw_joint)} 件</span>`],
-      ['工事中・足場の検知', '「張替作業中」などと合わせて修繕対応中として別管理', ''],
-      ['コメントの5分類への分類', '自由記述をキーワードと文脈で分類', `<span class="num">分類不能 ${fmt(S.unclassified)} 件</span>`],
+    ['auto', 'AIで判定できる', '接写があり確信度75%以上なら自動記入', [
+      ['目地切れ・変形', '破断や隙間は形が明確', kw('kw_jointcut')],
+      ['ヒビ・割れ', '柄の強い外壁材では精度が落ちる', kw('kw_crack')],
+      ['目地劣化', 'シーリングの痩せ・ひび', kw('kw_joint')],
+      ['工事中・足場の検知', '修繕対応中として別管理', ''],
+      ['コメントの5分類への分類', '自由記述を分類', `<span class="num">分類不能 ${fmt(S.unclassified)} 件</span>`],
     ]],
-    ['human', '人の目が必要', 'AIは候補と根拠を示し、最終判断は人が行う', [
-      ['×判定（要修繕）の確定', '費用が発生する判断は必ず人が確定', n('batsu')],
-      ['○ から × への2段階悪化', '誤入力か急な劣化かの見極め', n('worsened2')],
-      ['退色・変色', '天候・露出・日陰で見え方が変わり、全景だけでは不確実', `<span class="num">コメント該当 ${fmt(S.kw_fade)} 件</span>`],
-      ['浮き・反り・膨れ', '凹凸は正対写真に写りにくい', `<span class="num">コメント該当 ${fmt(S.kw_lift)} 件</span>`],
-      ['コメントと写真の不一致', 'コメントにない不具合を検知／コメントの箇所が写っていない', ''],
-      ['▲ と × の線引き', '経過観察か修繕かは基準と現場事情による', ''],
+    ['human', '人の目が必要', 'AIは候補と根拠を示し、人が決める', [
+      ['×判定（要修繕）の確定', '費用が発生する判断', n('batsu')],
+      ['○ から × への2段階悪化', '誤入力か急な劣化か', n('worsened2')],
+      ['退色・変色', '天候・露出で見え方が変わる', kw('kw_fade')],
+      ['浮き・反り・膨れ', '凹凸は正対写真に写りにくい', kw('kw_lift')],
+      ['コメントと写真の不一致', '記載にない不具合／写っていない箇所', ''],
     ]],
-    ['ret', '今のデータではできない', '台帳と写真に情報がないもの。運用の変更が必要', [
-      ['撮影位置の特定', '写真に方位・位置情報がなく、図面もない。コメントに方位がある場合のみ紐付け可', ''],
-      ['不具合の寸法・クラック幅', '埋め込み写真は193×145pxの縮小版。スケールも写っていない', ''],
-      ['写っていない箇所の判定', '接写がない物件は再撮影の依頼まで', ''],
-      ['前回写真との経年比較', '前回分の写真が台帳にない', ''],
-      ['内部の劣化・漏水', '外観写真からは判断できない', ''],
+    ['ret', '今のデータではできない', '運用の変更が必要', [
+      ['撮影位置の特定', '方位・位置情報も図面もない', ''],
+      ['寸法・クラック幅', '写真は193×145pxの縮小版', ''],
+      ['写っていない箇所の判定', '再撮影の依頼まで', ''],
+      ['前回写真との比較', '前回分の写真がない', ''],
     ]],
   ];
-  $('#map').innerHTML = cols.map(([k, t, d, items]) => `<section class="panel col b-${k}"><h3>${t}</h3><p>${d}</p><ul>${items.map(i => `<li><b>${i[0]}</b><small>${i[1]}</small>${i[2]}</li>`).join('')}</ul></section>`).join('');
+  $('#map').innerHTML = cols.map(([k, t, d, items]) => `<section class="panel col b-${k}"><h3><i class="dot"></i>${t}</h3><p>${d}</p><ul>${items.map(i => `<li><b>${i[0]}</b><small>${i[1]}</small>${i[2]}</li>`).join('')}</ul></section>`).join('');
 }
 
 initUpload(); initSort(); show('upload');
