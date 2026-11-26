@@ -6,6 +6,7 @@
 // 同じエンジン（js/main.js の App）の上に重ねる。v1 の画面要素は隠すだけで、機能はすべて残る（コマンド検索から呼べる）
 import * as THREE from 'three';
 import { h, toast, download } from './common.js';
+import { openStrength, strengthModel } from './strength.js';
 import { buildInstance } from '../bim/build.js';
 import { estimateModel, yen } from '../bim/cost.js';
 import * as OD from '../core/order.js';
@@ -73,6 +74,7 @@ body.v3 .side-head{font-size:12px;letter-spacing:.06em;color:#6b7280;padding:12p
 .v3-left-tab b{font:600 12px var(--font)}
 body.v3.v3-list .v3-left-tab{opacity:0;pointer-events:none}
 .v3-br{position:fixed;right:16px;bottom:22px;z-index:60;display:flex;gap:8px;align-items:center}
+.v3-st{display:none;align-items:center;gap:7px;height:42px;padding:0 14px;cursor:pointer;font:600 13px/1 system-ui,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}.v3-st.on{display:flex}.v3-st i{width:9px;height:9px;border-radius:50%;background:#1f7a45}.v3-st.warn i{background:#c98a00}.v3-st.ng i{background:#b3261e}.v3-st.ng{color:#b3261e}
 .v3-num{display:flex;align-items:center;gap:10px;padding:6px 8px 6px 16px;cursor:pointer;font-variant-numeric:tabular-nums;transition:transform .12s}
 .v3-num:hover{transform:translateY(-1px)}
 .v3-num .kg{font-size:12px;color:#6b7280}.v3-num .yen{font:700 17px var(--font);letter-spacing:.01em;color:#1f2933}
@@ -188,7 +190,8 @@ export function initV3(app) {
   const num = h('div', { class: 'v3-num v3-glass', id: 'v3Num', title: '見積を見る (E)', onClick: () => openEstimateSheet(app) }, h('span', { class: 'kg', id: 'v3Kg' }, '— kg'), h('span', { class: 'yen', id: 'v3Yen' }, '¥—'), h('span', { class: 'v3-btn', style: { width: '30px', height: '30px' } }, icon('yen', 16)));
   const ring = h('div', { class: 'v3-ring v3-glass', id: 'v3Ring', title: '案件の進み（依頼から納品まで）', onClick: () => app.openOrder?.() });
   const send = h('button', { class: 'v3-pill', id: 'v3Send', title: '工場へ送る (T)', onClick: () => openFactorySheet(app) }, icon('truck', 18), h('span', {}, '工場へ'));
-  const br = h('div', { class: 'v3-br' }, ring, num, send);
+  const st = h('div', { class: 'v3-st v3-glass', id: 'v3St', title: '強度計算 (K)', onClick: () => openStrength(app) }, h('i', {}), h('span', { id: 'v3StT' }, '強度 —'));
+  const br = h('div', { class: 'v3-br' }, ring, st, num, send);
   // ---------- 左: 部材の一覧のつまみ ----------
   const ltab = h('div', { class: 'v3-left-tab v3-glass', id: 'v3ListTab', title: '部材の一覧 (L)', onClick: () => toggle('v3-list') }, icon('list', 18), h('b', { id: 'v3Count' }, '0'));
   const hoverTag = h('div', { class: 'v3-hover-tag' });
@@ -220,7 +223,7 @@ export function initV3(app) {
   // キー
   document.addEventListener('keydown', e => { const t = e.target; if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable) || e.ctrlKey || e.metaKey || e.altKey) return; if (document.querySelector('.modal-back,.cmdk-back,.v3-entry')) return;
     if (e.key === '+' || e.key === '=' || e.key === ';') { e.preventDefault(); zoomBy(app, 0.8); return; } if (e.key === '-') { e.preventDefault(); zoomBy(app, 1.25); return; } if (e.key === '0') { e.preventDefault(); click('btnFit')(); return; }
-    const k = e.key.toLowerCase(); if (k === 'e') { e.preventDefault(); openEstimateSheet(app); } else if (k === 't') { e.preventDefault(); openFactorySheet(app); } else if (k === 'l') { e.preventDefault(); toggle('v3-list'); } else if (k === 'p') { e.preventDefault(); toggle('v3-props'); } else if (k === 'v') { e.preventDefault(); viewMenu(app, document.getElementById('v3View')); } else if (e.key === 'Escape' && V.sheet) { e.preventDefault(); closeSheet(app); } });
+    const k = e.key.toLowerCase(); if (k === 'e') { e.preventDefault(); openEstimateSheet(app); } else if (k === 'k') { e.preventDefault(); openStrength(app); } else if (k === 't') { e.preventDefault(); openFactorySheet(app); } else if (k === 'l') { e.preventDefault(); toggle('v3-list'); } else if (k === 'p') { e.preventDefault(); toggle('v3-props'); } else if (k === 'v') { e.preventDefault(); viewMenu(app, document.getElementById('v3View')); } else if (e.key === 'Escape' && V.sheet) { e.preventDefault(); closeSheet(app); } });
   // 何もないときの案内と、はじめの一言
   // 3D の中の文字の札（符号・高さの線・溶接記号・確認の旗）は既定で隠す。「見え方」から出せる
   setLabels(app, 'all', LS.get('anglex.v3.labels', '0') === '1', false);
@@ -264,6 +267,7 @@ function refreshNumbers(app) {
   if (yn) { const t = em ? yen(em.withMargin) : '¥—'; if (yn.textContent !== t) { yn.textContent = t; yn.classList.remove('bump'); void yn.offsetWidth; yn.classList.add('bump'); } }
   const c = document.getElementById('v3Count'); if (c) c.textContent = String(n); const fl = document.getElementById('v3FlagN'); if (fl) { let k = 0; try { k = app.openReviewCount(); } catch { } fl.textContent = k ? String(k) : ''; } const pn = document.getElementById('v3PinN'); if (pn) pn.textContent = (document.getElementById('pinCnt')?.textContent || '').replace(/[^\d]/g, '');
   const nm = document.getElementById('v3ProjName'); if (nm) nm.textContent = app.project.name;
+  clearTimeout(app.v3._stT); app.v3._stT = setTimeout(() => { const el = document.getElementById('v3St'); if (!el) return; try { const M = strengthModel(app); if (!M.live.length) { el.className = 'v3-st v3-glass'; return; } const r = M.worst.res.ratio; el.className = 'v3-st v3-glass on ' + (r > 1 ? 'ng' : r >= 0.8 ? 'warn' : 'ok'); document.getElementById('v3StT').textContent = M.ng.length ? `強度 NG ${M.ng.length}` : `強度 ${r.toFixed(2)}`; el.title = `強度計算 (K): いちばん厳しい所の検定比 ${r.toFixed(2)}${M.worst.res.worst ? `（${M.worst.inst.mark} ${M.worst.res.worst.part}）` : ''}`; } catch (e) { console.warn('strength', e); } }, 250);
   const ring = document.getElementById('v3Ring'); if (ring) { const o = app.project.order; const p = o ? OD.progress(o) : null; const cur = o ? OD.currentStage(o) : null; const late = o ? OD.lateStages(o).length : 0; const C = 2 * Math.PI * 17; ring.innerHTML = `<svg class="r" viewBox="0 0 38 38"><circle cx="19" cy="19" r="17" fill="none" stroke="#e5e7eb" stroke-width="3"/><circle cx="19" cy="19" r="17" fill="none" stroke="${late ? '#c0392b' : '#1f2933'}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - (p ? p.pct / 100 : 0))}" transform="rotate(-90 19 19)"/></svg><b>${o ? (cur ? OD.STAGES.indexOf(cur) + 1 : '✓') : '案件'}</b>`; ring.title = o ? `案件の進み: ${cur ? cur.name : '完了'}（${p.done}/${p.total}）${late ? ` ・ 期限を過ぎた段階 ${late}` : ''}` : '案件の進み（依頼から納品まで）を始める'; }
   showEmpty(app, n === 0); if (app.v3?.sheet?.kind === 'estimate') app.v3.sheet.render();
 }

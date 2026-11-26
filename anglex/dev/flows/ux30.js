@@ -25,3 +25,6 @@ chk('サインイン後は、モード選択・案件一覧・チャット・3D 
 chk('3D でない画面から置くと、3D（手順 4）へ移って置かれる', out.fromMode.view === 'app' && out.fromMode.step === 4 && out.fromMode.fam === 'floor_band' && out.fromMode.appShown);
 chk('案件進行のボタンとコマンド検索', out.order.steps === 9 && out.cmdk.order[0] === '案件進行' && out.cmdk.parts[0] === '部材を選ぶ');
 chk('デモ版: 進め方から案件進行が開く。サインインの画面では案内のボタンを隠す', out.demo.view === 'app' && out.demo.order && out.demo.badgeBtnsHidden);
+// 強度計算: v2 の 3D の道具にボタンがあり、一覧が開く
+const st2 = await page.evaluate(async () => { document.querySelectorAll('.modal-back').forEach(m => m.remove()); const b = document.getElementById('btnStrength'); b.click(); await new Promise(r => setTimeout(r, 500)); const o = { btn: !!b, n: app.model.instances.length, modal: !!document.querySelector('.st-modal'), rows: document.querySelectorAll('.st-modal .st-list tbody tr').length, msg: /計算できる支持金具がありません/.test(document.querySelector('.st-modal')?.textContent || '') }; document.querySelectorAll('.modal-back').forEach(m => m.remove()); return o; });
+console.log('strength-v2:', JSON.stringify(st2)); chk('強度計算（v2）: ボタンから開く。計算できる金具がなければ、その旨を出す', st2.btn && st2.modal && (st2.rows >= 1 || st2.msg));
