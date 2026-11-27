@@ -90,6 +90,20 @@ A = {
    [P(C, '', ('crack', [.05, .52, .62, .08], .86, None, '横方向のひび割れ')), P(W, ''),
     P(C, '', ('joint', [.55, 0, .08, 1], .60, None, '目地劣化の可能性'))]),
 }
+# 「人の目で確認」の物件に出す質問。選択肢 = [ラベル, ok|ret, 台帳に記入する分類の上書き, 今回判定の変更]
+UNK = ['写真では分からない（差し戻す）', 'ret']
+X = lambda c: {'t': '×（要修繕）で確定しますか？', 'o': [['×で確定', 'ok', {c: True}], ['▲（経過観察）に変更', 'ok', {c: True}, '▲'], UNK]}
+Q = {
+ 442: {'t': 'コメントにない「ヒビ・割れ」も台帳に記入しますか？', 'o': [['記入する', 'ok', {'crack': True}], ['記入しない', 'ok', {'crack': False}], UNK]},
+ 1183: {'t': '枠の箇所は「目地劣化」と「ヒビ・割れ」に見えますか？', 'o': [['両方とも記入', 'ok', {'joint': True, 'crack': True}], ['目地劣化だけ記入', 'ok', {'joint': True, 'crack': False}], UNK]},
+ 752: {'t': '枠の箇所はクラックに見えますか？', 'o': [['はい（記入する）', 'ok', {'crack': True}], ['いいえ（記入しない）', 'ok', {'crack': False}], UNK]},
+ 924: {'t': '天井仕上げの剥がれは、別の項目で報告済みですか？', 'o': [['報告済み（退色のみ記入）', 'ok'], ['未報告（現地へ確認）', 'ret']]},
+ 1370: {'t': 'サイディングの膨れを写真で確認できますか？', 'o': [['確認できる（記入する）', 'ok', {'lift': True}], UNK]},
+ 1244: {'t': '枠の箇所は目地切れに見えますか？', 'o': [['はい（記入する）', 'ok', {'jointcut': True}], ['いいえ（記入しない）', 'ok', {'jointcut': False}], UNK]},
+ 971: X('crack'), 691: X('jointcut'), 1728: X('jointcut'),
+ 819: {'t': 'コメントの「目地切れ」を写真で確認できますか？', 'o': [['確認できる（記入する）', 'ok', {'jointcut': True}], UNK]},
+ 478: {'t': '外壁は色褪せて見えますか？', 'o': [['はい（記入する）', 'ok', {'fade': True}], ['いいえ（記入しない）', 'ok', {'fade': False}], UNK]},
+}
 ORDER = ['auto', 'human', 'other', 'ret']
 
 wb = openpyxl.load_workbook(LEDGER, read_only=True, data_only=True)
@@ -122,7 +136,7 @@ for no, (bucket, why, photos) in A.items():
     # 建物名・建物CDはマスクして出力する
     blds.append(dict(no=no, area=r[1], office=r[2], cd=str(r[4])[:3] + '\u2022' * 6, struct=nk(r[5]), name=f'物件 {no:04d}',
                      built=r[7].strftime('%Y/%m'), age=r[8], flagFade=bool(r[10]),
-                     now=r[11], prev=r[12], comment=str(r[13]), bucket=bucket, why=why, photos=ph))
+                     now=r[11], prev=r[12], comment=str(r[13]), bucket=bucket, why=why, photos=ph, q=Q.get(no)))
 blds.sort(key=lambda b: (ORDER.index(b['bucket']), b['no']))
 
 # 台帳全体(全行)のルールベース集計
